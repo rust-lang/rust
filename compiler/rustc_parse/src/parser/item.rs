@@ -399,14 +399,9 @@ impl<'a> Parser<'a> {
         let insert_span = ident_span.shrink_to_lo();
 
         let ident = if self.token.is_ident()
-            && (!is_const || self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Parenthesis)))
+            && (!is_const || self.look_ahead(1, |t| *t == token::OpenParen))
             && self.look_ahead(1, |t| {
-                [
-                    token::Lt,
-                    token::OpenDelim(Delimiter::Brace),
-                    token::OpenDelim(Delimiter::Parenthesis),
-                ]
-                .contains(&t.kind)
+                matches!(t.kind, token::Lt | token::OpenBrace | token::OpenParen)
             }) {
             self.parse_ident().unwrap()
         } else {
@@ -422,7 +417,7 @@ impl<'a> Parser<'a> {
 
         let err = if self.check(exp!(OpenBrace)) {
             // possible struct or enum definition where `struct` or `enum` was forgotten
-            if self.look_ahead(1, |t| *t == token::CloseDelim(Delimiter::Brace)) {
+            if self.look_ahead(1, |t| *t == token::CloseBrace) {
                 // `S {}` could be unit enum or struct
                 Some(errors::MissingKeywordForItemDefinition::EnumOrStruct { span })
             } else if self.look_ahead(2, |t| *t == token::Colon)
@@ -764,11 +759,12 @@ impl<'a> Parser<'a> {
             match parse_item(self) {
                 Ok(None) => {
                     let mut is_unnecessary_semicolon = !items.is_empty()
-                        // When the close delim is `)` in a case like the following, `token.kind` is expected to be `token::CloseDelim(Delimiter::Parenthesis)`,
-                        // but the actual `token.kind` is `token::CloseDelim(Delimiter::Brace)`.
-                        // This is because the `token.kind` of the close delim is treated as the same as
-                        // that of the open delim in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
-                        // Therefore, `token.kind` should not be compared here.
+                        // When the close delim is `)` in a case like the following, `token.kind`
+                        // is expected to be `token::CloseParen`, but the actual `token.kind` is
+                        // `token::CloseBrace`. This is because the `token.kind` of the close delim
+                        // is treated as the same as that of the open delim in
+                        // `TokenTreesReader::parse_token_tree`, even if the delimiters of them are
+                        // different. Therefore, `token.kind` should not be compared here.
                         //
                         // issue-60075.rs
                         // ```
@@ -787,8 +783,8 @@ impl<'a> Parser<'a> {
                     let mut semicolon_span = self.token.span;
                     if !is_unnecessary_semicolon {
                         // #105369, Detect spurious `;` before assoc fn body
-                        is_unnecessary_semicolon = self.token == token::OpenDelim(Delimiter::Brace)
-                            && self.prev_token == token::Semi;
+                        is_unnecessary_semicolon =
+                            self.token == token::OpenBrace && self.prev_token == token::Semi;
                         semicolon_span = self.prev_token.span;
                     }
                     // We have to bail or we'll potentially never make progress.
@@ -840,7 +836,7 @@ impl<'a> Parser<'a> {
     /// Recover on a doc comment before `}`.
     fn recover_doc_comment_before_brace(&mut self) -> bool {
         if let token::DocComment(..) = self.token.kind {
-            if self.look_ahead(1, |tok| tok == &token::CloseDelim(Delimiter::Brace)) {
+            if self.look_ahead(1, |tok| tok == &token::CloseBrace) {
                 // FIXME: merge with `DocCommentDoesNotDocumentAnything` (E0585)
                 struct_span_code_err!(
                     self.dcx(),
@@ -1206,7 +1202,7 @@ impl<'a> Parser<'a> {
         // FIXME: This recovery should be tested better.
         if safety == Safety::Default
             && self.token.is_keyword(kw::Unsafe)
-            && self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace))
+            && self.look_ahead(1, |t| *t == token::OpenBrace)
         {
             self.expect(exp!(OpenBrace)).unwrap_err().emit();
             safety = Safety::Unsafe(self.token.span);
@@ -1718,7 +1714,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(exp!(Semi)) {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
-        } else if self.token == token::OpenDelim(Delimiter::Brace) {
+        } else if self.token == token::OpenBrace {
             let (fields, recovered) = self.parse_record_struct_body(
                 "struct",
                 ident.span,
@@ -1726,7 +1722,7 @@ impl<'a> Parser<'a> {
             )?;
             VariantData::Struct { fields, recovered }
         // Tuple-style struct definition with optional where-clause.
-        } else if self.token == token::OpenDelim(Delimiter::Parenthesis) {
+        } else if self.token == token::OpenParen {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
             generics.where_clause = self.parse_where_clause()?;
             self.expect_semi()?;
@@ -1753,7 +1749,7 @@ impl<'a> Parser<'a> {
                 generics.where_clause.has_where_token,
             )?;
             VariantData::Struct { fields, recovered }
-        } else if self.token == token::OpenDelim(Delimiter::Brace) {
+        } else if self.token == token::OpenBrace {
             let (fields, recovered) = self.parse_record_struct_body(
                 "union",
                 ident.span,
@@ -1784,7 +1780,7 @@ impl<'a> Parser<'a> {
         let mut fields = ThinVec::new();
         let mut recovered = Recovered::No;
         if self.eat(exp!(OpenBrace)) {
-            while self.token != token::CloseDelim(Delimiter::Brace) {
+            while self.token != token::CloseBrace {
                 match self.parse_field_def(adt_ty) {
                     Ok(field) => {
                         fields.push(field);
@@ -1941,7 +1937,7 @@ impl<'a> Parser<'a> {
             token::Comma => {
                 self.bump();
             }
-            token::CloseDelim(Delimiter::Brace) => {}
+            token::CloseBrace => {}
             token::DocComment(..) => {
                 let previous_span = self.prev_token.span;
                 let mut err = errors::DocCommentDoesNotDocumentAnything {
@@ -1955,7 +1951,7 @@ impl<'a> Parser<'a> {
                 if !seen_comma && comma_after_doc_seen {
                     seen_comma = true;
                 }
-                if comma_after_doc_seen || self.token == token::CloseDelim(Delimiter::Brace) {
+                if comma_after_doc_seen || self.token == token::CloseBrace {
                     self.dcx().emit_err(err);
                 } else {
                     if !seen_comma {
@@ -1993,7 +1989,7 @@ impl<'a> Parser<'a> {
 
                 if self.token.is_ident()
                     || (self.token == TokenKind::Pound
-                        && (self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Bracket))))
+                        && (self.look_ahead(1, |t| t == &token::OpenBracket)))
                 {
                     // This is likely another field, TokenKind::Pound is used for `#[..]`
                     // attribute for next field. Emit the diagnostic and continue parsing.
@@ -2447,7 +2443,7 @@ impl<'a> Parser<'a> {
         match self.expected_one_of_not_found(&[], expected) {
             Ok(error_guaranteed) => Ok(error_guaranteed),
             Err(mut err) => {
-                if self.token == token::CloseDelim(Delimiter::Brace) {
+                if self.token == token::CloseBrace {
                     // The enclosing `mod`, `trait` or `impl` is being closed, so keep the `fn` in
                     // the AST for typechecking.
                     err.span_label(ident_span, "while parsing this `fn`");
@@ -2874,7 +2870,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, ThinVec<Param>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
-        if self.token != TokenKind::OpenDelim(Delimiter::Parenthesis)
+        if self.token != TokenKind::OpenParen
         // might be typo'd trait impl, handled elsewhere
         && !self.token.is_keyword(kw::For)
         {
@@ -2892,7 +2888,7 @@ impl<'a> Parser<'a> {
                 // When parsing a param failed, we should check to make the span of the param
                 // not contain '(' before it.
                 // For example when parsing `*mut Self` in function `fn oof(*mut Self)`.
-                let lo = if let TokenKind::OpenDelim(Delimiter::Parenthesis) = p.prev_token.kind {
+                let lo = if let TokenKind::OpenParen = p.prev_token.kind {
                     p.prev_token.span.shrink_to_hi()
                 } else {
                     p.prev_token.span
@@ -2969,9 +2965,7 @@ impl<'a> Parser<'a> {
                         }
                     }
 
-                    if this.token != token::Comma
-                        && this.token != token::CloseDelim(Delimiter::Parenthesis)
-                    {
+                    if this.token != token::Comma && this.token != token::CloseParen {
                         // This wasn't actually a type, but a pattern looking like a type,
                         // so we are going to rollback and re-parse for recovery.
                         ty = this.unexpected_any();
@@ -3153,7 +3147,7 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match &self.token.kind {
-            token::OpenDelim(Delimiter::Invisible(origin)) => match origin {
+            token::OpenInvisible(origin) => match origin {
                 InvisibleOrigin::MetaVar(MetaVarKind::Pat(_)) => {
                     return self.check_noexpect_past_close_delim(&token::Colon);
                 }

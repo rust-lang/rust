@@ -18,38 +18,33 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
         let mut buf = Vec::new();
         loop {
-            match self.token.kind {
-                token::OpenDelim(delim) => {
-                    // Invisible delimiters cannot occur here because `TokenTreesReader` parses
-                    // code directly from strings, with no macro expansion involved.
-                    debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
-                    buf.push(match self.lex_token_tree_open_delim(delim) {
-                        Ok(val) => val,
-                        Err(errs) => return Err(errs),
-                    })
-                }
-                token::CloseDelim(delim) => {
-                    // Invisible delimiters cannot occur here because `TokenTreesReader` parses
-                    // code directly from strings, with no macro expansion involved.
-                    debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
-                    return if is_delimited {
-                        Ok((open_spacing, TokenStream::new(buf)))
-                    } else {
-                        Err(vec![self.close_delim_err(delim)])
-                    };
-                }
-                token::Eof => {
-                    return if is_delimited {
-                        Err(vec![self.eof_err()])
-                    } else {
-                        Ok((open_spacing, TokenStream::new(buf)))
-                    };
-                }
-                _ => {
-                    // Get the next normal token.
-                    let (this_tok, this_spacing) = self.bump();
-                    buf.push(TokenTree::Token(this_tok, this_spacing));
-                }
+            if let Some(delim) = self.token.kind.open_delim() {
+                // Invisible delimiters cannot occur here because `TokenTreesReader` parses
+                // code directly from strings, with no macro expansion involved.
+                debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
+                buf.push(match self.lex_token_tree_open_delim(delim) {
+                    Ok(val) => val,
+                    Err(errs) => return Err(errs),
+                })
+            } else if let Some(delim) = self.token.kind.close_delim() {
+                // Invisible delimiters cannot occur here because `TokenTreesReader` parses
+                // code directly from strings, with no macro expansion involved.
+                debug_assert!(!matches!(delim, Delimiter::Invisible(_)));
+                return if is_delimited {
+                    Ok((open_spacing, TokenStream::new(buf)))
+                } else {
+                    Err(vec![self.close_delim_err(delim)])
+                };
+            } else if self.token.kind == token::Eof {
+                return if is_delimited {
+                    Err(vec![self.eof_err()])
+                } else {
+                    Ok((open_spacing, TokenStream::new(buf)))
+                };
+            } else {
+                // Get the next normal token.
+                let (this_tok, this_spacing) = self.bump();
+                buf.push(TokenTree::Token(this_tok, this_spacing));
             }
         }
     }
@@ -111,9 +106,9 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);
         let sm = self.psess.source_map();
 
-        let close_spacing = match self.token.kind {
-            // Correct delimiter.
-            token::CloseDelim(close_delim) if close_delim == open_delim => {
+        let close_spacing = if let Some(close_delim) = self.token.kind.close_delim() {
+            if close_delim == open_delim {
+                // Correct delimiter.
                 let (open_brace, open_brace_span) = self.diag_info.open_braces.pop().unwrap();
                 let close_brace_span = self.token.span;
 
@@ -134,9 +129,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
 
                 // Move past the closing delimiter.
                 self.bump_minimal()
-            }
-            // Incorrect delimiter.
-            token::CloseDelim(close_delim) => {
+            } else {
+                // Incorrect delimiter.
                 let mut unclosed_delimiter = None;
                 let mut candidate = None;
 
@@ -182,14 +176,13 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     Spacing::Alone
                 }
             }
-            token::Eof => {
-                // Silently recover, the EOF token will be seen again
-                // and an error emitted then. Thus we don't pop from
-                // self.open_braces here. The choice of spacing value here
-                // doesn't matter.
-                Spacing::Alone
-            }
-            _ => unreachable!(),
+        } else {
+            assert_eq!(self.token.kind, token::Eof);
+            // Silently recover, the EOF token will be seen again
+            // and an error emitted then. Thus we don't pop from
+            // self.open_braces here. The choice of spacing value here
+            // doesn't matter.
+            Spacing::Alone
         };
 
         let spacing = DelimSpacing::new(open_spacing, close_spacing);

@@ -182,8 +182,8 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
                     locs.push(MatcherLoc::Token { token: *token });
                 }
                 TokenTree::Delimited(span, _, delimited) => {
-                    let open_token = Token::new(token::OpenDelim(delimited.delim), span.open);
-                    let close_token = Token::new(token::CloseDelim(delimited.delim), span.close);
+                    let open_token = Token::new(delimited.delim.as_open_token_kind(), span.open);
+                    let close_token = Token::new(delimited.delim.as_close_token_kind(), span.close);
 
                     locs.push(MatcherLoc::Delimited);
                     locs.push(MatcherLoc::Token { token: open_token });

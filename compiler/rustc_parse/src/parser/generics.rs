@@ -1,4 +1,3 @@
-use ast::token::Delimiter;
 use rustc_ast::{
     self as ast, AttrVec, DUMMY_NODE_ID, GenericBounds, GenericParam, GenericParamKind, TyKind,
     WhereClause, token,
@@ -437,7 +436,7 @@ impl<'a> Parser<'a> {
 
         if let Some(struct_) = struct_
             && self.may_recover()
-            && self.token == token::OpenDelim(Delimiter::Parenthesis)
+            && self.token == token::OpenParen
         {
             snapshot = Some((struct_, self.create_snapshot_for_diagnostic()));
         };
@@ -548,7 +547,7 @@ impl<'a> Parser<'a> {
                         matches!(t.kind, token::Gt | token::Comma | token::Colon | token::Eq)
                         // Recovery-only branch -- this could be removed,
                         // since it only affects diagnostics currently.
-                            || matches!(t.kind, token::Question)
+                            || t.kind == token::Question
                     })
                 || self.is_keyword_ahead(start + 1, &[kw::Const]))
     }

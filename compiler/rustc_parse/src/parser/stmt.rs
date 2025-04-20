@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(attrs);
             self.mk_stmt(lo, StmtKind::Empty)
-        } else if self.token != token::CloseDelim(Delimiter::Brace) {
+        } else if self.token != token::CloseBrace {
             // Remainder are line-expr stmts. This is similar to the `parse_stmt_path_start` case
             // above.
             let restrictions =
@@ -254,9 +254,7 @@ impl<'a> Parser<'a> {
                 self.token.kind,
                 token::Semi
                     | token::Eof
-                    | token::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
-                        MetaVarKind::Stmt
-                    )))
+                    | token::CloseInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Stmt))
             ) {
             StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
         } else {
@@ -547,7 +545,7 @@ impl<'a> Parser<'a> {
             //                                            +   +
             Ok(Some(_))
                 if (!self.token.is_keyword(kw::Else)
-                    && self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Brace)))
+                    && self.look_ahead(1, |t| t == &token::OpenBrace))
                     || do_not_suggest_help => {}
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
             Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
@@ -584,9 +582,7 @@ impl<'a> Parser<'a> {
         stmt_kind: &StmtKind,
     ) {
         match (&self.token.kind, &stmt_kind) {
-            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
-                if let ExprKind::Call(..) = expr.kind =>
-            {
+            (token::OpenBrace, StmtKind::Expr(expr)) if let ExprKind::Call(..) = expr.kind => {
                 // for _ in x y() {}
                 e.span_suggestion_verbose(
                     between,
@@ -595,9 +591,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
-                if let ExprKind::Field(..) = expr.kind =>
-            {
+            (token::OpenBrace, StmtKind::Expr(expr)) if let ExprKind::Field(..) = expr.kind => {
                 // for _ in x y.z {}
                 e.span_suggestion_verbose(
                     between,
@@ -606,7 +600,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (token::CloseDelim(Delimiter::Brace), StmtKind::Expr(expr))
+            (token::CloseBrace, StmtKind::Expr(expr))
                 if let ExprKind::Struct(expr) = &expr.kind
                     && let None = expr.qself
                     && expr.path.segments.len() == 1 =>
@@ -621,7 +615,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
+            (token::OpenBrace, StmtKind::Expr(expr))
                 if let ExprKind::Lit(lit) = expr.kind
                     && let None = lit.suffix
                     && let token::LitKind::Integer | token::LitKind::Float = lit.kind =>
@@ -635,7 +629,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (token::OpenDelim(Delimiter::Brace), StmtKind::Expr(expr))
+            (token::OpenBrace, StmtKind::Expr(expr))
                 if let ExprKind::Loop(..)
                 | ExprKind::If(..)
                 | ExprKind::While(..)
@@ -658,7 +652,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             }
-            (token::OpenDelim(Delimiter::Brace), _) => {}
+            (token::OpenBrace, _) => {}
             (_, _) => {
                 e.multipart_suggestion(
                     "you might have meant to write this as part of a block",
@@ -809,7 +803,7 @@ impl<'a> Parser<'a> {
             // Likely `foo bar`
         } else if self.prev_token.kind == token::Question {
             // `foo? bar`
-        } else if self.prev_token.kind == token::CloseDelim(Delimiter::Parenthesis) {
+        } else if self.prev_token.kind == token::CloseParen {
             // `foo() bar`
         } else {
             return;
@@ -826,7 +820,7 @@ impl<'a> Parser<'a> {
                 Applicability::MaybeIncorrect,
             );
         }
-        if self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis)) {
+        if self.look_ahead(1, |t| t.kind == token::OpenParen) {
             err.span_suggestion_verbose(
                 self.prev_token.span.between(self.token.span),
                 "you might have meant to write a method call",
@@ -870,8 +864,7 @@ impl<'a> Parser<'a> {
             StmtKind::Expr(expr)
                 if classify::expr_requires_semi_to_be_stmt(expr)
                     && !expr.attrs.is_empty()
-                    && ![token::Eof, token::Semi, token::CloseDelim(Delimiter::Brace)]
-                        .contains(&self.token.kind) =>
+                    && !matches!(self.token.kind, token::Eof | token::Semi | token::CloseBrace) =>
             {
                 // The user has written `#[attr] expr` which is unsupported. (#106020)
                 let guar = self.attr_on_non_tail_expr(&expr);
@@ -919,7 +912,7 @@ impl<'a> Parser<'a> {
                                                     token::Ident(
                                                         kw::For | kw::Loop | kw::While,
                                                         token::IdentIsRaw::No
-                                                    ) | token::OpenDelim(Delimiter::Brace)
+                                                    ) | token::OpenBrace
                                                 )
                                         })
                                     {

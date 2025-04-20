@@ -3,7 +3,7 @@ use std::ops::Bound;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, MetaVarKind, Token};
+use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
     fn eat_or_separator(&mut self, lo: Option<Span>) -> EatOrResult {
         if self.recover_trailing_vert(lo) {
             EatOrResult::TrailingVert
-        } else if matches!(self.token.kind, token::OrOr) {
+        } else if self.token.kind == token::OrOr {
             // Found `||`; Recover and pretend we parsed `|`.
             self.dcx().emit_err(UnexpectedVertVertInPattern { span: self.token.span, start: lo });
             self.bump();
@@ -352,9 +352,9 @@ impl<'a> Parser<'a> {
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.
                 | token::Comma // e.g. `let (a |,)`.
-                | token::CloseDelim(Delimiter::Bracket) // e.g. `let [a | ]`.
-                | token::CloseDelim(Delimiter::Parenthesis) // e.g. `let (a | )`.
-                | token::CloseDelim(Delimiter::Brace) // e.g. `let A { f: a | }`.
+                | token::CloseBracket // e.g. `let [a | ]`.
+                | token::CloseParen // e.g. `let (a | )`.
+                | token::CloseBrace // e.g. `let A { f: a | }`.
             )
         });
         match (is_end_ahead, &self.token.kind) {
@@ -364,7 +364,7 @@ impl<'a> Parser<'a> {
                     span: self.token.span,
                     start: lo,
                     token: self.token,
-                    note_double_vert: matches!(self.token.kind, token::OrOr),
+                    note_double_vert: self.token.kind == token::OrOr,
                 });
                 self.bump();
                 true
@@ -438,8 +438,8 @@ impl<'a> Parser<'a> {
                 | token::Caret | token::And | token::Shl | token::Shr // excludes `Or`
             )
             || self.token == token::Question
-            || (self.token == token::OpenDelim(Delimiter::Bracket)
-                && self.look_ahead(1, |t| *t != token::CloseDelim(Delimiter::Bracket))) // excludes `[]`
+            || (self.token == token::OpenBracket
+                && self.look_ahead(1, |t| *t != token::CloseBracket)) // excludes `[]`
             || self.token.is_keyword(kw::As);
 
         if !has_dot_expr && !has_trailing_operator {
@@ -481,7 +481,7 @@ impl<'a> Parser<'a> {
         let is_bound = is_end_bound
             // is_start_bound: either `..` or `)..`
             || self.token.is_range_separator()
-            || self.token == token::CloseDelim(Delimiter::Parenthesis)
+            || self.token == token::CloseParen
                 && self.look_ahead(1, Token::is_range_separator);
 
         let span = expr.span;
@@ -835,7 +835,7 @@ impl<'a> Parser<'a> {
             // because we never have `'a: label {}` in a pattern position anyways, but it does
             // keep us from suggesting something like `let 'a: Ty = ..` => `let 'a': Ty = ..`
             && could_be_unclosed_char_literal(lt)
-            && !self.look_ahead(1, |token| matches!(token.kind, token::Colon))
+            && !self.look_ahead(1, |token| token.kind == token::Colon)
         {
             // Recover a `'a` as a `'a'` literal
             let lt = self.expect_lifetime();
@@ -1255,8 +1255,8 @@ impl<'a> Parser<'a> {
                 || t.is_metavar_expr()
                 || t.is_lifetime() // recover `'a` instead of `'a'`
                 || (self.may_recover() // recover leading `(`
-                    && *t == token::OpenDelim(Delimiter::Parenthesis)
-                    && self.look_ahead(dist + 1, |t| *t != token::OpenDelim(Delimiter::Parenthesis))
+                    && *t == token::OpenParen
+                    && self.look_ahead(dist + 1, |t| *t != token::OpenParen)
                     && self.is_pat_range_end_start(dist + 1))
             })
     }
@@ -1264,9 +1264,8 @@ impl<'a> Parser<'a> {
     /// Parse a range pattern end bound
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
         // recover leading `(`
-        let open_paren = (self.may_recover()
-            && self.eat_noexpect(&token::OpenDelim(Delimiter::Parenthesis)))
-        .then_some(self.prev_token.span);
+        let open_paren = (self.may_recover() && self.eat_noexpect(&token::OpenParen))
+            .then_some(self.prev_token.span);
 
         let bound = if self.check_inline_const(0) {
             self.parse_const_block(self.token.span, true)
@@ -1322,8 +1321,8 @@ impl<'a> Parser<'a> {
         // Avoid `in`. Due to recovery in the list parser this messes with `for ( $pat in $expr )`.
         && !self.token.is_keyword(kw::In)
         // Try to do something more complex?
-        && self.look_ahead(1, |t| !matches!(t.kind, token::OpenDelim(Delimiter::Parenthesis) // A tuple struct pattern.
-            | token::OpenDelim(Delimiter::Brace) // A struct pattern.
+        && self.look_ahead(1, |t| !matches!(t.kind, token::OpenParen // A tuple struct pattern.
+            | token::OpenBrace // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::PathSep // A tuple / struct variant pattern.
             | token::Bang)) // A macro expanding to a pattern.
@@ -1361,7 +1360,7 @@ impl<'a> Parser<'a> {
         // This shortly leads to a parse error. Note that if there is no explicit
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
-        if self.token == token::OpenDelim(Delimiter::Parenthesis) {
+        if self.token == token::OpenParen {
             return Err(self
                 .dcx()
                 .create_err(EnumPatternInsteadOfIdentifier { span: self.prev_token.span }));
@@ -1429,9 +1428,9 @@ impl<'a> Parser<'a> {
             token::Comma,
             token::Semi,
             token::At,
-            token::OpenDelim(Delimiter::Brace),
-            token::CloseDelim(Delimiter::Brace),
-            token::CloseDelim(Delimiter::Parenthesis),
+            token::OpenBrace,
+            token::CloseBrace,
+            token::CloseParen,
         ]
         .contains(&self.token.kind)
     }
@@ -1489,7 +1488,7 @@ impl<'a> Parser<'a> {
         let mut first_etc_and_maybe_comma_span = None;
         let mut last_non_comma_dotdot_span = None;
 
-        while self.token != token::CloseDelim(Delimiter::Brace) {
+        while self.token != token::CloseBrace {
             // check that a comma comes after every field
             if !ate_comma {
                 let err = if self.token == token::At {
@@ -1538,7 +1537,7 @@ impl<'a> Parser<'a> {
                 self.recover_bad_dot_dot();
                 self.bump(); // `..` || `...` || `_`
 
-                if self.token == token::CloseDelim(Delimiter::Brace) {
+                if self.token == token::CloseBrace {
                     break;
                 }
                 let token_str = super::token_descr(&self.token);
@@ -1561,7 +1560,7 @@ impl<'a> Parser<'a> {
                     ate_comma = true;
                 }
 
-                if self.token == token::CloseDelim(Delimiter::Brace) {
+                if self.token == token::CloseBrace {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
                         err.span_suggestion_short(
@@ -1681,7 +1680,7 @@ impl<'a> Parser<'a> {
             // We found `ref mut? ident:`, try to parse a `name,` or `name }`.
             && let Some(name_span) = self.look_ahead(1, |t| t.is_ident().then(|| t.span))
             && self.look_ahead(2, |t| {
-                t == &token::Comma || t == &token::CloseDelim(Delimiter::Brace)
+                t == &token::Comma || t == &token::CloseBrace
             })
         {
             let span = last.pat.span.with_hi(ident.span.lo());

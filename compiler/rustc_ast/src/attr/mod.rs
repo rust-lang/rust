@@ -416,10 +416,7 @@ impl MetaItem {
                 // This path is currently unreachable in the test suite.
                 unreachable!()
             }
-            Some(TokenTree::Token(
-                Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. },
-                _,
-            )) => {
+            Some(TokenTree::Token(Token { kind, .. }, _)) if kind.is_delim() => {
                 panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tt);
             }
             _ => return None,

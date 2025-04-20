@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, MetaVarKind, Token, TokenKind};
+use rustc_ast::token::{self, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
@@ -98,7 +98,7 @@ fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
         || t.is_lifetime()
         || t == &TokenKind::Question
         || t.is_keyword(kw::For)
-        || t == &TokenKind::OpenDelim(Delimiter::Parenthesis)
+        || t == &TokenKind::OpenParen
 }
 
 impl<'a> Parser<'a> {
@@ -355,7 +355,7 @@ impl<'a> Parser<'a> {
                 }
             }
         } else if self.check_keyword(exp!(Unsafe))
-            && self.look_ahead(1, |tok| matches!(tok.kind, token::Lt))
+            && self.look_ahead(1, |tok| tok.kind == token::Lt)
         {
             self.parse_unsafe_binder_ty()?
         } else {
@@ -534,7 +534,7 @@ impl<'a> Parser<'a> {
         let elt_ty = match self.parse_ty() {
             Ok(ty) => ty,
             Err(err)
-                if self.look_ahead(1, |t| *t == token::CloseDelim(Delimiter::Bracket))
+                if self.look_ahead(1, |t| *t == token::CloseBracket)
                     | self.look_ahead(1, |t| *t == token::Semi) =>
             {
                 // Recover from `[LIT; EXPR]` and `[LIT]`
@@ -1154,7 +1154,7 @@ impl<'a> Parser<'a> {
         }
 
         let mut path = if self.token.is_keyword(kw::Fn)
-            && self.look_ahead(1, |t| *t == TokenKind::OpenDelim(Delimiter::Parenthesis))
+            && self.look_ahead(1, |t| *t == TokenKind::OpenParen)
             && let Some(path) = self.recover_path_from_fn()
         {
             path
@@ -1208,7 +1208,7 @@ impl<'a> Parser<'a> {
             self.parse_path(PathStyle::Type)?
         };
 
-        if self.may_recover() && self.token == TokenKind::OpenDelim(Delimiter::Parenthesis) {
+        if self.may_recover() && self.token == TokenKind::OpenParen {
             self.recover_fn_trait_with_lifetime_params(&mut path, &mut lifetime_defs)?;
         }
 

@@ -1,7 +1,7 @@
 use rustc_ast::ptr::P;
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, NonterminalKind, Token};
+use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, NonterminalKind, Token};
 use rustc_errors::PResult;
 use rustc_span::{Ident, kw};
 
@@ -69,13 +69,13 @@ impl<'a> Parser<'a> {
                 | token::Ident(..)
                 | token::NtIdent(..)
                 | token::NtLifetime(..)
-                | token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => true,
+                | token::OpenInvisible(InvisibleOrigin::MetaVar(_)) => true,
                 _ => token.can_begin_type(),
             },
             NonterminalKind::Block => match &token.kind {
-                token::OpenDelim(Delimiter::Brace) => true,
+                token::OpenBrace => true,
                 token::NtLifetime(..) => true,
-                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(k))) => match k {
+                token::OpenInvisible(InvisibleOrigin::MetaVar(k)) => match k {
                     MetaVarKind::Block
                     | MetaVarKind::Stmt
                     | MetaVarKind::Expr { .. }
@@ -94,9 +94,7 @@ impl<'a> Parser<'a> {
             },
             NonterminalKind::Path | NonterminalKind::Meta => match &token.kind {
                 token::PathSep | token::Ident(..) | token::NtIdent(..) => true,
-                token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(kind))) => {
-                    may_be_ident(*kind)
-                }
+                token::OpenInvisible(InvisibleOrigin::MetaVar(kind)) => may_be_ident(*kind),
                 _ => false,
             },
             NonterminalKind::Pat(pat_kind) => token.can_begin_pattern(pat_kind),
@@ -105,7 +103,7 @@ impl<'a> Parser<'a> {
                 _ => false,
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
-                !matches!(token.kind, token::CloseDelim(_))
+                token.kind.close_delim().is_none()
             }
         }
     }
