@@ -372,7 +372,8 @@ macro_rules! make_mir_visitor {
                     }
                     AssertMessage::ResumedAfterReturn(_)
                     | AssertMessage::ResumedAfterPanic(_)
-                    | AssertMessage::NullPointerDereference => {
+                    | AssertMessage::NullPointerDereference
+                    | AssertMessage::ResumedAfterDrop(_) => {
                         //nothing to visit
                     }
                     AssertMessage::MisalignedPointerDereference { required, found } => {
