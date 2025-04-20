@@ -902,13 +902,31 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: HirId, _: Span) {
         match qpath {
             hir::QPath::Resolved(maybe_qself, path) => {
-                if let Some(qself) = maybe_qself {
-                    // FIXME(fmease): Make assocated type paths induce a trait object lifetime
-                    //                default for the self type, too!
-                    let scope = Scope::ObjectLifetimeDefault { lifetime: None, s: self.scope };
-                    self.with(scope, |this| this.visit_ty_unambig(qself));
-                }
+                // Visit the path before the self type since computing the trait object lifetime
+                // default for the latter requires all lifetime arguments of the trait ref to be
+                // already resolved.
                 self.visit_path(path, id);
+                if let Some(qself) = maybe_qself {
+                    // Read more about containers in fn `visit_path_segment_args`.
+                    let container = match path.res {
+                        Res::Def(DefKind::AssocTy, def_id) => Some((
+                            self.tcx.parent(def_id),
+                            &path.segments[..path.segments.len() - 1],
+                        )),
+                        _ => None,
+                    };
+                    let object_lifetime_defaults =
+                        container.map_or(Vec::new(), |(def_id, segs)| {
+                            let generics = self.tcx.generics_of(def_id);
+                            self.compute_object_lifetime_defaults(generics, segs)
+                        });
+                    if let Some(&lt) = object_lifetime_defaults.get(0) {
+                        let scope = Scope::ObjectLifetimeDefault { lifetime: lt, s: self.scope };
+                        self.with(scope, |this| this.visit_ty_unambig(qself));
+                    } else {
+                        self.visit_ty_unambig(qself);
+                    }
+                }
             }
             hir::QPath::TypeRelative(qself, segment) => {
                 // Computing the trait object lifetime defaults that are induced by type-relative
@@ -1076,52 +1094,56 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 }
 
 fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectLifetimeDefault {
-    debug_assert_eq!(tcx.def_kind(param_def_id), DefKind::TyParam);
-    let hir::Node::GenericParam(param) = tcx.hir_node_by_def_id(param_def_id) else {
-        bug!("expected GenericParam for object_lifetime_default");
-    };
-    match param.source {
-        hir::GenericParamSource::Generics => {
-            let parent_def_id = tcx.local_parent(param_def_id);
-            let generics = tcx.hir_get_generics(parent_def_id).unwrap();
+    // Scan the bounds and where-clauses on parameters to extract bounds of the form `T: 'a`
+    // so as to determine the `ObjectLifetimeDefault` for each type parameter.
 
-            // Scan the bounds and where-clauses on parameters to extract bounds
-            // of the form `T:'a` so as to determine the `ObjectLifetimeDefault`
-            // for each type parameter.
-            match param.kind {
+    let Ok((generics, bounds)) = (match tcx.hir_node_by_def_id(param_def_id) {
+        hir::Node::GenericParam(param) => match param.source {
+            hir::GenericParamSource::Generics => match param.kind {
                 GenericParamKind::Type { .. } => {
-                    let mut set = Set1::Empty;
-
-                    // Look for `type: ...` where clauses.
-                    for bound in generics.bounds_for_param(param_def_id) {
-                        // Ignore `for<'a> type: ...` as they can change what
-                        // lifetimes mean (although we could "just" handle it).
-                        if !bound.bound_generic_params.is_empty() {
-                            continue;
-                        }
-
-                        for bound in bound.bounds {
-                            if let hir::GenericBound::Outlives(lifetime) = bound {
-                                set.insert(lifetime.kind);
-                            }
-                        }
-                    }
-
-                    match set {
-                        Set1::Empty => ObjectLifetimeDefault::Empty,
-                        Set1::One(hir::LifetimeKind::Static) => ObjectLifetimeDefault::Static,
-                        Set1::One(hir::LifetimeKind::Param(param_def_id)) => {
-                            ObjectLifetimeDefault::Param(param_def_id.to_def_id())
-                        }
-                        _ => ObjectLifetimeDefault::Ambiguous,
-                    }
+                    Ok((tcx.hir_get_generics(tcx.local_parent(param_def_id)).unwrap(), &[][..]))
                 }
-                _ => {
-                    bug!("object_lifetime_default must only be called on a type parameter")
-                }
+                _ => Err(()),
+            },
+            hir::GenericParamSource::Binder => return ObjectLifetimeDefault::Empty,
+        },
+        // For `Self` type parameters
+        hir::Node::Item(&hir::Item {
+            kind: hir::ItemKind::Trait(.., generics, bounds, _), ..
+        }) => Ok((generics, bounds)),
+        _ => Err(()),
+    }) else {
+        bug!("`object_lifetime_default` must only be called on type parameters")
+    };
+
+    let mut set = Set1::Empty;
+
+    let mut add_outlives_bounds = |bounds: &[hir::GenericBound<'_>]| {
+        for bound in bounds {
+            if let hir::GenericBound::Outlives(lifetime) = bound {
+                set.insert(lifetime.kind);
             }
         }
-        hir::GenericParamSource::Binder => ObjectLifetimeDefault::Empty,
+    };
+
+    add_outlives_bounds(bounds);
+
+    // Look for `Type: ...` where clauses.
+    for bound in generics.bounds_for_param(param_def_id) {
+        // Ignore `for<'a> Type: ...` as they can change what
+        // lifetimes mean (although we could "just" handle it).
+        if bound.bound_generic_params.is_empty() {
+            add_outlives_bounds(&bound.bounds);
+        }
+    }
+
+    match set {
+        Set1::Empty => ObjectLifetimeDefault::Empty,
+        Set1::One(hir::LifetimeKind::Static) => ObjectLifetimeDefault::Static,
+        Set1::One(hir::LifetimeKind::Param(param_def_id)) => {
+            ObjectLifetimeDefault::Param(param_def_id.to_def_id())
+        }
+        _ => ObjectLifetimeDefault::Ambiguous,
     }
 }
 
@@ -1746,13 +1768,17 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
         debug!(?container);
 
-        let object_lifetime_defaults = container.map_or_else(Vec::new, |(def_id, segs)| {
-            self.compute_object_lifetime_defaults(def_id, segs)
-        });
+        let (has_self, object_lifetime_defaults) = container
+            .map(|(def_id, segs)| {
+                let generics = self.tcx.generics_of(def_id);
+                let defaults = self.compute_object_lifetime_defaults(generics, segs);
+                (generics.has_own_self(), defaults)
+            })
+            .unwrap_or_default();
 
         debug!(?object_lifetime_defaults);
 
-        let mut i = 0;
+        let mut i = has_self as usize;
         for arg in generic_args.args {
             match arg {
                 // We've already visited all lifetime arguments at the start.
@@ -1896,14 +1922,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     /// * `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound) and
     /// * `dyn Baz` to `dyn Baz + 'static` (because there is no such bound).
     ///
-    /// Therefore, we would compute a list like `['x, 'static]`.
-    /// Note that the list only includes the lifetimes for type parameters.
+    /// Therefore, we would compute a list like `['x, 'static]`. Note that the list only
+    /// includes entries for type and const parameters, not for lifetime parameters.
     ///
     /// [599]: https://rust-lang.github.io/rfcs/0599-default-object-bound.html
     /// [1156]: https://rust-lang.github.io/rfcs/1156-adjust-default-object-bounds.html
     fn compute_object_lifetime_defaults(
         &self,
-        def_id: DefId,
+        generics: &ty::Generics,
         segments: &[hir::PathSegment<'_>],
     ) -> Vec<Option<ResolvedArg>> {
         let in_body = {
@@ -1925,9 +1951,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
             }
         };
-
-        let rbv = &self.rbv;
-        let generics = self.tcx.generics_of(def_id);
 
         let set_to_region = |set: ObjectLifetimeDefault| match set {
             ObjectLifetimeDefault::Empty => {
@@ -1961,7 +1984,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     .args
                     .and_then(|args| args.args.get(index))
                     .and_then(|arg| match arg {
-                        GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
+                        GenericArg::Lifetime(lt) => self.rbv.defs.get(&lt.hir_id.local_id).copied(),
                         _ => None,
                     })
             }
@@ -1971,18 +1994,25 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             .own_params
             .iter()
             .filter_map(|param| {
+                // NB: `Self` type params share the `DefId` with the corresponding trait (alias).
+                //
+                // Since trait aliases can't be used as the qself of fully qualified paths, the
+                // trait object lifetime default for their `Self` type param is never needed.
+                // Thus, we don't even try to compute it.
+                //
+                // We still need to map const params & trait aliases to *some* default to make it
+                // easy & predictable for the caller how to map the defaults back to generic args.
+                // As they can't tell if a given inferred arg refers to a type or a const at this
+                // stage of analysis, they can't skip it and thus we need to provide (dummy)
+                // defaults for const args. Otherwise, they wouldn't properly align.
+
                 match self.tcx.def_kind(param.def_id) {
-                    // Const parameters don't impose any constraints.
-                    //
-                    // We still store a dummy value here to allow generic parameters
-                    // in an arbitrary order.
-                    DefKind::ConstParam => Some(ObjectLifetimeDefault::Empty),
-                    DefKind::TyParam => Some(self.tcx.object_lifetime_default(param.def_id)),
-                    // We may also get a `Trait` or `TraitAlias` because the `Self` type parameter
-                    // reuses the `DefId` of the trait (alias).
-                    // Ignore it because it can't have a meaningful lifetime default.
-                    DefKind::LifetimeParam | DefKind::Trait | DefKind::TraitAlias => None,
-                    dk => bug!("unexpected def_kind {:?}", dk),
+                    DefKind::TyParam | DefKind::Trait => {
+                        Some(self.tcx.object_lifetime_default(param.def_id))
+                    }
+                    DefKind::ConstParam | DefKind::TraitAlias => Some(ObjectLifetimeDefault::Empty),
+                    DefKind::LifetimeParam => None,
+                    kind => bug!("unexpected def kind {kind:?}"),
                 }
             })
             .map(set_to_region)
