@@ -276,7 +276,7 @@ LL |     let [&mut &(mut x)] = &[&mut 0];
 help: consider removing `&` from the pattern
    |
 LL -     let [&mut &(mut x)] = &[&mut 0];
-LL +     let [&mut mut x)] = &[&mut 0];
+LL +     let [&mut (mut x)] = &[&mut 0];
    |
 
 error: aborting due to 21 previous errors
