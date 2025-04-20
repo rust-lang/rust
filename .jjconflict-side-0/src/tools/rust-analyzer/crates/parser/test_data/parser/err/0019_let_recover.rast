@@ -1,0 +1,107 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "foo"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "11"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "bar"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "baz"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "92"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          IF_EXPR
+            IF_KW "if"
+            WHITESPACE " "
+            LITERAL
+              TRUE_KW "true"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          WHILE_EXPR
+            WHILE_KW "while"
+            WHITESPACE " "
+            LITERAL
+              TRUE_KW "true"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+        WHITESPACE "\n    "
+        LOOP_EXPR
+          LOOP_KW "loop"
+          WHITESPACE " "
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              R_CURLY "}"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 27: expected SEMICOLON
+error 52: expected pattern
+error 52: expected SEMICOLON
+error 78: expected pattern
+error 78: expected SEMICOLON
+error 101: expected pattern
+error 101: expected SEMICOLON
+error 127: expected pattern
+error 127: expected SEMICOLON

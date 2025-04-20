@@ -1,0 +1,33 @@
+error[E0080]: attempt to negate `i8::MIN`, which would overflow
+  --> $DIR/const-err-early.rs:1:19
+   |
+LL | pub const A: i8 = -i8::MIN;
+   |                   ^^^^^^^^ evaluation of `A` failed here
+
+error[E0080]: attempt to compute `200_u8 + 200_u8`, which would overflow
+  --> $DIR/const-err-early.rs:2:19
+   |
+LL | pub const B: u8 = 200u8 + 200u8;
+   |                   ^^^^^^^^^^^^^ evaluation of `B` failed here
+
+error[E0080]: attempt to compute `200_u8 * 4_u8`, which would overflow
+  --> $DIR/const-err-early.rs:3:19
+   |
+LL | pub const C: u8 = 200u8 * 4;
+   |                   ^^^^^^^^^ evaluation of `C` failed here
+
+error[E0080]: attempt to compute `42_u8 - 43_u8`, which would overflow
+  --> $DIR/const-err-early.rs:4:19
+   |
+LL | pub const D: u8 = 42u8 - (42u8 + 1);
+   |                   ^^^^^^^^^^^^^^^^^ evaluation of `D` failed here
+
+error[E0080]: index out of bounds: the length is 1 but the index is 1
+  --> $DIR/const-err-early.rs:5:19
+   |
+LL | pub const E: u8 = [5u8][1];
+   |                   ^^^^^^^^ evaluation of `E` failed here
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

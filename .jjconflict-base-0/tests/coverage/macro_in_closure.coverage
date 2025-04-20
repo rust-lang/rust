@@ -1,0 +1,18 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |//@ edition: 2021
+   LL|       |
+   LL|       |// If a closure body consists entirely of a single bang-macro invocation, the
+   LL|       |// body span ends up inside the macro-expansion, so we need to un-expand it
+   LL|       |// back to the declaration site.
+   LL|      1|static NO_BLOCK: fn() = || println!("hello");
+   LL|       |
+   LL|      1|static WITH_BLOCK: fn() = || {
+   LL|      1|    println!("hello");
+   LL|      1|};
+   LL|       |
+   LL|       |#[coverage(off)]
+   LL|       |fn main() {
+   LL|       |    NO_BLOCK();
+   LL|       |    WITH_BLOCK();
+   LL|       |}
+

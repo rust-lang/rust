@@ -1,0 +1,25 @@
+error[E0404]: expected trait, found enum `Tag`
+  --> $DIR/change-ty-to-const-param-sugg-1.rs:6:18
+   |
+LL | struct Tagged<T: Tag, O: Options>;
+   |                  ^^^ not a trait
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | struct Tagged<const T: Tag, O: Options>;
+   |               +++++
+
+error[E0404]: expected trait, found struct `Options`
+  --> $DIR/change-ty-to-const-param-sugg-1.rs:6:26
+   |
+LL | struct Tagged<T: Tag, O: Options>;
+   |                          ^^^^^^^ not a trait
+   |
+help: you might have meant to write a const parameter here
+   |
+LL | struct Tagged<T: Tag, const O: Options>;
+   |                       +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0404`.

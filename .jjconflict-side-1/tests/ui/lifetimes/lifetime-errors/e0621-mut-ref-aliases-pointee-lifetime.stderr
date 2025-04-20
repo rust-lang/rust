@@ -1,0 +1,19 @@
+error[E0621]: explicit lifetime required in the type of `buffer`
+  --> $DIR/e0621-mut-ref-aliases-pointee-lifetime.rs:10:5
+   |
+LL |     buffer.buf = &mut buffer.buf[..];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+   = help: see <https://doc.rust-lang.org/nomicon/borrow-splitting.html> for more information about lifetime errors related to mutable references
+
+error[E0621]: explicit lifetime required in the type of `wrapper`
+  --> $DIR/e0621-mut-ref-aliases-pointee-lifetime.rs:19:5
+   |
+LL |     wrapper.inner.buf = &mut wrapper.inner.buf[..];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime `'a` required
+   |
+   = help: see <https://doc.rust-lang.org/nomicon/borrow-splitting.html> for more information about lifetime errors related to mutable references
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0621`.

@@ -1,0 +1,17 @@
+error: sub-expression diverges
+  --> tests/ui/issue-7447.rs:26:15
+   |
+LL |     byte_view(panic!());
+   |               ^^^^^^^^
+   |
+   = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
+
+error: sub-expression diverges
+  --> tests/ui/issue-7447.rs:29:19
+   |
+LL |     group_entries(panic!());
+   |                   ^^^^^^^^
+
+error: aborting due to 2 previous errors
+

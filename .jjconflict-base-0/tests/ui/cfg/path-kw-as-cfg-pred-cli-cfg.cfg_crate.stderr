@@ -1,0 +1,2 @@
+error: invalid `--cfg` argument: `crate` (malformed `cfg` input, expected a valid identifier)
+

@@ -1,0 +1,9 @@
+error[E0628]: too many parameters for a coroutine (expected 0 or 1 parameters)
+  --> $DIR/too-many-parameters.rs:5:5
+   |
+LL |     |(), ()| {
+   |     ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0628`.

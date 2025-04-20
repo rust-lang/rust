@@ -1,0 +1,9 @@
+
+running 4 tests
+test short_test_name ... ignored
+test this_is_a_really_long_test_name ... ignored
+test short_bench_name                 ... bench:           ?? ns/iter (+/- ??)
+test this_is_a_really_long_bench_name ... bench:           ?? ns/iter (+/- ??)
+
+test result: ok. 0 passed; 0 failed; 2 ignored; 2 measured; 0 filtered out; finished in ??s
+

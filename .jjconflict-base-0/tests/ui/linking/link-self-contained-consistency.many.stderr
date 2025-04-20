@@ -1,0 +1,2 @@
+error: some `-C link-self-contained` components were both enabled and disabled: crto, linker
+

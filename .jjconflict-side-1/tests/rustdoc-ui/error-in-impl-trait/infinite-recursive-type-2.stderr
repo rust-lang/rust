@@ -1,0 +1,17 @@
+error[E0072]: recursive type `f::E` has infinite size
+  --> $DIR/infinite-recursive-type-2.rs:2:5
+   |
+LL |     pub enum E {
+   |     ^^^^^^^^^^
+LL |
+LL |         V(E),
+   |           - recursive without indirection
+   |
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
+   |
+LL |         V(Box<E>),
+   |           ++++ +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0072`.

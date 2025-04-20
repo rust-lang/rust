@@ -1,0 +1,14 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_access_field.rs:14
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_access_field.rs:14
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: extraslice, Id: _1, Ty: ExtraSlice<'_>, Value: ExtraSlice { _slice: [{ALLOC_PTR} 00 00 00 00 00 00 00 00], _extra: [00 00 00 00] }
+Name: _slice, Id: _2, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000000): &[u8]
+Name: _extra, Id: _3, Ty: u32, Value: 0_u32
+(priroda) Id: _0, Ty: (), Value: <uninit>
+(priroda) Id: _1, Ty: ExtraSlice<'_>, Value: ExtraSlice { _slice: [{ALLOC_PTR} 00 00 00 00 00 00 00 00], _extra: [00 00 00 00] }
+(priroda) Id: _2, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000000): &[u8]
+(priroda) Id: _3, Ty: u32, Value: 0_u32
+(priroda) no local for this id
+(priroda) no local for this id
+(priroda) quitting

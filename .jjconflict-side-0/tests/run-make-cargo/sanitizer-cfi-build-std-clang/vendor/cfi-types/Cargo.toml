@@ -1,0 +1,13 @@
+[package]
+name = "cfi-types"
+version = "0.0.8"
+edition = "2021"
+
+description = "CFI types for cross-language LLVM CFI support"
+homepage = "https://github.com/rcvalle/rust-crate-cfi-types"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rcvalle/rust-crate-cfi-types"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

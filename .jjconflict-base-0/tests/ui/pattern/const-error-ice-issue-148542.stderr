@@ -1,0 +1,14 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/const-error-ice-issue-148542.rs:6:16
+   |
+LL | fn foo() where &str:, {
+   |                ^ explicit lifetime name needed here
+   |
+help: consider introducing a higher-ranked lifetime here
+   |
+LL | fn foo() where for<'a> &'a str:, {
+   |                +++++++  ++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0637`.

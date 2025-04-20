@@ -1,0 +1,13 @@
+error[E0382]: use of partially moved value
+  --> $DIR/bind-by-move-no-subbindings-fun-param.rs:7:6
+   |
+LL | fn f(a @ A(u): A) -> Box<u8> {
+   |      ^     - value partially moved here
+   |      |
+   |      value used here after partial move
+   |
+   = note: partial move occurs because value has type `Box<u8>`, which does not implement the `Copy` trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,30 @@
+//@ run-rustfix
+
+trait Trait {}
+impl Trait for () {}
+
+// this works
+fn foo() -> impl Trait {
+    ()
+}
+
+fn bar<T: Trait + std::marker::Sync>() -> impl Trait + std::marker::Sync + Send
+where
+    T: Send,
+{
+    () //~ ERROR mismatched types
+}
+
+fn other_bounds<T>() -> impl Trait
+where
+    T: Trait,
+    Vec<usize>: Clone,
+{
+    () //~ ERROR mismatched types
+}
+
+fn main() {
+    foo();
+    bar::<()>();
+    other_bounds::<()>();
+}

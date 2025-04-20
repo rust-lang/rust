@@ -1,0 +1,10 @@
+error: `AsyncDrop` impl without `Drop` impl
+  --> $DIR/async-without-sync.rs:15:1
+   |
+LL | impl AsyncDrop for St {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: type implementing `AsyncDrop` trait must also implement `Drop` trait to be used in sync context and unwinds
+
+error: aborting due to 1 previous error
+

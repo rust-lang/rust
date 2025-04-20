@@ -1,0 +1,65 @@
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:34:32
+   |
+LL |     let string1: Box<String> = Box::new(Default::default());
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+   |
+   = note: `-D clippy::box-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::box_default)]`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:36:32
+   |
+LL |     let string2: Box<String> = Box::new(String::new());
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:38:41
+   |
+LL |     let impl1: Box<ImplementsDefault> = Box::new(Default::default());
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:40:29
+   |
+LL |     let vec: Box<Vec<u8>> = Box::new(Vec::new());
+   |                             ^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:42:25
+   |
+LL |     let byte: Box<u8> = Box::new(u8::default());
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:44:45
+   |
+LL |     let vec2: Box<Vec<ImplementsDefault>> = Box::new(vec![]);
+   |                                             ^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:46:32
+   |
+LL |     let vec3: Box<Vec<bool>> = Box::new(Vec::from([]));
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:49:25
+   |
+LL |     let plain_default = Box::new(Default::default());
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:67:16
+   |
+LL |     call_ty_fn(Box::new(u8::default()));
+   |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: `Box::new(_)` of default value
+  --> tests/ui/box_default.rs:95:17
+   |
+LL |         Self::x(Box::new(T::default()));
+   |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::default()`
+
+error: aborting due to 10 previous errors
+

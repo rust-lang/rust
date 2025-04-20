@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `T: const Tr` is not satisfied
+  --> $DIR/constifconst-call-in-const-position.rs:16:39
+   |
+LL | const fn foo<T: [const] Tr>() -> [u8; T::a()] {
+   |                                       ^
+
+error[E0277]: the trait bound `T: const Tr` is not satisfied
+  --> $DIR/constifconst-call-in-const-position.rs:17:9
+   |
+LL |     [0; T::a()]
+   |         ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

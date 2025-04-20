@@ -1,0 +1,20 @@
+error[E0626]: borrow may still be in use when coroutine yields
+  --> $DIR/coroutine-with-nll.rs:8:17
+   |
+LL |     || {
+   |     -- within this coroutine
+...
+LL |         let b = &mut true;
+   |                 ^^^^^^^^^
+LL |
+LL |         yield ();
+   |         -------- possible yield occurs here
+   |
+help: add `static` to mark this coroutine as unmovable
+   |
+LL |     static || {
+   |     ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0626`.

@@ -1,0 +1,30 @@
+error: missing required bound on `Output`
+  --> $DIR/issue-80433.rs:7:5
+   |
+LL |     type Output<'a>;
+   |     ^^^^^^^^^^^^^^^-
+   |                    |
+   |                    help: add the required where clause: `where Self: 'a`
+   |
+   = note: this bound is currently required to ensure that impls have maximum flexibility
+   = note: we are soliciting feedback, see issue #87479 <https://github.com/rust-lang/rust/issues/87479> for more information
+
+error[E0107]: missing generics for associated type `TestMut::Output`
+  --> $DIR/issue-80433.rs:21:47
+   |
+LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output = &'a mut f32>)
+   |                                               ^^^^^^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/issue-80433.rs:7:10
+   |
+LL |     type Output<'a>;
+   |          ^^^^^^ --
+help: add missing lifetime argument
+   |
+LL | fn test_simpler<'a>(dst: &'a mut impl TestMut<Output<'a> = &'a mut f32>)
+   |                                                     ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

@@ -1,0 +1,66 @@
+error[E0277]: `()` is not a future
+  --> $DIR/issue-96555.rs:4:13
+   |
+LL |     m::f1().await;
+   |     ------- ^^^^^ `()` is not a future
+   |     |
+   |     this call returns `()`
+   |
+   = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `()` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     m::f1().await;
+LL +     m::f1();
+   |
+help: alternatively, consider making `fn f1` asynchronous
+   |
+LL |     pub async fn f1() {}
+   |         +++++
+
+error[E0277]: `()` is not a future
+  --> $DIR/issue-96555.rs:5:13
+   |
+LL |     m::f2().await;
+   |     ------- ^^^^^ `()` is not a future
+   |     |
+   |     this call returns `()`
+   |
+   = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `()` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     m::f2().await;
+LL +     m::f2();
+   |
+help: alternatively, consider making `fn f2` asynchronous
+   |
+LL |     pub(crate) async fn f2() {}
+   |                +++++
+
+error[E0277]: `()` is not a future
+  --> $DIR/issue-96555.rs:6:13
+   |
+LL |     m::f3().await;
+   |     ------- ^^^^^ `()` is not a future
+   |     |
+   |     this call returns `()`
+   |
+   = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `()` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     m::f3().await;
+LL +     m::f3();
+   |
+help: alternatively, consider making `fn f3` asynchronous
+   |
+LL |     pub async
+   |         +++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
