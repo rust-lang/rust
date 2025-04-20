@@ -15,6 +15,9 @@ pub fn args() -> Args {
     Args { i_forward: 0, i_back: 0, count }
 }
 
+impl !Send for Args {}
+impl !Sync for Args {}
+
 impl Args {
     /// Use sys_argv to get the arg at the requested index. Does not check that i is less than argc
     /// and will not return if the index is out of bounds.
