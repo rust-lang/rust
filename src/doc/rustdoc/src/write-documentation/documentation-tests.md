@@ -427,6 +427,43 @@ should not be merged with the others. So the previous code should use it:
 In this case, it means that the line information will not change if you add/remove other
 doctests.
 
+### Ignoring targets
+
+Attributes starting with `ignore-` can be used to ignore doctests for specific
+targets. For example, `ignore-x86_64` will avoid building doctests when the
+target name contains `x86_64`.
+
+```rust
+/// ```ignore-x86_64
+/// assert!(2 == 2);
+/// ```
+struct Foo;
+```
+
+This doctest will not be built for targets such as `x86_64-unknown-linux-gnu`.
+
+Multiple ignore attributes can be specified to ignore multiple targets:
+
+```rust
+/// ```ignore-x86_64,ignore-windows
+/// assert!(2 == 2);
+/// ```
+struct Foo;
+```
+
+If you want to preserve backwards compatibility for older versions of rustdoc,
+you can specify both `ignore` and `ignore-`, such as:
+
+```rust
+/// ```ignore,ignore-x86_64
+/// assert!(2 == 2);
+/// ```
+struct Foo;
+```
+
+In older versions, this will be ignored on all targets, but starting with
+version CURRENT_RUSTC_VERSION, `ignore-x86_64` will override `ignore`.
+
 ### Custom CSS classes for code blocks
 
 ```rust

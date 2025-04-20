@@ -631,60 +631,6 @@ The generated output (formatted) will look like this:
 `--output-format html` has no effect, as the default output is HTML. This is
 accepted on stable, even though the other options for this flag aren't.
 
-## `--enable-per-target-ignores`: allow `ignore-foo` style filters for doctests
-
- * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --enable-per-target-ignores
-```
-
-This flag allows you to tag doctests with compiletest style `ignore-foo` filters that prevent
-rustdoc from running that test if the target triple string contains foo. For example:
-
-```rust
-///```ignore-foo,ignore-bar
-///assert!(2 == 2);
-///```
-struct Foo;
-```
-
-This will not be run when the build target is `super-awesome-foo` or `less-bar-awesome`.
-If the flag is not enabled, then rustdoc will consume the filter, but do nothing with it, and
-the above example will be run for all targets.
-If you want to preserve backwards compatibility for older versions of rustdoc, you can use
-
-```rust
-///```ignore,ignore-foo
-///assert!(2 == 2);
-///```
-struct Foo;
-```
-
-In older versions, this will be ignored on all targets, but on newer versions `ignore-gnu` will
-override `ignore`.
-
-## `--runtool`, `--runtool-arg`: program to run tests with; args to pass to it
-
- * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
-
-Using these options looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --runtool runner --runtool-arg --do-thing --runtool-arg --do-other-thing
-```
-
-These options can be used to run the doctest under a program, and also pass arguments to
-that program. For example, if you want to run your doctests under valgrind you might run
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --runtool valgrind
-```
-
-Another use case would be to run a test inside an emulator, or through a Virtual Machine.
-
 ## `--with-examples`: include examples of uses of items as documentation
 
  * Tracking issue: [#88791](https://github.com/rust-lang/rust/issues/88791)

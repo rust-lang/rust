@@ -138,12 +138,9 @@ Options:
         --show-coverage 
                         calculate percentage of public items with
                         documentation
-        --enable-per-target-ignores 
-                        parse ignore-foo for ignoring doctests on a per-target
-                        basis
-        --runtool The tool to run tests with when building for a different target than host
+        --test-runtool The tool to run tests with when building for a different target than host
                         
-        --runtool-arg One (of possibly many) arguments to pass to the runtool
+        --test-runtool-arg One argument (of possibly many) to pass to the runtool
                         
         --test-builder PATH
                         The rustc-like binary to use as the test builder
