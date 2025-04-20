@@ -19,9 +19,11 @@ run() {
         echo "target is emulated"
     fi
 
-    # This directory needs to exist before calling docker, otherwise docker will create it but it
-    # will be owned by root
+    # Directories and files that do not yet exist need to be created before
+    # calling docker, otherwise docker will create them but they will be owned
+    # by root.
     mkdir -p target
+    cargo generate-lockfile --manifest-path builtins-test-intrinsics/Cargo.toml
 
     run_cmd="HOME=/tmp"
 
@@ -53,7 +55,8 @@ run() {
         # Use rustc provided by a docker image
         docker volume create compiler-builtins-cache
         build_args=(
-            "--build-arg" "IMAGE=${DOCKER_BASE_IMAGE:-rustlang/rust:nightly}"
+            "--build-arg"
+            "IMAGE=${DOCKER_BASE_IMAGE:-rustlang/rust:nightly}"
         )
         run_args=(-v "compiler-builtins-cache:/builtins-target")
         run_cmd="$run_cmd HOME=/tmp" "USING_CONTAINER_RUSTC=1"

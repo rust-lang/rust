@@ -5,10 +5,6 @@ authors = ["Alex Crichton <alex@alexcrichton.com>"]
 edition = "2024"
 publish = false
 
-[lib]
-test = false
-doctest = false
-
 [dependencies]
 # For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential
 # problems with system RNGs on the variety of platforms this crate is tested on.

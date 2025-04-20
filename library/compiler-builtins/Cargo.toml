@@ -1,11 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-    # Note that builtins-test-intrinsics cannot be a default member because it
-    # needs the `mangled-names` feature disabled, while `builtins-test` needs
-    # it enabled.
     "builtins-test",
-    "builtins-test-intrinsics",
     "compiler-builtins",
     "crates/libm-macros",
     "libm",
@@ -22,6 +18,13 @@ default-members = [
     # FIXME(libm): disabled until tests work in CI
     # "crates/libm-test"
     "libm",
+]
+
+exclude = [
+    # `builtins-test-intrinsics` needs the feature `compiler-builtins` enabled
+    # and `mangled-names` disabled, which is the opposite of what is needed for
+    # other tests, so it makes sense to keep it out of the workspace.
+    "builtins-test-intrinsics",
 ]
 
 [profile.release]

@@ -6,7 +6,13 @@ publish = false
 
 [dependencies]
 compiler_builtins = { path = "../compiler-builtins", features = ["compiler-builtins"]}
-panic-handler = { path = '../crates/panic-handler' }
+panic-handler = { path = "../crates/panic-handler" }
 
 [features]
 c = ["compiler_builtins/c"]
+
+[profile.release]
+panic = "abort"
+
+[profile.dev]
+panic = "abort"

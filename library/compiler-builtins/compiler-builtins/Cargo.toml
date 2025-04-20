@@ -25,8 +25,9 @@ include = [
 links = 'compiler-rt'
 
 [lib]
-test = false
 bench = false
+doctest = false
+test = false
 
 [dependencies]
 # For more information on this dependency see
