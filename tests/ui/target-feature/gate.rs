@@ -2,7 +2,6 @@
 //
 // gate-test-sse4a_target_feature
 // gate-test-powerpc_target_feature
-// gate-test-avx512_target_feature
 // gate-test-tbm_target_feature
 // gate-test-arm_target_feature
 // gate-test-hexagon_target_feature
@@ -27,7 +26,7 @@
 // gate-test-x87_target_feature
 // gate-test-m68k_target_feature
 
-#[target_feature(enable = "avx512bw")]
+#[target_feature(enable = "x87")]
 //~^ ERROR: currently unstable
 unsafe fn foo() {}
 
