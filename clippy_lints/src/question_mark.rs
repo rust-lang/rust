@@ -5,6 +5,7 @@ use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
     eq_expr_value, higher, is_else_clause, is_in_const_context, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
@@ -144,7 +145,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
     {
         let mut applicability = Applicability::MaybeIncorrect;
-        let init_expr_str = snippet_with_applicability(cx, init_expr.span, "..", &mut applicability);
+        let init_expr_str = Sugg::hir_with_applicability(cx, init_expr, "..", &mut applicability).maybe_paren();
         // Take care when binding is `ref`
         let sugg = if let PatKind::Binding(
             BindingMode(ByRef::Yes(ref_mutability), binding_mutability),
