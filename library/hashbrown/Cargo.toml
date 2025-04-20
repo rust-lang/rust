@@ -59,7 +59,6 @@ rustc-dep-of-std = [
     "compiler_builtins",
     "alloc",
     "rustc-internal-api",
-    "raw-entry",
 ]
 
 # Enables the deprecated RawEntry API.
