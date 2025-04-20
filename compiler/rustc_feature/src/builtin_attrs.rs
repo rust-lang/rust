@@ -517,7 +517,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // Linking:
     gated!(
-        naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
+        unsafe naked, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No,
         naked_functions, experimental!(naked)
     ),
 

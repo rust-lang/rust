@@ -8,31 +8,31 @@
 use std::arch::naked_asm;
 
 #[test]
-#[naked]
+#[unsafe(naked)]
 //~^ ERROR [E0736]
 extern "C" fn test_naked() {
-    unsafe { naked_asm!("") };
+    naked_asm!("")
 }
 
 #[should_panic]
 #[test]
-#[naked]
+#[unsafe(naked)]
 //~^ ERROR [E0736]
 extern "C" fn test_naked_should_panic() {
-    unsafe { naked_asm!("") };
+    naked_asm!("")
 }
 
 #[ignore]
 #[test]
-#[naked]
+#[unsafe(naked)]
 //~^ ERROR [E0736]
 extern "C" fn test_naked_ignore() {
-    unsafe { naked_asm!("") };
+    naked_asm!("")
 }
 
 #[bench]
-#[naked]
+#[unsafe(naked)]
 //~^ ERROR [E0736]
 extern "C" fn bench_naked() {
-    unsafe { naked_asm!("") };
+    naked_asm!("")
 }

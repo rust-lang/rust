@@ -194,12 +194,6 @@ pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: 
             }
         }
     } else if let Safety::Unsafe(unsafe_span) = attr_item.unsafety {
-        // Allow (but don't require) `#[unsafe(naked)]` so that compiler-builtins can upgrade to it.
-        // FIXME(#139797): remove this special case when compiler-builtins has upgraded.
-        if attr.has_name(sym::naked) {
-            return;
-        }
-
         psess.dcx().emit_err(errors::InvalidAttrUnsafe {
             span: unsafe_span,
             name: attr_item.path.clone(),

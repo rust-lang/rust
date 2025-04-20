@@ -64,44 +64,34 @@ pub mod normal {
 pub mod naked {
     use std::arch::naked_asm;
 
-    #[naked]
+    #[unsafe(naked)]
     pub extern "C" fn function(a: usize, b: usize) -> usize {
-        unsafe {
-            naked_asm!("");
-        }
+        naked_asm!("")
     }
 
     pub struct Naked;
 
     impl Naked {
-        #[naked]
+        #[unsafe(naked)]
         pub extern "C" fn associated(a: usize, b: usize) -> usize {
-            unsafe {
-                naked_asm!("");
-            }
+            naked_asm!("")
         }
 
-        #[naked]
+        #[unsafe(naked)]
         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
-            unsafe {
-                naked_asm!("");
-            }
+            naked_asm!("")
         }
     }
 
     impl super::Trait for Naked {
-        #[naked]
+        #[unsafe(naked)]
         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
-            unsafe {
-                naked_asm!("");
-            }
+            naked_asm!("")
         }
 
-        #[naked]
+        #[unsafe(naked)]
         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
-            unsafe {
-                naked_asm!("");
-            }
+            naked_asm!("")
         }
     }
 }

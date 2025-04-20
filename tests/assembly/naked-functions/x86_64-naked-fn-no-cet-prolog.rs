@@ -13,8 +13,8 @@ use std::arch::naked_asm;
 // works by using an instruction for each possible landing site,
 // and LLVM implements this via making sure of that.
 #[no_mangle]
-#[naked]
-pub unsafe extern "sysv64" fn will_halt() -> ! {
+#[unsafe(naked)]
+pub extern "sysv64" fn will_halt() -> ! {
     // CHECK-NOT: endbr{{32|64}}
     // CHECK: hlt
     naked_asm!("hlt")
