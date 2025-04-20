@@ -921,10 +921,10 @@ impl Config {
             tracing::info!("updating config from JSON: {:#}", json);
 
             if !(json.is_null() || json.as_object().is_some_and(|it| it.is_empty())) {
-                let mut json_errors = vec![];
                 let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
                     &mut json,
-                    &mut json_errors,
+                    // Do not record errors here; it is not an error if a field is missing here.
+                    &mut Vec::new(),
                     "detachedFiles",
                     None,
                 )
@@ -935,15 +935,16 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
-                let mut json_errors = vec![];
                 let snips = get_field_json::<FxIndexMap<String, SnippetDef>>(
                     &mut json,
-                    &mut json_errors,
+                    // Do not record errors here; it is not an error if a field is missing here.
+                    &mut Vec::new(),
                     "completion_snippets_custom",
                     None,
                 )
                 .unwrap_or(self.completion_snippets_custom().to_owned());
 
+                let mut json_errors = vec![];
                 // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
                 config.snippets.clear();
 
@@ -2728,10 +2729,6 @@ pub enum NumThreads {
 }
 
 macro_rules! _default_val {
-    (@verbatim: $s:literal, $ty:ty) => {{
-        let default_: $ty = serde_json::from_str(&$s).unwrap();
-        default_
-    }};
     ($default:expr, $ty:ty) => {{
         let default_: $ty = $default;
         default_
@@ -2740,9 +2737,6 @@ macro_rules! _default_val {
 use _default_val as default_val;
 
 macro_rules! _default_str {
-    (@verbatim: $s:literal, $_ty:ty) => {
-        $s.to_owned()
-    };
     ($default:expr, $ty:ty) => {{
         let val = default_val!($default, $ty);
         serde_json::to_string_pretty(&val).unwrap()
@@ -2883,7 +2877,7 @@ macro_rules! _config_data {
     ($(#[doc=$dox:literal])* $modname:ident: struct $name:ident <- $input:ident -> {
         $(
             $(#[doc=$doc:literal])*
-            $vis:vis $field:ident $(| $alias:ident)*: $ty:ty = $(@$marker:ident: )? $default:expr,
+            $vis:vis $field:ident $(| $alias:ident)*: $ty:ty = $default:expr,
         )*
     }) => {
         /// Default config values for this grouping.
@@ -2920,7 +2914,7 @@ macro_rules! _config_data {
         impl Default for $name {
             fn default() -> Self {
                 $name {$(
-                    $field: default_val!($(@$marker:)? $default, $ty),
+                    $field: default_val!($default, $ty),
                 )*}
             }
         }
@@ -2956,7 +2950,7 @@ macro_rules! _config_data {
                     $({
                         let field = stringify!($field);
                         let ty = stringify!($ty);
-                        let default = default_str!($(@$marker:)? $default, $ty);
+                        let default = default_str!($default, $ty);
 
                         (field, ty, &[$($doc),*], default)
                     },)*
