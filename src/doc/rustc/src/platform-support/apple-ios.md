@@ -15,9 +15,9 @@ Apple iOS / iPadOS targets.
 
 ## Target maintainers
 
-- [@badboy](https://github.com/badboy)
-- [@deg4uss3r](https://github.com/deg4uss3r)
-- [@madsmtm](https://github.com/madsmtm)
+[@badboy](https://github.com/badboy)
+[@deg4uss3r](https://github.com/deg4uss3r)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 

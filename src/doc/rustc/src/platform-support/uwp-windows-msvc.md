@@ -6,7 +6,7 @@ Windows targets for Universal Windows Platform (UWP) applications, using MSVC to
 
 ## Target maintainers
 
-- [@bdbai](https://github.com/bdbai)
+[@bdbai](https://github.com/bdbai)
 
 ## Requirements
 

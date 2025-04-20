@@ -6,7 +6,7 @@ AMD GPU target for compute/HSA (Heterogeneous System Architecture).
 
 ## Target maintainers
 
-- [@Flakebi](https://github.com/Flakebi)
+[@Flakebi](https://github.com/Flakebi)
 
 ## Requirements
 

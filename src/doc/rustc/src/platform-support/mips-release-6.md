@@ -16,10 +16,10 @@ The target name follow this format: `<machine>-<vendor>-<os><abi_suffix>`, where
 
 ## Target Maintainers
 
-- [Xuan Chen](https://github.com/chenx97) <henry.chen@oss.cipunited.com>
-- [Walter Ji](https://github.com/709924470) <walter.ji@oss.cipunited.com>
-- [Xinhui Yang](https://github.com/Cyanoxygen) <cyan@oss.cipunited.com>
-- [Lain Yang](https://github.com/Fearyncess) <lain.yang@oss.cipunited.com>
+[@chenx97](https://github.com/chenx97)
+[@709924470](https://github.com/709924470)
+[@Cyanoxygen](https://github.com/Cyanoxygen)
+[@Fearyncess](https://github.com/Fearyncess)
 
 ## Requirements
 

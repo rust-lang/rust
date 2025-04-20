@@ -7,7 +7,7 @@ Rust for Solaris operating system.
 
 ## Target maintainers
 
-- Petr Sumbera `sumbera@volny.cz`, https://github.com/psumbera
+[@psumbera](https://github.com/psumbera)
 
 ## Requirements
 

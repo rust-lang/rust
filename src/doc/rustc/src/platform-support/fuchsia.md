@@ -7,9 +7,11 @@ updatable, and performant.
 
 ## Target maintainers
 
-See [`fuchsia.toml`] in the `team` repository for current target maintainers.
+[@erickt](https://github.com/erickt)
+[@Nashenas88](https://github.com/Nashenas88)
 
-[`fuchsia.toml`]: https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml
+The up-to-date list can be also found via the
+[fuchsia marker team](https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml).
 
 ## Table of contents
 
