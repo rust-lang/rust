@@ -174,6 +174,14 @@ done
 
 # Test libm
 
+# Make sure a simple build works
+cargo check -p libm --no-default-features --target "$target"
+
+if [ "${MAY_SKIP_LIBM_CI:-}" = "true" ]; then
+    echo "skipping libm PR CI"
+    exit
+fi
+
 mflags=()
 
 # We enumerate features manually.
@@ -225,9 +233,6 @@ esac
 case "$target" in
     *windows-gnu) mflags+=(--exclude libm-macros) ;;
 esac
-
-# Make sure a simple build works
-cargo check -p libm --no-default-features --target "$target"
 
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     # If we are on targets that can't run tests, verify that we can build.

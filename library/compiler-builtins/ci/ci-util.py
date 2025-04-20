@@ -7,6 +7,7 @@ git history.
 
 import json
 import os
+import re
 import subprocess as sp
 import sys
 from dataclasses import dataclass
@@ -68,6 +69,10 @@ IGNORE_FILES = [
     "libm/src/math/arch/intrinsics.rs",
 ]
 
+# libm PR CI takes a long time and doesn't need to run unless relevant files have been
+# changed. Anything matching this regex pattern will trigger a run.
+TRIGGER_LIBM_PR_CI = ".*(libm|musl).*"
+
 TYPES = ["f16", "f32", "f64", "f128"]
 
 
@@ -116,7 +121,6 @@ class FunctionDef(TypedDict):
     type: str
 
 
-@dataclass
 class Context:
     gh_ref: str | None
     changed: list[Path]
@@ -142,7 +146,7 @@ class Context:
         # the PR number), and sets this as `GITHUB_REF`.
         ref = self.gh_ref
         eprint(f"using ref `{ref}`")
-        if ref is None or "merge" not in ref:
+        if not self.is_pr():
             # If the ref is not for `merge` then we are not in PR CI
             eprint("No diff available for ref")
             return
@@ -170,6 +174,10 @@ class Context:
         )
         self.changed = [Path(p) for p in textlist.splitlines()]
 
+    def is_pr(self) -> bool:
+        """Check if we are looking at a PR rather than a push."""
+        return self.gh_ref is not None and "merge" in self.gh_ref
+
     @staticmethod
     def _ignore_file(fname: str) -> bool:
         return any(fname.startswith(pfx) for pfx in IGNORE_FILES)
@@ -196,7 +204,16 @@ class Context:
 
         return ret
 
-    def make_workflow_output(self) -> str:
+    def may_skip_libm_ci(self) -> bool:
+        """If this is a PR and no libm files were changed, allow skipping libm
+        jobs."""
+
+        if self.is_pr():
+            return all(not re.match(TRIGGER_LIBM_PR_CI, str(f)) for f in self.changed)
+
+        return False
+
+    def emit_workflow_output(self):
         """Create a JSON object a list items for each type's changed files, if any
         did change, and the routines that were affected by the change.
         """
@@ -216,9 +233,10 @@ class Context:
                 eprint("Skipping all extensive tests")
 
         changed = self.changed_routines()
-        ret = []
+        matrix = []
         total_to_test = 0
 
+        # Figure out which extensive tests need to run
         for ty in TYPES:
             ty_changed = changed.get(ty, [])
             ty_to_test = [] if skip_tests else ty_changed
@@ -230,9 +248,14 @@ class Context:
                 "to_test": ",".join(ty_to_test),
             }
 
-            ret.append(item)
-        output = json.dumps({"matrix": ret}, separators=(",", ":"))
-        eprint(f"output: {output}")
+            matrix.append(item)
+
+        ext_matrix = json.dumps({"extensive_matrix": matrix}, separators=(",", ":"))
+        may_skip = str(self.may_skip_libm_ci()).lower()
+        print(f"extensive_matrix={ext_matrix}")
+        print(f"may_skip_libm_ci={may_skip}")
+        eprint(f"extensive_matrix={ext_matrix}")
+        eprint(f"may_skip_libm_ci={may_skip}")
         eprint(f"total extensive tests: {total_to_test}")
 
         if error_on_many_tests and total_to_test > MANY_EXTENSIVE_THRESHOLD:
@@ -241,8 +264,6 @@ class Context:
                 f" `{ALLOW_MANY_EXTENSIVE_DIRECTIVE}` to the PR body if this is intentional"
             )
             exit(1)
-
-        return output
 
 
 def locate_baseline(flags: list[str]) -> None:
@@ -398,8 +419,7 @@ def main():
     match sys.argv[1:]:
         case ["generate-matrix"]:
             ctx = Context()
-            output = ctx.make_workflow_output()
-            print(f"matrix={output}")
+            ctx.emit_workflow_output()
         case ["locate-baseline", *flags]:
             locate_baseline(flags)
         case ["check-regressions", *args]:
