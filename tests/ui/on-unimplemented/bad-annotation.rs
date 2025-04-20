@@ -20,12 +20,12 @@ trait BadAnnotation1
 {}
 
 #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
-//~^ ERROR there is no parameter `C` on trait `BadAnnotation2`
+//~^ ERROR cannot find parameter C on this trait
 trait BadAnnotation2<A,B>
 {}
 
 #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]
-//~^ ERROR only named generic parameters are allowed
+//~^ ERROR positional format arguments are not allowed here
 trait BadAnnotation3<A,B>
 {}
 

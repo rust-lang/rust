@@ -1232,6 +1232,25 @@ impl DesugaringKind {
             DesugaringKind::PatTyRange => "pattern type",
         }
     }
+
+    /// For use with `rustc_unimplemented` to support conditions
+    /// like `from_desugaring = "QuestionMark"`
+    pub fn matches(&self, value: &str) -> bool {
+        match self {
+            DesugaringKind::CondTemporary => value == "CondTemporary",
+            DesugaringKind::Async => value == "Async",
+            DesugaringKind::Await => value == "Await",
+            DesugaringKind::QuestionMark => value == "QuestionMark",
+            DesugaringKind::TryBlock => value == "TryBlock",
+            DesugaringKind::YeetExpr => value == "YeetExpr",
+            DesugaringKind::OpaqueTy => value == "OpaqueTy",
+            DesugaringKind::ForLoop => value == "ForLoop",
+            DesugaringKind::WhileLoop => value == "WhileLoop",
+            DesugaringKind::BoundModifier => value == "BoundModifier",
+            DesugaringKind::Contract => value == "Contract",
+            DesugaringKind::PatTyRange => value == "PatTyRange",
+        }
+    }
 }
 
 #[derive(Default)]
