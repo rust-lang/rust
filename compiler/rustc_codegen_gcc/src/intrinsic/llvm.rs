@@ -1,10 +1,89 @@
 use std::borrow::Cow;
 
-use gccjit::{CType, Context, Function, FunctionPtrType, RValue, ToRValue, UnaryOp};
+use gccjit::{CType, Context, Field, Function, FunctionPtrType, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
+
+fn encode_key_128_type<'a, 'gcc, 'tcx>(
+    builder: &Builder<'a, 'gcc, 'tcx>,
+) -> (Type<'gcc>, Field<'gcc>, Field<'gcc>) {
+    let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+    let field1 = builder.context.new_field(None, builder.u32_type, "field1");
+    let field2 = builder.context.new_field(None, m128i, "field2");
+    let field3 = builder.context.new_field(None, m128i, "field3");
+    let field4 = builder.context.new_field(None, m128i, "field4");
+    let field5 = builder.context.new_field(None, m128i, "field5");
+    let field6 = builder.context.new_field(None, m128i, "field6");
+    let field7 = builder.context.new_field(None, m128i, "field7");
+    let encode_type = builder.context.new_struct_type(
+        None,
+        "EncodeKey128Output",
+        &[field1, field2, field3, field4, field5, field6, field7],
+    );
+    #[cfg(feature = "master")]
+    encode_type.as_type().set_packed();
+    (encode_type.as_type(), field1, field2)
+}
+
+fn encode_key_256_type<'a, 'gcc, 'tcx>(
+    builder: &Builder<'a, 'gcc, 'tcx>,
+) -> (Type<'gcc>, Field<'gcc>, Field<'gcc>) {
+    let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+    let field1 = builder.context.new_field(None, builder.u32_type, "field1");
+    let field2 = builder.context.new_field(None, m128i, "field2");
+    let field3 = builder.context.new_field(None, m128i, "field3");
+    let field4 = builder.context.new_field(None, m128i, "field4");
+    let field5 = builder.context.new_field(None, m128i, "field5");
+    let field6 = builder.context.new_field(None, m128i, "field6");
+    let field7 = builder.context.new_field(None, m128i, "field7");
+    let field8 = builder.context.new_field(None, m128i, "field8");
+    let encode_type = builder.context.new_struct_type(
+        None,
+        "EncodeKey256Output",
+        &[field1, field2, field3, field4, field5, field6, field7, field8],
+    );
+    #[cfg(feature = "master")]
+    encode_type.as_type().set_packed();
+    (encode_type.as_type(), field1, field2)
+}
+
+fn aes_output_type<'a, 'gcc, 'tcx>(
+    builder: &Builder<'a, 'gcc, 'tcx>,
+) -> (Type<'gcc>, Field<'gcc>, Field<'gcc>) {
+    let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+    let field1 = builder.context.new_field(None, builder.u8_type, "field1");
+    let field2 = builder.context.new_field(None, m128i, "field2");
+    let aes_output_type = builder.context.new_struct_type(None, "AesOutput", &[field1, field2]);
+    let typ = aes_output_type.as_type();
+    #[cfg(feature = "master")]
+    typ.set_packed();
+    (typ, field1, field2)
+}
+
+fn wide_aes_output_type<'a, 'gcc, 'tcx>(
+    builder: &Builder<'a, 'gcc, 'tcx>,
+) -> (Type<'gcc>, Field<'gcc>, Field<'gcc>) {
+    let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+    let field1 = builder.context.new_field(None, builder.u8_type, "field1");
+    let field2 = builder.context.new_field(None, m128i, "field2");
+    let field3 = builder.context.new_field(None, m128i, "field3");
+    let field4 = builder.context.new_field(None, m128i, "field4");
+    let field5 = builder.context.new_field(None, m128i, "field5");
+    let field6 = builder.context.new_field(None, m128i, "field6");
+    let field7 = builder.context.new_field(None, m128i, "field7");
+    let field8 = builder.context.new_field(None, m128i, "field8");
+    let field9 = builder.context.new_field(None, m128i, "field9");
+    let aes_output_type = builder.context.new_struct_type(
+        None,
+        "WideAesOutput",
+        &[field1, field2, field3, field4, field5, field6, field7, field8, field9],
+    );
+    #[cfg(feature = "master")]
+    aes_output_type.as_type().set_packed();
+    (aes_output_type.as_type(), field1, field2)
+}
 
 #[cfg_attr(not(feature = "master"), allow(unused_variables))]
 pub fn adjust_function<'gcc>(
@@ -43,7 +122,6 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
     gcc_func: FunctionPtrType<'gcc>,
     mut args: Cow<'b, [RValue<'gcc>]>,
     func_name: &str,
-    original_function_name: Option<&String>,
 ) -> Cow<'b, [RValue<'gcc>]> {
     // TODO: this might not be a good way to workaround the missing tile builtins.
     if func_name == "__builtin_trap" {
@@ -504,6 +582,72 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let arg4 = builder.context.new_rvalue_from_int(arg4_type, -1);
                 args = vec![a, b, c, arg4, new_args[3]].into();
             }
+            "__builtin_ia32_encodekey128_u32" => {
+                let mut new_args = args.to_vec();
+                let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+                let array_type = builder.context.new_array_type(None, m128i, 6);
+                let result = builder.current_func().new_local(None, array_type, "result");
+                new_args.push(result.get_address(None));
+                args = new_args.into();
+            }
+            "__builtin_ia32_encodekey256_u32" => {
+                let mut new_args = args.to_vec();
+                let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+                let array_type = builder.context.new_array_type(None, m128i, 7);
+                let result = builder.current_func().new_local(None, array_type, "result");
+                new_args.push(result.get_address(None));
+                args = new_args.into();
+            }
+            "__builtin_ia32_aesenc128kl_u8"
+            | "__builtin_ia32_aesdec128kl_u8"
+            | "__builtin_ia32_aesenc256kl_u8"
+            | "__builtin_ia32_aesdec256kl_u8" => {
+                let mut new_args = vec![];
+                let m128i = builder.context.new_vector_type(builder.i64_type, 2);
+                let result = builder.current_func().new_local(None, m128i, "result");
+                new_args.push(result.get_address(None));
+                new_args.extend(args.to_vec());
+                args = new_args.into();
+            }
+            "__builtin_ia32_aesencwide128kl_u8"
+            | "__builtin_ia32_aesdecwide128kl_u8"
+            | "__builtin_ia32_aesencwide256kl_u8"
+            | "__builtin_ia32_aesdecwide256kl_u8" => {
+                let mut new_args = vec![];
+
+                let mut old_args = args.to_vec();
+                let handle = old_args.swap_remove(0); // Called __P in GCC.
+                let first_value = old_args.swap_remove(0);
+
+                let element_type = first_value.get_type();
+                let array_type = builder.context.new_array_type(None, element_type, 8);
+                let result = builder.current_func().new_local(None, array_type, "result");
+                new_args.push(result.get_address(None));
+
+                let array = builder.current_func().new_local(None, array_type, "array");
+                let input = builder.context.new_array_constructor(
+                    None,
+                    array_type,
+                    &[
+                        first_value,
+                        old_args.swap_remove(0),
+                        old_args.swap_remove(0),
+                        old_args.swap_remove(0),
+                        old_args.swap_remove(0),
+                        old_args.swap_remove(0),
+                        old_args.swap_remove(0),
+                        old_args.swap_remove(0),
+                    ],
+                );
+                builder.llbb().add_assignment(None, array, input);
+                let input_ptr = array.get_address(None);
+                let arg2_type = gcc_func.get_param_type(1);
+                let input_ptr = builder.context.new_cast(None, input_ptr, arg2_type);
+                new_args.push(input_ptr);
+
+                new_args.push(handle);
+                args = new_args.into();
+            }
             _ => (),
         }
     } else {
@@ -540,33 +684,6 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let b = builder.context.new_rvalue_from_vector(None, arg2_type, &[new_args[1]; 2]);
                 let c = builder.context.new_rvalue_from_vector(None, arg3_type, &[new_args[2]; 2]);
                 args = vec![a, b, c, new_args[3]].into();
-            }
-            "__builtin_ia32_vfmaddsubpd256"
-            | "__builtin_ia32_vfmaddsubps"
-            | "__builtin_ia32_vfmaddsubps256"
-            | "__builtin_ia32_vfmaddsubpd" => {
-                if let Some(original_function_name) = original_function_name {
-                    match &**original_function_name {
-                        "llvm.x86.fma.vfmsubadd.pd.256"
-                        | "llvm.x86.fma.vfmsubadd.ps"
-                        | "llvm.x86.fma.vfmsubadd.ps.256"
-                        | "llvm.x86.fma.vfmsubadd.pd" => {
-                            // NOTE: since both llvm.x86.fma.vfmsubadd.ps and llvm.x86.fma.vfmaddsub.ps maps to
-                            // __builtin_ia32_vfmaddsubps, only add minus if this comes from a
-                            // subadd LLVM intrinsic, e.g. _mm256_fmsubadd_pd.
-                            let mut new_args = args.to_vec();
-                            let arg3 = &mut new_args[2];
-                            *arg3 = builder.context.new_unary_op(
-                                None,
-                                UnaryOp::Minus,
-                                arg3.get_type(),
-                                *arg3,
-                            );
-                            args = new_args.into();
-                        }
-                        _ => (),
-                    }
-                }
             }
             "__builtin_ia32_ldmxcsr" => {
                 // The builtin __builtin_ia32_ldmxcsr takes an integer value while llvm.x86.sse.ldmxcsr takes a pointer,
@@ -727,6 +844,96 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
         "fma" => {
             let f16_type = builder.context.new_c_type(CType::Float16);
             return_value = builder.context.new_cast(None, return_value, f16_type);
+        }
+        "__builtin_ia32_encodekey128_u32" => {
+            // The builtin __builtin_ia32_encodekey128_u32 writes the result in its pointer argument while
+            // llvm.x86.encodekey128 returns a value.
+            // We added a result pointer argument and now need to assign its value to the return_value expected by
+            // the LLVM intrinsic.
+            let (encode_type, field1, field2) = encode_key_128_type(builder);
+            let result = builder.current_func().new_local(None, encode_type, "result");
+            let field1 = result.access_field(None, field1);
+            builder.llbb().add_assignment(None, field1, return_value);
+            let field2 = result.access_field(None, field2);
+            let field2_type = field2.to_rvalue().get_type();
+            let array_type = builder.context.new_array_type(None, field2_type, 6);
+            let ptr = builder.context.new_cast(None, args[2], array_type.make_pointer());
+            let field2_ptr =
+                builder.context.new_cast(None, field2.get_address(None), array_type.make_pointer());
+            builder.llbb().add_assignment(
+                None,
+                field2_ptr.dereference(None),
+                ptr.dereference(None),
+            );
+            return_value = result.to_rvalue();
+        }
+        "__builtin_ia32_encodekey256_u32" => {
+            // The builtin __builtin_ia32_encodekey256_u32 writes the result in its pointer argument while
+            // llvm.x86.encodekey256 returns a value.
+            // We added a result pointer argument and now need to assign its value to the return_value expected by
+            // the LLVM intrinsic.
+            let (encode_type, field1, field2) = encode_key_256_type(builder);
+            let result = builder.current_func().new_local(None, encode_type, "result");
+            let field1 = result.access_field(None, field1);
+            builder.llbb().add_assignment(None, field1, return_value);
+            let field2 = result.access_field(None, field2);
+            let field2_type = field2.to_rvalue().get_type();
+            let array_type = builder.context.new_array_type(None, field2_type, 7);
+            let ptr = builder.context.new_cast(None, args[3], array_type.make_pointer());
+            let field2_ptr =
+                builder.context.new_cast(None, field2.get_address(None), array_type.make_pointer());
+            builder.llbb().add_assignment(
+                None,
+                field2_ptr.dereference(None),
+                ptr.dereference(None),
+            );
+            return_value = result.to_rvalue();
+        }
+        "__builtin_ia32_aesdec128kl_u8"
+        | "__builtin_ia32_aesenc128kl_u8"
+        | "__builtin_ia32_aesdec256kl_u8"
+        | "__builtin_ia32_aesenc256kl_u8" => {
+            // The builtin for aesdec/aesenc writes the result in its pointer argument while
+            // llvm.x86.aesdec128kl returns a value.
+            // We added a result pointer argument and now need to assign its value to the return_value expected by
+            // the LLVM intrinsic.
+            let (aes_output_type, field1, field2) = aes_output_type(builder);
+            let result = builder.current_func().new_local(None, aes_output_type, "result");
+            let field1 = result.access_field(None, field1);
+            builder.llbb().add_assignment(None, field1, return_value);
+            let field2 = result.access_field(None, field2);
+            let ptr = builder.context.new_cast(
+                None,
+                args[0],
+                field2.to_rvalue().get_type().make_pointer(),
+            );
+            builder.llbb().add_assignment(None, field2, ptr.dereference(None));
+            return_value = result.to_rvalue();
+        }
+        "__builtin_ia32_aesencwide128kl_u8"
+        | "__builtin_ia32_aesdecwide128kl_u8"
+        | "__builtin_ia32_aesencwide256kl_u8"
+        | "__builtin_ia32_aesdecwide256kl_u8" => {
+            // The builtin for aesdecwide/aesencwide writes the result in its pointer argument while
+            // llvm.x86.aesencwide128kl returns a value.
+            // We added a result pointer argument and now need to assign its value to the return_value expected by
+            // the LLVM intrinsic.
+            let (aes_output_type, field1, field2) = wide_aes_output_type(builder);
+            let result = builder.current_func().new_local(None, aes_output_type, "result");
+            let field1 = result.access_field(None, field1);
+            builder.llbb().add_assignment(None, field1, return_value);
+            let field2 = result.access_field(None, field2);
+            let field2_type = field2.to_rvalue().get_type();
+            let array_type = builder.context.new_array_type(None, field2_type, 8);
+            let ptr = builder.context.new_cast(None, args[0], array_type.make_pointer());
+            let field2_ptr =
+                builder.context.new_cast(None, field2.get_address(None), array_type.make_pointer());
+            builder.llbb().add_assignment(
+                None,
+                field2_ptr.dereference(None),
+                ptr.dereference(None),
+            );
+            return_value = result.to_rvalue();
         }
         _ => (),
     }
@@ -915,16 +1122,6 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.ctlz.v4i64" => "__builtin_ia32_vplzcntq_256_mask",
         "llvm.ctlz.v2i64" => "__builtin_ia32_vplzcntq_128_mask",
         "llvm.ctpop.v32i16" => "__builtin_ia32_vpopcountw_v32hi",
-        "llvm.x86.fma.vfmsub.sd" => "__builtin_ia32_vfmsubsd3",
-        "llvm.x86.fma.vfmsub.ss" => "__builtin_ia32_vfmsubss3",
-        "llvm.x86.fma.vfmsubadd.pd" => "__builtin_ia32_vfmaddsubpd",
-        "llvm.x86.fma.vfmsubadd.pd.256" => "__builtin_ia32_vfmaddsubpd256",
-        "llvm.x86.fma.vfmsubadd.ps" => "__builtin_ia32_vfmaddsubps",
-        "llvm.x86.fma.vfmsubadd.ps.256" => "__builtin_ia32_vfmaddsubps256",
-        "llvm.x86.fma.vfnmadd.sd" => "__builtin_ia32_vfnmaddsd3",
-        "llvm.x86.fma.vfnmadd.ss" => "__builtin_ia32_vfnmaddss3",
-        "llvm.x86.fma.vfnmsub.sd" => "__builtin_ia32_vfnmsubsd3",
-        "llvm.x86.fma.vfnmsub.ss" => "__builtin_ia32_vfnmsubss3",
         "llvm.x86.avx512.conflict.d.512" => "__builtin_ia32_vpconflictsi_512_mask",
         "llvm.x86.avx512.conflict.d.256" => "__builtin_ia32_vpconflictsi_256_mask",
         "llvm.x86.avx512.conflict.d.128" => "__builtin_ia32_vpconflictsi_128_mask",
@@ -1002,8 +1199,6 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.fshr.v32i16" => "__builtin_ia32_vpshrdv_v32hi",
         "llvm.fshr.v16i16" => "__builtin_ia32_vpshrdv_v16hi",
         "llvm.fshr.v8i16" => "__builtin_ia32_vpshrdv_v8hi",
-        "llvm.x86.fma.vfmadd.sd" => "__builtin_ia32_vfmaddsd3",
-        "llvm.x86.fma.vfmadd.ss" => "__builtin_ia32_vfmaddss3",
         "llvm.x86.rdrand.64" => "__builtin_ia32_rdrand64_step",
 
         // The above doc points to unknown builtins for the following, so override them:
@@ -1324,6 +1519,16 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512fp16.mask.vfmadd.cph.256" => "__builtin_ia32_vfmaddcph256_mask3",
         "llvm.x86.avx512fp16.mask.vfcmadd.cph.128" => "__builtin_ia32_vfcmaddcph128_mask3",
         "llvm.x86.avx512fp16.mask.vfmadd.cph.128" => "__builtin_ia32_vfmaddcph128_mask3",
+        "llvm.x86.encodekey128" => "__builtin_ia32_encodekey128_u32",
+        "llvm.x86.encodekey256" => "__builtin_ia32_encodekey256_u32",
+        "llvm.x86.aesenc128kl" => "__builtin_ia32_aesenc128kl_u8",
+        "llvm.x86.aesdec128kl" => "__builtin_ia32_aesdec128kl_u8",
+        "llvm.x86.aesenc256kl" => "__builtin_ia32_aesenc256kl_u8",
+        "llvm.x86.aesdec256kl" => "__builtin_ia32_aesdec256kl_u8",
+        "llvm.x86.aesencwide128kl" => "__builtin_ia32_aesencwide128kl_u8",
+        "llvm.x86.aesdecwide128kl" => "__builtin_ia32_aesdecwide128kl_u8",
+        "llvm.x86.aesencwide256kl" => "__builtin_ia32_aesencwide256kl_u8",
+        "llvm.x86.aesdecwide256kl" => "__builtin_ia32_aesdecwide256kl_u8",
 
         // TODO: support the tile builtins:
         "llvm.x86.ldtilecfg" => "__builtin_trap",

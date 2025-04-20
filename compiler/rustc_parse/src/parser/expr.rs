@@ -1884,13 +1884,15 @@ impl<'a> Parser<'a> {
             let mut expr = self.parse_expr_opt()?;
             if let Some(expr) = &mut expr {
                 if label.is_some()
-                    && matches!(
-                        expr.kind,
+                    && match &expr.kind {
                         ExprKind::While(_, _, None)
-                            | ExprKind::ForLoop { label: None, .. }
-                            | ExprKind::Loop(_, None, _)
-                            | ExprKind::Block(_, None)
-                    )
+                        | ExprKind::ForLoop { label: None, .. }
+                        | ExprKind::Loop(_, None, _) => true,
+                        ExprKind::Block(block, None) => {
+                            matches!(block.rules, BlockCheckMode::Default)
+                        }
+                        _ => false,
+                    }
                 {
                     self.psess.buffer_lint(
                         BREAK_WITH_LABEL_AND_LOOP,

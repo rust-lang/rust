@@ -51,6 +51,10 @@ impl<T: ?Sized> LegacyReceiver for &T {}
 impl<T: ?Sized> LegacyReceiver for &mut T {}
 impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
 
+#[lang = "receiver"]
+trait Receiver {
+}
+
 #[lang = "copy"]
 pub trait Copy {}
 
@@ -134,7 +138,23 @@ impl Mul for u8 {
     }
 }
 
+impl Mul for i32 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
 impl Mul for usize {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
+impl Mul for isize {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -158,6 +178,14 @@ impl Add for u8 {
 }
 
 impl Add for i8 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
+impl Add for i32 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -196,6 +224,14 @@ impl Sub for usize {
     }
 }
 
+impl Sub for isize {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
 impl Sub for u8 {
     type Output = Self;
 
@@ -213,6 +249,14 @@ impl Sub for i8 {
 }
 
 impl Sub for i16 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for i32 {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -628,6 +672,10 @@ pub mod libc {
         pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);
         pub fn memmove(dst: *mut u8, src: *const u8, size: usize);
         pub fn strncpy(dst: *mut u8, src: *const u8, size: usize);
+        pub fn fflush(stream: *mut i32) -> i32;
+        pub fn exit(status: i32);
+
+        pub static stdout: *mut i32;
     }
 }
 

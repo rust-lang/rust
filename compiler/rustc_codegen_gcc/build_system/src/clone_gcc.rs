@@ -61,7 +61,7 @@ pub fn run() -> Result<(), String> {
         return Ok(());
     };
 
-    let result = git_clone("https://github.com/antoyo/gcc", Some(&args.out_path), false)?;
+    let result = git_clone("https://github.com/rust-lang/gcc", Some(&args.out_path), false)?;
     if result.ran_clone {
         let gcc_commit = args.config_info.get_gcc_commit()?;
         println!("Checking out GCC commit `{}`...", gcc_commit);

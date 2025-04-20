@@ -35,7 +35,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUnneededDrops {
         // if we applied optimizations, we potentially have some cfg to cleanup to
         // make it easier for further passes
         if should_simplify {
-            simplify_cfg(body);
+            simplify_cfg(tcx, body);
         }
     }
 
