@@ -129,6 +129,25 @@ pub(crate) const fn maybe_is_aligned_and_not_null(
     )
 }
 
+/// Checks whether `ptr` is properly aligned with respect to the given alignment.
+///
+/// In `const` this is approximate and can fail spuriously. It is primarily intended
+/// for `assert_unsafe_precondition!` with `check_language_ub`, in which case the
+/// check is anyway not executed in `const`.
+#[inline]
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+pub(crate) const fn maybe_is_aligned(ptr: *const (), align: usize) -> bool {
+    // This is just for safety checks so we can const_eval_select.
+    const_eval_select!(
+        @capture { ptr: *const (), align: usize } -> bool:
+        if const {
+            true
+        } else {
+            ptr.is_aligned_to(align)
+        }
+    )
+}
+
 #[inline]
 pub(crate) const fn is_valid_allocation_size(size: usize, len: usize) -> bool {
     let max_len = if size == 0 { usize::MAX } else { isize::MAX as usize / size };
