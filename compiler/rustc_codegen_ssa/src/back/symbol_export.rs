@@ -321,6 +321,39 @@ fn exported_symbols_provider_local(
 
         let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
+        // Do not export symbols that cannot be instantiated by downstream crates.
+        let reachable_set = tcx.reachable_set(());
+        let is_local_to_current_crate = |ty: Ty<'_>| {
+            let no_refs = ty.peel_refs();
+            let root_def_id = match no_refs.kind() {
+                rustc_middle::ty::Closure(closure, _) => *closure,
+                rustc_middle::ty::FnDef(def_id, _) => *def_id,
+                rustc_middle::ty::Coroutine(def_id, _) => *def_id,
+                rustc_middle::ty::CoroutineClosure(def_id, _) => *def_id,
+                rustc_middle::ty::CoroutineWitness(def_id, _) => *def_id,
+                rustc_middle::ty::Foreign(def_id) => *def_id,
+                _ => {
+                    return false;
+                }
+            };
+            let Some(root_def_id) = root_def_id.as_local() else {
+                return false;
+            };
+
+            let is_local = !reachable_set.contains(&root_def_id);
+            is_local
+        };
+
+        let is_instantiable_downstream = |did, type_args| {
+            std::iter::once(tcx.type_of(did).skip_binder()).chain(type_args).all(|arg| {
+                arg.walk().all(|ty| {
+                    let Some(ty) = ty.as_type() else {
+                        return true;
+                    };
+                    !is_local_to_current_crate(ty)
+                })
+            })
+        };
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
@@ -349,7 +382,12 @@ fn exported_symbols_provider_local(
 
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
-                    if args.non_erasable_generics().next().is_some() {
+                    let has_generics = args.non_erasable_generics().next().is_some();
+
+                    let should_export =
+                        has_generics && is_instantiable_downstream(def, args.types());
+
+                    if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
@@ -362,16 +400,30 @@ fn exported_symbols_provider_local(
                     }
                 }
                 MonoItem::Fn(Instance { def: InstanceKind::DropGlue(_, Some(ty)), args }) => {
-                    // A little sanity-check
-                    assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
-                    symbols.push((
-                        ExportedSymbol::DropGlue(ty),
-                        SymbolExportInfo {
-                            level: SymbolExportLevel::Rust,
-                            kind: SymbolExportKind::Text,
-                            used: false,
-                        },
-                    ));
+                    let Some(GenericArgKind::Type(typ)) = args.non_erasable_generics().next()
+                    else {
+                        bug!("Expected a type argument for drop glue");
+                    };
+                    let should_export = {
+                        let root_identifier = match typ.kind() {
+                            rustc_middle::ty::Adt(def, args) => Some((def.did(), args)),
+                            rustc_middle::ty::Closure(id, args) => Some((*id, args)),
+                            _ => None,
+                        };
+                        root_identifier.map_or(true, |(did, args)| {
+                            is_instantiable_downstream(did, args.types())
+                        })
+                    };
+                    if should_export {
+                        symbols.push((
+                            ExportedSymbol::DropGlue(ty),
+                            SymbolExportInfo {
+                                level: SymbolExportLevel::Rust,
+                                kind: SymbolExportKind::Text,
+                                used: false,
+                            },
+                        ));
+                    }
                 }
                 MonoItem::Fn(Instance {
                     def: InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)),
