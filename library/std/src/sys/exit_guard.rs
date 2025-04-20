@@ -1,14 +1,5 @@
 cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {
-        /// pthread_t is a pointer on some platforms,
-        /// so we wrap it in this to impl Send + Sync.
-        #[derive(Clone, Copy)]
-        #[repr(transparent)]
-        struct PThread(libc::pthread_t);
-        // Safety: pthread_t is safe to send between threads
-        unsafe impl Send for PThread {}
-        // Safety: pthread_t is safe to share between threads
-        unsafe impl Sync for PThread {}
         /// Mitigation for <https://github.com/rust-lang/rust/issues/126600>
         ///
         /// On glibc, `libc::exit` has been observed to not always be thread-safe.
@@ -30,28 +21,34 @@ cfg_if::cfg_if! {
         ///   (waiting for the process to exit).
         #[cfg_attr(any(test, doctest), allow(dead_code))]
         pub(crate) fn unique_thread_exit() {
-            let this_thread_id = unsafe { libc::pthread_self() };
-            use crate::sync::{Mutex, PoisonError};
-            static EXITING_THREAD_ID: Mutex<Option<PThread>> = Mutex::new(None);
-            let mut exiting_thread_id =
-                EXITING_THREAD_ID.lock().unwrap_or_else(PoisonError::into_inner);
-            match *exiting_thread_id {
-                None => {
+            use crate::ffi::c_int;
+            use crate::ptr;
+            use crate::sync::atomic::AtomicPtr;
+            use crate::sync::atomic::Ordering::{Acquire, Relaxed};
+
+            static EXITING_THREAD_ID: AtomicPtr<c_int> = AtomicPtr::new(ptr::null_mut());
+
+            // We use the address of `errno` as a cheap and safe way to identify
+            // threads. As the C standard mandates that `errno` must have thread
+            // storage duration, we can rely on its address not changing over the
+            // lifetime of the thread. Additionally, accesses to `errno` are
+            // async-signal-safe, so this function is available in all imaginable
+            // circumstances.
+            let this_thread_id = crate::sys::os::errno_location();
+            match EXITING_THREAD_ID.compare_exchange(ptr::null_mut(), this_thread_id, Acquire, Relaxed) {
+                Ok(_) => {
                     // This is the first thread to call `unique_thread_exit`,
-                    // and this is the first time it is called.
-                    // Set EXITING_THREAD_ID to this thread's ID and return.
-                    *exiting_thread_id = Some(PThread(this_thread_id));
-                },
-                Some(exiting_thread_id) if exiting_thread_id.0 == this_thread_id => {
+                    // and this is the first time it is called. Continue exiting.
+                }
+                Err(exiting_thread_id) if exiting_thread_id == this_thread_id => {
                     // This is the first thread to call `unique_thread_exit`,
                     // but this is the second time it is called.
                     // Abort the process.
                     core::panicking::panic_nounwind("std::process::exit called re-entrantly")
                 }
-                Some(_) => {
+                Err(_) => {
                     // This is not the first thread to call `unique_thread_exit`.
                     // Pause until the process exits.
-                    drop(exiting_thread_id);
                     loop {
                         // Safety: libc::pause is safe to call.
                         unsafe { libc::pause(); }
