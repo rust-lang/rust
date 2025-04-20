@@ -484,7 +484,7 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
+    /// The resulting pointer "remembers"[^1] the [allocated object] that `self` points to; it must not
     /// be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
@@ -505,6 +505,7 @@ impl<T: ?Sized> *const T {
     ///
     /// [`offset`]: #method.offset
     /// [allocated object]: crate::ptr#allocated-object
+    /// [^1]: This is called "[Provenance](ptr/index.html#provenance)"
     ///
     /// # Examples
     ///
