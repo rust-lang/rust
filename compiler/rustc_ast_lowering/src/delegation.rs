@@ -46,12 +46,12 @@ use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, ResolverAstLowering};
+use rustc_middle::ty::Asyncness;
 use rustc_span::{Ident, Span, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
-use crate::{AllowReturnTypeNotation, ImplTraitPosition, ResolverAstLoweringExt};
+use crate::{AllowReturnTypeNotation, ImplTraitPosition, PerOwnerResolver};
 
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
@@ -82,6 +82,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             DefKind::AssocFn => match def_id.as_local() {
                 Some(local_def_id) => self
                     .resolver
+                    .general
                     .delegation_fn_sigs
                     .get(&local_def_id)
                     .is_some_and(|sig| sig.has_self),
@@ -150,7 +151,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let Some(local_sig_id) = sig_id.as_local() {
             // Map may be filled incorrectly due to recursive delegation.
             // Error will be emitted later during HIR ty lowering.
-            match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
+            match self.resolver.general.delegation_fn_sigs.get(&local_sig_id) {
                 Some(sig) => (sig.param_count, sig.c_variadic),
                 None => (0, false),
             }
@@ -198,7 +199,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         span: Span,
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
-            match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
+            match self.resolver.general.delegation_fn_sigs.get(&local_sig_id) {
                 Some(sig) => {
                     let parent = self.tcx.parent(sig_id);
                     // HACK: we override the default safety instead of generating attributes from the ether.
@@ -281,7 +282,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     && idx == 0
                 {
                     let mut self_resolver = SelfResolver {
-                        resolver: this.resolver,
+                        resolver: &mut this.resolver,
                         path_id: delegation.id,
                         self_param_id: pat_node_id,
                     };
@@ -427,25 +428,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 }
 
-struct SelfResolver<'a> {
-    resolver: &'a mut ResolverAstLowering,
+struct SelfResolver<'a, 'b> {
+    resolver: &'b mut PerOwnerResolver<'a>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl<'a> SelfResolver<'a> {
+impl SelfResolver<'_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
-        if let Some(res) = self.resolver.partial_res_map.get(&id)
+        if let Some(res) = self.resolver.general.partial_res_map.get(&id)
             && let Some(Res::Local(sig_id)) = res.full_res()
             && sig_id == self.path_id
         {
             let new_res = PartialRes::new(Res::Local(self.self_param_id));
-            self.resolver.partial_res_map.insert(id, new_res);
+            self.resolver.general.partial_res_map.insert(id, new_res);
         }
     }
 }
 
-impl<'ast, 'a> Visitor<'ast> for SelfResolver<'a> {
+impl<'ast> Visitor<'ast> for SelfResolver<'_, '_> {
     fn visit_path(&mut self, path: &'ast Path, id: NodeId) {
         self.try_replace_id(id);
         visit::walk_path(self, path);

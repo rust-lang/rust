@@ -20,7 +20,6 @@ use super::errors::{
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    ResolverAstLoweringExt,
 };
 
 pub(super) struct ItemLowerer<'a, 'hir> {
@@ -88,7 +87,10 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
 
     #[instrument(level = "debug", skip(self, c))]
     fn lower_crate(&mut self, c: &Crate) {
-        debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
+        debug_assert_eq!(
+            self.resolver.owners[&CRATE_NODE_ID].node_id_to_def_id[&CRATE_NODE_ID],
+            CRATE_DEF_ID
+        );
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, &c.spans);
             // FIXME(jdonszelman): is dummy span ever a problem here?
@@ -102,6 +104,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         self.with_lctx(item.id, |lctx| hir::OwnerNode::Item(lctx.lower_item(item)))
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn lower_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
         self.with_lctx(item.id, |lctx| lctx.lower_assoc_item(item, ctxt))
     }

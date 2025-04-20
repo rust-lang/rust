@@ -23,9 +23,7 @@ use super::errors::{
     InclusiveRangeWithNoEnd, MatchArmWithNoBody, NeverPatternWithBody, NeverPatternWithGuard,
     UnderscoreExprLhsAssign,
 };
-use super::{
-    GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
-};
+use super::{GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode};
 use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
 use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, fluent_generated};
 
@@ -492,9 +490,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut generic_args = ThinVec::new();
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
-                let parent_def_id = self.current_hir_id_owner.def_id;
                 let node_id = self.next_node_id();
-                self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, f.span);
+                self.create_def(node_id, None, DefKind::AnonConst, f.span);
                 let mut visitor = WillCreateDefIdsVisitor {};
                 let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
                     AstP(Expr {
