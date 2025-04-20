@@ -772,8 +772,8 @@ impl hash::Hash for TypeId {
         //   (especially given the previous point about the lower 64 bits being
         //   high quality on their own).
         // - It is correct to do so -- only hashing a subset of `self` is still
-        //   with an `Eq` implementation that considers the entire value, as
-        //   ours does.
+        //   compatible with an `Eq` implementation that considers the entire
+        //   value, as ours does.
         self.t.1.hash(state);
     }
 }
