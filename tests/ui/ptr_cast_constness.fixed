@@ -100,3 +100,9 @@ fn null_pointers() {
     let _ = external!(ptr::null::<u32>() as *mut u32);
     let _ = external!(ptr::null::<u32>().cast_mut());
 }
+
+fn issue14621() {
+    let mut local = 4;
+    let _ = std::ptr::addr_of_mut!(local).cast_const();
+    //~^ ptr_cast_constness
+}
