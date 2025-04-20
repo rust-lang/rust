@@ -1917,14 +1917,13 @@ pub struct ExtractIf<
     V,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
-> where
-    F: 'a + FnMut(&K, &mut V) -> bool,
-{
+> {
     pred: F,
     inner: ExtractIfInner<'a, K, V>,
     /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
+
 /// Most of the implementation of ExtractIf are generic over the type
 /// of the predicate, thus also serving for BTreeSet::ExtractIf.
 pub(super) struct ExtractIfInner<'a, K, V> {
@@ -1940,14 +1939,14 @@ pub(super) struct ExtractIfInner<'a, K, V> {
 }
 
 #[unstable(feature = "btree_extract_if", issue = "70530")]
-impl<K, V, F> fmt::Debug for ExtractIf<'_, K, V, F>
+impl<K, V, F, A> fmt::Debug for ExtractIf<'_, K, V, F, A>
 where
     K: fmt::Debug,
     V: fmt::Debug,
-    F: FnMut(&K, &mut V) -> bool,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ExtractIf").field(&self.inner.peek()).finish()
+        f.debug_struct("ExtractIf").field("peek", &self.inner.peek()).finish_non_exhaustive()
     }
 }
 

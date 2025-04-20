@@ -1679,10 +1679,7 @@ impl<'a, K, V> Drain<'a, K, V> {
 /// ```
 #[stable(feature = "hash_extract_if", since = "1.87.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
-pub struct ExtractIf<'a, K, V, F>
-where
-    F: FnMut(&K, &mut V) -> bool,
-{
+pub struct ExtractIf<'a, K, V, F> {
     base: base::ExtractIf<'a, K, V, F>,
 }
 
@@ -2315,9 +2312,10 @@ where
 impl<K, V, F> FusedIterator for ExtractIf<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
 #[stable(feature = "hash_extract_if", since = "1.87.0")]
-impl<'a, K, V, F> fmt::Debug for ExtractIf<'a, K, V, F>
+impl<K, V, F> fmt::Debug for ExtractIf<'_, K, V, F>
 where
-    F: FnMut(&K, &mut V) -> bool,
+    K: fmt::Debug,
+    V: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ExtractIf").finish_non_exhaustive()

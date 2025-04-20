@@ -1556,10 +1556,7 @@ pub struct ExtractIf<
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
-> where
-    T: 'a,
-    F: 'a + FnMut(&T) -> bool,
-{
+> {
     pred: F,
     inner: super::map::ExtractIfInner<'a, T, SetValZST>,
     /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
@@ -1567,13 +1564,15 @@ pub struct ExtractIf<
 }
 
 #[unstable(feature = "btree_extract_if", issue = "70530")]
-impl<T, F, A: Allocator + Clone> fmt::Debug for ExtractIf<'_, T, F, A>
+impl<T, F, A> fmt::Debug for ExtractIf<'_, T, F, A>
 where
     T: fmt::Debug,
-    F: FnMut(&T) -> bool,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ExtractIf").field(&self.inner.peek().map(|(k, _)| k)).finish()
+        f.debug_struct("ExtractIf")
+            .field("peek", &self.inner.peek().map(|(k, _)| k))
+            .finish_non_exhaustive()
     }
 }
 
