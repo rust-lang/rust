@@ -1,4 +1,4 @@
-# Panicking in rust
+# Panicking in Rust
 
 <!-- toc -->
 
