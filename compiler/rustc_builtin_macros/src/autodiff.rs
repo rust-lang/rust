@@ -73,10 +73,10 @@ mod llvm_enzyme {
     }
 
     // Get information about the function the macro is applied to
-    fn extract_item_info(iitem: &P<ast::Item>) -> Option<(Visibility, FnSig, Ident)> {
+    fn extract_item_info(iitem: &P<ast::Item>) -> Option<(Visibility, FnSig, Ident, Generics)> {
         match &iitem.kind {
-            ItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
-                Some((iitem.vis.clone(), sig.clone(), ident.clone()))
+            ItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => {
+                Some((iitem.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
             }
             _ => None,
         }
@@ -210,8 +210,10 @@ mod llvm_enzyme {
         }
         let dcx = ecx.sess.dcx();
 
-        // first get information about the annotable item:
-        let Some((vis, sig, primal)) = (match &item {
+        // first get information about the annotable item: visibility, signature, name and generic
+        // parameters.
+        // these will be used to generate the differentiated version of the function
+        let Some((vis, sig, primal, generics)) = (match &item {
             Annotatable::Item(iitem) => extract_item_info(iitem),
             Annotatable::Stmt(stmt) => match &stmt.kind {
                 ast::StmtKind::Item(iitem) => extract_item_info(iitem),
@@ -219,8 +221,8 @@ mod llvm_enzyme {
             },
             Annotatable::AssocItem(assoc_item, Impl { of_trait: false }) => {
                 match &assoc_item.kind {
-                    ast::AssocItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
-                        Some((assoc_item.vis.clone(), sig.clone(), ident.clone()))
+                    ast::AssocItemKind::Fn(box ast::Fn { sig, ident, generics, .. }) => {
+                        Some((assoc_item.vis.clone(), sig.clone(), ident.clone(), generics.clone()))
                     }
                     _ => None,
                 }
@@ -305,6 +307,7 @@ mod llvm_enzyme {
         let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
         let d_body = gen_enzyme_body(
             ecx, &x, n_active, &sig, &d_sig, primal, &new_args, span, sig_span, idents, errored,
+            &generics,
         );
 
         // The first element of it is the name of the function to be generated
@@ -312,7 +315,7 @@ mod llvm_enzyme {
             defaultness: ast::Defaultness::Final,
             sig: d_sig,
             ident: first_ident(&meta_item_vec[0]),
-            generics: Generics::default(),
+            generics,
             contract: None,
             body: Some(d_body),
             define_opaque: None,
@@ -477,6 +480,7 @@ mod llvm_enzyme {
         new_decl_span: Span,
         idents: &[Ident],
         errored: bool,
+        generics: &Generics,
     ) -> (P<ast::Block>, P<ast::Expr>, P<ast::Expr>, P<ast::Expr>) {
         let blackbox_path = ecx.std_path(&[sym::hint, sym::black_box]);
         let noop = ast::InlineAsm {
@@ -499,7 +503,7 @@ mod llvm_enzyme {
         };
         let unsf_expr = ecx.expr_block(P(unsf_block));
         let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
-        let primal_call = gen_primal_call(ecx, span, primal, idents);
+        let primal_call = gen_primal_call(ecx, span, primal, idents, generics);
         let black_box_primal_call = ecx.expr_call(
             new_decl_span,
             blackbox_call_expr.clone(),
@@ -548,6 +552,7 @@ mod llvm_enzyme {
         sig_span: Span,
         idents: Vec<Ident>,
         errored: bool,
+        generics: &Generics,
     ) -> P<ast::Block> {
         let new_decl_span = d_sig.span;
 
@@ -568,6 +573,7 @@ mod llvm_enzyme {
             new_decl_span,
             &idents,
             errored,
+            generics,
         );
 
         if !has_ret(&d_sig.decl.output) {
@@ -672,8 +678,10 @@ mod llvm_enzyme {
         span: Span,
         primal: Ident,
         idents: &[Ident],
+        generics: &Generics,
     ) -> P<ast::Expr> {
         let has_self = idents.len() > 0 && idents[0].name == kw::SelfLower;
+
         if has_self {
             let args: ThinVec<_> =
                 idents[1..].iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
@@ -682,7 +690,46 @@ mod llvm_enzyme {
         } else {
             let args: ThinVec<_> =
                 idents.iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
-            let primal_call_expr = ecx.expr_path(ecx.path_ident(span, primal));
+            let mut primal_path = ecx.path_ident(span, primal);
+
+            if let Some(function) = primal_path.segments.last_mut() {
+                let primal_generic_types = generics
+                    .params
+                    .iter()
+                    .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }));
+
+                let generated_generic_types = primal_generic_types
+                    .map(|type_param| {
+                        let generic_param = TyKind::Path(
+                            None,
+                            ast::Path {
+                                span,
+                                segments: thin_vec![ast::PathSegment {
+                                    ident: type_param.ident,
+                                    args: None,
+                                    id: ast::DUMMY_NODE_ID,
+                                }],
+                                tokens: None,
+                            },
+                        );
+
+                        ast::AngleBracketedArg::Arg(ast::GenericArg::Type(P(ast::Ty {
+                            id: type_param.id,
+                            span,
+                            kind: generic_param,
+                            tokens: None,
+                        })))
+                    })
+                    .collect();
+
+                function.args =
+                    Some(P(ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs {
+                        span,
+                        args: generated_generic_types,
+                    })));
+            }
+
+            let primal_call_expr = ecx.expr_path(primal_path);
             ecx.expr_call(span, primal_call_expr, args)
         }
     }
