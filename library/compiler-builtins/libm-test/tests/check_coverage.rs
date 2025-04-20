@@ -19,7 +19,7 @@ macro_rules! callback {
 
 #[test]
 fn test_for_each_function_all_included() {
-    let all_functions: HashSet<_> = include_str!("../../../etc/function-list.txt")
+    let all_functions: HashSet<_> = include_str!("../../etc/function-list.txt")
         .lines()
         .filter(|line| !line.starts_with("#"))
         .collect();
@@ -52,7 +52,7 @@ fn ensure_list_updated() {
     }
 
     let res = Command::new("python3")
-        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../etc/update-api-list.py"))
+        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../etc/update-api-list.py"))
         .arg("--check")
         .status()
         .unwrap();

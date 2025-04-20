@@ -58,14 +58,14 @@ update_rlib_paths() {
 update_rlib_paths
 rm -f "${rlib_paths[@]}"
 
-cargo build --target "$target"
-cargo build --target "$target" --release
-cargo build --target "$target" --features c
-cargo build --target "$target" --release --features c
-cargo build --target "$target" --features no-asm
-cargo build --target "$target" --release --features no-asm
-cargo build --target "$target" --features no-f16-f128
-cargo build --target "$target" --release --features no-f16-f128
+cargo build -p compiler_builtins --target "$target"
+cargo build -p compiler_builtins --target "$target" --release
+cargo build -p compiler_builtins --target "$target" --features c
+cargo build -p compiler_builtins --target "$target" --release --features c
+cargo build -p compiler_builtins --target "$target" --features no-asm
+cargo build -p compiler_builtins --target "$target" --release --features no-asm
+cargo build -p compiler_builtins --target "$target" --features no-f16-f128
+cargo build -p compiler_builtins --target "$target" --release --features no-f16-f128
 
 PREFIX=${target//unknown-/}-
 case "$target" in

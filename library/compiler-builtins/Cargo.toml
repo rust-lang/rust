@@ -4,20 +4,18 @@ members = [
     "builtins-test",
     "compiler-builtins",
     "crates/libm-macros",
+    "crates/musl-math-sys",
+    "crates/util",
     "libm",
-    # FIXME(libm): disabled until tests work in CI
-    # "libm-test",
-    # "crates/musl-math-sys",
-    # "crates/util",
+    "libm-test",
 ]
 
 default-members = [
     "builtins-test",
     "compiler-builtins",
     "crates/libm-macros",
-    # FIXME(libm): disabled until tests work in CI
-    # "crates/libm-test"
     "libm",
+    "libm-test",
 ]
 
 exclude = [
