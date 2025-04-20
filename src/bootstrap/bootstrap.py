@@ -48,12 +48,11 @@ def eprint(*args, **kwargs):
     print(*args, **kwargs)
 
 
-def get(base, url, path, checksums, verbose=False):
+def get(base, url, path, checksums, verbose=False, verify_checksum=True):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
-
     try:
-        if url not in checksums:
+        if url not in checksums and verify_checksum:
             raise RuntimeError(
                 (
                     "src/stage0 doesn't contain a checksum for {}. "
@@ -62,30 +61,32 @@ def get(base, url, path, checksums, verbose=False):
                     "/rustc/platform-support.html for more information."
                 ).format(url)
             )
-        sha256 = checksums[url]
-        if os.path.exists(path):
-            if verify(path, sha256, False):
-                if verbose:
-                    eprint("using already-download file", path)
-                return
-            else:
-                if verbose:
-                    eprint(
-                        "ignoring already-download file",
-                        path,
-                        "due to failed verification",
-                    )
-                os.unlink(path)
+        if verify_checksum:
+            sha256 = checksums[url]
+            if os.path.exists(path):
+                if verify(path, sha256, False):
+                    if verbose:
+                        print("using already-download file", path, file=sys.stderr)
+                    return
+                else:
+                    if verbose:
+                        print(
+                            "ignoring already-download file",
+                            path,
+                            "due to failed verification",
+                            file=sys.stderr,
+                        )
+                    os.unlink(path)
         download(temp_path, "{}/{}".format(base, url), True, verbose)
-        if not verify(temp_path, sha256, verbose):
+        if verify_checksum and not verify(temp_path, checksums[url], verbose):
             raise RuntimeError("failed verification")
         if verbose:
-            eprint("moving {} to {}".format(temp_path, path))
+            print("moving {} to {}".format(temp_path, path), file=sys.stderr)
         shutil.move(temp_path, path)
     finally:
         if os.path.isfile(temp_path):
             if verbose:
-                eprint("removing", temp_path)
+                print("removing", temp_path, file=sys.stderr)
             os.unlink(temp_path)
 
 
@@ -265,6 +266,12 @@ def require(cmd, exit=True, exception=False):
             eprint("Please make sure it's installed and in the path.")
             sys.exit(1)
         return None
+
+
+def output_cmd(cmd):
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    output = p.communicate()[0].strip('"').strip()
+    return output
 
 
 def format_build_time(duration):
@@ -531,6 +538,7 @@ class FakeArgs:
     """Used for unit tests to avoid updating all call sites"""
 
     def __init__(self):
+        self.is_precompiled_bootstrap = False
         self.build = ""
         self.build_dir = ""
         self.clean = False
@@ -558,6 +566,7 @@ class RustBuild(object):
         self.verbose = args.verbose
         self.color = args.color
         self.warnings = args.warnings
+        self.is_precompiled_bootstrap = False
 
         config_verbose_count = self.get_toml("verbose", "build")
         if config_verbose_count is not None:
@@ -723,6 +732,119 @@ class RustBuild(object):
 
             with output(self.rustc_stamp()) as rust_stamp:
                 rust_stamp.write(key)
+
+    def is_bootstrap_modified(self):
+        cmd = ["git", "status", "--porcelain", "src/bootstrap"]
+        try:
+            output = output_cmd(cmd)
+            return bool(output)
+        except subprocess.CalledProcessError:
+            return False
+
+    def download_or_build_bootstrap(self):
+        try:
+            if self.is_bootstrap_modified():
+                self.is_precompiled_bootstrap = False
+                self.build_bootstrap()
+                return
+            last_commit = self.last_bootstrap_commit()
+            if last_commit is None:
+                self.build_bootstrap()
+                return
+            if self.bootstrap_out_of_date(last_commit):
+                success = self.download_bootstrap(last_commit)
+                if success:
+                    stamp = os.path.join(
+                        self.build_dir, "bootstrap", ".bootstrap-stamp"
+                    )
+                    os.makedirs(os.path.dirname(stamp), exist_ok=True)
+                    with open(stamp, "w") as f:
+                        f.write(last_commit)
+                    self.is_precompiled_bootstrap = True
+
+        except Exception:
+            return
+
+        if not self.is_precompiled_bootstrap:
+            self.build_bootstrap()
+
+    def download_bootstrap(self, commit_hash):
+        filename = f"bootstrap-nightly-{self.build_triple()}.tar.xz"
+        tarball_suffix = ".tar.xz"
+        key = commit_hash
+        pattern = "bootstrap"
+
+        bootstrap_path = os.path.join(
+            self.bin_root(),
+            f"nightly-{self.build_triple()}",
+            "bootstrap",
+            "bootstrap",
+            "bin",
+            "bootstrap",
+        )
+
+        if os.path.exists(bootstrap_path):
+            return True
+
+        cache_dir = os.path.join(self.build_dir, "cache")
+        tarball_path = os.path.join(cache_dir, filename)
+        base_url = self.stage0_data.get("artifacts_server")
+        download_url = f"{key}/{filename}"
+
+        if not os.path.exists(tarball_path):
+            try:
+                get(
+                    base_url,
+                    download_url,
+                    tarball_path,
+                    self.stage0_data,
+                    verbose=self.verbose,
+                    verify_checksum=False,
+                )
+            except Exception:
+                return False
+
+        try:
+            unpack(
+                tarball_path,
+                tarball_suffix,
+                self.bin_root(),
+                match=pattern,
+                verbose=self.verbose,
+            )
+        except Exception:
+            return False
+
+        return True
+
+    def last_bootstrap_commit(self):
+        merge_email = self.stage0_data.get("git_merge_commit_email")
+        if not merge_email:
+            return None
+
+        cmd = [
+            "git",
+            "log",
+            "-1",
+            f"--author={merge_email}",
+            "--pretty=format:%H",
+            "src/bootstrap",
+        ]
+
+        try:
+            commit_hash = output_cmd(cmd)
+        except subprocess.CalledProcessError:
+            return None
+
+        return commit_hash.strip() if commit_hash else None
+
+    def bootstrap_out_of_date(self, commit: str):
+        stamp_path = os.path.join(self.bin_root(), "bootstrap", ".bootstrap-stamp")
+        if not os.path.exists(stamp_path):
+            return True
+        with open(stamp_path, "r") as f:
+            stamp_commit = f.read().strip()
+        return stamp_commit != commit
 
     def should_fix_bins_and_dylibs(self):
         """Whether or not `fix_bin_or_dylib` needs to be run; can only be True
@@ -995,7 +1117,11 @@ class RustBuild(object):
         ... "debug", "bootstrap")
         True
         """
-        return os.path.join(self.bootstrap_out(), "debug", "bootstrap")
+        if self.is_precompiled_bootstrap:
+            root = self.bin_root()
+            return os.path.join(root, "bootstrap", "bin", "bootstrap")
+        else:
+            return os.path.join(self.bootstrap_out(), "debug", "bootstrap")
 
     def build_bootstrap(self):
         """Build bootstrap"""
@@ -1330,13 +1456,16 @@ def bootstrap(args):
     build = RustBuild(config_toml, args)
     build.check_vendored_status()
 
+    build_dir = args.build_dir or build.get_toml("build_dir", "build") or "build"
+    build.build_dir = os.path.abspath(build_dir)
+
     if not os.path.exists(build.build_dir):
         os.makedirs(os.path.realpath(build.build_dir))
 
-    # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap()
+
+    build.download_or_build_bootstrap()
     sys.stdout.flush()
 
     # Run the bootstrap
@@ -1362,8 +1491,8 @@ def main():
     # process has to happen before anything is printed out.
     if help_triggered:
         eprint(
-            "INFO: Downloading and building bootstrap before processing --help command.\n"
-            "      See src/bootstrap/README.md for help with common commands."
+            "INFO: Checking if bootstrap needs to be downloaded or built before processing"
+            "--help command.\n  See src/bootstrap/README.md for help with common commands."
         )
 
     exit_code = 0
