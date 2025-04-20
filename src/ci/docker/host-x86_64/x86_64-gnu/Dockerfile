@@ -30,4 +30,6 @@ ENV RUST_CONFIGURE_ARGS \
  --enable-profiler \
  --enable-compiler-docs \
  --set llvm.libzstd=true
+ --set llvm.plugins=true \
+ --set llvm.enzyme=true \
 ENV SCRIPT python3 ../x.py --stage 2 test
