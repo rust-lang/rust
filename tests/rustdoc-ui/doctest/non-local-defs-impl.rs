@@ -2,7 +2,7 @@
 //@ edition:2018
 //@ failure-status: 101
 //@ aux-build:pub_trait.rs
-//@ compile-flags: --test --test-args --test-threads=1
+//@ compile-flags: --test --test-arg --test-threads=1
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 

@@ -2,10 +2,9 @@
 //@[edition2015]edition:2015
 //@[edition2015]check-fail
 //@[edition2015]failure-status: 101
-//@[edition2015]compile-flags:--test --test-args=--test-threads=1
 //@[edition2024]edition:2024
 //@[edition2024]check-pass
-//@[edition2024]compile-flags:--test --test-args=--test-threads=1
+//@ compile-flags:--test --test-arg=--test-threads=1
 //@ normalize-stdout: "tests.rustdoc-ui.doctest." -> "$$DIR/"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ normalize-stdout: "`: .* \(os error 2\)" -> "`: $$FILE_NOT_FOUND_MSG (os error 2)"

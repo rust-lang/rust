@@ -1,4 +1,4 @@
-//@ compile-flags:--test --test-args=--test-threads=1
+//@ compile-flags:--test --test-arg=--test-threads=1
 //@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
 //@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 //@ check-pass
