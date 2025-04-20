@@ -255,13 +255,95 @@ fn layout_of_uncached<'tcx>(
                         };
 
                         layout.largest_niche = Some(niche);
-
-                        tcx.mk_layout(layout)
                     } else {
                         bug!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
                     }
                 }
+                ty::PatternKind::Or(variants) => match *variants[0] {
+                    ty::PatternKind::Range { .. } => {
+                        if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
+                            let variants: Result<Vec<_>, _> = variants
+                                .iter()
+                                .map(|pat| match *pat {
+                                    ty::PatternKind::Range { start, end } => Ok((
+                                        extract_const_value(cx, ty, start)
+                                            .unwrap()
+                                            .try_to_bits(tcx, cx.typing_env)
+                                            .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?,
+                                        extract_const_value(cx, ty, end)
+                                            .unwrap()
+                                            .try_to_bits(tcx, cx.typing_env)
+                                            .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?,
+                                    )),
+                                    ty::PatternKind::Or(_) => {
+                                        unreachable!("mixed or patterns are not allowed")
+                                    }
+                                })
+                                .collect();
+                            let mut variants = variants?;
+                            if !scalar.is_signed() {
+                                let guar = tcx.dcx().err(format!(
+                                    "only signed integer base types are allowed for or-pattern pattern types at present"
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+                            variants.sort();
+                            if variants.len() != 2 {
+                                let guar = tcx
+                                .dcx()
+                                .err(format!("the only or-pattern types allowed are two range patterns that are directly connected at their overflow site"));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+
+                            // first is the one starting at the signed in range min
+                            let mut first = variants[0];
+                            let mut second = variants[1];
+                            if second.0
+                                == layout.size.truncate(layout.size.signed_int_min() as u128)
+                            {
+                                (second, first) = (first, second);
+                            }
+
+                            if layout.size.sign_extend(first.1) >= layout.size.sign_extend(second.0)
+                            {
+                                let guar = tcx.dcx().err(format!(
+                                    "only non-overlapping pattern type ranges are allowed at present"
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+                            if layout.size.signed_int_max() as u128 != second.1 {
+                                let guar = tcx.dcx().err(format!(
+                                    "one pattern needs to end at `{ty}::MAX`, but was {} instead",
+                                    second.1
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+
+                            // Now generate a wrapping range (which aren't allowed in surface syntax).
+                            scalar.valid_range_mut().start = second.0;
+                            scalar.valid_range_mut().end = first.1;
+
+                            let niche = Niche {
+                                offset: Size::ZERO,
+                                value: scalar.primitive(),
+                                valid_range: scalar.valid_range(cx),
+                            };
+
+                            layout.largest_niche = Some(niche);
+                        } else {
+                            bug!(
+                                "pattern type with range but not scalar layout: {ty:?}, {layout:?}"
+                            )
+                        }
+                    }
+                    ty::PatternKind::Or(..) => bug!("patterns cannot have nested or patterns"),
+                },
             }
+            tcx.mk_layout(layout)
         }
 
         // Basic scalars.

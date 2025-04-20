@@ -13,4 +13,5 @@ use crate::Interner;
 )]
 pub enum PatternKind<I: Interner> {
     Range { start: I::Const, end: I::Const },
+    Or(I::PatList),
 }
