@@ -73,4 +73,5 @@ rustc-dep-of-std = ['compiler-builtins', 'core']
 public-test-deps = []
 
 [lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
+# The cygwin config can be dropped after our benchmark toolchain is bumped
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)', 'cfg(target_os, values("cygwin"))'] }

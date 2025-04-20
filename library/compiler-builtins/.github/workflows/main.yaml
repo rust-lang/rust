@@ -13,6 +13,7 @@ env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
+  BENCHMARK_RUSTC: nightly-2025-01-16 # Pin the toolchain for reproducable results
 
 jobs:
   test:
@@ -161,6 +162,55 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - run: cargo clippy -- -D clippy::all
 
+  benchmarks:
+    name: Benchmarks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@master
+      with:
+        submodules: true
+    - uses: taiki-e/install-action@cargo-binstall
+
+    - name: Set up dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y valgrind gdb libc6-dbg # Needed for iai-callgrind
+        rustup update "$BENCHMARK_RUSTC" --no-self-update
+        rustup default "$BENCHMARK_RUSTC"
+        # Install the version of iai-callgrind-runner that is specified in Cargo.toml
+        iai_version="$(cargo metadata --format-version=1 --features icount |
+           jq -r '.packages[] | select(.name == "iai-callgrind").version')"
+        cargo binstall -y iai-callgrind-runner --version "$iai_version"
+        sudo apt-get install valgrind
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Run icount benchmarks
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: ./ci/bench-icount.sh
+
+    - name: Upload the benchmark baseline
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.BASELINE_NAME }}
+        path: ${{ env.BASELINE_NAME }}.tar.xz
+    
+    - name: Run wall time benchmarks
+      run: |
+        # Always use the same seed for benchmarks. Ideally we should switch to a
+        # non-random generator.
+        export LIBM_SEED=benchesbenchesbenchesbencheswoo!
+        cargo bench --package libm-test \
+          --no-default-features \
+          --features short-benchmarks,build-musl,libm/force-soft-floats
+
+    - name: Print test logs if available
+      if: always()
+      run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+      shell: bash
+
   miri:
     name: Miri
     runs-on: ubuntu-24.04
@@ -189,10 +239,11 @@ jobs:
 
   success:
     needs:
-      - test
-      - rustfmt
+      - benchmarks
       - clippy
       - miri
+      - rustfmt
+      - test
     runs-on: ubuntu-24.04
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
