@@ -257,10 +257,78 @@ jobs:
       run: rustup set profile minimal && rustup default stable && rustup component add rustfmt
     - run: cargo fmt -- --check
 
+  # Determine which extensive tests should be run based on changed files.
+  calculate_extensive_matrix:
+    name: Calculate job matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    outputs:
+      matrix: ${{ steps.script.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
+      - name: Fetch pull request ref
+        run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
+        if: github.event_name == 'pull_request'
+      - run: python3 ci/ci-util.py generate-matrix >> "$GITHUB_OUTPUT"
+        id: script
+
+  extensive:
+    name: Extensive tests for ${{ matrix.ty }}
+    needs:
+      # Wait on `clippy` so we have some confidence that the crate will build
+      - clippy
+      - calculate_extensive_matrix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240 # 4 hours
+    strategy:
+      matrix:
+        # Use the output from `calculate_extensive_matrix` to calculate the matrix
+        # FIXME: it would be better to run all jobs (i.e. all types) but mark those that
+        # didn't change as skipped, rather than completely excluding the job. However,
+        # this is not currently possible https://github.com/actions/runner/issues/1985.
+        include: ${{ fromJSON(needs.calculate_extensive_matrix.outputs.matrix).matrix }}
+    env:
+      TO_TEST: ${{ matrix.to_test }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Install Rust
+        run: |
+          rustup update nightly --no-self-update
+          rustup default nightly
+      - uses: Swatinem/rust-cache@v2
+      - name: Run extensive tests
+        run: |
+          echo "Tests to run: '$TO_TEST'"
+          if [ -z "$TO_TEST" ]; then
+            echo "No tests to run, exiting."
+            exit
+          fi
+
+          set -x
+
+          # Run the non-extensive tests first to catch any easy failures
+          cargo t --profile release-checked -- "$TO_TEST"
+
+          LIBM_EXTENSIVE_TESTS="$TO_TEST" cargo test \
+            --features build-mpfr,unstable,force-soft-floats \
+            --profile release-checked \
+            -- extensive
+      - name: Print test logs if available
+        run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+        shell: bash
+
   success:
     needs:
       - benchmarks
       - clippy
+      - extensive
       - miri
       - msrv
       - rustfmt
