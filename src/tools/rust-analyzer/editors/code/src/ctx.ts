@@ -213,7 +213,14 @@ export class Ctx implements RustAnalyzerExtensionApi {
                     this.refreshServerStatus();
                 },
             );
-            const newEnv = Object.assign({}, process.env, this.config.serverExtraEnv);
+            const newEnv = { ...process.env };
+            for (const [k, v] of Object.entries(this.config.serverExtraEnv)) {
+                if (v) {
+                    newEnv[k] = v;
+                } else if (k in newEnv) {
+                    delete newEnv[k];
+                }
+            }
             const run: lc.Executable = {
                 command: this._serverPath,
                 options: { env: newEnv },
