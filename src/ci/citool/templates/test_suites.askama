@@ -1,0 +1,108 @@
+{% extends "layout.askama" %}
+
+{% block content %}
+<h1>Rust CI test dashboard</h1>
+<div>
+Here's how to interpret the "passed" and "ignored" counts:
+the count includes all combinations of "stage" x "target" x "CI job where the test was executed or ignored".
+</div>
+<div class="test-suites">
+    <div class="summary">
+        <div>
+            <div class="test-count">Total tests: {{ test_count }}</div>
+            <div>
+                To find tests that haven't been executed anywhere, click on "Open all" and search for "passed: 0".
+            </div>
+        </div>
+        <div>
+            <button onclick="openAll()">Open all</button>
+            <button onclick="closeAll()">Close all</button>
+        </div>
+    </div>
+
+    <ul>
+    {% for suite in suites.suites %}
+        {{ suite.group|safe }}
+    {% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block styles %}
+h1 {
+    text-align: center;
+    color: #333333;
+    margin-bottom: 30px;
+}
+
+.summary {
+    display: flex;
+    justify-content: space-between;
+}
+
+.test-count {
+    font-size: 1.2em;
+}
+
+.test-suites {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+ul {
+    padding-left: 0;
+}
+
+li {
+    list-style: none;
+    padding-left: 20px;
+}
+summary {
+    margin-bottom: 5px;
+    padding: 6px;
+    background-color: #F4F4F4;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+summary:hover {
+    background-color: #CFCFCF;
+}
+
+/* Style the disclosure triangles */
+details > summary {
+    list-style: none;
+    position: relative;
+}
+
+details > summary::before {
+    content: "▶";
+    position: absolute;
+    left: -15px;
+    transform: rotate(0);
+    transition: transform 0.2s;
+}
+
+details[open] > summary::before {
+    transform: rotate(90deg);
+}
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+function openAll() {
+    const details = document.getElementsByTagName("details");
+    for (const elem of details) {
+        elem.open = true;
+    }
+}
+function closeAll() {
+    const details = document.getElementsByTagName("details");
+    for (const elem of details) {
+        elem.open = false;
+    }
+}
+</script>
+{% endblock %}

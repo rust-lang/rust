@@ -20,6 +20,43 @@ your `.git/hooks` folder as `pre-push` (without the `.sh` extension!).
 
 You can also install the hook as a step of running `./x setup`!
 
+## Config extensions
+
+When working on different tasks, you might need to switch between different bootstrap configurations.
+Sometimes you may want to keep an old configuration for future use. But saving raw config values in
+random files and manually copying and pasting them can quickly become messy, especially if you have a
+long history of different configurations.
+
+To simplify managing multiple configurations, you can create config extensions.
+
+For example, you can create a simple config file named `cross.toml`:
+
+```toml
+[build]
+build = "x86_64-unknown-linux-gnu"
+host = ["i686-unknown-linux-gnu"]
+target = ["i686-unknown-linux-gnu"]
+
+
+[llvm]
+download-ci-llvm = false
+
+[target.x86_64-unknown-linux-gnu]
+llvm-config = "/path/to/llvm-19/bin/llvm-config"
+```
+
+Then, include this in your `bootstrap.toml`:
+
+```toml
+include = ["cross.toml"]
+```
+
+You can also include extensions within extensions recursively.
+
+**Note:** In the `include` field, the overriding logic follows a right-to-left order. For example,
+in `include = ["a.toml", "b.toml"]`, extension `b.toml` overrides `a.toml`. Also, parent extensions
+always overrides the inner ones.
+
 ## Configuring `rust-analyzer` for `rustc`
 
 ### Project-local rust-analyzer setup
