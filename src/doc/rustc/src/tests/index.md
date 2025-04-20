@@ -81,7 +81,7 @@ behavior.
 
 > Note: When running with [`cargo test`], the libtest CLI arguments must be
 > passed after the `--` argument to differentiate between flags for Cargo and
-> those for the harness. For example: `cargo test -- --nocapture`
+> those for the harness. For example: `cargo test -- --no-capture`
 
 ### Filters
 
@@ -225,7 +225,7 @@ The following options affect the output behavior.
 Displays one character per test instead of one line per test. This is an alias
 for [`--format=terse`](#--format-format).
 
-#### `--nocapture`
+#### `--no-capture`
 
 Does not capture the stdout and stderr of the test, and allows tests to print
 to the console. Usually the output is captured, and only displayed if the test
@@ -234,11 +234,13 @@ fails.
 This may also be specified by setting the `RUST_TEST_NOCAPTURE` environment
 variable to anything but `0`.
 
+`--nocapture` is a deprecated alias for `--no-capture`.
+
 #### `--show-output`
 
 Displays the stdout and stderr of successful tests after all tests have run.
 
-Contrast this with [`--nocapture`](#--nocapture) which allows tests to print
+Contrast this with [`--no-capture`](#--no-capture) which allows tests to print
 *while they are running*, which can cause interleaved output if there are
 multiple tests running in parallel, `--show-output` ensures the output is
 contiguous, but requires waiting for all tests to finish.
@@ -247,7 +249,7 @@ contiguous, but requires waiting for all tests to finish.
 
 Control when colored terminal output is used. Valid options:
 
-* `auto`: Colorize if stdout is a tty and [`--nocapture`](#--nocapture) is not
+* `auto`: Colorize if stdout is a tty and [`--no-capture`](#--no-capture) is not
   used. This is the default.
 * `always`: Always colorize the output.
 * `never`: Never colorize the output.
