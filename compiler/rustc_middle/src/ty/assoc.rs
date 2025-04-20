@@ -246,6 +246,8 @@ impl AssocItems {
     }
 
     /// Returns an iterator over all associated items with the given name, ignoring hygiene.
+    ///
+    /// Panics if `name.is_empty()` returns `true`.
     pub fn filter_by_name_unhygienic(
         &self,
         name: Symbol,

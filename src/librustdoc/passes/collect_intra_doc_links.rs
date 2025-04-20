@@ -59,7 +59,12 @@ fn filter_assoc_items_by_name_and_namespace(
     ident: Ident,
     ns: Namespace,
 ) -> impl Iterator<Item = &ty::AssocItem> {
-    tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name).filter(move |item| {
+    let iter: Box<dyn Iterator<Item = &ty::AssocItem>> = if !ident.name.is_empty() {
+        Box::new(tcx.associated_items(assoc_items_of).filter_by_name_unhygienic(ident.name))
+    } else {
+        Box::new([].iter())
+    };
+    iter.filter(move |item| {
         item.namespace() == ns && tcx.hygienic_eq(ident, item.ident(tcx), assoc_items_of)
     })
 }
