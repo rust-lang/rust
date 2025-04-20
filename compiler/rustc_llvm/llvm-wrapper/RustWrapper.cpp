@@ -979,16 +979,18 @@ LLVMRustRemoveEnumAttributeAtIndex(LLVMValueRef F, size_t index,
   LLVMRemoveEnumAttributeAtIndex(F, index, fromRust(RustAttr));
 }
 
-extern "C" bool LLVMRustHasFnAttribute(LLVMValueRef F, const char *Name) {
+extern "C" bool LLVMRustHasFnAttribute(LLVMValueRef F, const char *Name,
+                                       size_t NameLen) {
   if (auto *Fn = dyn_cast<Function>(unwrap<Value>(F))) {
-    return Fn->hasFnAttribute(Name);
+    return Fn->hasFnAttribute(StringRef(Name, NameLen));
   }
   return false;
 }
 
-extern "C" void LLVMRustRemoveFnAttribute(LLVMValueRef Fn, const char *Name) {
+extern "C" void LLVMRustRemoveFnAttribute(LLVMValueRef Fn, const char *Name,
+                                          size_t NameLen) {
   if (auto *F = dyn_cast<Function>(unwrap<Value>(Fn))) {
-    F->removeFnAttr(Name);
+    F->removeFnAttr(StringRef(Name, NameLen));
   }
 }
 

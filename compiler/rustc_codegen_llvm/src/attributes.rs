@@ -1,5 +1,4 @@
 //! Set and unset common attributes on LLVM values.
-
 use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
@@ -32,7 +31,7 @@ pub(crate) fn has_attr(llfn: &Value, idx: AttributePlace, attr: AttributeKind) -
     llvm::HasAttributeAtIndex(llfn, idx, attr)
 }
 
-pub(crate) fn has_string_attr(llfn: &Value, name: *const i8) -> bool {
+pub(crate) fn has_string_attr(llfn: &Value, name: &str) -> bool {
     llvm::HasStringAttribute(llfn, name)
 }
 
@@ -40,7 +39,7 @@ pub(crate) fn remove_from_llfn(llfn: &Value, place: AttributePlace, kind: Attrib
     llvm::RemoveRustEnumAttributeAtIndex(llfn, place, kind);
 }
 
-pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: *const i8) {
+pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: &str) {
     llvm::RemoveStringAttrFromFn(llfn, name);
 }
 
