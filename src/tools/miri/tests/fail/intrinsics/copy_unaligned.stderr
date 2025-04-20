@@ -1,8 +1,8 @@
 error: Undefined Behavior: accessing memory with alignment ALIGN, but alignment ALIGN is required
   --> tests/fail/intrinsics/copy_unaligned.rs:LL:CC
    |
-LL |         copy_nonoverlapping(&data[5], ptr, 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
+LL |         std::intrinsics::copy_nonoverlapping(&data[5], ptr, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
