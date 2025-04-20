@@ -23,7 +23,9 @@ pub fn dylib_path_var() -> &'static str {
     if cfg!(target_os = "windows") {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
-        "DYLD_LIBRARY_PATH"
+        // Use DYLD_FALLBACK_LIBRARY_PATH instead of DYLD_LIBRARY_PATH on macOS
+        // to avoid conflicts with system libraries, as discussed in #139400.
+        "DYLD_FALLBACK_LIBRARY_PATH"
     } else if cfg!(target_os = "haiku") {
         "LIBRARY_PATH"
     } else if cfg!(target_os = "aix") {
