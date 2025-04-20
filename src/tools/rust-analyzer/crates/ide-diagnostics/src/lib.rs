@@ -128,7 +128,7 @@ impl DiagnosticCode {
                 format!("https://rust-lang.github.io/rust-clippy/master/#/{e}")
             }
             DiagnosticCode::Ra(e, _) => {
-                format!("https://rust-analyzer.github.io/manual.html#{e}")
+                format!("https://rust-analyzer.github.io/book/diagnostics.html#{e}")
             }
         }
     }

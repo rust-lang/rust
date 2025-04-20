@@ -809,7 +809,7 @@ How imports should be grouped into use statements.
 
 Default: `true`
 
-Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
+Group inserted imports by the [following order](https://rust-analyzer.github.io/book/features.html#auto-import). Groups are separated by newlines.
 
 
 ## rust-analyzer.imports.merge.glob {#imports.merge.glob}

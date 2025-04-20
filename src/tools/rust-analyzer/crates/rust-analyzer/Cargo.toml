@@ -4,7 +4,7 @@ version = "0.0.0"
 homepage = "https://rust-analyzer.github.io/"
 repository.workspace = true
 description = "A language server for the Rust programming language"
-documentation = "https://rust-analyzer.github.io/manual.html"
+documentation = "https://rust-analyzer.github.io/book/"
 autobins = false
 
 authors.workspace = true
