@@ -1,4 +1,4 @@
-# Lexing and Parsing
+# Lexing and parsing
 
 The very first thing the compiler does is take the program (in UTF-8 Unicode text)
 and turn it into a data format the compiler can work with more conveniently than strings.
@@ -59,7 +59,7 @@ Note that while parsing, we may encounter macro definitions or invocations.
 We set these aside to be expanded (see [Macro Expansion](./macro-expansion.md)).
 Expansion itself may require parsing the output of a macro, which may reveal more macros to be expanded, and so on.
 
-## More on Lexical Analysis
+## More on lexical analysis
 
 Code for lexical analysis is split between two crates:
 

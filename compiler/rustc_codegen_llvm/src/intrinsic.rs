@@ -1184,18 +1184,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }};
     }
 
-    /// Returns the bitwidth of the `$ty` argument if it is an `Int` type.
-    macro_rules! require_int_ty {
-        ($ty: expr, $diag: expr) => {
-            match $ty {
-                ty::Int(i) => i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
-                _ => {
-                    return_error!($diag);
-                }
-            }
-        };
-    }
-
     /// Returns the bitwidth of the `$ty` argument if it is an `Int` or `Uint` type.
     macro_rules! require_int_or_uint_ty {
         ($ty: expr, $diag: expr) => {
@@ -1485,9 +1473,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
-        let in_elem_bitwidth = require_int_ty!(
+        let in_elem_bitwidth = require_int_or_uint_ty!(
             m_elem_ty.kind(),
-            InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
         );
         let m_i1s = vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
@@ -1508,7 +1496,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Integer vector <i{in_bitwidth} x in_len>:
         let in_elem_bitwidth = require_int_or_uint_ty!(
             in_elem.kind(),
-            InvalidMonomorphization::VectorArgument { span, name, in_ty, in_elem }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: in_elem }
         );
 
         let i1xn = vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, in_len);
@@ -1732,14 +1720,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        let mask_elem_bitwidth = require_int_ty!(
+        let mask_elem_bitwidth = require_int_or_uint_ty!(
             element_ty2.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: element_ty2,
-                third_arg: arg_tys[2]
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: element_ty2 }
         );
 
         // Alignment of T, must be a constant integer value:
@@ -1834,14 +1817,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        let m_elem_bitwidth = require_int_ty!(
+        let m_elem_bitwidth = require_int_or_uint_ty!(
             mask_elem.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: values_elem,
-                third_arg: mask_ty,
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: mask_elem }
         );
 
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
@@ -1924,14 +1902,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        let m_elem_bitwidth = require_int_ty!(
+        let m_elem_bitwidth = require_int_or_uint_ty!(
             mask_elem.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: values_elem,
-                third_arg: mask_ty,
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: mask_elem }
         );
 
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
@@ -2019,15 +1992,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        // The element type of the third argument must be a signed integer type of any width:
-        let mask_elem_bitwidth = require_int_ty!(
+        // The element type of the third argument must be an integer type of any width:
+        let mask_elem_bitwidth = require_int_or_uint_ty!(
             element_ty2.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: element_ty2,
-                third_arg: arg_tys[2]
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: element_ty2 }
         );
 
         // Alignment of T, must be a constant integer value:

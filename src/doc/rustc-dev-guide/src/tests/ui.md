@@ -596,4 +596,27 @@ with "user-facing" Rust alone. Indeed, one could say that this slightly abuses
 the term "UI" (*user* interface) and turns such UI tests from black-box tests
 into white-box ones. Use them carefully and sparingly.
 
-[compiler debugging]: ../compiler-debugging.md#rustc_test-attributes
+[compiler debugging]: ../compiler-debugging.md#rustc_-test-attributes
+
+## UI test mode preset lint levels
+
+By default, test suites under UI test mode (`tests/ui`, `tests/ui-fulldeps`,
+but not `tests/rustdoc-ui`) will specify
+
+- `-A unused`
+- `-A internal_features`
+
+If:
+
+- The ui test's pass mode is below `run` (i.e. check or build).
+- No compare modes are specified.
+
+Since they can be very noisy in ui tests.
+
+You can override them with `compile-flags` lint level flags or
+in-source lint level attributes as required.
+
+Note that the `rustfix` version will *not* have `-A unused` passed,
+meaning that you may have to `#[allow(unused)]` to suppress `unused`
+lints on the rustfix'd file (because we might be testing rustfix
+on `unused` lints themselves).

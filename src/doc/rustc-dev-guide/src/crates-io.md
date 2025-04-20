@@ -1,4 +1,4 @@
-# crates.io Dependencies
+# crates.io dependencies
 
 The Rust compiler supports building with some dependencies from `crates.io`.
 Examples are `log` and `env_logger`.
