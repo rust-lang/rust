@@ -29,7 +29,7 @@ fn normalize(mut symbol: &str) -> String {
 
     // Normalize to no leading underscore to handle platforms that may
     // inject extra ones in symbol names.
-    while symbol.starts_with('_') {
+    while symbol.starts_with('_') || symbol.starts_with('.') {
         symbol.remove(0);
     }
     // Windows/x86 has a suffix such as @@4.
