@@ -226,6 +226,26 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - run: ./ci/miri.sh
 
+  msrv:
+    name: Check libm MSRV
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
+    steps:
+    - uses: actions/checkout@master
+    - name: Install Rust
+      run: |
+        msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' libm/Cargo.toml)"
+        echo "MSRV: $msrv"
+        rustup update "$msrv" --no-self-update && rustup default "$msrv"
+    - uses: Swatinem/rust-cache@v2
+    - run: |
+        # FIXME(msrv): Remove the workspace Cargo.toml so 1.63 cargo doesn't see
+        # `edition = "2024"` and get spooked.
+        rm Cargo.toml
+        cargo build --manifest-path libm/Cargo.toml
+
   rustfmt:
     name: Rustfmt
     runs-on: ubuntu-24.04
@@ -242,6 +262,7 @@ jobs:
       - benchmarks
       - clippy
       - miri
+      - msrv
       - rustfmt
       - test
     runs-on: ubuntu-24.04
