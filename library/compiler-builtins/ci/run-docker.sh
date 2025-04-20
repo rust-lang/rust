@@ -50,7 +50,7 @@ run() {
             -v "$(pwd)/target:/builtins-target"
             -v "$(rustc --print sysroot):/rust:ro"
         )
-        run_cmd="$run_cmd PATH=\$PATH:/rust/bin"
+        run_cmd="$run_cmd PATH=\$PATH:/rust/bin:/cargo/bin"
     else
         # Use rustc provided by a docker image
         docker volume create compiler-builtins-cache

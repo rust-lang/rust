@@ -229,7 +229,6 @@ esac
 # Make sure a simple build works
 cargo check -p libm --no-default-features --target "$target"
 
-
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     # If we are on targets that can't run tests, verify that we can build.
     cmd=(cargo build --target "$target" --package libm)
@@ -254,6 +253,9 @@ else
             echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
             cmd+=(--config-file "$cfg_file")
         fi
+
+        # Not all configurations have tests to run on wasm
+        [[ "$target" = *"wasm"* ]] && cmd+=(--no-tests=warn)
 
         cmd+=("${mflags[@]}")
         profile_flag="--cargo-profile"
