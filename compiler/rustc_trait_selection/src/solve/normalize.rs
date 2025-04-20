@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
+use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
@@ -45,11 +46,42 @@ where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
+    let (value, goals) =
+        deeply_normalize_with_skipped_universes_and_ambiguous_goals(at, value, universes)?;
+    assert_eq!(goals, vec![]);
+
+    Ok(value)
+}
+
+/// Deeply normalize all aliases in `value`. This does not handle inference and expects
+/// its input to be already fully resolved.
+///
+/// Additionally takes a list of universes which represents the binders which have been
+/// entered before passing `value` to the function. This is currently needed for
+/// `normalize_erasing_regions`, which skips binders as it walks through a type.
+///
+/// TODO: doc
+pub fn deeply_normalize_with_skipped_universes_and_ambiguous_goals<'tcx, T, E>(
+    at: At<'_, 'tcx>,
+    value: T,
+    universes: Vec<Option<UniverseIndex>>,
+) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), Vec<E>>
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
     let fulfill_cx = FulfillmentCtxt::new(at.infcx);
     let mut folder =
         NormalizationFolder { at, fulfill_cx, depth: 0, universes, _errors: PhantomData };
-
-    value.try_fold_with(&mut folder)
+    let value = value.try_fold_with(&mut folder)?;
+    let goals = folder
+        .fulfill_cx
+        .drain_stalled_obligations_for_coroutines(at.infcx)
+        .into_iter()
+        .map(|obl| obl.as_goal())
+        .collect();
+    let errors = folder.fulfill_cx.select_all_or_error(at.infcx);
+    if errors.is_empty() { Ok((value, goals)) } else { Err(errors) }
 }
 
 struct NormalizationFolder<'me, 'tcx, E> {
@@ -98,7 +130,7 @@ where
         );
 
         self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-        let errors = self.fulfill_cx.select_all_or_error(infcx);
+        let errors = self.fulfill_cx.select_where_possible(infcx);
         if !errors.is_empty() {
             return Err(errors);
         }
@@ -139,7 +171,7 @@ where
 
         let result = if infcx.predicate_may_hold(&obligation) {
             self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-            let errors = self.fulfill_cx.select_all_or_error(infcx);
+            let errors = self.fulfill_cx.select_where_possible(infcx);
             if !errors.is_empty() {
                 return Err(errors);
             }
@@ -254,27 +286,31 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.at.infcx;
-        infcx
-            .commit_if_ok(|_| {
-                deeply_normalize_with_skipped_universes(
-                    self.at,
-                    ty,
-                    vec![None; ty.outer_exclusive_binder().as_usize()],
-                )
-            })
-            .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ty.super_fold_with(self))
+        let result =
+            infcx.commit_if_ok(|_| {
+                deeply_normalize_with_skipped_universes_and_ambiguous_goals::<
+                    _,
+                    ScrubbedTraitError<'tcx>,
+                >(self.at, ty, vec![None; ty.outer_exclusive_binder().as_usize()])
+            });
+        match result {
+            Ok((ty, _)) => ty,
+            Err(_) => ty.super_fold_with(self),
+        }
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let infcx = self.at.infcx;
-        infcx
-            .commit_if_ok(|_| {
-                deeply_normalize_with_skipped_universes(
-                    self.at,
-                    ct,
-                    vec![None; ct.outer_exclusive_binder().as_usize()],
-                )
-            })
-            .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ct.super_fold_with(self))
+        let result =
+            infcx.commit_if_ok(|_| {
+                deeply_normalize_with_skipped_universes_and_ambiguous_goals::<
+                    _,
+                    ScrubbedTraitError<'tcx>,
+                >(self.at, ct, vec![None; ct.outer_exclusive_binder().as_usize()])
+            });
+        match result {
+            Ok((ct, _)) => ct,
+            Err(_) => ct.super_fold_with(self),
+        }
     }
 }
