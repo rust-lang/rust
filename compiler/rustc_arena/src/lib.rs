@@ -21,8 +21,10 @@
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(maybe_uninit_slice)]
+#![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 
 use std::alloc::Layout;
@@ -200,6 +202,18 @@ impl<T> TypedArena<T> {
     /// storing the elements in the arena.
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        self.try_alloc_from_iter(iter.into_iter().map(Ok::<T, !>)).into_ok()
+    }
+
+    /// Allocates the elements of this iterator into a contiguous slice in the `TypedArena`.
+    ///
+    /// Note: for reasons of reentrancy and panic safety we collect into a `SmallVec<[_; 8]>` before
+    /// storing the elements in the arena.
+    #[inline]
+    pub fn try_alloc_from_iter<E>(
+        &self,
+        iter: impl IntoIterator<Item = Result<T, E>>,
+    ) -> Result<&mut [T], E> {
         // Despite the similarlty with `DroplessArena`, we cannot reuse their fast case. The reason
         // is subtle: these arenas are reentrant. In other words, `iter` may very well be holding a
         // reference to `self` and adding elements to the arena during iteration.
@@ -214,18 +228,19 @@ impl<T> TypedArena<T> {
         // doesn't need to be hyper-optimized.
         assert!(size_of::<T>() != 0);
 
-        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
+        let vec: Result<SmallVec<[T; 8]>, E> = iter.into_iter().collect();
+        let mut vec = vec?;
         if vec.is_empty() {
-            return &mut [];
+            return Ok(&mut []);
         }
         // Move the content to the arena by copying and then forgetting it.
         let len = vec.len();
         let start_ptr = self.alloc_raw_slice(len);
-        unsafe {
+        Ok(unsafe {
             vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             vec.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
-        }
+        })
     }
 
     /// Grows the arena.
@@ -566,26 +581,33 @@ impl DroplessArena {
                 // `drop`.
                 unsafe { self.write_from_iter(iter, len, mem) }
             }
-            (_, _) => {
-                outline(move || -> &mut [T] {
-                    // Takes care of reentrancy.
-                    let mut vec: SmallVec<[_; 8]> = iter.collect();
-                    if vec.is_empty() {
-                        return &mut [];
-                    }
-                    // Move the content to the arena by copying it and then forgetting
-                    // the content of the SmallVec
-                    unsafe {
-                        let len = vec.len();
-                        let start_ptr =
-                            self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
-                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vec.set_len(0);
-                        slice::from_raw_parts_mut(start_ptr, len)
-                    }
-                })
-            }
+            (_, _) => outline(move || self.try_alloc_from_iter(iter.map(Ok::<T, !>)).into_ok()),
         }
+    }
+
+    #[inline]
+    pub fn try_alloc_from_iter<T, E>(
+        &self,
+        iter: impl IntoIterator<Item = Result<T, E>>,
+    ) -> Result<&mut [T], E> {
+        // Despite the similarlty with `alloc_from_iter`, we cannot reuse their fast case, as we
+        // cannot know the minimum length of the iterator in this case.
+        assert!(size_of::<T>() != 0);
+
+        // Takes care of reentrancy.
+        let vec: Result<SmallVec<[T; 8]>, E> = iter.into_iter().collect();
+        let mut vec = vec?;
+        if vec.is_empty() {
+            return Ok(&mut []);
+        }
+        // Move the content to the arena by copying and then forgetting it.
+        let len = vec.len();
+        Ok(unsafe {
+            let start_ptr = self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
+            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            vec.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
+        })
     }
 }
 
