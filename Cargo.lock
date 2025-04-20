@@ -3740,6 +3740,9 @@ dependencies = [
 [[package]]
 name = "rustc_fs_util"
 version = "0.0.0"
+dependencies = [
+ "tempfile",
+]
 
 [[package]]
 name = "rustc_graphviz"
@@ -4052,7 +4055,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "tempfile",
  "tracing",
 ]
 
