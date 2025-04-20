@@ -8,9 +8,6 @@
     unboxed_closures
 )]
 #![allow(internal_features)]
-// FIXME once abi_unsupported_vector_types is a hard error disable the foo test when the respective
-// target feature is not enabled.
-#![allow(abi_unsupported_vector_types)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
