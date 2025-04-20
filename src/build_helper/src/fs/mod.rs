@@ -1,4 +1,5 @@
 //! Misc filesystem related helpers for use by bootstrap and tools.
+use std::ffi::{OsStr, OsString};
 use std::fs::Metadata;
 use std::path::Path;
 use std::{fs, io};
@@ -100,6 +101,30 @@ where
 
 pub fn remove_and_create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     let path = path.as_ref();
-    recursive_remove(path)?;
+
+    // Attempt to rename the directory in case removing fails.
+    // We allow either the rename to fail or the remove to fail but not both.
+    let rm_path = rand_name(path.as_os_str());
+    if fs::rename(path, &rm_path).is_err() {
+        // Rename failed, try to remove the original path
+        recursive_remove(&path)?;
+    } else {
+        // Rename succeeded, try to remove the renamed path
+        let _ = recursive_remove(&rm_path);
+    }
     fs::create_dir_all(path)
+}
+
+fn rand_name(prefix: &OsStr) -> OsString {
+    let mut name: OsString = prefix.into();
+    name.push("-");
+    let mut rand_suffix = [0; 8];
+    for n in rand_suffix.iter_mut() {
+        *n = fastrand::alphanumeric() as u8;
+    }
+    // SAFETY: `fastrand::alphanumeric` only returns valid ascii.
+    // Since an `OsStr` is a superset of UTF-8, ascii must be a valid `OsStr`.
+    let ascii = unsafe { OsStr::from_encoded_bytes_unchecked(&rand_suffix) };
+    name.push(ascii);
+    name
 }
