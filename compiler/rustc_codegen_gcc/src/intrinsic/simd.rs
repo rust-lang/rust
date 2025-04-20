@@ -447,9 +447,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
+        // TODO: also support unsigned integers.
         match *m_elem_ty.kind() {
             ty::Int(_) => {}
-            _ => return_error!(InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }),
+            _ => return_error!(InvalidMonomorphization::MaskWrongElementType {
+                span,
+                name,
+                ty: m_elem_ty
+            }),
         }
         return Ok(bx.vector_select(args[0].immediate(), args[1].immediate(), args[2].immediate()));
     }
@@ -991,19 +996,15 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         assert_eq!(pointer_count - 1, ptr_count(element_ty0));
         assert_eq!(underlying_ty, non_ptr(element_ty0));
 
-        // The element type of the third argument must be a signed integer type of any width:
+        // The element type of the third argument must be an integer type of any width:
+        // TODO: also support unsigned integers.
         let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
         match *element_ty2.kind() {
             ty::Int(_) => (),
             _ => {
                 require!(
                     false,
-                    InvalidMonomorphization::ThirdArgElementType {
-                        span,
-                        name,
-                        expected_element: element_ty2,
-                        third_arg: arg_tys[2]
-                    }
+                    InvalidMonomorphization::MaskWrongElementType { span, name, ty: element_ty2 }
                 );
             }
         }
@@ -1109,17 +1110,13 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         assert_eq!(underlying_ty, non_ptr(element_ty0));
 
         // The element type of the third argument must be a signed integer type of any width:
+        // TODO: also support unsigned integers.
         match *element_ty2.kind() {
             ty::Int(_) => (),
             _ => {
                 require!(
                     false,
-                    InvalidMonomorphization::ThirdArgElementType {
-                        span,
-                        name,
-                        expected_element: element_ty2,
-                        third_arg: arg_tys[2]
-                    }
+                    InvalidMonomorphization::MaskWrongElementType { span, name, ty: element_ty2 }
                 );
             }
         }
