@@ -6,7 +6,7 @@
 //! change their representation to be compatible with rust-analyzer's.
 use std::{
     collections::{HashMap, HashSet},
-    ops::{Bound, Range},
+    ops::Bound,
 };
 
 use intern::Symbol;
@@ -281,10 +281,6 @@ impl server::Span for RaSpanServer {
         // FIXME requires db, returns the top level call site
         span
     }
-    fn byte_range(&mut self, span: Self::Span) -> Range<usize> {
-        // FIXME requires db to resolve the ast id, THIS IS NOT INCREMENTAL
-        Range { start: span.range.start().into(), end: span.range.end().into() }
-    }
     fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
         // We can't modify the span range for fixup spans, those are meaningful to fixup, so just
         // prefer the non-fixup span.
@@ -385,6 +381,10 @@ impl server::Span for RaSpanServer {
     fn column(&mut self, _span: Self::Span) -> usize {
         // FIXME requires db to resolve line index, THIS IS NOT INCREMENTAL
         1
+    }
+    fn byte_offset(&mut self, span: Self::Span) -> usize {
+        // FIXME requires db to resolve the ast id, THIS IS NOT INCREMENTAL
+        span.range.start().into()
     }
 }
 

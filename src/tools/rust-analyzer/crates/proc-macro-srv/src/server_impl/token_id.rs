@@ -1,6 +1,6 @@
 //! proc-macro server backend based on [`proc_macro_api::msg::TokenId`] as the backing span.
 //! This backend is rather inflexible, used by RustRover and older rust-analyzer versions.
-use std::ops::{Bound, Range};
+use std::ops::Bound;
 
 use intern::Symbol;
 use proc_macro::bridge::{self, server};
@@ -250,9 +250,6 @@ impl server::Span for TokenIdServer {
     fn source(&mut self, span: Self::Span) -> Self::Span {
         span
     }
-    fn byte_range(&mut self, _span: Self::Span) -> Range<usize> {
-        Range { start: 0, end: 0 }
-    }
     fn join(&mut self, first: Self::Span, _second: Self::Span) -> Option<Self::Span> {
         // Just return the first span again, because some macros will unwrap the result.
         Some(first)
@@ -284,6 +281,10 @@ impl server::Span for TokenIdServer {
 
     fn column(&mut self, _span: Self::Span) -> usize {
         1
+    }
+
+    fn byte_offset(&mut self, _span: Self::Span) -> usize {
+        0
     }
 }
 
