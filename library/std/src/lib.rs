@@ -329,7 +329,6 @@
 #![feature(array_chunks)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
-#![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(core_intrinsics)]
