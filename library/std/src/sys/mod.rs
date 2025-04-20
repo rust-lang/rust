@@ -12,6 +12,7 @@ pub mod anonymous_pipe;
 pub mod args;
 pub mod backtrace;
 pub mod cmath;
+pub mod env_consts;
 pub mod exit_guard;
 pub mod fd;
 pub mod fs;
