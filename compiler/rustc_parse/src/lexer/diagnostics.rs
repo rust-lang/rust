@@ -1,14 +1,24 @@
-use rustc_ast::token::Delimiter;
+use rustc_ast::token::{self, Delimiter};
+use rustc_ast_pretty::pprust;
 use rustc_errors::Diag;
+use rustc_session::parse::ParseSess;
 use rustc_span::Span;
 use rustc_span::source_map::SourceMap;
 
 use super::UnmatchedDelim;
+use crate::errors::MismatchedClosingDelimiter;
 
 #[derive(Default)]
 pub(super) struct TokenTreeDiagInfo {
+    /// record span of `(` for diagnostic
+    pub open_parens: Vec<Span>,
+    /// record span of `{` for diagnostic
+    pub open_braces: Vec<Span>,
+    /// record span of `[` for diagnostic
+    pub open_brackets: Vec<Span>,
+
     /// Stack of open delimiters and their spans. Used for error message.
-    pub open_braces: Vec<(Delimiter, Span)>,
+    pub open_delimiters: Vec<(Delimiter, Span)>,
     pub unmatched_delims: Vec<UnmatchedDelim>,
 
     /// Used only for error recovery when arriving to EOF with mismatched braces.
@@ -22,6 +32,29 @@ pub(super) struct TokenTreeDiagInfo {
     pub matching_block_spans: Vec<(Span, Span)>,
 }
 
+impl TokenTreeDiagInfo {
+    pub(super) fn push_open_delimiter(&mut self, delim: Delimiter, span: Span) {
+        self.open_delimiters.push((delim, span));
+        match delim {
+            Delimiter::Parenthesis => self.open_parens.push(span),
+            Delimiter::Brace => self.open_braces.push(span),
+            Delimiter::Bracket => self.open_brackets.push(span),
+            _ => {}
+        }
+    }
+
+    pub(super) fn pop_open_delimiter(&mut self) -> Option<(Delimiter, Span)> {
+        let (delim, span) = self.open_delimiters.pop()?;
+        match delim {
+            Delimiter::Parenthesis => self.open_parens.pop(),
+            Delimiter::Brace => self.open_braces.pop(),
+            Delimiter::Bracket => self.open_brackets.pop(),
+            _ => unreachable!(),
+        };
+        Some((delim, span))
+    }
+}
+
 pub(super) fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Span) -> bool {
     match (sm.span_to_margin(open_sp), sm.span_to_margin(close_sp)) {
         (Some(open_padding), Some(close_padding)) => open_padding == close_padding,
@@ -29,27 +62,47 @@ pub(super) fn same_indentation_level(sm: &SourceMap, open_sp: Span, close_sp: Sp
     }
 }
 
+pub(crate) fn make_unclosed_delims_error(
+    unmatched: UnmatchedDelim,
+    psess: &ParseSess,
+) -> Option<Diag<'_>> {
+    // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
+    // `unmatched_delims` only for error recovery in the `Parser`.
+    let found_delim = unmatched.found_delim?;
+    let mut spans = vec![unmatched.found_span];
+    if let Some(sp) = unmatched.unclosed_span {
+        spans.push(sp);
+    };
+
+    let missing_open_note = report_missing_open_delim(&unmatched)
+        .map(|s| format!(", may missing open `{s}`"))
+        .unwrap_or_default();
+
+    let err = psess.dcx().create_err(MismatchedClosingDelimiter {
+        spans,
+        delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
+        unmatched: unmatched.found_span,
+        missing_open_note,
+        opening_candidate: unmatched.candidate_span,
+        unclosed: unmatched.unclosed_span,
+    });
+    Some(err)
+}
+
 // When we get a `)` or `]` for `{`, we should emit help message here
 // it's more friendly compared to report `unmatched error` in later phase
-fn report_missing_open_delim(err: &mut Diag<'_>, unmatched_delims: &[UnmatchedDelim]) -> bool {
-    let mut reported_missing_open = false;
-    for unmatch_brace in unmatched_delims.iter() {
-        if let Some(delim) = unmatch_brace.found_delim
-            && matches!(delim, Delimiter::Parenthesis | Delimiter::Bracket)
-        {
-            let missed_open = match delim {
-                Delimiter::Parenthesis => "(",
-                Delimiter::Bracket => "[",
-                _ => unreachable!(),
-            };
-            err.span_label(
-                unmatch_brace.found_span.shrink_to_lo(),
-                format!("missing open `{missed_open}` for this delimiter"),
-            );
-            reported_missing_open = true;
-        }
+fn report_missing_open_delim(unmatched_delim: &UnmatchedDelim) -> Option<String> {
+    if let Some(delim) = unmatched_delim.found_delim
+        && matches!(delim, Delimiter::Parenthesis | Delimiter::Bracket)
+    {
+        let missed_open = match delim {
+            Delimiter::Parenthesis => "(",
+            Delimiter::Bracket => "[",
+            _ => unreachable!(),
+        };
+        return Some(missed_open.to_owned());
     }
-    reported_missing_open
+    None
 }
 
 pub(super) fn report_suspicious_mismatch_block(
@@ -58,10 +111,6 @@ pub(super) fn report_suspicious_mismatch_block(
     sm: &SourceMap,
     delim: Delimiter,
 ) {
-    if report_missing_open_delim(err, &diag_info.unmatched_delims) {
-        return;
-    }
-
     let mut matched_spans: Vec<(Span, bool)> = diag_info
         .matching_block_spans
         .iter()
@@ -108,7 +157,7 @@ pub(super) fn report_suspicious_mismatch_block(
     } else {
         // If there is no suspicious span, give the last properly closed block may help
         if let Some(parent) = diag_info.matching_block_spans.last()
-            && diag_info.open_braces.last().is_none()
+            && diag_info.open_delimiters.last().is_none()
             && diag_info.empty_block_spans.iter().all(|&sp| sp != parent.0.to(parent.1))
         {
             err.span_label(parent.0, "this opening brace...");

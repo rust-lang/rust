@@ -4,16 +4,7 @@ error: mismatched closing delimiter: `]`
 LL |     if 1 < 2 {
    |              ^ unclosed delimiter
 LL |         let _a = vec!];
-   |                      ^ mismatched closing delimiter
+   |                      ^ mismatched closing delimiter, may missing open `[`
 
-error: unexpected closing delimiter: `}`
-  --> $DIR/deli-ident-issue-2.rs:5:1
-   |
-LL |         let _a = vec!];
-   |                      - missing open `[` for this delimiter
-LL |     }
-LL | }
-   | ^ unexpected closing delimiter
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

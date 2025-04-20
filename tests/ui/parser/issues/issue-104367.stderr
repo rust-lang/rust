@@ -2,7 +2,7 @@ error: mismatched closing delimiter: `)`
   --> $DIR/issue-104367.rs:5:15
    |
 LL |             #![w,)
-   |               ^  ^ mismatched closing delimiter
+   |               ^  ^ mismatched closing delimiter, may missing open `(`
    |               |
    |               unclosed delimiter
 
@@ -18,7 +18,6 @@ LL |     d: [u32; {
 LL |         #![cfg] {
    |                 - unclosed delimiter
 LL |             #![w,)
-   |                  - missing open `(` for this delimiter
 LL |
    |                                                                      ^
 
