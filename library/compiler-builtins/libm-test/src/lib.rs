@@ -71,12 +71,7 @@ pub fn test_log(s: &str) {
                     return None;
                 };
 
-                PathBuf::from(x)
-                    .parent()
-                    .unwrap()
-                    .parent()
-                    .unwrap()
-                    .join("target")
+                PathBuf::from(x).join("../target")
             }
         };
         let outfile = target_dir.join("test-log.txt");
