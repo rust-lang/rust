@@ -131,6 +131,9 @@ jobs:
         path: /tmp/.buildx-cache
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
         restore-keys: ${{ matrix.target }}-buildx-
+    # Configure buildx to use Docker layer caching
+    - uses: docker/setup-buildx-action@v3
+      if: matrix.os == 'ubuntu-24.04'
 
     - name: Cache compiler-rt
       id: cache-compiler-rt
@@ -155,14 +158,10 @@ jobs:
       shell: bash
       run: ./ci/run.sh ${{ matrix.target }}
 
-    # Configure buildx to use Docker layer caching
-    - uses: docker/setup-buildx-action@v3
-      if: matrix.os == 'ubuntu-24.04'
-
     # Otherwise we use our docker containers to run builds
     - name: Run in Docker
       if: matrix.os == 'ubuntu-24.04'
-      run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
+      run: ./ci/run-docker.sh ${{ matrix.target }}
 
     - name: Print test logs if available
       if: always()
@@ -193,7 +192,7 @@ jobs:
         rustup default nightly
         rustup component add clippy
     - uses: Swatinem/rust-cache@v2
-    - run: cargo clippy -- -D clippy::all
+    - run: cargo clippy --workspace --all-targets
 
   benchmarks:
     name: Benchmarks

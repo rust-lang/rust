@@ -7,6 +7,13 @@ set -euxo pipefail
 
 host_arch="$(uname -m | sed 's/arm64/aarch64/')"
 
+# Directories and files that do not yet exist need to be created before
+# calling docker, otherwise docker will create them but they will be owned
+# by root.
+mkdir -p target
+cargo generate-lockfile
+cargo generate-lockfile --manifest-path builtins-test-intrinsics/Cargo.toml
+
 run() {
     local target="$1"
 
@@ -18,12 +25,6 @@ run() {
         emulated=1
         echo "target is emulated"
     fi
-
-    # Directories and files that do not yet exist need to be created before
-    # calling docker, otherwise docker will create them but they will be owned
-    # by root.
-    mkdir -p target
-    cargo generate-lockfile --manifest-path builtins-test-intrinsics/Cargo.toml
 
     run_cmd="HOME=/tmp"
 
