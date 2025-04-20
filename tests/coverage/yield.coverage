@@ -6,7 +6,7 @@
    LL|       |
    LL|      1|fn main() {
    LL|      1|    let mut coroutine = #[coroutine]
-   LL|      1|    || {
+   LL|       |    || {
    LL|      1|        yield 1;
    LL|      1|        return "foo";
    LL|      1|    };
@@ -21,7 +21,7 @@
    LL|       |    }
    LL|       |
    LL|      1|    let mut coroutine = #[coroutine]
-   LL|      1|    || {
+   LL|       |    || {
    LL|      1|        yield 1;
    LL|      1|        yield 2;
    LL|      0|        yield 3;

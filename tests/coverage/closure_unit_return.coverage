@@ -19,7 +19,7 @@
    LL|      0|    };
    LL|       |
    LL|      1|    drop(closure);
-   LL|      1|    // implicit return of `()`
+   LL|       |    // implicit return of `()`
    LL|      1|}
    LL|       |
    LL|       |#[coverage(off)]

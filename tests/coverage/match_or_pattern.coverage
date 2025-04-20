@@ -1,9 +1,9 @@
    LL|      1|fn main() {
-   LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-   LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-   LL|      1|    // dependent conditions.
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
    LL|      1|    let is_true = std::env::args().len() == 1;
-   LL|      1|
+   LL|       |
    LL|      1|    let mut a: u8 = 0;
    LL|      1|    let mut b: u8 = 0;
    LL|      1|    if is_true {
