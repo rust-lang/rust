@@ -1,12 +1,12 @@
 use super::abi;
 use crate::cell::UnsafeCell;
 use crate::mem::MaybeUninit;
-use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicUsize, Ordering};
 
 /// A mutex implemented by `dis_dsp` (for intra-core synchronization) and a
 /// spinlock (for inter-core synchronization).
 pub struct SpinMutex<T = ()> {
-    locked: AtomicBool,
+    locked: Atomic<bool>,
     data: UnsafeCell<T>,
 }
 
@@ -19,7 +19,7 @@ impl<T> SpinMutex<T> {
     /// Acquire a lock.
     #[inline]
     pub fn with_locked<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
-        struct SpinMutexGuard<'a>(&'a AtomicBool);
+        struct SpinMutexGuard<'a>(&'a Atomic<bool>);
 
         impl Drop for SpinMutexGuard<'_> {
             #[inline]
@@ -50,7 +50,7 @@ impl<T> SpinMutex<T> {
 /// It's assumed that `0` is not a valid ID, and all kernel
 /// object IDs fall into range `1..=usize::MAX`.
 pub struct SpinIdOnceCell<T = ()> {
-    id: AtomicUsize,
+    id: Atomic<usize>,
     spin: SpinMutex<()>,
     extra: UnsafeCell<MaybeUninit<T>>,
 }

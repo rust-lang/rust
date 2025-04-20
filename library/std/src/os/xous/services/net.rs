@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{Atomic, AtomicU32, Ordering};
 
 use crate::os::xous::ffi::Connection;
 use crate::os::xous::services::connect;
@@ -84,7 +84,7 @@ impl<'a> Into<[usize; 5]> for NetBlockingScalar {
 /// Returns a `Connection` to the Network server. This server provides all
 /// OS-level networking functions.
 pub(crate) fn net_server() -> Connection {
-    static NET_CONNECTION: AtomicU32 = AtomicU32::new(0);
+    static NET_CONNECTION: Atomic<u32> = AtomicU32::new(0);
     let cid = NET_CONNECTION.load(Ordering::Relaxed);
     if cid != 0 {
         return cid.into();

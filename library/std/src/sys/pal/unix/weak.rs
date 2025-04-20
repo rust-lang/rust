@@ -24,7 +24,7 @@
 
 use crate::ffi::CStr;
 use crate::marker::PhantomData;
-use crate::sync::atomic::{self, AtomicPtr, Ordering};
+use crate::sync::atomic::{self, Atomic, AtomicPtr, Ordering};
 use crate::{mem, ptr};
 
 // We can use true weak linkage on ELF targets.
@@ -80,7 +80,7 @@ pub(crate) macro dlsym {
 }
 pub(crate) struct DlsymWeak<F> {
     name: &'static str,
-    func: AtomicPtr<libc::c_void>,
+    func: Atomic<*mut libc::c_void>,
     _marker: PhantomData<F>,
 }
 

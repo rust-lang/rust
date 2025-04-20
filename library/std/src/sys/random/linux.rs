@@ -64,8 +64,8 @@ use crate::fs::File;
 use crate::io::Read;
 use crate::os::fd::AsRawFd;
 use crate::sync::OnceLock;
-use crate::sync::atomic::AtomicBool;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{Atomic, AtomicBool};
 use crate::sys::pal::os::errno;
 use crate::sys::pal::weak::syscall;
 
@@ -81,9 +81,9 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
         ) -> libc::ssize_t;
     );
 
-    static GETRANDOM_AVAILABLE: AtomicBool = AtomicBool::new(true);
-    static GRND_INSECURE_AVAILABLE: AtomicBool = AtomicBool::new(true);
-    static URANDOM_READY: AtomicBool = AtomicBool::new(false);
+    static GETRANDOM_AVAILABLE: Atomic<bool> = AtomicBool::new(true);
+    static GRND_INSECURE_AVAILABLE: Atomic<bool> = AtomicBool::new(true);
+    static URANDOM_READY: Atomic<bool> = AtomicBool::new(false);
     static DEVICE: OnceLock<File> = OnceLock::new();
 
     if GETRANDOM_AVAILABLE.load(Relaxed) {
