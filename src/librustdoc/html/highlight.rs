@@ -638,7 +638,7 @@ impl<'src> Classifier<'src> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondence_map`.
     fn new(src: &'src str, file_span: Span, decoration_info: Option<&DecorationInfo>) -> Self {
-        let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src) });
+        let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src, true) });
         let decorations = decoration_info.map(Decorations::new);
         Classifier {
             tokens,
@@ -884,6 +884,7 @@ impl<'src> Classifier<'src> {
             | TokenKind::At
             | TokenKind::Tilde
             | TokenKind::Colon
+            | TokenKind::Frontmatter { .. }
             | TokenKind::Unknown => return no_highlight(sink),
 
             TokenKind::Question => Class::QuestionMark,
