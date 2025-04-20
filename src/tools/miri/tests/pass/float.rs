@@ -1060,10 +1060,8 @@ pub fn libm() {
     // For pown (powi in rust) the C standard says:
     // x^0 = 1 for all x not a sNaN.
     // FIXME: But the ecosystem is inconistent with this, in the future we should return either
-    // 1 or the NaN. Add correct tests when we actually do this.
-    //     Should we follow glibc and libm or the C Standard itself?
-    // assert_ne!(SINGLE_SNAN.powi(0), 1.0);
-    // assert_ne!(DOUBLE_SNAN.powi(0), 1.0);
+    // 1 or the NaN. -> Add correct tests when we actually do this.
+
     // f*::NAN is a quiet NAN and should return 1 as well.
     assert_eq!(f32::NAN.powi(0), 1.0);
     assert_eq!(f64::NAN.powi(0), 1.0);
