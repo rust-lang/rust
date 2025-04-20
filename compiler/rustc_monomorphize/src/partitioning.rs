@@ -254,8 +254,9 @@ where
             always_export_generics,
         );
 
-        // We can't differentiate something that got inlined.
+        // We can't differentiate a function that got inlined.
         let autodiff_active = cfg!(llvm_enzyme)
+            && matches!(mono_item, MonoItem::Fn(_))
             && cx
                 .tcx
                 .codegen_fn_attrs(mono_item.def_id())
