@@ -4,7 +4,7 @@
 //@ only-aarch64
 
 #![crate_type = "lib"]
-#![feature(naked_functions)]
+
 use std::arch::naked_asm;
 
 // The problem at hand: Rust has adopted a fairly strict meaning for "naked functions",
@@ -13,8 +13,8 @@ use std::arch::naked_asm;
 // LLVM implements this via making sure of that, even for functions with the naked attribute.
 // So, we must emit an appropriate instruction instead!
 #[no_mangle]
-#[naked]
-pub unsafe extern "C" fn _hlt() -> ! {
+#[unsafe(naked)]
+pub extern "C" fn _hlt() -> ! {
     // CHECK-NOT: hint #34
     // CHECK: hlt #0x1
     naked_asm!("hlt #1")

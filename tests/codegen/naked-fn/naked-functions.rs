@@ -13,7 +13,7 @@
 //@[thumb] needs-llvm-components: arm
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, rustc_attrs, naked_functions)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]
 
 extern crate minicore;
@@ -60,8 +60,8 @@ use minicore::*;
 // linux,win: .att_syntax
 
 #[no_mangle]
-#[naked]
-pub unsafe extern "C" fn naked_empty() {
+#[unsafe(naked)]
+pub extern "C" fn naked_empty() {
     #[cfg(not(all(target_arch = "arm", target_feature = "thumb-mode")))]
     naked_asm!("ret");
 
@@ -114,8 +114,8 @@ pub unsafe extern "C" fn naked_empty() {
 // linux,win: .att_syntax
 
 #[no_mangle]
-#[naked]
-pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
+#[unsafe(naked)]
+pub extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
         naked_asm!("lea rax, [rdi + rsi]", "ret")
@@ -138,9 +138,9 @@ pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize
 // thumb:            .pushsection .text.some_different_name,\22ax\22, %progbits
 // CHECK-LABEL: test_link_section:
 #[no_mangle]
-#[naked]
+#[unsafe(naked)]
 #[link_section = ".text.some_different_name"]
-pub unsafe extern "C" fn test_link_section() {
+pub extern "C" fn test_link_section() {
     #[cfg(not(all(target_arch = "arm", target_feature = "thumb-mode")))]
     naked_asm!("ret");
 
@@ -159,7 +159,7 @@ pub unsafe extern "C" fn test_link_section() {
 // win_i686-LABEL: @fastcall_cc@4:
 #[cfg(target_os = "windows")]
 #[no_mangle]
-#[naked]
-pub unsafe extern "fastcall" fn fastcall_cc(x: i32) -> i32 {
+#[unsafe(naked)]
+pub extern "fastcall" fn fastcall_cc(x: i32) -> i32 {
     naked_asm!("ret");
 }

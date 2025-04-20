@@ -22,7 +22,6 @@
     negative_impls,
     rustc_attrs,
     decl_macro,
-    naked_functions,
     f16,
     f128,
     asm_experimental_arch,
