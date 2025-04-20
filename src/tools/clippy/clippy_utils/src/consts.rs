@@ -644,7 +644,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 // which is NOT constant for our purposes.
                 if let Some(node) = self.tcx.hir_get_if_local(def_id)
                     && let Node::Item(Item {
-                        kind: ItemKind::Const(.., body_id),
+                        kind: ItemKind::Const(.., body_id, _),
                         ..
                     }) = node
                     && let Node::Expr(Expr {

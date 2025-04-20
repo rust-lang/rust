@@ -388,6 +388,7 @@ impl WalkItemKind for ItemKind {
                 ident,
                 generics,
                 ty,
+                body_id: _,
                 expr,
                 define_opaque,
             }) => {
@@ -989,6 +990,7 @@ impl WalkItemKind for AssocItemKind {
                 ident,
                 generics,
                 ty,
+                body_id: _,
                 expr,
                 define_opaque,
             }) => {

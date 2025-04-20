@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use hir::{GenericParamKind, HirId, Node};
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, AmbigArg};
@@ -192,8 +192,29 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
             }
         }
-        Node::ConstBlock(_)
-        | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
+        Node::ConstBlock(ConstBlock { body, .. }) => {
+            let is_const_item = |node| {
+                matches!(
+                    node,
+                    Node::Item(Item { kind: hir::ItemKind::Const(..), .. })
+                        | Node::TraitItem(TraitItem { kind: hir::TraitItemKind::Const(..), .. })
+                        | Node::ImplItem(ImplItem { kind: hir::ImplItemKind::Const(..), .. })
+                )
+            };
+            // HACK(mgca): we lower non-path const item bodies as const blocks
+            // so we can control use of generics independently from the const item's type etc
+            if tcx.features().min_generic_const_args()
+                && is_const_item(tcx.parent_hir_node(hir_id))
+                && !does_body_reference_generics(tcx, *body)
+            {
+                // If the body doesn't reference any generic params, we don't inherit from the parent.
+                // This allows us to know later that it's monomorphic.
+                None
+            } else {
+                Some(tcx.typeck_root_def_id(def_id.to_def_id()))
+            }
+        }
+        Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             Some(tcx.typeck_root_def_id(def_id.to_def_id()))
         }
         Node::OpaqueTy(&hir::OpaqueTy {
@@ -543,5 +564,26 @@ impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
             return ControlFlow::Break(());
         }
         intravisit::walk_anon_const(self, c)
+    }
+}
+
+fn does_body_reference_generics<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> bool {
+    ReferenceToGenericsDetector {}.visit_body(tcx.hir_body(body)).is_break()
+}
+
+struct ReferenceToGenericsDetector {}
+
+impl<'v> Visitor<'v> for ReferenceToGenericsDetector {
+    type Result = ControlFlow<()>;
+
+    fn visit_path(&mut self, path: &hir::Path<'v>, _id: HirId) -> Self::Result {
+        // FIXME(mgca): should lifetimes disqualify or not? leave a comment about it if ignored
+        if let Res::Def(DefKind::TyParam | DefKind::ConstParam | DefKind::LifetimeParam, _) =
+            path.res
+        {
+            return ControlFlow::Break(());
+        }
+
+        intravisit::walk_path(self, path)
     }
 }

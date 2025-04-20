@@ -550,11 +550,12 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Const(ident, ref typ, ref generics, body) => {
+        ItemKind::Const(ident, ref typ, ref generics, body, ct) => {
             try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_nested_body(body));
+            visit_opt!(visitor, visit_const_arg_unambig, ct);
         }
         ItemKind::Fn { ident, sig, generics, body: body_id, .. } => {
             try_visit!(visitor.visit_ident(ident));
@@ -1165,9 +1166,10 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_defaultness(&defaultness));
     try_visit!(visitor.visit_id(hir_id));
     match *kind {
-        TraitItemKind::Const(ref ty, default) => {
+        TraitItemKind::Const(ref ty, default, ct_arg) => {
             try_visit!(visitor.visit_ty_unambig(ty));
             visit_opt!(visitor, visit_nested_body, default);
+            visit_opt!(visitor, visit_const_arg_unambig, ct_arg);
         }
         TraitItemKind::Fn(ref sig, TraitFn::Required(param_idents)) => {
             try_visit!(visitor.visit_fn_decl(sig.decl));
@@ -1223,9 +1225,11 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_defaultness(defaultness));
     try_visit!(visitor.visit_id(impl_item.hir_id()));
     match *kind {
-        ImplItemKind::Const(ref ty, body) => {
+        ImplItemKind::Const(ref ty, body, ct_arg) => {
             try_visit!(visitor.visit_ty_unambig(ty));
-            visitor.visit_nested_body(body)
+            try_visit!(visitor.visit_nested_body(body));
+            visit_opt!(visitor, visit_const_arg_unambig, ct_arg);
+            V::Result::output()
         }
         ImplItemKind::Fn(ref sig, body_id) => visitor.visit_fn(
             FnKind::Method(impl_item.ident, sig),

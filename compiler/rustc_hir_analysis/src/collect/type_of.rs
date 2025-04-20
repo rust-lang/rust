@@ -155,7 +155,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            TraitItemKind::Const(ty, body_id) => body_id
+            TraitItemKind::Const(ty, body_id, _) => body_id
                 .and_then(|body_id| {
                     ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
@@ -180,7 +180,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
-            ImplItemKind::Const(ty, body_id) => {
+            ImplItemKind::Const(ty, body_id, _) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
@@ -218,7 +218,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                     icx.lower_ty(ty)
                 }
             }
-            ItemKind::Const(ident, ty, _, body_id) => {
+            ItemKind::Const(ident, ty, _, body_id, _) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         icx.lowerer(),
