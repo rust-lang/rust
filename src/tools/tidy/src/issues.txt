@@ -1397,7 +1397,6 @@ ui/issues/auxiliary/issue-13620-1.rs
 ui/issues/auxiliary/issue-13620-2.rs
 ui/issues/auxiliary/issue-14344-1.rs
 ui/issues/auxiliary/issue-14344-2.rs
-ui/issues/auxiliary/issue-14421.rs
 ui/issues/auxiliary/issue-14422.rs
 ui/issues/auxiliary/issue-15562.rs
 ui/issues/auxiliary/issue-16643.rs
@@ -1564,7 +1563,6 @@ ui/issues/issue-14366.rs
 ui/issues/issue-14382.rs
 ui/issues/issue-14393.rs
 ui/issues/issue-14399.rs
-ui/issues/issue-14421.rs
 ui/issues/issue-14422.rs
 ui/issues/issue-14541.rs
 ui/issues/issue-14721.rs
@@ -1629,7 +1627,6 @@ ui/issues/issue-16774.rs
 ui/issues/issue-16783.rs
 ui/issues/issue-16819.rs
 ui/issues/issue-16922-rpass.rs
-ui/issues/issue-16939.rs
 ui/issues/issue-16966.rs
 ui/issues/issue-16994.rs
 ui/issues/issue-17001.rs
@@ -1867,7 +1864,6 @@ ui/issues/issue-23550.rs
 ui/issues/issue-23589.rs
 ui/issues/issue-23699.rs
 ui/issues/issue-2380-b.rs
-ui/issues/issue-23808.rs
 ui/issues/issue-2383.rs
 ui/issues/issue-23891.rs
 ui/issues/issue-23898.rs
@@ -2607,7 +2603,6 @@ ui/issues/issue-9249.rs
 ui/issues/issue-9259.rs
 ui/issues/issue-92741.rs
 ui/issues/issue-9446.rs
-ui/issues/issue-9719.rs
 ui/issues/issue-9725.rs
 ui/issues/issue-9737.rs
 ui/issues/issue-9814.rs
@@ -3138,7 +3133,6 @@ ui/nll/user-annotations/issue-55241.rs
 ui/nll/user-annotations/issue-55748-pat-types-constrain-bindings.rs
 ui/nll/user-annotations/issue-57731-ascibed-coupled-types.rs
 ui/numbers-arithmetic/issue-8460.rs
-ui/on-unimplemented/issue-104140.rs
 ui/or-patterns/issue-64879-trailing-before-guard.rs
 ui/or-patterns/issue-67514-irrefutable-param.rs
 ui/or-patterns/issue-68785-irrefutable-param-with-at.rs

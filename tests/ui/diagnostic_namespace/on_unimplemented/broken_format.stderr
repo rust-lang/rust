@@ -1,52 +1,52 @@
 warning: unmatched `}` found
-  --> $DIR/broken_format.rs:2:32
+  --> $DIR/broken_format.rs:2:42
    |
 LL | #[diagnostic::on_unimplemented(message = "{{Test } thing")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: positional format arguments are not allowed here
-  --> $DIR/broken_format.rs:7:32
+  --> $DIR/broken_format.rs:7:49
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {}")]
-   |                                ^^^^^^^^^^^^^^^^^^^
+   |                                                 ^
    |
    = help: only named format arguments with the name of one of the generic types are allowed in this context
 
 warning: positional format arguments are not allowed here
-  --> $DIR/broken_format.rs:12:32
+  --> $DIR/broken_format.rs:12:49
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |                                                 ^
    |
    = help: only named format arguments with the name of one of the generic types are allowed in this context
 
 warning: invalid format specifier
-  --> $DIR/broken_format.rs:17:32
+  --> $DIR/broken_format.rs:17:42
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^^^
    |
    = help: no format specifier are supported in this position
 
 warning: expected `}`, found `!`
-  --> $DIR/broken_format.rs:22:32
+  --> $DIR/broken_format.rs:22:42
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^
 
 warning: unmatched `}` found
-  --> $DIR/broken_format.rs:22:32
+  --> $DIR/broken_format.rs:22:42
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^
 
 warning: unmatched `}` found
-  --> $DIR/broken_format.rs:2:32
+  --> $DIR/broken_format.rs:2:42
    |
 LL | #[diagnostic::on_unimplemented(message = "{{Test } thing")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
@@ -70,10 +70,10 @@ LL | fn check_1(_: impl ImportantTrait1) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_1`
 
 warning: positional format arguments are not allowed here
-  --> $DIR/broken_format.rs:7:32
+  --> $DIR/broken_format.rs:7:49
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {}")]
-   |                                ^^^^^^^^^^^^^^^^^^^
+   |                                                 ^
    |
    = help: only named format arguments with the name of one of the generic types are allowed in this context
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -98,10 +98,10 @@ LL | fn check_2(_: impl ImportantTrait2) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_2`
 
 warning: positional format arguments are not allowed here
-  --> $DIR/broken_format.rs:12:32
+  --> $DIR/broken_format.rs:12:49
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {1:}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^
+   |                                                 ^
    |
    = help: only named format arguments with the name of one of the generic types are allowed in this context
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -126,10 +126,10 @@ LL | fn check_3(_: impl ImportantTrait3) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_3`
 
 warning: invalid format specifier
-  --> $DIR/broken_format.rs:17:32
+  --> $DIR/broken_format.rs:17:42
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:123}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^^^
    |
    = help: no format specifier are supported in this position
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
@@ -154,18 +154,18 @@ LL | fn check_4(_: impl ImportantTrait4) {}
    |                    ^^^^^^^^^^^^^^^ required by this bound in `check_4`
 
 warning: expected `}`, found `!`
-  --> $DIR/broken_format.rs:22:32
+  --> $DIR/broken_format.rs:22:42
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unmatched `}` found
-  --> $DIR/broken_format.rs:22:32
+  --> $DIR/broken_format.rs:22:42
    |
 LL | #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

@@ -17,7 +17,7 @@ use ignore::Walk;
 const ENTRY_LIMIT: u32 = 901;
 // FIXME: The following limits should be reduced eventually.
 
-const ISSUES_ENTRY_LIMIT: u32 = 1631;
+const ISSUES_ENTRY_LIMIT: u32 = 1626;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
     "rs",     // test source files

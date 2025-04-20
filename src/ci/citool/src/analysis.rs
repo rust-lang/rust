@@ -8,9 +8,9 @@ use build_helper::metrics::{
 };
 
 use crate::github::JobInfoResolver;
-use crate::metrics;
 use crate::metrics::{JobMetrics, JobName, get_test_suites};
 use crate::utils::{output_details, pluralize};
+use crate::{metrics, utils};
 
 /// Outputs durations of individual bootstrap steps from the gathered bootstrap invocations,
 /// and also a table with summarized information about executed tests.
@@ -394,16 +394,15 @@ fn aggregate_tests(metrics: &JsonRoot) -> TestSuiteData {
             // Poor man's detection of doctests based on the "(line XYZ)" suffix
             let is_doctest = matches!(suite.metadata, TestSuiteMetadata::CargoPackage { .. })
                 && test.name.contains("(line");
-            let test_entry = Test { name: generate_test_name(&test.name), stage, is_doctest };
+            let test_entry = Test {
+                name: utils::normalize_path_delimiters(&test.name).to_string(),
+                stage,
+                is_doctest,
+            };
             tests.insert(test_entry, test.outcome.clone());
         }
     }
     TestSuiteData { tests }
-}
-
-/// Normalizes Windows-style path delimiters to Unix-style paths.
-fn generate_test_name(name: &str) -> String {
-    name.replace('\\', "/")
 }
 
 /// Prints test changes in Markdown format to stdout.

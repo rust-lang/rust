@@ -13,10 +13,10 @@ pub fn caller() {
 }
 
 // CHECK: declare x86_intrcc void @page_fault_handler(ptr {{.*}}, i64{{.*}}){{.*}}#[[ATTRS:[0-9]+]]
-#[naked]
+#[unsafe(naked)]
 #[no_mangle]
 pub extern "x86-interrupt" fn page_fault_handler(_: u64, _: u64) {
-    unsafe { core::arch::naked_asm!("ud2") };
+    core::arch::naked_asm!("ud2")
 }
 
 // CHECK: #[[ATTRS]] =

@@ -247,9 +247,9 @@ builtin_macros_multiple_defaults = multiple declared defaults
     .suggestion = make `{$ident}` default
 
 builtin_macros_naked_functions_testing_attribute =
-    cannot use `#[naked]` with testing attributes
+    cannot use `#[unsafe(naked)]` with testing attributes
     .label = function marked with testing attribute here
-    .naked_attribute = `#[naked]` is incompatible with testing attributes
+    .naked_attribute = `#[unsafe(naked)]` is incompatible with testing attributes
 
 builtin_macros_no_default_variant = `#[derive(Default)]` on enum with no `#[default]`
     .label = this enum needs a unit variant marked with `#[default]`

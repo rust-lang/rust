@@ -950,7 +950,7 @@ impl fmt::Debug for ArgsOs {
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
-    use crate::sys::env::os;
+    use crate::sys::env_consts::os;
 
     /// A string describing the architecture of the CPU that is currently in use.
     /// An example value may be: `"x86"`, `"arm"` or `"riscv64"`.

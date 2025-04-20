@@ -10,8 +10,8 @@ use std::arch::naked_asm;
 // CHECK-LABEL: naked_empty:
 #[repr(align(16))]
 #[no_mangle]
-#[naked]
-pub unsafe extern "C" fn naked_empty() {
+#[unsafe(naked)]
+pub extern "C" fn naked_empty() {
     // CHECK: ret
-    naked_asm!("ret");
+    naked_asm!("ret")
 }
