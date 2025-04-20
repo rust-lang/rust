@@ -84,10 +84,13 @@ fmodf128
 fmodf16
 frexp
 frexpf
+frexpf128
 hypot
 hypotf
 ilogb
 ilogbf
+ilogbf128
+ilogbf16
 j0
 j0f
 j1

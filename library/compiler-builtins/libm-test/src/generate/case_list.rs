@@ -460,11 +460,16 @@ fn fmodf16_cases() -> Vec<TestCase<op::fmodf16::Routine>> {
     vec![]
 }
 
+fn frexpf_cases() -> Vec<TestCase<op::frexpf::Routine>> {
+    vec![]
+}
+
 fn frexp_cases() -> Vec<TestCase<op::frexp::Routine>> {
     vec![]
 }
 
-fn frexpf_cases() -> Vec<TestCase<op::frexpf::Routine>> {
+#[cfg(f128_enabled)]
+fn frexpf128_cases() -> Vec<TestCase<op::frexpf128::Routine>> {
     vec![]
 }
 
@@ -476,11 +481,21 @@ fn hypotf_cases() -> Vec<TestCase<op::hypotf::Routine>> {
     vec![]
 }
 
-fn ilogb_cases() -> Vec<TestCase<op::ilogb::Routine>> {
+#[cfg(f16_enabled)]
+fn ilogbf16_cases() -> Vec<TestCase<op::ilogbf16::Routine>> {
     vec![]
 }
 
 fn ilogbf_cases() -> Vec<TestCase<op::ilogbf::Routine>> {
+    vec![]
+}
+
+fn ilogb_cases() -> Vec<TestCase<op::ilogb::Routine>> {
+    vec![]
+}
+
+#[cfg(f128_enabled)]
+fn ilogbf128_cases() -> Vec<TestCase<op::ilogbf128::Routine>> {
     vec![]
 }
 

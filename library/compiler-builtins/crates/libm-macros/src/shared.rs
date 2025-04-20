@@ -280,6 +280,17 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         public: true,
     },
     NestedOp {
+        // `(f16) -> i32`
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
+            args: &[Ty::F16],
+            returns: &[Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["ilogbf16"],
+        public: true,
+    },
+    NestedOp {
         // `(f32) -> i32`
         float_ty: FloatTy::F32,
         rust_sig: Signature {
@@ -299,6 +310,17 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
         },
         c_sig: None,
         fn_list: &["ilogb"],
+        public: true,
+    },
+    NestedOp {
+        // `(f128) -> i32`
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::I32],
+        },
+        c_sig: None,
+        fn_list: &["ilogbf128"],
         public: true,
     },
     NestedOp {
@@ -421,6 +443,20 @@ const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
             returns: &[Ty::F64],
         }),
         fn_list: &["frexp", "lgamma_r"],
+        public: true,
+    },
+    NestedOp {
+        // `(f128, &mut c_int) -> f128` as `(f128) -> (f128, i32)`
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
+            args: &[Ty::F128],
+            returns: &[Ty::F128, Ty::I32],
+        },
+        c_sig: Some(Signature {
+            args: &[Ty::F128, Ty::MutCInt],
+            returns: &[Ty::F128],
+        }),
+        fn_list: &["frexpf128"],
         public: true,
     },
     NestedOp {

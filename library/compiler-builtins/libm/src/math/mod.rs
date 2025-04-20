@@ -322,6 +322,7 @@ cfg_if! {
         pub use self::fminimum_fmaximum::{fmaximumf16, fminimumf16};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf16, fminimum_numf16};
         pub use self::fmod::fmodf16;
+        pub use self::ilogb::ilogbf16;
         pub use self::ldexp::ldexpf16;
         pub use self::rint::rintf16;
         pub use self::round::roundf16;
@@ -333,6 +334,9 @@ cfg_if! {
 
         #[allow(unused_imports)]
         pub(crate) use self::fma::fmaf16;
+
+        #[allow(unused_imports)]
+        pub(crate) use self::frexp::frexpf16;
     }
 }
 
@@ -349,6 +353,8 @@ cfg_if! {
         pub use self::fminimum_fmaximum::{fmaximumf128, fminimumf128};
         pub use self::fminimum_fmaximum_num::{fmaximum_numf128, fminimum_numf128};
         pub use self::fmod::fmodf128;
+        pub use self::frexp::frexpf128;
+        pub use self::ilogb::ilogbf128;
         pub use self::ldexp::ldexpf128;
         pub use self::rint::rintf128;
         pub use self::round::roundf128;

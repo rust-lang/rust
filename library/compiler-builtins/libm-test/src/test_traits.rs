@@ -456,3 +456,15 @@ impl_tuples!(
     (f32, f32);
     (f64, f64);
 );
+
+#[cfg(f16_enabled)]
+impl_tuples!(
+    (f16, i32);
+    (f16, f16);
+);
+
+#[cfg(f128_enabled)]
+impl_tuples!(
+    (f128, i32);
+    (f128, f128);
+);

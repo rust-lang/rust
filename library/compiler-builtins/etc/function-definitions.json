@@ -572,6 +572,13 @@
         ],
         "type": "f32"
     },
+    "frexpf128": {
+        "sources": [
+            "libm/src/math/frexp.rs",
+            "libm/src/math/generic/frexp.rs"
+        ],
+        "type": "f128"
+    },
     "hypot": {
         "sources": [
             "libm/src/math/hypot.rs"
@@ -597,6 +604,20 @@
             "libm/src/math/ilogb.rs"
         ],
         "type": "f32"
+    },
+    "ilogbf128": {
+        "sources": [
+            "libm/src/math/generic/ilogb.rs",
+            "libm/src/math/ilogb.rs"
+        ],
+        "type": "f128"
+    },
+    "ilogbf16": {
+        "sources": [
+            "libm/src/math/generic/ilogb.rs",
+            "libm/src/math/ilogb.rs"
+        ],
+        "type": "f16"
     },
     "j0": {
         "sources": [
