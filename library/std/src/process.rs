@@ -171,7 +171,7 @@ use crate::sys::process as imp;
 #[stable(feature = "command_access", since = "1.57.0")]
 pub use crate::sys_common::process::CommandEnvs;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
-use crate::{fmt, fs, str};
+use crate::{fmt, format_args_nl, fs, str};
 
 /// Representation of a running or exited child process.
 ///
