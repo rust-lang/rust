@@ -73,7 +73,7 @@ conversions! {
 }
 
 #[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.wasm.swizzle"]
     fn llvm_swizzle(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
 

@@ -1,7 +1,7 @@
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
-unsafe extern "C" {
+unsafe extern "unadjusted" {
     #[link_name = "llvm.wasm.memory.atomic.wait32"]
     fn llvm_atomic_wait_i32(ptr: *mut i32, exp: i32, timeout: i64) -> i32;
     #[link_name = "llvm.wasm.memory.atomic.wait64"]
