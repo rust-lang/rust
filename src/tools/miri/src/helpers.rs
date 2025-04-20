@@ -1382,6 +1382,11 @@ pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar {
 }
 
 pub(crate) fn simd_element_to_bool(elem: ImmTy<'_>) -> InterpResult<'_, bool> {
+    assert!(
+        matches!(elem.layout.ty.kind(), ty::Int(_) | ty::Uint(_)),
+        "SIMD mask element type must be an integer, but this is `{}`",
+        elem.layout.ty
+    );
     let val = elem.to_scalar().to_int(elem.layout.size)?;
     interp_ok(match val {
         0 => false,

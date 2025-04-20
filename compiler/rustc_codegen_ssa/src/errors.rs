@@ -1037,22 +1037,12 @@ pub enum InvalidMonomorphization<'tcx> {
         v_len: u64,
     },
 
-    #[diag(codegen_ssa_invalid_monomorphization_mask_type, code = E0511)]
-    #[note]
-    MaskType {
+    #[diag(codegen_ssa_invalid_monomorphization_mask_wrong_element_type, code = E0511)]
+    MaskWrongElementType {
         #[primary_span]
         span: Span,
         name: Symbol,
         ty: Ty<'tcx>,
-    },
-
-    #[diag(codegen_ssa_invalid_monomorphization_vector_argument, code = E0511)]
-    VectorArgument {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        in_ty: Ty<'tcx>,
-        in_elem: Ty<'tcx>,
     },
 
     #[diag(codegen_ssa_invalid_monomorphization_cannot_return, code = E0511)]
@@ -1075,15 +1065,6 @@ pub enum InvalidMonomorphization<'tcx> {
         in_elem: Ty<'tcx>,
         in_ty: Ty<'tcx>,
         mutability: ExpectedPointerMutability,
-    },
-
-    #[diag(codegen_ssa_invalid_monomorphization_third_arg_element_type, code = E0511)]
-    ThirdArgElementType {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        expected_element: Ty<'tcx>,
-        third_arg: Ty<'tcx>,
     },
 
     #[diag(codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size, code = E0511)]
