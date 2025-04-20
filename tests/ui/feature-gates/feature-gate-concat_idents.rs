@@ -1,3 +1,5 @@
+#![expect(deprecated)] // concat_idents is deprecated
+
 const XY_1: i32 = 10;
 
 fn main() {

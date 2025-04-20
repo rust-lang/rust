@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(repr_simd, core_intrinsics, concat_idents)]
+#![feature(repr_simd, core_intrinsics, macro_metavar_expr_concat)]
 #![allow(non_camel_case_types)]
 
 use std::intrinsics::simd::{simd_eq, simd_ge, simd_gt, simd_le, simd_lt, simd_ne};
@@ -19,7 +19,7 @@ macro_rules! cmp {
     ($method: ident($lhs: expr, $rhs: expr)) => {{
         let lhs = $lhs;
         let rhs = $rhs;
-        let e: u32x4 = concat_idents!(simd_, $method)($lhs, $rhs);
+        let e: u32x4 = ${concat(simd_, $method)}($lhs, $rhs);
         // assume the scalar version is correct/the behaviour we want.
         assert!((e.0[0] != 0) == lhs.0[0].$method(&rhs.0[0]));
         assert!((e.0[1] != 0) == lhs.0[1].$method(&rhs.0[1]));
