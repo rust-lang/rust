@@ -21,9 +21,10 @@ pub fn bar2<T: Read>(readable: T) {
 }
 
 pub fn bar() {
-    //@ has - '//a[@href="{{channel}}/core/sync/atomic/struct.AtomicIsize.html#method.new"]' 'AtomicIsize::new'
+    //@ has - '//a[@href="{{channel}}/core/sync/atomic/struct.AtomicIsize.html"]' 'AtomicIsize'
+    //@ has - '//a[@href="{{channel}}/core/sync/atomic/struct.AtomicIsize.html#method.new"]' 'new'
     let _ = AtomicIsize::new(0);
-    //@ has - '//a[@href="#48"]' 'local_private'
+    //@ has - '//a[@href="#49"]' 'local_private'
     local_private();
 }
 
@@ -39,7 +40,7 @@ pub fn macro_call() -> Result<(), ()> {
 }
 
 pub fn variant() {
-    //@ has - '//a[@href="{{channel}}/core/cmp/enum.Ordering.html#variant.Less"]' 'Ordering::Less'
+    //@ has - '//a[@href="{{channel}}/core/cmp/enum.Ordering.html#variant.Less"]' 'Less'
     let _ = Ordering::Less;
     //@ has - '//a[@href="{{channel}}/core/marker/struct.PhantomData.html"]' 'PhantomData'
     let _: PhantomData::<usize> = PhantomData;
