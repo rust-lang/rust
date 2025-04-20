@@ -1,7 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(slice_as_chunks)]
 #![feature(slice_partition_dedup)]
 #![feature(layout_for_ptr)]
 
@@ -227,7 +226,7 @@ fn test_for_invalidated_pointers() {
 
     buffer.reverse();
 
-    // Calls `fn as_chunks_unchecked_mut` internally (requires unstable `#![feature(slice_as_chunks)]`):
+    // Calls `fn as_chunks_unchecked_mut` internally:
     assert_eq!(2, buffer.as_chunks_mut::<32>().0.len());
     for chunk in buffer.as_chunks_mut::<32>().0 {
         for elem in chunk {
