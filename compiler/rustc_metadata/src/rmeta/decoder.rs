@@ -1489,6 +1489,17 @@ impl<'a> CrateMetadataRef<'a> {
         tcx.arena.alloc_from_iter(self.root.lang_items_missing.decode(self))
     }
 
+    fn get_exportable_items(self) -> impl Iterator<Item = DefId> {
+        self.root.exportable_items.decode(self).map(move |index| self.local_def_id(index))
+    }
+
+    fn get_stable_order_of_exportable_impls(self) -> impl Iterator<Item = (DefId, usize)> {
+        self.root
+            .stable_order_of_exportable_impls
+            .decode(self)
+            .map(move |v| (self.local_def_id(v.0), v.1))
+    }
+
     fn exported_symbols<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,

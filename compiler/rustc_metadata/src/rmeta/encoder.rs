@@ -673,6 +673,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let debugger_visualizers =
             stat!("debugger-visualizers", || self.encode_debugger_visualizers());
 
+        let exportable_items = stat!("exportable-items", || self.encode_exportable_items());
+
+        let stable_order_of_exportable_impls =
+            stat!("exportable-items", || self.encode_stable_order_of_exportable_impls());
+
         // Encode exported symbols info. This is prefetched in `encode_metadata`.
         let exported_symbols = stat!("exported-symbols", || {
             self.encode_exported_symbols(tcx.exported_symbols(LOCAL_CRATE))
@@ -740,6 +745,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 traits,
                 impls,
                 incoherent_impls,
+                exportable_items,
+                stable_order_of_exportable_impls,
                 exported_symbols,
                 interpret_alloc_index,
                 tables,
@@ -2147,6 +2154,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             .collect();
 
         self.lazy_array(&all_impls)
+    }
+
+    fn encode_exportable_items(&mut self) -> LazyArray<DefIndex> {
+        empty_proc_macro!(self);
+        self.lazy_array(self.tcx.exportable_items(LOCAL_CRATE).iter().map(|def_id| def_id.index))
+    }
+
+    fn encode_stable_order_of_exportable_impls(&mut self) -> LazyArray<(DefIndex, usize)> {
+        empty_proc_macro!(self);
+        let stable_order_of_exportable_impls =
+            self.tcx.stable_order_of_exportable_impls(LOCAL_CRATE);
+        self.lazy_array(
+            stable_order_of_exportable_impls.iter().map(|(def_id, idx)| (def_id.index, *idx)),
+        )
     }
 
     // Encodes all symbols exported from this crate into the metadata.
