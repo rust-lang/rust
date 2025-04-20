@@ -256,11 +256,26 @@
 //!
 //! ## Querying the variant
 //!
-//! The [`is_ok`] and [`is_err`] methods return [`true`] if the [`Result`]
-//! is [`Ok`] or [`Err`], respectively.
+//! The [`is_ok`] and [`is_err`] methods take the borrow of the [`Result`]
+//! and return [`true`] if the [`Result`] is [`Ok`] or [`Err`], respectively.
+//!
+//! The [`is_ok_and`] and [`is_err_and`] methods take ownership of the [`Result`]
+//! and apply the provided function to make a decision.
+//! The methods return the same boolean value as the function returns.
 //!
 //! [`is_err`]: Result::is_err
 //! [`is_ok`]: Result::is_ok
+//! [`is_ok_and`]: Result::is_ok_and
+//! [`is_err_and`]: Result::is_err_and
+//!
+//! ## Inspecting the variant
+//!
+//! The [`inspect`] and [`inspect_err`] methods take ownership of the [`Result`]
+//! and apply the provided function to the contained value by reference if [`Ok`]
+//! or [`Err`], respectively. And then, the [`Result`] is returned.
+//!
+//! [`inspect`]: Result::inspect
+//! [`inspect_err`]: Result::inspect_err
 //!
 //! ## Adapters for working with references
 //!
@@ -287,6 +302,7 @@
 //!   (which must implement the [`Default`] trait)
 //! * [`unwrap_or_else`] returns the result of evaluating the provided
 //!   function
+//! * [`unwrap_unchecked`] is *[undefined behavior]*
 //!
 //! The panicking methods [`expect`] and [`unwrap`] require `E` to
 //! implement the [`Debug`] trait.
@@ -297,6 +313,8 @@
 //! [`unwrap_or`]: Result::unwrap_or
 //! [`unwrap_or_default`]: Result::unwrap_or_default
 //! [`unwrap_or_else`]: Result::unwrap_or_else
+//! [`unwrap_unchecked`]: Result::unwrap_unchecked
+//! [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 //!
 //! These methods extract the contained value in a [`Result<T, E>`] when it
 //! is the [`Err`] variant. They require `T` to implement the [`Debug`]
@@ -304,10 +322,13 @@
 //!
 //! * [`expect_err`] panics with a provided custom message
 //! * [`unwrap_err`] panics with a generic message
+//! * [`unwrap_err_unchecked`] is *[undefined behavior]*
 //!
 //! [`Debug`]: crate::fmt::Debug
 //! [`expect_err`]: Result::expect_err
 //! [`unwrap_err`]: Result::unwrap_err
+//! [`unwrap_err_unchecked`]: Result::unwrap_err_unchecked
+//! [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 //!
 //! ## Transforming contained values
 //!
