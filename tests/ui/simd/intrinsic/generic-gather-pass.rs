@@ -9,8 +9,12 @@
 use std::intrinsics::simd::{simd_gather, simd_scatter};
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct x4<T>(pub [T; 4]);
+
+impl<T> x4<T> {
+    fn to_array(self) -> [T; 4] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 fn main() {
     let mut x = [0_f32, 1., 2., 3., 4., 5., 6., 7.];
@@ -27,7 +31,7 @@ fn main() {
 
         let r_strided = simd_gather(default, pointers, mask);
 
-        assert_eq!(r_strided, s_strided);
+        assert_eq!(r_strided.to_array(), s_strided.to_array());
     }
 
     // reading from *mut
@@ -38,7 +42,7 @@ fn main() {
 
         let r_strided = simd_gather(default, pointers, mask);
 
-        assert_eq!(r_strided, s_strided);
+        assert_eq!(r_strided.to_array(), s_strided.to_array());
     }
 
     // writing to *mut
@@ -76,7 +80,7 @@ fn main() {
 
         let r_strided = simd_gather(default, pointers, mask);
 
-        assert_eq!(r_strided, s_strided);
+        assert_eq!(r_strided.to_array(), s_strided.to_array());
     }
 
     // reading from *mut
@@ -87,7 +91,7 @@ fn main() {
 
         let r_strided = simd_gather(default, pointers, mask);
 
-        assert_eq!(r_strided, s_strided);
+        assert_eq!(r_strided.to_array(), s_strided.to_array());
     }
 
     // writing to *mut
