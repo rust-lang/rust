@@ -191,7 +191,7 @@ fn post_merge_report(db: JobDatabase, current: String, parent: String) -> anyhow
 
     output_details("Test dashboard", || {
         println!(
-            r#"\nRun
+            r#"Run
 
 ```bash
 cargo run --manifest-path src/ci/citool/Cargo.toml -- \
