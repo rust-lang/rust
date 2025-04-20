@@ -34,6 +34,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     ),
     (sym::sanitize, sym::cfg_sanitize, Features::cfg_sanitize),
     (sym::version, sym::cfg_version, Features::cfg_version),
+    (sym::os_version_min, sym::cfg_os_version_min, Features::cfg_os_version_min),
     (sym::relocation_model, sym::cfg_relocation_model, Features::cfg_relocation_model),
     (sym::sanitizer_cfi_generalize_pointers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
     (sym::sanitizer_cfi_normalize_integers, sym::cfg_sanitizer_cfi, Features::cfg_sanitizer_cfi),
