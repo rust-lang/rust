@@ -57,9 +57,11 @@ pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
         }
 
         let completion = deadline_queue
-            .read_channel_while_checking_deadlines(&completion_rx, |_id, test| {
-                listener.test_timed_out(test);
-            })
+            .read_channel_while_checking_deadlines(
+                &completion_rx,
+                |id| running_tests.contains_key(&id),
+                |_id, test| listener.test_timed_out(test),
+            )
             .expect("receive channel should never be closed early");
 
         let RunningTest { test, join_handle } = running_tests.remove(&completion.id).unwrap();
