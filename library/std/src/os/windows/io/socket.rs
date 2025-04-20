@@ -320,6 +320,7 @@ impl From<crate::net::TcpStream> for OwnedSocket {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedSocket> for crate::net::TcpStream {
+    /// Make a `TcpStream` from [`OwnedSocket`]s underlying socket.
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
         unsafe { Self::from_raw_socket(owned.into_raw_socket()) }
@@ -345,6 +346,7 @@ impl From<crate::net::TcpListener> for OwnedSocket {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedSocket> for crate::net::TcpListener {
+    /// Make a `TcpListener` from [`OwnedSocket`]s underlying socket.
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
         unsafe { Self::from_raw_socket(owned.into_raw_socket()) }
@@ -370,6 +372,7 @@ impl From<crate::net::UdpSocket> for OwnedSocket {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedSocket> for crate::net::UdpSocket {
+    /// Make a `UdpSocket` from [`OwnedSocket`]s underlying socket.
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
         unsafe { Self::from_raw_socket(owned.into_raw_socket()) }

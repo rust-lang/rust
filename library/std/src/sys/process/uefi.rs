@@ -208,6 +208,7 @@ impl Command {
 }
 
 impl From<AnonPipe> for Stdio {
+    /// Diverge the `Pipe`.
     fn from(pipe: AnonPipe) -> Stdio {
         pipe.diverge()
     }
@@ -299,6 +300,7 @@ impl ExitCode {
 }
 
 impl From<u8> for ExitCode {
+    /// Match `u8` to a `ExitCode` variant, 0 is `SUCCESS`, else is `FAILURE`.
     fn from(code: u8) -> Self {
         match code {
             0 => Self::SUCCESS,

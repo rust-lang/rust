@@ -7,6 +7,7 @@ macro_rules! from_transmute {
     };
     { @impl $from:ty => $to:ty } => {
         impl core::convert::From<$from> for $to {
+            #[doc = concat!("Transmute a `", stringify!($from), "` into a `", stringify!($to), "`")]
             #[inline]
             fn from(value: $from) -> $to {
                 // Safety: transmuting between vectors is safe, but the caller of this macro

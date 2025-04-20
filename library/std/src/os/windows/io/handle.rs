@@ -655,6 +655,7 @@ impl<T> AsHandle for crate::thread::JoinHandle<T> {
 
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl<T> From<crate::thread::JoinHandle<T>> for OwnedHandle {
+    /// Get the inner handle of `JoinHandle`.
     #[inline]
     fn from(join_handle: crate::thread::JoinHandle<T>) -> OwnedHandle {
         join_handle.into_inner().into_handle().into_inner()

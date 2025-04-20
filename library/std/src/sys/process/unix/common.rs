@@ -639,6 +639,7 @@ impl ExitCode {
 }
 
 impl From<u8> for ExitCode {
+    /// Take code by wrapping it in `ExitCode`.
     fn from(code: u8) -> Self {
         Self(code)
     }

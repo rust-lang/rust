@@ -253,6 +253,7 @@ pub enum PanicMessage {
 }
 
 impl From<Box<dyn Any + Send>> for PanicMessage {
+    /// Extract `String` or `&'static str` payloads if available or default to `Unknown`
     fn from(payload: Box<dyn Any + Send + 'static>) -> Self {
         if let Some(s) = payload.downcast_ref::<&'static str>() {
             return PanicMessage::StaticStr(s);
@@ -265,6 +266,7 @@ impl From<Box<dyn Any + Send>> for PanicMessage {
 }
 
 impl From<PanicMessage> for Box<dyn Any + Send> {
+    /// Wrap the inner message in a newly allocated `Box`.
     fn from(val: PanicMessage) -> Self {
         match val {
             PanicMessage::StaticStr(s) => Box::new(s),

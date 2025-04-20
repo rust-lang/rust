@@ -173,6 +173,7 @@ impl<W> IntoInnerError<W> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<W> From<IntoInnerError<W>> for Error {
+    /// Extracts the inner [`Error`]. Equivalent to [`into_error`](IntoInnerError::into_error).
     fn from(iie: IntoInnerError<W>) -> Error {
         iie.1
     }
