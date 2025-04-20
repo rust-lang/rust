@@ -29,7 +29,7 @@ fn int_range(_1: usize, _2: usize) -> () {
                     scope 8 (inlined <usize as Step>::forward_unchecked) {
                         debug start => _11;
                         debug n => const 1_usize;
-                        scope 9 (inlined core::num::<impl usize>::unchecked_add) {
+                        scope 9 (inlined #[track_caller] core::num::<impl usize>::unchecked_add) {
                             debug self => _11;
                             debug rhs => const 1_usize;
                             scope 10 (inlined core::ub_checks::check_language_ub) {
