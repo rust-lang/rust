@@ -1,0 +1,13 @@
+error[E0599]: cannot write into `MyStruct`
+  --> $DIR/writeln-fmt-method-error.rs:23:5
+   |
+LL |     writeln!(s, "Hello, world!");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: type does not implement the `write_fmt` method
+   = help: try adding `use std::fmt::Write;` or `use std::io::Write;` to bring the appropriate trait into scope
+   = note: this error originates in the macro `writeln` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.
