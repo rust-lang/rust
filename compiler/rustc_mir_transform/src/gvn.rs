@@ -1840,7 +1840,7 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
                 if self.reused_locals.contains(l) =>
             {
-                stmt.make_nop()
+                stmt.make_nop(false)
             }
             _ => self.super_statement(stmt, loc),
         }

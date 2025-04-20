@@ -54,7 +54,7 @@ impl<'tcx> crate::MirPass<'tcx> for RenameReturnPlace {
 
         // Clean up the `NOP`s we inserted for statements made useless by our renaming.
         for block_data in body.basic_blocks.as_mut_preserves_cfg() {
-            block_data.statements.retain(|stmt| stmt.kind != mir::StatementKind::Nop);
+            block_data.statements.retain(|stmt| stmt.kind != mir::StatementKind::Nop(None));
         }
 
         // Overwrite the debuginfo of `_0` with that of the renamed local.
@@ -170,7 +170,7 @@ impl<'tcx> MutVisitor<'tcx> for RenameToReturnPlace<'tcx> {
         // return place:
         //     _0 = _1
         if as_local_assigned_to_return_place(stmt) == Some(self.to_rename) {
-            stmt.kind = mir::StatementKind::Nop;
+            stmt.kind = mir::StatementKind::Nop(None);
             return;
         }
 
@@ -180,7 +180,7 @@ impl<'tcx> MutVisitor<'tcx> for RenameToReturnPlace<'tcx> {
             stmt.kind
         {
             if local == self.to_rename {
-                stmt.kind = mir::StatementKind::Nop;
+                stmt.kind = mir::StatementKind::Nop(None);
                 return;
             }
         }

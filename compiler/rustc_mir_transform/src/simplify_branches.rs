@@ -28,7 +28,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                     && let Some(constant) = c.const_.try_eval_bool(tcx, typing_env)
                 {
                     if constant {
-                        stmt.make_nop();
+                        stmt.make_nop(false);
                     } else {
                         block.statements.clear();
                         block.terminator_mut().kind = TerminatorKind::Unreachable;

@@ -156,7 +156,7 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
             mir::StatementKind::BackwardIncompatibleDropHint { .. } => {
                 stable_mir::mir::StatementKind::Nop
             }
-            mir::StatementKind::Nop => stable_mir::mir::StatementKind::Nop,
+            mir::StatementKind::Nop(..) => stable_mir::mir::StatementKind::Nop,
         }
     }
 }

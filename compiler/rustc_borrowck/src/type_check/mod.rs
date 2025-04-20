@@ -731,7 +731,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::Nop => {}
+            | StatementKind::Nop(_) => {}
             StatementKind::Intrinsic(box NonDivergingIntrinsic::CopyNonOverlapping(..))
             | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {

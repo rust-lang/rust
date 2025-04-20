@@ -82,7 +82,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
                 );
             }
             StatementKind::ConstEvalCounter
-            | StatementKind::Nop
+            | StatementKind::Nop(_)
             | StatementKind::Retag { .. }
             | StatementKind::Deinit(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }

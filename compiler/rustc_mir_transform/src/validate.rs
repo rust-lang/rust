@@ -342,7 +342,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::Nop => {}
+            | StatementKind::Nop(_) => {}
         }
 
         self.super_statement(statement, location);
@@ -1534,7 +1534,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::Nop => {}
+            | StatementKind::Nop(_) => {}
         }
 
         self.super_statement(statement, location);

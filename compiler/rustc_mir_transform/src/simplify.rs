@@ -296,7 +296,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
 
     fn strip_nops(&mut self) {
         for blk in self.basic_blocks.iter_mut() {
-            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop))
+            blk.statements.retain(|stmt| !matches!(stmt.kind, StatementKind::Nop(None)))
         }
     }
 }
@@ -534,7 +534,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
                 self.super_statement(statement, location);
             }
 
-            StatementKind::ConstEvalCounter | StatementKind::Nop => {}
+            StatementKind::ConstEvalCounter | StatementKind::Nop(_) => {}
 
             StatementKind::StorageLive(_local) | StatementKind::StorageDead(_local) => {}
 
@@ -588,7 +588,7 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     StatementKind::SetDiscriminant { place, .. }
                     | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
                     | StatementKind::Deinit(place) => used_locals.is_used(place.local),
-                    StatementKind::Nop => false,
+                    StatementKind::Nop(nop_stmt) => nop_stmt.is_some(),
                     _ => true,
                 };
 

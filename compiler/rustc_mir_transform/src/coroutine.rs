@@ -397,7 +397,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = s.kind
                 && self.remap.contains(l)
             {
-                s.make_nop();
+                s.make_nop(false);
             }
         }
 
@@ -1778,7 +1778,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
             | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::Nop => {}
+            | StatementKind::Nop(_) => {}
         }
     }
 

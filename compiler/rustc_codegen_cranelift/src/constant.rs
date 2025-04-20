@@ -591,7 +591,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::Coverage(_)
                         | StatementKind::ConstEvalCounter
                         | StatementKind::BackwardIncompatibleDropHint { .. }
-                        | StatementKind::Nop => {}
+                        | StatementKind::Nop(_) => {}
                     }
                 }
                 match &bb_data.terminator().kind {

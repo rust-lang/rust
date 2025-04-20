@@ -19,8 +19,14 @@ pub struct Statement<'tcx> {
 impl Statement<'_> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
-    pub fn make_nop(&mut self) {
-        self.kind = StatementKind::Nop
+    pub fn make_nop(&mut self, save_stmt: bool) {
+        if matches!(self.kind, StatementKind::Nop(_)) {
+            return;
+        }
+        let replaced_stmt = std::mem::replace(&mut self.kind, StatementKind::Nop(None));
+        if save_stmt {
+            self.kind = StatementKind::Nop(Some(Box::new(replaced_stmt)));
+        }
     }
 }
 
@@ -41,7 +47,7 @@ impl<'tcx> StatementKind<'tcx> {
             StatementKind::Coverage(..) => "Coverage",
             StatementKind::Intrinsic(..) => "Intrinsic",
             StatementKind::ConstEvalCounter => "ConstEvalCounter",
-            StatementKind::Nop => "Nop",
+            StatementKind::Nop(..) => "Nop",
             StatementKind::BackwardIncompatibleDropHint { .. } => "BackwardIncompatibleDropHint",
         }
     }

@@ -770,7 +770,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
                     state,
                 );
             }
-            StatementKind::Nop
+            StatementKind::Nop(_)
             | StatementKind::Retag { .. }
             | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {

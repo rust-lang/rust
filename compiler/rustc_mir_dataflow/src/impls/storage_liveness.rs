@@ -168,7 +168,7 @@ impl<'tcx> Analysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
             | StatementKind::Coverage(..)
             | StatementKind::FakeRead(..)
             | StatementKind::ConstEvalCounter
-            | StatementKind::Nop
+            | StatementKind::Nop(..)
             | StatementKind::Retag(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }

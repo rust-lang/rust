@@ -186,7 +186,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 // We don't track references.
             }
             StatementKind::ConstEvalCounter
-            | StatementKind::Nop
+            | StatementKind::Nop(_)
             | StatementKind::FakeRead(..)
             | StatementKind::PlaceMention(..)
             | StatementKind::Coverage(..)

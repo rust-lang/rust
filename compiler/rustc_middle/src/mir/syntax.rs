@@ -455,7 +455,7 @@ pub enum StatementKind<'tcx> {
     ConstEvalCounter,
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
-    Nop,
+    Nop(Option<Box<StatementKind<'tcx>>>),
 
     /// Marker statement indicating where `place` would be dropped.
     /// This is semantically equivalent to `Nop`, so codegen and MIRI should interpret this

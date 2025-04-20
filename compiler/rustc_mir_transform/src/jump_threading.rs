@@ -359,7 +359,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
             | StatementKind::ConstEvalCounter
             | StatementKind::PlaceMention(..)
             | StatementKind::BackwardIncompatibleDropHint { .. }
-            | StatementKind::Nop => None,
+            | StatementKind::Nop(_) => None,
         }
     }
 

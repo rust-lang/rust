@@ -344,7 +344,7 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
             } = place.as_ref()
             && let Some(&(_, _, true, _)) = self.field_remapping.get(&idx)
         {
-            statement.kind = mir::StatementKind::Nop;
+            statement.kind = mir::StatementKind::Nop(None);
         }
 
         self.super_statement(statement, location);

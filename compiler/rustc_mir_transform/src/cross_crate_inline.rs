@@ -111,7 +111,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Deinit(_)
-            | StatementKind::Nop => {}
+            | StatementKind::Nop(_) => {}
             _ => self.statements += 1,
         }
     }

@@ -15,7 +15,8 @@ impl<'tcx> crate::MirPass<'tcx> for RemovePlaceMention {
         trace!("Running RemovePlaceMention on {:?}", body.source);
         for data in body.basic_blocks.as_mut_preserves_cfg() {
             data.statements.retain(|statement| match statement.kind {
-                StatementKind::PlaceMention(..) | StatementKind::Nop => false,
+                StatementKind::PlaceMention(..) => false,
+                StatementKind::Nop(ref nop_stmt) => nop_stmt.is_some(),
                 _ => true,
             })
         }

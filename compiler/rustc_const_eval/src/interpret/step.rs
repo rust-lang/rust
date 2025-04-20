@@ -5,6 +5,7 @@
 use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_index::IndexSlice;
+use rustc_middle::mir::StatementKind;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
@@ -77,51 +78,53 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn eval_statement(&mut self, stmt: &mir::Statement<'tcx>) -> InterpResult<'tcx> {
         info!("{:?}", stmt);
 
-        use rustc_middle::mir::StatementKind::*;
-
         match &stmt.kind {
-            Assign(box (place, rvalue)) => self.eval_rvalue_into_place(rvalue, *place)?,
+            StatementKind::Assign(box (place, rvalue)) => {
+                self.eval_rvalue_into_place(rvalue, *place)?
+            }
 
-            SetDiscriminant { place, variant_index } => {
+            StatementKind::SetDiscriminant { place, variant_index } => {
                 let dest = self.eval_place(**place)?;
                 self.write_discriminant(*variant_index, &dest)?;
             }
 
-            Deinit(place) => {
+            StatementKind::Deinit(place) => {
                 let dest = self.eval_place(**place)?;
                 self.write_uninit(&dest)?;
             }
 
             // Mark locals as alive
-            StorageLive(local) => {
+            StatementKind::StorageLive(local) => {
                 self.storage_live(*local)?;
             }
 
             // Mark locals as dead
-            StorageDead(local) => {
+            StatementKind::StorageDead(local) => {
                 self.storage_dead(*local)?;
             }
 
             // No dynamic semantics attached to `FakeRead`; MIR
             // interpreter is solely intended for borrowck'ed code.
-            FakeRead(..) => {}
+            StatementKind::FakeRead(..) => {}
 
             // Stacked Borrows.
-            Retag(kind, place) => {
+            StatementKind::Retag(kind, place) => {
                 let dest = self.eval_place(**place)?;
                 M::retag_place_contents(self, *kind, &dest)?;
             }
 
-            Intrinsic(box intrinsic) => self.eval_nondiverging_intrinsic(intrinsic)?,
+            StatementKind::Intrinsic(box intrinsic) => {
+                self.eval_nondiverging_intrinsic(intrinsic)?
+            }
 
             // Evaluate the place expression, without reading from it.
-            PlaceMention(box place) => {
+            StatementKind::PlaceMention(box place) => {
                 let _ = self.eval_place(*place)?;
             }
 
             // This exists purely to guide borrowck lifetime inference, and does not have
             // an operational effect.
-            AscribeUserType(..) => {}
+            StatementKind::AscribeUserType(..) => {}
 
             // Currently, Miri discards Coverage statements. Coverage statements are only injected
             // via an optional compile time MIR pass and have no side effects. Since Coverage
@@ -134,18 +137,18 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // following issue:
             //
             // FIXME(#73156): Handle source code coverage in const eval
-            Coverage(..) => {}
+            StatementKind::Coverage(..) => {}
 
-            ConstEvalCounter => {
+            StatementKind::ConstEvalCounter => {
                 M::increment_const_eval_counter(self)?;
             }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
-            Nop => {}
+            StatementKind::Nop(_) => {}
 
             // Only used for temporary lifetime lints
-            BackwardIncompatibleDropHint { .. } => {}
+            StatementKind::BackwardIncompatibleDropHint { .. } => {}
         }
 
         interp_ok(())

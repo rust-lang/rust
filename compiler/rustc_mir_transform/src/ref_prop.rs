@@ -409,7 +409,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'tcx> {
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
                 if self.storage_to_remove.contains(l) =>
             {
-                stmt.make_nop();
+                stmt.make_nop(false);
             }
             // Do not remove assignments as they may still be useful for debuginfo.
             _ => self.super_statement(stmt, loc),

@@ -98,7 +98,7 @@ impl RemoveNoopLandingPads {
                 | StatementKind::Coverage(..)
                 | StatementKind::ConstEvalCounter
                 | StatementKind::BackwardIncompatibleDropHint { .. }
-                | StatementKind::Nop => {
+                | StatementKind::Nop(_) => {
                     // These are all noops in a landing pad
                 }
 

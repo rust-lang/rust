@@ -128,7 +128,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             }
             StatementKind::Coverage(_)
             | StatementKind::Intrinsic(_)
-            | StatementKind::Nop
+            | StatementKind::Nop(_)
             | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::ConstEvalCounter => None,
         };
@@ -136,7 +136,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             && let ty = place_for_ty.ty(self.local_decls, self.tcx).ty
             && self.known_to_be_zst(ty)
         {
-            statement.make_nop();
+            statement.make_nop(false);
         } else {
             self.super_statement(statement, loc);
         }

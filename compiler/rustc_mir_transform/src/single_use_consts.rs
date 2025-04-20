@@ -50,7 +50,7 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
             let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
             let init_statement_kind = std::mem::replace(
                 &mut basic_blocks[init_loc.block].statements[init_loc.statement_index].kind,
-                StatementKind::Nop,
+                StatementKind::Nop(None),
             );
             let StatementKind::Assign(place_and_rvalue) = init_statement_kind else {
                 bug!("No longer an assign?");
