@@ -169,22 +169,50 @@ pub(super) fn get_sdk_root(sess: &Session) -> Option<PathBuf> {
             Some(path)
         }
         Err(err) => {
-            let mut diag = sess.dcx().create_err(err);
+            if sess.host.os == "macos" {
+                // On host macOS, we require the SDK to be available, either via the `SDKROOT` env
+                // var, or from the invocation of `xcrun`.
+                let mut diag = sess.dcx().create_err(err);
 
-            // Recognize common error cases, and give more Rust-specific error messages for those.
-            if let Some(developer_dir) = xcode_select_developer_dir() {
-                diag.arg("developer_dir", &developer_dir);
-                diag.note(fluent::codegen_ssa_xcrun_found_developer_dir);
-                if developer_dir.as_os_str().to_string_lossy().contains("CommandLineTools") {
-                    if sdk_name != "MacOSX" {
-                        diag.help(fluent::codegen_ssa_xcrun_command_line_tools_insufficient);
+                // Recognize common error cases, and give more Rust-specific error messages for those.
+                if let Some(developer_dir) = xcode_select_developer_dir() {
+                    diag.arg("developer_dir", &developer_dir);
+                    diag.note(fluent::codegen_ssa_xcrun_found_developer_dir);
+                    if developer_dir.as_os_str().to_string_lossy().contains("CommandLineTools") {
+                        if sdk_name != "MacOSX" {
+                            diag.help(fluent::codegen_ssa_xcrun_command_line_tools_insufficient);
+                        }
                     }
+                } else {
+                    diag.help(fluent::codegen_ssa_xcrun_no_developer_dir);
                 }
+
+                diag.emit();
             } else {
-                diag.help(fluent::codegen_ssa_xcrun_no_developer_dir);
+                // When cross-compiling from e.g. Linux, while the `xcrun` binary _may_ sometimes be
+                // provided as a shim by a cross-compilation helper tool, it usually isn't.
+                //
+                // In that case, we treat failing to find and/or invoke the `xcrun` binary as a
+                // warning, allow the SDK to be missing, and assume that the compiler driver
+                // / linker is properly configured to be able to link with an internal SDK (like in
+                // `zig cc`).
+                let mut diag = sess.dcx().create_warn(err);
+
+                diag.note(fluent::codegen_ssa_xcrun_cross_about);
+                diag.help(fluent::codegen_ssa_xcrun_cross_env_var);
+                diag.help(fluent::codegen_ssa_xcrun_cross_download_sdk);
+
+                if sess.opts.cg.linker.is_none() {
+                    diag.warn(fluent::codegen_ssa_xcrun_cross_linker_not_explicitly_set);
+                }
+
+                if sess.target.os != "macos" {
+                    diag.warn(fluent::codegen_ssa_xcrun_cross_ill_supported_target);
+                }
+
+                diag.emit();
             }
 
-            diag.emit();
             None
         }
     }
@@ -209,6 +237,8 @@ fn xcrun_show_sdk_path(
     sdk_name: &'static str,
     verbose: bool,
 ) -> Result<(PathBuf, String), XcrunError> {
+    // Intentionally invoke the `xcrun` in PATH (e.g. nixpkgs provides an `xcrun` shim, so we don't
+    // want to require `/usr/bin/xcrun`).
     let mut cmd = Command::new("xcrun");
     if verbose {
         cmd.arg("--verbose");
@@ -280,7 +310,7 @@ fn stdout_to_path(mut stdout: Vec<u8>) -> PathBuf {
     }
     #[cfg(unix)]
     let path = <OsString as std::os::unix::ffi::OsStringExt>::from_vec(stdout);
-    #[cfg(not(unix))] // Unimportant, this is only used on macOS
-    let path = OsString::from(String::from_utf8(stdout).unwrap());
+    #[cfg(not(unix))] // Not so important, this is mostly used on macOS
+    let path = OsString::from(String::from_utf8(stdout).expect("stdout must be UTF-8"));
     PathBuf::from(path)
 }
