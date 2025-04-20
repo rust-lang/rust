@@ -1,4 +1,4 @@
-# Procedures for Breaking Changes
+# Procedures for breaking changes
 
 <!-- toc -->
 

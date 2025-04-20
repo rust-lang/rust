@@ -1,4 +1,4 @@
-# Suggested Workflows
+# Suggested workflows
 
 The full bootstrapping process takes quite a while. Here are some suggestions to
 make your life easier.

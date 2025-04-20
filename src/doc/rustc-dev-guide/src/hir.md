@@ -144,7 +144,7 @@ that `n` must be some HIR expression, you can do
 Finally, you can find the parents of nodes, via
 calls like [`tcx.parent_hir_node(n)`][parent_hir_node].
 
-[get_parent_item]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.parent_hir_node
+[parent_hir_node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.parent_hir_node
 
 
 ## HIR Bodies

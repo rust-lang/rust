@@ -1,4 +1,4 @@
-# Contribution Procedures
+# Contribution procedures
 
 <!-- toc -->
 
@@ -149,6 +149,20 @@ when contributing to Rust under [the git section](./git.md).
 [development-models]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/getting-started/about-collaborative-development-models#fork-and-pull-model
 [t-compiler]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 [triagebot]: https://github.com/rust-lang/rust/blob/master/triagebot.toml
+
+### Keeping your branch up-to-date
+
+The CI in rust-lang/rust applies your patches directly against the current master,
+not against the commit your branch is based on. This can lead to unexpected failures
+if your branch is outdated, even when there are no explicit merge conflicts.
+
+Before submitting or updating a PR, make sure to update your branch
+as mentioned [here](git.md#keeping-things-up-to-date) if it's significantly
+behind the master branch (e.g., more than 100 commits behind).
+This fetches the latest master branch and rebases your changes on top of it,
+ensuring your PR is tested against the latest code.
+
+After rebasing, it's recommended to [run the relevant tests locally](tests/intro.md) to catch any issues before CI runs.
 
 ### r?
 
@@ -346,7 +360,7 @@ function in the same way as other pull requests.
 [`src/doc`]: https://github.com/rust-lang/rust/tree/master/src/doc
 [std-root]: https://github.com/rust-lang/rust/blob/master/library/std/src/lib.rs#L1
 
-To find documentation-related issues, sort by the [A-docs label].
+To find documentation-related issues, use the [A-docs label].
 
 You can find documentation style guidelines in [RFC 1574].
 
@@ -373,7 +387,7 @@ Just a few things to keep in mind:
   There is no strict limit on line lengths; let the sentence or part of the sentence flow to its proper end on the same line.
 
 - When contributing text to the guide, please contextualize the information with some time period
-  and/or a reason so that the reader knows how much to trust or mistrust the information.
+  and/or a reason so that the reader knows how much to trust the information.
   Aim to provide a reasonable amount of context, possibly including but not limited to:
 
   - A reason for why the data may be out of date other than "change",
@@ -387,28 +401,28 @@ Just a few things to keep in mind:
     - jan 2021
     - january 2021
 
-    There is a CI action (in `~/.github/workflows/date-check.yml`)
-    that generates a monthly showing those that are over 6 months old
+    There is a CI action (in `.github/workflows/date-check.yml`)
+    that generates a monthly report showing those that are over 6 months old
     ([example](https://github.com/rust-lang/rustc-dev-guide/issues/2052)).
 
     For the action to pick the date,
     add a special annotation before specifying the date:
 
     ```md
-    <!-- date-check --> Sep 2024
+    <!-- date-check --> Apr 2025
     ```
 
     Example:
 
     ```md
-    As of <!-- date-check --> Sep 2024, the foo did the bar.
+    As of <!-- date-check --> Apr 2025, the foo did the bar.
     ```
 
     For cases where the date should not be part of the visible rendered output,
     use the following instead:
 
     ```md
-    <!-- date-check: Sep 2024 -->
+    <!-- date-check: Apr 2025 -->
     ```
 
   - A link to a relevant WG, tracking issue, `rustc` rustdoc page, or similar, that may provide

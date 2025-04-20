@@ -1,4 +1,3 @@
-
 # Coherence
 
 > NOTE: this is based on [notes by @lcnr](https://github.com/rust-lang/rust/pull/121848)

@@ -1,3 +1,5 @@
+# Coding conventions
+
 This file offers some tips on the coding conventions for rustc. This
 chapter covers [formatting](#formatting), [coding for correctness](#cc),
 [using crates from crates.io](#cio), and some tips on
@@ -5,7 +7,7 @@ chapter covers [formatting](#formatting), [coding for correctness](#cc),
 
 <a id="formatting"></a>
 
-# Formatting and the tidy script
+## Formatting and the tidy script
 
 rustc is moving towards the [Rust standard coding style][fmt].
 
@@ -20,44 +22,42 @@ Formatting is checked by the `tidy` script. It runs automatically when you do
 `./x test` and can be run in isolation with `./x fmt --check`.
 
 If you want to use format-on-save in your editor, the pinned version of
-`rustfmt` is built under `build/<target>/stage0/bin/rustfmt`. You'll have to
-pass the <!-- date-check: nov 2022 --> `--edition=2021` argument yourself when calling
-`rustfmt` directly.
+`rustfmt` is built under `build/<target>/stage0/bin/rustfmt`.
 
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs
-
 [`rustfmt`]:https://github.com/rust-lang/rustfmt
 
-## Formatting C++ code
+### Formatting C++ code
 
 The compiler contains some C++ code for interfacing with parts of LLVM that
 don't have a stable C API.
 When modifying that code, use this command to format it:
 
-```sh
-./x test tidy --extra-checks=cpp:fmt --bless
+```console
+./x test tidy --extra-checks cpp:fmt --bless
 ```
 
 This uses a pinned version of `clang-format`, to avoid relying on the local
 environment.
 
-## Formatting and linting Python code
+### Formatting and linting Python code
 
 The Rust repository contains quite a lot of Python code. We try to keep
-it both linted and formatted by the [ruff][ruff] tool.
+it both linted and formatted by the [ruff] tool.
 
 When modifying Python code, use this command to format it:
-```sh
-./x test tidy --extra-checks=py:fmt --bless
+
+```console
+./x test tidy --extra-checks py:fmt --bless
 ```
 
-and the following command to run lints:
-```sh
-./x test tidy --extra-checks=py:lint
+And, the following command to run lints:
+
+```console
+./x test tidy --extra-checks py:lint
 ```
 
-This uses a pinned version of `ruff`, to avoid relying on the local
-environment.
+These use a pinned version of `ruff`, to avoid relying on the local environment.
 
 [ruff]: https://github.com/astral-sh/ruff
 
@@ -65,7 +65,7 @@ environment.
 
 <!-- REUSE-IgnoreStart -->
 <!-- Prevent REUSE from interpreting the heading as a copyright notice -->
-## Copyright notice
+### Copyright notice
 <!-- REUSE-IgnoreEnd -->
 
 In the past, files began with a copyright and license notice. Please **omit**
@@ -75,41 +75,42 @@ MIT/Apache-2.0).
 All of the copyright notices should be gone by now, but if you come across one
 in the rust-lang/rust repo, feel free to open a PR to remove it.
 
-## Line length
+### Line length
 
 Lines should be at most 100 characters. It's even better if you can
 keep things to 80.
 
-**Ignoring the line length limit.** Sometimes – in particular for
-tests – it can be necessary to exempt yourself from this limit. In
-that case, you can add a comment towards the top of the file like so:
+Sometimes, and particularly for tests, it can be necessary to exempt yourself from this limit.
+In that case, you can add a comment towards the top of the file like so:
 
 ```rust
 // ignore-tidy-linelength
 ```
 
-## Tabs vs spaces
+### Tabs vs spaces
 
-Prefer 4-space indent.
+Prefer 4-space indents.
 
 <a id="cc"></a>
 
-# Coding for correctness
+## Coding for correctness
 
 Beyond formatting, there are a few other tips that are worth
 following.
 
-## Prefer exhaustive matches
+### Prefer exhaustive matches
 
 Using `_` in a match is convenient, but it means that when new
 variants are added to the enum, they may not get handled correctly.
 Ask yourself: if a new variant were added to this enum, what's the
 chance that it would want to use the `_` code, versus having some
 other treatment? Unless the answer is "low", then prefer an
-exhaustive match. (The same advice applies to `if let` and `while
-let`, which are effectively tests for a single variant.)
+exhaustive match.
 
-## Use "TODO" comments for things you don't want to forget
+The same advice applies to `if let` and `while let`,
+which are effectively tests for a single variant.
+
+### Use "TODO" comments for things you don't want to forget
 
 As a useful tool to yourself, you can insert a `// TODO` comment
 for something that you want to get back to before you land your PR:
@@ -136,13 +137,13 @@ if foo {
 
 <a id="cio"></a>
 
-# Using crates from crates.io
+## Using crates from crates.io
 
 See the [crates.io dependencies][crates] section.
 
 <a id="er"></a>
 
-# How to structure your PR
+## How to structure your PR
 
 How you prepare the commits in your PR can make a big difference for the
 reviewer. Here are some tips.
@@ -172,7 +173,7 @@ require that every intermediate commit successfully builds – we only
 expect to be able to bisect at a PR level. However, if you *can* make
 individual commits build, that is always helpful.
 
-# Naming conventions
+## Naming conventions
 
 Apart from normal Rust style/naming conventions, there are also some specific
 to the compiler.

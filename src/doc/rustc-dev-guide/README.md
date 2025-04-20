@@ -43,13 +43,13 @@ rustdocs][rustdocs].
 To build a local static HTML site, install [`mdbook`](https://github.com/rust-lang/mdBook) with:
 
 ```
-> cargo install mdbook mdbook-linkcheck2 mdbook-toc mdbook-mermaid
+cargo install mdbook mdbook-linkcheck2 mdbook-toc mdbook-mermaid
 ```
 
 and execute the following command in the root of the repository:
 
 ```
-> mdbook build --open
+mdbook build --open
 ```
 
 The build files are found in the `book/html` directory.
@@ -61,8 +61,8 @@ checking is **not** run by default locally, though it is in CI. To enable it
 locally, set the environment variable `ENABLE_LINKCHECK=1` like in the
 following example.
 
-```console
-$ ENABLE_LINKCHECK=1 mdbook serve
+```
+ENABLE_LINKCHECK=1 mdbook serve
 ```
 
 ### Table of Contents
@@ -86,14 +86,14 @@ Older versions of `josh-proxy` may not round trip commits losslessly so it is im
 1) Checkout a new branch that will be used to create a PR into `rust-lang/rustc-dev-guide`
 2) Run the pull command
     ```
-    $ cargo run --manifest-path josh-sync/Cargo.toml rustc-pull
+    cargo run --manifest-path josh-sync/Cargo.toml rustc-pull
     ```
 3) Push the branch to your fork and create a PR into `rustc-dev-guide`
 
 ### Push changes from this repository into `rust-lang/rust`
 1) Run the push command to create a branch named `<branch-name>` in a `rustc` fork under the `<gh-username>` account
     ```
-    $ cargo run --manifest-path josh-sync/Cargo.toml rustc-push <branch-name> <gh-username>
+    cargo run --manifest-path josh-sync/Cargo.toml rustc-push <branch-name> <gh-username>
     ```
 2) Create a PR from `<branch-name>` into `rust-lang/rust`
 
@@ -106,5 +106,5 @@ You may observe "Nothing to pull" even if you *know* rustc-pull has something to
 To minimize the likelihood of this happening, you may wish to keep a separate *minimal* git config that *only* has `[user]` entries from global git config, then repoint system git to use the minimal git config instead. E.g.
 
 ```
-$ GIT_CONFIG_GLOBAL=/path/to/minimal/gitconfig GIT_CONFIG_SYSTEM='' cargo +stable run --manifest-path josh-sync/Cargo.toml -- rustc-pull
+GIT_CONFIG_GLOBAL=/path/to/minimal/gitconfig GIT_CONFIG_SYSTEM='' cargo +stable run --manifest-path josh-sync/Cargo.toml -- rustc-pull
 ```

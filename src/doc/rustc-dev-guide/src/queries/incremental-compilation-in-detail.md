@@ -1,4 +1,4 @@
-# Incremental Compilation In Detail
+# Incremental Compilation in detail
 
 <!-- toc -->
 

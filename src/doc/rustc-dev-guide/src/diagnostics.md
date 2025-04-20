@@ -1,4 +1,4 @@
-# Errors and Lints
+# Errors and lints
 
 <!-- toc -->
 
@@ -772,7 +772,7 @@ store.register_renamed("single_use_lifetime", "single_use_lifetimes");
 [`store.register_removed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_removed
 [`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
 
-### Lint Groups
+### Lint groups
 
 Lints can be turned on in groups. These groups are declared in the
 [`register_builtins`][rbuiltins] function in [`rustc_lint::lib`][builtin]. The

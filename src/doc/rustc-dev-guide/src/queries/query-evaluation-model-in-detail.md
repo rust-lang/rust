@@ -1,4 +1,4 @@
-# The Query Evaluation Model in Detail
+# The Query Evaluation Model in detail
 
 <!-- toc -->
 

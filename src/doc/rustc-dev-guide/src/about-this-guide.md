@@ -3,33 +3,41 @@
 This guide is meant to help document how rustc – the Rust compiler – works,
 as well as to help new contributors get involved in rustc development.
 
-There are seven parts to this guide:
+There are several parts to this guide:
 
-1. [Building `rustc`][p1]:
+1. [Building and debugging `rustc`][p1]:
    Contains information that should be useful no matter how you are contributing,
    about building, debugging, profiling, etc.
-2. [Contributing to `rustc`][p2]:
+1. [Contributing to Rust][p2]:
    Contains information that should be useful no matter how you are contributing,
    about procedures for contribution, using git and Github, stabilizing features, etc.
-3. [High-Level Compiler Architecture][p3]:
+1. [Bootstrapping][p3]:
+   Describes how the Rust compiler builds itself using previous versions, including
+   an introduction to the bootstrap process and debugging methods.
+1. [High-level Compiler Architecture][p4]:
    Discusses the high-level architecture of the compiler and stages of the compile process.
-4. [Source Code Representation][p4]:
+1. [Source Code Representation][p5]:
    Describes the process of taking raw source code from the user
    and transforming it into various forms that the compiler can work with easily.
-5. [Analysis][p5]:
-   discusses the analyses that the compiler uses to check various properties of the code
+1. [Supporting Infrastructure][p6]:
+   Covers command-line argument conventions, compiler entry points like rustc_driver and
+   rustc_interface, and the design and implementation of errors and lints.
+1. [Analysis][p7]:
+   Discusses the analyses that the compiler uses to check various properties of the code
    and inform later stages of the compile process (e.g., type checking).
-6. [From MIR to Binaries][p6]: How linked executable machine code is generated.
-7. [Appendices][p7] at the end with useful reference information.
+1. [MIR to Binaries][p8]: How linked executable machine code is generated.
+1. [Appendices][p9] at the end with useful reference information.
    There are a few of these with different information, including a glossary.
 
 [p1]: ./building/how-to-build-and-run.html
 [p2]: ./contributing.md
-[p3]: ./part-2-intro.md
-[p4]: ./part-3-intro.md
-[p5]: ./part-4-intro.md
-[p6]: ./part-5-intro.md
-[p7]: ./appendix/background.md
+[p3]: ./building/bootstrapping/intro.md
+[p4]: ./part-2-intro.md
+[p5]: ./part-3-intro.md
+[p6]: ./cli.md
+[p7]: ./part-4-intro.md
+[p8]: ./part-5-intro.md
+[p9]: ./appendix/background.md
 
 ### Constant change
 

@@ -221,7 +221,7 @@ There are a couple of things that may happen for some PRs during the review proc
   some merge conflicts with other PRs that happen to get merged first. You
   should fix these merge conflicts using the normal git procedures.
 
-[crater]: ./tests/intro.html#crater
+[crater]: ./tests/crater.html
 
 If you are not doing a new feature or something like that (e.g. if you are
 fixing a bug), then that's it! Thanks for your contribution :)
