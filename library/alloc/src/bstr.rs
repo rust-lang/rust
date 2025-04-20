@@ -213,7 +213,6 @@ impl Default for ByteString {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<ByteString> for Vec<u8> {
-    /// Return the inner `Vec` of the byte string.
     #[inline]
     fn from(s: ByteString) -> Self {
         s.0

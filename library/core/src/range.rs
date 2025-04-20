@@ -187,7 +187,6 @@ impl<T> IntoBounds<T> for Range<T> {
 
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<Range<T>> for legacy::Range<T> {
-    /// Make a new `legacy::Range` with the same start and end as `Range`
     #[inline]
     fn from(value: Range<T>) -> Self {
         Self { start: value.start, end: value.end }
@@ -195,7 +194,6 @@ impl<T> From<Range<T>> for legacy::Range<T> {
 }
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<legacy::Range<T>> for Range<T> {
-    /// Make a new `Range` with the same start and end as `legacy::Range`
     #[inline]
     fn from(value: legacy::Range<T>) -> Self {
         Self { start: value.start, end: value.end }
@@ -365,7 +363,6 @@ impl<T> IntoBounds<T> for RangeInclusive<T> {
 
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
-    /// Make a new `legacy::RangeInclusive` with the same start and end as `RangeInclusive`
     #[inline]
     fn from(value: RangeInclusive<T>) -> Self {
         Self::new(value.start, value.end)
@@ -373,7 +370,6 @@ impl<T> From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
 }
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
-    /// Make a new `RangeInclusive` with the same start and end as `legacy::RangeInclusive`
     #[inline]
     fn from(value: legacy::RangeInclusive<T>) -> Self {
         assert!(
@@ -511,7 +507,6 @@ impl<T> IntoBounds<T> for RangeFrom<T> {
 
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<RangeFrom<T>> for legacy::RangeFrom<T> {
-    /// Make a new `legacy::RangeFrom` with the same start as `RangeFrom`
     #[inline]
     fn from(value: RangeFrom<T>) -> Self {
         Self { start: value.start }
@@ -519,7 +514,6 @@ impl<T> From<RangeFrom<T>> for legacy::RangeFrom<T> {
 }
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<legacy::RangeFrom<T>> for RangeFrom<T> {
-    /// Make a new `RangeFrom` with the same start as `legacy::RangeFrom`
     #[inline]
     fn from(value: legacy::RangeFrom<T>) -> Self {
         Self { start: value.start }
