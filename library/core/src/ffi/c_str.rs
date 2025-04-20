@@ -150,7 +150,6 @@ impl Error for FromBytesWithNulError {
 /// within the slice.
 ///
 /// This error is created by the [`CStr::from_bytes_until_nul`] method.
-///
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub struct FromBytesUntilNulError(());
@@ -166,6 +165,15 @@ impl fmt::Display for FromBytesUntilNulError {
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\"{}\"", self.to_bytes().escape_ascii())
+    }
+}
+
+/// Behaves as if `self` were first lossily converted to a `str`, with
+/// invalid UTF-8 presented as the Unicode replacement character: �.
+#[stable(feature = "cstr_display", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Display for CStr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(crate::bstr::ByteStr::from_bytes(self.to_bytes()), f)
     }
 }
 
