@@ -85,6 +85,12 @@ error: variable `Foo` should have a snake case name
 LL |     fn in_param(Foo: foo::Foo) {}
    |                 ^^^ help: convert the identifier to snake case (notice the capitalization): `foo`
 
-error: aborting due to 9 previous errors; 3 warnings emitted
+error: variable `CamelCase` should have a snake case name
+  --> $DIR/lint-uppercase-variables.rs:38:15
+   |
+LL |     let _: fn(CamelCase: i32);
+   |               ^^^^^^^^^ help: convert the identifier to snake case: `camel_case`
+
+error: aborting due to 10 previous errors; 3 warnings emitted
 
 For more information about this error, try `rustc --explain E0170`.
