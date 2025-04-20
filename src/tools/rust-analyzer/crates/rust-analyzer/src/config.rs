@@ -921,10 +921,10 @@ impl Config {
             tracing::info!("updating config from JSON: {:#}", json);
 
             if !(json.is_null() || json.as_object().is_some_and(|it| it.is_empty())) {
-                let mut json_errors = vec![];
                 let detached_files = get_field_json::<Vec<Utf8PathBuf>>(
                     &mut json,
-                    &mut json_errors,
+                    // Do not record errors here; it is not an error if a field is missing here.
+                    &mut Vec::new(),
                     "detachedFiles",
                     None,
                 )
@@ -935,15 +935,16 @@ impl Config {
 
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
-                let mut json_errors = vec![];
                 let snips = get_field_json::<FxIndexMap<String, SnippetDef>>(
                     &mut json,
-                    &mut json_errors,
+                    // Do not record errors here; it is not an error if a field is missing here.
+                    &mut Vec::new(),
                     "completion_snippets_custom",
                     None,
                 )
                 .unwrap_or(self.completion_snippets_custom().to_owned());
 
+                let mut json_errors = vec![];
                 // IMPORTANT : This holds as long as ` completion_snippets_custom` is declared `client`.
                 config.snippets.clear();
 
