@@ -4,11 +4,13 @@
 // that macro code is not falsely seen as coming from a different file in dep-info.
 // See https://github.com/rust-lang/rust/issues/36625
 
+//@ needs-crate-type: proc-macro
+
 use run_make_support::{diff, rustc, target};
 
 fn main() {
     rustc().input("foo.rs").run();
-    rustc().input("bar.rs").target(target()).emit("dep-info").run();
+    rustc().input("bar.rs").emit("dep-info").run();
     // The emitted file should not contain "proc-macro source".
     diff().expected_file("correct.d").actual_file("bar.d").run();
 }

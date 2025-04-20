@@ -5,6 +5,8 @@
 // Without the --cfg flag, there should be a single -ltesta, no more, no less.
 // See https://github.com/rust-lang/rust/pull/84794
 
+//@ ignore-cross-compile (exercises host linker)
+
 use std::fmt::Write;
 
 use run_make_support::{is_msvc, rustc};

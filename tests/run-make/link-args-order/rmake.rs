@@ -3,6 +3,8 @@
 // checks that linker arguments remain intact and in the order they were originally passed in.
 // See https://github.com/rust-lang/rust/pull/70665
 
+//@ ignore-cross-compile (exercises host linker)
+
 use run_make_support::{is_msvc, rustc};
 
 fn main() {

@@ -4,6 +4,8 @@
 // It comes from #39987 which implements this RFC for the #[used] attribute:
 // https://rust-lang.github.io/rfcs/2386-used.html
 
+//@ ignore-cross-compile (cross-compile targets can produce artifacts `object` can't yet parse)
+
 use run_make_support::rustc;
 use run_make_support::symbols::any_symbol_contains;
 

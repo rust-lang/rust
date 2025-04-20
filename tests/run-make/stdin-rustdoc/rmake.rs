@@ -1,3 +1,5 @@
+//@ ignore-cross-compile (need to run doctests)
+
 //! This test checks rustdoc `-` (stdin) handling
 
 use std::path::PathBuf;

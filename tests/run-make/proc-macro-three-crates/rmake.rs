@@ -5,6 +5,8 @@
 // This was fixed in #37846, and this test checks
 // that this bug does not make a resurgence.
 
+//@ needs-crate-type: proc-macro
+
 use run_make_support::{bare_rustc, cwd, rust_lib_name, rustc};
 
 fn main() {

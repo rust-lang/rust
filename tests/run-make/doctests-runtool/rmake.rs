@@ -1,5 +1,7 @@
 // Tests behavior of rustdoc `--runtool`.
 
+//@ ignore-cross-compile (attempts to run the doctests)
+
 use std::path::PathBuf;
 
 use run_make_support::rfs::{create_dir, remove_dir_all};
