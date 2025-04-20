@@ -887,11 +887,34 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
+    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: HirId, _: Span) {
+        match qpath {
+            hir::QPath::Resolved(maybe_qself, path) => {
+                if let Some(qself) = maybe_qself {
+                    // FIXME: Actually properly determine the OLD for the self ty!
+                    let scope = Scope::ObjectLifetimeDefault { lifetime: None, s: self.scope };
+                    self.with(scope, |this| this.visit_ty_unambig(qself));
+                }
+                self.visit_path(path, id);
+            }
+            hir::QPath::TypeRelative(qself, segment) => {
+                // Resolving object lifetime defaults for type-relative paths requires type-dependent
+                // resolution which we don't do here.
+                // FIXME: How feasible would it be to track type-dependent defs here in RBVs?
+                let scope = Scope::ObjectLifetimeDefault { lifetime: None, s: self.scope };
+                self.with(scope, |this| {
+                    this.visit_ty_unambig(qself);
+                    this.visit_path_segment(segment)
+                });
+            }
+            hir::QPath::LangItem(..) => {}
+        }
+    }
+
     fn visit_path(&mut self, path: &hir::Path<'tcx>, hir_id: HirId) {
-        for (i, segment) in path.segments.iter().enumerate() {
-            let depth = path.segments.len() - i - 1;
+        for (index, segment) in path.segments.iter().enumerate() {
             if let Some(args) = segment.args {
-                self.visit_segment_args(path.res, depth, args);
+                self.visit_segment_args(path, index, args);
             }
         }
         if let Res::Def(DefKind::TyParam | DefKind::ConstParam, param_def_id) = path.res {
@@ -1611,8 +1634,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn visit_segment_args(
         &mut self,
-        res: Res,
-        depth: usize,
+        path: &hir::Path<'tcx>,
+        index: usize,
         generic_args: &'tcx hir::GenericArgs<'tcx>,
     ) {
         if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
@@ -1626,19 +1649,23 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        // Figure out if this is a type/trait segment,
-        // which requires object lifetime defaults.
-        let type_def_id = match res {
-            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(self.tcx.parent(def_id)),
-            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(self.tcx.parent(def_id)),
-            Res::Def(
-                DefKind::Struct
-                | DefKind::Union
-                | DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Trait,
-                def_id,
-            ) if depth == 0 => Some(def_id),
+        // Figure out if this is a type/trait segment, which requires object lifetime defaults.
+        let depth = path.segments.len() - index - 1;
+        let type_def_id = match (path.res, depth) {
+            (Res::Def(DefKind::AssocTy, def_id), 1) => Some(self.tcx.parent(def_id)),
+            (Res::Def(DefKind::Variant, def_id), 0) => Some(self.tcx.parent(def_id)),
+            (
+                Res::Def(
+                    DefKind::Struct
+                    | DefKind::Union
+                    | DefKind::Enum
+                    | DefKind::TyAlias
+                    | DefKind::Trait
+                    | DefKind::AssocTy,
+                    def_id,
+                ),
+                0,
+            ) => Some(def_id),
             _ => None,
         };
 
@@ -1683,9 +1710,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let rbv = &self.rbv;
             let generics = self.tcx.generics_of(def_id);
 
-            // `type_def_id` points to an item, so there is nothing to inherit generics from.
-            debug_assert_eq!(generics.parent_count, 0);
-
             let set_to_region = |set: ObjectLifetimeDefault| match set {
                 ObjectLifetimeDefault::Empty => {
                     if in_body {
@@ -1696,12 +1720,31 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
                 ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
                 ObjectLifetimeDefault::Param(param_def_id) => {
-                    // This index can be used with `generic_args` since `parent_count == 0`.
-                    let index = generics.param_def_id_to_index[&param_def_id] as usize;
-                    generic_args.args.get(index).and_then(|arg| match arg {
-                        GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
-                        _ => None,
-                    })
+                    fn param_to_depth_and_index(
+                        generics: &ty::Generics,
+                        tcx: TyCtxt<'_>,
+                        def_id: DefId,
+                    ) -> (usize, usize) {
+                        if let Some(&index) = generics.param_def_id_to_index.get(&def_id) {
+                            let has_self = generics.parent.is_none() && generics.has_self;
+                            (0, index as usize - generics.parent_count - has_self as usize)
+                        } else if let Some(parent) = generics.parent {
+                            let parent = tcx.generics_of(parent);
+                            let (index, depth) = param_to_depth_and_index(parent, tcx, def_id);
+                            (depth + 1, index)
+                        } else {
+                            unreachable!()
+                        }
+                    }
+
+                    let (depth, index) = param_to_depth_and_index(generics, self.tcx, param_def_id);
+                    path.segments[path.segments.len() - depth - 1]
+                        .args
+                        .and_then(|args| args.args.get(index))
+                        .and_then(|arg| match arg {
+                            GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
+                            _ => None,
+                        })
                 }
                 ObjectLifetimeDefault::Ambiguous => None,
             };

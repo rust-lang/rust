@@ -1994,6 +1994,8 @@ impl<'tcx> ContainerTy<'_, 'tcx> {
         match self {
             Self::Ref(region) => ObjectLifetimeDefault::Arg(region),
             Self::Regular { ty: container, args, arg: index } => {
+                // FIXME: Update this to handle AssocTys.
+
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum

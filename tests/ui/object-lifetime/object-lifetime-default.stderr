@@ -1,10 +1,10 @@
-error: BaseDefault
+error: Empty
   --> $DIR/object-lifetime-default.rs:5:5
    |
 LL |     T,
    |     ^
 
-error: BaseDefault
+error: Empty
   --> $DIR/object-lifetime-default.rs:11:5
    |
 LL |     T,
