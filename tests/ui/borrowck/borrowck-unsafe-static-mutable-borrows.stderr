@@ -1,4 +1,4 @@
-warning: creating a mutable reference to mutable static is discouraged
+warning: creating a mutable reference to mutable static
   --> $DIR/borrowck-unsafe-static-mutable-borrows.rs:19:30
    |
 LL |         let sfoo: *mut Foo = &mut SFOO;
