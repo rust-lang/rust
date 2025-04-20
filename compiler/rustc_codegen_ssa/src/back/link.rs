@@ -2001,7 +2001,7 @@ fn add_linked_symbol_object(
         return;
     }
 
-    let Some(mut file) = super::metadata::create_object_file(sess) else {
+    let Some(mut file) = super::metadata::create_object_file(sess, true) else {
         return;
     };
 

@@ -200,7 +200,10 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
     }
 }
 
-pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
+pub(crate) fn create_object_file(
+    sess: &Session,
+    set_subsections_via_symbols: bool,
+) -> Option<write::Object<'static>> {
     let endianness = match sess.target.options.endian {
         Endian::Little => Endianness::Little,
         Endian::Big => Endianness::Big,
@@ -220,6 +223,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         }
 
         file.set_macho_build_version(macho_object_build_version_for_target(sess))
+    }
+    if binary_format == BinaryFormat::MachO {
+        if set_subsections_via_symbols {
+            file.set_subsections_via_symbols();
+        }
     }
     if binary_format == BinaryFormat::Coff {
         // Disable the default mangler to avoid mangling the special "@feat.00" symbol name.
@@ -455,7 +463,7 @@ pub(crate) fn create_wrapper_file(
     section_name: String,
     data: &[u8],
 ) -> (Vec<u8>, MetadataPosition) {
-    let Some(mut file) = create_object_file(sess) else {
+    let Some(mut file) = create_object_file(sess, false) else {
         if sess.target.is_like_wasm {
             return (
                 create_metadata_file_for_wasm(sess, data, &section_name),
@@ -543,7 +551,7 @@ pub fn create_compressed_metadata_file(
     packed_metadata.write_all(&(metadata.stub_or_full().len() as u64).to_le_bytes()).unwrap();
     packed_metadata.extend(metadata.stub_or_full());
 
-    let Some(mut file) = create_object_file(sess) else {
+    let Some(mut file) = create_object_file(sess, false) else {
         if sess.target.is_like_wasm {
             return create_metadata_file_for_wasm(sess, &packed_metadata, ".rustc");
         }
