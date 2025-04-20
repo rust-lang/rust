@@ -2090,12 +2090,11 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::read_volatile requires that the pointer argument is aligned and non-null",
+            "ptr::read_volatile requires that the pointer argument is aligned",
             (
                 addr: *const () = src as *const (),
                 align: usize = align_of::<T>(),
-                is_zst: bool = T::IS_ZST,
-            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
+            ) => ub_checks::maybe_is_aligned(addr, align)
         );
         intrinsics::volatile_load(src)
     }
@@ -2170,12 +2169,11 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     unsafe {
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::write_volatile requires that the pointer argument is aligned and non-null",
+            "ptr::write_volatile requires that the pointer argument is aligned",
             (
                 addr: *mut () = dst as *mut (),
                 align: usize = align_of::<T>(),
-                is_zst: bool = T::IS_ZST,
-            ) => ub_checks::maybe_is_aligned_and_not_null(addr, align, is_zst)
+            ) => ub_checks::maybe_is_aligned(addr, align)
         );
         intrinsics::volatile_store(dst, src);
     }
