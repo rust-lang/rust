@@ -31,9 +31,12 @@ are built for NetBSD 9.x, although some exceptions exist (some
 are built for NetBSD 8.x but also work on newer OS versions).
 
 
-## Designated Developers
+## Target Maintainers
 
-- [@he32](https://github.com/he32), `he@NetBSD.org`
+[@he32](https://github.com/he32)
+
+Further contacts:
+
 - [NetBSD/pkgsrc-wip's rust](https://github.com/NetBSD/pkgsrc-wip/blob/master/rust185/Makefile) maintainer (see MAINTAINER variable). This package is part of "pkgsrc work-in-progress" and is used for deployment and testing of new versions of rust
 - [NetBSD's pkgsrc lang/rust](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust) for the "proper" package in pkgsrc.
 - [NetBSD's pkgsrc lang/rust-bin](https://github.com/NetBSD/pkgsrc/tree/trunk/lang/rust-bin) which re-uses the bootstrap kit as a binary distribution and therefore avoids the rather protracted native build time of rust itself
@@ -46,7 +49,7 @@ bug reporting system.
 The `x86_64-unknown-netbsd` artifacts is being distributed by the
 rust project.
 
-The other targets are built by the designated developers (see above),
+The other targets are built by the target maintainers (see above),
 and the targets are initially cross-compiled, but many if not most
 of them are also built natively as part of testing.
 

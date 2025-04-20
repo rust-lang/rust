@@ -6,13 +6,13 @@ ARM targets for the [RTEMS realtime operating system](https://www.rtems.org)  us
 
 ## Target maintainers
 
-- [@thesummer](https://github.com/thesummer)
+[@thesummer](https://github.com/thesummer)
 
 ## Requirements
 
 The target does not support host tools. Only cross-compilation is possible.
 The cross-compiler toolchain can be obtained by following the installation instructions
-of the [RTEMS Documentation](https://docs.rtems.org/branches/master/user/index.html). Additionally to the cross-compiler also a compiled BSP
+of the [RTEMS Documentation](https://docs.rtems.org/docs/main/user/index.html). Additionally to the cross-compiler also a compiled BSP
 for a board fitting the architecture needs to be available on the host.
 Currently tested has been the BSP `xilinx_zynq_a9_qemu` of RTEMS 6.
 
@@ -49,4 +49,4 @@ While basic execution of the unit test harness seems to work. However, running t
 ## Cross-compilation toolchains and C code
 
 Compatible C-code can be built with the RTEMS cross-compiler toolchain `arm-rtems6-gcc`.
-For more information how to build the toolchain, RTEMS itself and RTEMS applications please have a look at the [RTEMS Documentation](https://docs.rtems.org/branches/master/user/index.html).
+For more information how to build the toolchain, RTEMS itself and RTEMS applications please have a look at the [RTEMS Documentation](https://docs.rtems.org/docs/main/user/index.html).
