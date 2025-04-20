@@ -1,9 +1,10 @@
-//@ revisions: all strong basic none missing
+//@ revisions: all strong basic none missing rusty
 //@ assembly-output: emit-asm
 //@ only-windows
 //@ only-msvc
 //@ ignore-32bit 64-bit table based SEH has slightly different behaviors than classic SEH
 //@ [all] compile-flags: -Z stack-protector=all
+//@ [rusty] compile-flags: -Z stack-protector=rusty
 //@ [strong] compile-flags: -Z stack-protector=strong
 //@ [basic] compile-flags: -Z stack-protector=basic
 //@ [none] compile-flags: -Z stack-protector=none
@@ -21,6 +22,8 @@ pub fn emptyfn() {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: array_char
@@ -39,6 +42,8 @@ pub fn array_char(f: fn(*const char)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 // CHECK-LABEL: array_u8_1
@@ -55,6 +60,8 @@ pub fn array_u8_1(f: fn(*const u8)) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 // CHECK-LABEL: array_u8_small:
@@ -72,6 +79,8 @@ pub fn array_u8_small(f: fn(*const u8)) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 // CHECK-LABEL: array_u8_large:
@@ -88,6 +97,8 @@ pub fn array_u8_large(f: fn(*const u8)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 #[derive(Copy, Clone)]
@@ -107,6 +118,8 @@ pub fn array_bytesizednewtype_9(f: fn(*const ByteSizedNewtype)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 // CHECK-LABEL: local_var_addr_used_indirectly
@@ -134,6 +147,8 @@ pub fn local_var_addr_used_indirectly(f: fn(bool)) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 // CHECK-LABEL: local_string_addr_taken
@@ -172,6 +187,8 @@ pub fn local_string_addr_taken(f: fn(&String)) {
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
+    // rusty-NOT: __security_check_cookie
+
     // CHECK-DAG: .seh_endproc
 }
 
@@ -202,6 +219,9 @@ pub fn local_var_addr_taken_used_locally_only(factory: fn() -> i32, sink: fn(i32
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // FIXME: rusty stack smash protection needs to support inline scenario detection
+    // rusty: __security_check_cookie
 }
 
 pub struct Gigastruct {
@@ -239,6 +259,9 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // FIXME: How does the rust compiler handle moves of large structures?
+    // rusty-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: local_large_var_cloned
@@ -268,6 +291,9 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // basic: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // FIXME: How does the rust compiler handle moves of large structures?
+    // rusty-NOT: __security_check_cookie
 }
 
 extern "C" {
@@ -308,6 +334,11 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // FIXME: Rusty thinks a function that returns a mutable raw pointer may
+    // be a stack memory allocation function, so it performs stack smash protection.
+    // Is it possible to optimize the heuristics?
+    // rusty: __security_check_cookie
 }
 
 // CHECK-LABEL: alloca_large_compile_time_constant_arg
@@ -320,6 +351,8 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 // CHECK-LABEL: alloca_dynamic_arg
@@ -332,6 +365,8 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty: __security_check_cookie
 }
 
 // The question then is: in what ways can Rust code generate array-`alloca`
@@ -364,6 +399,8 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
     // basic-NOT: __security_check_cookie
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty-NOT: __security_check_cookie
 }
 
 // CHECK-LABEL: unsized_local
@@ -388,4 +425,6 @@ pub fn unsized_local(s: &[u8], l: bool, f: fn(&mut [u8])) {
 
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
+
+    // rusty-NOT: __security_check_cookie
 }
