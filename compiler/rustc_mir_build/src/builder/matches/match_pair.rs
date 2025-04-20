@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use rustc_hir::ByRef;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -260,7 +261,13 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::Deref { ref subpattern } => {
+            PatKind::Deref { ref subpattern }
+            | PatKind::DerefPattern { ref subpattern, borrow: ByRef::No } => {
+                if cfg!(debug_assertions) && matches!(pattern.kind, PatKind::DerefPattern { .. }) {
+                    // Only deref patterns on boxes can be lowered using a built-in deref.
+                    debug_assert!(pattern.ty.is_box());
+                }
+
                 MatchPairTree::for_pattern(
                     place_builder.deref(),
                     subpattern,
@@ -271,7 +278,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
 
-            PatKind::DerefPattern { ref subpattern, mutability } => {
+            PatKind::DerefPattern { ref subpattern, borrow: ByRef::Yes(mutability) } => {
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
                 let temp = cx.temp(
