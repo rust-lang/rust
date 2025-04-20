@@ -973,7 +973,7 @@ where
     /// Returns an array of length `N` with the results of each query. For soundness, at most one
     /// mutable reference will be returned to any value. `None` will be used if the key is missing.
     ///
-    /// This method performs a check to ensure there are no duplicate keys, which has time-complexity O(n^2),
+    /// This method performs a check to ensure there are no duplicate keys, which currently has a time-complexity of O(n^2),
     /// so be careful when passing many keys.
     ///
     /// # Panics
