@@ -1,5 +1,5 @@
 #![warn(clippy::declare_interior_mutable_const)]
-
+#![allow(interior_mutable_consts)]
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::Display;
