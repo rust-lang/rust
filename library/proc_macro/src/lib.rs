@@ -513,13 +513,13 @@ impl Span {
     }
 
     /// Creates an empty span pointing to directly before this span.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
     pub fn start(&self) -> Span {
         Span(self.0.start())
     }
 
     /// Creates an empty span pointing to directly after this span.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
     pub fn end(&self) -> Span {
         Span(self.0.end())
     }
@@ -527,7 +527,7 @@ impl Span {
     /// The one-indexed line of the source file where the span starts.
     ///
     /// To obtain the line of the span's end, use `span.end().line()`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
     pub fn line(&self) -> usize {
         self.0.line()
     }
@@ -535,7 +535,7 @@ impl Span {
     /// The one-indexed column of the source file where the span starts.
     ///
     /// To obtain the column of the span's end, use `span.end().column()`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_location", since = "CURRENT_RUSTC_VERSION")]
     pub fn column(&self) -> usize {
         self.0.column()
     }
