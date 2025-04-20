@@ -22,11 +22,15 @@ use crate::fmt;
 ///
 /// Initialization is dynamically performed on the first call to a setter (e.g.
 /// [`with`]) within a thread, and values that implement [`Drop`] get
-/// destructed when a thread exits. Some caveats apply, which are explained below.
+/// destructed when a thread exits. Some platform-specific caveats apply, which
+/// are explained below.
+/// Note that, should the destructor panics, the whole process will be [aborted].
 ///
 /// A `LocalKey`'s initializer cannot recursively depend on itself. Using a
 /// `LocalKey` in this way may cause panics, aborts or infinite recursion on
 /// the first call to `with`.
+///
+/// [aborted]: crate::process::abort
 ///
 /// # Single-thread Synchronization
 ///
