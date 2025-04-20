@@ -118,6 +118,8 @@ use crate::sys_common::{FromInner, IntoInner};
 /// | SOLID     | `get_tim`                                                            |
 /// | WASI      | [__wasi_clock_time_get (Monotonic Clock)]                            |
 /// | Windows   | [QueryPerformanceCounter]                                            |
+/// | Android   | [clock_gettime (Boottime Clock)]                                     |
+/// | Fuchsia   | [zx_clock_get_boot]                                                  |
 ///
 /// [currently]: crate::io#platform-specific-behavior
 /// [QueryPerformanceCounter]: https://docs.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
@@ -125,6 +127,8 @@ use crate::sys_common::{FromInner, IntoInner};
 /// [timekeeping in SGX]: https://edp.fortanix.com/docs/concepts/rust-std/#codestdtimecode
 /// [__wasi_clock_time_get (Monotonic Clock)]: https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#clock_time_get
 /// [clock_gettime (Monotonic Clock)]: https://linux.die.net/man/3/clock_gettime
+/// [clock_gettime (Boottime Clock)]: https://linux.die.net/man/2/clock_gettime
+/// [zx_clock_get_boot]: https://fuchsia.dev/reference/syscalls/clock_get_boot
 ///
 /// **Disclaimer:** These system calls might change over time.
 ///

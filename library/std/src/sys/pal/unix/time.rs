@@ -275,7 +275,11 @@ impl Instant {
         // we preserve this value domain out of an abundance of caution.
         #[cfg(target_vendor = "apple")]
         const clock_id: libc::clockid_t = libc::CLOCK_UPTIME_RAW;
-        #[cfg(not(target_vendor = "apple"))]
+        // Instant is intended to progress forward during periods of suspension
+        // in both Android and Fuchsia, and therefore uses CLOCK_BOOTTIME.
+        #[cfg(any(target_os = "android", target_os = "fuchsia"))]
+        const clock_id: libc::clockid_t = libc::CLOCK_BOOTTIME;
+        #[cfg(not(any(target_vendor = "apple", target_os = "fuchsia", target_os = "android")))]
         const clock_id: libc::clockid_t = libc::CLOCK_MONOTONIC;
         Instant { t: Timespec::now(clock_id) }
     }
