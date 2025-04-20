@@ -1,0 +1,87 @@
+name: Build and Diff Projects
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+      - reproducible
+
+jobs:
+  build_and_compare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'  # Adjust to the version you need
+
+      - name: Build and store buildA binaries
+        run: |
+          mkdir ../buildA
+          cp -r "$(pwd)" ../buildA
+          pushd ../buildA
+          SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
+          $SOURCE_DIR/configure --set rust.channel=nightly
+          $SOURCE_DIR/x.py build --stage 2 -j$(($(nproc)*2/3))
+          rm -rf $SOURCE_DIR
+          STAGE2_DIR=`find build -name stage2`
+          cp -r "$STAGE2_DIR" .
+          echo "Contents stage 2 dir : `ls stage2`"
+          rm -rf build
+          popd
+
+      - name: Build and store buildA_extended binaries
+        run: |
+          mkdir ../buildA_extended
+          cp -r "$(pwd)" ../buildA_extended
+          pushd ../buildA_extended
+          SOURCE_DIR=$(dirname $(find . -maxdepth 2  -name x.py))
+          $SOURCE_DIR/configure --set rust.channel=nightly
+          $SOURCE_DIR/x.py build --stage 2 -j$(($(nproc)*2/3))
+          rm -rf $SOURCE_DIR
+          STAGE2_DIR=`find build -name stage2`
+          cp -r "$STAGE2_DIR" .
+          echo "Contents stage 2 dir : `ls stage2`"
+          rm -rf build
+          popd
+
+      - name: Compare builds and archive artifacts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y diffoscope
+          # Ensure the directories exist
+          if [[ ! -d "../buildA" || ! -d "../buildA_extended" ]]; then
+            echo "Error: Build directories not found!"
+            exit 1
+          fi
+
+          # Perform a diff between the two builds
+          diffoscope ../buildA/stage2 ../buildA_extended/stage2 > diffoscope_output.txt || echo "Differences found!"
+
+          tar -czf buildA.tar.gz ../buildA
+          tar -czf buildA_extended.tar.gz ../buildA_extended
+
+      - name: Upload diffoscope output
+        uses: actions/upload-artifact@v4
+        with:
+          name: diffoscope-report
+          path: diffoscope_output.txt
+
+      - name: Upload buildA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildA
+          path: buildA.tar.gz
+
+      - name: Upload buildA_extended artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildA_extended
+          path: buildA_extended.tar.gz
