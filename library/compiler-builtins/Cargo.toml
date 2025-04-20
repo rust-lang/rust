@@ -5,6 +5,7 @@ members = [
     "compiler-builtins",
     "crates/libm-macros",
     "crates/musl-math-sys",
+    "crates/panic-handler",
     "crates/util",
     "libm",
     "libm-test",
