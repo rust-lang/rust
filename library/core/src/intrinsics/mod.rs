@@ -1497,6 +1497,7 @@ pub const fn forget<T: ?Sized>(_: T);
 /// Turning raw bytes (`[u8; SZ]`) into `u32`, `f64`, etc.:
 ///
 /// ```
+/// # #![cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
 /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
 ///
 /// let num = unsafe {

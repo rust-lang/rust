@@ -1,6 +1,6 @@
 #![feature(no_core, unboxed_closures)]
 #![no_core]
-#![allow(dead_code)]
+#![allow(dead_code, unnecessary_transmutes)]
 
 extern crate mini_core;
 
