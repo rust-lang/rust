@@ -1160,12 +1160,39 @@ fn frexpf128_cases() -> Vec<TestCase<op::frexpf128::Routine>> {
     cases![]
 }
 
-fn hypot_cases() -> Vec<TestCase<op::hypot::Routine>> {
+fn hypotf_cases() -> Vec<TestCase<op::hypotf::Routine>> {
     cases![]
 }
 
-fn hypotf_cases() -> Vec<TestCase<op::hypotf::Routine>> {
-    cases![]
+fn hypot_cases() -> Vec<TestCase<op::hypot::Routine>> {
+    cases![
+        // Cases that can overflow exponent if wrapping arithmetic is not used
+        (
+            (
+                hf64!("-0x1.800f800f80100p+1023"),
+                hf64!("0x1.8354835473720p+996"),
+            ),
+            None
+        ),
+        (
+            (hf64!("0x1.201b201b201c0p+0"), hf64!("0x1.b028b028b02a0p-1")),
+            None
+        ),
+        (
+            (
+                hf64!("-0x1.e538e538e564p+980"),
+                hf64!("-0x1.c4dfc4dfc508p+983"),
+            ),
+            None
+        ),
+        (
+            (
+                hf64!("-0x1.2f22e4f77aa58p+983"),
+                hf64!("-0x1.44c9f5524c8ccp+980"),
+            ),
+            None
+        ),
+    ]
 }
 
 #[cfg(f16_enabled)]

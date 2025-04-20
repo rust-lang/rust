@@ -75,6 +75,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
 
         // Operations that aren't required to be exact, but our implementations are.
         Bn::Cbrt => 0,
+        Bn::Hypot if ctx.fn_ident == Id::Hypot => 0,
 
         // Bessel functions have large inaccuracies.
         Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 | Bn::Jn | Bn::Yn => 8_000_000,
@@ -143,6 +144,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
             Id::Cbrt => ulp = 1,
+            Id::Hypot => ulp = 1,
             Id::Log1p => ulp = 2,
             Id::Log1pf => ulp = 2,
             Id::Tan => ulp = 2,
@@ -170,6 +172,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
             Id::Exp10f if cfg!(x86_no_sse2) => ulp = 4,
             Id::Exp2f => ulp = 1,
             Id::Expf => ulp = 1,
+            Id::Hypot => ulp = 1,
             Id::Tanh => ulp = 4,
             Id::Tanhf => ulp = 4,
             _ => (),
