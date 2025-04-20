@@ -5,7 +5,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_session::Session;
 
-use crate::check_pointers::{BorrowCheckMode, PointerCheck, check_pointers};
+use crate::check_pointers::{BorrowedFieldProjectionMode, PointerCheck, check_pointers};
 
 pub(super) struct CheckAlignment;
 
@@ -22,15 +22,15 @@ impl<'tcx> crate::MirPass<'tcx> for CheckAlignment {
         // Skip trivially aligned place types.
         let excluded_pointees = [tcx.types.bool, tcx.types.i8, tcx.types.u8];
 
-        // We have to exclude borrows here: in `&x.field`, the exact
-        // requirement is that the final reference must be aligned, but
-        // `check_pointers` would check that `x` is aligned, which would be wrong.
+        // When checking the alignment of references to field projections (`&(*ptr).a`),
+        // we need to make sure that the reference is aligned according to the field type
+        // and not to the pointer type.
         check_pointers(
             tcx,
             body,
             &excluded_pointees,
             insert_alignment_check,
-            BorrowCheckMode::ExcludeBorrows,
+            BorrowedFieldProjectionMode::FollowProjections,
         );
     }
 
