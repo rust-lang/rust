@@ -426,7 +426,7 @@ config_data! {
         ///
         /// Similarly, the JSON representation of `DiscoverArgument::Buildfile` is:
         ///
-        /// ```
+        /// ```json
         /// {
         ///     "buildfile": "BUILD"
         /// }
@@ -3655,12 +3655,16 @@ fn validate_toml_table(
 #[cfg(test)]
 fn manual(fields: &[SchemaField]) -> String {
     fields.iter().fold(String::new(), |mut acc, (field, _ty, doc, default)| {
-        let name = format!("rust-analyzer.{}", field.replace('_', "."));
+        let id = field.replace('_', ".");
+        let name = format!("rust-analyzer.{id}");
         let doc = doc_comment_to_string(doc);
         if default.contains('\n') {
-            format_to_acc!(acc, " **{name}**\n\nDefault:\n\n```{default}\n\n```\n\n {doc}\n\n ")
+            format_to_acc!(
+                acc,
+                "## {name} {{#{id}}}\n\nDefault:\n```json\n{default}\n```\n\n{doc}\n\n"
+            )
         } else {
-            format_to_acc!(acc, "**{name}** (default: {default})\n\n {doc}\n\n")
+            format_to_acc!(acc, "## {name} {{#{id}}}\n\nDefault: `{default}`\n\n{doc}\n\n")
         }
     })
 }
