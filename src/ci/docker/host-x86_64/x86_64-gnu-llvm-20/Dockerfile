@@ -52,6 +52,7 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-20 \
       --enable-llvm-link-shared \
+      --enable-llvm-enzyme \
       --set rust.randomize-layout=true \
       --set rust.thin-lto-import-instr-limit=10
 
