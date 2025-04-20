@@ -54,7 +54,7 @@ LL | const INVALID_VTABLE_UB: W<&dyn Trait> =
            }
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-incorrect-vtable.rs:91:1
+  --> $DIR/ub-incorrect-vtable.rs:94:1
    |
 LL | const G: Wide = unsafe { Transmute { t: FOO }.u };
    | ^^^^^^^^^^^^^ constructing invalid value at .1: encountered a dangling reference (going beyond the bounds of its allocation)

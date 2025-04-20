@@ -1,17 +1,21 @@
 //@ test-mir-pass: DataflowConstProp
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+#![feature(rustc_attrs)]
 
 use std::marker::PhantomData;
 use std::mem::offset_of;
 
+#[rustc_never_randomize_layout]
 struct Alpha {
     x: u8,
     y: u16,
     z: Beta,
 }
 
+#[rustc_never_randomize_layout]
 struct Beta(u8, u8);
 
+#[rustc_never_randomize_layout]
 struct Gamma<T> {
     x: u8,
     y: u16,

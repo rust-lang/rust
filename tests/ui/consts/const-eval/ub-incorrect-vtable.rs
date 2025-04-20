@@ -49,8 +49,10 @@ const INVALID_VTABLE_UB: W<&dyn Trait> =
 // Trying to access the data in a vtable does not work, either.
 
 #[derive(Copy, Clone)]
+#[repr(C)]
 struct Wide<'a>(&'a Foo, &'static VTable);
 
+#[repr(C)]
 struct VTable {
     drop: Option<for<'a> fn(&'a mut Foo)>,
     size: usize,
@@ -62,6 +64,7 @@ trait Bar {
     fn bar(&self) -> u32;
 }
 
+#[repr(C)]
 struct Foo {
     foo: u32,
     bar: bool,

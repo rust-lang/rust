@@ -1167,6 +1167,23 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 }
                 // Otherwise we just leave things alone and actually optimize the type's fields
             } else {
+                // Equal to can_randomize_type_layout, only doesn't need the -Zrandomize-layout
+                // flag
+                if !repr.never_randomize_type_layout() && cfg!(feature = "randomize") {
+                    #[cfg(feature = "randomize")]
+                    {
+                        use rand::SeedableRng;
+                        use rand::seq::SliceRandom;
+                        // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
+                        // ordering.
+                        let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
+                            field_seed.wrapping_add(repr.field_shuffle_seed).as_u64(),
+                        );
+
+                        // Shuffle the ordering of the fields.
+                        optimizing.shuffle(&mut rng);
+                    }
+                }
                 // To allow unsizing `&Foo<Type>` -> `&Foo<dyn Trait>`, the layout of the struct must
                 // not depend on the layout of the tail.
                 let max_field_align =

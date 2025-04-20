@@ -7,8 +7,10 @@
 // This file illustrates how generics are handled: types have to be
 // monomorphized, in the MIR of the original function in which they
 // occur, to have their size reported.
+#![feature(rustc_attrs)]
 
 #[derive(Copy, Clone)]
+#[rustc_never_randomize_layout]
 pub struct Pair<T> {
     _car: T,
     _cdr: T,

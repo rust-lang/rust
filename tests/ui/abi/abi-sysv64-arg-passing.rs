@@ -87,6 +87,7 @@ mod tests {
     pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 
     #[derive(Copy, Clone)]
+    #[repr(C)]
     pub struct QuadFloats { a: f32, b: f32, c: f32, d: f32 }
 
     #[repr(C)]
