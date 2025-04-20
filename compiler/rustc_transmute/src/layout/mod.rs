@@ -4,9 +4,6 @@ use std::hash::Hash;
 pub(crate) mod tree;
 pub(crate) use tree::Tree;
 
-pub(crate) mod nfa;
-pub(crate) use nfa::Nfa;
-
 pub(crate) mod dfa;
 pub(crate) use dfa::Dfa;
 
@@ -26,6 +23,13 @@ impl fmt::Debug for Byte {
             Self::Uninit => f.write_str("??u8"),
             Self::Init(b) => write!(f, "{b:#04x}u8"),
         }
+    }
+}
+
+#[cfg(test)]
+impl From<u8> for Byte {
+    fn from(src: u8) -> Self {
+        Self::Init(src)
     }
 }
 
