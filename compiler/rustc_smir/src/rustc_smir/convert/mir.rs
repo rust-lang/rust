@@ -648,13 +648,18 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::UnwindTerminate(_) => TerminatorKind::Abort,
             mir::TerminatorKind::Return => TerminatorKind::Return,
             mir::TerminatorKind::Unreachable => TerminatorKind::Unreachable,
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => {
-                TerminatorKind::Drop {
-                    place: place.stable(tables),
-                    target: target.as_usize(),
-                    unwind: unwind.stable(tables),
-                }
-            }
+            mir::TerminatorKind::Drop {
+                place,
+                target,
+                unwind,
+                replace: _,
+                drop: _,
+                async_fut: _,
+            } => TerminatorKind::Drop {
+                place: place.stable(tables),
+                target: target.as_usize(),
+                unwind: unwind.stable(tables),
+            },
             mir::TerminatorKind::Call {
                 func,
                 args,
