@@ -551,8 +551,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             match source_file.name {
                 FileName::Real(ref original_file_name) => {
-                    // FIXME: This should probably to conditionally remapped under
-                    // a RemapPathScopeComponents but which one?
                     let adapted_file_name = source_map
                         .path_mapping()
                         .to_embeddable_absolute_path(original_file_name.clone(), working_directory);
