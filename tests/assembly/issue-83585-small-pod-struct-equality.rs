@@ -1,6 +1,7 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3
 //@ only-x86_64
+//@ ignore-std-debug-assertions
 
 #![crate_type = "lib"]
 

@@ -192,6 +192,7 @@ pub enum AttributeKind {
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
     RustcMacroEdition2021,
+    RustcNeverRandomizeLayout,
     Stability {
         stability: Stability,
         /// Span of the `#[stable(...)]` or `#[unstable(...)]` attribute

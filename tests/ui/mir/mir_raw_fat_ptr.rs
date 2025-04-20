@@ -2,6 +2,7 @@
 // check raw fat pointer ops in mir
 // FIXME: please improve this when we get monomorphization support
 
+#![feature(rustc_attrs)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 
 use std::mem;
@@ -105,7 +106,11 @@ impl<T> Foo for T {
 }
 
 #[allow(dead_code)]
+#[rustc_never_randomize_layout]
 struct S<T:?Sized>(u32, T);
+
+#[rustc_never_randomize_layout]
+struct C<A, B, C>(A, B, C);
 
 fn main_ref() {
     let array = [0,1,2,3,4];
@@ -143,9 +148,9 @@ fn main_ref() {
     assert_inorder(buf, compare_foo);
 
     // check ordering for structs containing arrays
-    let ss: (S<[u8; 2]>,
+    let ss: C<S<[u8; 2]>,
              S<[u8; 3]>,
-             S<[u8; 2]>) = (
+             S<[u8; 2]>> = C(
         S(7, [8, 9]),
         S(10, [11, 12, 13]),
         S(4, [5, 6])
@@ -197,9 +202,9 @@ fn main_raw() {
     assert_inorder(buf, compare_foo);
 
     // check ordering for structs containing arrays
-    let ss: (S<[u8; 2]>,
+    let ss: C<S<[u8; 2]>,
              S<[u8; 3]>,
-             S<[u8; 2]>) = (
+             S<[u8; 2]>> = C(
         S(7, [8, 9]),
         S(10, [11, 12, 13]),
         S(4, [5, 6])

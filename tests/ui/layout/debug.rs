@@ -4,10 +4,12 @@
 #![crate_type = "lib"]
 
 #[rustc_layout(debug)]
+#[rustc_never_randomize_layout]
 #[derive(Copy, Clone)]
 enum E { Foo, Bar(!, i32, i32) } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
+#[rustc_never_randomize_layout]
 struct S { f1: i32, f2: (), f3: i32 } //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
