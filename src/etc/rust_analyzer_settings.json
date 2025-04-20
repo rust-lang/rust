@@ -9,11 +9,11 @@
     ],
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
+        "compiler/rustc_codegen_cranelift/Cargo.toml",
+        "compiler/rustc_codegen_gcc/Cargo.toml",
         "library/Cargo.toml",
         "src/bootstrap/Cargo.toml",
-        "src/tools/rust-analyzer/Cargo.toml",
-        "compiler/rustc_codegen_cranelift/Cargo.toml",
-        "compiler/rustc_codegen_gcc/Cargo.toml"
+        "src/tools/rust-analyzer/Cargo.toml"
     ],
     "rust-analyzer.rustfmt.overrideCommand": [
         "${workspaceFolder}/build/host/rustfmt/bin/rustfmt",
@@ -36,5 +36,10 @@
     },
     "rust-analyzer.server.extraEnv": {
         "RUSTUP_TOOLCHAIN": "nightly"
+    },
+    "files.associations": {
+        "*.fixed": "rust",
+        "*.pp": "rust",
+        "*.mir": "rust"
     }
 }

@@ -1,25 +1,17 @@
-From 124a11ce086952a5794d5cfbaa45175809497b81 Mon Sep 17 00:00:00 2001
+From 1a8f6b8e39f343959d4d2e6b6957a6d780ac3fc0 Mon Sep 17 00:00:00 2001
 From: None <none@example.com>
-Date: Sat, 18 Nov 2023 10:50:36 -0500
-Subject: [PATCH] [core] Disable portable-simd test
+Date: Thu, 27 Mar 2025 14:32:14 -0400
+Subject: [PATCH] Disable portable-simd test
 
 ---
- library/core/tests/lib.rs | 2 --
- 1 file changed, 2 deletions(-)
+ library/coretests/tests/lib.rs | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
-index b71786c..cf484d5 100644
---- a/library/core/tests/lib.rs
-+++ b/library/core/tests/lib.rs
-@@ -87,7 +87,6 @@
- #![feature(numfmt)]
- #![feature(pattern)]
- #![feature(pointer_is_aligned_to)]
--#![feature(portable_simd)]
- #![feature(ptr_metadata)]
- #![feature(slice_from_ptr_range)]
- #![feature(slice_internals)]
-@@ -155,7 +154,6 @@ mod pin;
+diff --git a/library/coretests/tests/lib.rs b/library/coretests/tests/lib.rs
+index 79022fe..9223b2f 100644
+--- a/library/coretests/tests/lib.rs
++++ b/library/coretests/tests/lib.rs
+@@ -165,7 +165,6 @@ mod pin;
  mod pin_macro;
  mod ptr;
  mod result;
@@ -27,4 +19,6 @@ index b71786c..cf484d5 100644
  mod slice;
  mod str;
  mod str_lossy;
--- 2.45.2
+-- 
+2.49.0
+

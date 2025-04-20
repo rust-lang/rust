@@ -78,6 +78,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::maxnumf64 => "fmax",
         sym::copysignf32 => "copysignf",
         sym::copysignf64 => "copysign",
+        sym::copysignf128 => "copysignl",
         sym::floorf32 => "floorf",
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",

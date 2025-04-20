@@ -3,45 +3,13 @@
 // Run-time:
 //   status: signal
 
-#![feature(auto_traits, lang_items, no_core, intrinsics, rustc_attrs)]
-#![allow(internal_features)]
-
+#![feature(no_core)]
 #![no_std]
 #![no_core]
 #![no_main]
 
-/*
- * Core
- */
-
-// Because we don't have core yet.
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "copy"]
-trait Copy {
-}
-
-impl Copy for isize {}
-
-#[lang = "receiver"]
-trait Receiver {
-}
-
-#[lang = "freeze"]
-pub(crate) unsafe auto trait Freeze {}
-
-mod intrinsics {
-    use super::Sized;
-
-    #[rustc_nounwind]
-    #[rustc_intrinsic]
-    pub fn abort() -> !;
-}
-
-/*
- * Code
- */
+extern crate mini_core;
+use mini_core::*;
 
 fn test_fail() -> ! {
     unsafe { intrinsics::abort() };
