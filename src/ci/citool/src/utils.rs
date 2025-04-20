@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::Path;
 
 use anyhow::Context;
@@ -27,4 +28,9 @@ where
     );
     func();
     println!("</details>\n");
+}
+
+/// Normalizes Windows-style path delimiters to Unix-style paths.
+pub fn normalize_path_delimiters(name: &str) -> Cow<str> {
+    if name.contains("\\") { name.replace('\\', "/").into() } else { name.into() }
 }

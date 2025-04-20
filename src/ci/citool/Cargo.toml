@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
+askama = "0.13"
 clap = { version = "4.5", features = ["derive"] }
 csv = "1"
 diff = "0.1"
