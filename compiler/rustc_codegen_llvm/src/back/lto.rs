@@ -28,8 +28,9 @@ use crate::back::write::{
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
+use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, build_string};
-use crate::{LlvmCodegenBackend, ModuleLlvm};
+use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
@@ -662,6 +663,33 @@ pub(crate) fn run_pass_manager(
         // This is the post-autodiff IR, mainly used for testing and educational purposes.
         if config.autodiff.contains(&config::AutoDiff::PrintModAfter) {
             unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
+        }
+
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
+
+        for function in cx.get_functions() {
+            let enzyme_marker = CString::new("enzyme_marker").unwrap();
+            let marker_ptr = enzyme_marker.as_ptr();
+
+            if attributes::has_string_attr(function, marker_ptr) {
+                // Sanity check: Ensure 'noinline' is present before replacing it.
+                assert!(
+                    !attributes::has_attr(function, Function, llvm::AttributeKind::NoInline),
+                    "Expected __enzyme function to have 'noinline' before adding 'alwaysinline'"
+                );
+
+                attributes::remove_from_llfn(function, Function, llvm::AttributeKind::NoInline);
+                attributes::remove_string_attr_from_llfn(function, marker_ptr);
+
+                assert!(
+                    !attributes::has_string_attr(function, marker_ptr),
+                    "Expected function to not have 'enzyme_marker'"
+                );
+
+                let always_inline = llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx);
+                attributes::apply_to_llfn(function, Function, &[always_inline]);
+            }
         }
 
         let opt_stage = llvm::OptStage::FatLTO;

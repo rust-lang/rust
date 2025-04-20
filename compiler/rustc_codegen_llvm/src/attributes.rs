@@ -28,6 +28,22 @@ pub(crate) fn apply_to_callsite(callsite: &Value, idx: AttributePlace, attrs: &[
     }
 }
 
+pub(crate) fn has_attr(llfn: &Value, idx: AttributePlace, attr: AttributeKind) -> bool {
+    llvm::HasAttributeAtIndex(llfn, idx, attr)
+}
+
+pub(crate) fn has_string_attr(llfn: &Value, name: *const i8) -> bool {
+    llvm::HasStringAttribute(llfn, name)
+}
+
+pub(crate) fn remove_from_llfn(llfn: &Value, place: AttributePlace, kind: AttributeKind) {
+    llvm::RemoveRustEnumAttributeAtIndex(llfn, place, kind);
+}
+
+pub(crate) fn remove_string_attr_from_llfn(llfn: &Value, name: *const i8) {
+    llvm::RemoveStringAttrFromFn(llfn, name);
+}
+
 /// Get LLVM attribute for the provided inline heuristic.
 #[inline]
 fn inline_attr<'ll>(cx: &CodegenCx<'ll, '_>, inline: InlineAttr) -> Option<&'ll Attribute> {

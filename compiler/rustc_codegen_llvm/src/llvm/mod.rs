@@ -41,6 +41,32 @@ pub(crate) fn AddFunctionAttributes<'ll>(
     }
 }
 
+pub(crate) fn HasAttributeAtIndex<'ll>(
+    llfn: &'ll Value,
+    idx: AttributePlace,
+    kind: AttributeKind,
+) -> bool {
+    unsafe { LLVMRustHasAttributeAtIndex(llfn, idx.as_uint(), kind) }
+}
+
+pub(crate) fn HasStringAttribute<'ll>(llfn: &'ll Value, name: *const i8) -> bool {
+    unsafe { LLVMRustHasFnAttribute(llfn, name) }
+}
+
+pub(crate) fn RemoveStringAttrFromFn<'ll>(llfn: &'ll Value, name: *const i8) {
+    unsafe { LLVMRustRemoveFnAttribute(llfn, name) }
+}
+
+pub(crate) fn RemoveRustEnumAttributeAtIndex(
+    llfn: &Value,
+    place: AttributePlace,
+    kind: AttributeKind,
+) {
+    unsafe {
+        LLVMRustRemoveEnumAttributeAtIndex(llfn, place.as_uint(), kind);
+    }
+}
+
 pub(crate) fn AddCallSiteAttributes<'ll>(
     callsite: &'ll Value,
     idx: AttributePlace,
