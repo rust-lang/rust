@@ -123,6 +123,14 @@ LL - /// [x][struct@Clone ]
 LL + /// [x][trait@Clone ]
    |
 
+error: unresolved link to `Clone\(\)`
+  --> $DIR/weird-syntax.rs:68:9
+   |
+LL | /// [x][Clone\(\)]
+   |         ^^^^^^^^^ no item named `Clone\(\)` in scope
+   |
+   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+
 error: unresolved link to `Clone`
   --> $DIR/weird-syntax.rs:74:9
    |
@@ -299,5 +307,5 @@ LL | /// - [`SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER`]: the
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
-error: aborting due to 27 previous errors
+error: aborting due to 28 previous errors
 
