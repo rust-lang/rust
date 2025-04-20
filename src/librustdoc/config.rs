@@ -229,6 +229,22 @@ impl fmt::Debug for Options {
     }
 }
 
+#[derive(Clone, Debug)]
+pub(crate) enum PathOrURL {
+    Path(PathBuf),
+    URL(String),
+}
+
+impl PathOrURL {
+    fn new(s: String) -> Self {
+        if s.starts_with("https://") || s.starts_with("http://") {
+            Self::URL(s)
+        } else {
+            Self::Path(s.into())
+        }
+    }
+}
+
 /// Configuration options for the HTML page-creation process.
 #[derive(Clone, Debug)]
 pub(crate) struct RenderOptions {
@@ -310,6 +326,8 @@ pub(crate) struct RenderOptions {
     pub(crate) parts_out_dir: Option<PathToParts>,
     /// disable minification of CSS/JS
     pub(crate) disable_minification: bool,
+    /// Location where the associated book is located.
+    pub(crate) book_location: Option<PathOrURL>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -814,6 +832,7 @@ impl Options {
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
 
         let disable_minification = matches.opt_present("disable-minification");
+        let book_location = matches.opt_str("book-location").map(PathOrURL::new);
 
         let options = Options {
             bin_crate,
@@ -893,6 +912,7 @@ impl Options {
             include_parts_dir,
             parts_out_dir,
             disable_minification,
+            book_location,
         };
         Some((input, options, render_options))
     }
