@@ -236,6 +236,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         ptr: Self::Value,
         order: AtomicOrdering,
         size: Size,
+        is_volatile: bool,
     ) -> Self::Value;
     fn load_from_place(&mut self, ty: Self::Type, place: PlaceValue<Self::Value>) -> Self::Value {
         assert_eq!(place.llextra, None);
@@ -316,6 +317,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         ptr: Self::Value,
         order: AtomicOrdering,
         size: Size,
+        is_volatile: bool,
     );
 
     fn gep(&mut self, ty: Self::Type, ptr: Self::Value, indices: &[Self::Value]) -> Self::Value;
