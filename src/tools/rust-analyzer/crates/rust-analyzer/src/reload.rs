@@ -158,7 +158,7 @@ impl GlobalState {
         {
             status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to discover workspace.\n");
-            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
+            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/book/configuration.html#linkedProjects) setting.\n\n");
         }
         if self.fetch_workspace_error().is_err() {
             status.health |= lsp_ext::Health::Error;

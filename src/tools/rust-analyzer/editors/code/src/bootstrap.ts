@@ -15,7 +15,7 @@ export async function bootstrap(
     if (!path) {
         throw new Error(
             "rust-analyzer Language Server is not available. " +
-                "Please, ensure its [proper installation](https://rust-analyzer.github.io/manual.html#installation).",
+                "Please, ensure its [proper installation](https://rust-analyzer.github.io/book/installation.html).",
         );
     }
 

@@ -1885,7 +1885,7 @@
                 "title": "imports",
                 "properties": {
                     "rust-analyzer.imports.group.enable": {
-                        "markdownDescription": "Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.",
+                        "markdownDescription": "Group inserted imports by the [following order](https://rust-analyzer.github.io/book/features.html#auto-import). Groups are separated by newlines.",
                         "default": true,
                         "type": "boolean"
                     }
@@ -3553,13 +3553,13 @@
                     {
                         "id": "docs",
                         "title": "Visit the docs!",
-                        "description": "Confused about configurations? Want to learn more about rust-analyzer? Visit the [User Manual](https://rust-analyzer.github.io/manual.html)!",
+                        "description": "Confused about configurations? Want to learn more about rust-analyzer? Visit the [User Manual](https://rust-analyzer.github.io/book/)!",
                         "media": {
                             "image": "./icon.png",
                             "altText": "rust-analyzer logo"
                         },
                         "completionEvents": [
-                            "onLink:https://rust-analyzer.github.io/manual.html"
+                            "onLink:https://rust-analyzer.github.io/book/"
                         ]
                     },
                     {
