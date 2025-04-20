@@ -592,8 +592,6 @@ declare_features! (
     (unstable, min_specialization, "1.7.0", Some(31844)),
     /// Target features on mips.
     (unstable, mips_target_feature, "1.27.0", Some(150253)),
-    /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
-    (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.
