@@ -1878,7 +1878,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "altivec")]
-    #[cfg_attr(test, assert_instr(vmaddfp))]
+    #[cfg_attr(test, assert_instr(xvmaddasp))]
     pub unsafe fn vec_vmaddfp(a: vector_float, b: vector_float, c: vector_float) -> vector_float {
         simd_fma(a, b, c)
     }
@@ -3239,7 +3239,7 @@ mod sealed {
         unsafe fn vec_round(self) -> Self;
     }
 
-    test_impl! { vec_vrfin(a: vector_float) -> vector_float [vrfin, vrfin] }
+    test_impl! { vec_vrfin(a: vector_float) -> vector_float [vrfin, xvrspic] }
 
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     impl VectorRound for vector_float {

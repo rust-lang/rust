@@ -146,7 +146,6 @@ jobs:
         - target:
             tuple: powerpc64le-unknown-linux-gnu
             os: ubuntu-latest
-          disable_assert_instr: true
           test_everything: true
         - target:
             tuple: riscv64gc-unknown-linux-gnu
