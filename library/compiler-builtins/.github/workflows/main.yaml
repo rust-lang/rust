@@ -97,6 +97,7 @@ jobs:
         rustup default "$channel"
         rustup target add "${{ matrix.target }}"
         rustup component add llvm-tools-preview
+    - uses: taiki-e/install-action@nextest
     - uses: Swatinem/rust-cache@v2
       with:
         key: ${{ matrix.target }}
@@ -107,7 +108,7 @@ jobs:
         path: /tmp/.buildx-cache
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
         restore-keys: ${{ matrix.target }}-buildx-
-        
+
     - name: Cache compiler-rt
       id: cache-compiler-rt
       uses: actions/cache@v4
@@ -120,6 +121,10 @@ jobs:
       shell: bash
     - run: echo "RUST_COMPILER_RT_ROOT=$(realpath ./compiler-rt)" >> "$GITHUB_ENV"
       shell: bash
+
+    - name: Verify API list
+      if: matrix.os == 'ubuntu-24.04'
+      run: python3 etc/update-api-list.py --check
 
     # Non-linux tests just use our raw script
     - name: Run locally
@@ -135,6 +140,11 @@ jobs:
     - name: Run in Docker
       if: matrix.os == 'ubuntu-24.04'
       run: cargo generate-lockfile && ./ci/run-docker.sh ${{ matrix.target }}
+
+    - name: Print test logs if available
+      if: always()
+      run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
+      shell: bash
 
     # Workaround to keep Docker cache smaller
     # https://github.com/docker/build-push-action/issues/252

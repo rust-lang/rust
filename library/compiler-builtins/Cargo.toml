@@ -31,22 +31,19 @@ panic = "abort"
 [profile.dev]
 panic = "abort"
 
-# FIXME(libm): these profiles are needed for testing
-# # The default release profile is unchanged.
+# Release mode with debug assertions
+[profile.release-checked]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true
 
-# # Release mode with debug assertions
-# [profile.release-checked]
-# inherits = "release"
-# debug-assertions = true
-# overflow-checks = true
+# Release with maximum optimizations, which is very slow to build. This is also
+# what is needed to check `no-panic`.
+[profile.release-opt]
+inherits = "release"
+codegen-units = 1
+lto = "fat"
 
-# # Release with maximum optimizations, which is very slow to build. This is also
-# # what is needed to check `no-panic`.
-# [profile.release-opt]
-# inherits = "release"
-# codegen-units = 1
-# lto = "fat"
-
-# [profile.bench]
-# # Required for iai-callgrind
-# debug = true
+[profile.bench]
+# Required for iai-callgrind
+debug = true
