@@ -309,7 +309,10 @@ impl<'tcx> Inliner<'tcx> for NormalInliner<'tcx> {
             changed: false,
             caller_is_inline_forwarder: matches!(
                 codegen_fn_attrs.inline,
-                InlineAttr::Hint | InlineAttr::Always | InlineAttr::Force { .. }
+                InlineAttr::Hint
+                    | InlineAttr::Usually
+                    | InlineAttr::Always
+                    | InlineAttr::Force { .. }
             ) && body_is_forwarder(body),
         }
     }
