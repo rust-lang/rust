@@ -20,7 +20,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }
 
-    fn lower_pat_mut(&mut self, mut pattern: &Pat) -> hir::Pat<'hir> {
+    fn lower_pat_mut(&mut self, outer_pattern: &Pat) -> hir::Pat<'hir> {
+        let mut pattern = outer_pattern;
         ensure_sufficient_stack(|| {
             // loop here to avoid recursion
             let pat_hir_id = self.lower_node_id(pattern.id);
@@ -148,7 +149,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             };
 
-            self.pat_with_node_id_of(pattern, node, pat_hir_id)
+            self.pat_with_node_id_of(outer_pattern, node, pat_hir_id)
         })
     }
 

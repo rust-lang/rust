@@ -47,19 +47,25 @@ error: a guard on a never pattern will never be run
   --> $DIR/parse.rs:31:20
    |
 LL |         Some(!) if true
-   |                    ^^^^ help: remove this guard
+   |                    ^^^^
+   |
+   = help: remove the match arm guard
 
 error: a guard on a never pattern will never be run
   --> $DIR/parse.rs:37:20
    |
 LL |         Some(!) if true,
-   |                    ^^^^ help: remove this guard
+   |                    ^^^^
+   |
+   = help: remove the match arm guard
 
 error: a guard on a never pattern will never be run
   --> $DIR/parse.rs:49:21
    |
 LL |         never!() if true,
-   |                     ^^^^ help: remove this guard
+   |                     ^^^^
+   |
+   = help: remove the match arm guard
 
 error: aborting due to 8 previous errors
 

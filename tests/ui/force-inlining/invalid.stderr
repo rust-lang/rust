@@ -316,7 +316,7 @@ LL |         #[rustc_force_inline]
    |         ^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL |         1 => (),
-   |         ------- not a function definition
+   |         -------- not a function definition
 
 error: attribute should be applied to a function
   --> $DIR/invalid.rs:98:5

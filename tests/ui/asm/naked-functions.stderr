@@ -89,10 +89,10 @@ LL |     &b: &i32,
    |     ^^
 
 error: patterns not allowed in naked function parameters
-  --> $DIR/naked-functions.rs:29:6
+  --> $DIR/naked-functions.rs:29:5
    |
 LL |     (None | Some(_)): Option<std::ptr::NonNull<u8>>,
-   |      ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^
 
 error: patterns not allowed in naked function parameters
   --> $DIR/naked-functions.rs:31:5

@@ -21,7 +21,7 @@ LL | |             if true {
 ...  |
 LL | |             a
 LL | |         },
-   | |_________^
+   | |__________^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
 
@@ -29,7 +29,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:40:9
    |
 LL |         51 => foo(),
-   |         ^^^^^^^^^^^
+   |         ^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -43,7 +43,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:47:9
    |
 LL |         None => 24,
-   |         ^^^^^^^^^^
+   |         ^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -57,7 +57,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:70:9
    |
 LL |         (None, Some(a)) => bar(a),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -71,7 +71,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:85:9
    |
 LL |         (None, Some(a)) if a == 42 => a,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -85,7 +85,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:91:9
    |
 LL |         (Some(a), ..) => bar(a),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -99,7 +99,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:126:9
    |
 LL |         (Ok(x), Some(_)) => println!("ok {}", x),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -113,7 +113,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:143:9
    |
 LL |         Ok(_) => println!("ok"),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -129,7 +129,7 @@ error: this match arm has an identical body to another arm
 LL | /         1 => {
 LL | |             empty!(0);
 LL | |         },
-   | |_________^
+   | |__________^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -145,7 +145,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:222:9
    |
 LL |         Foo::X(0) => 1,
-   |         ^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -160,7 +160,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:233:9
    |
 LL |         Foo::Z(_) => 1,
-   |         ^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -173,7 +173,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:257:9
    |
 LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -187,7 +187,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:272:9
    |
 LL |         1 => cfg!(not_enable),
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm
@@ -201,7 +201,7 @@ error: this match arm has an identical body to another arm
   --> tests/ui/match_same_arms2.rs:289:17
    |
 LL |                 MaybeStaticStr::Borrowed(s) => s,
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try changing either arm body
 help: or try merging the arm patterns and removing the obsolete arm

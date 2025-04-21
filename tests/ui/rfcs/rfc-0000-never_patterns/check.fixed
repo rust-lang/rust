@@ -13,22 +13,24 @@ macro_rules! never {
 
 fn no_arms_or_guards(x: Void) {
     match &None::<Void> {
-        Some(!) => {}
+        Some(!),
         //~^ ERROR a never pattern is always unreachable
         None => {}
     }
     match &None::<Void> { //~ ERROR: `&Some(!)` not covered
-        Some(!) if true,
+        Some(!),
         //~^ ERROR guard on a never pattern
         None => {}
+        &Some(!)
     }
     match &None::<Void> { //~ ERROR: `&Some(!)` not covered
-        Some(!) if true => {}
+        Some(!),
         //~^ ERROR a never pattern is always unreachable
         None => {}
+        &Some(!)
     }
     match &None::<Void> {
-        Some(never!()) => {}
+        Some(never!()),
         //~^ ERROR a never pattern is always unreachable
         None => {}
     }

@@ -10,18 +10,18 @@ error: cannot borrow value as mutable more than once at a time
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:33:9
    |
 LL |     let ref mut a @ (ref b @ ref mut c) = u(); // sub-in-sub
-   |         ^^^^^^^^^    -----   --------- value is mutably borrowed by `c` here
-   |         |            |
-   |         |            value is borrowed by `b` here
+   |         ^^^^^^^^^   ------   --------- value is mutably borrowed by `c` here
+   |         |           |
+   |         |           value is borrowed by `b` here
    |         value is mutably borrowed by `a` here
 
 error: cannot borrow value as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:33:22
+  --> $DIR/borrowck-pat-ref-mut-and-ref.rs:33:21
    |
 LL |     let ref mut a @ (ref b @ ref mut c) = u(); // sub-in-sub
-   |                      ^^^^^   --------- value is mutably borrowed by `c` here
-   |                      |
-   |                      value is borrowed by `b` here
+   |                     ^^^^^^   --------- value is mutably borrowed by `c` here
+   |                     |
+   |                     value is borrowed by `b` here
 
 error: cannot borrow value as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-pat-ref-mut-and-ref.rs:37:9

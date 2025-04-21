@@ -3234,6 +3234,7 @@ impl<'a> Parser<'a> {
             let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
 
             let span_before_body = this.prev_token.span;
+            let mut comma = None;
             let arm_body;
             let is_fat_arrow = this.check(exp!(FatArrow));
             let is_almost_fat_arrow =
@@ -3303,6 +3304,7 @@ impl<'a> Parser<'a> {
                 {
                     let body = this.mk_expr_err(span, guar);
                     arm_body = Some(body);
+                    let _ = this.eat(exp!(Comma));
                     Ok(Recovered::Yes(guar))
                 } else {
                     let expr_span = expr.span;
@@ -3343,8 +3345,12 @@ impl<'a> Parser<'a> {
                     })
                 }
             };
+            if let TokenKind::Comma = this.prev_token.kind {
+                comma = Some(this.prev_token.span);
+            }
 
-            let hi_span = arm_body.as_ref().map_or(span_before_body, |body| body.span);
+            let hi_span =
+                comma.unwrap_or(arm_body.as_ref().map_or(span_before_body, |body| body.span));
             let arm_span = lo.to(hi_span);
 
             // We want to recover:
