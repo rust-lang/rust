@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 edition = "2024"
 publish = false
+license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
 
 [dependencies]
 # For fuzzing tests we want a deterministic seedable RNG. We also eliminate potential

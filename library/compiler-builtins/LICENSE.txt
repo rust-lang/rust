@@ -1,10 +1,14 @@
-compiler-builtins as a whole is available for use under both the MIT license
+The compiler-builtins crate is available for use under both the MIT license
 and the Apache-2.0 license with the LLVM exception (MIT AND Apache-2.0 WITH
 LLVM-exception).
 
-As a contributor, you agree that your code can be used under either the MIT
-license, or the Apache-2.0 license, or the Apache-2.0 license with the LLVM
-exception.
+The libm crate is available for use under the MIT license.
+
+As a contributor, you agree that your code may be used under any of the
+following: the MIT license, the Apache-2.0 license, or the Apache-2.0 license
+with the LLVM exception. In other words, original (non-derivative) work is
+licensed under MIT OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception. This is
+the default license for all other source in this repository.
 
 Text of the relevant licenses is provided below:
 
@@ -263,8 +267,9 @@ license:
 * Work derived from compiler-rt after 2019-01-19 is usable under the
   Apache-2.0 license with the LLVM exception.
 
-* The bundled `math` module is from rust-lang/libm, usable under the MIT
-  license. See https://github.com/rust-lang/libm for details.
+* The bundled `math` module is from the libm crate, usable under the MIT
+  license. For further details and copyrights, see see libm/LICENSE.txt at
+  https://github.com/rust-lang/compiler-builtins.
 
 Additionally, some source files may contain comments with specific copyrights
 or licenses.

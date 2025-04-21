@@ -3,6 +3,7 @@ name = "builtins-test-intrinsics"
 version = "0.1.0"
 edition = "2021"
 publish = false
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 compiler_builtins = { path = "../compiler-builtins", features = ["compiler-builtins"]}
