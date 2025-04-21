@@ -1,3 +1,5 @@
+//! Smoke test for overloaded compound assignments cross-crate.
+
 //@ run-pass
 //@ aux-build:augmented_assignments.rs
 
