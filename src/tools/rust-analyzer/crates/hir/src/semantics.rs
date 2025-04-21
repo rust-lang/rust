@@ -1622,6 +1622,13 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(name.syntax())?.resolve_use_type_arg(name)
     }
 
+    pub fn resolve_offset_of_field(
+        &self,
+        name_ref: &ast::NameRef,
+    ) -> Option<(Either<Variant, Field>, GenericSubstitution)> {
+        self.analyze_no_infer(name_ref.syntax())?.resolve_offset_of_field(self.db, name_ref)
+    }
+
     pub fn resolve_mod_path(
         &self,
         scope: &SyntaxNode,

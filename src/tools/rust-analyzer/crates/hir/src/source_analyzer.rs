@@ -14,7 +14,7 @@ use crate::{
 };
 use either::Either;
 use hir_def::{
-    AssocItemId, CallableDefId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId,
+    AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId,
     ItemContainerId, LocalFieldId, Lookup, ModuleDefId, StructId, TraitId, VariantId,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, HygieneId,
@@ -34,8 +34,8 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use hir_ty::{
-    Adjustment, InferenceResult, Interner, Substitution, TraitEnvironment, Ty, TyExt, TyKind,
-    TyLoweringContext,
+    Adjustment, AliasTy, InferenceResult, Interner, ProjectionTy, Substitution, TraitEnvironment,
+    Ty, TyExt, TyKind, TyLoweringContext,
     diagnostics::{
         InsideUnsafeBlock, record_literal_missing_fields, record_pattern_missing_fields,
         unsafe_operations,
@@ -47,6 +47,7 @@ use hir_ty::{
 use intern::sym;
 use itertools::Itertools;
 use smallvec::SmallVec;
+use stdx::never;
 use syntax::{
     SyntaxKind, SyntaxNode, TextRange, TextSize,
     ast::{self, AstNode, RangeItem, RangeOp},
@@ -789,6 +790,78 @@ impl SourceAnalyzer {
             .all_generic_params()
             .find_map(|(params, parent)| params.find_type_by_name(&name, *parent))
             .map(crate::TypeParam::from)
+    }
+
+    pub(crate) fn resolve_offset_of_field(
+        &self,
+        db: &dyn HirDatabase,
+        name_ref: &ast::NameRef,
+    ) -> Option<(Either<crate::Variant, crate::Field>, GenericSubstitution)> {
+        let offset_of_expr = ast::OffsetOfExpr::cast(name_ref.syntax().parent()?)?;
+        let container = offset_of_expr.ty()?;
+        let container = self.type_of_type(db, &container)?;
+
+        let trait_env = container.env;
+        let mut container = Either::Right(container.ty);
+        for field_name in offset_of_expr.fields() {
+            if let Some(
+                TyKind::Alias(AliasTy::Projection(ProjectionTy { associated_ty_id, substitution }))
+                | TyKind::AssociatedType(associated_ty_id, substitution),
+            ) = container.as_ref().right().map(|it| it.kind(Interner))
+            {
+                let projection = ProjectionTy {
+                    associated_ty_id: *associated_ty_id,
+                    substitution: substitution.clone(),
+                };
+                container = Either::Right(db.normalize_projection(projection, trait_env.clone()));
+            }
+            let handle_variants = |variant, subst: &Substitution, container: &mut _| {
+                let fields = db.variant_fields(variant);
+                let field = fields.field(&field_name.as_name())?;
+                let field_types = db.field_types(variant);
+                *container = Either::Right(field_types[field].clone().substitute(Interner, subst));
+                let generic_def = match variant {
+                    VariantId::EnumVariantId(it) => it.loc(db).parent.into(),
+                    VariantId::StructId(it) => it.into(),
+                    VariantId::UnionId(it) => it.into(),
+                };
+                Some((
+                    Either::Right(Field { parent: variant.into(), id: field }),
+                    generic_def,
+                    subst.clone(),
+                ))
+            };
+            let temp_ty = TyKind::Error.intern(Interner);
+            let (field_def, generic_def, subst) =
+                match std::mem::replace(&mut container, Either::Right(temp_ty.clone())) {
+                    Either::Left((variant_id, subst)) => {
+                        handle_variants(VariantId::from(variant_id), &subst, &mut container)?
+                    }
+                    Either::Right(container_ty) => match container_ty.kind(Interner) {
+                        TyKind::Adt(adt_id, subst) => match adt_id.0 {
+                            AdtId::StructId(id) => {
+                                handle_variants(id.into(), subst, &mut container)?
+                            }
+                            AdtId::UnionId(id) => {
+                                handle_variants(id.into(), subst, &mut container)?
+                            }
+                            AdtId::EnumId(id) => {
+                                let variants = db.enum_variants(id);
+                                let variant = variants.variant(&field_name.as_name())?;
+                                container = Either::Left((variant, subst.clone()));
+                                (Either::Left(Variant { id: variant }), id.into(), subst.clone())
+                            }
+                        },
+                        _ => return None,
+                    },
+                };
+
+            if field_name.syntax().text_range() == name_ref.syntax().text_range() {
+                return Some((field_def, GenericSubstitution::new(generic_def, subst, trait_env)));
+            }
+        }
+        never!("the `NameRef` is a child of the `OffsetOfExpr`, we should've visited it");
+        None
     }
 
     pub(crate) fn resolve_path(

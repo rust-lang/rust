@@ -70,6 +70,7 @@
 //!     unimplemented: panic
 //!     column:
 //!     addr_of:
+//!     offset_of:
 
 #![rustc_coherence_is_core]
 
@@ -414,6 +415,13 @@ pub mod mem {
     use crate::marker::DiscriminantKind;
     pub struct Discriminant<T>(<T as DiscriminantKind>::Discriminant);
     // endregion:discriminant
+
+    // region:offset_of
+    pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
+        // The `{}` is for better error messages
+        {builtin # offset_of($Container, $($fields)+)}
+    }
+    // endregion:offset_of
 }
 
 pub mod ptr {
