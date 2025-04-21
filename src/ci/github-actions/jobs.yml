@@ -419,8 +419,8 @@ auto:
         --enable-profiler
         --set rust.jemalloc
         --set llvm.ninja=false
-        --set llvm.plugins=true \
-        --set llvm.enzyme=true \
+        --set llvm.plugins=true
+        --set llvm.enzyme=true
         --set rust.lto=thin
         --set rust.codegen-units=1
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
