@@ -72,28 +72,18 @@ function updatePageToc(elem = undefined) {
 }
 
 if (document.getElementById("sidetoc") === null) {
-    // Element doesn't exist yet, let's create it
-    const main = document.querySelector('main');
-    const wrapper = document.createElement('div');
-    wrapper.className = "content-wrap";
-
-    // Move all children into the wrapper
-    while (main.firstChild) {
-      wrapper.appendChild(main.firstChild);
-    }
-
-    // Append the wrapper back to main
-    main.appendChild(wrapper);
+    // The sidetoc element doesn't exist yet, let's create it
 
     // Create the empty sidetoc and pagetoc elements
     const sidetoc = document.createElement("div");
     const pagetoc = document.createElement("div");
     sidetoc.id = "sidetoc";
     pagetoc.id = "pagetoc";
-
-    // And append them to the current DOM
     sidetoc.appendChild(pagetoc);
-    main.appendChild(sidetoc);
+    
+    // And append them to the current DOM
+    const main = document.querySelector('main');
+    main.insertBefore(sidetoc, main.firstChild);
 }
 
 if (document.getElementsByClassName("header").length <= 1) {
