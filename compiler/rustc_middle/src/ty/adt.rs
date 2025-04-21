@@ -55,8 +55,6 @@ bitflags::bitflags! {
         const IS_UNSAFE_CELL              = 1 << 9;
         /// Indicates whether the type is `UnsafePinned`.
         const IS_UNSAFE_PINNED              = 1 << 10;
-        /// Indicates whether the type is anonymous.
-        const IS_ANONYMOUS                = 1 << 11;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }

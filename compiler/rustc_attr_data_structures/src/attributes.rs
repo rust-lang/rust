@@ -191,7 +191,6 @@ pub enum AttributeKind {
     },
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
-    RustcMacroEdition2021,
     Stability {
         stability: Stability,
         /// Span of the `#[stable(...)]` or `#[unstable(...)]` attribute

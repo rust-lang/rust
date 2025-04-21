@@ -12,15 +12,15 @@ extern crate minicore;
 use minicore::*;
 
 #[no_mangle]
-#[naked]
+#[unsafe(naked)]
 #[instruction_set(arm::t32)]
-unsafe extern "C" fn test_thumb() {
+extern "C" fn test_thumb() {
     naked_asm!("bx lr");
 }
 
 #[no_mangle]
-#[naked]
+#[unsafe(naked)]
 #[instruction_set(arm::a32)]
-unsafe extern "C" fn test_arm() {
+extern "C" fn test_arm() {
     naked_asm!("bx lr");
 }

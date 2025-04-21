@@ -7,6 +7,12 @@ pub(crate) fn target() -> Target {
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;
+    // On Windows 7 32-bit, the alignment characteristic of the TLS Directory
+    // don't appear to be respected by the PE Loader, leading to crashes. As
+    // a result, let's disable has_thread_local to make sure TLS goes through
+    // the emulation layer.
+    // See https://github.com/rust-lang/rust/issues/138903
+    base.has_thread_local = false;
 
     base.add_pre_link_args(
         LinkerFlavor::Msvc(Lld::No),

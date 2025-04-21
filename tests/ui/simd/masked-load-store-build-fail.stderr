@@ -16,11 +16,11 @@ error[E0511]: invalid monomorphization of `simd_masked_load` intrinsic: expected
 LL |         simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), arr.as_ptr(), Simd::<u32, 4>([9; 4]));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_masked_load` intrinsic: expected element type `u8` of third argument `Simd<u8, 4>` to be a signed integer type
+error[E0511]: invalid monomorphization of `simd_masked_load` intrinsic: expected mask element type to be an integer, found `f32`
   --> $DIR/masked-load-store-build-fail.rs:24:9
    |
-LL |         simd_masked_load(Simd::<u8, 4>([1, 0, 1, 1]), arr.as_ptr(), default);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_masked_load(Simd::<f32, 4>([1.0, 0.0, 1.0, 1.0]), arr.as_ptr(), default);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expected element type `u32` of second argument `*const u8` to be a pointer to the element type `u32` of the first argument `Simd<u32, 4>`, found `u32` != `*mut u32`
   --> $DIR/masked-load-store-build-fail.rs:27:9
@@ -40,10 +40,10 @@ error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expecte
 LL |         simd_masked_store(Simd([-1i8; 4]), arr.as_mut_ptr(), Simd([5u8; 2]));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expected element type `u8` of third argument `Simd<u32, 4>` to be a signed integer type
+error[E0511]: invalid monomorphization of `simd_masked_store` intrinsic: expected mask element type to be an integer, found `f32`
   --> $DIR/masked-load-store-build-fail.rs:36:9
    |
-LL |         simd_masked_store(Simd([1u32; 4]), arr.as_mut_ptr(), Simd([5u8; 4]));
+LL |         simd_masked_store(Simd([1f32; 4]), arr.as_mut_ptr(), Simd([5u8; 4]));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors

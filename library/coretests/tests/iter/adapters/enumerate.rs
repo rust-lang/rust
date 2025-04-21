@@ -120,3 +120,13 @@ fn test_double_ended_enumerate() {
     assert_eq!(it.next_back(), Some((2, 3)));
     assert_eq!(it.next(), None);
 }
+
+#[test]
+fn test_empty_iterator_enumerate_next_index() {
+    let mut it = empty::<i32>().enumerate();
+    assert_eq!(it.next_index(), 0);
+    assert_eq!(it.next_index(), 0);
+    assert_eq!(it.next(), None);
+    assert_eq!(it.next_index(), 0);
+    assert_eq!(it.next_index(), 0);
+}

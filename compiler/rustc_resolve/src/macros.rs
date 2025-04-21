@@ -8,7 +8,7 @@ use std::sync::Arc;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{AttributeKind, StabilityLevel, find_attr};
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
 use rustc_expand::base::{
@@ -1127,13 +1127,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             node_id,
             edition,
         );
-
-        // The #[rustc_macro_edition_2021] attribute is used by the pin!() macro
-        // as a temporary workaround for a regression in expressiveness in Rust 2024.
-        // See https://github.com/rust-lang/rust/issues/138718.
-        if find_attr!(attrs.iter(), AttributeKind::RustcMacroEdition2021) {
-            ext.edition = Edition::Edition2021;
-        }
 
         if let Some(builtin_name) = ext.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.

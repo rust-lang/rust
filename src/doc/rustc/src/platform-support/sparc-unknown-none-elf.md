@@ -10,7 +10,7 @@ Rust for bare-metal 32-bit SPARC V7 and V8 systems, e.g. the Gaisler LEON3.
 
 ## Target maintainers
 
-- Jonathan Pallant, <jonathan.pallant@ferrous-systems.com>, https://ferrous-systems.com
+[@jonathanpallant](https://github.com/jonathanpallant)
 
 ## Requirements
 

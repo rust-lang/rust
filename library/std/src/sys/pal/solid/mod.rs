@@ -16,7 +16,6 @@ pub mod itron {
     use super::unsupported;
 }
 
-pub mod env;
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
 // `crate::sys::error`
 pub(crate) mod error;

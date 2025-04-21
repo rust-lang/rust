@@ -7,9 +7,9 @@ This target uses the ELF v2 ABI.
 
 ## Target maintainers
 
-- [@Gelbpunkt](https://github.com/Gelbpunkt)
-- [@famfo](https://github.com/famfo)
-- [@neuschaefer](https://github.com/neuschaefer)
+[@Gelbpunkt](https://github.com/Gelbpunkt)
+[@famfo](https://github.com/famfo)
+[@neuschaefer](https://github.com/neuschaefer)
 
 ## Requirements
 

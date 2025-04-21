@@ -9,7 +9,7 @@ WebAssembly proposal.
 
 ## Target maintainers
 
-- Alex Crichton, https://github.com/alexcrichton
+[@alexcrichton](https://github.com/alexcrichton)
 
 ## Requirements
 

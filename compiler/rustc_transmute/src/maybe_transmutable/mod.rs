@@ -4,7 +4,7 @@ pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited, dfa};
+use crate::layout::{self, Byte, Def, Dfa, Ref, Tree, Uninhabited, dfa};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 
@@ -73,7 +73,7 @@ where
     /// Answers whether a `Tree` is transmutable into another `Tree`.
     ///
     /// This method begins by de-def'ing `src` and `dst`, and prunes private paths from `dst`,
-    /// then converts `src` and `dst` to `Nfa`s, and computes an answer using those NFAs.
+    /// then converts `src` and `dst` to `Dfa`s, and computes an answer using those DFAs.
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
@@ -105,43 +105,26 @@ where
 
         trace!(?dst, "pruned dst");
 
-        // Convert `src` from a tree-based representation to an NFA-based
+        // Convert `src` from a tree-based representation to an DFA-based
         // representation. If the conversion fails because `src` is uninhabited,
         // conclude that the transmutation is acceptable, because instances of
         // the `src` type do not exist.
-        let src = match Nfa::from_tree(src) {
+        let src = match Dfa::from_tree(src) {
             Ok(src) => src,
             Err(Uninhabited) => return Answer::Yes,
         };
 
-        // Convert `dst` from a tree-based representation to an NFA-based
+        // Convert `dst` from a tree-based representation to an DFA-based
         // representation. If the conversion fails because `src` is uninhabited,
         // conclude that the transmutation is unacceptable. Valid instances of
         // the `dst` type do not exist, either because it's genuinely
         // uninhabited, or because there are no branches of the tree that are
         // free of safety invariants.
-        let dst = match Nfa::from_tree(dst) {
+        let dst = match Dfa::from_tree(dst) {
             Ok(dst) => dst,
             Err(Uninhabited) => return Answer::No(Reason::DstMayHaveSafetyInvariants),
         };
 
-        MaybeTransmutableQuery { src, dst, assume, context }.answer()
-    }
-}
-
-impl<C> MaybeTransmutableQuery<Nfa<<C as QueryContext>::Ref>, C>
-where
-    C: QueryContext,
-{
-    /// Answers whether a `Nfa` is transmutable into another `Nfa`.
-    ///
-    /// This method converts `src` and `dst` to DFAs, then computes an answer using those DFAs.
-    #[inline(always)]
-    #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
-    pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
-        let Self { src, dst, assume, context } = self;
-        let src = Dfa::from_nfa(src);
-        let dst = Dfa::from_nfa(dst);
         MaybeTransmutableQuery { src, dst, assume, context }.answer()
     }
 }
@@ -173,7 +156,7 @@ where
                 src_transitions_len = self.src.transitions.len(),
                 dst_transitions_len = self.dst.transitions.len()
             );
-            let answer = if dst_state == self.dst.accepting {
+            let answer = if dst_state == self.dst.accept {
                 // truncation: `size_of(Src) >= size_of(Dst)`
                 //
                 // Why is truncation OK to do? Because even though the Src is bigger, all we care about
@@ -190,7 +173,7 @@ where
                 // that none of the actually-used data can introduce an invalid state for Dst's type, we
                 // are able to safely transmute, even with truncation.
                 Answer::Yes
-            } else if src_state == self.src.accepting {
+            } else if src_state == self.src.accept {
                 // extension: `size_of(Src) >= size_of(Dst)`
                 if let Some(dst_state_prime) = self.dst.byte_from(dst_state, Byte::Uninit) {
                     self.answer_memo(cache, src_state, dst_state_prime)
