@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.156](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.155...compiler_builtins-v0.1.156) - 2025-04-21
+
+### Other
+
+- avr: Provide `abort()`
+- Remove `unsafe` from `naked_asm!` blocks
+- Enable icount benchmarks in CI
+- Move builtins-test-intrinsics out of the workspace
+- Run `cargo fmt` on all projects
+- Flatten the `libm/libm` directory
+- Update path to libm after the merge
+
 ## [0.1.155](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.154...compiler_builtins-v0.1.155) - 2025-04-17
 
 ### Other

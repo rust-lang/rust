@@ -8,6 +8,42 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.12](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.11...libm-v0.2.12) - 2025-04-21
+
+- Mark generic functions `#[inline]`
+- Combine the source files for `fmod`
+- Ensure all public functions are marked `no_panic`
+- Add assembly version of simple operations on aarch64
+- Add `roundeven{,f,f16,f128}`
+- Add `fminimum`, `fmaximum`, `fminimum_num`, and `fmaximum_num`
+- Eliminate the use of `force_eval!` in `ceil`, `floor`, and `trunc`
+- Port the CORE-MATH version of `cbrt`
+- Add `fmaf128`
+- fma: Ensure zero has the correct sign
+- Add `scalbnf16`, `scalbnf128`, `ldexpf16`, and `ldexpf128`
+- Specify license as just MIT
+- Add `fmodf128`
+- Add `fmodf16` using the generic implementation
+- Add `fminf16`, `fmaxf16`, `fminf128`, and `fmaxf128`
+- Add `roundf16` and `roundf128`
+- Add `rintf16` and `rintf128`
+- Add `floorf16` and `floorf128`
+- Add `ceilf16` and `ceilf128`
+- Add `sqrtf16` and `sqrtf128`
+- Simplify and optimize `fdim` ([#442](https://github.com/rust-lang/libm/pull/442))
+- Add `fdimf16` and `fdimf128`
+- Add `truncf16` and `truncf128`
+- Add `fabsf16`, `fabsf128`, `copysignf16`, and `copysignf128`
+- Move some numeric trait logic to default implementations
+- Add some more basic docstrings ([#352](https://github.com/rust-lang/libm/pull/352))
+- Add support for loongarch64-unknown-linux-gnu
+- Add an "arch" Cargo feature that is on by default
+- Rename the `special_case` module to `precision` and move default ULP
+- Move the existing "unstable" feature to "unstable-intrinsics"
+
+There are a number of things that changed internally, see the git log for a full
+list of changes.
+
 ## [0.2.11](https://github.com/rust-lang/libm/compare/libm-v0.2.10...libm-v0.2.11) - 2024-10-28
 
 ### Fixed
