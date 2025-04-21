@@ -96,6 +96,7 @@ rm -r tests/run-make/llvm-location-discriminator-limit-dummy-span # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
+rm -r tests/ui/optimization-remark.rs # same
 rm -r tests/run-make/print-to-output # requires --print relocation-models
 
 # requires asm, llvm-ir and/or llvm-bc emit support
@@ -129,6 +130,7 @@ rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contain
 rm -r tests/run-make/translation # same
 rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
 rm -r tests/run-make/const-trait-stable-toolchain # same
+rm -r tests/run-make/print-request-help-stable-unstable # same
 rm -r tests/run-make/incr-add-rust-src-component
 rm tests/ui/errors/remap-path-prefix-sysroot.rs # different sysroot source path
 
