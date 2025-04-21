@@ -1,0 +1,104 @@
+/* Inspired by https://github.com/JorelAli/mdBook-pagetoc/tree/98ee241 (under WTFPL) */
+
+:root {
+    --toc-width: 270px;
+    --center-content-toc-shift: calc(-1 * var(--toc-width) / 2);
+}
+
+.nav-chapters {
+    /* adjust width of buttons that bring to the previous or the next page */
+    min-width: 50px;
+}
+
+.previous {
+    /*
+    adjust the space between the left sidebar or the left side of the screen 
+    and the button that leads to the previous page
+    */
+    margin-left: var(--page-padding);
+}
+
+@media only screen {
+    main {
+        display: -webkit-box;
+        display: -ms-flexbox;
+        display: flex;
+    }
+
+    @media (max-width: 1179px) {
+        .sidebar-hidden #sidetoc {
+            display: none;
+        }
+    }
+
+    @media (max-width: 1439px) {
+        .sidebar-visible #sidetoc {
+            display: none;
+        }
+    }
+
+    @media (1180px <= width <= 1439px) {
+        .sidebar-hidden main {
+            position: relative;
+            left: var(--center-content-toc-shift);
+        }
+    }
+
+    @media (1440px <= width <= 1700px) {
+        .sidebar-visible main {
+            position: relative;
+            left: var(--center-content-toc-shift);
+        }
+    }
+
+    .content-wrap {
+        width: 100%;
+    }
+
+    #sidetoc {
+        margin-top: 20px;
+        margin-left: 20px;
+        margin-right: auto;
+    }
+    #pagetoc {
+        position: fixed;
+        /* adjust TOC width */
+        width: var(--toc-width);
+        height: calc(100vh - var(--menu-bar-height) - 0.67em * 4);
+        overflow: auto;
+    }
+    #pagetoc a {
+        border-left: 1px solid var(--sidebar-bg);
+        color: var(--sidebar-fg) !important;
+        display: block;
+        padding-bottom: 5px;
+        padding-top: 5px;
+        padding-left: 10px;
+        text-align: left;
+        text-decoration: none;
+    }
+    #pagetoc a:hover,
+    #pagetoc a.active {
+        background: var(--sidebar-bg);
+        color: var(--sidebar-active) !important;
+    }
+    #pagetoc .active {
+        background: var(--sidebar-bg);
+        color: var(--sidebar-active);
+    }
+    #pagetoc .pagetoc-H2 {
+        padding-left: 20px;
+    }
+    #pagetoc .pagetoc-H3 {
+        padding-left: 40px;
+    }
+    #pagetoc .pagetoc-H4 {
+        padding-left: 60px;
+    }
+}
+
+@media print {
+    #sidetoc {
+        display: none;
+    }
+}
