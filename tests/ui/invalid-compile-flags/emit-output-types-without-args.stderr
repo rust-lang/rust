@@ -1,0 +1,15 @@
+error: Argument to option 'emit' missing
+       Usage:
+           --emit TYPE[=FILE]  Comma separated list of types of output for the
+                               compiler to emit.
+                               Each TYPE has the default FILE name:
+                               * asm - CRATE_NAME.s
+                               * llvm-bc - CRATE_NAME.bc
+                               * dep-info - CRATE_NAME.d
+                               * link - (platform and crate-type dependent)
+                               * llvm-ir - CRATE_NAME.ll
+                               * metadata - libCRATE_NAME.rmeta
+                               * mir - CRATE_NAME.mir
+                               * obj - CRATE_NAME.o
+                               * thin-link-bitcode - CRATE_NAME.indexing.o
+
