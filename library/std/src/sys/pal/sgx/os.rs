@@ -73,11 +73,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
+// Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
-#[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx2os3ENVE")]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx2os3ENVE")]
 static ENV: AtomicUsize = AtomicUsize::new(0);
+// Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
-#[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx2os8ENV_INITE")]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx2os8ENV_INITE")]
 static ENV_INIT: Once = Once::new();
 type EnvStore = Mutex<HashMap<OsString, OsString>>;
 
