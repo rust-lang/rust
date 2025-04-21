@@ -280,6 +280,12 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
 
     flags_builder.set("enable_llvm_abi_extensions", "true").unwrap();
 
+    if let Some(align) = sess.opts.unstable_opts.min_function_alignment {
+        flags_builder
+            .set("log2_min_function_alignment", &align.bytes().ilog2().to_string())
+            .unwrap();
+    }
+
     use rustc_session::config::OptLevel;
     match sess.opts.optimize {
         OptLevel::No => {
