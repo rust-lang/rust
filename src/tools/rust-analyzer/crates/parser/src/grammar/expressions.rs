@@ -58,7 +58,7 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
     // }
     attributes::outer_attrs(p);
 
-    if p.at(T![let]) {
+    if p.at(T![let]) || (p.at(T![super]) && p.nth_at(1, T![let])) {
         let_stmt(p, semicolon);
         m.complete(p, LET_STMT);
         return;
@@ -113,8 +113,9 @@ pub(super) fn stmt(p: &mut Parser<'_>, semicolon: Semicolon) {
 }
 
 // test let_stmt
-// fn f() { let x: i32 = 92; }
+// fn f() { let x: i32 = 92; super let y; super::foo; }
 pub(super) fn let_stmt(p: &mut Parser<'_>, with_semi: Semicolon) {
+    p.eat(T![super]);
     p.bump(T![let]);
     patterns::pattern(p);
     if p.at(T![:]) {

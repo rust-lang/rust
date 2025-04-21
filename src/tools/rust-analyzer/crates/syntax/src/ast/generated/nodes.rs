@@ -823,6 +823,8 @@ impl LetStmt {
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
     #[inline]
     pub fn let_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![let]) }
+    #[inline]
+    pub fn super_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![super]) }
 }
 pub struct Lifetime {
     pub(crate) syntax: SyntaxNode,
