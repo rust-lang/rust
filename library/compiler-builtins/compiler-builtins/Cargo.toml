@@ -18,8 +18,8 @@ include = [
   '/configure.rs',
   '/src/*',
   '../LICENSE.txt',
-  '../README.md',
   '../compiler-rt/*',
+  'README.md',
   'libm/src/math/*',
 ]
 links = 'compiler-rt'
