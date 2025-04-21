@@ -1,8 +1,8 @@
 error[E0600]: cannot apply unary operator `-` to type `String`
-  --> $DIR/minus-string.rs:1:13
+  --> $DIR/minus-string.rs:6:5
    |
-LL | fn main() { -"foo".to_string(); }
-   |             ^^^^^^^^^^^^^^^^^^ cannot apply unary operator `-`
+LL |     -"foo".to_string();
+   |     ^^^^^^^^^^^^^^^^^^ cannot apply unary operator `-`
    |
 note: the foreign item type `String` doesn't implement `Neg`
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
