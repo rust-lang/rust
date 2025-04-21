@@ -62,6 +62,8 @@ bitflags! {
         const IS_MANUALLY_DROP = 1 << 5;
         /// Indicates whether this struct is `UnsafeCell`.
         const IS_UNSAFE_CELL   = 1 << 6;
+        /// Indicates whether this struct is `UnsafePinned`.
+        const IS_UNSAFE_PINNED = 1 << 7;
     }
 }
 
@@ -84,6 +86,7 @@ impl StructSignature {
                 LangItem::OwnedBox => flags |= StructFlags::IS_BOX,
                 LangItem::ManuallyDrop => flags |= StructFlags::IS_MANUALLY_DROP,
                 LangItem::UnsafeCell => flags |= StructFlags::IS_UNSAFE_CELL,
+                LangItem::UnsafePinned => flags |= StructFlags::IS_UNSAFE_PINNED,
                 _ => (),
             }
         }

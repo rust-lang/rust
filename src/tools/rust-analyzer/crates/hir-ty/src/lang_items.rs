@@ -11,12 +11,6 @@ pub fn is_box(db: &dyn HirDatabase, adt: AdtId) -> bool {
     db.struct_signature(id).flags.contains(StructFlags::IS_BOX)
 }
 
-pub fn is_unsafe_cell(db: &dyn HirDatabase, adt: AdtId) -> bool {
-    let AdtId::StructId(id) = adt else { return false };
-
-    db.struct_signature(id).flags.contains(StructFlags::IS_UNSAFE_CELL)
-}
-
 pub fn lang_items_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, LangItem)> {
     use syntax::ast::{ArithOp, BinaryOp, CmpOp, Ordering};
     Some(match op {
