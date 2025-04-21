@@ -28,7 +28,10 @@ use type_ref::TypeRefId;
 use crate::{
     BlockId,
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
-    expr_store::path::{GenericArgs, Path},
+    expr_store::{
+        HygieneId,
+        path::{GenericArgs, Path},
+    },
     type_ref::{Mutability, Rawness},
 };
 
@@ -552,6 +555,9 @@ pub struct Binding {
     pub name: Name,
     pub mode: BindingAnnotation,
     pub problems: Option<BindingProblems>,
+    /// Note that this may not be the direct `SyntaxContextId` of the binding's expansion, because transparent
+    /// expansions are attributed to their parent expansion (recursively).
+    pub hygiene: HygieneId,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

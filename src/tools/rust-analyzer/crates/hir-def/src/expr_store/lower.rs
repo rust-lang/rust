@@ -104,9 +104,14 @@ pub(super) fn lower_body(
             {
                 let is_mutable =
                     self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
+                let hygiene = self_param_syn
+                    .name()
+                    .map(|name| collector.hygiene_id_for(name.syntax().text_range()))
+                    .unwrap_or(HygieneId::ROOT);
                 let binding_id: la_arena::Idx<Binding> = collector.alloc_binding(
                     Name::new_symbol_root(sym::self_),
                     BindingAnnotation::new(is_mutable, false),
+                    hygiene,
                 );
                 self_param = Some(binding_id);
                 source_map_self_param =
@@ -136,17 +141,15 @@ pub(super) fn lower_body(
         {
             let is_mutable =
                 self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
-            let binding_id: la_arena::Idx<Binding> = collector.alloc_binding(
-                Name::new_symbol_root(sym::self_),
-                BindingAnnotation::new(is_mutable, false),
-            );
             let hygiene = self_param_syn
                 .name()
                 .map(|name| collector.hygiene_id_for(name.syntax().text_range()))
                 .unwrap_or(HygieneId::ROOT);
-            if !hygiene.is_root() {
-                collector.store.binding_hygiene.insert(binding_id, hygiene);
-            }
+            let binding_id: la_arena::Idx<Binding> = collector.alloc_binding(
+                Name::new_symbol_root(sym::self_),
+                BindingAnnotation::new(is_mutable, false),
+                hygiene,
+            );
             self_param = Some(binding_id);
             source_map_self_param = Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
         }
@@ -486,13 +489,10 @@ impl BindingList {
         hygiene: HygieneId,
         mode: BindingAnnotation,
     ) -> BindingId {
-        let id = *self.map.entry((name, hygiene)).or_insert_with_key(|(name, _)| {
-            let id = ec.alloc_binding(name.clone(), mode);
-            if !hygiene.is_root() {
-                ec.store.binding_hygiene.insert(id, hygiene);
-            }
-            id
-        });
+        let id = *self
+            .map
+            .entry((name, hygiene))
+            .or_insert_with_key(|(name, hygiene)| ec.alloc_binding(name.clone(), mode, *hygiene));
         if ec.store.bindings[id].mode != mode {
             ec.store.bindings[id].problems = Some(BindingProblems::BoundInconsistently);
         }
@@ -1770,7 +1770,8 @@ impl ExprCollector<'_> {
         );
         let loop_outer = self
             .alloc_expr(Expr::Loop { body: loop_inner, label: label.map(|it| it.1) }, syntax_ptr);
-        let iter_binding = self.alloc_binding(iter_name, BindingAnnotation::Mutable);
+        let iter_binding =
+            self.alloc_binding(iter_name, BindingAnnotation::Mutable, HygieneId::ROOT);
         let iter_pat = self.alloc_pat_desugared(Pat::Bind { id: iter_binding, subpat: None });
         self.add_definition_to_binding(iter_binding, iter_pat);
         self.alloc_expr(
@@ -1803,8 +1804,11 @@ impl ExprCollector<'_> {
         let expr = self
             .alloc_expr(Expr::Call { callee: try_branch, args: Box::new([operand]) }, syntax_ptr);
         let continue_name = Name::generate_new_name(self.store.bindings.len());
-        let continue_binding =
-            self.alloc_binding(continue_name.clone(), BindingAnnotation::Unannotated);
+        let continue_binding = self.alloc_binding(
+            continue_name.clone(),
+            BindingAnnotation::Unannotated,
+            HygieneId::ROOT,
+        );
         let continue_bpat =
             self.alloc_pat_desugared(Pat::Bind { id: continue_binding, subpat: None });
         self.add_definition_to_binding(continue_binding, continue_bpat);
@@ -1818,7 +1822,8 @@ impl ExprCollector<'_> {
             expr: self.alloc_expr(Expr::Path(Path::from(continue_name)), syntax_ptr),
         };
         let break_name = Name::generate_new_name(self.store.bindings.len());
-        let break_binding = self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated);
+        let break_binding =
+            self.alloc_binding(break_name.clone(), BindingAnnotation::Unannotated, HygieneId::ROOT);
         let break_bpat = self.alloc_pat_desugared(Pat::Bind { id: break_binding, subpat: None });
         self.add_definition_to_binding(break_binding, break_bpat);
         let break_arm = MatchArm {
@@ -3137,8 +3142,13 @@ impl ExprCollector<'_> {
         self.alloc_expr_desugared(Expr::Missing)
     }
 
-    fn alloc_binding(&mut self, name: Name, mode: BindingAnnotation) -> BindingId {
-        let binding = self.store.bindings.alloc(Binding { name, mode, problems: None });
+    fn alloc_binding(
+        &mut self,
+        name: Name,
+        mode: BindingAnnotation,
+        hygiene: HygieneId,
+    ) -> BindingId {
+        let binding = self.store.bindings.alloc(Binding { name, mode, problems: None, hygiene });
         if let Some(owner) = self.current_binding_owner {
             self.store.binding_owners.insert(binding, owner);
         }
