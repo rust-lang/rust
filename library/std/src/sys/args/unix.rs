@@ -6,6 +6,9 @@
 #![allow(dead_code)] // runtime init functions not used during testing
 
 use crate::ffi::CStr;
+#[cfg(target_os = "hermit")]
+use crate::os::hermit::ffi::OsStringExt;
+#[cfg(not(target_os = "hermit"))]
 use crate::os::unix::ffi::OsStringExt;
 
 #[path = "common.rs"]
@@ -73,6 +76,7 @@ pub fn args() -> Args {
     target_os = "illumos",
     target_os = "emscripten",
     target_os = "haiku",
+    target_os = "hermit",
     target_os = "l4re",
     target_os = "fuchsia",
     target_os = "redox",
@@ -100,7 +104,7 @@ mod imp {
 
     unsafe fn really_init(argc: isize, argv: *const *const u8) {
         // These don't need to be ordered with each other or other stores,
-        // because they only hold the unmodified system-provide argv/argc.
+        // because they only hold the unmodified system-provided argv/argc.
         ARGC.store(argc, Ordering::Relaxed);
         ARGV.store(argv as *mut _, Ordering::Relaxed);
     }

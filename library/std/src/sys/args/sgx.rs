@@ -8,6 +8,7 @@ use crate::sys::pal::abi::usercalls::raw::ByteBuffer;
 use crate::sys_common::FromInner;
 use crate::{fmt, slice};
 
+// Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE")]
 static ARGS: AtomicUsize = AtomicUsize::new(0);

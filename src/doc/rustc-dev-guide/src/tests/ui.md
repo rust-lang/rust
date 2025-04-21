@@ -303,7 +303,7 @@ It should be preferred to using `error-pattern`, which is imprecise and non-exha
 ### `error-pattern`
 
 The `error-pattern` [directive](directives.md) can be used for runtime messages, which don't
-have a specific span, or in exceptional cases for compile time messages.
+have a specific span, or in exceptional cases, for compile time messages.
 
 Let's think about this test:
 
@@ -316,7 +316,7 @@ fn main() {
 }
 ```
 
-We want to ensure this shows "index out of bounds" but we cannot use the `ERROR`
+We want to ensure this shows "index out of bounds", but we cannot use the `ERROR`
 annotation since the runtime error doesn't have any span. Then it's time to use the
 `error-pattern` directive:
 
@@ -333,18 +333,19 @@ fn main() {
 Use of `error-pattern` is not recommended in general.
 
 For strict testing of compile time output, try to use the line annotations `//~` as much as
-possible, including `//~?` annotations for diagnostics without span.
+possible, including `//~?` annotations for diagnostics without spans.
 
 If the compile time output is target dependent or too verbose, use directive
 `//@ dont-require-annotations: <diagnostic-kind>` to make the line annotation checking
-non-exhaustive, some of the compiler messages can stay uncovered by annotations in this mode.
+non-exhaustive.
+Some of the compiler messages can stay uncovered by annotations in this mode.
 
-For checking runtime output `//@ check-run-results` may be preferable.
+For checking runtime output, `//@ check-run-results` may be preferable.
 
 Only use `error-pattern` if none of the above works.
 
 Line annotations `//~` are still checked in tests using `error-pattern`.
-In exceptional cases use `//@ compile-flags: --error-format=human` to opt out of these checks.
+In exceptional cases, use `//@ compile-flags: --error-format=human` to opt out of these checks.
 
 ### Diagnostic kinds (error levels)
 
