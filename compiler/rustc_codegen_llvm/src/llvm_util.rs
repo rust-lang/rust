@@ -307,6 +307,18 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("x86", "avx10.1") => Some(LLVMFeature::new("avx10.1-512")),
         ("x86", "avx10.2") if get_version().0 < 20 => None,
         ("x86", "avx10.2") if get_version().0 >= 20 => Some(LLVMFeature::new("avx10.2-512")),
+        ("x86", "apxf") => Some(LLVMFeature::with_dependencies(
+            "egpr",
+            smallvec![
+                TargetFeatureFoldStrength::Both("push2pop2"),
+                TargetFeatureFoldStrength::Both("ppx"),
+                TargetFeatureFoldStrength::Both("ndd"),
+                TargetFeatureFoldStrength::Both("ccmp"),
+                TargetFeatureFoldStrength::Both("cf"),
+                TargetFeatureFoldStrength::Both("nf"),
+                TargetFeatureFoldStrength::Both("zu"),
+            ],
+        )),
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }
