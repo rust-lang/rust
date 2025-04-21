@@ -32,5 +32,28 @@ SOURCE_FILE
             INT_NUMBER "92"
           SEMICOLON ";"
         WHITESPACE " "
+        LET_STMT
+          SUPER_KW "super"
+          WHITESPACE " "
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "y"
+          SEMICOLON ";"
+        WHITESPACE " "
+        EXPR_STMT
+          PATH_EXPR
+            PATH
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    SUPER_KW "super"
+              COLON2 "::"
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "foo"
+          SEMICOLON ";"
+        WHITESPACE " "
         R_CURLY "}"
   WHITESPACE "\n"

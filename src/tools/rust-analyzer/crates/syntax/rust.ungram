@@ -348,7 +348,7 @@ Stmt =
 | LetStmt
 
 LetStmt =
-  Attr* 'let' Pat (':' Type)?
+  Attr* 'super'? 'let' Pat (':' Type)?
   '=' initializer:Expr
   LetElse?
   ';'
