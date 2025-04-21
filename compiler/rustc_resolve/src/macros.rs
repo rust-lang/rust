@@ -6,7 +6,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::{self as ast, Crate, NodeId, attr};
+use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
@@ -21,7 +21,7 @@ use rustc_expand::expand::{
 use rustc_hir::def::{self, DefKind, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_middle::middle::stability;
-use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
+use rustc_middle::ty::{PerOwnerResolverData, RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -510,6 +510,35 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
         });
         Ok(idents)
+    }
+
+    fn set_owner(&mut self, id: NodeId) -> NodeId {
+        assert_ne!(id, DUMMY_NODE_ID);
+        let old = std::mem::replace(
+            &mut self.current_owner,
+            self.owners.remove(&id).unwrap_or_else(|| PerOwnerResolverData::new(id)),
+        );
+        let old_id = old.id;
+        if old.id == DUMMY_NODE_ID {
+            if cfg!(debug_assertions) {
+                let PerOwnerResolverData { node_id_to_def_id, id: _ } = old;
+                assert!(node_id_to_def_id.is_empty());
+            }
+        } else {
+            assert!(self.owners.insert(old.id, old).is_none());
+        }
+        old_id
+    }
+
+    fn reset_owner(&mut self, id: NodeId) {
+        let new = if id == DUMMY_NODE_ID {
+            PerOwnerResolverData::new(DUMMY_NODE_ID)
+        } else {
+            self.owners.remove(&id).unwrap()
+        };
+        let old = std::mem::replace(&mut self.current_owner, new);
+        assert_ne!(old.id, DUMMY_NODE_ID);
+        assert!(self.owners.insert(old.id, old).is_none());
     }
 }
 
