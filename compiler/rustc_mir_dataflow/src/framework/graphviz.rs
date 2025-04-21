@@ -260,12 +260,15 @@ where
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
         let mut results = self.results.borrow_mut();
+
+        let diffs = StateDiffCollector::run(self.body, *block, *results, self.style);
+
         let mut fmt = BlockFormatter {
             cursor: results.as_results_cursor(self.body),
             style: self.style,
             bg: Background::Light,
         };
-        let label = fmt.write_node_label(*block).unwrap();
+        let label = fmt.write_node_label(*block, diffs).unwrap();
 
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
@@ -336,7 +339,11 @@ where
         bg
     }
 
-    fn write_node_label(&mut self, block: BasicBlock) -> io::Result<Vec<u8>> {
+    fn write_node_label(
+        &mut self,
+        block: BasicBlock,
+        diffs: StateDiffCollector<A::Domain>,
+    ) -> io::Result<Vec<u8>> {
         use std::io::Write;
 
         //   Sample output:
@@ -392,7 +399,7 @@ where
         self.write_row_with_full_state(w, "", "(on start)")?;
 
         // D + E: Statement and terminator transfer functions
-        self.write_statements_and_terminator(w, block)?;
+        self.write_statements_and_terminator(w, block, diffs)?;
 
         // F: State at end of block
 
@@ -575,14 +582,8 @@ where
         &mut self,
         w: &mut impl io::Write,
         block: BasicBlock,
+        diffs: StateDiffCollector<A::Domain>,
     ) -> io::Result<()> {
-        let diffs = StateDiffCollector::run(
-            self.cursor.body(),
-            block,
-            self.cursor.mut_results(),
-            self.style,
-        );
-
         let mut diffs_before = diffs.before.map(|v| v.into_iter());
         let mut diffs_after = diffs.after.into_iter();
 
