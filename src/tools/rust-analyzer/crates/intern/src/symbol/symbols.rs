@@ -512,6 +512,7 @@ define_symbols! {
     unreachable_2021,
     unreachable,
     unsafe_cell,
+    unsafe_pinned,
     unsize,
     unstable,
     usize,
