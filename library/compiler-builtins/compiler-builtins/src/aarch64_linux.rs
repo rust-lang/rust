@@ -136,7 +136,7 @@ macro_rules! compare_and_swap {
                 expected: int_ty!($bytes), desired: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
                 // We can't use `AtomicI8::compare_and_swap`; we *are* compare_and_swap.
-                unsafe { core::arch::naked_asm! {
+                core::arch::naked_asm! {
                     // UXT s(tmp0), s(0)
                     concat!(uxt!($bytes), " ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
                     "0:",
@@ -150,7 +150,7 @@ macro_rules! compare_and_swap {
                     "cbnz   w17, 0b",
                     "1:",
                     "ret",
-                } }
+                }
             }
         }
     };
@@ -165,7 +165,7 @@ macro_rules! compare_and_swap_i128 {
             pub unsafe extern "C" fn $name (
                 expected: i128, desired: i128, ptr: *mut i128
             ) -> i128 {
-                unsafe { core::arch::naked_asm! {
+                core::arch::naked_asm! {
                     "mov    x16, x0",
                     "mov    x17, x1",
                     "0:",
@@ -179,7 +179,7 @@ macro_rules! compare_and_swap_i128 {
                     "cbnz   w15, 0b",
                     "1:",
                     "ret",
-                } }
+                }
             }
         }
     };
@@ -194,7 +194,7 @@ macro_rules! swap {
             pub unsafe extern "C" fn $name (
                 left: int_ty!($bytes), right_ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
-                unsafe { core::arch::naked_asm! {
+                core::arch::naked_asm! {
                     // mov    s(tmp0), s(0)
                     concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
                     "0:",
@@ -204,7 +204,7 @@ macro_rules! swap {
                     concat!(stxr!($ordering, $bytes), " w17, ", reg!($bytes, 16), ", [x1]"),
                     "cbnz   w17, 0b",
                     "ret",
-                } }
+                }
             }
         }
     };
@@ -219,7 +219,7 @@ macro_rules! fetch_op {
             pub unsafe extern "C" fn $name (
                 val: int_ty!($bytes), ptr: *mut int_ty!($bytes)
             ) -> int_ty!($bytes) {
-                unsafe { core::arch::naked_asm! {
+                core::arch::naked_asm! {
                     // mov    s(tmp0), s(0)
                     concat!("mov ", reg!($bytes, 16), ", ", reg!($bytes, 0)),
                     "0:",
@@ -231,7 +231,7 @@ macro_rules! fetch_op {
                     concat!(stxr!($ordering, $bytes), " w15, ", reg!($bytes, 17), ", [x1]"),
                     "cbnz  w15, 0b",
                     "ret",
-                } }
+                }
             }
         }
     }

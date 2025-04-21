@@ -436,11 +436,12 @@ macro_rules! intrinsics {
             // FIXME: when bootstrap supports `#[unsafe(naked)]` this duplication can be removed
             #[cfg(bootstrap)]
             #[naked]
+            #[allow(unused_unsafe)]
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
             #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
+                unsafe { $($body)* }
             }
 
             #[cfg(not(bootstrap))]
