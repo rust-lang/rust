@@ -100,6 +100,10 @@ where
 
 pub fn remove_and_create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     let path = path.as_ref();
-    recursive_remove(path)?;
+    // FIXME(#134351): for reasons that are not clear yet, `tests/mir-opt/strip_debuginfo.rs`
+    // triggers various permission denied and dir not empty failures too frequently. Temporarily
+    // swallow the remove dir failure to make CI failure rate tolerable, but this is mostly likely
+    // masking a genuine bug, possibly some kind of race condition.
+    let _ = recursive_remove(path);
     fs::create_dir_all(path)
 }
