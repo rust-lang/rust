@@ -85,7 +85,7 @@ fn is_variant_or_wildcard(cx: &LateContext<'_>, pat: &Pat<'_>, can_be_wild: bool
 /// contains `Err(IDENT)`, `None` otherwise.
 fn is_ok_or_err<'hir>(cx: &LateContext<'_>, pat: &Pat<'hir>) -> Option<(bool, &'hir Ident)> {
     if let PatKind::TupleStruct(qpath, [arg], _) = &pat.kind
-        && let PatKind::Binding(BindingMode::NONE, _, ident, _) = &arg.kind
+        && let PatKind::Binding(BindingMode::NONE, _, ident, None) = &arg.kind
         && let res = cx.qpath_res(qpath, pat.hir_id)
         && let Res::Def(DefKind::Ctor(..), id) = res
         && let id @ Some(_) = cx.tcx.opt_parent(id)
