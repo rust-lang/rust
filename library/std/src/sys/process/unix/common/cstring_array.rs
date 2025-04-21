@@ -25,6 +25,10 @@ impl CStringArray {
         let argc = self.ptrs.len() - 1;
         let ptr = &mut self.ptrs[..argc][index];
         let old = mem::replace(ptr, item.into_raw());
+        // SAFETY:
+        // `CStringArray` owns all of its strings, and they were all transformed
+        // into pointers using `CString::into_raw`. Also, this is not the null
+        // pointer since the indexing above would have failed.
         drop(unsafe { CString::from_raw(old.cast_mut()) });
     }
 
@@ -52,6 +56,9 @@ impl Index<usize> for CStringArray {
     type Output = CStr;
     fn index(&self, index: usize) -> &CStr {
         let ptr = self.ptrs[..self.ptrs.len() - 1][index];
+        // SAFETY:
+        // `CStringArray` owns all of its strings. Also, this is not the null
+        // pointer since the indexing above would have failed.
         unsafe { CStr::from_ptr(ptr) }
     }
 }
@@ -69,6 +76,9 @@ unsafe impl Sync for CStringArray {}
 
 impl Drop for CStringArray {
     fn drop(&mut self) {
+        // SAFETY:
+        // `CStringArray` owns all of its strings, and they were all transformed
+        // into pointers using `CString::into_raw`.
         self.ptrs[..self.ptrs.len() - 1]
             .iter()
             .for_each(|&p| drop(unsafe { CString::from_raw(p.cast_mut()) }))
@@ -84,6 +94,9 @@ pub struct CStringIter<'a> {
 impl<'a> Iterator for CStringIter<'a> {
     type Item = &'a CStr;
     fn next(&mut self) -> Option<&'a CStr> {
+        // SAFETY:
+        // `CStringArray` owns all of its strings. Also, this is not the null
+        // pointer since the last element is excluded when creating `iter`.
         self.iter.next().map(|&p| unsafe { CStr::from_ptr(p) })
     }
 
