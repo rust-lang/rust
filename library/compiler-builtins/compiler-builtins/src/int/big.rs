@@ -45,7 +45,7 @@ impl i256 {
 impl MinInt for u256 {
     type OtherSign = i256;
 
-    type UnsignedInt = u256;
+    type Unsigned = u256;
 
     const SIGNED: bool = false;
     const BITS: u32 = 256;
@@ -58,7 +58,7 @@ impl MinInt for u256 {
 impl MinInt for i256 {
     type OtherSign = u256;
 
-    type UnsignedInt = u256;
+    type Unsigned = u256;
 
     const SIGNED: bool = false;
     const BITS: u32 = 256;
