@@ -2,15 +2,14 @@
 #[allow(dead_code)]
 #[allow(unused_imports)]
 #[allow(clippy::all)]
-#[path = "../../libm/src/math/mod.rs"]
-pub(crate) mod libm;
+pub(crate) mod libm_math;
 
 macro_rules! libm_intrinsics {
     ($(fn $fun:ident($($iid:ident : $ity:ty),+) -> $oty:ty;)+) => {
         intrinsics! {
             $(
                 pub extern "C" fn $fun($($iid: $ity),+) -> $oty {
-                    $crate::math::libm::$fun($($iid),+)
+                    $crate::math::libm_math::$fun($($iid),+)
                 }
             )+
         }
@@ -185,13 +184,13 @@ pub mod partial_availability {
     // allow for windows (and other targets)
     intrinsics! {
         pub extern "C" fn lgamma_r(x: f64, s: &mut i32) -> f64 {
-            let r = super::libm::lgamma_r(x);
+            let r = super::libm_math::lgamma_r(x);
             *s = r.1;
             r.0
         }
 
         pub extern "C" fn lgammaf_r(x: f32, s: &mut i32) -> f32 {
-            let r = super::libm::lgammaf_r(x);
+            let r = super::libm_math::lgammaf_r(x);
             *s = r.1;
             r.0
         }
