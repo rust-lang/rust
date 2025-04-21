@@ -13,7 +13,7 @@ Target triplets available so far:
 
 ## Target maintainers
 
-- Jeremy Soller ([@jackpot51](https://github.com/jackpot51))
+[@jackpot51](https://github.com/jackpot51)
 
 ## Requirements
 

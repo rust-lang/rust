@@ -9,7 +9,7 @@ MIPS32r2 baremetal softfloat, Big Endian or Little Endian.
 
 ## Target maintainers
 
-- YunQiang Su, `syq@debian.org`, https://github.com/wzssyqa
+[@wzssyqa](https://github.com/wzssyqa)
 
 ## Background
 

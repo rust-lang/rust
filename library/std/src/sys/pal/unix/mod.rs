@@ -6,7 +6,6 @@ use crate::io::ErrorKind;
 #[macro_use]
 pub mod weak;
 
-pub mod env;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
 pub mod futex;

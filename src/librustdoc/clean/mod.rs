@@ -2773,10 +2773,35 @@ fn clean_maybe_renamed_item<'tcx>(
 ) -> Vec<Item> {
     use hir::ItemKind;
 
-    let def_id = item.owner_id.to_def_id();
-    let mut name = if renamed.is_some() { renamed } else { cx.tcx.hir_opt_name(item.hir_id()) };
+    fn get_name(
+        cx: &DocContext<'_>,
+        item: &hir::Item<'_>,
+        renamed: Option<Symbol>,
+    ) -> Option<Symbol> {
+        renamed.or_else(|| cx.tcx.hir_opt_name(item.hir_id()))
+    }
 
+    let def_id = item.owner_id.to_def_id();
     cx.with_param_env(def_id, |cx| {
+        // These kinds of item either don't need a `name` or accept a `None` one so we handle them
+        // before.
+        match item.kind {
+            ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
+            ItemKind::Use(path, kind) => {
+                return clean_use_statement(
+                    item,
+                    get_name(cx, item, renamed),
+                    path,
+                    kind,
+                    cx,
+                    &mut FxHashSet::default(),
+                );
+            }
+            _ => {}
+        }
+
+        let mut name = get_name(cx, item, renamed).unwrap();
+
         let kind = match item.kind {
             ItemKind::Static(_, ty, mutability, body_id) => StaticItem(Static {
                 type_: Box::new(clean_ty(ty, cx)),
@@ -2815,7 +2840,7 @@ fn clean_maybe_renamed_item<'tcx>(
                         item_type: Some(type_),
                     })),
                     item.owner_id.def_id.to_def_id(),
-                    name.unwrap(),
+                    name,
                     import_id,
                     renamed,
                 ));
@@ -2838,17 +2863,14 @@ fn clean_maybe_renamed_item<'tcx>(
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
             ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
-                source: display_macro_source(cx, name.unwrap(), macro_def),
+                source: display_macro_source(cx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, _, macro_kind) => {
-                clean_proc_macro(item, name.as_mut().unwrap(), macro_kind, cx)
-            }
+            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
-                clean_fn_or_proc_macro(item, sig, generics, body_id, name.as_mut().unwrap(), cx)
+                clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             ItemKind::Trait(_, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
@@ -2864,10 +2886,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 }))
             }
             ItemKind::ExternCrate(orig_name, _) => {
-                return clean_extern_crate(item, name.unwrap(), orig_name, cx);
-            }
-            ItemKind::Use(path, kind) => {
-                return clean_use_statement(item, name, path, kind, cx, &mut FxHashSet::default());
+                return clean_extern_crate(item, name, orig_name, cx);
             }
             _ => span_bug!(item.span, "not yet converted"),
         };
@@ -2876,7 +2895,7 @@ fn clean_maybe_renamed_item<'tcx>(
             cx,
             kind,
             item.owner_id.def_id.to_def_id(),
-            name.unwrap(),
+            name,
             import_id,
             renamed,
         )]

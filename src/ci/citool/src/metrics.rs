@@ -46,24 +46,25 @@ pub struct JobMetrics {
 /// `parent` and `current` should be commit SHAs.
 pub fn download_auto_job_metrics(
     job_db: &JobDatabase,
-    parent: &str,
+    parent: Option<&str>,
     current: &str,
 ) -> anyhow::Result<HashMap<JobName, JobMetrics>> {
     let mut jobs = HashMap::default();
 
     for job in &job_db.auto_jobs {
         eprintln!("Downloading metrics of job {}", job.name);
-        let metrics_parent = match download_job_metrics(&job.name, parent) {
-            Ok(metrics) => Some(metrics),
-            Err(error) => {
-                eprintln!(
-                    r#"Did not find metrics for job `{}` at `{parent}`: {error:?}.
+        let metrics_parent =
+            parent.and_then(|parent| match download_job_metrics(&job.name, parent) {
+                Ok(metrics) => Some(metrics),
+                Err(error) => {
+                    eprintln!(
+                        r#"Did not find metrics for job `{}` at `{parent}`: {error:?}.
 Maybe it was newly added?"#,
-                    job.name
-                );
-                None
-            }
-        };
+                        job.name
+                    );
+                    None
+                }
+            });
         let metrics_current = download_job_metrics(&job.name, current)?;
         jobs.insert(
             job.name.clone(),

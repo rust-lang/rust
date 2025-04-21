@@ -30,7 +30,7 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 44;
+pub const FORMAT_VERSION: u32 = 45;
 
 /// The root of the emitted JSON blob.
 ///
@@ -205,9 +205,9 @@ pub struct Item {
 pub struct Span {
     /// The path to the source file for this span relative to the path `rustdoc` was invoked with.
     pub filename: PathBuf,
-    /// Zero indexed Line and Column of the first character of the `Span`
+    /// One indexed Line and Column of the first character of the `Span`.
     pub begin: (usize, usize),
-    /// Zero indexed Line and Column of the last character of the `Span`
+    /// One indexed Line and Column of the last character of the `Span`.
     pub end: (usize, usize),
 }
 

@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
-use std::env;
 use std::fs::{File, remove_file};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use build_helper::ci::CiEnv;
 use clap::CommandFactory;
@@ -21,6 +21,27 @@ pub(crate) fn parse(config: &str) -> Config {
         Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
         |&_| toml::from_str(&config),
     )
+}
+
+fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+    let contents = std::fs::read_to_string(file).unwrap();
+    toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
+}
+
+/// Helps with debugging by using consistent test-specific directories instead of
+/// random temporary directories.
+fn prepare_test_specific_dir() -> PathBuf {
+    let current = std::thread::current();
+    // Replace "::" with "_" to make it safe for directory names on Windows systems
+    let test_path = current.name().unwrap().replace("::", "_");
+
+    let testdir = parse("").tempdir().join(test_path);
+
+    // clean up any old test files
+    let _ = fs::remove_dir_all(&testdir);
+    let _ = fs::create_dir_all(&testdir);
+
+    testdir
 }
 
 #[test]
@@ -538,4 +559,190 @@ fn test_ci_flag() {
 
     let config = Config::parse_inner(Flags::parse(&["check".into()]), |&_| toml::from_str(""));
     assert_eq!(config.is_running_on_ci, CiEnv::is_ci());
+}
+
+#[test]
+fn test_precedence_of_includes() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./extension.toml"]
+
+        [llvm]
+        link-jobs = 2
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        change-id=543
+        include = ["./extension2.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension2.toml");
+    let extension_content = br#"
+        change-id=742
+
+        [llvm]
+        link-jobs = 10
+
+        [build]
+        description = "Some creative description"
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+
+    assert_eq!(config.change_id.unwrap(), ChangeId::Id(543));
+    assert_eq!(config.llvm_link_jobs.unwrap(), 2);
+    assert_eq!(config.description.unwrap(), "Some creative description");
+}
+
+#[test]
+#[should_panic(expected = "Cyclic inclusion detected")]
+fn test_cyclic_include_direct() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        include = ["./config.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+#[should_panic(expected = "Cyclic inclusion detected")]
+fn test_cyclic_include_indirect() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        include = ["./extension2.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension2.toml");
+    let extension_content = br#"
+        include = ["./extension3.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension3.toml");
+    let extension_content = br#"
+        include = ["./extension.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+fn test_include_absolute_paths() {
+    let testdir = prepare_test_specific_dir();
+
+    let extension = testdir.join("extension.toml");
+    File::create(&extension).unwrap().write_all(&[]).unwrap();
+
+    let root_config = testdir.join("config.toml");
+    let extension_absolute_path =
+        extension.canonicalize().unwrap().to_str().unwrap().replace('\\', r"\\");
+    let root_config_content = format!(r#"include = ["{}"]"#, extension_absolute_path);
+    File::create(&root_config).unwrap().write_all(root_config_content.as_bytes()).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+fn test_include_relative_paths() {
+    let testdir = prepare_test_specific_dir();
+
+    let _ = fs::create_dir_all(&testdir.join("subdir/another_subdir"));
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./subdir/extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("subdir/extension.toml");
+    let extension_content = br#"
+        include = ["../extension2.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension2.toml");
+    let extension_content = br#"
+        include = ["./subdir/another_subdir/extension3.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("subdir/another_subdir/extension3.toml");
+    let extension_content = br#"
+        include = ["../../extension4.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension4.toml");
+    File::create(extension).unwrap().write_all(&[]).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+fn test_include_precedence_over_profile() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        profile = "dist"
+        include = ["./extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        [rust]
+        channel = "dev"
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+
+    // "dist" profile would normally set the channel to "auto-detect", but includes should
+    // override profile settings, so we expect this to be "dev" here.
+    assert_eq!(config.channel, "dev");
 }

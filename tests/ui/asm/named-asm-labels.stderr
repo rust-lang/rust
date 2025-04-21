@@ -475,10 +475,10 @@ LL |         #[warn(named_asm_labels)]
    |                ^^^^^^^^^^^^^^^^
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:180:26
+  --> $DIR/named-asm-labels.rs:180:17
    |
-LL |     unsafe { naked_asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1) }
-   |                          ^^^^^
+LL |     naked_asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1)
+   |                 ^^^^^
    |
    = help: only local labels of the form `<number>:` should be used in inline asm
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
@@ -493,19 +493,19 @@ LL |     unsafe { asm!(".Lbar: mov rax, {}; ret;", "nop", const 1, options(noret
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:195:26
+  --> $DIR/named-asm-labels.rs:195:17
    |
-LL |     unsafe { naked_asm!(".Laaa: nop; ret;") }
-   |                          ^^^^^
+LL |     naked_asm!(".Laaa: nop; ret;")
+   |                 ^^^^^
    |
    = help: only local labels of the form `<number>:` should be used in inline asm
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information
 
 error: avoid using named labels in inline assembly
-  --> $DIR/named-asm-labels.rs:205:30
+  --> $DIR/named-asm-labels.rs:205:21
    |
-LL |         unsafe { naked_asm!(".Lbbb: nop; ret;") }
-   |                              ^^^^^
+LL |         naked_asm!(".Lbbb: nop; ret;")
+   |                     ^^^^^
    |
    = help: only local labels of the form `<number>:` should be used in inline asm
    = note: see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information

@@ -12,10 +12,11 @@ use libc::c_char;
     all(target_os = "linux", not(target_env = "musl")),
     target_os = "android",
     target_os = "fuchsia",
-    target_os = "hurd"
+    target_os = "hurd",
+    target_os = "illumos",
 ))]
 use libc::dirfd;
-#[cfg(target_os = "fuchsia")]
+#[cfg(any(target_os = "fuchsia", target_os = "illumos"))]
 use libc::fstatat as fstatat64;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
@@ -892,7 +893,8 @@ impl DirEntry {
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
             target_os = "fuchsia",
-            target_os = "hurd"
+            target_os = "hurd",
+            target_os = "illumos",
         ),
         not(miri) // no dirfd on Miri
     ))]
@@ -922,6 +924,7 @@ impl DirEntry {
             target_os = "android",
             target_os = "fuchsia",
             target_os = "hurd",
+            target_os = "illumos",
         )),
         miri
     ))]

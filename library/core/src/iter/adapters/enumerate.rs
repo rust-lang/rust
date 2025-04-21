@@ -23,6 +23,39 @@ impl<I> Enumerate<I> {
     pub(in crate::iter) fn new(iter: I) -> Enumerate<I> {
         Enumerate { iter, count: 0 }
     }
+
+    /// Retrieve the current position of the iterator.
+    ///
+    /// If the iterator has not advanced, the position returned will be 0.
+    ///
+    /// The position may also exceed the bounds of the iterator to allow for calculating
+    /// the displacement of the iterator from following calls to [`Iterator::next`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(next_index)]
+    ///
+    /// let arr = ['a', 'b'];
+    ///
+    /// let mut iter = arr.iter().enumerate();
+    ///
+    /// assert_eq!(iter.next_index(), 0);
+    /// assert_eq!(iter.next(), Some((0, &'a')));
+    ///
+    /// assert_eq!(iter.next_index(), 1);
+    /// assert_eq!(iter.next_index(), 1);
+    /// assert_eq!(iter.next(), Some((1, &'b')));
+    ///
+    /// assert_eq!(iter.next_index(), 2);
+    /// assert_eq!(iter.next(), None);
+    /// assert_eq!(iter.next_index(), 2);
+    /// ```
+    #[inline]
+    #[unstable(feature = "next_index", issue = "130711")]
+    pub fn next_index(&self) -> usize {
+        self.count
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
