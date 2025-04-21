@@ -76,7 +76,7 @@ impl NonStdLazyStatic {
     #[must_use]
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             once_cell_crates: Vec::new(),
             sugg_map: FxIndexMap::default(),
             lazy_type_defs: FxIndexMap::default(),

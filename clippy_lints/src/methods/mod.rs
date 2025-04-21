@@ -5105,7 +5105,7 @@ impl Methods {
 
         Self {
             avoid_breaking_exported_api: conf.avoid_breaking_exported_api,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             allow_expect_in_tests: conf.allow_expect_in_tests,
             allow_unwrap_in_tests: conf.allow_unwrap_in_tests,
             allow_expect_in_consts: conf.allow_expect_in_consts,

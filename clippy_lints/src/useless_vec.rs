@@ -50,7 +50,7 @@ impl UselessVec {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             too_large_for_stack: conf.too_large_for_stack,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             span_to_state: BTreeMap::new(),
             allow_in_test: conf.allow_useless_vec_in_tests,
         }

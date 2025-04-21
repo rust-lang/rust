@@ -9,8 +9,6 @@ use rustc_hir::{HirId, StabilityLevel, StableSince};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::Symbol;
-use serde::Deserialize;
 use std::iter::once;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -104,15 +102,10 @@ static SEEN_MSRV_ATTR: AtomicBool = AtomicBool::new(false);
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Msrv(Option<RustcVersion>);
 
-impl<'de> Deserialize<'de> for Msrv {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let v = String::deserialize(deserializer)?;
-        parse_version(Symbol::intern(&v))
-            .map(|v| Self(Some(v)))
-            .ok_or_else(|| serde::de::Error::custom("not a valid Rust version"))
+impl From<Option<RustcVersion>> for Msrv {
+    #[inline]
+    fn from(value: Option<RustcVersion>) -> Self {
+        Self(value)
     }
 }
 
@@ -155,29 +148,12 @@ impl Msrv {
     pub fn meets(self, cx: &LateContext<'_>, required: RustcVersion) -> bool {
         self.current(cx).is_none_or(|msrv| msrv >= required)
     }
-
     /// Checks if a required version from [this module](self) is met at the specified node
     ///
     /// If the crate being linted uses an `#[clippy::msrv]` attribute this will search the parent
     /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
     pub fn meets_at(self, tcx: TyCtxt<'_>, node: HirId, required: RustcVersion) -> bool {
         self.at(tcx, node).is_none_or(|msrv| msrv >= required)
-    }
-
-    pub fn read_cargo(&mut self, sess: &Session) {
-        let cargo_msrv = std::env::var("CARGO_PKG_RUST_VERSION")
-            .ok()
-            .and_then(|v| parse_version(Symbol::intern(&v)));
-
-        match (self.0, cargo_msrv) {
-            (None, Some(cargo_msrv)) => self.0 = Some(cargo_msrv),
-            (Some(clippy_msrv), Some(cargo_msrv)) if clippy_msrv != cargo_msrv => {
-                sess.dcx().warn(format!(
-                    "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
-                ));
-            },
-            _ => {},
-        }
     }
 
     pub fn is_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
@@ -207,13 +183,16 @@ pub struct MsrvStack {
     stack: SmallVec<[RustcVersion; 2]>,
 }
 
-impl MsrvStack {
-    pub fn new(initial: Msrv) -> Self {
+impl From<Option<RustcVersion>> for MsrvStack {
+    #[inline]
+    fn from(value: Option<RustcVersion>) -> Self {
         Self {
-            stack: SmallVec::from_iter(initial.0),
+            stack: SmallVec::from_iter(value),
         }
     }
+}
 
+impl MsrvStack {
     pub fn current(&self) -> Option<RustcVersion> {
         self.stack.last().copied()
     }

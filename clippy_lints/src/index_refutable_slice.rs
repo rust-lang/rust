@@ -64,7 +64,7 @@ impl IndexRefutableSlice {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             max_suggested_slice: conf.max_suggested_slice_pattern_length,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }

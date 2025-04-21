@@ -66,7 +66,10 @@ impl DurationSuboptimalUnits {
         if tcx.features().enabled(sym::duration_constructors) {
             units.extend(EXTENDED_UNITS);
         }
-        Self { msrv: conf.msrv, units }
+        Self {
+            msrv: conf.msrv.into(),
+            units,
+        }
     }
 }
 

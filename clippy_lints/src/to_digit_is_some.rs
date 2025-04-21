@@ -43,7 +43,7 @@ pub(crate) struct ToDigitIsSome {
 
 impl ToDigitIsSome {
     pub(crate) fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

@@ -328,7 +328,7 @@ impl<'tcx> FormatArgs<'tcx> {
         let ty_msrv_map = make_ty_msrv_map(tcx);
         Self {
             format_args,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             ignore_mixed: conf.allow_mixed_uninlined_format_args,
             ty_msrv_map,
             has_derived_debug: FxHashMap::default(),

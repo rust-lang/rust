@@ -67,7 +67,7 @@ pub struct ManualPopIf {
 impl ManualPopIf {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             binary_heap_pop_if_feature_enabled: tcx.features().enabled(sym::binary_heap_pop_if),
         }
     }

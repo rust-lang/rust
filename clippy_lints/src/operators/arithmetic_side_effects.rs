@@ -39,7 +39,7 @@ impl ArithmeticSideEffects {
                 FxHashSet::from_iter(["str", "std::string::String"]),
             ),
         ]);
-        for (lhs, rhs) in &conf.arithmetic_side_effects_allowed_binary {
+        for [lhs, rhs] in &conf.arithmetic_side_effects_allowed_binary {
             allowed_binary.entry(lhs).or_default().insert(rhs);
         }
         for s in &conf.arithmetic_side_effects_allowed {

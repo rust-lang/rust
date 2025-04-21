@@ -36,9 +36,7 @@ pub struct AlmostCompleteRange {
 }
 impl AlmostCompleteRange {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: MsrvStack::new(conf.msrv),
-        }
+        Self { msrv: conf.msrv.into() }
     }
 }
 impl EarlyLintPass for AlmostCompleteRange {

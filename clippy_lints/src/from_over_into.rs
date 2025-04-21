@@ -60,7 +60,7 @@ pub struct FromOverInto {
 
 impl FromOverInto {
     pub fn new(conf: &'static Conf) -> Self {
-        FromOverInto { msrv: conf.msrv }
+        FromOverInto { msrv: conf.msrv.into() }
     }
 }
 
