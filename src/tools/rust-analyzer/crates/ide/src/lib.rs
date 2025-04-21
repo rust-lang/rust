@@ -249,7 +249,7 @@ impl Analysis {
             TryFrom::try_from(&*std::env::current_dir().unwrap().as_path().to_string_lossy())
                 .unwrap(),
         );
-        cfg_options.insert_atom(sym::test.clone());
+        cfg_options.insert_atom(sym::test);
         crate_graph.add_crate_root(
             file_id,
             Edition::CURRENT,

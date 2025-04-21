@@ -2056,7 +2056,7 @@ impl DefWithBody {
                         continue;
                     }
                     let mut need_mut = &mol[local];
-                    if body[binding_id].name == sym::self_.clone()
+                    if body[binding_id].name == sym::self_
                         && need_mut == &mir::MutabilityReason::Unused
                     {
                         need_mut = &mir::MutabilityReason::Not;
@@ -3045,7 +3045,7 @@ pub struct StaticLifetime;
 
 impl StaticLifetime {
     pub fn name(self) -> Name {
-        Name::new_symbol_root(sym::tick_static.clone())
+        Name::new_symbol_root(sym::tick_static)
     }
 }
 
@@ -3871,7 +3871,7 @@ impl Local {
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
-        self.name(db) == sym::self_.clone()
+        self.name(db) == sym::self_
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
@@ -4987,9 +4987,8 @@ impl Type {
             return None;
         }
 
-        let output_assoc_type = db
-            .trait_items(trait_)
-            .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
+        let output_assoc_type =
+            db.trait_items(trait_).associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
         self.normalize_trait_assoc_type(db, &[], output_assoc_type.into())
     }
 
@@ -5005,7 +5004,7 @@ impl Type {
         let iterator_trait = db.lang_item(self.env.krate, LangItem::Iterator)?.as_trait()?;
         let iterator_item = db
             .trait_items(iterator_trait)
-            .associated_type_by_name(&Name::new_symbol_root(sym::Item.clone()))?;
+            .associated_type_by_name(&Name::new_symbol_root(sym::Item))?;
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
 
@@ -5037,7 +5036,7 @@ impl Type {
 
         let into_iter_assoc_type = db
             .trait_items(trait_)
-            .associated_type_by_name(&Name::new_symbol_root(sym::IntoIter.clone()))?;
+            .associated_type_by_name(&Name::new_symbol_root(sym::IntoIter))?;
         self.normalize_trait_assoc_type(db, &[], into_iter_assoc_type.into())
     }
 

@@ -853,9 +853,9 @@ impl<'a> InferenceTable<'a> {
         num_args: usize,
     ) -> Option<(FnTrait, Vec<Ty>, Ty)> {
         for (fn_trait_name, output_assoc_name, subtraits) in [
-            (FnTrait::FnOnce, sym::Output.clone(), &[FnTrait::Fn, FnTrait::FnMut][..]),
-            (FnTrait::AsyncFnMut, sym::CallRefFuture.clone(), &[FnTrait::AsyncFn]),
-            (FnTrait::AsyncFnOnce, sym::CallOnceFuture.clone(), &[]),
+            (FnTrait::FnOnce, sym::Output, &[FnTrait::Fn, FnTrait::FnMut][..]),
+            (FnTrait::AsyncFnMut, sym::CallRefFuture, &[FnTrait::AsyncFn]),
+            (FnTrait::AsyncFnOnce, sym::CallOnceFuture, &[]),
         ] {
             let krate = self.trait_env.krate;
             let fn_trait = fn_trait_name.get_id(self.db, krate)?;

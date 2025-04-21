@@ -1737,9 +1737,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
-        self.db
-            .trait_items(trait_)
-            .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))
+        self.db.trait_items(trait_).associated_type_by_name(&Name::new_symbol_root(sym::Output))
     }
 
     fn resolve_lang_trait(&self, lang: LangItem) -> Option<TraitId> {

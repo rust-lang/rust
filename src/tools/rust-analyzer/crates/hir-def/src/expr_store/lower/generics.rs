@@ -43,7 +43,7 @@ impl<'db, 'c> GenericParamsCollector<'db, 'c> {
     }
 
     pub(crate) fn fill_self_param(&mut self, bounds: Option<ast::TypeBoundList>) {
-        let self_ = Name::new_symbol_root(sym::Self_.clone());
+        let self_ = Name::new_symbol_root(sym::Self_);
         let idx = self.type_or_consts.alloc(
             TypeParamData {
                 name: Some(self_.clone()),

@@ -181,8 +181,8 @@ impl WrapperKind {
 
     fn symbol(&self) -> hir::Symbol {
         match self {
-            WrapperKind::Option => hir::sym::Option.clone(),
-            WrapperKind::Result => hir::sym::Result.clone(),
+            WrapperKind::Option => hir::sym::Option,
+            WrapperKind::Result => hir::sym::Result,
         }
     }
 }

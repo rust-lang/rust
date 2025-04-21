@@ -268,24 +268,24 @@ impl DefCollector<'_> {
             let Some(attr_name) = attr.path.as_ident() else { continue };
 
             match () {
-                () if *attr_name == sym::recursion_limit.clone() => {
+                () if *attr_name == sym::recursion_limit => {
                     if let Some(limit) = attr.string_value() {
                         if let Ok(limit) = limit.as_str().parse() {
                             crate_data.recursion_limit = Some(limit);
                         }
                     }
                 }
-                () if *attr_name == sym::crate_type.clone() => {
+                () if *attr_name == sym::crate_type => {
                     if attr.string_value() == Some(&sym::proc_dash_macro) {
                         self.is_proc_macro = true;
                     }
                 }
-                () if *attr_name == sym::no_core.clone() => crate_data.no_core = true,
-                () if *attr_name == sym::no_std.clone() => crate_data.no_std = true,
-                () if *attr_name == sym::rustc_coherence_is_core.clone() => {
+                () if *attr_name == sym::no_core => crate_data.no_core = true,
+                () if *attr_name == sym::no_std => crate_data.no_std = true,
+                () if *attr_name == sym::rustc_coherence_is_core => {
                     crate_data.rustc_coherence_is_core = true;
                 }
-                () if *attr_name == sym::feature.clone() => {
+                () if *attr_name == sym::feature => {
                     let features =
                         attr.parse_path_comma_token_tree(self.db).into_iter().flatten().filter_map(
                             |(feat, _)| match feat.segments() {
@@ -295,13 +295,13 @@ impl DefCollector<'_> {
                         );
                     crate_data.unstable_features.extend(features);
                 }
-                () if *attr_name == sym::register_attr.clone() => {
+                () if *attr_name == sym::register_attr => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_attrs.push(ident.sym.clone());
                         cov_mark::hit!(register_attr);
                     }
                 }
-                () if *attr_name == sym::register_tool.clone() => {
+                () if *attr_name == sym::register_tool => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_tools.push(ident.sym.clone());
                         cov_mark::hit!(register_tool);
@@ -507,20 +507,20 @@ impl DefCollector<'_> {
         }
 
         let krate = if self.def_map.data.no_std {
-            Name::new_symbol_root(sym::core.clone())
-        } else if self.local_def_map().extern_prelude().any(|(name, _)| *name == sym::std.clone()) {
-            Name::new_symbol_root(sym::std.clone())
+            Name::new_symbol_root(sym::core)
+        } else if self.local_def_map().extern_prelude().any(|(name, _)| *name == sym::std) {
+            Name::new_symbol_root(sym::std)
         } else {
             // If `std` does not exist for some reason, fall back to core. This mostly helps
             // keep r-a's own tests minimal.
-            Name::new_symbol_root(sym::core.clone())
+            Name::new_symbol_root(sym::core)
         };
 
         let edition = match self.def_map.data.edition {
-            Edition::Edition2015 => Name::new_symbol_root(sym::rust_2015.clone()),
-            Edition::Edition2018 => Name::new_symbol_root(sym::rust_2018.clone()),
-            Edition::Edition2021 => Name::new_symbol_root(sym::rust_2021.clone()),
-            Edition::Edition2024 => Name::new_symbol_root(sym::rust_2024.clone()),
+            Edition::Edition2015 => Name::new_symbol_root(sym::rust_2015),
+            Edition::Edition2018 => Name::new_symbol_root(sym::rust_2018),
+            Edition::Edition2021 => Name::new_symbol_root(sym::rust_2021),
+            Edition::Edition2024 => Name::new_symbol_root(sym::rust_2024),
         };
 
         let path_kind = match self.def_map.data.edition {
@@ -529,7 +529,7 @@ impl DefCollector<'_> {
         };
         let path = ModPath::from_segments(
             path_kind,
-            [krate, Name::new_symbol_root(sym::prelude.clone()), edition],
+            [krate, Name::new_symbol_root(sym::prelude), edition],
         );
 
         let (per_ns, _) = self.def_map.resolve_path(
@@ -1373,8 +1373,7 @@ impl DefCollector<'_> {
                         MacroDefKind::BuiltInAttr(_, expander)
                         if expander.is_test() || expander.is_bench() || expander.is_test_case()
                     ) {
-                        let test_is_active =
-                            self.cfg_options.check_atom(&CfgAtom::Flag(sym::test.clone()));
+                        let test_is_active = self.cfg_options.check_atom(&CfgAtom::Flag(sym::test));
                         if test_is_active {
                             return recollect_without(self);
                         }

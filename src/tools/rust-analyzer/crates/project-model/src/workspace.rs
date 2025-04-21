@@ -1036,9 +1036,9 @@ fn project_json_to_crate_graph(
                     if *is_workspace_member {
                         if set_test && !is_sysroot {
                             // Add test cfg for local crates
-                            cfg_options.insert_atom(sym::test.clone());
+                            cfg_options.insert_atom(sym::test);
                         }
-                        cfg_options.insert_atom(sym::rust_analyzer.clone());
+                        cfg_options.insert_atom(sym::rust_analyzer);
                     }
 
                     override_cfg.apply(
@@ -1159,9 +1159,9 @@ fn cargo_to_crate_graph(
             if cargo[pkg].is_local {
                 if set_test && !cargo.is_sysroot() {
                     // Add test cfg for local crates
-                    cfg_options.insert_atom(sym::test.clone());
+                    cfg_options.insert_atom(sym::test);
                 }
-                cfg_options.insert_atom(sym::rust_analyzer.clone());
+                cfg_options.insert_atom(sym::rust_analyzer);
             }
 
             override_cfg.apply(&mut cfg_options, &cargo[pkg].name);
@@ -1351,9 +1351,9 @@ fn detached_file_to_crate_graph(
 
     let mut cfg_options = CfgOptions::from_iter(rustc_cfg);
     if set_test {
-        cfg_options.insert_atom(sym::test.clone());
+        cfg_options.insert_atom(sym::test);
     }
-    cfg_options.insert_atom(sym::rust_analyzer.clone());
+    cfg_options.insert_atom(sym::rust_analyzer);
     override_cfg.apply(&mut cfg_options, "");
     let cfg_options = cfg_options;
 
@@ -1519,16 +1519,17 @@ fn add_target_crate_root(
         None
     } else {
         let mut potential_cfg_options = cfg_options.clone();
-        potential_cfg_options.extend(pkg.features.iter().map(|feat| CfgAtom::KeyValue {
-            key: sym::feature.clone(),
-            value: Symbol::intern(feat.0),
-        }));
+        potential_cfg_options.extend(
+            pkg.features
+                .iter()
+                .map(|feat| CfgAtom::KeyValue { key: sym::feature, value: Symbol::intern(feat.0) }),
+        );
         Some(potential_cfg_options)
     };
     let cfg_options = {
         let mut opts = cfg_options;
         for feature in pkg.active_features.iter() {
-            opts.insert_key_value(sym::feature.clone(), Symbol::intern(feature));
+            opts.insert_key_value(sym::feature, Symbol::intern(feature));
         }
         if let Some(cfgs) = build_data.map(|(it, _)| &it.cfgs) {
             opts.extend(cfgs.iter().cloned());
@@ -1662,11 +1663,11 @@ fn sysroot_to_crate_graph(
                 &CfgOverrides {
                     global: CfgDiff::new(
                         vec![
-                            CfgAtom::Flag(sym::debug_assertions.clone()),
-                            CfgAtom::Flag(sym::miri.clone()),
-                            CfgAtom::Flag(sym::bootstrap.clone()),
+                            CfgAtom::Flag(sym::debug_assertions),
+                            CfgAtom::Flag(sym::miri),
+                            CfgAtom::Flag(sym::bootstrap),
                         ],
-                        vec![CfgAtom::Flag(sym::test.clone())],
+                        vec![CfgAtom::Flag(sym::test)],
                     ),
                     ..Default::default()
                 },
@@ -1686,10 +1687,7 @@ fn sysroot_to_crate_graph(
                 &FxHashMap::default(),
                 &CfgOverrides {
                     global: CfgDiff::new(
-                        vec![
-                            CfgAtom::Flag(sym::debug_assertions.clone()),
-                            CfgAtom::Flag(sym::miri.clone()),
-                        ],
+                        vec![CfgAtom::Flag(sym::debug_assertions), CfgAtom::Flag(sym::miri)],
                         vec![],
                     ),
                     ..Default::default()
@@ -1705,8 +1703,8 @@ fn sysroot_to_crate_graph(
             let cfg_options = {
                 let mut cfg_options = CfgOptions::default();
                 cfg_options.extend(rustc_cfg);
-                cfg_options.insert_atom(sym::debug_assertions.clone());
-                cfg_options.insert_atom(sym::miri.clone());
+                cfg_options.insert_atom(sym::debug_assertions);
+                cfg_options.insert_atom(sym::miri);
                 cfg_options
             };
             let sysroot_crates: FxHashMap<

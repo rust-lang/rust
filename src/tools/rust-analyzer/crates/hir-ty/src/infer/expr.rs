@@ -654,7 +654,7 @@ impl InferenceContext<'_> {
                             if let Some(deref_fn) = self
                                 .db
                                 .trait_items(deref_trait)
-                                .method_by_name(&Name::new_symbol_root(sym::deref.clone()))
+                                .method_by_name(&Name::new_symbol_root(sym::deref))
                             {
                                 // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
                                 // the mutability is not wrong, and will be fixed in `self.infer_mut`).
@@ -813,7 +813,7 @@ impl InferenceContext<'_> {
                     if let Some(func) = self
                         .db
                         .trait_items(index_trait)
-                        .method_by_name(&Name::new_symbol_root(sym::index.clone()))
+                        .method_by_name(&Name::new_symbol_root(sym::index))
                     {
                         let subst = TyBuilder::subst_for_def(self.db, index_trait, None);
                         if subst.remaining() != 2 {

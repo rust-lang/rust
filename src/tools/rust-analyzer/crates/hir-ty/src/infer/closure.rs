@@ -1175,7 +1175,7 @@ impl InferenceContext<'_> {
                             if let Some(deref_fn) = self
                                 .db
                                 .trait_items(deref_trait)
-                                .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
+                                .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                             {
                                 break 'b deref_fn == f;
                             }

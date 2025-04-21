@@ -88,7 +88,7 @@ impl DeclarativeMacroExpander {
                 .find(|it| {
                     it.path
                         .as_ident()
-                        .map(|it| *it == sym::rustc_macro_transparency.clone())
+                        .map(|it| *it == sym::rustc_macro_transparency)
                         .unwrap_or(false)
                 })?
                 .token_tree_value()?

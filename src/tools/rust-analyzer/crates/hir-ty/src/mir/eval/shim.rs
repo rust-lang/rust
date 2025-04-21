@@ -1261,7 +1261,7 @@ impl Evaluator<'_> {
                     if let Some(def) = target.as_trait().and_then(|it| {
                         self.db
                             .trait_items(it)
-                            .method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
+                            .method_by_name(&Name::new_symbol_root(sym::call_once))
                     }) {
                         self.exec_fn_trait(
                             def,

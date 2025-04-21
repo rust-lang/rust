@@ -217,11 +217,7 @@ impl Attrs {
                 .segments()
                 .iter()
                 .rev()
-                .zip(
-                    [sym::core.clone(), sym::prelude.clone(), sym::v1.clone(), sym::test.clone()]
-                        .iter()
-                        .rev(),
-                )
+                .zip([sym::core, sym::prelude, sym::v1, sym::test].iter().rev())
                 .all(|it| it.0 == it.1)
         })
     }

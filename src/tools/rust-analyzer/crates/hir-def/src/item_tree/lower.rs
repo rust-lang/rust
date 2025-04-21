@@ -532,7 +532,7 @@ fn lower_abi(abi: ast::Abi) -> Symbol {
     match abi.abi_string() {
         Some(tok) => Symbol::intern(tok.text_without_quotes()),
         // `extern` default to be `extern "C"`.
-        _ => sym::C.clone(),
+        _ => sym::C,
     }
 }
 

@@ -540,7 +540,7 @@ impl SourceAnalyzer {
                 let items = into_future_trait.items(db);
                 let into_future_type = items.into_iter().find_map(|item| match item {
                     AssocItem::TypeAlias(alias)
-                        if alias.name(db) == Name::new_symbol_root(sym::IntoFuture.clone()) =>
+                        if alias.name(db) == Name::new_symbol_root(sym::IntoFuture) =>
                     {
                         Some(alias)
                     }
@@ -569,11 +569,8 @@ impl SourceAnalyzer {
                 // This can be either `Deref::deref` or `DerefMut::deref_mut`.
                 // Since deref kind is inferenced and stored in `InferenceResult.method_resolution`,
                 // use that result to find out which one it is.
-                let (deref_trait, deref) = self.lang_trait_fn(
-                    db,
-                    LangItem::Deref,
-                    &Name::new_symbol_root(sym::deref.clone()),
-                )?;
+                let (deref_trait, deref) =
+                    self.lang_trait_fn(db, LangItem::Deref, &Name::new_symbol_root(sym::deref))?;
                 self.infer()
                     .and_then(|infer| {
                         let expr = self.expr_id(prefix_expr.clone().into())?.as_expr()?;
@@ -581,17 +578,17 @@ impl SourceAnalyzer {
                         let (deref_mut_trait, deref_mut) = self.lang_trait_fn(
                             db,
                             LangItem::DerefMut,
-                            &Name::new_symbol_root(sym::deref_mut.clone()),
+                            &Name::new_symbol_root(sym::deref_mut),
                         )?;
                         if func == deref_mut { Some((deref_mut_trait, deref_mut)) } else { None }
                     })
                     .unwrap_or((deref_trait, deref))
             }
             ast::UnaryOp::Not => {
-                self.lang_trait_fn(db, LangItem::Not, &Name::new_symbol_root(sym::not.clone()))?
+                self.lang_trait_fn(db, LangItem::Not, &Name::new_symbol_root(sym::not))?
             }
             ast::UnaryOp::Neg => {
-                self.lang_trait_fn(db, LangItem::Neg, &Name::new_symbol_root(sym::neg.clone()))?
+                self.lang_trait_fn(db, LangItem::Neg, &Name::new_symbol_root(sym::neg))?
             }
         };
 
@@ -613,7 +610,7 @@ impl SourceAnalyzer {
         let index_ty = self.ty_of_expr(index_expr.index()?)?;
 
         let (index_trait, index_fn) =
-            self.lang_trait_fn(db, LangItem::Index, &Name::new_symbol_root(sym::index.clone()))?;
+            self.lang_trait_fn(db, LangItem::Index, &Name::new_symbol_root(sym::index))?;
         let (op_trait, op_fn) = self
             .infer()
             .and_then(|infer| {
@@ -622,7 +619,7 @@ impl SourceAnalyzer {
                 let (index_mut_trait, index_mut_fn) = self.lang_trait_fn(
                     db,
                     LangItem::IndexMut,
-                    &Name::new_symbol_root(sym::index_mut.clone()),
+                    &Name::new_symbol_root(sym::index_mut),
                 )?;
                 if func == index_mut_fn { Some((index_mut_trait, index_mut_fn)) } else { None }
             })

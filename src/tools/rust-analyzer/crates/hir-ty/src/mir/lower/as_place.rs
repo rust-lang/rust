@@ -193,10 +193,10 @@ impl MirLowerCtx<'_> {
                                 if let Some(deref_trait) =
                                     self.resolve_lang_item(LangItem::DerefMut)?.as_trait()
                                 {
-                                    if let Some(deref_fn) =
-                                        self.db.trait_items(deref_trait).method_by_name(
-                                            &Name::new_symbol_root(sym::deref_mut.clone()),
-                                        )
+                                    if let Some(deref_fn) = self
+                                        .db
+                                        .trait_items(deref_trait)
+                                        .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                                     {
                                         break 'b deref_fn == f;
                                     }
@@ -331,14 +331,14 @@ impl MirLowerCtx<'_> {
             (
                 Mutability::Not,
                 LangItem::Deref,
-                Name::new_symbol_root(sym::deref.clone()),
+                Name::new_symbol_root(sym::deref),
                 BorrowKind::Shared,
             )
         } else {
             (
                 Mutability::Mut,
                 LangItem::DerefMut,
-                Name::new_symbol_root(sym::deref_mut.clone()),
+                Name::new_symbol_root(sym::deref_mut),
                 BorrowKind::Mut { kind: MutBorrowKind::Default },
             )
         };

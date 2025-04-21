@@ -80,7 +80,7 @@ impl<'t> Bindings<'t> {
                     | MetaVarKind::Expr(_)
                     | MetaVarKind::Ident => {
                         builder.push(tt::Leaf::Ident(tt::Ident {
-                            sym: sym::missing.clone(),
+                            sym: sym::missing,
                             span,
                             is_raw: tt::IdentIsRaw::No,
                         }));
@@ -93,7 +93,7 @@ impl<'t> Bindings<'t> {
                                 spacing: tt::Spacing::Joint,
                             }),
                             tt::Leaf::Ident(tt::Ident {
-                                sym: sym::missing.clone(),
+                                sym: sym::missing,
                                 span,
                                 is_raw: tt::IdentIsRaw::No,
                             }),
@@ -101,7 +101,7 @@ impl<'t> Bindings<'t> {
                     }
                     MetaVarKind::Literal => {
                         builder.push(tt::Leaf::Ident(tt::Ident {
-                            sym: sym::missing.clone(),
+                            sym: sym::missing,
                             span,
                             is_raw: tt::IdentIsRaw::No,
                         }));

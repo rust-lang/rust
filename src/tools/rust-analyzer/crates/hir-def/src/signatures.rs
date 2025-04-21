@@ -566,8 +566,7 @@ impl FunctionSignature {
         }
 
         let abi = source.value.abi().map(|abi| {
-            abi.abi_string()
-                .map_or_else(|| sym::C.clone(), |it| Symbol::intern(it.text_without_quotes()))
+            abi.abi_string().map_or_else(|| sym::C, |it| Symbol::intern(it.text_without_quotes()))
         });
         let (store, source_map, generic_params, params, ret_type, self_param, variadic) =
             lower_function(db, module, source, id);
