@@ -3,24 +3,21 @@ authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "compiler_builtins"
 version = "0.1.155"
 license = "MIT AND Apache-2.0 WITH LLVM-exception AND (MIT OR Apache-2.0)"
-readme = "../README.md"
+readme = "README.md"
 repository = "https://github.com/rust-lang/compiler-builtins"
 homepage = "https://github.com/rust-lang/compiler-builtins"
 documentation = "https://docs.rs/compiler_builtins"
 edition = "2021"
-description = """
-Compiler intrinsics used by the Rust compiler. Also available for other targets
-if necessary!
-"""
+description = "Compiler intrinsics used by the Rust compiler."
 include = [
-  '/Cargo.toml',
-  '/build.rs',
-  '/configure.rs',
-  '/src/*',
-  '../LICENSE.txt',
-  '../compiler-rt/*',
-  'README.md',
-  'libm/src/math/*',
+  "../LICENSE.txt",
+  "../compiler-rt/*",
+  "/Cargo.toml",
+  "/build.rs",
+  "/configure.rs",
+  "/src/*",
+  "README.md",
+  "libm/src/math/*",
 ]
 links = 'compiler-rt'
 

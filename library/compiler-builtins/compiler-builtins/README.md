@@ -1,64 +1,18 @@
 # `compiler-builtins`
 
-This crate provides external symbols that the compiler expects to be available when
-building Rust projects, typically software routines for basic operations that do not
-have hardware support. It is largely a port of LLVM's [`compiler-rt`].
+This crate provides external symbols that the compiler expects to be available
+when building Rust projects, typically software routines for basic operations
+that do not have hardware support. It is largely a port of LLVM's
+[`compiler-rt`].
 
-It is distributed as part of Rust's sysroot.
+It is distributed as part of Rust's sysroot. `compiler-builtins` does not need
+to be added as an explicit dependency in `Cargo.toml`.
 
 [`compiler-rt`]: https://github.com/llvm/llvm-project/tree/1b1dc505057322f4fa1110ef4f53c44347f52986/compiler-rt
 
 ## Contributing
 
-1. Pick one or more intrinsics from the [pending list](#progress).
-2. Fork this repository.
-3. Port the intrinsic(s) and their corresponding [unit tests][1] from their
-   [C implementation][2] to Rust.
-4. Add a test to compare the behavior of the ported intrinsic(s) with their
-   implementation on the testing host.
-5. Add the intrinsic to `builtins-test-intrinsics/src/main.rs` to verify it
-   can be linked on all targets.
-6. Send a Pull Request (PR).
-7. Once the PR passes our extensive testing infrastructure, we'll merge it!
-8. Celebrate :tada:
-
-[1]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/test/builtins/Unit
-[2]: https://github.com/rust-lang/llvm-project/tree/9e3de9490ff580cd484fbfa2908292b4838d56e7/compiler-rt/lib/builtins
-[3]: https://github.com/rust-lang/compiler-builtins/actions
-
-### Porting Reminders
-
-1. [Rust][5a] and [C][5b] have slightly different operator precedence. C evaluates comparisons (`== !=`) before bitwise operations (`& | ^`), while Rust evaluates the other way.
-2. C assumes wrapping operations everywhere. Rust panics on overflow when in debug mode. Consider using the [Wrapping][6] type or the explicit [wrapping_*][7] functions where applicable.
-3. Note [C implicit casts][8], especially integer promotion. Rust is much more explicit about casting, so be sure that any cast which affects the output is ported to the Rust implementation.
-4. Rust has [many functions][9] for integer or floating point manipulation in the standard library. Consider using one of these functions rather than porting a new one.
-
-[5a]: https://doc.rust-lang.org/reference/expressions.html#expression-precedence
-[5b]: http://en.cppreference.com/w/c/language/operator_precedence
-[6]: https://doc.rust-lang.org/core/num/struct.Wrapping.html
-[7]: https://doc.rust-lang.org/std/primitive.i32.html#method.wrapping_add
-[8]: http://en.cppreference.com/w/cpp/language/implicit_conversion
-[9]: https://doc.rust-lang.org/std/primitive.i32.html
-
-## Testing
-
-The easiest way to test locally is using Docker. This can be done by running
-`./ci/run-docker.sh [target]`. If no target is specified, all targets will be
-run.
-
-In order to run the full test suite, you will also need the C compiler runtime
-to test against, located in a directory called `compiler-rt`. This can be
-obtained with the following:
-
-```sh
-curl -L -o rustc-llvm-20.1.tar.gz https://github.com/rust-lang/llvm-project/archive/rustc/20.1-2025-02-13.tar.gz
-tar xzf rustc-llvm-20.1.tar.gz --strip-components 1 llvm-project-rustc-20.1-2025-02-13/compiler-rt
-```
-
-Local targets may also be tested with `./ci/run.sh [target]`.
-
-Note that testing may not work on all hosts, in which cases it is acceptable to
-rely on CI.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Progress
 
@@ -468,9 +422,15 @@ Unsupported in any current target: used on old versions of 32-bit iOS with ARMv5
 
 ## License
 
-The compiler-builtins crate is dual licensed under both the University of
-Illinois "BSD-Like" license and the MIT license.  As a user of this code you may
-choose to use it under either license.  As a contributor, you agree to allow
-your code to be used under both.
+Usage is allowed under the [MIT License] and the [Apache License, Version 2.0]
+with the LLVM exception.
 
-Full text of the relevant licenses is in LICENSE.TXT.
+[MIT License]: https://opensource.org/license/mit
+[Apache License, Version 2.0]: htps://www.apache.org/licenses/LICENSE-2.0
+
+### Contribution
+
+Contributions are licensed under the MIT License, the Apache License,
+Version 2.0, and the Apache-2.0 license with the LLVM exception.
+
+See [LICENSE.txt](../LICENSE.txt) for full details.
