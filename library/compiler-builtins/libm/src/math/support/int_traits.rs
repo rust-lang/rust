@@ -78,6 +78,7 @@ pub trait Int:
     fn unsigned(self) -> Self::Unsigned;
     fn from_unsigned(unsigned: Self::Unsigned) -> Self;
     fn abs(self) -> Self;
+    fn unsigned_abs(self) -> Self::Unsigned;
 
     fn from_bool(b: bool) -> Self;
 
@@ -203,6 +204,10 @@ macro_rules! int_impl {
                 unimplemented!()
             }
 
+            fn unsigned_abs(self) -> Self {
+                unimplemented!()
+            }
+
             // It makes writing macros easier if this is implemented for both signed and unsigned
             #[allow(clippy::wrong_self_convention)]
             fn from_unsigned(me: $uty) -> Self {
@@ -240,6 +245,10 @@ macro_rules! int_impl {
 
             fn abs(self) -> Self {
                 self.abs()
+            }
+
+            fn unsigned_abs(self) -> Self::Unsigned {
+                self.unsigned_abs()
             }
 
             fn from_unsigned(me: $uty) -> Self {

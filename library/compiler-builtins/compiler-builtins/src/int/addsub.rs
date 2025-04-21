@@ -22,7 +22,7 @@ impl UAddSub for u128 {}
 
 trait AddSub: Int
 where
-    <Self as MinInt>::UnsignedInt: UAddSub,
+    <Self as MinInt>::Unsigned: UAddSub,
 {
     fn add(self, other: Self) -> Self {
         Self::from_unsigned(self.unsigned().uadd(other.unsigned()))
@@ -37,7 +37,7 @@ impl AddSub for i128 {}
 
 trait Addo: AddSub
 where
-    <Self as MinInt>::UnsignedInt: UAddSub,
+    <Self as MinInt>::Unsigned: UAddSub,
 {
     fn addo(self, other: Self) -> (Self, bool) {
         let sum = AddSub::add(self, other);
@@ -50,7 +50,7 @@ impl Addo for u128 {}
 
 trait Subo: AddSub
 where
-    <Self as MinInt>::UnsignedInt: UAddSub,
+    <Self as MinInt>::Unsigned: UAddSub,
 {
     fn subo(self, other: Self) -> (Self, bool) {
         let sum = AddSub::sub(self, other);
