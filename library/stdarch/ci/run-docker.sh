@@ -11,6 +11,9 @@ if [ $# -lt 1 ]; then
 fi
 
 run() {
+    # Prevent `Read-only file system (os error 30)`.
+    cargo generate-lockfile
+
     echo "Building docker container for TARGET=${1}"
     docker build -t stdarch -f "ci/docker/${1}/Dockerfile" ci/
     mkdir -p target c_programs rust_programs
