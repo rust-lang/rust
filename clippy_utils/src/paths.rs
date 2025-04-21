@@ -34,6 +34,7 @@ pub const ALIGN_OF: [&str; 3] = ["core", "mem", "align_of"];
 
 // Paths in clippy itself
 pub const MSRV_STACK: [&str; 3] = ["clippy_utils", "msrvs", "MsrvStack"];
+pub const CLIPPY_SYM_MODULE: [&str; 2] = ["clippy_utils", "sym"];
 
 // Paths in external crates
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates

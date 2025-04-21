@@ -31,13 +31,12 @@ extern crate rustc_span;
 
 mod almost_standard_lint_formulation;
 mod collapsible_calls;
-mod interning_defined_symbol;
+mod interning_literals;
 mod invalid_paths;
 mod lint_without_lint_pass;
 mod msrv_attr_impl;
 mod outer_expn_data_pass;
 mod produce_ice;
-mod slow_symbol_comparisons;
 mod unnecessary_def_path;
 mod unsorted_clippy_utils_paths;
 
@@ -46,8 +45,7 @@ use rustc_lint::{Lint, LintStore};
 static LINTS: &[&Lint] = &[
     almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION,
     collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS,
-    interning_defined_symbol::INTERNING_DEFINED_SYMBOL,
-    interning_defined_symbol::UNNECESSARY_SYMBOL_STR,
+    interning_literals::INTERNING_LITERALS,
     invalid_paths::INVALID_PATHS,
     lint_without_lint_pass::DEFAULT_LINT,
     lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE,
@@ -56,7 +54,6 @@ static LINTS: &[&Lint] = &[
     msrv_attr_impl::MISSING_MSRV_ATTR_IMPL,
     outer_expn_data_pass::OUTER_EXPN_EXPN_DATA,
     produce_ice::PRODUCE_ICE,
-    slow_symbol_comparisons::SLOW_SYMBOL_COMPARISONS,
     unnecessary_def_path::UNNECESSARY_DEF_PATH,
     unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS,
 ];
@@ -68,11 +65,10 @@ pub fn register_lints(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(produce_ice::ProduceIce));
     store.register_late_pass(|_| Box::new(collapsible_calls::CollapsibleCalls));
     store.register_late_pass(|_| Box::new(invalid_paths::InvalidPaths));
-    store.register_late_pass(|_| Box::<interning_defined_symbol::InterningDefinedSymbol>::default());
+    store.register_late_pass(|_| Box::<interning_literals::InterningDefinedSymbol>::default());
     store.register_late_pass(|_| Box::<lint_without_lint_pass::LintWithoutLintPass>::default());
     store.register_late_pass(|_| Box::<unnecessary_def_path::UnnecessaryDefPath>::default());
     store.register_late_pass(|_| Box::new(outer_expn_data_pass::OuterExpnDataPass));
     store.register_late_pass(|_| Box::new(msrv_attr_impl::MsrvAttrImpl));
     store.register_late_pass(|_| Box::new(almost_standard_lint_formulation::AlmostStandardFormulation::new()));
-    store.register_late_pass(|_| Box::new(slow_symbol_comparisons::SlowSymbolComparisons));
 }

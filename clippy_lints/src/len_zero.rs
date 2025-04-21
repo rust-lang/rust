@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{fulfill_or_allowed, get_item_name, get_parent_as_impl, is_trait_method, peel_ref_operators};
+use clippy_utils::{fulfill_or_allowed, get_item_name, get_parent_as_impl, is_trait_method, peel_ref_operators, sym};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -16,7 +16,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, FnSig, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
 use rustc_span::{Ident, Span, Symbol};
 use rustc_trait_selection::traits::supertrait_def_ids;
 
@@ -295,11 +294,9 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Iden
     {
         let mut current_and_super_traits = DefIdSet::default();
         fill_trait_set(visited_trait.owner_id.to_def_id(), &mut current_and_super_traits, cx);
-        let is_empty = sym!(is_empty);
-
         let is_empty_method_found = current_and_super_traits
             .items()
-            .flat_map(|&i| cx.tcx.associated_items(i).filter_by_name_unhygienic(is_empty))
+            .flat_map(|&i| cx.tcx.associated_items(i).filter_by_name_unhygienic(sym::is_empty))
             .any(|i| i.is_method() && cx.tcx.fn_sig(i.def_id).skip_binder().inputs().skip_binder().len() == 1);
 
         if !is_empty_method_found {
@@ -472,12 +469,11 @@ fn check_for_is_empty(
         return;
     };
 
-    let is_empty = Symbol::intern("is_empty");
     let is_empty = cx
         .tcx
         .inherent_impls(impl_ty)
         .iter()
-        .flat_map(|&id| cx.tcx.associated_items(id).filter_by_name_unhygienic(is_empty))
+        .flat_map(|&id| cx.tcx.associated_items(id).filter_by_name_unhygienic(sym::is_empty))
         .find(|item| item.is_fn());
 
     let (msg, is_empty_span, self_kind) = match is_empty {
@@ -633,11 +629,10 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
     /// Checks the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext<'_>, id: DefId) -> bool {
-        let is_empty = sym!(is_empty);
         cx.tcx.inherent_impls(id).iter().any(|imp| {
             cx.tcx
                 .associated_items(*imp)
-                .filter_by_name_unhygienic(is_empty)
+                .filter_by_name_unhygienic(sym::is_empty)
                 .any(|item| is_is_empty(cx, item))
         })
     }
@@ -645,10 +640,9 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     fn ty_has_is_empty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
         match ty.kind() {
             ty::Dynamic(tt, ..) => tt.principal().is_some_and(|principal| {
-                let is_empty = sym!(is_empty);
                 cx.tcx
                     .associated_items(principal.def_id())
-                    .filter_by_name_unhygienic(is_empty)
+                    .filter_by_name_unhygienic(sym::is_empty)
                     .any(|item| is_is_empty(cx, item))
             }),
             ty::Alias(ty::Projection, proj) => has_is_empty_impl(cx, proj.def_id),

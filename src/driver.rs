@@ -14,6 +14,7 @@ extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
 
+use clippy_utils::sym;
 use rustc_interface::interface;
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
@@ -78,7 +79,7 @@ fn track_clippy_args(psess: &mut ParseSess, args_env_var: Option<&str>) {
     psess
         .env_depinfo
         .get_mut()
-        .insert((Symbol::intern("CLIPPY_ARGS"), args_env_var.map(Symbol::intern)));
+        .insert((sym::CLIPPY_ARGS, args_env_var.map(Symbol::intern)));
 }
 
 /// Track files that may be accessed at runtime in `file_depinfo` so that cargo will re-run clippy
@@ -89,7 +90,7 @@ fn track_files(psess: &mut ParseSess) {
     // Used by `clippy::cargo` lints and to determine the MSRV. `cargo clippy` executes `clippy-driver`
     // with the current directory set to `CARGO_MANIFEST_DIR` so a relative path is fine
     if Path::new("Cargo.toml").exists() {
-        file_depinfo.insert(Symbol::intern("Cargo.toml"));
+        file_depinfo.insert(sym::Cargo_toml);
     }
 
     // `clippy.toml` will be automatically tracked as it's loaded with `sess.source_map().load_file()`
@@ -145,7 +146,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             // Trigger a rebuild if CLIPPY_CONF_DIR changes. The value must be a valid string so
             // changes between dirs that are invalid UTF-8 will not trigger rebuilds
             psess.env_depinfo.get_mut().insert((
-                Symbol::intern("CLIPPY_CONF_DIR"),
+                sym::CLIPPY_CONF_DIR,
                 env::var("CLIPPY_CONF_DIR").ok().map(|dir| Symbol::intern(&dir)),
             ));
         }));
@@ -161,7 +162,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             #[cfg(feature = "internal")]
             clippy_lints_internal::register_lints(lint_store);
         }));
-        config.extra_symbols = clippy_utils::sym::EXTRA_SYMBOLS.into();
+        config.extra_symbols = sym::EXTRA_SYMBOLS.into();
 
         // FIXME: #4825; This is required, because Clippy lints that are based on MIR have to be
         // run on the unoptimized MIR. On the other hand this results in some false negatives. If

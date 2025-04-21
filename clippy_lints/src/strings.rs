@@ -3,7 +3,7 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
     SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, path_def_id,
-    peel_blocks,
+    peel_blocks, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -12,7 +12,6 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::sym;
 
 use std::ops::ControlFlow;
 
@@ -262,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind
             && let ExprKind::Index(left, right, _) = args.kind
             && let (method_names, expressions, _) = method_calls(left, 1)
-            && method_names == [sym!(as_bytes)]
+            && method_names == [sym::as_bytes]
             && expressions.len() == 1
             && expressions[0].1.is_empty()
 

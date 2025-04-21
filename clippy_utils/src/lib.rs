@@ -51,9 +51,6 @@ extern crate rustc_span;
 extern crate rustc_trait_selection;
 extern crate smallvec;
 
-#[macro_use]
-pub mod sym_helper;
-
 pub mod ast_utils;
 pub mod attrs;
 mod check_proc_macro;

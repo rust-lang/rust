@@ -1,10 +1,10 @@
+use crate::sym;
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
-
 use rustc_attr_parsing::{RustcVersion, parse_version};
 use rustc_lint::LateContext;
 use rustc_session::Session;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 use serde::Deserialize;
 use smallvec::SmallVec;
 use std::iter::once;
@@ -184,8 +184,7 @@ impl MsrvStack {
 }
 
 fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
-    let sym_msrv = Symbol::intern("msrv");
-    let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym_msrv]));
+    let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
     if let Some(msrv_attr) = msrv_attrs.next() {
         if let Some(duplicate) = msrv_attrs.next_back() {
