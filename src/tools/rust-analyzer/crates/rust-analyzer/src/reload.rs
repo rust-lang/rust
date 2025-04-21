@@ -652,12 +652,14 @@ impl GlobalState {
                     | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, ..)), .. } => cargo
                         .env()
                         .into_iter()
-                        .chain(self.config.extra_env(None))
-                        .map(|(a, b)| (a.clone(), b.clone()))
+                        .map(|(k, v)| (k.clone(), Some(v.clone())))
+                        .chain(
+                            self.config.extra_env(None).iter().map(|(k, v)| (k.clone(), v.clone())),
+                        )
                         .chain(
                             ws.sysroot
                                 .root()
-                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), it.to_string())),
+                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), Some(it.to_string()))),
                         )
                         .collect(),
 
@@ -893,7 +895,7 @@ impl GlobalState {
 // FIXME: Move this into load-cargo?
 pub fn ws_to_crate_graph(
     workspaces: &[ProjectWorkspace],
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     mut load: impl FnMut(&AbsPath) -> Option<vfs::FileId>,
 ) -> (CrateGraphBuilder, Vec<ProcMacroPaths>) {
     let mut crate_graph = CrateGraphBuilder::default();

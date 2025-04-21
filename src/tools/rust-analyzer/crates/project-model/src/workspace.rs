@@ -856,7 +856,7 @@ impl ProjectWorkspace {
     pub fn to_crate_graph(
         &self,
         load: FileLoader<'_>,
-        extra_env: &FxHashMap<String, String>,
+        extra_env: &FxHashMap<String, Option<String>>,
     ) -> (CrateGraphBuilder, ProcMacroPaths) {
         let _p = tracing::info_span!("ProjectWorkspace::to_crate_graph").entered();
 
@@ -974,7 +974,7 @@ fn project_json_to_crate_graph(
     load: FileLoader<'_>,
     project: &ProjectJson,
     sysroot: &Sysroot,
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     override_cfg: &CfgOverrides,
     set_test: bool,
     is_sysroot: bool,
@@ -1806,7 +1806,7 @@ fn add_dep_inner(graph: &mut CrateGraphBuilder, from: CrateBuilderId, dep: Depen
 }
 
 fn sysroot_metadata_config(
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     targets: &[String],
 ) -> CargoMetadataConfig {
     CargoMetadataConfig {

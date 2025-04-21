@@ -43,10 +43,11 @@ struct ProcessSrvState {
 
 impl ProcMacroServerProcess {
     /// Starts the proc-macro server and performs a version check
-    pub(crate) fn run(
+    pub(crate) fn run<'a>(
         process_path: &AbsPath,
-        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
-        + Clone,
+        env: impl IntoIterator<
+            Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+        > + Clone,
     ) -> io::Result<ProcMacroServerProcess> {
         let create_srv = || {
             let mut process = Process::run(process_path, env.clone())?;
@@ -193,9 +194,11 @@ struct Process {
 
 impl Process {
     /// Runs a new proc-macro server process with the specified environment variables.
-    fn run(
+    fn run<'a>(
         path: &AbsPath,
-        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
+        env: impl IntoIterator<
+            Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+        >,
     ) -> io::Result<Process> {
         let child = JodChild(mk_child(path, env)?);
         Ok(Process { child })
@@ -212,14 +215,21 @@ impl Process {
 }
 
 /// Creates and configures a new child process for the proc-macro server.
-fn mk_child(
+fn mk_child<'a>(
     path: &AbsPath,
-    env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
+    extra_env: impl IntoIterator<
+        Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+    >,
 ) -> io::Result<Child> {
     #[allow(clippy::disallowed_methods)]
     let mut cmd = Command::new(path);
-    cmd.envs(env)
-        .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
+    for env in extra_env {
+        match env {
+            (key, Some(val)) => cmd.env(key, val),
+            (key, None) => cmd.env_remove(key),
+        };
+    }
+    cmd.env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());

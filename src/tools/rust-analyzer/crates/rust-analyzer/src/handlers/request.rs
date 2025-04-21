@@ -2315,8 +2315,11 @@ fn run_rustfmt(
     let mut command = match snap.config.rustfmt(source_root_id) {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
-            let mut cmd = toolchain::command(toolchain::Tool::Rustfmt.path(), current_dir);
-            cmd.envs(snap.config.extra_env(source_root_id));
+            let mut cmd = toolchain::command(
+                toolchain::Tool::Rustfmt.path(),
+                current_dir,
+                snap.config.extra_env(source_root_id),
+            );
             cmd.args(extra_args);
 
             if let Some(edition) = edition {
@@ -2358,6 +2361,7 @@ fn run_rustfmt(
         RustfmtConfig::CustomCommand { command, args } => {
             let cmd = Utf8PathBuf::from(&command);
             let target_spec = TargetSpec::for_file(snap, file_id)?;
+            let extra_env = snap.config.extra_env(source_root_id);
             let mut cmd = match target_spec {
                 Some(TargetSpec::Cargo(_)) => {
                     // approach: if the command name contains a path separator, join it with the project root.
@@ -2370,12 +2374,11 @@ fn run_rustfmt(
                     } else {
                         cmd
                     };
-                    toolchain::command(cmd_path, current_dir)
+                    toolchain::command(cmd_path, current_dir, extra_env)
                 }
-                _ => toolchain::command(cmd, current_dir),
+                _ => toolchain::command(cmd, current_dir, extra_env),
             };
 
-            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(args);
             cmd
         }

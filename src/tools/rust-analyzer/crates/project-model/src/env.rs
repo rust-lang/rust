@@ -62,11 +62,10 @@ pub(crate) fn inject_rustc_tool_env(env: &mut Env, cargo_name: &str, kind: Targe
 
 pub(crate) fn cargo_config_env(
     manifest: &ManifestPath,
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     sysroot: &Sysroot,
 ) -> Env {
-    let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent());
-    cargo_config.envs(extra_env);
+    let mut cargo_config = sysroot.tool(Tool::Cargo, manifest.parent(), extra_env);
     cargo_config
         .args(["-Z", "unstable-options", "config", "get", "env"])
         .env("RUSTC_BOOTSTRAP", "1");
