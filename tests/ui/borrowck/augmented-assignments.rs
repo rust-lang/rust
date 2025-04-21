@@ -1,3 +1,6 @@
+//! Check that overloaded compound assignment operators respect usual borrowck rules and emit
+//! reasonable diagnostics.
+
 use std::ops::AddAssign;
 
 #[derive(Clone)]
