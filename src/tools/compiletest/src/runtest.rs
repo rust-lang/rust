@@ -1513,6 +1513,14 @@ impl<'test> TestCx<'test> {
         let set_mir_dump_dir = |rustc: &mut Command| {
             let mir_dump_dir = self.get_mir_dump_dir();
             remove_and_create_dir_all(&mir_dump_dir).unwrap_or_else(|e| {
+                let mut remaining = vec![];
+                for entry in walkdir::WalkDir::new(mir_dump_dir.as_std_path()) {
+                    let entry =
+                        entry.unwrap_or_else(|e| panic!("failed to walk {mir_dump_dir}: {e}"));
+                    remaining.push(entry.path().to_path_buf());
+                }
+                eprintln!("mir_dump_dir = {mir_dump_dir}, remaining = {:#?}", remaining);
+
                 panic!("failed to remove and recreate output directory `{mir_dump_dir}`: {e}")
             });
             let mut dir_opt = "-Zdump-mir-dir=".to_string();
