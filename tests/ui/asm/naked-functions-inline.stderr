@@ -1,5 +1,5 @@
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/naked-functions-inline.rs:13:1
+  --> $DIR/naked-functions-inline.rs:12:1
    |
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here
@@ -7,7 +7,7 @@ LL | #[inline]
    | ^^^^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/naked-functions-inline.rs:20:1
+  --> $DIR/naked-functions-inline.rs:19:1
    |
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here
@@ -15,7 +15,7 @@ LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/naked-functions-inline.rs:27:1
+  --> $DIR/naked-functions-inline.rs:26:1
    |
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here
@@ -23,7 +23,7 @@ LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
-  --> $DIR/naked-functions-inline.rs:34:19
+  --> $DIR/naked-functions-inline.rs:33:19
    |
 LL | #[unsafe(naked)]
    | ---------------- function marked with `#[unsafe(naked)]` here

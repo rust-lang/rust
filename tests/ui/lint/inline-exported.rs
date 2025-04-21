@@ -2,9 +2,7 @@
 //! because `#[inline]` is ignored for such functions.
 
 #![crate_type = "lib"]
-
 #![feature(linkage)]
-#![feature(naked_functions)]
 #![deny(unused_attributes)]
 
 #[inline]
