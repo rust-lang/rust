@@ -19,12 +19,6 @@
 }
 
 @media only screen {
-    main {
-        display: -webkit-box;
-        display: -ms-flexbox;
-        display: flex;
-    }
-
     @media (max-width: 1179px) {
         .sidebar-hidden #sidetoc {
             display: none;
@@ -51,14 +45,8 @@
         }
     }
 
-    .content-wrap {
-        width: 100%;
-    }
-
     #sidetoc {
-        margin-top: 20px;
-        margin-left: 20px;
-        margin-right: auto;
+        margin-left: calc(100% + 20px);
     }
     #pagetoc {
         position: fixed;
