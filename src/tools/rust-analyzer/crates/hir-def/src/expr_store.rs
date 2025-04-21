@@ -98,14 +98,6 @@ pub struct ExpressionStore {
     /// Block expressions in this store that may contain inner items.
     block_scopes: Box<[BlockId]>,
 
-    /// A map from binding to its hygiene ID.
-    ///
-    /// Bindings that don't come from macro expansion are not allocated to save space, so not all bindings appear here.
-    /// If a binding does not appear here it has `SyntaxContextId::ROOT`.
-    ///
-    /// Note that this may not be the direct `SyntaxContextId` of the binding's expansion, because transparent
-    /// expansions are attributed to their parent expansion (recursively).
-    binding_hygiene: FxHashMap<BindingId, HygieneId>,
     /// A map from an variable usages to their hygiene ID.
     ///
     /// Expressions (and destructuing patterns) that can be recorded here are single segment path, although not all single segments path refer
@@ -155,7 +147,6 @@ pub struct ExpressionStoreBuilder {
     pub binding_owners: FxHashMap<BindingId, ExprId>,
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
-    binding_hygiene: FxHashMap<BindingId, HygieneId>,
     ident_hygiene: FxHashMap<ExprOrPatId, HygieneId>,
 }
 
@@ -192,7 +183,6 @@ impl ExpressionStoreBuilder {
             mut pats,
             mut bindings,
             mut binding_owners,
-            mut binding_hygiene,
             mut ident_hygiene,
             mut types,
         } = self;
@@ -201,7 +191,6 @@ impl ExpressionStoreBuilder {
         pats.shrink_to_fit();
         bindings.shrink_to_fit();
         binding_owners.shrink_to_fit();
-        binding_hygiene.shrink_to_fit();
         ident_hygiene.shrink_to_fit();
         types.shrink_to_fit();
 
@@ -213,7 +202,6 @@ impl ExpressionStoreBuilder {
             binding_owners,
             types,
             block_scopes: block_scopes.into_boxed_slice(),
-            binding_hygiene,
             ident_hygiene,
         }
     }
@@ -556,7 +544,7 @@ impl ExpressionStore {
     }
 
     fn binding_hygiene(&self, binding: BindingId) -> HygieneId {
-        self.binding_hygiene.get(&binding).copied().unwrap_or(HygieneId::ROOT)
+        self.bindings[binding].hygiene
     }
 
     pub fn expr_path_hygiene(&self, expr: ExprId) -> HygieneId {
