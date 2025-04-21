@@ -1,8 +1,8 @@
 //! Implementation of "closure return type" inlay hints.
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
-use hir::{DisplayTarget, HirDisplay};
-use ide_db::{famous_defs::FamousDefs, text_edit::TextEdit};
+use hir::DisplayTarget;
+use ide_db::{famous_defs::FamousDefs, text_edit::TextEditBuilder};
 use syntax::ast::{self, AstNode};
 
 use crate::{
@@ -49,44 +49,29 @@ pub(super) fn hints(
     if arrow.is_none() {
         label.prepend_str(" -> ");
     }
-    let text_edit = if has_block_body {
-        ty_to_text_edit(
-            sema,
-            config,
-            descended_closure.syntax(),
-            &ty,
-            arrow
-                .as_ref()
-                .map_or_else(|| param_list.syntax().text_range(), |t| t.text_range())
-                .end(),
-            if arrow.is_none() { " -> " } else { "" },
-        )
-    } else {
-        Some(config.lazy_text_edit(|| {
-            let body = closure.body();
-            let body_range = match body {
-                Some(body) => body.syntax().text_range(),
-                None => return TextEdit::builder().finish(),
-            };
-            let mut builder = TextEdit::builder();
-            let insert_pos = param_list.syntax().text_range().end();
 
-            let rendered = match sema.scope(descended_closure.syntax()).and_then(|scope| {
-                ty.display_source_code(scope.db, scope.module().into(), false).ok()
-            }) {
-                Some(rendered) => rendered,
-                None => return TextEdit::builder().finish(),
-            };
+    let offset_to_insert_ty =
+        arrow.as_ref().map_or_else(|| param_list.syntax().text_range(), |t| t.text_range()).end();
 
-            let arrow_text = if arrow.is_none() { " -> ".to_owned() } else { "".to_owned() };
-            builder.insert(insert_pos, arrow_text);
-            builder.insert(insert_pos, rendered);
-            builder.insert(body_range.start(), "{ ".to_owned());
-            builder.insert(body_range.end(), " }".to_owned());
-
-            builder.finish()
-        }))
+    // Insert braces if necessary
+    let insert_braces = |builder: &mut TextEditBuilder| {
+        if !has_block_body {
+            if let Some(range) = closure.body().map(|b| b.syntax().text_range()) {
+                builder.insert(range.start(), "{ ".to_owned());
+                builder.insert(range.end(), " }".to_owned());
+            }
+        }
     };
+
+    let text_edit = ty_to_text_edit(
+        sema,
+        config,
+        descended_closure.syntax(),
+        &ty,
+        offset_to_insert_ty,
+        &insert_braces,
+        if arrow.is_none() { " -> " } else { "" },
+    );
 
     acc.push(InlayHint {
         range: param_list.syntax().text_range(),

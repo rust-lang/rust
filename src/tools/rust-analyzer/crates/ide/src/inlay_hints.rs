@@ -8,7 +8,7 @@ use hir::{
     ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
     HirWrite, ModuleDef, ModuleDefId, Semantics, sym,
 };
-use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs};
+use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder};
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
 use smallvec::{SmallVec, smallvec};
@@ -813,7 +813,8 @@ fn ty_to_text_edit(
     config: &InlayHintsConfig,
     node_for_hint: &SyntaxNode,
     ty: &hir::Type,
-    offset_to_insert: TextSize,
+    offset_to_insert_ty: TextSize,
+    additional_edits: &dyn Fn(&mut TextEditBuilder),
     prefix: impl Into<String>,
 ) -> Option<LazyProperty<TextEdit>> {
     // FIXME: Limit the length and bail out on excess somehow?
@@ -822,8 +823,11 @@ fn ty_to_text_edit(
         .and_then(|scope| ty.display_source_code(scope.db, scope.module().into(), false).ok())?;
     Some(config.lazy_text_edit(|| {
         let mut builder = TextEdit::builder();
-        builder.insert(offset_to_insert, prefix.into());
-        builder.insert(offset_to_insert, rendered);
+        builder.insert(offset_to_insert_ty, prefix.into());
+        builder.insert(offset_to_insert_ty, rendered);
+
+        additional_edits(&mut builder);
+
         builder.finish()
     }))
 }
