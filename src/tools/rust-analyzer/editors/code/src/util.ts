@@ -14,7 +14,7 @@ export function assert(condition: boolean, explanation: string): asserts conditi
 }
 
 export type Env = {
-    [name: string]: string;
+    [name: string]: string | undefined;
 };
 
 class Log {

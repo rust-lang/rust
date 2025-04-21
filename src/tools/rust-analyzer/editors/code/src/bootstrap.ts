@@ -187,8 +187,16 @@ async function hasToolchainFileWithRaDeclared(uri: vscode.Uri): Promise<boolean>
 export async function isValidExecutable(path: string, extraEnv: Env): Promise<boolean> {
     log.debug("Checking availability of a binary at", path);
 
+    const newEnv = { ...process.env };
+    for (const [k, v] of Object.entries(extraEnv)) {
+        if (v) {
+            newEnv[k] = v;
+        } else if (k in newEnv) {
+            delete newEnv[k];
+        }
+    }
     const res = await spawnAsync(path, ["--version"], {
-        env: { ...process.env, ...extraEnv },
+        env: newEnv,
     });
 
     if (res.error) {

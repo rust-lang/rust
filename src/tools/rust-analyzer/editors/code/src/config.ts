@@ -213,12 +213,13 @@ export class Config {
 
     get serverExtraEnv(): Env {
         const extraEnv =
-            this.get<{ [key: string]: string | number } | null>("server.extraEnv") ?? {};
+            this.get<{ [key: string]: { toString(): string } | null } | null>("server.extraEnv") ??
+            {};
         return substituteVariablesInEnv(
             Object.fromEntries(
                 Object.entries(extraEnv).map(([k, v]) => [
                     k,
-                    typeof v !== "string" ? v.toString() : v,
+                    typeof v === "string" ? v : v?.toString(),
                 ]),
             ),
         );
@@ -398,6 +399,7 @@ export function prepareVSCodeConfig<T>(resp: T): T {
 
 // FIXME: Merge this with `substituteVSCodeVariables` above
 export function substituteVariablesInEnv(env: Env): Env {
+    const depRe = new RegExp(/\${(?<depName>.+?)}/g);
     const missingDeps = new Set<string>();
     // vscode uses `env:ENV_NAME` for env vars resolution, and it's easier
     // to follow the same convention for our dependency tracking
@@ -405,15 +407,16 @@ export function substituteVariablesInEnv(env: Env): Env {
     const envWithDeps = Object.fromEntries(
         Object.entries(env).map(([key, value]) => {
             const deps = new Set<string>();
-            const depRe = new RegExp(/\${(?<depName>.+?)}/g);
-            let match = undefined;
-            while ((match = depRe.exec(value))) {
-                const depName = unwrapUndefinable(match.groups?.["depName"]);
-                deps.add(depName);
-                // `depName` at this point can have a form of `expression` or
-                // `prefix:expression`
-                if (!definedEnvKeys.has(depName)) {
-                    missingDeps.add(depName);
+            if (value) {
+                let match = undefined;
+                while ((match = depRe.exec(value))) {
+                    const depName = unwrapUndefinable(match.groups?.["depName"]);
+                    deps.add(depName);
+                    // `depName` at this point can have a form of `expression` or
+                    // `prefix:expression`
+                    if (!definedEnvKeys.has(depName)) {
+                        missingDeps.add(depName);
+                    }
                 }
             }
             return [`env:${key}`, { deps: [...deps], value }];
@@ -454,11 +457,10 @@ export function substituteVariablesInEnv(env: Env): Env {
     do {
         leftToResolveSize = toResolve.size;
         for (const key of toResolve) {
-            const item = unwrapUndefinable(envWithDeps[key]);
-            if (item.deps.every((dep) => resolved.has(dep))) {
-                item.value = item.value.replace(/\${(?<depName>.+?)}/g, (_wholeMatch, depName) => {
-                    const item = unwrapUndefinable(envWithDeps[depName]);
-                    return item.value;
+            const item = envWithDeps[key];
+            if (item && item.deps.every((dep) => resolved.has(dep))) {
+                item.value = item.value?.replace(/\${(?<depName>.+?)}/g, (_wholeMatch, depName) => {
+                    return envWithDeps[depName]?.value ?? "";
                 });
                 resolved.add(key);
                 toResolve.delete(key);
