@@ -8929,7 +8929,7 @@ fn main(notable$0: u32) {}
 
             ---
 
-            Implements notable traits: Notable\<Assoc = &str, Assoc2 = char>
+            Implements notable traits: `Notable<Assoc = &str, Assoc2 = char>`
 
             ---
 
@@ -9054,7 +9054,7 @@ fn main() {
             S
             ```
             ___
-            Implements notable traits: Future<Output = u32>, Iterator<Item = S>, Notable"#]],
+            Implements notable traits: `Future<Output = u32>`, `Iterator<Item = S>`, `Notable`"#]],
     );
 }
 

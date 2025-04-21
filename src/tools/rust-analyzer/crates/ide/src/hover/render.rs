@@ -909,9 +909,9 @@ fn render_notable_trait(
     let mut needs_impl_header = true;
     for (trait_, assoc_types) in notable_traits {
         desc.push_str(if mem::take(&mut needs_impl_header) {
-            "Implements notable traits: "
+            "Implements notable traits: `"
         } else {
-            ", "
+            "`, `"
         });
         format_to!(desc, "{}", trait_.name(db).display(db, edition));
         if !assoc_types.is_empty() {
@@ -931,7 +931,12 @@ fn render_notable_trait(
             desc.push('>');
         }
     }
-    desc.is_empty().not().then_some(desc)
+    if desc.is_empty() {
+        None
+    } else {
+        desc.push('`');
+        Some(desc)
+    }
 }
 
 fn type_info(
@@ -958,37 +963,12 @@ fn type_info(
     res.markup = if let Some(adjusted_ty) = adjusted {
         walk_and_push_ty(db, &adjusted_ty, &mut push_new_def);
 
-        let notable = {
-            let mut desc = String::new();
-            let mut needs_impl_header = true;
-            for (trait_, assoc_types) in notable_traits(db, &original) {
-                desc.push_str(if mem::take(&mut needs_impl_header) {
-                    "Implements Notable Traits: "
-                } else {
-                    ", "
-                });
-                format_to!(desc, "{}", trait_.name(db).display(db, edition));
-                if !assoc_types.is_empty() {
-                    desc.push('<');
-                    format_to!(
-                        desc,
-                        "{}",
-                        assoc_types.into_iter().format_with(", ", |(ty, name), f| {
-                            f(&name.display(db, edition))?;
-                            f(&" = ")?;
-                            match ty {
-                                Some(ty) => f(&ty.display(db, display_target)),
-                                None => f(&"?"),
-                            }
-                        })
-                    );
-                    desc.push('>');
-                }
-            }
-            if !desc.is_empty() {
-                desc.push('\n');
-            }
-            desc
+        let notable = if let Some(notable) =
+            render_notable_trait(db, &notable_traits(db, &original), edition, display_target)
+        {
+            format!("{notable}\n")
+        } else {
+            String::new()
         };
 
         let original = original.display(db, display_target).to_string();
