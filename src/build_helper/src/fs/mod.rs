@@ -52,7 +52,7 @@ pub fn recursive_remove<P: AsRef<Path>>(path: P) -> io::Result<()> {
     let is_dir_like = fs::Metadata::is_dir;
 
     const MAX_RETRIES: usize = 5;
-    const RETRY_DELAY_MS: u64 = 100;
+    const RETRY_MIN_DELAY_MS: u64 = 100;
 
     let try_remove = || {
         if is_dir_like(&metadata) {
@@ -72,7 +72,7 @@ pub fn recursive_remove<P: AsRef<Path>>(path: P) -> io::Result<()> {
             Ok(()) => return Ok(()),
             Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(()),
             Err(_) if attempt < MAX_RETRIES - 1 => {
-                std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+                std::thread::sleep(std::time::Duration::from_millis(RETRY_MIN_DELAY_MS << attempt));
                 continue;
             }
             Err(e) => return Err(e),
