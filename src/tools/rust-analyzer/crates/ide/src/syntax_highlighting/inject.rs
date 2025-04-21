@@ -160,7 +160,7 @@ pub(super) fn doc_comment(
     let mut new_comments = Vec::new();
     let mut string;
 
-    for attr in attributes.by_key(&sym::doc).attrs() {
+    for attr in attributes.by_key(sym::doc).attrs() {
         let InFile { file_id, value: src } = attrs_source_map.source_of(attr);
         if file_id != src_file_id {
             continue;

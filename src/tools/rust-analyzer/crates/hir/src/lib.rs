@@ -274,7 +274,7 @@ impl Crate {
     pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
         let attrs = db.attrs(AttrDefId::ModuleId(self.root_module().into()));
-        let doc_url = attrs.by_key(&sym::doc).find_string_value_in_tt(&sym::html_root_url);
+        let doc_url = attrs.by_key(sym::doc).find_string_value_in_tt(sym::html_root_url);
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
@@ -799,7 +799,7 @@ impl Module {
                         ))
                     });
                 let res = type_params.chain(lifetime_params).any(|p| {
-                    db.attrs(AttrDefId::GenericParamId(p)).by_key(&sym::may_dangle).exists()
+                    db.attrs(AttrDefId::GenericParamId(p)).by_key(sym::may_dangle).exists()
                 });
                 Some(res)
             })()
@@ -3160,7 +3160,7 @@ impl Macro {
     }
 
     pub fn is_macro_export(self, db: &dyn HirDatabase) -> bool {
-        matches!(self.id, MacroId::MacroRulesId(_) if db.attrs(self.id.into()).by_key(&sym::macro_export).exists())
+        matches!(self.id, MacroId::MacroRulesId(_) if db.attrs(self.id.into()).by_key(sym::macro_export).exists())
     }
 
     pub fn is_proc_macro(self) -> bool {

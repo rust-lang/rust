@@ -197,7 +197,7 @@ impl TraitImpls {
                 // FIXME: Reservation impls should be considered during coherence checks. If we are
                 // (ever) to implement coherence checks, this filtering should be done by the trait
                 // solver.
-                if db.attrs(impl_id.into()).by_key(&sym::rustc_reservation_impl).exists() {
+                if db.attrs(impl_id.into()).by_key(sym::rustc_reservation_impl).exists() {
                     continue;
                 }
                 let target_trait = match db.impl_trait(impl_id) {

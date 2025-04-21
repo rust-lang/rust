@@ -13,35 +13,18 @@ use crate::{
 
 macro_rules! define_symbols {
     (@WITH_NAME: $($alias:ident = $value:literal,)* @PLAIN: $($name:ident,)*) => {
-        // We define symbols as both `const`s and `static`s because some const code requires const symbols,
-        // but code from before the transition relies on the lifetime of the predefined symbols and making them
-        // `const`s make it error (because now they're temporaries). In the future we probably should only
-        // use consts.
-
-        /// Predefined symbols as `const`s (instead of the default `static`s).
-        pub mod consts {
-            use super::{Symbol, TaggedArcPtr};
-
-            // The strings should be in `static`s so that symbol equality holds.
-            $(
-                pub const $name: Symbol = {
-                    static SYMBOL_STR: &str = stringify!($name);
-                    Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
-                };
-            )*
-            $(
-                pub const $alias: Symbol = {
-                    static SYMBOL_STR: &str = $value;
-                    Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
-                };
-            )*
-        }
-
+        // The strings should be in `static`s so that symbol equality holds.
         $(
-            pub static $name: Symbol = consts::$name;
+            pub const $name: Symbol = {
+                static SYMBOL_STR: &str = stringify!($name);
+                Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
+            };
         )*
         $(
-            pub static $alias: Symbol = consts::$alias;
+            pub const $alias: Symbol = {
+                static SYMBOL_STR: &str = $value;
+                Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
+            };
         )*
 
 

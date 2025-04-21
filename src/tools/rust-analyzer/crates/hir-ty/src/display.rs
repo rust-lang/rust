@@ -2314,8 +2314,8 @@ impl HirDisplayWithExpressionStore for Path {
                 let name = crate_data
                     .display_name
                     .as_ref()
-                    .map(|name| name.canonical_name())
-                    .unwrap_or(&sym::dollar_crate);
+                    .map(|name| (*name.canonical_name()).clone())
+                    .unwrap_or(sym::dollar_crate);
                 write!(f, "{name}")?
             }
         }

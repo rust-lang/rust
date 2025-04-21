@@ -142,7 +142,7 @@ impl Name {
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
     pub const fn missing() -> Name {
-        Name { symbol: sym::consts::MISSING_NAME, ctx: () }
+        Name { symbol: sym::MISSING_NAME, ctx: () }
     }
 
     /// Returns true if this is a fake name for things missing in the source code. See

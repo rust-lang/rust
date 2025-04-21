@@ -59,7 +59,7 @@ impl Evaluator<'_> {
 
         let function_data = self.db.function_signature(def);
         let attrs = self.db.attrs(def.into());
-        let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists()
+        let is_intrinsic = attrs.by_key(sym::rustc_intrinsic).exists()
             // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
             || (match &function_data.abi {
                 Some(abi) => *abi == sym::rust_dash_intrinsic,
@@ -82,7 +82,7 @@ impl Evaluator<'_> {
                 locals,
                 span,
                 !function_data.has_body()
-                    || attrs.by_key(&sym::rustc_intrinsic_must_be_overridden).exists(),
+                    || attrs.by_key(sym::rustc_intrinsic_must_be_overridden).exists(),
             );
         }
         let is_extern_c = match def.lookup(self.db).container {
@@ -299,7 +299,7 @@ impl Evaluator<'_> {
         use LangItem::*;
         let attrs = self.db.attrs(def.into());
 
-        if attrs.by_key(&sym::rustc_const_panic_str).exists() {
+        if attrs.by_key(sym::rustc_const_panic_str).exists() {
             // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
             return Some(LangItem::BeginPanic);
         }

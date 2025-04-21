@@ -72,10 +72,10 @@ impl StructSignature {
         let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
 
         let mut flags = StructFlags::empty();
-        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+        if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
         }
-        if attrs.by_key(&sym::fundamental).exists() {
+        if attrs.by_key(sym::fundamental).exists() {
             flags |= StructFlags::FUNDAMENTAL;
         }
         if let Some(lang) = attrs.lang_item() {
@@ -128,10 +128,10 @@ impl UnionSignature {
         let item_tree = loc.id.item_tree(db);
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
         let mut flags = StructFlags::empty();
-        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+        if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= StructFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
         }
-        if attrs.by_key(&sym::fundamental).exists() {
+        if attrs.by_key(sym::fundamental).exists() {
             flags |= StructFlags::FUNDAMENTAL;
         }
 
@@ -181,7 +181,7 @@ impl EnumSignature {
         let item_tree = loc.id.item_tree(db);
         let attrs = item_tree.attrs(db, loc.container.krate, ModItem::from(loc.id.value).into());
         let mut flags = EnumFlags::empty();
-        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+        if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= EnumFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
         }
 
@@ -241,7 +241,7 @@ impl ConstSignature {
         let module = loc.container.module(db);
         let attrs = item_tree.attrs(db, module.krate, ModItem::from(loc.id.value).into());
         let mut flags = ConstFlags::empty();
-        if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
+        if attrs.by_key(sym::rustc_allow_incoherent_impl).exists() {
             flags |= ConstFlags::RUSTC_ALLOW_INCOHERENT_IMPL;
         }
         let source = loc.source(db);
@@ -297,7 +297,7 @@ impl StaticSignature {
         let module = loc.container.module(db);
         let attrs = item_tree.attrs(db, module.krate, ModItem::from(loc.id.value).into());
         let mut flags = StaticFlags::empty();
-        if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
+        if attrs.by_key(sym::rustc_allow_incoherent_impl).exists() {
             flags |= StaticFlags::RUSTC_ALLOW_INCOHERENT_IMPL;
         }
 
@@ -415,19 +415,19 @@ impl TraitSignature {
         if source.value.unsafe_token().is_some() {
             flags.insert(TraitFlags::UNSAFE);
         }
-        if attrs.by_key(&sym::fundamental).exists() {
+        if attrs.by_key(sym::fundamental).exists() {
             flags |= TraitFlags::FUNDAMENTAL;
         }
-        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+        if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags |= TraitFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPLS;
         }
-        if attrs.by_key(&sym::rustc_paren_sugar).exists() {
+        if attrs.by_key(sym::rustc_paren_sugar).exists() {
             flags |= TraitFlags::RUSTC_PAREN_SUGAR;
         }
         let mut skip_array_during_method_dispatch =
-            attrs.by_key(&sym::rustc_skip_array_during_method_dispatch).exists();
+            attrs.by_key(sym::rustc_skip_array_during_method_dispatch).exists();
         let mut skip_boxed_slice_during_method_dispatch = false;
-        for tt in attrs.by_key(&sym::rustc_skip_during_method_dispatch).tt_values() {
+        for tt in attrs.by_key(sym::rustc_skip_during_method_dispatch).tt_values() {
             for tt in tt.iter() {
                 if let tt::iter::TtElement::Leaf(tt::Leaf::Ident(ident)) = tt {
                     skip_array_during_method_dispatch |= ident.sym == sym::array;
@@ -531,11 +531,11 @@ impl FunctionSignature {
 
         let mut flags = FnFlags::empty();
         let attrs = item_tree.attrs(db, module.krate, ModItem::from(loc.id.value).into());
-        if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
+        if attrs.by_key(sym::rustc_allow_incoherent_impl).exists() {
             flags.insert(FnFlags::RUSTC_ALLOW_INCOHERENT_IMPL);
         }
 
-        if attrs.by_key(&sym::target_feature).exists() {
+        if attrs.by_key(sym::target_feature).exists() {
             flags.insert(FnFlags::HAS_TARGET_FEATURE);
         }
         let legacy_const_generics_indices = attrs.rustc_legacy_const_generics();
@@ -543,7 +543,7 @@ impl FunctionSignature {
         let source = loc.source(db);
 
         if source.value.unsafe_token().is_some() {
-            if attrs.by_key(&sym::rustc_deprecated_safe_2024).exists() {
+            if attrs.by_key(sym::rustc_deprecated_safe_2024).exists() {
                 flags.insert(FnFlags::DEPRECATED_SAFE_2024);
             } else {
                 flags.insert(FnFlags::UNSAFE);
@@ -668,10 +668,10 @@ impl TypeAliasSignature {
             loc.container.module(db).krate(),
             ModItem::from(loc.id.value).into(),
         );
-        if attrs.by_key(&sym::rustc_has_incoherent_inherent_impls).exists() {
+        if attrs.by_key(sym::rustc_has_incoherent_inherent_impls).exists() {
             flags.insert(TypeAliasFlags::RUSTC_HAS_INCOHERENT_INHERENT_IMPL);
         }
-        if attrs.by_key(&sym::rustc_allow_incoherent_impl).exists() {
+        if attrs.by_key(sym::rustc_allow_incoherent_impl).exists() {
             flags.insert(TypeAliasFlags::RUSTC_ALLOW_INCOHERENT_IMPL);
         }
         if matches!(loc.container, ItemContainerId::ExternBlockId(_)) {

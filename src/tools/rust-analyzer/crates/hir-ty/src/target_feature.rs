@@ -36,7 +36,7 @@ impl TargetFeatures {
     /// Retrieves the target features from the attributes, and does not expand the target features implied by them.
     pub(crate) fn from_attrs_no_implications(attrs: &Attrs) -> Self {
         let enabled = attrs
-            .by_key(&sym::target_feature)
+            .by_key(sym::target_feature)
             .tt_values()
             .filter_map(|tt| match tt.token_trees().flat_tokens() {
                 [
