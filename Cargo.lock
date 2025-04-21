@@ -332,6 +332,7 @@ dependencies = [
 name = "build_helper"
 version = "0.1.0"
 dependencies = [
+ "fastrand",
  "serde",
  "serde_derive",
 ]
