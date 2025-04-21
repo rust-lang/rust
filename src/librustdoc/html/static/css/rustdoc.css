@@ -585,7 +585,7 @@ img {
 	margin-left: -140px;
 	border-left: none;
 }
-.sidebar-resizer.active:before {
+.sidebar-resizer.active::before {
 	border-left: solid 2px var(--sidebar-resizer-active);
 	display: block;
 	height: 100%;
@@ -2044,7 +2044,7 @@ button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	text-decoration: none;
 }
 
-#settings-menu > a:before {
+#settings-menu > a::before {
 	/* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
 	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
@@ -2064,7 +2064,7 @@ button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	filter: var(--settings-menu-filter);
 }
 
-button#toggle-all-docs:before {
+button#toggle-all-docs::before {
 	/* Custom arrow icon */
 	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
@@ -2074,14 +2074,14 @@ button#toggle-all-docs:before {
 	filter: var(--settings-menu-filter);
 }
 
-button#toggle-all-docs.will-expand:before {
+button#toggle-all-docs.will-expand::before {
 	/* Custom arrow icon */
 	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
 	<path d="M2,5l4,-4l4,4M2,7l4,4l4,-4" stroke="black" fill="none" stroke-width="2px"/></svg>');
 }
 
-#help-button > a:before {
+#help-button > a::before {
 	/* Question mark with circle */
 	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg" fill="none">\
@@ -2093,17 +2093,17 @@ button#toggle-all-docs.will-expand:before {
 	filter: var(--settings-menu-filter);
 }
 
-button#toggle-all-docs:before,
-#help-button > a:before,
-#settings-menu > a:before {
+button#toggle-all-docs::before,
+#help-button > a::before,
+#settings-menu > a::before {
 	filter: var(--settings-menu-filter);
 	margin: 8px;
 }
 
 @media not (pointer: coarse) {
-	button#toggle-all-docs:hover:before,
-	#help-button > a:hover:before,
-	#settings-menu > a:hover:before {
+	button#toggle-all-docs:hover::before,
+	#help-button > a:hover::before,
+	#settings-menu > a:hover::before {
 		filter: var(--settings-menu-hover-filter);
 	}
 }
@@ -2125,7 +2125,7 @@ rustdoc-toolbar span.label {
 	padding-bottom: 4px;
 }
 
-#sidebar-button > a:before {
+#sidebar-button > a::before {
 	/* sidebar resizer image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
 		fill="none" stroke="black">\
@@ -2400,21 +2400,21 @@ However, it's not needed with smaller screen width because the doc/code block is
 
 /* sidebar button opens modal
 	use hamburger button */
-.src #sidebar-button > a:before, .sidebar-menu-toggle:before {
+.src #sidebar-button > a::before, .sidebar-menu-toggle::before {
 	/* hamburger button image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		viewBox="0 0 22 22" fill="none" stroke="black">\
 		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
 	opacity: 0.75;
 }
-.sidebar-menu-toggle:hover:before,
-.sidebar-menu-toggle:active:before,
-.sidebar-menu-toggle:focus:before {
+.sidebar-menu-toggle:hover::before,
+.sidebar-menu-toggle:active::before,
+.sidebar-menu-toggle:focus::before {
 	opacity: 1;
 }
 
 /* src sidebar button opens a folder view */
-.src #sidebar-button > a:before {
+.src #sidebar-button > a::before {
 	/* folder image */
 	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 		viewBox="0 0 22 22" fill="none" stroke="black">\
@@ -2599,7 +2599,7 @@ in src-script.js and main.js
 	}
 
 	/* sidebar button becomes topbar button */
-	#sidebar-button > a:before {
+	#sidebar-button > a::before {
 		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 			viewBox="0 0 22 22" fill="none" stroke="black">\
 			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5" stroke="%23777"/>\
@@ -2608,7 +2608,7 @@ in src-script.js and main.js
 		width: 22px;
 		height: 22px;
 	}
-	.sidebar-menu-toggle:before {
+	.sidebar-menu-toggle::before {
 		filter: var(--mobile-sidebar-menu-filter);
 	}
 	.sidebar-menu-toggle:hover {
@@ -3287,7 +3287,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 }
 
 :root[data-theme="ayu"] #settings-menu > a img,
-:root[data-theme="ayu"] #sidebar-button > a:before {
+:root[data-theme="ayu"] #sidebar-button > a::before {
 	filter: invert(100);
 }
 /* End theme: ayu */
