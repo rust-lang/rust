@@ -1,8 +1,6 @@
 //@ needs-asm-support
 //@ only-x86_64
 
-#![feature(naked_functions)]
-
 use std::arch::naked_asm;
 
 #[unsafe(naked)]
