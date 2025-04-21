@@ -71,7 +71,8 @@ function updatePageToc(elem = undefined) {
     }
 }
 
-if (document.getElementById("sidetoc") === null) {
+if (document.getElementById("sidetoc") === null &&
+    document.getElementsByClassName("header").length > 0) {
     // The sidetoc element doesn't exist yet, let's create it
 
     // Create the empty sidetoc and pagetoc elements
@@ -80,16 +81,11 @@ if (document.getElementById("sidetoc") === null) {
     sidetoc.id = "sidetoc";
     pagetoc.id = "pagetoc";
     sidetoc.appendChild(pagetoc);
-    
+
     // And append them to the current DOM
     const main = document.querySelector('main');
     main.insertBefore(sidetoc, main.firstChild);
-}
 
-if (document.getElementsByClassName("header").length <= 1) {
-    // There's one or less headings, we don't need a page table of contents
-    document.getElementById("sidetoc").remove();
-} else {
     // Populate sidebar on load
     window.addEventListener("load", () => {
         for (const header of document.getElementsByClassName("header")) {

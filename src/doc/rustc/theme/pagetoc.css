@@ -10,14 +10,6 @@
     min-width: 50px;
 }
 
-.previous {
-    /*
-    adjust the space between the left sidebar or the left side of the screen 
-    and the button that leads to the previous page
-    */
-    margin-left: var(--page-padding);
-}
-
 @media only screen {
     @media (max-width: 1179px) {
         .sidebar-hidden #sidetoc {
