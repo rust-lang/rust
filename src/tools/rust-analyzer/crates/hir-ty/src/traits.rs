@@ -282,12 +282,12 @@ impl FnTrait {
 
     pub fn method_name(self) -> Name {
         match self {
-            FnTrait::FnOnce => Name::new_symbol_root(sym::call_once.clone()),
-            FnTrait::FnMut => Name::new_symbol_root(sym::call_mut.clone()),
-            FnTrait::Fn => Name::new_symbol_root(sym::call.clone()),
-            FnTrait::AsyncFnOnce => Name::new_symbol_root(sym::async_call_once.clone()),
-            FnTrait::AsyncFnMut => Name::new_symbol_root(sym::async_call_mut.clone()),
-            FnTrait::AsyncFn => Name::new_symbol_root(sym::async_call.clone()),
+            FnTrait::FnOnce => Name::new_symbol_root(sym::call_once),
+            FnTrait::FnMut => Name::new_symbol_root(sym::call_mut),
+            FnTrait::Fn => Name::new_symbol_root(sym::call),
+            FnTrait::AsyncFnOnce => Name::new_symbol_root(sym::async_call_once),
+            FnTrait::AsyncFnMut => Name::new_symbol_root(sym::async_call_mut),
+            FnTrait::AsyncFn => Name::new_symbol_root(sym::async_call),
         }
     }
 

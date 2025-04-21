@@ -111,8 +111,7 @@ impl ModPath {
 
     #[allow(non_snake_case)]
     pub fn is_Self(&self) -> bool {
-        self.kind == PathKind::Plain
-            && matches!(&*self.segments, [name] if *name == sym::Self_.clone())
+        self.kind == PathKind::Plain && matches!(&*self.segments, [name] if *name == sym::Self_)
     }
 
     /// If this path is a single identifier, like `foo`, return its name.
@@ -251,7 +250,7 @@ fn convert_path(
             }
         }
         ast::PathSegmentKind::SelfTypeKw => {
-            ModPath::from_segments(PathKind::Plain, Some(Name::new_symbol_root(sym::Self_.clone())))
+            ModPath::from_segments(PathKind::Plain, Some(Name::new_symbol_root(sym::Self_)))
         }
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
         ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
@@ -399,7 +398,7 @@ pub use crate::__path as path;
 macro_rules! __tool_path {
     ($start:ident $(:: $seg:ident)*) => ({
         $crate::mod_path::ModPath::from_segments($crate::mod_path::PathKind::Plain, vec![
-            $crate::name::Name::new_symbol_root($crate::intern::sym::rust_analyzer.clone()), $crate::name::Name::new_symbol_root($crate::intern::sym::$start.clone()), $($crate::name::Name::new_symbol_root($crate::intern::sym::$seg.clone()),)*
+            $crate::name::Name::new_symbol_root($crate::intern::sym::rust_analyzer), $crate::name::Name::new_symbol_root($crate::intern::sym::$start.clone()), $($crate::name::Name::new_symbol_root($crate::intern::sym::$seg.clone()),)*
         ])
     });
 }

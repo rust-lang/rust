@@ -82,7 +82,7 @@ pub(crate) fn fixup_syntax(
             original.push(original_tree);
             let span = span_map.span_for_range(node_range);
             let replacement = Leaf::Ident(Ident {
-                sym: sym::__ra_fixup.clone(),
+                sym: sym::__ra_fixup,
                 span: Span {
                     range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
@@ -102,7 +102,7 @@ pub(crate) fn fixup_syntax(
                         // incomplete field access: some_expr.|
                         append.insert(node.clone().into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -141,7 +141,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(if_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -171,7 +171,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(while_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -217,7 +217,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(match_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -246,9 +246,9 @@ pub(crate) fn fixup_syntax(
                     };
 
                     let [pat, in_token, iter] = [
-                         sym::underscore.clone(),
-                         sym::in_.clone(),
-                         sym::__ra_fixup.clone(),
+                         sym::underscore,
+                         sym::in_,
+                         sym::__ra_fixup,
                     ].map(|sym|
                         Leaf::Ident(Ident {
                             sym,
@@ -284,7 +284,7 @@ pub(crate) fn fixup_syntax(
                         if it.name_ref().is_some() && it.expr().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    sym: sym::__ra_fixup.clone(),
+                                    sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -297,7 +297,7 @@ pub(crate) fn fixup_syntax(
                         if it.segment().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    sym: sym::__ra_fixup.clone(),
+                                    sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -309,7 +309,7 @@ pub(crate) fn fixup_syntax(
                     if it.body().is_none() {
                         append.insert(node.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             })

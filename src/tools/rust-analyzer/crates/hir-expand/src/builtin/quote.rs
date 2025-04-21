@@ -9,7 +9,7 @@ use tt::IdentIsRaw;
 use crate::{name::Name, tt::TopSubtreeBuilder};
 
 pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
-    tt::Ident { sym: sym::dollar_crate.clone(), span, is_raw: tt::IdentIsRaw::No }
+    tt::Ident { sym: sym::dollar_crate, span, is_raw: tt::IdentIsRaw::No }
 }
 
 // A helper macro quote macro
@@ -203,7 +203,7 @@ impl_to_to_tokentrees! {
     span: u32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
     span: usize => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
     span: i32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
-    span: bool => self { crate::tt::Ident{sym: if self { sym::true_.clone() } else { sym::false_.clone() }, span, is_raw: tt::IdentIsRaw::No } };
+    span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, is_raw: tt::IdentIsRaw::No } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };

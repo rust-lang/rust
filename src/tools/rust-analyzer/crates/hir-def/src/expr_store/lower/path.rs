@@ -105,7 +105,7 @@ pub(super) fn lower_path(
                 push_segment(&segment, &mut segments, name);
             }
             ast::PathSegmentKind::SelfTypeKw => {
-                push_segment(&segment, &mut segments, Name::new_symbol_root(sym::Self_.clone()));
+                push_segment(&segment, &mut segments, Name::new_symbol_root(sym::Self_));
             }
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 debug_assert!(path.qualifier().is_none()); // this can only occur at the first segment

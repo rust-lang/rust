@@ -597,7 +597,7 @@ fn filename_and_frag_for_def(
         Definition::Module(m) => match m.name(db) {
             // `#[doc(keyword = "...")]` is internal used only by rust compiler
             Some(name) => {
-                match m.attrs(db).by_key(&sym::doc).find_string_value_in_tt(&sym::keyword) {
+                match m.attrs(db).by_key(sym::doc).find_string_value_in_tt(sym::keyword) {
                     Some(kw) => {
                         format!("keyword.{}.html", kw)
                     }

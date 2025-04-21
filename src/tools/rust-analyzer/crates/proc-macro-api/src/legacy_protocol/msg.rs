@@ -284,14 +284,14 @@ mod tests {
             },
         );
         builder.push(Leaf::Literal(Literal {
-            symbol: sym::INTEGER_0.clone(),
+            symbol: sym::INTEGER_0,
             span: Span {
                 range: TextRange::at(TextSize::new(15), TextSize::of("0u32")),
                 anchor,
                 ctx: SyntaxContext::root(Edition::CURRENT),
             },
             kind: tt::LitKind::Integer,
-            suffix: Some(sym::u32.clone()),
+            suffix: Some(sym::u32),
         }));
         builder.close(Span {
             range: TextRange::at(TextSize::new(19), TextSize::of('}')),

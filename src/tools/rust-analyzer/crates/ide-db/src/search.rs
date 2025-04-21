@@ -369,7 +369,7 @@ impl Definition {
         if let Definition::Macro(macro_def) = self {
             return match macro_def.kind(db) {
                 hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).by_key(&sym::macro_export).exists() {
+                    if macro_def.attrs(db).by_key(sym::macro_export).exists() {
                         SearchScope::reverse_dependencies(db, module.krate())
                     } else {
                         SearchScope::krate(db, module.krate())

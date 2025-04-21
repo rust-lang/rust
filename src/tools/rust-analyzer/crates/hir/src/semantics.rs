@@ -2058,7 +2058,7 @@ impl SemanticsScope<'_> {
                 ast::PathSegmentKind::Name(name_ref) => segments.push(name_ref.as_name()),
                 ast::PathSegmentKind::Type { .. } => continue,
                 ast::PathSegmentKind::SelfTypeKw => {
-                    segments.push(Name::new_symbol_root(sym::Self_.clone()))
+                    segments.push(Name::new_symbol_root(sym::Self_))
                 }
                 ast::PathSegmentKind::SelfKw => kind = PathKind::Super(0),
                 ast::PathSegmentKind::SuperKw => match kind {

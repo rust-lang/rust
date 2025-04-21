@@ -305,7 +305,7 @@ pub fn is_fn_unsafe_to_call(
             if is_intrinsic_block {
                 // legacy intrinsics
                 // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                if db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists() {
+                if db.attrs(func.into()).by_key(sym::rustc_safe_intrinsic).exists() {
                     Unsafety::Safe
                 } else {
                     Unsafety::Unsafe

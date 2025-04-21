@@ -274,7 +274,7 @@ impl Crate {
     pub fn get_html_root_url(self: &Crate, db: &dyn HirDatabase) -> Option<String> {
         // Look for #![doc(html_root_url = "...")]
         let attrs = db.attrs(AttrDefId::ModuleId(self.root_module().into()));
-        let doc_url = attrs.by_key(&sym::doc).find_string_value_in_tt(&sym::html_root_url);
+        let doc_url = attrs.by_key(sym::doc).find_string_value_in_tt(sym::html_root_url);
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
@@ -799,7 +799,7 @@ impl Module {
                         ))
                     });
                 let res = type_params.chain(lifetime_params).any(|p| {
-                    db.attrs(AttrDefId::GenericParamId(p)).by_key(&sym::may_dangle).exists()
+                    db.attrs(AttrDefId::GenericParamId(p)).by_key(sym::may_dangle).exists()
                 });
                 Some(res)
             })()
@@ -2056,7 +2056,7 @@ impl DefWithBody {
                         continue;
                     }
                     let mut need_mut = &mol[local];
-                    if body[binding_id].name == sym::self_.clone()
+                    if body[binding_id].name == sym::self_
                         && need_mut == &mir::MutabilityReason::Unused
                     {
                         need_mut = &mir::MutabilityReason::Not;
@@ -3045,7 +3045,7 @@ pub struct StaticLifetime;
 
 impl StaticLifetime {
     pub fn name(self) -> Name {
-        Name::new_symbol_root(sym::tick_static.clone())
+        Name::new_symbol_root(sym::tick_static)
     }
 }
 
@@ -3160,7 +3160,7 @@ impl Macro {
     }
 
     pub fn is_macro_export(self, db: &dyn HirDatabase) -> bool {
-        matches!(self.id, MacroId::MacroRulesId(_) if db.attrs(self.id.into()).by_key(&sym::macro_export).exists())
+        matches!(self.id, MacroId::MacroRulesId(_) if db.attrs(self.id.into()).by_key(sym::macro_export).exists())
     }
 
     pub fn is_proc_macro(self) -> bool {
@@ -3871,7 +3871,7 @@ impl Local {
     }
 
     pub fn is_self(self, db: &dyn HirDatabase) -> bool {
-        self.name(db) == sym::self_.clone()
+        self.name(db) == sym::self_
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
@@ -4987,9 +4987,8 @@ impl Type {
             return None;
         }
 
-        let output_assoc_type = db
-            .trait_items(trait_)
-            .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
+        let output_assoc_type =
+            db.trait_items(trait_).associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
         self.normalize_trait_assoc_type(db, &[], output_assoc_type.into())
     }
 
@@ -5005,7 +5004,7 @@ impl Type {
         let iterator_trait = db.lang_item(self.env.krate, LangItem::Iterator)?.as_trait()?;
         let iterator_item = db
             .trait_items(iterator_trait)
-            .associated_type_by_name(&Name::new_symbol_root(sym::Item.clone()))?;
+            .associated_type_by_name(&Name::new_symbol_root(sym::Item))?;
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
 
@@ -5037,7 +5036,7 @@ impl Type {
 
         let into_iter_assoc_type = db
             .trait_items(trait_)
-            .associated_type_by_name(&Name::new_symbol_root(sym::IntoIter.clone()))?;
+            .associated_type_by_name(&Name::new_symbol_root(sym::IntoIter))?;
         self.normalize_trait_assoc_type(db, &[], into_iter_assoc_type.into())
     }
 

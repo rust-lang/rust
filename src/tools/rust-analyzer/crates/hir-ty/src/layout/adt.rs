@@ -128,10 +128,7 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
         }
         Bound::Unbounded
     };
-    (
-        get(&sym::rustc_layout_scalar_valid_range_start),
-        get(&sym::rustc_layout_scalar_valid_range_end),
-    )
+    (get(sym::rustc_layout_scalar_valid_range_start), get(sym::rustc_layout_scalar_valid_range_end))
 }
 
 pub(crate) fn layout_of_adt_recover(

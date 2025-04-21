@@ -31,7 +31,7 @@ pub struct CfgOptions {
 
 impl Default for CfgOptions {
     fn default() -> Self {
-        Self { enabled: FxHashSet::from_iter([CfgAtom::Flag(sym::true_.clone())]) }
+        Self { enabled: FxHashSet::from_iter([CfgAtom::Flag(sym::true_)]) }
     }
 }
 

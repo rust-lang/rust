@@ -93,22 +93,22 @@ impl Name {
 
     pub fn new_tuple_field(idx: usize) -> Name {
         let symbol = match idx {
-            0 => sym::INTEGER_0.clone(),
-            1 => sym::INTEGER_1.clone(),
-            2 => sym::INTEGER_2.clone(),
-            3 => sym::INTEGER_3.clone(),
-            4 => sym::INTEGER_4.clone(),
-            5 => sym::INTEGER_5.clone(),
-            6 => sym::INTEGER_6.clone(),
-            7 => sym::INTEGER_7.clone(),
-            8 => sym::INTEGER_8.clone(),
-            9 => sym::INTEGER_9.clone(),
-            10 => sym::INTEGER_10.clone(),
-            11 => sym::INTEGER_11.clone(),
-            12 => sym::INTEGER_12.clone(),
-            13 => sym::INTEGER_13.clone(),
-            14 => sym::INTEGER_14.clone(),
-            15 => sym::INTEGER_15.clone(),
+            0 => sym::INTEGER_0,
+            1 => sym::INTEGER_1,
+            2 => sym::INTEGER_2,
+            3 => sym::INTEGER_3,
+            4 => sym::INTEGER_4,
+            5 => sym::INTEGER_5,
+            6 => sym::INTEGER_6,
+            7 => sym::INTEGER_7,
+            8 => sym::INTEGER_8,
+            9 => sym::INTEGER_9,
+            10 => sym::INTEGER_10,
+            11 => sym::INTEGER_11,
+            12 => sym::INTEGER_12,
+            13 => sym::INTEGER_13,
+            14 => sym::INTEGER_14,
+            15 => sym::INTEGER_15,
             _ => Symbol::intern(&idx.to_string()),
         };
         Name { symbol, ctx: () }
@@ -142,7 +142,7 @@ impl Name {
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
     pub const fn missing() -> Name {
-        Name { symbol: sym::consts::MISSING_NAME, ctx: () }
+        Name { symbol: sym::MISSING_NAME, ctx: () }
     }
 
     /// Returns true if this is a fake name for things missing in the source code. See

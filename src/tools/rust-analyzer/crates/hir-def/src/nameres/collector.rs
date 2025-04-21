@@ -268,24 +268,24 @@ impl DefCollector<'_> {
             let Some(attr_name) = attr.path.as_ident() else { continue };
 
             match () {
-                () if *attr_name == sym::recursion_limit.clone() => {
+                () if *attr_name == sym::recursion_limit => {
                     if let Some(limit) = attr.string_value() {
                         if let Ok(limit) = limit.as_str().parse() {
                             crate_data.recursion_limit = Some(limit);
                         }
                     }
                 }
-                () if *attr_name == sym::crate_type.clone() => {
+                () if *attr_name == sym::crate_type => {
                     if attr.string_value() == Some(&sym::proc_dash_macro) {
                         self.is_proc_macro = true;
                     }
                 }
-                () if *attr_name == sym::no_core.clone() => crate_data.no_core = true,
-                () if *attr_name == sym::no_std.clone() => crate_data.no_std = true,
-                () if *attr_name == sym::rustc_coherence_is_core.clone() => {
+                () if *attr_name == sym::no_core => crate_data.no_core = true,
+                () if *attr_name == sym::no_std => crate_data.no_std = true,
+                () if *attr_name == sym::rustc_coherence_is_core => {
                     crate_data.rustc_coherence_is_core = true;
                 }
-                () if *attr_name == sym::feature.clone() => {
+                () if *attr_name == sym::feature => {
                     let features =
                         attr.parse_path_comma_token_tree(self.db).into_iter().flatten().filter_map(
                             |(feat, _)| match feat.segments() {
@@ -295,13 +295,13 @@ impl DefCollector<'_> {
                         );
                     crate_data.unstable_features.extend(features);
                 }
-                () if *attr_name == sym::register_attr.clone() => {
+                () if *attr_name == sym::register_attr => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_attrs.push(ident.sym.clone());
                         cov_mark::hit!(register_attr);
                     }
                 }
-                () if *attr_name == sym::register_tool.clone() => {
+                () if *attr_name == sym::register_tool => {
                     if let Some(ident) = attr.single_ident_value() {
                         crate_data.registered_tools.push(ident.sym.clone());
                         cov_mark::hit!(register_tool);
@@ -507,20 +507,20 @@ impl DefCollector<'_> {
         }
 
         let krate = if self.def_map.data.no_std {
-            Name::new_symbol_root(sym::core.clone())
-        } else if self.local_def_map().extern_prelude().any(|(name, _)| *name == sym::std.clone()) {
-            Name::new_symbol_root(sym::std.clone())
+            Name::new_symbol_root(sym::core)
+        } else if self.local_def_map().extern_prelude().any(|(name, _)| *name == sym::std) {
+            Name::new_symbol_root(sym::std)
         } else {
             // If `std` does not exist for some reason, fall back to core. This mostly helps
             // keep r-a's own tests minimal.
-            Name::new_symbol_root(sym::core.clone())
+            Name::new_symbol_root(sym::core)
         };
 
         let edition = match self.def_map.data.edition {
-            Edition::Edition2015 => Name::new_symbol_root(sym::rust_2015.clone()),
-            Edition::Edition2018 => Name::new_symbol_root(sym::rust_2018.clone()),
-            Edition::Edition2021 => Name::new_symbol_root(sym::rust_2021.clone()),
-            Edition::Edition2024 => Name::new_symbol_root(sym::rust_2024.clone()),
+            Edition::Edition2015 => Name::new_symbol_root(sym::rust_2015),
+            Edition::Edition2018 => Name::new_symbol_root(sym::rust_2018),
+            Edition::Edition2021 => Name::new_symbol_root(sym::rust_2021),
+            Edition::Edition2024 => Name::new_symbol_root(sym::rust_2024),
         };
 
         let path_kind = match self.def_map.data.edition {
@@ -529,7 +529,7 @@ impl DefCollector<'_> {
         };
         let path = ModPath::from_segments(
             path_kind,
-            [krate, Name::new_symbol_root(sym::prelude.clone()), edition],
+            [krate, Name::new_symbol_root(sym::prelude), edition],
         );
 
         let (per_ns, _) = self.def_map.resolve_path(
@@ -1373,8 +1373,7 @@ impl DefCollector<'_> {
                         MacroDefKind::BuiltInAttr(_, expander)
                         if expander.is_test() || expander.is_bench() || expander.is_test_case()
                     ) {
-                        let test_is_active =
-                            self.cfg_options.check_atom(&CfgAtom::Flag(sym::test.clone()));
+                        let test_is_active = self.cfg_options.check_atom(&CfgAtom::Flag(sym::test));
                         if test_is_active {
                             return recollect_without(self);
                         }
@@ -1712,7 +1711,7 @@ impl ModCollector<'_, '_> {
                         id: ItemTreeId::new(self.tree_id, item_tree_id),
                     }
                     .intern(db);
-                    let is_prelude = attrs.by_key(&sym::prelude_import).exists();
+                    let is_prelude = attrs.by_key(sym::prelude_import).exists();
                     Import::from_use(
                         self.item_tree,
                         ItemTreeId::new(self.tree_id, item_tree_id),
@@ -1770,7 +1769,7 @@ impl ModCollector<'_, '_> {
                             if !is_self {
                                 self.process_macro_use_extern_crate(
                                     id,
-                                    attrs.by_key(&sym::macro_use).attrs(),
+                                    attrs.by_key(sym::macro_use).attrs(),
                                     resolved.krate,
                                 );
                             }
@@ -2015,8 +2014,8 @@ impl ModCollector<'_, '_> {
     }
 
     fn collect_module(&mut self, module_id: FileItemTreeId<Mod>, attrs: &Attrs) {
-        let path_attr = attrs.by_key(&sym::path).string_value_unescape();
-        let is_macro_use = attrs.by_key(&sym::macro_use).exists();
+        let path_attr = attrs.by_key(sym::path).string_value_unescape();
+        let is_macro_use = attrs.by_key(sym::macro_use).exists();
         let module = &self.item_tree[module_id];
         match &module.kind {
             // inline module, just recurse
@@ -2093,7 +2092,7 @@ impl ModCollector<'_, '_> {
                                 let is_macro_use = is_macro_use
                                     || item_tree
                                         .top_level_attrs(db, krate)
-                                        .by_key(&sym::macro_use)
+                                        .by_key(sym::macro_use)
                                         .exists();
                                 if is_macro_use {
                                     self.import_all_legacy_macros(module_id);
@@ -2252,11 +2251,11 @@ impl ModCollector<'_, '_> {
         let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
         let ast_id = InFile::new(self.file_id(), mac.ast_id.upcast());
 
-        let export_attr = attrs.by_key(&sym::macro_export);
+        let export_attr = || attrs.by_key(sym::macro_export);
 
-        let is_export = export_attr.exists();
+        let is_export = export_attr().exists();
         let local_inner = if is_export {
-            export_attr.tt_values().flat_map(|it| it.iter()).any(|it| match it {
+            export_attr().tt_values().flat_map(|it| it.iter()).any(|it| match it {
                 tt::TtElement::Leaf(tt::Leaf::Ident(ident)) => ident.sym == sym::local_inner_macros,
                 _ => false,
             })
@@ -2265,17 +2264,17 @@ impl ModCollector<'_, '_> {
         };
 
         // Case 1: builtin macros
-        let expander = if attrs.by_key(&sym::rustc_builtin_macro).exists() {
+        let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
             // `#[rustc_builtin_macro = "builtin_name"]` overrides the `macro_rules!` name.
             let name;
-            let name = match attrs.by_key(&sym::rustc_builtin_macro).string_value_with_span() {
+            let name = match attrs.by_key(sym::rustc_builtin_macro).string_value_with_span() {
                 Some((it, span)) => {
                     name = Name::new_symbol(it.clone(), span.ctx);
                     &name
                 }
                 None => {
                     let explicit_name =
-                        attrs.by_key(&sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
+                        attrs.by_key(sym::rustc_builtin_macro).tt_values().next().and_then(|tt| {
                             match tt.token_trees().flat_tokens().first() {
                                 Some(tt::TokenTree::Leaf(tt::Leaf::Ident(name))) => Some(name),
                                 _ => None,
@@ -2305,7 +2304,7 @@ impl ModCollector<'_, '_> {
             // Case 2: normal `macro_rules!` macro
             MacroExpander::Declarative
         };
-        let allow_internal_unsafe = attrs.by_key(&sym::allow_internal_unsafe).exists();
+        let allow_internal_unsafe = attrs.by_key(sym::allow_internal_unsafe).exists();
 
         let mut flags = MacroRulesLocFlags::empty();
         flags.set(MacroRulesLocFlags::LOCAL_INNER, local_inner);
@@ -2339,14 +2338,14 @@ impl ModCollector<'_, '_> {
         // Case 1: builtin macros
         let mut helpers_opt = None;
         let attrs = self.item_tree.attrs(self.def_collector.db, krate, ModItem::from(id).into());
-        let expander = if attrs.by_key(&sym::rustc_builtin_macro).exists() {
+        let expander = if attrs.by_key(sym::rustc_builtin_macro).exists() {
             if let Some(expander) = find_builtin_macro(&mac.name) {
                 match expander {
                     Either::Left(it) => MacroExpander::BuiltIn(it),
                     Either::Right(it) => MacroExpander::BuiltInEager(it),
                 }
             } else if let Some(expander) = find_builtin_derive(&mac.name) {
-                if let Some(attr) = attrs.by_key(&sym::rustc_builtin_macro).tt_values().next() {
+                if let Some(attr) = attrs.by_key(sym::rustc_builtin_macro).tt_values().next() {
                     // NOTE: The item *may* have both `#[rustc_builtin_macro]` and `#[proc_macro_derive]`,
                     // in which case rustc ignores the helper attributes from the latter, but it
                     // "doesn't make sense in practice" (see rust-lang/rust#87027).
@@ -2377,7 +2376,7 @@ impl ModCollector<'_, '_> {
             // Case 2: normal `macro`
             MacroExpander::Declarative
         };
-        let allow_internal_unsafe = attrs.by_key(&sym::allow_internal_unsafe).exists();
+        let allow_internal_unsafe = attrs.by_key(sym::allow_internal_unsafe).exists();
 
         let macro_id = Macro2Loc {
             container: module,

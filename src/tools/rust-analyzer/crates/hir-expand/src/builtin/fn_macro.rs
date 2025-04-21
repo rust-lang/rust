@@ -177,10 +177,10 @@ fn line_expand(
     ExpandResult::ok(tt::TopSubtree::invisible_from_leaves(
         span,
         [tt::Leaf::Literal(tt::Literal {
-            symbol: sym::INTEGER_0.clone(),
+            symbol: sym::INTEGER_0,
             span,
             kind: tt::LitKind::Integer,
-            suffix: Some(sym::u32.clone()),
+            suffix: Some(sym::u32),
         })],
     ))
 }
@@ -347,11 +347,7 @@ fn panic_expand(
     let dollar_crate = dollar_crate(span);
     let call_site_span = span_with_call_site_ctxt(db, span, id.into(), Edition::CURRENT);
 
-    let mac = if use_panic_2021(db, call_site_span) {
-        sym::panic_2021.clone()
-    } else {
-        sym::panic_2015.clone()
-    };
+    let mac = if use_panic_2021(db, call_site_span) { sym::panic_2021 } else { sym::panic_2015 };
 
     // Pass the original arguments
     let subtree = WithDelimiter {
@@ -379,9 +375,9 @@ fn unreachable_expand(
     let call_site_span = span_with_call_site_ctxt(db, span, id.into(), Edition::CURRENT);
 
     let mac = if use_panic_2021(db, call_site_span) {
-        sym::unreachable_2021.clone()
+        sym::unreachable_2021
     } else {
-        sym::unreachable_2015.clone()
+        sym::unreachable_2015
     };
 
     // Pass the original arguments
@@ -411,7 +407,7 @@ fn use_panic_2021(db: &dyn ExpandDatabase, span: Span) -> bool {
         // FIXME: Record allow_internal_unstable in the macro def (not been done yet because it
         // would consume quite a bit extra memory for all call locs...)
         // if let Some(features) = expn.def.allow_internal_unstable {
-        //     if features.iter().any(|&f| f == sym::edition_panic.clone()) {
+        //     if features.iter().any(|&f| f == sym::edition_panic) {
         //         span = expn.call_site;
         //         continue;
         //     }

@@ -228,7 +228,7 @@ fn next_op(
                     tt::Leaf::Ident(ident) if ident.sym == sym::crate_ => {
                         // We simply produce identifier `$crate` here. And it will be resolved when lowering ast to Path.
                         Op::Ident(tt::Ident {
-                            sym: sym::dollar_crate.clone(),
+                            sym: sym::dollar_crate,
                             span: ident.span,
                             is_raw: tt::IdentIsRaw::No,
                         })
