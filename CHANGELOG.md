@@ -6738,6 +6738,7 @@ Released 2018-09-13
 [`unnecessary_min_or_max`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_min_or_max
 [`unnecessary_mut_passed`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_mut_passed
 [`unnecessary_operation`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_operation
+[`unnecessary_option_map_or_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_option_map_or_else
 [`unnecessary_owned_empty_strings`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_owned_empty_strings
 [`unnecessary_result_map_or_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_result_map_or_else
 [`unnecessary_safety_comment`]: https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_safety_comment
