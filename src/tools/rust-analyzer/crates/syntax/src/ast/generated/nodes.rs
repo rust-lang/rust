@@ -405,6 +405,7 @@ pub struct Const {
 }
 impl ast::HasAttrs for Const {}
 impl ast::HasDocComments for Const {}
+impl ast::HasGenericParams for Const {}
 impl ast::HasName for Const {}
 impl ast::HasVisibility for Const {}
 impl Const {
@@ -9423,7 +9424,7 @@ impl ast::HasGenericParams for AnyHasGenericParams {}
 impl AstNode for AnyHasGenericParams {
     #[inline]
     fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, ENUM | FN | IMPL | STRUCT | TRAIT | TRAIT_ALIAS | TYPE_ALIAS | UNION)
+        matches!(kind, CONST | ENUM | FN | IMPL | STRUCT | TRAIT | TRAIT_ALIAS | TYPE_ALIAS | UNION)
     }
     #[inline]
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -9446,6 +9447,10 @@ impl fmt::Debug for AnyHasGenericParams {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AnyHasGenericParams").field("syntax", &self.syntax).finish()
     }
+}
+impl From<Const> for AnyHasGenericParams {
+    #[inline]
+    fn from(node: Const) -> AnyHasGenericParams { AnyHasGenericParams { syntax: node.syntax } }
 }
 impl From<Enum> for AnyHasGenericParams {
     #[inline]
