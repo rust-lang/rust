@@ -20,7 +20,7 @@ use std::str::FromStr;
 /// Returns the environment variable which the dynamic library lookup path
 /// resides in for this platform.
 pub fn dylib_path_var() -> &'static str {
-    if cfg!(target_os = "windows") {
+    if cfg!(any(target_os = "windows", target_os = "cygwin")) {
         "PATH"
     } else if cfg!(target_vendor = "apple") {
         "DYLD_LIBRARY_PATH"
@@ -46,7 +46,7 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: &str) -> String {
-    if target.contains("windows") {
+    if target.contains("windows") || target.contains("cygwin") {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")
