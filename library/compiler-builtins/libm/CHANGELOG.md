@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.13](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.12...libm-v0.2.13) - 2025-04-21
+
+### Fixed
+
+- Switch back to workspace resolver v2 to unbreak builds without the 2024 edition
+
 ## [0.2.12](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.11...libm-v0.2.12) - 2025-04-21
 
 - Mark generic functions `#[inline]`
