@@ -40,13 +40,14 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitMatrix;
+use rustc_index::bit_set::{BitMatrix, DenseBitSet};
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
     extension,
 };
 use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::{Decodable, Encodable};
+use rustc_session::config::PackCoroutineLayout;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, sym};
@@ -63,6 +64,7 @@ pub use rustc_type_ir::solve::SizedTraitKind;
 pub use rustc_type_ir::*;
 #[allow(hidden_glob_reexports, unused_imports)]
 use rustc_type_ir::{InferCtxtLike, Interner};
+use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_hir as hir};
@@ -113,7 +115,7 @@ pub use self::typeck_results::{
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
-use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
+use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, CoroutineSavedTy, SourceInfo};
 use crate::query::{IntoQueryParam, Providers};
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -1876,39 +1878,77 @@ impl<'tcx> TyCtxt<'tcx> {
             .ok_or_else(|| self.layout_error(LayoutError::Unknown(ty())))
     }
 
+    /// Construct the trivial coroutine layout for async_drop of a coroutine
+    #[instrument(level = "debug", ret, skip(self))]
+    fn build_async_drop_trivial_coroutine_layout(
+        self,
+        def_id: DefId,
+        upvar_ty: Ty<'tcx>,
+    ) -> CoroutineLayout<'tcx> {
+        let upvar_tys = [upvar_ty];
+        let nr_upvars = 1;
+        let span = self.def_span(def_id);
+        let source_info = SourceInfo::outermost(span);
+        let mut field_tys = IndexVec::new();
+        let field_names = [None].into();
+        let upvar_saved_locals: SmallVec<[_; 4]> = upvar_tys
+            .into_iter()
+            .map(|ty| field_tys.push(CoroutineSavedTy { ty, source_info, ignore_for_traits: true }))
+            .collect();
+        // Even minimal, the trivial coroutine has 3 states (RESERVED_VARIANTS),
+        // so variant_fields and variant_source_info should have 3 elements.
+        let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
+            iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+        variant_fields[VariantIdx::ZERO].extend(upvar_saved_locals.clone());
+        let variant_source_info: IndexVec<VariantIdx, SourceInfo> =
+            iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+        let mut storage_conflicts = BitMatrix::new(nr_upvars, nr_upvars);
+        if let Some(&first) = upvar_saved_locals.first()
+            && let Some(&last) = upvar_saved_locals.last()
+        {
+            let mut upvars = DenseBitSet::new_empty(nr_upvars);
+            upvars.insert_range(first..=last);
+            for &local in &upvar_saved_locals {
+                storage_conflicts.union_row_with(&upvars, local);
+            }
+        }
+        let relocated_upvars = Default::default();
+        CoroutineLayout {
+            field_tys,
+            field_names,
+            variant_fields,
+            variant_source_info,
+            storage_conflicts,
+            relocated_upvars,
+            pack: PackCoroutineLayout::CapturesOnly,
+        }
+    }
+
     /// Returns layout of a coroutine. Layout might be unavailable if the
     /// coroutine is tainted by errors.
+    #[instrument(level = "debug", skip(self), ret)]
     pub fn coroutine_layout(
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
-            // layout of `async_drop_in_place<T>::{closure}` in case,
-            // when T is a coroutine, contains this internal coroutine's ptr in upvars
-            // and doesn't require any locals. Here is an `empty coroutine's layout`
+            // Layout of `async_drop_in_place<T>::{closure}` when T is a coroutine
+            // It contains exactly one upvar which is a raw pointer to this inner coroutine
+            // and it does not suspend.
             let arg_cor_ty = args.first().unwrap().expect_ty();
-            if arg_cor_ty.is_coroutine() {
-                let span = self.def_span(def_id);
-                let source_info = SourceInfo::outermost(span);
-                // Even minimal, empty coroutine has 3 states (RESERVED_VARIANTS),
-                // so variant_fields and variant_source_info should have 3 elements.
-                let variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
-                    iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
-                let variant_source_info: IndexVec<VariantIdx, SourceInfo> =
-                    iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
-                let proxy_layout = CoroutineLayout {
-                    field_tys: [].into(),
-                    field_names: [].into(),
-                    variant_fields,
-                    variant_source_info,
-                    storage_conflicts: BitMatrix::new(0, 0),
-                };
-                return Ok(self.arena.alloc(proxy_layout));
+            if let &ty::Coroutine(_did, _args) = arg_cor_ty.kind() {
+                debug!("it is a trivial coroutine");
+                let upvar_ty = Ty::new_mut_ptr(self, arg_cor_ty);
+                Ok(self
+                    .arena
+                    .alloc(self.build_async_drop_trivial_coroutine_layout(def_id, upvar_ty)))
             } else {
+                debug!("it is an async drop coroutine");
                 self.async_drop_coroutine_layout(def_id, args)
             }
         } else {
+            debug!("it is an ordinary coroutine");
             self.ordinary_coroutine_layout(def_id, args)
         }
     }

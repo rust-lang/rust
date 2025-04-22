@@ -11,6 +11,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::find_attr;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::mir::CoroutineSavedLocal;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{
@@ -20,6 +21,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt, TypeVisitableExt,
 };
+use rustc_session::config::PackCoroutineLayout;
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
@@ -175,6 +177,7 @@ fn extract_const_value<'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(cx), ret)]
 fn layout_of_uncached<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
@@ -490,7 +493,7 @@ fn layout_of_uncached<'tcx>(
 
             let info = tcx.coroutine_layout(def_id, args)?;
 
-            let local_layouts = info
+            let local_layouts: IndexVec<_, _> = info
                 .field_tys
                 .iter()
                 .map(|local| {
@@ -498,22 +501,31 @@ fn layout_of_uncached<'tcx>(
                     let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args));
                     cx.spanned_layout_of(uninit_ty, local.source_info.span)
                 })
-                .try_collect::<IndexVec<_, _>>()?;
+                .try_collect()?;
 
-            let prefix_layouts = args
+            let relocated_upvars = IndexVec::from_fn_n(
+                |local: CoroutineSavedLocal| info.relocated_upvars.get(&local).copied(),
+                info.field_tys.len(),
+            );
+            let pack = match info.pack {
+                PackCoroutineLayout::No => rustc_abi::PackCoroutineLayout::Classic,
+                PackCoroutineLayout::CapturesOnly => rustc_abi::PackCoroutineLayout::CapturesOnly,
+            };
+            let upvar_layouts = args
                 .as_coroutine()
-                .prefix_tys()
+                .upvar_tys()
                 .iter()
                 .map(|ty| cx.layout_of(ty))
-                .try_collect::<IndexVec<_, _>>()?;
-
+                .collect::<Result<_, _>>()?;
             let layout = cx
                 .calc
                 .coroutine(
                     &local_layouts,
-                    prefix_layouts,
+                    &relocated_upvars,
+                    upvar_layouts,
                     &info.variant_fields,
                     &info.storage_conflicts,
+                    pack,
                     |tag| TyAndLayout {
                         ty: tag.primitive().to_ty(tcx),
                         layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
@@ -912,7 +924,11 @@ fn variant_info_for_coroutine<'tcx>(
                             .then(|| Symbol::intern(&field_layout.ty.to_string())),
                     }
                 })
-                .chain(upvar_fields.iter().copied())
+                .chain(
+                    if variant_idx == FIRST_VARIANT { &upvar_fields[..] } else { &[] }
+                        .iter()
+                        .copied(),
+                )
                 .collect();
 
             // If the variant has no state-specific fields, then it's the size of the upvars.

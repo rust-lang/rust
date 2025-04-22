@@ -1,5 +1,5 @@
 error[E0521]: borrowed data escapes outside of coroutine
-  --> $DIR/ref-escapes-but-not-over-yield.rs:12:9
+  --> $DIR/ref-escapes-but-not-over-yield.rs:9:9
    |
 LL |     let mut a = &3;
    |         ----- `a` declared here, outside of the coroutine body
