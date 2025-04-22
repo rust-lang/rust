@@ -1,74 +1,74 @@
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:15:41
+  --> tests/ui/ptr_cast_constness.rs:16:45
    |
-LL |     let _: &mut T = std::mem::transmute(p as *mut T);
-   |                                         ^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
+LL |         let _: &mut T = std::mem::transmute(p as *mut T);
+   |                                             ^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
    |
    = note: `-D clippy::ptr-cast-constness` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::ptr_cast_constness)]`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:17:19
+  --> tests/ui/ptr_cast_constness.rs:18:23
    |
-LL |     let _ = &mut *(p as *mut T);
-   |                   ^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
+LL |         let _ = &mut *(p as *mut T);
+   |                       ^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `p.cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:33:17
+  --> tests/ui/ptr_cast_constness.rs:35:17
    |
 LL |         let _ = *ptr_ptr as *mut u32;
    |                 ^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `(*ptr_ptr).cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:37:13
+  --> tests/ui/ptr_cast_constness.rs:39:13
    |
 LL |     let _ = ptr as *mut u32;
    |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:39:13
+  --> tests/ui/ptr_cast_constness.rs:41:13
    |
 LL |     let _ = mut_ptr as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:73:13
+  --> tests/ui/ptr_cast_constness.rs:75:13
    |
 LL |     let _ = ptr as *mut u32;
    |             ^^^^^^^^^^^^^^^ help: try `pointer::cast_mut`, a safer alternative: `ptr.cast_mut()`
 
 error: `as` casting between raw pointers while changing only its constness
-  --> tests/ui/ptr_cast_constness.rs:75:13
+  --> tests/ui/ptr_cast_constness.rs:77:13
    |
 LL |     let _ = mut_ptr as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `mut_ptr.cast_const()`
 
 error: `as` casting to make a const null pointer into a mutable null pointer
-  --> tests/ui/ptr_cast_constness.rs:82:13
+  --> tests/ui/ptr_cast_constness.rs:84:13
    |
 LL |     let _ = ptr::null::<String>() as *mut String;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `null_mut()` directly instead: `std::ptr::null_mut::<String>()`
 
 error: `as` casting to make a mutable null pointer into a const null pointer
-  --> tests/ui/ptr_cast_constness.rs:84:13
+  --> tests/ui/ptr_cast_constness.rs:86:13
    |
 LL |     let _ = ptr::null_mut::<u32>() as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `null()` directly instead: `std::ptr::null::<u32>()`
 
 error: changing constness of a null pointer
-  --> tests/ui/ptr_cast_constness.rs:86:13
+  --> tests/ui/ptr_cast_constness.rs:88:13
    |
 LL |     let _ = ptr::null::<u32>().cast_mut();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `null_mut()` directly instead: `std::ptr::null_mut::<u32>()`
 
 error: changing constness of a null pointer
-  --> tests/ui/ptr_cast_constness.rs:88:13
+  --> tests/ui/ptr_cast_constness.rs:90:13
    |
 LL |     let _ = ptr::null_mut::<u32>().cast_const();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `null()` directly instead: `std::ptr::null::<u32>()`
 
 error: `as` casting to make a const null pointer into a mutable null pointer
-  --> tests/ui/ptr_cast_constness.rs:92:21
+  --> tests/ui/ptr_cast_constness.rs:94:21
    |
 LL |     let _ = inline!(ptr::null::<u32>() as *mut u32);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `null_mut()` directly instead: `std::ptr::null_mut::<u32>()`
@@ -76,12 +76,18 @@ LL |     let _ = inline!(ptr::null::<u32>() as *mut u32);
    = note: this error originates in the macro `__inline_mac_fn_null_pointers` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: changing constness of a null pointer
-  --> tests/ui/ptr_cast_constness.rs:94:21
+  --> tests/ui/ptr_cast_constness.rs:96:21
    |
 LL |     let _ = inline!(ptr::null::<u32>().cast_mut());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `null_mut()` directly instead: `std::ptr::null_mut::<u32>()`
    |
    = note: this error originates in the macro `__inline_mac_fn_null_pointers` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 13 previous errors
+error: `as` casting between raw pointers while changing only its constness
+  --> tests/ui/ptr_cast_constness.rs:106:13
+   |
+LL |     let _ = std::ptr::addr_of_mut!(local) as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try `pointer::cast_const`, a safer alternative: `std::ptr::addr_of_mut!(local).cast_const()`
+
+error: aborting due to 14 previous errors
 

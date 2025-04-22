@@ -12,9 +12,10 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
 help: collapse nested if block
    |
-LL ~     if x == "hello" && y == "world" {
-LL +         println!("Hello world!");
-LL +     }
+LL ~     if x == "hello"
+LL ~         && y == "world" {
+LL |             println!("Hello world!");
+LL ~         }
    |
 
 error: this `if` statement can be collapsed
@@ -29,9 +30,10 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
-LL +         println!("Hello world!");
-LL +     }
+LL ~     if (x == "hello" || x == "world") {
+LL ~         && (y == "world" || y == "hello") {
+LL |             println!("Hello world!");
+LL ~         }
    |
 
 error: this `if` statement can be collapsed
@@ -46,9 +48,10 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
-LL +         println!("Hello world!");
-LL +     }
+LL ~     if x == "hello" && x == "world"
+LL ~         && (y == "world" || y == "hello") {
+LL |             println!("Hello world!");
+LL ~         }
    |
 
 error: this `if` statement can be collapsed
@@ -63,9 +66,10 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
-LL +         println!("Hello world!");
-LL +     }
+LL ~     if (x == "hello" || x == "world") {
+LL ~         && y == "world" && y == "hello" {
+LL |             println!("Hello world!");
+LL ~         }
    |
 
 error: this `if` statement can be collapsed
@@ -80,9 +84,10 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if x == "hello" && x == "world" && y == "world" && y == "hello" {
-LL +         println!("Hello world!");
-LL +     }
+LL ~     if x == "hello" && x == "world"
+LL ~         && y == "world" && y == "hello" {
+LL |             println!("Hello world!");
+LL ~         }
    |
 
 error: this `if` statement can be collapsed
@@ -97,13 +102,14 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if 42 == 1337 && 'a' != 'A' {
-LL +         println!("world!")
-LL +     }
+LL ~     if 42 == 1337
+LL ~         && 'a' != 'A' {
+LL |             println!("world!")
+LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:107:5
+  --> tests/ui/collapsible_if.rs:86:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" { // Collapsible
@@ -114,26 +120,75 @@ LL | |     }
    |
 help: collapse nested if block
    |
-LL ~     if x == "hello" && y == "world" { // Collapsible
-LL +         println!("Hello world!");
-LL +     }
+LL ~     if x == "hello"
+LL ~         && y == "world" { // Collapsible
+LL |             println!("Hello world!");
+LL ~         }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:167:5
+  --> tests/ui/collapsible_if.rs:133:5
    |
 LL | /     if matches!(true, true) {
 LL | |         if matches!(true, true) {}
 LL | |     }
-   | |_____^ help: collapse nested if block: `if matches!(true, true) && matches!(true, true) {}`
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if matches!(true, true)
+LL ~         && matches!(true, true) {}
+   |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:173:5
+  --> tests/ui/collapsible_if.rs:139:5
    |
 LL | /     if matches!(true, true) && truth() {
 LL | |         if matches!(true, true) {}
 LL | |     }
-   | |_____^ help: collapse nested if block: `if matches!(true, true) && truth() && matches!(true, true) {}`
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if matches!(true, true) && truth()
+LL ~         && matches!(true, true) {}
+   |
 
-error: aborting due to 9 previous errors
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if.rs:151:5
+   |
+LL | /     if true {
+LL | |         if true {
+LL | |             println!("No comment, linted");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if true
+LL ~         && true {
+LL |             println!("No comment, linted");
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if.rs:168:5
+   |
+LL | /     if true {
+LL | |         if true {
+...  |
+LL | |     }; 3
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if true
+LL ~         && true {
+LL |         }
+LL |         // This is a comment, do not collapse code to it
+LL ~     ; 3
+   |
+
+error: aborting due to 11 previous errors
 

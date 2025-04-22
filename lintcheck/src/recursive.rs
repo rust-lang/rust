@@ -64,7 +64,7 @@ fn process_stream(
 
     // It's 99% likely that dependencies compiled with recursive mode are on crates.io
     // and therefore on docs.rs. This links to the sources directly, do avoid invalid
-    // links due to remaped paths. See rust-lang/docs.rs#2551 for more details.
+    // links due to remapped paths. See rust-lang/docs.rs#2551 for more details.
     let base_url = format!(
         "https://docs.rs/crate/{}/{}/source/src/{{file}}#{{line}}",
         driver_info.package_name, driver_info.version

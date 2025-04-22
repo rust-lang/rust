@@ -4,8 +4,8 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{
-    CaptureKind, can_move_expr_to_closure, eager_or_lazy, higher, is_else_clause, is_in_const_context,
-    is_res_lang_ctor, peel_blocks, peel_hir_expr_while,
+    CaptureKind, can_move_expr_to_closure, eager_or_lazy, expr_requires_coercion, higher, is_else_clause,
+    is_in_const_context, is_res_lang_ctor, peel_blocks, peel_hir_expr_while,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -106,7 +106,7 @@ struct OptionOccurrence {
 fn format_option_in_sugg(cond_sugg: Sugg<'_>, as_ref: bool, as_mut: bool) -> String {
     format!(
         "{}{}",
-        cond_sugg.maybe_par(),
+        cond_sugg.maybe_paren(),
         if as_mut {
             ".as_mut()"
         } else if as_ref {
@@ -210,6 +210,15 @@ fn try_get_option_occurrence<'tcx>(
             if reference_visitor.visit_expr(none_body).is_break() {
                 return None;
             }
+        }
+
+        let some_body_ty = cx.typeck_results().expr_ty(some_body);
+        let none_body_ty = cx.typeck_results().expr_ty(none_body);
+        // Check if coercion is needed for the `None` arm. If so, we cannot suggest because it will
+        // introduce a type mismatch. A special case is when both arms have the same type, then
+        // coercion is fine.
+        if some_body_ty != none_body_ty && expr_requires_coercion(cx, none_body) {
+            return None;
         }
 
         let mut app = Applicability::Unspecified;

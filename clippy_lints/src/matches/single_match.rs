@@ -1,5 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, expr_block, snippet, snippet_block_with_context};
+use clippy_utils::source::{
+    SpanRangeExt, expr_block, snippet, snippet_block_with_context, snippet_with_applicability, snippet_with_context,
+};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
     is_lint_allowed, is_unit_expr, peel_blocks, peel_hir_pat_refs, peel_middle_ty_refs, peel_n_hir_expr_refs,
@@ -34,8 +36,7 @@ fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
 #[rustfmt::skip]
 pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>], expr: &'tcx Expr<'_>, contains_comments: bool) {
     if let [arm1, arm2] = arms
-        && arm1.guard.is_none()
-        && arm2.guard.is_none()
+        && !arms.iter().any(|arm| arm.guard.is_some() || arm.pat.span.from_expansion())
         && !expr.span.from_expansion()
         // don't lint for or patterns for now, this makes
         // the lint noisy in unnecessary situations
@@ -106,7 +107,7 @@ fn report_single_pattern(
         format!(" else {}", expr_block(cx, els, ctxt, "..", Some(expr.span), &mut app))
     });
 
-    if snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
+    if ex.span.eq_ctxt(expr.span) && snippet(cx, ex.span, "..") == snippet(cx, arm.pat.span, "..") {
         let msg = "this pattern is irrefutable, `match` is useless";
         let (sugg, help) = if is_unit_expr(arm.body) {
             (String::new(), "`match` expression can be removed")
@@ -163,10 +164,10 @@ fn report_single_pattern(
         let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
         let sugg = format!(
             "if {} == {}{} {}{els_str}",
-            snippet(cx, ex.span, ".."),
+            snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
             // PartialEq for different reference counts may not exist.
             "&".repeat(ref_count_diff),
-            snippet(cx, arm.pat.span, ".."),
+            snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
             expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
         (msg, sugg)
@@ -174,8 +175,8 @@ fn report_single_pattern(
         let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
         let sugg = format!(
             "if let {} = {} {}{els_str}",
-            snippet(cx, arm.pat.span, ".."),
-            snippet(cx, ex.span, ".."),
+            snippet_with_applicability(cx, arm.pat.span, "..", &mut app),
+            snippet_with_context(cx, ex.span, ctxt, "..", &mut app).0,
             expr_block(cx, arm.body, ctxt, "..", Some(expr.span), &mut app),
         );
         (msg, sugg)

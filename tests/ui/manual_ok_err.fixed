@@ -80,6 +80,11 @@ fn no_lint() {
         Ok(3) => None,
         Ok(v) => Some(v),
     };
+
+    let _ = match funcall() {
+        Ok(v @ 1..) => Some(v),
+        _ => None,
+    };
 }
 
 const fn cf(x: Result<u32, &'static str>) -> Option<u32> {

@@ -1,6 +1,6 @@
 #![feature(rustc_private)]
 #![allow(unused)]
-#![warn(clippy::unnecessary_def_path)]
+#![deny(clippy::unnecessary_def_path)]
 
 extern crate rustc_hir;
 

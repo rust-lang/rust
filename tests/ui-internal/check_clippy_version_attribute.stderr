@@ -12,11 +12,10 @@ LL | | }
    |
    = help: please use a valid semantic version, see `doc/adding_lints.md`
 note: the lint level is defined here
-  --> tests/ui-internal/check_clippy_version_attribute.rs:1:9
+  --> tests/ui-internal/check_clippy_version_attribute.rs:2:9
    |
-LL | #![deny(clippy::internal)]
-   |         ^^^^^^^^^^^^^^^^
-   = note: `#[deny(clippy::invalid_clippy_version_attribute)]` implied by `#[deny(clippy::internal)]`
+LL | #![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_version_attribute)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this item has an invalid `clippy::version` attribute
@@ -47,7 +46,11 @@ LL | | }
    | |_^
    |
    = help: please use a `clippy::version` attribute, see `doc/adding_lints.md`
-   = note: `#[deny(clippy::missing_clippy_version_attribute)]` implied by `#[deny(clippy::internal)]`
+note: the lint level is defined here
+  --> tests/ui-internal/check_clippy_version_attribute.rs:2:51
+   |
+LL | #![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_version_attribute)]
+   |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `$crate::declare_tool_lint` which comes from the expansion of the macro `declare_tool_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this lint is missing the `clippy::version` attribute or version value

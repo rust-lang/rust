@@ -18,11 +18,9 @@ fn option_unwrap_or() {
 
     // multiline case
     #[rustfmt::skip]
-    Some(1).unwrap_or({
-        42 + 42
-            + 42 + 42 + 42
-            + 42 + 42 + 42
-    });
+    Some(1).unwrap_or(42 + 42
+    + 42 + 42 + 42
+    + 42 + 42 + 42);
 
     // string case
     Some("Bob").unwrap_or("Alice");
@@ -125,11 +123,9 @@ fn result_unwrap_or() {
 
     // multiline case
     #[rustfmt::skip]
-    Ok::<i32, &str>(1).unwrap_or({
-        42 + 42
-            + 42 + 42 + 42
-            + 42 + 42 + 42
-    });
+    Ok::<i32, &str>(1).unwrap_or(42 + 42
+    + 42 + 42 + 42
+    + 42 + 42 + 42);
 
     // string case
     Ok::<&str, &str>("Bob").unwrap_or("Alice");
@@ -159,11 +155,7 @@ fn result_unwrap_or() {
         Ok(s) => s,
         Err(s) => s,
     };
-    // could lint, but unused_variables takes care of it
-    match Ok::<&str, &str>("Alice") {
-        Ok(s) => s,
-        Err(s) => "Bob",
-    };
+    Ok::<&str, &str>("Alice").unwrap_or("Bob");
 
     Ok::<i32, i32>(1).unwrap_or(42);
 
@@ -248,6 +240,14 @@ mod issue_13018 {
             None => &[],
         }
     }
+}
+
+fn implicit_deref(v: Vec<String>) {
+    let _ = if let Some(s) = v.first() { s } else { "" };
+}
+
+fn allowed_manual_unwrap_or_zero() -> u32 {
+    Some(42).unwrap_or(0)
 }
 
 fn main() {}

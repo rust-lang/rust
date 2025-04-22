@@ -1,4 +1,10 @@
-#![allow(unused, clippy::needless_lifetimes, clippy::needless_pass_by_ref_mut)]
+#![allow(
+    unused,
+    clippy::needless_lifetimes,
+    clippy::needless_pass_by_ref_mut,
+    clippy::redundant_allocation,
+    clippy::boxed_local
+)]
 #![warn(clippy::mut_from_ref)]
 
 struct Foo;
@@ -40,6 +46,18 @@ fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
     unsafe { unimplemented!() }
 }
 
+fn fail_tuples<'a>(x: (&'a u32, &'a u32)) -> &'a mut u32 {
+    //~^ mut_from_ref
+
+    unsafe { unimplemented!() }
+}
+
+fn fail_box<'a>(x: Box<&'a u32>) -> &'a mut u32 {
+    //~^ mut_from_ref
+
+    unsafe { unimplemented!() }
+}
+
 // this is OK, because the result borrows y
 fn works<'a>(x: &u32, y: &'a mut u32) -> &'a mut u32 {
     unsafe { unimplemented!() }
@@ -47,6 +65,20 @@ fn works<'a>(x: &u32, y: &'a mut u32) -> &'a mut u32 {
 
 // this is also OK, because the result could borrow y
 fn also_works<'a>(x: &'a u32, y: &'a mut u32) -> &'a mut u32 {
+    unsafe { unimplemented!() }
+}
+
+fn works_tuples<'a>(x: (&'a u32, &'a mut u32)) -> &'a mut u32 {
+    unsafe { unimplemented!() }
+}
+
+fn works_box<'a>(x: &'a u32, y: Box<&'a mut u32>) -> &'a mut u32 {
+    unsafe { unimplemented!() }
+}
+
+struct RefMut<'a>(&'a mut u32);
+
+fn works_parameter<'a>(x: &'a u32, y: RefMut<'a>) -> &'a mut u32 {
     unsafe { unimplemented!() }
 }
 

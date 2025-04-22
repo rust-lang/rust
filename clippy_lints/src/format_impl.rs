@@ -1,13 +1,13 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::macros::{FormatArgsStorage, find_format_arg_expr, is_format_macro, root_macro_call_first_node};
-use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
+use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators, sym};
 use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
+use rustc_span::Symbol;
 use rustc_span::symbol::kw;
-use rustc_span::{Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -185,13 +185,13 @@ impl FormatImplExpr<'_, '_> {
                     && let trait_name = match placeholder.format_trait {
                         FormatTrait::Display => sym::Display,
                         FormatTrait::Debug => sym::Debug,
-                        FormatTrait::LowerExp => sym!(LowerExp),
-                        FormatTrait::UpperExp => sym!(UpperExp),
-                        FormatTrait::Octal => sym!(Octal),
+                        FormatTrait::LowerExp => sym::LowerExp,
+                        FormatTrait::UpperExp => sym::UpperExp,
+                        FormatTrait::Octal => sym::Octal,
                         FormatTrait::Pointer => sym::Pointer,
-                        FormatTrait::Binary => sym!(Binary),
-                        FormatTrait::LowerHex => sym!(LowerHex),
-                        FormatTrait::UpperHex => sym!(UpperHex),
+                        FormatTrait::Binary => sym::Binary,
+                        FormatTrait::LowerHex => sym::LowerHex,
+                        FormatTrait::UpperHex => sym::UpperHex,
                     }
                     && trait_name == self.format_trait_impl.name
                     && let Ok(index) = placeholder.argument.index
