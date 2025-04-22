@@ -585,6 +585,7 @@ impl<D: Deps> EncoderState<D> {
         DepNodeIndex::from_u32(local.next_node_index)
     }
 
+    /// Marks the index previously returned by `next_index` as used.
     #[inline]
     fn bump_index(&self, local: &mut LocalEncoderState) {
         local.remaining_node_index -= 1;
