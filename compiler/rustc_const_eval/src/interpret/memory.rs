@@ -882,6 +882,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                     Ord::max(global_align, fn_align).unwrap_or(Align::ONE)
                 }
+                // Machine-specific extra functions currently do not support alignment restrictions.
                 FnVal::Other(_) => Align::ONE,
             };
 
