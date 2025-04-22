@@ -393,49 +393,18 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
-                let captured_place = self.upvars[upvar_index.index()];
+                self.suggest_mutable_upvar(*upvar_index, the_place_err, &mut err, span, act);
+            }
 
-                err.span_label(span, format!("cannot {act}"));
-
-                let upvar_hir_id = captured_place.get_root_variable();
-
-                if let Node::Pat(pat) = self.infcx.tcx.hir_node(upvar_hir_id)
-                    && let hir::PatKind::Binding(hir::BindingMode::NONE, _, upvar_ident, _) =
-                        pat.kind
-                {
-                    if upvar_ident.name == kw::SelfLower {
-                        for (_, node) in self.infcx.tcx.hir_parent_iter(upvar_hir_id) {
-                            if let Some(fn_decl) = node.fn_decl() {
-                                if !matches!(
-                                    fn_decl.implicit_self,
-                                    hir::ImplicitSelfKind::RefImm | hir::ImplicitSelfKind::RefMut
-                                ) {
-                                    err.span_suggestion_verbose(
-                                        upvar_ident.span.shrink_to_lo(),
-                                        "consider changing this to be mutable",
-                                        "mut ",
-                                        Applicability::MachineApplicable,
-                                    );
-                                    break;
-                                }
-                            }
-                        }
-                    } else {
-                        err.span_suggestion_verbose(
-                            upvar_ident.span.shrink_to_lo(),
-                            "consider changing this to be mutable",
-                            "mut ",
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                }
-
-                let tcx = self.infcx.tcx;
-                if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
-                    && let ty::Closure(id, _) = *ty.kind()
-                {
-                    self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
-                }
+            PlaceRef { local, projection: [] }
+                if let Some(upvar_index) = self
+                    .body
+                    .local_upvar_map
+                    .iter_enumerated()
+                    .filter_map(|(field, &local)| local.map(|local| (field, local)))
+                    .find_map(|(field, relocated)| (relocated == local).then_some(field)) =>
+            {
+                self.suggest_mutable_upvar(upvar_index, the_place_err, &mut err, span, act);
             }
 
             // complete hack to approximate old AST-borrowck
@@ -539,6 +508,58 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             self.buffer_mut_error(span, err, count);
         } else {
             self.buffer_error(err);
+        }
+    }
+
+    fn suggest_mutable_upvar(
+        &self,
+        upvar_index: FieldIdx,
+        the_place_err: PlaceRef<'tcx>,
+        err: &mut Diag<'infcx>,
+        span: Span,
+        act: &str,
+    ) {
+        let captured_place = self.upvars[upvar_index.index()];
+
+        err.span_label(span, format!("cannot {act}"));
+
+        let upvar_hir_id = captured_place.get_root_variable();
+
+        if let Node::Pat(pat) = self.infcx.tcx.hir_node(upvar_hir_id)
+            && let hir::PatKind::Binding(hir::BindingMode::NONE, _, upvar_ident, _) = pat.kind
+        {
+            if upvar_ident.name == kw::SelfLower {
+                for (_, node) in self.infcx.tcx.hir_parent_iter(upvar_hir_id) {
+                    if let Some(fn_decl) = node.fn_decl() {
+                        if !matches!(
+                            fn_decl.implicit_self,
+                            hir::ImplicitSelfKind::RefImm | hir::ImplicitSelfKind::RefMut
+                        ) {
+                            err.span_suggestion_verbose(
+                                upvar_ident.span.shrink_to_lo(),
+                                "consider changing this to be mutable",
+                                "mut ",
+                                Applicability::MachineApplicable,
+                            );
+                            break;
+                        }
+                    }
+                }
+            } else {
+                err.span_suggestion_verbose(
+                    upvar_ident.span.shrink_to_lo(),
+                    "consider changing this to be mutable",
+                    "mut ",
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+
+        let tcx = self.infcx.tcx;
+        if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
+            && let ty::Closure(id, _) = *ty.kind()
+        {
+            self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, err);
         }
     }
 

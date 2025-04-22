@@ -13,11 +13,14 @@ LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
 LL |     async { true }.await
    |                    ^^^^^ await occurs here, with `rc` maybe used later
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Send`
-note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> tests/ui/future_not_send.rs:8:39
+note: future is not `Send` as this value is used across an await
+  --> tests/ui/future_not_send.rs:11:20
    |
 LL | async fn private_future(rc: Rc<[u8]>, cell: &Cell<usize>) -> bool {
-   |                                       ^^^^ has type `&std::cell::Cell<usize>` which is not `Send`, because `std::cell::Cell<usize>` is not `Sync`
+   |                                       ---- has type `&std::cell::Cell<usize>` which is not `Send`
+...
+LL |     async { true }.await
+   |                    ^^^^^ await occurs here, with `cell` maybe used later
    = note: `std::cell::Cell<usize>` doesn't implement `std::marker::Sync`
    = note: `-D clippy::future-not-send` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::future_not_send)]`
@@ -92,11 +95,14 @@ error: future cannot be sent between threads safely
 LL |     pub async fn public_future(&self) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `public_future` is not `Send`
    |
-note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> tests/ui/future_not_send.rs:49:32
+note: future is not `Send` as this value is used across an await
+  --> tests/ui/future_not_send.rs:52:31
    |
 LL |     pub async fn public_future(&self) {
-   |                                ^^^^^ has type `&Dummy` which is not `Send`, because `Dummy` is not `Sync`
+   |                                 ---- has type `&Dummy` which is not `Send`
+...
+LL |         self.private_future().await;
+   |                               ^^^^^ await occurs here, with `self` maybe used later
    = note: `std::rc::Rc<[u8]>` doesn't implement `std::marker::Sync`
 
 error: future cannot be sent between threads safely

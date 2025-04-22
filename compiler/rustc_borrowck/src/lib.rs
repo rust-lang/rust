@@ -25,6 +25,7 @@ use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::LintDiagnostic;
 use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
@@ -383,6 +384,7 @@ fn do_mir_borrowck<'tcx>(
             regioncx: &regioncx,
             used_mut: Default::default(),
             used_mut_upvars: SmallVec::new(),
+            local_from_upvars: UnordMap::default(),
             borrow_set: &borrow_set,
             upvars: &[],
             local_names: OnceCell::from(IndexVec::from_elem(None, &promoted_body.local_decls)),
@@ -408,6 +410,12 @@ fn do_mir_borrowck<'tcx>(
         promoted_mbcx.report_move_errors();
     }
 
+    let mut local_from_upvars = UnordMap::default();
+    for (field, &local) in body.local_upvar_map.iter_enumerated() {
+        let Some(local) = local else { continue };
+        local_from_upvars.insert(local, field);
+    }
+
     let mut mbcx = MirBorrowckCtxt {
         root_cx,
         infcx: &infcx,
@@ -422,6 +430,7 @@ fn do_mir_borrowck<'tcx>(
         regioncx: &regioncx,
         used_mut: Default::default(),
         used_mut_upvars: SmallVec::new(),
+        local_from_upvars,
         borrow_set: &borrow_set,
         upvars: tcx.closure_captures(def),
         local_names: OnceCell::new(),
@@ -646,6 +655,9 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// If the function we're checking is a closure, then we'll need to report back the list of
     /// mutable upvars that have been used. This field keeps track of them.
     used_mut_upvars: SmallVec<[FieldIdx; 8]>,
+    /// Since upvars may be moved to real locals, we need to map mutations to the locals back to
+    /// the upvars, so that used_mut_upvars is up-to-date.
+    local_from_upvars: UnordMap<Local, FieldIdx>,
     /// Region inference context. This contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
     regioncx: &'a RegionInferenceContext<'tcx>,
@@ -2364,7 +2376,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
 
         // at this point, we have set up the error reporting state.
         if let Some(init_index) = previously_initialized {
-            if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
+            if let (AccessKind::Mutate, Some(local)) = (error_access, place.as_local())
+                && !self.local_from_upvars.contains_key(&local)
+            {
                 // If this is a mutate access to an immutable local variable with no projections
                 // report the error as an illegal reassignment
                 let init = &self.move_data.inits[init_index];
@@ -2392,10 +2406,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // If the local may have been initialized, and it is now currently being
                 // mutated, then it is justified to be annotated with the `mut`
                 // keyword, since the mutation may be a possible reassignment.
-                if is_local_mutation_allowed != LocalMutationIsAllowed::Yes
-                    && self.is_local_ever_initialized(local, state).is_some()
-                {
-                    self.used_mut.insert(local);
+                if !matches!(is_local_mutation_allowed, LocalMutationIsAllowed::Yes) {
+                    if self.is_local_ever_initialized(local, state).is_some() {
+                        self.used_mut.insert(local);
+                    } else if let Some(&field) = self.local_from_upvars.get(&local) {
+                        self.used_mut_upvars.push(field);
+                    }
                 }
             }
             RootPlace {
@@ -2412,6 +2428,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     local: place_local,
                     projection: place_projection,
                 }) {
+                    self.used_mut_upvars.push(field);
+                } else if let Some(&field) = self.local_from_upvars.get(&place_local) {
                     self.used_mut_upvars.push(field);
                 }
             }
@@ -2566,6 +2584,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     /// of a closure type.
     fn is_upvar_field_projection(&self, place_ref: PlaceRef<'tcx>) -> Option<FieldIdx> {
         path_utils::is_upvar_field_projection(self.infcx.tcx, &self.upvars, place_ref, self.body())
+            .or_else(|| {
+                path_utils::is_relocated_upvar_field_projection(
+                    &self.upvars,
+                    &self.local_from_upvars,
+                    place_ref,
+                )
+            })
     }
 
     fn dominators(&self) -> &Dominators<BasicBlock> {

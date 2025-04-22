@@ -31,7 +31,7 @@ error: large future with a size of 65540 bytes
 LL |     foo().await;
    |     ^^^^^ help: consider `Box::pin` on it: `Box::pin(foo())`
 
-error: large future with a size of 49159 bytes
+error: large future with a size of 32774 bytes
   --> tests/ui/large_futures.rs:38:5
    |
 LL |     calls_fut(fut).await;
