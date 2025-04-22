@@ -230,8 +230,8 @@ pub(super) fn associated_type_by_name_including_super_traits(
 }
 
 /// It is a bit different from the rustc equivalent. Currently it stores:
-/// - 0: the function signature, encoded as a function pointer type
-/// - 1..n: generics of the parent
+/// - 0..n-1: generics of the parent
+/// - n: the function signature, encoded as a function pointer type
 ///
 /// and it doesn't store the closure types and fields.
 ///
@@ -242,7 +242,7 @@ pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
 impl<'a> ClosureSubst<'a> {
     pub(crate) fn parent_subst(&self) -> &'a [GenericArg] {
         match self.0.as_slice(Interner) {
-            [_, x @ ..] => x,
+            [x @ .., _] => x,
             _ => {
                 never!("Closure missing parameter");
                 &[]
@@ -252,7 +252,7 @@ impl<'a> ClosureSubst<'a> {
 
     pub(crate) fn sig_ty(&self) -> &'a Ty {
         match self.0.as_slice(Interner) {
-            [x, ..] => x.assert_ty_ref(Interner),
+            [.., x] => x.assert_ty_ref(Interner),
             _ => {
                 unreachable!("Closure missing sig_ty parameter");
             }

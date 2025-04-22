@@ -86,8 +86,7 @@ impl DebugContext<'_> {
         }
         write!(fmt, ">::{}", type_alias_data.name.display(self.0, Edition::LATEST))?;
 
-        let proj_params_count = projection_ty.substitution.len(Interner) - trait_params.len();
-        let proj_params = &projection_ty.substitution.as_slice(Interner)[..proj_params_count];
+        let proj_params = &projection_ty.substitution.as_slice(Interner)[trait_params.len()..];
         if !proj_params.is_empty() {
             write!(
                 fmt,

@@ -65,7 +65,7 @@ impl Generics {
     }
 
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
-        self.iter_self_id().chain(self.iter_parent_id())
+        self.iter_parent_id().chain(self.iter_self_id())
     }
 
     pub(crate) fn iter_self_id(&self) -> impl Iterator<Item = GenericParamId> + '_ {
@@ -82,11 +82,11 @@ impl Generics {
         self.params.iter_type_or_consts().map(from_toc_id(self)).map(TupleExt::head)
     }
 
-    /// Iterate over the params followed by the parent params.
+    /// Iterate over the parent params followed by self params.
     pub(crate) fn iter(
         &self,
     ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'_>)> + '_ {
-        self.iter_self().chain(self.iter_parent())
+        self.iter_parent().chain(self.iter_self())
     }
 
     pub(crate) fn iter_parents_with_store(
@@ -166,13 +166,10 @@ impl Generics {
             if self.params.trait_self_param() == Some(param.local_id) {
                 return Some(idx);
             }
-            Some(self.params.len_lifetimes() + idx)
+            Some(self.parent_generics().map_or(0, |g| g.len()) + self.params.len_lifetimes() + idx)
         } else {
             debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(param.parent));
-            self.parent_generics()
-                .and_then(|g| g.find_type_or_const_param(param))
-                // Remember that parent parameters come after parameters for self.
-                .map(|idx| self.len_self() + idx)
+            self.parent_generics().and_then(|g| g.find_type_or_const_param(param))
         }
     }
 
@@ -184,12 +181,14 @@ impl Generics {
         if lifetime.parent == self.def {
             let idx = lifetime.local_id.into_raw().into_u32() as usize;
             debug_assert!(idx <= self.params.len_lifetimes());
-            Some(self.params.trait_self_param().is_some() as usize + idx)
+            Some(
+                self.parent_generics().map_or(0, |g| g.len())
+                    + self.params.trait_self_param().is_some() as usize
+                    + idx,
+            )
         } else {
             debug_assert_eq!(self.parent_generics().map(|it| it.def), Some(lifetime.parent));
-            self.parent_generics()
-                .and_then(|g| g.find_lifetime(lifetime))
-                .map(|idx| self.len_self() + idx)
+            self.parent_generics().and_then(|g| g.find_lifetime(lifetime))
         }
     }
 
@@ -253,8 +252,7 @@ pub(crate) fn trait_self_param_idx(db: &dyn DefDatabase, def: GenericDefId) -> O
             let parent_def = parent_generic_def(db, def)?;
             let parent_params = db.generic_params(parent_def);
             let parent_self_idx = parent_params.trait_self_param()?.into_raw().into_u32() as usize;
-            let self_params = db.generic_params(def);
-            Some(self_params.len() + parent_self_idx)
+            Some(parent_self_idx)
         }
     }
 }

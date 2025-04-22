@@ -184,14 +184,13 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                                     false,
                                     None,
                                 );
-                                let len_self =
-                                    generics(self.ctx.db, associated_ty.into()).len_self();
                                 let substitution = Substitution::from_iter(
                                     Interner,
-                                    substitution
-                                        .iter(Interner)
-                                        .take(len_self)
-                                        .chain(trait_ref.substitution.iter(Interner)),
+                                    trait_ref.substitution.iter(Interner).chain(
+                                        substitution
+                                            .iter(Interner)
+                                            .skip(trait_ref.substitution.len(Interner)),
+                                    ),
                                 );
                                 TyKind::Alias(AliasTy::Projection(ProjectionTy {
                                     associated_ty_id: to_assoc_type_id(associated_ty),
@@ -250,18 +249,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         let subst = generics.placeholder_subst(self.ctx.db);
                         self.ctx.db.impl_self_ty(impl_id).substitute(Interner, &subst)
                     }
-                    ParamLoweringMode::Variable => {
-                        let starting_from = match generics.def() {
-                            GenericDefId::ImplId(_) => 0,
-                            // `def` is an item within impl. We need to substitute `BoundVar`s but
-                            // remember that they are for parent (i.e. impl) generic params so they
-                            // come after our own params.
-                            _ => generics.len_self(),
-                        };
-                        TyBuilder::impl_self_ty(self.ctx.db, impl_id)
-                            .fill_with_bound_vars(self.ctx.in_binders, starting_from)
-                            .build()
-                    }
+                    ParamLoweringMode::Variable => TyBuilder::impl_self_ty(self.ctx.db, impl_id)
+                        .fill_with_bound_vars(self.ctx.in_binders, 0)
+                        .build(),
                 }
             }
             TypeNs::AdtSelfType(adt) => {
@@ -512,12 +502,11 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 // this point (`t.substitution`).
                 let substs = self.substs_from_path_segment(associated_ty.into(), false, None);
 
-                let len_self =
-                    crate::generics::generics(self.ctx.db, associated_ty.into()).len_self();
-
                 let substs = Substitution::from_iter(
                     Interner,
-                    substs.iter(Interner).take(len_self).chain(parent_subst.iter(Interner)),
+                    parent_subst
+                        .iter(Interner)
+                        .chain(substs.iter(Interner).skip(parent_subst.len(Interner))),
                 );
 
                 Some(
@@ -637,10 +626,10 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         explicit_self_ty: Option<Ty>,
     ) -> Substitution {
         // Order is
+        // - Parent parameters
         // - Optional Self parameter
         // - Lifetime parameters
         // - Type or Const parameters
-        // - Parent parameters
         let def_generics = generics(self.ctx.db, def);
         let (
             parent_params,
@@ -654,12 +643,22 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             self_param as usize + type_params + const_params + impl_trait_params + lifetime_params;
         let total_len = parent_params + item_len;
 
-        let mut substs = Vec::new();
+        let ty_error = || TyKind::Error.intern(Interner).cast(Interner);
+        let param_to_err = |id| match id {
+            GenericParamId::ConstParamId(x) => {
+                unknown_const_as_generic(self.ctx.db.const_param_ty(x))
+            }
+            GenericParamId::TypeParamId(_) => ty_error(),
+            GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
+        };
+
+        let mut substs: Vec<_> = def_generics.iter_parent_id().map(param_to_err).collect();
+
+        tracing::debug!(?substs, ?parent_params);
 
         // we need to iterate the lifetime and type/const params separately as our order of them
         // differs from the supplied syntax
 
-        let ty_error = || TyKind::Error.intern(Interner).cast(Interner);
         let mut def_toc_iter = def_generics.iter_self_type_or_consts_id();
         let fill_self_param = || {
             if self_param {
@@ -730,13 +729,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             fill_self_param();
         }
 
-        let param_to_err = |id| match id {
-            GenericParamId::ConstParamId(x) => {
-                unknown_const_as_generic(self.ctx.db.const_param_ty(x))
-            }
-            GenericParamId::TypeParamId(_) => ty_error(),
-            GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
-        };
         // handle defaults. In expression or pattern path segments without
         // explicitly specified type arguments, missing type arguments are inferred
         // (i.e. defaults aren't used).
@@ -751,13 +743,11 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         let fill_defaults = (!infer_args || had_explicit_args) && !is_assoc_ty();
         if fill_defaults {
             let defaults = &*self.ctx.db.generic_defaults(def);
-            let (item, _parent) = defaults.split_at(item_len);
-            let parent_from = item_len - substs.len();
 
-            let mut rem =
+            let rem =
                 def_generics.iter_id().skip(substs.len()).map(param_to_err).collect::<Vec<_>>();
             // Fill in defaults for type/const params
-            for (idx, default_ty) in item[substs.len()..].iter().enumerate() {
+            for (idx, default_ty) in defaults[substs.len()..].iter().enumerate() {
                 // each default can depend on the previous parameters
                 let substs_so_far = Substitution::from_iter(
                     Interner,
@@ -765,8 +755,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 );
                 substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
             }
-            // Fill in remaining parent params
-            substs.extend(rem.drain(parent_from..));
         } else {
             // Fill in remaining def params and parent params
             substs.extend(def_generics.iter_id().skip(substs.len()).map(param_to_err));
@@ -818,14 +806,13 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     false, // this is not relevant
                     Some(super_trait_ref.self_type_parameter(Interner)),
                 );
-                let generics = generics(self.ctx.db, associated_ty.into());
-                let self_params = generics.len_self();
                 let substitution = Substitution::from_iter(
                     Interner,
-                    substitution
-                        .iter(Interner)
-                        .take(self_params)
-                        .chain(super_trait_ref.substitution.iter(Interner)),
+                    super_trait_ref.substitution.iter(Interner).chain(
+                        substitution
+                            .iter(Interner)
+                            .skip(super_trait_ref.substitution.len(Interner)),
+                    ),
                 );
                 let projection_ty = ProjectionTy {
                     associated_ty_id: to_assoc_type_id(associated_ty),
