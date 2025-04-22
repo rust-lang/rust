@@ -508,7 +508,7 @@ passes_must_use_no_effect =
     `#[must_use]` has no effect when applied to {$article} {$target}
 
 passes_naked_asm_outside_naked_fn =
-    the `naked_asm!` macro can only be used in functions marked with `#[naked]`
+    the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
 
 passes_naked_functions_asm_block =
     naked functions must contain a single `naked_asm!` invocation
@@ -516,9 +516,9 @@ passes_naked_functions_asm_block =
     .label_non_asm = not allowed in naked functions
 
 passes_naked_functions_incompatible_attribute =
-    attribute incompatible with `#[naked]`
-    .label = the `{$attr}` attribute is incompatible with `#[naked]`
-    .naked_attribute = function marked with `#[naked]` here
+    attribute incompatible with `#[unsafe(naked)]`
+    .label = the `{$attr}` attribute is incompatible with `#[unsafe(naked)]`
+    .naked_attribute = function marked with `#[unsafe(naked)]` here
 
 passes_naked_functions_must_naked_asm =
     the `asm!` macro is not allowed in naked functions

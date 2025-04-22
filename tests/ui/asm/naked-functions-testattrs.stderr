@@ -1,34 +1,34 @@
-error[E0736]: cannot use `#[naked]` with testing attributes
-  --> $DIR/naked-functions-testattrs.rs:11:1
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:10:1
    |
 LL | #[test]
    | ------- function marked with testing attribute here
-LL | #[naked]
-   | ^^^^^^^^ `#[naked]` is incompatible with testing attributes
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
 
-error[E0736]: cannot use `#[naked]` with testing attributes
-  --> $DIR/naked-functions-testattrs.rs:19:1
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:18:1
    |
 LL | #[test]
    | ------- function marked with testing attribute here
-LL | #[naked]
-   | ^^^^^^^^ `#[naked]` is incompatible with testing attributes
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
 
-error[E0736]: cannot use `#[naked]` with testing attributes
-  --> $DIR/naked-functions-testattrs.rs:27:1
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:26:1
    |
 LL | #[test]
    | ------- function marked with testing attribute here
-LL | #[naked]
-   | ^^^^^^^^ `#[naked]` is incompatible with testing attributes
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
 
-error[E0736]: cannot use `#[naked]` with testing attributes
-  --> $DIR/naked-functions-testattrs.rs:34:1
+error[E0736]: cannot use `#[unsafe(naked)]` with testing attributes
+  --> $DIR/naked-functions-testattrs.rs:33:1
    |
 LL | #[bench]
    | -------- function marked with testing attribute here
-LL | #[naked]
-   | ^^^^^^^^ `#[naked]` is incompatible with testing attributes
+LL | #[unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^ `#[unsafe(naked)]` is incompatible with testing attributes
 
 error: aborting due to 4 previous errors
 

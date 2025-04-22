@@ -1,18 +1,18 @@
 error: `#[inline]` is ignored on externally exported functions
-  --> $DIR/inline-exported.rs:10:1
+  --> $DIR/inline-exported.rs:8:1
    |
 LL | #[inline]
    | ^^^^^^^^^
    |
    = help: externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`
 note: the lint level is defined here
-  --> $DIR/inline-exported.rs:8:9
+  --> $DIR/inline-exported.rs:6:9
    |
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: `#[inline]` is ignored on externally exported functions
-  --> $DIR/inline-exported.rs:15:1
+  --> $DIR/inline-exported.rs:13:1
    |
 LL | #[inline]
    | ^^^^^^^^^
@@ -20,7 +20,7 @@ LL | #[inline]
    = help: externally exported functions are functions with `#[no_mangle]`, `#[export_name]`, or `#[linkage]`
 
 error: `#[inline]` is ignored on externally exported functions
-  --> $DIR/inline-exported.rs:20:1
+  --> $DIR/inline-exported.rs:18:1
    |
 LL | #[inline]
    | ^^^^^^^^^

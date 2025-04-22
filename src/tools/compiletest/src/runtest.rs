@@ -1395,14 +1395,6 @@ impl<'test> TestCx<'test> {
         matches!(self.config.suite.as_str(), "rustdoc-ui" | "rustdoc-js" | "rustdoc-json")
     }
 
-    fn get_mir_dump_dir(&self) -> Utf8PathBuf {
-        let mut mir_dump_dir = self.config.build_test_suite_root.clone();
-        debug!("input_file: {}", self.testpaths.file);
-        mir_dump_dir.push(&self.testpaths.relative_dir);
-        mir_dump_dir.push(self.testpaths.file.file_stem().unwrap());
-        mir_dump_dir
-    }
-
     fn make_compile_args(
         &self,
         input_file: &Utf8Path,
@@ -1511,10 +1503,7 @@ impl<'test> TestCx<'test> {
         }
 
         let set_mir_dump_dir = |rustc: &mut Command| {
-            let mir_dump_dir = self.get_mir_dump_dir();
-            remove_and_create_dir_all(&mir_dump_dir).unwrap_or_else(|e| {
-                panic!("failed to remove and recreate output directory `{mir_dump_dir}`: {e}")
-            });
+            let mir_dump_dir = self.output_base_dir();
             let mut dir_opt = "-Zdump-mir-dir=".to_string();
             dir_opt.push_str(mir_dump_dir.as_str());
             debug!("dir_opt: {:?}", dir_opt);

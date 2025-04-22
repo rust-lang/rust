@@ -11,8 +11,8 @@ Freestanding/bare-metal LoongArch64 binaries in ELF format: firmware, kernels, e
 
 ## Target maintainers
 
-- [WANG Rui](https://github.com/heiher) `wangrui@loongson.cn`
-- [WANG Xuerui](https://github.com/xen0n) `git@xen0n.name`
+[@heiher](https://github.com/heiher)
+[@xen0n](https://github.com/xen0n)
 
 ## Requirements
 

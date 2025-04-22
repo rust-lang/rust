@@ -11,7 +11,7 @@ Options:
     -o, --out-dir PATH  which directory to place the output
         --crate-name NAME
                         specify the name of this crate
-        --crate-type [bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]
+        --crate-type <bin|lib|rlib|dylib|cdylib|staticlib|proc-macro>
                         Comma separated list of types of crates
                         for the compiler to emit
     -L, --library-path DIR

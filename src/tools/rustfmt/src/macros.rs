@@ -722,7 +722,7 @@ fn last_tok(tt: &TokenTree) -> Token {
     match *tt {
         TokenTree::Token(ref t, _) => t.clone(),
         TokenTree::Delimited(delim_span, _, delim, _) => Token {
-            kind: TokenKind::CloseDelim(delim),
+            kind: delim.as_open_token_kind(),
             span: delim_span.close,
         },
     }
@@ -1124,8 +1124,14 @@ fn next_space(tok: &TokenKind) -> SpaceState {
         TokenKind::PathSep
         | TokenKind::Pound
         | TokenKind::Dollar
-        | TokenKind::OpenDelim(_)
-        | TokenKind::CloseDelim(_) => SpaceState::Never,
+        | TokenKind::OpenParen
+        | TokenKind::CloseParen
+        | TokenKind::OpenBrace
+        | TokenKind::CloseBrace
+        | TokenKind::OpenBracket
+        | TokenKind::CloseBracket
+        | TokenKind::OpenInvisible(_)
+        | TokenKind::CloseInvisible(_) => SpaceState::Never,
 
         TokenKind::Literal(..) | TokenKind::Ident(..) | TokenKind::Lifetime(..) => {
             SpaceState::Ident

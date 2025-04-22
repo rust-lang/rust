@@ -4,52 +4,42 @@ error[E0511]: invalid monomorphization of `simd_select` intrinsic: mismatched le
 LL |         simd_select(m8, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_select` intrinsic: found mask element type is `u32`, expected a signed integer type
+error[E0511]: invalid monomorphization of `simd_select` intrinsic: expected mask element type to be an integer, found `f32`
   --> $DIR/generic-select.rs:39:9
-   |
-LL |         simd_select(x, x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the mask may be widened, which only has the correct behavior for signed integers
-
-error[E0511]: invalid monomorphization of `simd_select` intrinsic: found mask element type is `f32`, expected a signed integer type
-  --> $DIR/generic-select.rs:42:9
    |
 LL |         simd_select(z, z, z);
    |         ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the mask may be widened, which only has the correct behavior for signed integers
 
 error[E0511]: invalid monomorphization of `simd_select` intrinsic: expected SIMD argument type, found non-SIMD `u32`
-  --> $DIR/generic-select.rs:45:9
+  --> $DIR/generic-select.rs:42:9
    |
 LL |         simd_select(m4, 0u32, 1u32);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: invalid bitmask `u16`, expected `u8` or `[u8; 1]`
-  --> $DIR/generic-select.rs:48:9
+  --> $DIR/generic-select.rs:45:9
    |
 LL |         simd_select_bitmask(0u16, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: expected SIMD argument type, found non-SIMD `u32`
-  --> $DIR/generic-select.rs:51:9
+  --> $DIR/generic-select.rs:48:9
    |
 LL |         simd_select_bitmask(0u8, 1u32, 2u32);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: invalid bitmask `f32`, expected `u8` or `[u8; 1]`
-  --> $DIR/generic-select.rs:54:9
+  --> $DIR/generic-select.rs:51:9
    |
 LL |         simd_select_bitmask(0.0f32, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0511]: invalid monomorphization of `simd_select_bitmask` intrinsic: invalid bitmask `&str`, expected `u8` or `[u8; 1]`
-  --> $DIR/generic-select.rs:57:9
+  --> $DIR/generic-select.rs:54:9
    |
 LL |         simd_select_bitmask("x", x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 8 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0511`.

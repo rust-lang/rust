@@ -11,17 +11,17 @@ LL | #[rustc_on_unimplemented = "message"]
 LL | #[rustc_on_unimplemented(/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...")]
    |                         ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-error[E0230]: there is no parameter `C` on trait `BadAnnotation2`
-  --> $DIR/bad-annotation.rs:22:1
+error[E0230]: cannot find parameter C on this trait
+  --> $DIR/bad-annotation.rs:22:90
    |
 LL | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                                                          ^
 
-error[E0231]: only named generic parameters are allowed
-  --> $DIR/bad-annotation.rs:27:1
+error[E0231]: positional format arguments are not allowed here
+  --> $DIR/bad-annotation.rs:27:90
    |
 LL | #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                                                          ^
 
 error[E0232]: this attribute must have a valid value
   --> $DIR/bad-annotation.rs:32:26

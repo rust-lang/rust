@@ -1,4 +1,4 @@
-# Unsafety Checking
+# Unsafety checking
 
 Certain expressions in Rust can violate memory safety and as such need to be
 inside an `unsafe` block or function. The compiler will also warn if an unsafe

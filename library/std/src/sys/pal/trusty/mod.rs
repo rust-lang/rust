@@ -3,8 +3,6 @@
 #[path = "../unsupported/common.rs"]
 #[deny(unsafe_op_in_unsafe_fn)]
 mod common;
-#[path = "../unsupported/env.rs"]
-pub mod env;
 #[path = "../unsupported/os.rs"]
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

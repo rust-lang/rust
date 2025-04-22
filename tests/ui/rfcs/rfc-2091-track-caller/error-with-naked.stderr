@@ -1,29 +1,29 @@
-error[E0736]: attribute incompatible with `#[naked]`
-  --> $DIR/error-with-naked.rs:6:1
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/error-with-naked.rs:5:1
    |
 LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[naked]`
+   | ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
 LL |
-LL | #[naked]
-   | -------- function marked with `#[naked]` here
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
 
-error[E0736]: attribute incompatible with `#[naked]`
-  --> $DIR/error-with-naked.rs:18:5
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/error-with-naked.rs:17:5
    |
 LL |     #[track_caller]
-   |     ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[naked]`
+   |     ^^^^^^^^^^^^^^^ the `track_caller` attribute is incompatible with `#[unsafe(naked)]`
 LL |
-LL |     #[naked]
-   |     -------- function marked with `#[naked]` here
+LL |     #[unsafe(naked)]
+   |     ---------------- function marked with `#[unsafe(naked)]` here
 
 error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/error-with-naked.rs:6:1
+  --> $DIR/error-with-naked.rs:5:1
    |
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 
 error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/error-with-naked.rs:18:5
+  --> $DIR/error-with-naked.rs:17:5
    |
 LL |     #[track_caller]
    |     ^^^^^^^^^^^^^^^

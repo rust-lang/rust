@@ -237,10 +237,7 @@ impl<'a> StripUnconfigured<'a> {
                     inner = self.configure_tokens(&inner);
                     Some(AttrTokenTree::Delimited(sp, spacing, delim, inner))
                 }
-                AttrTokenTree::Token(
-                    Token { kind: TokenKind::OpenDelim(_) | TokenKind::CloseDelim(_), .. },
-                    _,
-                ) => {
+                AttrTokenTree::Token(Token { kind, .. }, _) if kind.is_delim() => {
                     panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tree);
                 }
                 AttrTokenTree::Token(token, spacing) => Some(AttrTokenTree::Token(token, spacing)),

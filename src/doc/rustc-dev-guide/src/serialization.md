@@ -1,4 +1,4 @@
-# Serialization in Rustc
+# Serialization in rustc
 
 rustc has to [serialize] and deserialize various data during compilation.
 Specifically:
