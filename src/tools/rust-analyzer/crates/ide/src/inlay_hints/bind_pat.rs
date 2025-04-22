@@ -87,6 +87,7 @@ pub(super) fn hints(
                 .as_ref()
                 .map_or_else(|| pat.syntax().text_range(), |t| t.text_range())
                 .end(),
+            &|_| (),
             if colon_token.is_some() { "" } else { ": " },
         )
     } else {
