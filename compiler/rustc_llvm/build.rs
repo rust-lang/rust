@@ -255,6 +255,7 @@ fn main() {
     } else if target.contains("haiku")
         || target.contains("darwin")
         || (is_crossed && (target.contains("dragonfly") || target.contains("solaris")))
+        || target.contains("cygwin")
     {
         println!("cargo:rustc-link-lib=z");
     } else if target.contains("netbsd") {
