@@ -1,10 +1,10 @@
 //! Utilities for working with generics.
 //!
 //! The layout for generics as expected by chalk are as follows:
+//! - Parent parameters
 //! - Optional Self parameter
 //! - Lifetime parameters
 //! - Type or Const parameters
-//! - Parent parameters
 //!
 //! where parent follows the same scheme.
 use std::ops;
