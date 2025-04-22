@@ -4,8 +4,8 @@ use camino::Utf8Path;
 use semver::Version;
 
 use super::{
-    DirectivesCache, EarlyProps, extract_llvm_version, extract_version_range, iter_directives,
-    parse_normalize_rule,
+    DirectivesCache, EarlyProps, Edition, EditionRange, extract_llvm_version,
+    extract_version_range, iter_directives, parse_normalize_rule,
 };
 use crate::common::{Config, Debugger, TestMode};
 use crate::executor::{CollectedTestDesc, ShouldPanic};
@@ -71,6 +71,7 @@ fn test_parse_normalize_rule() {
 struct ConfigBuilder {
     mode: Option<String>,
     channel: Option<String>,
+    edition: Option<String>,
     host: Option<String>,
     target: Option<String>,
     stage: Option<u32>,
@@ -91,6 +92,11 @@ impl ConfigBuilder {
 
     fn channel(&mut self, s: &str) -> &mut Self {
         self.channel = Some(s.to_owned());
+        self
+    }
+
+    fn edition(&mut self, s: &str) -> &mut Self {
+        self.edition = Some(s.to_owned());
         self
     }
 
@@ -180,6 +186,10 @@ impl ConfigBuilder {
             "--minicore-path=",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
+
+        if let Some(edition) = &self.edition {
+            args.push(format!("--edition={edition}"));
+        }
 
         if let Some(ref llvm_version) = self.llvm_version {
             args.push("--llvm-version".to_owned());
@@ -938,4 +948,139 @@ fn test_needs_target_std() {
     assert!(check_ignore(&config, "//@ needs-target-std"));
     let config = cfg().target("x86_64-unknown-linux-gnu").build();
     assert!(!check_ignore(&config, "//@ needs-target-std"));
+}
+
+fn y(year: u32) -> Edition {
+    Edition::Year(year)
+}
+
+fn parse_edition_range(line: &str) -> Option<EditionRange> {
+    let config = cfg().build();
+    super::parse_edition_range(&config, line, "tmp.rs".into(), 0)
+}
+
+#[test]
+fn test_parse_edition_range() {
+    assert_eq!(None, parse_edition_range("hello-world"));
+    assert_eq!(None, parse_edition_range("edition"));
+
+    assert_eq!(Some(EditionRange::Exact(y(2018))), parse_edition_range("edition: 2018"));
+    assert_eq!(Some(EditionRange::Exact(y(2021))), parse_edition_range("edition:2021"));
+    assert_eq!(Some(EditionRange::Exact(y(2024))), parse_edition_range("edition: 2024 "));
+    assert_eq!(Some(EditionRange::Exact(Edition::Future)), parse_edition_range("edition: future"));
+
+    assert_eq!(
+        Some(EditionRange::GreaterEqualThan(y(2018))),
+        parse_edition_range("edition: 2018..")
+    );
+    assert_eq!(
+        Some(EditionRange::GreaterEqualThan(y(2021))),
+        parse_edition_range("edition:2021 ..")
+    );
+    assert_eq!(
+        Some(EditionRange::GreaterEqualThan(y(2024))),
+        parse_edition_range("edition: 2024 .. ")
+    );
+    assert_eq!(
+        Some(EditionRange::GreaterEqualThan(Edition::Future)),
+        parse_edition_range("edition: future.. ")
+    );
+
+    assert_eq!(
+        Some(EditionRange::Range { greater_equal_than: y(2018), lower_than: y(2024) }),
+        parse_edition_range("edition: 2018..2024")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { greater_equal_than: y(2015), lower_than: y(2021) }),
+        parse_edition_range("edition:2015 .. 2021 ")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { greater_equal_than: y(2021), lower_than: y(2027) }),
+        parse_edition_range("edition: 2021 .. 2027 ")
+    );
+    assert_eq!(
+        Some(EditionRange::Range { greater_equal_than: y(2021), lower_than: Edition::Future }),
+        parse_edition_range("edition: 2021..future")
+    );
+}
+
+#[test]
+#[should_panic = "empty directive value detected"]
+fn test_parse_edition_range_empty() {
+    parse_edition_range("edition:");
+}
+
+#[test]
+#[should_panic = "'hello' doesn't look like an edition"]
+fn test_parse_edition_range_invalid_edition() {
+    parse_edition_range("edition: hello");
+}
+
+#[test]
+#[should_panic = "'..' is not a supported range in //@ edition"]
+fn test_parse_edition_range_double_dots() {
+    parse_edition_range("edition: ..");
+}
+
+#[test]
+#[should_panic = "the left side of `//@ edition` cannot be higher than the right side"]
+fn test_parse_edition_range_inverted_range() {
+    parse_edition_range("edition: 2021..2015");
+}
+
+#[test]
+#[should_panic = "the left side of `//@ edition` cannot be higher than the right side"]
+fn test_parse_edition_range_inverted_range_future() {
+    parse_edition_range("edition: future..2015");
+}
+
+#[test]
+#[should_panic = "the left side of `//@ edition` cannot be equal to the right side"]
+fn test_parse_edition_range_empty_range() {
+    parse_edition_range("edition: 2021..2021");
+}
+
+#[track_caller]
+fn assert_edition_to_test(
+    expected: impl Into<Edition>,
+    range: EditionRange,
+    default: Option<&str>,
+) {
+    let mut cfg = cfg();
+    if let Some(default) = default {
+        cfg.edition(default);
+    }
+    assert_eq!(expected.into(), range.edition_to_test(&cfg.build()));
+}
+
+#[test]
+fn test_edition_range_edition_to_test() {
+    let exact = EditionRange::Exact(y(2021));
+    assert_edition_to_test(2021, exact, None);
+    assert_edition_to_test(2021, exact, Some("2018"));
+    assert_edition_to_test(2021, exact, Some("future"));
+
+    assert_edition_to_test(Edition::Future, EditionRange::Exact(Edition::Future), None);
+
+    let greater_equal_than = EditionRange::GreaterEqualThan(y(2021));
+    assert_edition_to_test(2021, greater_equal_than, None);
+    assert_edition_to_test(2021, greater_equal_than, Some("2015"));
+    assert_edition_to_test(2021, greater_equal_than, Some("2018"));
+    assert_edition_to_test(2021, greater_equal_than, Some("2021"));
+    assert_edition_to_test(2024, greater_equal_than, Some("2024"));
+    assert_edition_to_test(Edition::Future, greater_equal_than, Some("future"));
+
+    let range = EditionRange::Range { greater_equal_than: y(2018), lower_than: y(2024) };
+    assert_edition_to_test(2018, range, None);
+    assert_edition_to_test(2018, range, Some("2015"));
+    assert_edition_to_test(2018, range, Some("2018"));
+    assert_edition_to_test(2021, range, Some("2021"));
+    assert_edition_to_test(2018, range, Some("2024"));
+    assert_edition_to_test(2018, range, Some("future"));
+}
+
+#[test]
+#[should_panic = "'not an edition' doesn't look like an edition"]
+fn test_edition_range_edition_to_test_bad_cli() {
+    assert_edition_to_test(2021, EditionRange::Exact(y(2021)), Some("not an edition"));
 }
