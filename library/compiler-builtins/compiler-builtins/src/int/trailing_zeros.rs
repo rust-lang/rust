@@ -1,6 +1,6 @@
-#[cfg(feature = "public-test-deps")]
+#[cfg(feature = "unstable-public-internals")]
 pub use implementation::trailing_zeros;
-#[cfg(not(feature = "public-test-deps"))]
+#[cfg(not(feature = "unstable-public-internals"))]
 pub(crate) use implementation::trailing_zeros;
 
 mod implementation {

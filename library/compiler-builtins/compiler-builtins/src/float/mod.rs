@@ -9,7 +9,7 @@ pub mod sub;
 pub(crate) mod traits;
 pub mod trunc;
 
-#[cfg(not(feature = "public-test-deps"))]
+#[cfg(not(feature = "unstable-public-internals"))]
 pub(crate) use traits::{Float, HalfRep};
-#[cfg(feature = "public-test-deps")]
+#[cfg(feature = "unstable-public-internals")]
 pub use traits::{Float, HalfRep};

@@ -56,9 +56,9 @@ mod delegate;
 
 // used on SPARC
 #[allow(unused_imports)]
-#[cfg(not(feature = "public-test-deps"))]
+#[cfg(not(feature = "unstable-public-internals"))]
 pub(crate) use self::delegate::u128_divide_sparc;
-#[cfg(feature = "public-test-deps")]
+#[cfg(feature = "unstable-public-internals")]
 pub use self::delegate::u128_divide_sparc;
 
 #[macro_use]

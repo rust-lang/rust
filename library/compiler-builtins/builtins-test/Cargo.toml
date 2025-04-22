@@ -19,7 +19,7 @@ iai-callgrind = { version = "0.14.0", optional = true }
 [dependencies.compiler_builtins]
 path = "../compiler-builtins"
 default-features = false
-features = ["public-test-deps"]
+features = ["unstable-public-internals"]
 
 [dev-dependencies]
 criterion = { version = "0.5.1", default-features = false, features = ["cargo_bench_support"] }

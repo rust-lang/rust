@@ -3,9 +3,9 @@
 // adding a zero check at the beginning, but `__clzsi2` has a precondition that `x != 0`.
 // Compilers will insert the check for zero in cases where it is needed.
 
-#[cfg(feature = "public-test-deps")]
+#[cfg(feature = "unstable-public-internals")]
 pub use implementation::{leading_zeros_default, leading_zeros_riscv};
-#[cfg(not(feature = "public-test-deps"))]
+#[cfg(not(feature = "unstable-public-internals"))]
 pub(crate) use implementation::{leading_zeros_default, leading_zeros_riscv};
 
 mod implementation {

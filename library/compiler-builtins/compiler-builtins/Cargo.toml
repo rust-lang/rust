@@ -9,7 +9,7 @@ homepage = "https://github.com/rust-lang/compiler-builtins"
 documentation = "https://docs.rs/compiler_builtins"
 edition = "2021"
 description = "Compiler intrinsics used by the Rust compiler."
-links = 'compiler-rt'
+links = "compiler-rt"
 
 [lib]
 bench = false
@@ -19,20 +19,20 @@ test = false
 [dependencies]
 # For more information on this dependency see
 # https://github.com/rust-lang/rust/tree/master/library/rustc-std-workspace-core
-core = { version = "1.0.0", optional = true, package = 'rustc-std-workspace-core' }
+core = { version = "1.0.0", optional = true, package = "rustc-std-workspace-core" }
 
 [build-dependencies]
 cc = { optional = true, version = "1.0" }
 
 [dev-dependencies]
-panic-handler = { path = '../crates/panic-handler' }
+panic-handler = { path = "../crates/panic-handler" }
 
 [features]
 default = ["compiler-builtins"]
 
 # Enable compilation of C code in compiler-rt, filling in some more optimized
 # implementations and also filling in unimplemented intrinsics
-c = ["cc"]
+c = ["dep:cc"]
 
 # Workaround for the Cranelift codegen backend. Disables any implementations
 # which use inline assembly and fall back to pure Rust versions (if avalible).
@@ -53,11 +53,11 @@ mem = []
 mangled-names = []
 
 # Only used in the compiler's build system
-rustc-dep-of-std = ['compiler-builtins', 'core']
+rustc-dep-of-std = ["compiler-builtins", "dep:core"]
 
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`
-public-test-deps = []
+unstable-public-internals = []
 
 [lints.rust]
 # The cygwin config can be dropped after our benchmark toolchain is bumped

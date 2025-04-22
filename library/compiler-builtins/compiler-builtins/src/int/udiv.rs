@@ -1,6 +1,6 @@
-#[cfg(not(feature = "public-test-deps"))]
+#[cfg(not(feature = "unstable-public-internals"))]
 pub(crate) use crate::int::specialized_div_rem::*;
-#[cfg(feature = "public-test-deps")]
+#[cfg(feature = "unstable-public-internals")]
 pub use crate::int::specialized_div_rem::*;
 
 intrinsics! {
