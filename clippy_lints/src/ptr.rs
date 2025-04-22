@@ -743,9 +743,9 @@ fn check_ptr_eq<'tcx>(
     }
 
     // Remove one level of usize conversion if any
-    let (left, right) = match (expr_as_cast_to_usize(cx, left), expr_as_cast_to_usize(cx, right)) {
-        (Some(lhs), Some(rhs)) => (lhs, rhs),
-        _ => (left, right),
+    let (left, right, usize_peeled) = match (expr_as_cast_to_usize(cx, left), expr_as_cast_to_usize(cx, right)) {
+        (Some(lhs), Some(rhs)) => (lhs, rhs, true),
+        _ => (left, right, false),
     };
 
     // This lint concerns raw pointers
@@ -754,7 +754,12 @@ fn check_ptr_eq<'tcx>(
         return;
     }
 
-    let (left_var, right_var) = (peel_raw_casts(cx, left, left_ty), peel_raw_casts(cx, right, right_ty));
+    let ((left_var, left_casts_peeled), (right_var, right_casts_peeled)) =
+        (peel_raw_casts(cx, left, left_ty), peel_raw_casts(cx, right, right_ty));
+
+    if !(usize_peeled || left_casts_peeled || right_casts_peeled) {
+        return;
+    }
 
     let mut app = Applicability::MachineApplicable;
     let left_snip = Sugg::hir_with_context(cx, left_var, expr.span.ctxt(), "_", &mut app);
@@ -787,8 +792,9 @@ fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>
     }
 }
 
-// Peel raw casts if the remaining expression can be coerced to it
-fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty: Ty<'tcx>) -> &'tcx Expr<'tcx> {
+// Peel raw casts if the remaining expression can be coerced to it, and whether casts have been
+// peeled or not.
+fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty: Ty<'tcx>) -> (&'tcx Expr<'tcx>, bool) {
     if !expr.span.from_expansion()
         && let ExprKind::Cast(inner, _) = expr.kind
         && let ty::RawPtr(target_ty, _) = expr_ty.kind()
@@ -796,8 +802,8 @@ fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty:
         && let ty::RawPtr(inner_target_ty, _) | ty::Ref(_, inner_target_ty, _) = inner_ty.kind()
         && target_ty == inner_target_ty
     {
-        peel_raw_casts(cx, inner, inner_ty)
+        (peel_raw_casts(cx, inner, inner_ty).0, true)
     } else {
-        expr
+        (expr, false)
     }
 }
