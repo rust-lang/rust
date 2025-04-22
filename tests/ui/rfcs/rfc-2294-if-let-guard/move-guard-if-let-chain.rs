@@ -1,5 +1,5 @@
+//@ edition: 2024
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 #![allow(irrefutable_let_patterns)]
 
 fn same_pattern(c: bool) {
