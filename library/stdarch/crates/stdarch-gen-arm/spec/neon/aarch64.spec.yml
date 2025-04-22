@@ -59,6 +59,14 @@ neon-unstable-f16: &neon-unstable-f16
 neon-unstable-feat-lut: &neon-unstable-feat-lut
   FnCall: [unstable, ['feature = "stdarch_neon_feat_lut"', 'issue = "138050"']]
 
+# #[cfg(target_endian = "little")]
+little-endian: &little-endian
+  FnCall: [cfg, ['target_endian = "little"']]
+
+# #[cfg(target_endian = "big")]
+big-endian: &big-endian
+  FnCall: [cfg, ['target_endian = "big"']]
+
 intrinsics:
   - name: "vaddd_{type}"
     doc: Add
@@ -8906,6 +8914,30 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[3]}"
     attr:
+      - *little-endian
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rsubhn2]]}]]
+      - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
+    safety: safe
+    types:
+      - [int8x8_t, int16x8_t, int16x8_t, int8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
+      - [int16x4_t, int32x4_t, int32x4_t, int16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
+      - [int32x2_t, int64x2_t, int64x2_t, int32x4_t, '[0, 1, 2, 3]']
+      - [uint8x8_t, uint16x8_t, uint16x8_t, uint8x16_t, '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]']
+      - [uint16x4_t, uint32x4_t, uint32x4_t, uint16x8_t, '[0, 1, 2, 3, 4, 5, 6, 7]']
+      - [uint32x2_t, uint64x2_t, uint64x2_t, uint32x4_t, '[0, 1, 2, 3]']
+    compose:
+      - Let:
+          - x
+          - "{neon_type[0]}"
+          - FnCall: ["vrsubhn_{neon_type[1]}", [b, c]]
+      - FnCall: [simd_shuffle!, [a, x, "{type[4]}"]]
+
+  - name: "vrsubhn_high_{neon_type[1]}"
+    doc: "Rounding subtract returning high narrow"
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
+    return_type: "{neon_type[3]}"
+    attr:
+      - *big-endian
       - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rsubhn]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
