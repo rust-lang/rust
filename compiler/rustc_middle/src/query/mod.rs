@@ -391,7 +391,7 @@ rustc_queries! {
         key: LocalDefId
     ) -> &'tcx ty::List<LocalDefId> {
         desc {
-            |tcx| "computing the opaque types defined by `{}`",
+            |tcx| "computing the coroutines defined within `{}`",
             tcx.def_path_str(key.to_def_id())
         }
     }

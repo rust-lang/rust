@@ -208,20 +208,9 @@ where
             }
         }
 
-        // TODO:
-        if let ty::CoroutineWitness(def_id, _) = goal.predicate.self_ty().kind() {
-            match ecx.typing_mode() {
-                TypingMode::Analysis { stalled_generators, defining_opaque_types: _ } => {
-                    if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
-                    {
-                        return ecx.forced_ambiguity(MaybeCause::Ambiguity);
-                    }
-                }
-                TypingMode::Coherence
-                | TypingMode::PostAnalysis
-                | TypingMode::Borrowck { defining_opaque_types: _ }
-                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
-            }
+        // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
+        if let Some(cand) = ecx.try_stall_coroutine_witness(goal.predicate.self_ty()) {
+            return cand;
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
@@ -275,20 +264,9 @@ where
             return Err(NoSolution);
         }
 
-        // TODO:
-        if let ty::CoroutineWitness(def_id, _) = goal.predicate.self_ty().kind() {
-            match ecx.typing_mode() {
-                TypingMode::Analysis { stalled_generators, defining_opaque_types: _ } => {
-                    if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
-                    {
-                        return ecx.forced_ambiguity(MaybeCause::Ambiguity);
-                    }
-                }
-                TypingMode::Coherence
-                | TypingMode::PostAnalysis
-                | TypingMode::Borrowck { defining_opaque_types: _ }
-                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
-            }
+        // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
+        if let Some(cand) = ecx.try_stall_coroutine_witness(goal.predicate.self_ty()) {
+            return cand;
         }
 
         ecx.probe_and_evaluate_goal_for_constituent_tys(
@@ -1399,5 +1377,29 @@ where
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let candidates = self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
         self.merge_trait_candidates(goal, candidates)
+    }
+
+    fn try_stall_coroutine_witness(
+        &mut self,
+        self_ty: I::Ty,
+    ) -> Option<Result<Candidate<I>, NoSolution>> {
+        if let ty::CoroutineWitness(def_id, _) = self_ty.kind() {
+            match self.typing_mode() {
+                TypingMode::Analysis {
+                    defining_opaque_types_and_generators: stalled_generators,
+                } => {
+                    if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
+                    {
+                        return Some(self.forced_ambiguity(MaybeCause::Ambiguity));
+                    }
+                }
+                TypingMode::Coherence
+                | TypingMode::PostAnalysis
+                | TypingMode::Borrowck { defining_opaque_types: _ }
+                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
+            }
+        }
+
+        None
     }
 }

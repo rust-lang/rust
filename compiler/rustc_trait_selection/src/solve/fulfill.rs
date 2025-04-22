@@ -14,6 +14,7 @@ use rustc_middle::ty::{
 };
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
 use rustc_span::Span;
+use rustc_type_ir::data_structures::DelayedSet;
 use tracing::instrument;
 
 use self::derive_errors::*;
@@ -217,26 +218,30 @@ where
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        self.obligations.drain_pending(|obl| {
-            let stalled_generators = match infcx.typing_mode() {
-                TypingMode::Analysis { defining_opaque_types: _, stalled_generators } => {
-                    stalled_generators
-                }
-                TypingMode::Coherence
-                | TypingMode::Borrowck { defining_opaque_types: _ }
-                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
-                | TypingMode::PostAnalysis => return false,
-            };
-
-            if stalled_generators.is_empty() {
-                return false;
+        let stalled_generators = match infcx.typing_mode() {
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
             }
+            TypingMode::Coherence
+            | TypingMode::Borrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis => return Default::default(),
+        };
 
+        if stalled_generators.is_empty() {
+            return Default::default();
+        }
+
+        self.obligations.drain_pending(|obl| {
             infcx.probe(|_| {
                 infcx
                     .visit_proof_tree(
                         obl.as_goal(),
-                        &mut StalledOnCoroutines { stalled_generators, span: obl.cause.span },
+                        &mut StalledOnCoroutines {
+                            stalled_generators,
+                            span: obl.cause.span,
+                            cache: Default::default(),
+                        },
                     )
                     .is_break()
             })
@@ -244,10 +249,18 @@ where
     }
 }
 
+/// Detect if a goal is stalled on a coroutine that is owned by the current typeck root.
+///
+/// This function can (erroneously) fail to detect a predicate, i.e. it doesn't need to
+/// be complete. However, this will lead to ambiguity errors, so we want to make it
+/// accurate.
+///
+/// This function can be also return false positives, which will lead to poor diagnostics
+/// so we want to keep this visitor *precise* too.
 struct StalledOnCoroutines<'tcx> {
     stalled_generators: &'tcx ty::List<LocalDefId>,
     span: Span,
-    // TODO: Cache
+    cache: DelayedSet<Ty<'tcx>>,
 }
 
 impl<'tcx> inspect::ProofTreeVisitor<'tcx> for StalledOnCoroutines<'tcx> {
@@ -272,6 +285,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
     type Result = ControlFlow<()>;
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        if !self.cache.insert(ty) {
+            return ControlFlow::Continue(());
+        }
+
         if let ty::CoroutineWitness(def_id, _) = *ty.kind()
             && def_id.as_local().is_some_and(|def_id| self.stalled_generators.contains(&def_id))
         {

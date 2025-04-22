@@ -1,6 +1,5 @@
 use std::assert_matches::assert_matches;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::InferCtxt;
@@ -60,7 +59,8 @@ where
 /// entered before passing `value` to the function. This is currently needed for
 /// `normalize_erasing_regions`, which skips binders as it walks through a type.
 ///
-/// TODO: doc
+/// This returns a set of stalled obligations if the typing mode of the underlying infcx
+/// has any stalled coroutine def ids.
 pub fn deeply_normalize_with_skipped_universes_and_ambiguous_goals<'tcx, T, E>(
     at: At<'_, 'tcx>,
     value: T,
@@ -72,16 +72,10 @@ where
 {
     let fulfill_cx = FulfillmentCtxt::new(at.infcx);
     let mut folder =
-        NormalizationFolder { at, fulfill_cx, depth: 0, universes, _errors: PhantomData };
+        NormalizationFolder { at, fulfill_cx, depth: 0, universes, stalled_goals: vec![] };
     let value = value.try_fold_with(&mut folder)?;
-    let goals = folder
-        .fulfill_cx
-        .drain_stalled_obligations_for_coroutines(at.infcx)
-        .into_iter()
-        .map(|obl| obl.as_goal())
-        .collect();
     let errors = folder.fulfill_cx.select_all_or_error(at.infcx);
-    if errors.is_empty() { Ok((value, goals)) } else { Err(errors) }
+    if errors.is_empty() { Ok((value, folder.stalled_goals)) } else { Err(errors) }
 }
 
 struct NormalizationFolder<'me, 'tcx, E> {
@@ -89,7 +83,7 @@ struct NormalizationFolder<'me, 'tcx, E> {
     fulfill_cx: FulfillmentCtxt<'tcx, E>,
     depth: usize,
     universes: Vec<Option<UniverseIndex>>,
-    _errors: PhantomData<E>,
+    stalled_goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
 impl<'tcx, E> NormalizationFolder<'_, 'tcx, E>
@@ -130,10 +124,7 @@ where
         );
 
         self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-        let errors = self.fulfill_cx.select_where_possible(infcx);
-        if !errors.is_empty() {
-            return Err(errors);
-        }
+        self.select_all_and_stall_coroutine_predicates()?;
 
         // Alias is guaranteed to be fully structurally resolved,
         // so we can super fold here.
@@ -183,6 +174,27 @@ where
 
         self.depth -= 1;
         Ok(result)
+    }
+
+    fn select_all_and_stall_coroutine_predicates(&mut self) -> Result<(), Vec<E>> {
+        let errors = self.fulfill_cx.select_where_possible(self.at.infcx);
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        self.stalled_goals.extend(
+            self.fulfill_cx
+                .drain_stalled_obligations_for_coroutines(self.at.infcx)
+                .into_iter()
+                .map(|obl| obl.as_goal()),
+        );
+
+        let errors = self.fulfill_cx.collect_remaining_errors(self.at.infcx);
+        if !errors.is_empty() {
+            return Err(errors);
+        }
+
+        Ok(())
     }
 }
 

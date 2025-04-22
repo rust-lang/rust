@@ -65,7 +65,7 @@ pub enum TypingMode<I: Interner> {
     ///     let x: <() as Assoc>::Output = true;
     /// }
     /// ```
-    Analysis { defining_opaque_types: I::LocalDefIds, stalled_generators: I::LocalDefIds },
+    Analysis { defining_opaque_types_and_generators: I::LocalDefIds },
     /// The behavior during MIR borrowck is identical to `TypingMode::Analysis`
     /// except that the initial value for opaque types is the type computed during
     /// HIR typeck with unique unconstrained region inference variables.
@@ -94,25 +94,24 @@ pub enum TypingMode<I: Interner> {
 impl<I: Interner> TypingMode<I> {
     /// Analysis outside of a body does not define any opaque types.
     pub fn non_body_analysis() -> TypingMode<I> {
-        TypingMode::Analysis {
-            defining_opaque_types: Default::default(),
-            stalled_generators: Default::default(),
-        }
+        TypingMode::Analysis { defining_opaque_types_and_generators: Default::default() }
     }
 
     pub fn typeck_for_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Analysis {
-            defining_opaque_types: cx.opaque_types_defined_by(body_def_id),
-            stalled_generators: cx.stalled_generators_within(body_def_id),
+            defining_opaque_types_and_generators: cx
+                .opaque_types_and_generators_defined_by(body_def_id),
         }
     }
 
     /// While typechecking a body, we need to be able to define the opaque
     /// types defined by that body.
+    ///
+    /// FIXME: This will be removed because it's generally not correct to define
+    /// opaques outside of HIR typeck.
     pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Analysis {
-            defining_opaque_types: cx.opaque_types_defined_by(body_def_id),
-            stalled_generators: Default::default(),
+            defining_opaque_types_and_generators: cx.opaque_types_defined_by(body_def_id),
         }
     }
 
