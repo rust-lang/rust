@@ -486,15 +486,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let items: &AssocItems = self.tcx.associated_items(self.def_id);
             items
                 .in_definition_order()
-                .filter(|item| item.is_type())
                 .filter(|item| {
-                    !self
-                        .gen_args
-                        .constraints
-                        .iter()
-                        .any(|constraint| constraint.ident.name == item.name())
+                    item.is_type()
+                        && !item.is_impl_trait_in_trait()
+                        && !self
+                            .gen_args
+                            .constraints
+                            .iter()
+                            .any(|constraint| constraint.ident.name == item.name())
                 })
-                .filter(|item| !item.is_impl_trait_in_trait())
                 .map(|item| self.tcx.item_ident(item.def_id).to_string())
                 .collect()
         } else {
