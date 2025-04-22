@@ -65,7 +65,12 @@ impl fmt::Debug for Byte {
     }
 }
 
-#[cfg(test)]
+impl From<RangeInclusive<u8>> for Byte {
+    fn from(src: RangeInclusive<u8>) -> Self {
+        Self::new(src)
+    }
+}
+
 impl From<u8> for Byte {
     fn from(src: u8) -> Self {
         Self::from_val(src)
