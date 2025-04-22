@@ -122,9 +122,9 @@ dependencies = [
 
 [[package]]
 name = "boxcar"
-version = "0.2.10"
+version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "225450ee9328e1e828319b48a89726cffc1b0ad26fd9211ad435de9fa376acae"
+checksum = "6740c6e2fc6360fa57c35214c7493826aee95993926092606f27c983b40837be"
 dependencies = [
  "loom",
 ]
@@ -2039,9 +2039,9 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
 name = "salsa"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd55c6549513b2a42884dae31e3d4f4ac8a6cc51062e68e24d162133889f327c"
+checksum = "1be22155f8d9732518b2db2bf379fe6f0b2375e76b08b7c8fe6c1b887d548c24"
 dependencies = [
  "boxcar",
  "crossbeam-queue",
@@ -2056,20 +2056,21 @@ dependencies = [
  "salsa-macro-rules",
  "salsa-macros",
  "smallvec",
+ "thin-vec",
  "tracing",
 ]
 
 [[package]]
 name = "salsa-macro-rules"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2619b4b451beab0a7e4364ff1e6f31950e7e418888fd9bf2f28889671563166a"
+checksum = "f55a7ef0a84e336f7c5f0332d81727f5629fe042d2aa556c75307afebc9f78a5"
 
 [[package]]
 name = "salsa-macros"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4be57a99b3896e8d26850428a6874fb86849e2db874e1db3528e5cee4337d277"
+checksum = "8d0e88a9c0c0d231a63f83dcd1a2c5e5d11044fac4b65bc9ad3b68ab48b0a0ab"
 dependencies = [
  "heck",
  "proc-macro2",
