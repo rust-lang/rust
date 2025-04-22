@@ -21,6 +21,7 @@ pub struct i8x16([i8; 16]);
 // CHECK-LABEL: dyn_simd_extract
 // CHECK: extractelement <16 x i8> %x, i32 %idx
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn dyn_simd_extract(x: i8x16, idx: u32) -> i8 {
     simd_extract_dyn(x, idx)
 }
@@ -28,6 +29,7 @@ unsafe extern "C" fn dyn_simd_extract(x: i8x16, idx: u32) -> i8 {
 // CHECK-LABEL: literal_dyn_simd_extract
 // CHECK: extractelement <16 x i8> %x, i32 7
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn literal_dyn_simd_extract(x: i8x16) -> i8 {
     simd_extract_dyn(x, 7)
 }
@@ -35,6 +37,7 @@ unsafe extern "C" fn literal_dyn_simd_extract(x: i8x16) -> i8 {
 // CHECK-LABEL: const_dyn_simd_extract
 // CHECK: extractelement <16 x i8> %x, i32 7
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn const_dyn_simd_extract(x: i8x16) -> i8 {
     simd_extract_dyn(x, const { 3 + 4 })
 }
@@ -42,6 +45,7 @@ unsafe extern "C" fn const_dyn_simd_extract(x: i8x16) -> i8 {
 // CHECK-LABEL: const_simd_extract
 // CHECK: extractelement <16 x i8> %x, i32 7
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn const_simd_extract(x: i8x16) -> i8 {
     simd_extract(x, const { 3 + 4 })
 }
@@ -49,6 +53,7 @@ unsafe extern "C" fn const_simd_extract(x: i8x16) -> i8 {
 // CHECK-LABEL: dyn_simd_insert
 // CHECK: insertelement <16 x i8> %x, i8 %e, i32 %idx
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn dyn_simd_insert(x: i8x16, e: i8, idx: u32) -> i8x16 {
     simd_insert_dyn(x, idx, e)
 }
@@ -56,6 +61,7 @@ unsafe extern "C" fn dyn_simd_insert(x: i8x16, e: i8, idx: u32) -> i8x16 {
 // CHECK-LABEL: literal_dyn_simd_insert
 // CHECK: insertelement <16 x i8> %x, i8 %e, i32 7
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn literal_dyn_simd_insert(x: i8x16, e: i8) -> i8x16 {
     simd_insert_dyn(x, 7, e)
 }
@@ -63,6 +69,7 @@ unsafe extern "C" fn literal_dyn_simd_insert(x: i8x16, e: i8) -> i8x16 {
 // CHECK-LABEL: const_dyn_simd_insert
 // CHECK: insertelement <16 x i8> %x, i8 %e, i32 7
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn const_dyn_simd_insert(x: i8x16, e: i8) -> i8x16 {
     simd_insert_dyn(x, const { 3 + 4 }, e)
 }
@@ -70,6 +77,7 @@ unsafe extern "C" fn const_dyn_simd_insert(x: i8x16, e: i8) -> i8x16 {
 // CHECK-LABEL: const_simd_insert
 // CHECK: insertelement <16 x i8> %x, i8 %e, i32 7
 #[no_mangle]
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 unsafe extern "C" fn const_simd_insert(x: i8x16, e: i8) -> i8x16 {
     simd_insert(x, const { 3 + 4 }, e)
 }

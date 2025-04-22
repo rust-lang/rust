@@ -28,33 +28,12 @@ pub struct Simd<T, const N: usize>([T; N]);
 
 extern "unadjusted" {
     fn test_i8x2(a: i8x2);
-}
-
-extern "unadjusted" {
     fn test_i8x2_two_args(a: i8x2, b: i8x2);
-}
-
-extern "unadjusted" {
     fn test_i8x2_mixed_args(a: i8x2, c: i32, b: i8x2);
-}
-
-extern "unadjusted" {
     fn test_i8x2_arr(a: i8x2);
-}
-
-extern "unadjusted" {
     fn test_f32x2(a: f32x2);
-}
-
-extern "unadjusted" {
     fn test_f32x2_arr(a: f32x2);
-}
-
-extern "unadjusted" {
     fn test_simd(a: Simd<i32, 4>);
-}
-
-extern "unadjusted" {
     fn test_simd_unaligned(a: Simd<i32, 3>);
 }
 
@@ -62,6 +41,7 @@ extern "unadjusted" {
 // if the size is not a power of 2
 // CHECK: %"Simd<i32, 3>" = type { [3 x i32] }
 
+#[cfg_attr(target_family = "wasm", target_feature(enable = "simd128"))]
 pub fn do_call() {
     unsafe {
         // CHECK: call void @test_i8x2(<2 x i8> <i8 32, i8 64>
