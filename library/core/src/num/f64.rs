@@ -390,6 +390,9 @@ impl f64 {
     pub const RADIX: u32 = 2;
 
     /// Number of significant digits in base 2.
+    ///
+    /// Note that the size of the mantissa in the bitwise representation is one
+    /// smaller than this since the leading 1 is not stored explicitly.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MANTISSA_DIGITS: u32 = 53;
     /// Approximate number of significant digits in base 10.
