@@ -14,7 +14,7 @@ use rustc_hir::intravisit::{
 };
 use rustc_hir::{
     AmbigArg, BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
-    Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node,
+    Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
     WherePredicateKind, lang_items,
 };
@@ -218,7 +218,7 @@ fn check_fn_inner<'tcx>(
             for bound in pred.bounds {
                 let mut visitor = RefVisitor::new(cx);
                 walk_param_bound(&mut visitor, bound);
-                if visitor.lts.iter().any(|lt| matches!(lt.res, LifetimeName::Param(_))) {
+                if visitor.lts.iter().any(|lt| matches!(lt.kind, LifetimeKind::Param(_))) {
                     return;
                 }
                 if let GenericBound::Trait(ref trait_ref) = *bound {
@@ -235,7 +235,7 @@ fn check_fn_inner<'tcx>(
                             _ => None,
                         });
                         for bound in lifetimes {
-                            if bound.res != LifetimeName::Static && !bound.is_elided() {
+                            if bound.kind != LifetimeKind::Static && !bound.is_elided() {
                                 return;
                             }
                         }
@@ -421,8 +421,8 @@ fn named_lifetime_occurrences(lts: &[Lifetime]) -> Vec<(LocalDefId, usize)> {
 }
 
 fn named_lifetime(lt: &Lifetime) -> Option<LocalDefId> {
-    match lt.res {
-        LifetimeName::Param(id) if !lt.is_anonymous() => Some(id),
+    match lt.kind {
+        LifetimeKind::Param(id) if !lt.is_anonymous() => Some(id),
         _ => None,
     }
 }
@@ -614,7 +614,7 @@ where
 
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if let LifetimeName::Param(def_id) = lifetime.res
+        if let LifetimeKind::Param(def_id) = lifetime.kind
             && let Some(usages) = self.map.get_mut(&def_id)
         {
             usages.push(Usage {
@@ -826,7 +826,7 @@ fn report_elidable_lifetimes(
             .iter()
             .map(|&lt| cx.tcx.def_span(lt))
             .chain(usages.iter().filter_map(|usage| {
-                if let LifetimeName::Param(def_id) = usage.res
+                if let LifetimeKind::Param(def_id) = usage.kind
                     && elidable_lts.contains(&def_id)
                 {
                     return Some(usage.ident.span);
