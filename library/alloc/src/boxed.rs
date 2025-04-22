@@ -290,8 +290,6 @@ impl<T> Box<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_zeroed_alloc)]
-    ///
     /// let zero = Box::<u32>::new_zeroed();
     /// let zero = unsafe { zero.assume_init() };
     ///
@@ -301,7 +299,7 @@ impl<T> Box<T> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
+    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn new_zeroed() -> Box<mem::MaybeUninit<T>> {
         Self::new_zeroed_in(Global)
@@ -358,7 +356,6 @@ impl<T> Box<T> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn try_new_uninit() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         Box::try_new_uninit_in(Global)
@@ -384,7 +381,6 @@ impl<T> Box<T> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[inline]
     pub fn try_new_zeroed() -> Result<Box<mem::MaybeUninit<T>>, AllocError> {
         Box::try_new_zeroed_in(Global)
@@ -463,7 +459,6 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
         A: Allocator,
@@ -496,7 +491,6 @@ impl<T, A: Allocator> Box<T, A> {
     /// # Ok::<(), std::alloc::AllocError>(())
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
         A: Allocator,
@@ -532,7 +526,6 @@ impl<T, A: Allocator> Box<T, A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[cfg(not(no_global_oom_handling))]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
@@ -570,7 +563,6 @@ impl<T, A: Allocator> Box<T, A> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     pub fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
         A: Allocator,
@@ -660,8 +652,6 @@ impl<T> Box<[T]> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(new_zeroed_alloc)]
-    ///
     /// let values = Box::<[u32]>::new_zeroed_slice(3);
     /// let values = unsafe { values.assume_init() };
     ///
@@ -670,7 +660,7 @@ impl<T> Box<[T]> {
     ///
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "new_zeroed_alloc", issue = "129396")]
+    #[stable(feature = "new_zeroed_alloc", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     pub fn new_zeroed_slice(len: usize) -> Box<[mem::MaybeUninit<T>]> {
         unsafe { RawVec::with_capacity_zeroed(len).into_box(len) }
@@ -785,7 +775,6 @@ impl<T, A: Allocator> Box<[T], A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe { RawVec::with_capacity_in(len, alloc).into_box(len) }
@@ -813,7 +802,6 @@ impl<T, A: Allocator> Box<[T], A> {
     /// [zeroed]: mem::MaybeUninit::zeroed
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
         unsafe { RawVec::with_capacity_zeroed_in(len, alloc).into_box(len) }
