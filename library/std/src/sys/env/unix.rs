@@ -1,5 +1,3 @@
-#![allow(unsafe_op_in_unsafe_fn)]
-
 use core::slice::memchr;
 
 use libc::c_char;
@@ -81,7 +79,7 @@ impl Iterator for Env {
 // desirable anyhow? Though it also means that we have to link to Foundation.
 #[cfg(target_vendor = "apple")]
 pub unsafe fn environ() -> *mut *const *const c_char {
-    libc::_NSGetEnviron() as *mut *const *const c_char
+    unsafe { libc::_NSGetEnviron() as *mut *const *const c_char }
 }
 
 // Use the `environ` static which is part of POSIX.
@@ -159,7 +157,7 @@ pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     run_with_cstr(k.as_bytes(), &|k| {
         run_with_cstr(v.as_bytes(), &|v| {
             let _guard = ENV_LOCK.write();
-            cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
+            cvt(unsafe { libc::setenv(k.as_ptr(), v.as_ptr(), 1) }).map(drop)
         })
     })
 }
@@ -167,6 +165,6 @@ pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
 pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
     run_with_cstr(n.as_bytes(), &|nbuf| {
         let _guard = ENV_LOCK.write();
-        cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
+        cvt(unsafe { libc::unsetenv(nbuf.as_ptr()) }).map(drop)
     })
 }

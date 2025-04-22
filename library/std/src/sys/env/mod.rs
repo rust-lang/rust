@@ -1,6 +1,6 @@
 //! Platform-dependent environment variables abstraction.
 
-#![deny(unsafe_op_in_unsafe_fn)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 cfg_if::cfg_if! {
     if #[cfg(target_family = "unix")] {
