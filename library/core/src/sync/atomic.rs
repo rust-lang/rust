@@ -1113,7 +1113,9 @@ impl AtomicBool {
 
     /// Returns a mutable pointer to the underlying [`bool`].
     ///
-    /// Doing non-atomic reads and writes on the resulting boolean can be a data race.
+    /// Note that doing non-atomic reads or writes on the resulting integer can be
+    /// Undefined Behavior due to a data race; see the [memory model section] for further information.
+    ///
     /// This method is mostly useful for FFI, where the function signature may use
     /// `*mut bool` instead of `&AtomicBool`. All modifications of an atomic change the value
     /// through a shared reference, and can do so safely as long as they use atomic operations.
@@ -1136,6 +1138,7 @@ impl AtomicBool {
     /// }
     /// # }
     /// ```
+    /// [memory model section]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -2303,7 +2306,9 @@ impl<T> AtomicPtr<T> {
 
     /// Returns a mutable pointer to the underlying pointer.
     ///
-    /// Doing non-atomic reads and writes on the resulting pointer can be a data race.
+    /// Note that doing non-atomic reads or writes on the resulting integer can be
+    /// Undefined Behavior due to a data race; see the [memory model section] for further information.
+    ///
     /// This method is mostly useful for FFI, where the function signature may use
     /// `*mut *mut T` instead of `&AtomicPtr<T>`. All modifications of an atomic change the value
     /// through a shared reference, and can do so safely as long as they use atomic operations.
@@ -2325,6 +2330,7 @@ impl<T> AtomicPtr<T> {
     ///     my_atomic_op(atomic.as_ptr());
     /// }
     /// ```
+    /// [memory model section]: self#memory-model-for-atomic-accesses
     #[inline]
     #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
     #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
@@ -3390,7 +3396,9 @@ macro_rules! atomic_int {
 
             /// Returns a mutable pointer to the underlying integer.
             ///
-            /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+            /// Note that doing non-atomic reads or writes on the resulting integer can be
+            /// Undefined Behavior due to a data race; see the [memory model section] for further information.
+            ///
             /// This method is mostly useful for FFI, where the function signature may use
             #[doc = concat!("`*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.")]
             /// All modifications of an atomic change the value through a shared reference, and can do so safely
@@ -3414,6 +3422,7 @@ macro_rules! atomic_int {
             /// }
             /// # }
             /// ```
+            /// [memory model section]: self#memory-model-for-atomic-accesses
             #[inline]
             #[stable(feature = "atomic_as_ptr", since = "1.70.0")]
             #[rustc_const_stable(feature = "atomic_as_ptr", since = "1.70.0")]
