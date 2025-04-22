@@ -2148,6 +2148,17 @@ impl<'a> Parser<'a> {
     /// Keep this in sync with `Token::can_begin_literal_maybe_minus` and
     /// `Lit::from_token` (excluding unary negation).
     fn eat_token_lit(&mut self) -> Option<token::Lit> {
+        let check_expr = |expr: P<Expr>| {
+            if let ast::ExprKind::Lit(token_lit) = expr.kind {
+                Some(token_lit)
+            } else if let ast::ExprKind::Unary(UnOp::Neg, inner) = &expr.kind
+                && let ast::Expr { kind: ast::ExprKind::Lit(_), .. } = **inner
+            {
+                None
+            } else {
+                panic!("unexpected reparsed expr/literal: {:?}", expr.kind);
+            }
+        };
         match self.token.uninterpolate().kind {
             token::Ident(name, IdentIsRaw::No) if name.is_bool_lit() => {
                 self.bump();
@@ -2163,10 +2174,7 @@ impl<'a> Parser<'a> {
                 let lit = self
                     .eat_metavar_seq(MetaVarKind::Literal, |this| this.parse_literal_maybe_minus())
                     .expect("metavar seq literal");
-                let ast::ExprKind::Lit(token_lit) = lit.kind else {
-                    panic!("didn't reparse a literal");
-                };
-                Some(token_lit)
+                check_expr(lit)
             }
             token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 mv_kind @ MetaVarKind::Expr { can_begin_literal_maybe_minus: true, .. },
@@ -2174,15 +2182,7 @@ impl<'a> Parser<'a> {
                 let expr = self
                     .eat_metavar_seq(mv_kind, |this| this.parse_expr())
                     .expect("metavar seq expr");
-                if let ast::ExprKind::Lit(token_lit) = expr.kind {
-                    Some(token_lit)
-                } else if let ast::ExprKind::Unary(UnOp::Neg, inner) = &expr.kind
-                    && let ast::Expr { kind: ast::ExprKind::Lit(_), .. } = **inner
-                {
-                    None
-                } else {
-                    panic!("unexpected reparsed expr: {:?}", expr.kind);
-                }
+                check_expr(expr)
             }
             _ => None,
         }
