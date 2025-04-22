@@ -309,7 +309,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     false => "`?Sized`",
                 };
                 // There was a `?Trait` bound, but it was neither `?Sized` nor `experimental_default_bounds`.
-                tcx.dcx().span_err(
+                self.dcx().span_err(
                     unbound.span,
                     format!(
                         "relaxing a default bound only does something for {}; \
@@ -810,15 +810,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // `resolve_bound_vars`, since we'd need to introduce those as elided
         // bound vars on the where clause too.
         if bound.has_bound_vars() {
-            return Err(self.tcx().dcx().emit_err(
-                errors::AssociatedItemTraitUninferredGenericParams {
-                    span,
-                    inferred_sugg: Some(span.with_hi(item_segment.ident.span.lo())),
-                    bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder(),),
-                    mpart_sugg: None,
-                    what: "function",
-                },
-            ));
+            return Err(self.dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
+                span,
+                inferred_sugg: Some(span.with_hi(item_segment.ident.span.lo())),
+                bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder(),),
+                mpart_sugg: None,
+                what: "function",
+            }));
         }
 
         let trait_def_id = bound.def_id();

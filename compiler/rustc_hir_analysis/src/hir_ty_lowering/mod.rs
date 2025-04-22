@@ -1202,7 +1202,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )? {
             LoweredAssoc::Term(def_id, args) => {
                 if !tcx.associated_item(def_id).is_type_const_capable(tcx) {
-                    let mut err = tcx.dcx().struct_span_err(
+                    let mut err = self.dcx().struct_span_err(
                         span,
                         "use of trait associated const without `#[type_const]`",
                     );
@@ -2323,7 +2323,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             if tcx.features().generic_const_parameter_types()
                 && (anon_const_type.has_free_regions() || anon_const_type.has_erased_regions())
             {
-                let e = tcx.dcx().span_err(
+                let e = self.dcx().span_err(
                     const_arg.span(),
                     "anonymous constants with lifetimes in their type are not yet supported",
                 );
@@ -2334,7 +2334,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // use this type to feed the `type_of` and query results must not contain inference
             // variables otherwise we will ICE.
             if anon_const_type.has_non_region_infer() {
-                let e = tcx.dcx().span_err(
+                let e = self.dcx().span_err(
                     const_arg.span(),
                     "anonymous constants with inferred types are not yet supported",
                 );
@@ -2344,7 +2344,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // We error when the type contains unsubstituted generics since we do not currently
             // give the anon const any of the generics from the parent.
             if anon_const_type.has_non_region_param() {
-                let e = tcx.dcx().span_err(
+                let e = self.dcx().span_err(
                     const_arg.span(),
                     "anonymous constants referencing generics are not yet supported",
                 );

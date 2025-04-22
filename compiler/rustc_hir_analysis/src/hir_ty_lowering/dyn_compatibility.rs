@@ -132,7 +132,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if references_self {
                         // With trait alias and type alias combined, type resolver
                         // may not be able to catch all illegal `Self` usages (issue 139082)
-                        let guar = tcx.dcx().emit_err(SelfInTypeAlias { span });
+                        let guar = self.dcx().emit_err(SelfInTypeAlias { span });
                         b.term = replace_dummy_self_with_error(tcx, b.term, guar);
                     }
                 }
