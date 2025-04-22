@@ -225,7 +225,11 @@ impl SerializedDepGraph {
 
             let index = node_header.index();
 
-            nodes[index] = node_header.node();
+            let node = &mut nodes[index];
+            // Make sure there's no duplicate indices in the dep graph.
+            assert!(node_header.node().kind != D::DEP_KIND_NULL && node.kind == D::DEP_KIND_NULL);
+            *node = node_header.node();
+
             fingerprints[index] = node_header.fingerprint();
 
             // If the length of this node's edge list is small, the length is stored in the header.
