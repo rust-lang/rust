@@ -200,16 +200,13 @@ impl SerializedDepGraph {
 
         let graph_bytes = d.len() - (2 * IntEncodedWithFixedSize::ENCODED_SIZE) - d.position();
 
-        let mut nodes: IndexVec<SerializedDepNodeIndex, _> = (0..node_count)
-            .map(|_| DepNode {
-                kind: D::DEP_KIND_NULL,
-                hash: PackedFingerprint::from(Fingerprint::ZERO),
-            })
-            .collect();
-        let mut fingerprints: IndexVec<SerializedDepNodeIndex, _> =
-            (0..node_count).map(|_| Fingerprint::ZERO).collect();
-        let mut edge_list_indices: IndexVec<SerializedDepNodeIndex, _> =
-            (0..node_count).map(|_| EdgeHeader { repr: 0, edges: 0 }).collect();
+        let mut nodes = IndexVec::from_elem_n(
+            DepNode { kind: D::DEP_KIND_NULL, hash: PackedFingerprint::from(Fingerprint::ZERO) },
+            node_count,
+        );
+        let mut fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO, node_count);
+        let mut edge_list_indices =
+            IndexVec::from_elem_n(EdgeHeader { repr: 0, edges: 0 }, node_count);
 
         // This estimation assumes that all of the encoded bytes are for the edge lists or for the
         // fixed-size node headers. But that's not necessarily true; if any edge list has a length
