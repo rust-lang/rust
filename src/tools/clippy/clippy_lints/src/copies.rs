@@ -256,7 +256,7 @@ fn lint_branches_sharing_code<'tcx>(
         let suggestion = reindent_multiline(&suggestion, true, indent);
 
         let span = span.with_hi(last_block.span.hi());
-        // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
+        // Improve formatting if the inner block has indentation (i.e. normal Rust formatting)
         let span = span
             .map_range(cx, |src, range| {
                 (range.start > 4 && src.get(range.start - 4..range.start)? == "    ")
@@ -539,10 +539,10 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
                     .filter(|stmt| !ignore_span.overlaps(stmt.span))
                     .try_for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
 
-                if let Some(expr) = block.expr {
-                    if res.is_continue() {
-                        res = intravisit::walk_expr(&mut walker, expr);
-                    }
+                if let Some(expr) = block.expr
+                    && res.is_continue()
+                {
+                    res = intravisit::walk_expr(&mut walker, expr);
                 }
 
                 res.is_break()

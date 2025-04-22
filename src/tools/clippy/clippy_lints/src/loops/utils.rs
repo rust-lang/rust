@@ -3,9 +3,7 @@ use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_loc
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_local};
-use rustc_hir::{
-    AssignOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, LetStmt, Mutability, PatKind
-};
+use rustc_hir::{AssignOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, LetStmt, Mutability, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
@@ -265,7 +263,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
     if impls_iterator {
         format!(
             "{}",
-            sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
+            sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_paren()
         )
     } else {
         // (&x).into_iter() ==> x.iter()
@@ -283,12 +281,12 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
                 };
                 format!(
                     "{}.{method_name}()",
-                    sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_par(),
+                    sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_paren(),
                 )
             },
             _ => format!(
                 "{}.into_iter()",
-                sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
+                sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_paren()
             ),
         }
     }

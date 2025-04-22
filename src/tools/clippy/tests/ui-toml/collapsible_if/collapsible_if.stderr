@@ -1,0 +1,80 @@
+error: this `if` statement can be collapsed
+  --> tests/ui-toml/collapsible_if/collapsible_if.rs:8:5
+   |
+LL | /     if x == "hello" {
+LL | |         // Comment must be kept
+LL | |         if y == "world" {
+LL | |             println!("Hello world!");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::collapsible-if` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+   |
+LL ~     if x == "hello"
+LL |         // Comment must be kept
+LL ~         && y == "world" {
+LL |             println!("Hello world!");
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui-toml/collapsible_if/collapsible_if.rs:17:5
+   |
+LL | /     if x == "hello" { // Inner comment
+LL | |         if y == "world" {
+LL | |             println!("Hello world!");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if x == "hello"  // Inner comment
+LL ~         && y == "world" {
+LL |             println!("Hello world!");
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui-toml/collapsible_if/collapsible_if.rs:24:5
+   |
+LL | /     if x == "hello" {
+LL | |         /* Inner comment */
+LL | |         if y == "world" {
+LL | |             println!("Hello world!");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if x == "hello"
+LL |         /* Inner comment */
+LL ~         && y == "world" {
+LL |             println!("Hello world!");
+LL ~         }
+   |
+
+error: this `if` statement can be collapsed
+  --> tests/ui-toml/collapsible_if/collapsible_if.rs:32:5
+   |
+LL | /     if x == "hello" { /* Inner comment */
+LL | |         if y == "world" {
+LL | |             println!("Hello world!");
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if x == "hello"  /* Inner comment */
+LL ~         && y == "world" {
+LL |             println!("Hello world!");
+LL ~         }
+   |
+
+error: aborting due to 4 previous errors
+

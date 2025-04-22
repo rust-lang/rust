@@ -76,10 +76,10 @@ declare_lint_pass!(Unicode => [INVISIBLE_CHARACTERS, NON_ASCII_LITERAL, UNICODE_
 
 impl LateLintPass<'_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if let ExprKind::Lit(lit) = expr.kind {
-            if let LitKind::Str(_, _) | LitKind::Char(_) = lit.node {
-                check_str(cx, lit.span, expr.hir_id);
-            }
+        if let ExprKind::Lit(lit) = expr.kind
+            && let LitKind::Str(_, _) | LitKind::Char(_) = lit.node
+        {
+            check_str(cx, lit.span, expr.hir_id);
         }
     }
 }

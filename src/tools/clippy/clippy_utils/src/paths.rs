@@ -30,9 +30,11 @@ pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"]
 pub const CHAR_IS_ASCII: [&str; 5] = ["core", "char", "methods", "<impl char>", "is_ascii"];
 pub const IO_ERROR_NEW: [&str; 5] = ["std", "io", "error", "Error", "new"];
 pub const IO_ERRORKIND_OTHER: [&str; 5] = ["std", "io", "error", "ErrorKind", "Other"];
+pub const ALIGN_OF: [&str; 3] = ["core", "mem", "align_of"];
 
 // Paths in clippy itself
 pub const MSRV_STACK: [&str; 3] = ["clippy_utils", "msrvs", "MsrvStack"];
+pub const CLIPPY_SYM_MODULE: [&str; 2] = ["clippy_utils", "sym"];
 
 // Paths in external crates
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates

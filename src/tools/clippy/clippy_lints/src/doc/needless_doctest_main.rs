@@ -64,7 +64,10 @@ pub fn check(
                     match parser.parse_item(ForceCollect::No) {
                         Ok(Some(item)) => match &item.kind {
                             ItemKind::Fn(box Fn {
-                                ident, sig, body: Some(block), ..
+                                ident,
+                                sig,
+                                body: Some(block),
+                                ..
                             }) if ident.name == sym::main => {
                                 if !ignore {
                                     get_test_spans(&item, *ident, &mut test_attr_spans);

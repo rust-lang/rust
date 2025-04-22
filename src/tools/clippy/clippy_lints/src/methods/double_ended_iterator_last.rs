@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::implements_trait;
+use clippy_utils::ty::{has_non_owning_mutable_access, implements_trait};
 use clippy_utils::{is_mutable, is_trait_method, path_to_local};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node, PatKind};
@@ -27,10 +27,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
         && let Some(last_def) = cx.tcx.provided_trait_methods(item).find(|m| m.name().as_str() == "last")
         // if the resolved method is the same as the provided definition
         && fn_def.def_id() == last_def.def_id
+        && let self_ty = cx.typeck_results().expr_ty(self_expr)
+        && !has_non_owning_mutable_access(cx, self_ty)
     {
         let mut sugg = vec![(call_span, String::from("next_back()"))];
         let mut dont_apply = false;
+
         // if `self_expr` is a reference, it is mutable because it is used for `.last()`
+        // TODO: Change this to lint only when the referred iterator is not used later. If it is used later,
+        // changing to `next_back()` may change its behavior.
         if !(is_mutable(cx, self_expr) || self_type.is_ref()) {
             if let Some(hir_id) = path_to_local(self_expr)
                 && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)

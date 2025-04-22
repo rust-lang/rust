@@ -3,36 +3,6 @@
 // Manual edits will be overwritten.
 
 pub static LINTS: &[&crate::LintInfo] = &[
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::interning_defined_symbol::INTERNING_DEFINED_SYMBOL_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::interning_defined_symbol::UNNECESSARY_SYMBOL_STR_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::invalid_paths::INVALID_PATHS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::DEFAULT_LINT_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::LINT_WITHOUT_LINT_PASS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::outer_expn_data_pass::OUTER_EXPN_EXPN_DATA_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::produce_ice::PRODUCE_ICE_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::slow_symbol_comparisons::SLOW_SYMBOL_COMPARISONS_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::unnecessary_def_path::UNNECESSARY_DEF_PATH_INFO,
-    #[cfg(feature = "internal")]
-    crate::utils::internal_lints::unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS_INFO,
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,
@@ -52,6 +22,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::attrs::DEPRECATED_CLIPPY_CFG_ATTR_INFO,
     crate::attrs::DEPRECATED_SEMVER_INFO,
     crate::attrs::DUPLICATED_ATTRIBUTES_INFO,
+    crate::attrs::IGNORE_WITHOUT_REASON_INFO,
     crate::attrs::INLINE_ALWAYS_INFO,
     crate::attrs::MIXED_ATTRIBUTES_STYLE_INFO,
     crate::attrs::NON_MINIMAL_CFG_INFO,
@@ -96,6 +67,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::casts::FN_TO_NUMERIC_CAST_INFO,
     crate::casts::FN_TO_NUMERIC_CAST_ANY_INFO,
     crate::casts::FN_TO_NUMERIC_CAST_WITH_TRUNCATION_INFO,
+    crate::casts::MANUAL_DANGLING_PTR_INFO,
     crate::casts::PTR_AS_PTR_INFO,
     crate::casts::PTR_CAST_CONSTNESS_INFO,
     crate::casts::REF_AS_PTR_INFO,
@@ -286,6 +258,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::literal_representation::UNREADABLE_LITERAL_INFO,
     crate::literal_representation::UNUSUAL_BYTE_GROUPINGS_INFO,
     crate::literal_string_with_formatting_args::LITERAL_STRING_WITH_FORMATTING_ARGS_INFO,
+    crate::loops::CHAR_INDICES_AS_BYTE_INDICES_INFO,
     crate::loops::EMPTY_LOOP_INFO,
     crate::loops::EXPLICIT_COUNTER_LOOP_INFO,
     crate::loops::EXPLICIT_INTO_ITER_LOOP_INFO,
@@ -312,6 +285,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::macro_metavars_in_unsafe::MACRO_METAVARS_IN_UNSAFE_INFO,
     crate::macro_use::MACRO_USE_IMPORTS_INFO,
     crate::main_recursion::MAIN_RECURSION_INFO,
+    crate::manual_abs_diff::MANUAL_ABS_DIFF_INFO,
     crate::manual_assert::MANUAL_ASSERT_INFO,
     crate::manual_async_fn::MANUAL_ASYNC_FN_INFO,
     crate::manual_bits::MANUAL_BITS_INFO,
@@ -334,7 +308,6 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::manual_slice_size_calculation::MANUAL_SLICE_SIZE_CALCULATION_INFO,
     crate::manual_string_new::MANUAL_STRING_NEW_INFO,
     crate::manual_strip::MANUAL_STRIP_INFO,
-    crate::manual_unwrap_or_default::MANUAL_UNWRAP_OR_DEFAULT_INFO,
     crate::map_unit_fn::OPTION_MAP_UNIT_FN_INFO,
     crate::map_unit_fn::RESULT_MAP_UNIT_FN_INFO,
     crate::match_result_ok::MATCH_RESULT_OK_INFO,
@@ -344,10 +317,10 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::matches::MANUAL_MAP_INFO,
     crate::matches::MANUAL_OK_ERR_INFO,
     crate::matches::MANUAL_UNWRAP_OR_INFO,
+    crate::matches::MANUAL_UNWRAP_OR_DEFAULT_INFO,
     crate::matches::MATCH_AS_REF_INFO,
     crate::matches::MATCH_BOOL_INFO,
     crate::matches::MATCH_LIKE_MATCHES_MACRO_INFO,
-    crate::matches::MATCH_ON_VEC_ITEMS_INFO,
     crate::matches::MATCH_OVERLAPPING_ARM_INFO,
     crate::matches::MATCH_REF_PATS_INFO,
     crate::matches::MATCH_SAME_ARMS_INFO,
@@ -488,6 +461,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::methods::SUSPICIOUS_OPEN_OPTIONS_INFO,
     crate::methods::SUSPICIOUS_SPLITN_INFO,
     crate::methods::SUSPICIOUS_TO_OWNED_INFO,
+    crate::methods::SWAP_WITH_TEMPORARY_INFO,
     crate::methods::TYPE_ID_ON_BOX_INFO,
     crate::methods::UNBUFFERED_BYTES_INFO,
     crate::methods::UNINIT_ASSUMED_INIT_INFO,
@@ -664,6 +638,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::redundant_slicing::DEREF_BY_SLICING_INFO,
     crate::redundant_slicing::REDUNDANT_SLICING_INFO,
     crate::redundant_static_lifetimes::REDUNDANT_STATIC_LIFETIMES_INFO,
+    crate::redundant_test_prefix::REDUNDANT_TEST_PREFIX_INFO,
     crate::redundant_type_annotations::REDUNDANT_TYPE_ANNOTATIONS_INFO,
     crate::ref_option_ref::REF_OPTION_REF_INFO,
     crate::ref_patterns::REF_PATTERNS_INFO,

@@ -167,4 +167,19 @@ fn issue13795(value: Issue13795) {
     //~^ shadow_same
 }
 
+fn issue14377() {
+    let a;
+    let b;
+    (a, b) = (0, 1);
+
+    struct S {
+        c: i32,
+        d: i32,
+    }
+
+    let c;
+    let d;
+    S { c, d } = S { c: 1, d: 2 };
+}
+
 fn main() {}

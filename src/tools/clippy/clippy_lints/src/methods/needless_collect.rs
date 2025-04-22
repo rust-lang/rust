@@ -4,7 +4,9 @@ use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{get_type_diagnostic_name, make_normalized_projection, make_projection};
+use clippy_utils::ty::{
+    get_type_diagnostic_name, has_non_owning_mutable_access, make_normalized_projection, make_projection,
+};
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
     path_to_local_id,
@@ -23,6 +25,7 @@ use rustc_span::{Span, sym};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
+#[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     name_span: Span,
@@ -30,6 +33,11 @@ pub(super) fn check<'tcx>(
     iter_expr: &'tcx Expr<'tcx>,
     call_span: Span,
 ) {
+    let iter_ty = cx.typeck_results().expr_ty(iter_expr);
+    if has_non_owning_mutable_access(cx, iter_ty) {
+        return; // don't lint if the iterator has side effects
+    }
+
     match cx.tcx.parent_hir_node(collect_expr.hir_id) {
         Node::Expr(parent) => {
             check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
@@ -377,20 +385,20 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                 return;
             }
 
-            if let Some(hir_id) = path_to_local(recv) {
-                if let Some(index) = self.hir_id_uses_map.remove(&hir_id) {
-                    if self
-                        .illegal_mutable_capture_ids
-                        .intersection(&self.current_mutably_captured_ids)
-                        .next()
-                        .is_none()
-                    {
-                        if let Some(hir_id) = self.current_statement_hir_id {
-                            self.hir_id_uses_map.insert(hir_id, index);
-                        }
-                    } else {
-                        self.uses[index] = None;
+            if let Some(hir_id) = path_to_local(recv)
+                && let Some(index) = self.hir_id_uses_map.remove(&hir_id)
+            {
+                if self
+                    .illegal_mutable_capture_ids
+                    .intersection(&self.current_mutably_captured_ids)
+                    .next()
+                    .is_none()
+                {
+                    if let Some(hir_id) = self.current_statement_hir_id {
+                        self.hir_id_uses_map.insert(hir_id, index);
                     }
+                } else {
+                    self.uses[index] = None;
                 }
             }
         }

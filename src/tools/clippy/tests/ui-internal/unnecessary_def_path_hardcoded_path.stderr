@@ -5,8 +5,11 @@ LL |     const DEREF_TRAIT: [&str; 4] = ["core", "ops", "deref", "Deref"];
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: convert all references to use `sym::Deref`
-   = note: `-D clippy::unnecessary-def-path` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_def_path)]`
+note: the lint level is defined here
+  --> tests/ui-internal/unnecessary_def_path_hardcoded_path.rs:3:9
+   |
+LL | #![deny(clippy::unnecessary_def_path)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: hardcoded path to a language item
   --> tests/ui-internal/unnecessary_def_path_hardcoded_path.rs:12:40

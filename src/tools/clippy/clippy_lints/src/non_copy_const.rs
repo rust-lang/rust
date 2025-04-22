@@ -449,7 +449,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
                             dereferenced_expr = parent_expr;
                         },
-                        ExprKind::Index(e, _, _) if ptr::eq(&**e, cur_expr) => {
+                        ExprKind::Index(e, _, _) if ptr::eq(&raw const **e, cur_expr) => {
                             // `e[i]` => desugared to `*Index::index(&e, i)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.

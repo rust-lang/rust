@@ -227,70 +227,67 @@ LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_some();
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|v| v.by_ref(&v.bar))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:223:55
+  --> tests/ui/search_is_some_fixable_some.rs:225:14
    |
-LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_some();
-   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|(&x, y)| x == *y)`
+LL |               .find(|&&&(&x, ref y)| x == *y)
+   |  ______________^
+LL | |
+LL | |             .is_some();
+   | |______________________^ help: consider using: `any(|&&(&x, ref y)| x == *y)`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:225:55
-   |
-LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_some();
-   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|(&x, y)| x == *y)`
-
-error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:245:26
+  --> tests/ui/search_is_some_fixable_some.rs:246:26
    |
 LL |         let _ = v.iter().find(|s| s[0].is_empty()).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|s| s[0].is_empty())`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:247:26
+  --> tests/ui/search_is_some_fixable_some.rs:248:26
    |
 LL |         let _ = v.iter().find(|s| test_string_1(&s[0])).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|s| test_string_1(&s[0]))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:257:26
+  --> tests/ui/search_is_some_fixable_some.rs:258:26
    |
 LL |         let _ = v.iter().find(|fp| fp.field.is_power_of_two()).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|fp| fp.field.is_power_of_two())`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:259:26
+  --> tests/ui/search_is_some_fixable_some.rs:260:26
    |
 LL |         let _ = v.iter().find(|fp| test_u32_1(fp.field)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|fp| test_u32_1(fp.field))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:261:26
+  --> tests/ui/search_is_some_fixable_some.rs:262:26
    |
 LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|fp| test_u32_2(*fp.field))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:277:18
+  --> tests/ui/search_is_some_fixable_some.rs:278:18
    |
 LL |         v.iter().find(|x: &&u32| func(x)).is_some()
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|x: &u32| func(&x))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:287:26
+  --> tests/ui/search_is_some_fixable_some.rs:288:26
    |
 LL |         let _ = v.iter().find(|x: &&u32| arg_no_deref_impl(x)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|x: &u32| arg_no_deref_impl(&x))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:291:26
+  --> tests/ui/search_is_some_fixable_some.rs:292:26
    |
 LL |         let _ = v.iter().find(|x: &&u32| arg_no_deref_dyn(x)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|x: &u32| arg_no_deref_dyn(&x))`
 
 error: called `is_some()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_some.rs:295:26
+  --> tests/ui/search_is_some_fixable_some.rs:296:26
    |
 LL |         let _ = v.iter().find(|x: &&u32| (*arg_no_deref_dyn)(x)).is_some();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `any(|x: &u32| (*arg_no_deref_dyn)(&x))`
 
-error: aborting due to 47 previous errors
+error: aborting due to 46 previous errors
 

@@ -1,5 +1,5 @@
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:11:9
+  --> tests/ui/pattern_type_mismatch/syntax.rs:16:9
    |
 LL |         Some(_) => (),
    |         ^^^^^^^
@@ -9,7 +9,7 @@ LL |         Some(_) => (),
    = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:31:12
+  --> tests/ui/pattern_type_mismatch/syntax.rs:36:12
    |
 LL |     if let Some(_) = ref_value {}
    |            ^^^^^^^
@@ -17,7 +17,7 @@ LL |     if let Some(_) = ref_value {}
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:43:15
+  --> tests/ui/pattern_type_mismatch/syntax.rs:48:15
    |
 LL |     while let Some(_) = ref_value {
    |               ^^^^^^^
@@ -25,7 +25,7 @@ LL |     while let Some(_) = ref_value {
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:63:9
+  --> tests/ui/pattern_type_mismatch/syntax.rs:68:9
    |
 LL |     for (_a, _b) in slice.iter() {}
    |         ^^^^^^^^
@@ -33,7 +33,7 @@ LL |     for (_a, _b) in slice.iter() {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:74:9
+  --> tests/ui/pattern_type_mismatch/syntax.rs:79:9
    |
 LL |     let (_n, _m) = ref_value;
    |         ^^^^^^^^
@@ -41,7 +41,7 @@ LL |     let (_n, _m) = ref_value;
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:84:12
+  --> tests/ui/pattern_type_mismatch/syntax.rs:89:12
    |
 LL |     fn foo((_a, _b): &(i32, i32)) {}
    |            ^^^^^^^^
@@ -49,7 +49,7 @@ LL |     fn foo((_a, _b): &(i32, i32)) {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:99:10
+  --> tests/ui/pattern_type_mismatch/syntax.rs:104:10
    |
 LL |     foo(|(_a, _b)| ());
    |          ^^^^^^^^
@@ -57,7 +57,7 @@ LL |     foo(|(_a, _b)| ());
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:116:9
+  --> tests/ui/pattern_type_mismatch/syntax.rs:121:9
    |
 LL |         Some(_) => (),
    |         ^^^^^^^
@@ -65,7 +65,7 @@ LL |         Some(_) => (),
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:137:17
+  --> tests/ui/pattern_type_mismatch/syntax.rs:142:17
    |
 LL |                 Some(_) => (),
    |                 ^^^^^^^

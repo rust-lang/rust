@@ -1,133 +1,219 @@
 use clippy_utils::consts::ConstEvalCtxt;
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SpanRangeExt, indent_of, reindent_multiline};
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::usage::contains_return_break_continue_macro;
-use clippy_utils::{is_res_lang_ctor, path_to_local_id, peel_blocks, sugg};
+use clippy_utils::source::{SpanRangeExt as _, indent_of, reindent_multiline};
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{OptionNone, ResultErr};
-use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, Pat, PatExpr, PatExprKind, PatKind};
-use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
+use rustc_hir::def::Res;
+use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, Pat, PatExpr, PatExprKind, PatKind, QPath};
+use rustc_lint::{LateContext, LintContext};
+use rustc_middle::ty::{GenericArgKind, Ty};
 use rustc_span::sym;
 
-use super::MANUAL_UNWRAP_OR;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::{expr_type_is_certain, get_type_diagnostic_name, implements_trait};
+use clippy_utils::{is_default_equivalent, is_lint_allowed, path_res, peel_blocks, span_contains_comment};
 
-pub(super) fn check_match<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'tcx>,
-    scrutinee: &'tcx Expr<'_>,
-    arms: &'tcx [Arm<'_>],
-) {
-    let ty = cx.typeck_results().expr_ty(scrutinee);
-    if let Some((or_arm, unwrap_arm)) = applicable_or_arm(cx, arms) {
-        check_and_lint(cx, expr, unwrap_arm.pat, scrutinee, unwrap_arm.body, or_arm.body, ty);
+use super::{MANUAL_UNWRAP_OR, MANUAL_UNWRAP_OR_DEFAULT};
+
+fn get_some(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<HirId> {
+    if let PatKind::TupleStruct(QPath::Resolved(_, path), &[pat], _) = pat.kind
+        && let PatKind::Binding(_, pat_id, _, _) = pat.kind
+        && let Some(def_id) = path.res.opt_def_id()
+        // Since it comes from a pattern binding, we need to get the parent to actually match
+        // against it.
+        && let Some(def_id) = cx.tcx.opt_parent(def_id)
+        && let Some(lang_item) = cx.tcx.lang_items().from_def_id(def_id)
+        && matches!(lang_item, LangItem::OptionSome | LangItem::ResultOk)
+    {
+        Some(pat_id)
+    } else {
+        None
     }
 }
 
-pub(super) fn check_if_let<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    let_pat: &'tcx Pat<'_>,
-    let_expr: &'tcx Expr<'_>,
-    then_expr: &'tcx Expr<'_>,
-    else_expr: &'tcx Expr<'_>,
-) {
-    let ty = cx.typeck_results().expr_ty(let_expr);
-    let then_ty = cx.typeck_results().expr_ty(then_expr);
-    // The signature is `fn unwrap_or<T>(self: Option<T>, default: T) -> T`.
-    // When `expr_adjustments(then_expr).is_empty()`, `T` should equate to `default`'s type.
-    // Otherwise, type error will occur.
-    if cx.typeck_results().expr_adjustments(then_expr).is_empty()
-        && let rustc_middle::ty::Adt(_did, args) = ty.kind()
-        && let Some(some_ty) = args.first().and_then(|arg| arg.as_type())
-        && some_ty != then_ty
+fn get_none<'tcx>(cx: &LateContext<'_>, arm: &Arm<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    if let PatKind::Expr(PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. }) = arm.pat.kind
+        && let Some(def_id) = path.res.opt_def_id()
+        // Since it comes from a pattern binding, we need to get the parent to actually match
+        // against it.
+        && let Some(def_id) = cx.tcx.opt_parent(def_id)
+        && cx.tcx.lang_items().get(LangItem::OptionNone) == Some(def_id)
     {
+        Some(arm.body)
+    } else if let PatKind::TupleStruct(QPath::Resolved(_, path), _, _)= arm.pat.kind
+        && let Some(def_id) = path.res.opt_def_id()
+        // Since it comes from a pattern binding, we need to get the parent to actually match
+        // against it.
+        && let Some(def_id) = cx.tcx.opt_parent(def_id)
+        && cx.tcx.lang_items().get(LangItem::ResultErr) == Some(def_id)
+    {
+        Some(arm.body)
+    } else if let PatKind::Wild = arm.pat.kind {
+        // We consider that the `Some` check will filter it out if it's not right.
+        Some(arm.body)
+    } else {
+        None
+    }
+}
+
+fn get_some_and_none_bodies<'tcx>(
+    cx: &LateContext<'tcx>,
+    arm1: &'tcx Arm<'tcx>,
+    arm2: &'tcx Arm<'tcx>,
+) -> Option<((&'tcx Expr<'tcx>, HirId), &'tcx Expr<'tcx>)> {
+    if let Some(binding_id) = get_some(cx, arm1.pat)
+        && let Some(body_none) = get_none(cx, arm2)
+    {
+        Some(((arm1.body, binding_id), body_none))
+    } else if let Some(binding_id) = get_some(cx, arm2.pat)
+        && let Some(body_none) = get_none(cx, arm1)
+    {
+        Some(((arm2.body, binding_id), body_none))
+    } else {
+        None
+    }
+}
+
+fn handle(
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
+    expr_name: &'static str,
+    condition: &Expr<'_>,
+    body_some: &Expr<'_>,
+    body_none: &Expr<'_>,
+    binding_id: HirId,
+) {
+    // Only deal with situations where both alternatives return the same non-adjusted type.
+    if cx.typeck_results().expr_ty(body_some) != cx.typeck_results().expr_ty(body_none) {
         return;
     }
-    check_and_lint(cx, expr, let_pat, let_expr, then_expr, peel_blocks(else_expr), ty);
-}
 
-fn check_and_lint<'tcx>(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
-    let_pat: &'tcx Pat<'_>,
-    let_expr: &'tcx Expr<'_>,
-    then_expr: &'tcx Expr<'_>,
-    else_expr: &'tcx Expr<'_>,
-    ty: Ty<'tcx>,
-) {
-    if let PatKind::TupleStruct(ref qpath, [unwrap_pat], _) = let_pat.kind
-        && let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(qpath, let_pat.hir_id)
-        && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
-        && (cx.tcx.lang_items().option_some_variant() == Some(variant_id)
-            || cx.tcx.lang_items().result_ok_variant() == Some(variant_id))
-        && let PatKind::Binding(_, binding_hir_id, ..) = unwrap_pat.kind
-        && path_to_local_id(peel_blocks(then_expr), binding_hir_id)
-        && cx.typeck_results().expr_adjustments(then_expr).is_empty()
-        && let Some(ty_name) = find_type_name(cx, ty)
-        && let Some(or_body_snippet) = else_expr.span.get_source_text(cx)
-        && let Some(indent) = indent_of(cx, expr.span)
-        && ConstEvalCtxt::new(cx).eval_simple(else_expr).is_some()
+    let expr_type = cx.typeck_results().expr_ty(expr);
+    // We check that the `Some(x) => x` doesn't do anything apart "returning" the value in `Some`.
+    if let ExprKind::Path(QPath::Resolved(_, path)) = peel_blocks(body_some).kind
+        && let Res::Local(local_id) = path.res
+        && local_id == binding_id
     {
-        lint(cx, expr, let_expr, ty_name, &or_body_snippet, indent);
+        // Machine applicable only if there are no comments present
+        let mut applicability = if span_contains_comment(cx.sess().source_map(), expr.span) {
+            Applicability::MaybeIncorrect
+        } else {
+            Applicability::MachineApplicable
+        };
+        let receiver = Sugg::hir_with_applicability(cx, condition, "_", &mut applicability).maybe_paren();
+
+        // We now check the `None` arm is calling a method equivalent to `Default::default`.
+        if !is_lint_allowed(cx, MANUAL_UNWRAP_OR_DEFAULT, expr.hir_id)
+            // We check if the return type of the expression implements Default.
+            && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
+            && implements_trait(cx, expr_type, default_trait_id, &[])
+            // We check if the initial condition implements Default.
+            && let Some(condition_ty) = cx.typeck_results().expr_ty(condition).walk().nth(1)
+            && let GenericArgKind::Type(condition_ty) = condition_ty.unpack()
+            && implements_trait(cx, condition_ty, default_trait_id, &[])
+            && is_default_equivalent(cx, peel_blocks(body_none))
+        {
+            // We now check if the condition is a None variant, in which case we need to specify the type
+            if path_res(cx, condition)
+                .opt_def_id()
+                .is_some_and(|id| Some(cx.tcx.parent(id)) == cx.tcx.lang_items().option_none_variant())
+            {
+                return span_lint_and_sugg(
+                    cx,
+                    MANUAL_UNWRAP_OR_DEFAULT,
+                    expr.span,
+                    format!("{expr_name} can be simplified with `.unwrap_or_default()`"),
+                    "replace it with",
+                    format!("{receiver}::<{expr_type}>.unwrap_or_default()"),
+                    applicability,
+                );
+            }
+
+            // We check if the expression type is still uncertain, in which case we ask the user to specify it
+            if !expr_type_is_certain(cx, condition) {
+                return span_lint_and_sugg(
+                    cx,
+                    MANUAL_UNWRAP_OR_DEFAULT,
+                    expr.span,
+                    format!("{expr_name} can be simplified with `.unwrap_or_default()`"),
+                    format!("ascribe the type {expr_type} and replace your expression with"),
+                    format!("{receiver}.unwrap_or_default()"),
+                    Applicability::Unspecified,
+                );
+            }
+
+            span_lint_and_sugg(
+                cx,
+                MANUAL_UNWRAP_OR_DEFAULT,
+                expr.span,
+                format!("{expr_name} can be simplified with `.unwrap_or_default()`"),
+                "replace it with",
+                format!("{receiver}.unwrap_or_default()"),
+                applicability,
+            );
+        } else if let Some(ty_name) = find_type_name(cx, cx.typeck_results().expr_ty(condition))
+            && cx.typeck_results().expr_adjustments(body_some).is_empty()
+            && let Some(or_body_snippet) = peel_blocks(body_none).span.get_source_text(cx)
+            && let Some(indent) = indent_of(cx, expr.span)
+            && ConstEvalCtxt::new(cx).eval_simple(body_none).is_some()
+        {
+            let reindented_or_body = reindent_multiline(&or_body_snippet, true, Some(indent));
+            let mut app = Applicability::MachineApplicable;
+            let suggestion = Sugg::hir_with_context(cx, condition, expr.span.ctxt(), "..", &mut app).maybe_paren();
+            span_lint_and_sugg(
+                cx,
+                MANUAL_UNWRAP_OR,
+                expr.span,
+                format!("this pattern reimplements `{ty_name}::unwrap_or`"),
+                "replace with",
+                format!("{suggestion}.unwrap_or({reindented_or_body})",),
+                app,
+            );
+        }
     }
 }
 
 fn find_type_name<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'static str> {
-    if is_type_diagnostic_item(cx, ty, sym::Option) {
-        Some("Option")
-    } else if is_type_diagnostic_item(cx, ty, sym::Result) {
-        Some("Result")
-    } else {
-        None
+    match get_type_diagnostic_name(cx, ty)? {
+        sym::Option => Some("Option"),
+        sym::Result => Some("Result"),
+        _ => None,
     }
 }
 
-fn applicable_or_arm<'a>(cx: &LateContext<'_>, arms: &'a [Arm<'a>]) -> Option<(&'a Arm<'a>, &'a Arm<'a>)> {
-    if arms.len() == 2
-        && arms.iter().all(|arm| arm.guard.is_none())
-        && let Some((idx, or_arm)) = arms.iter().enumerate().find(|(_, arm)| match arm.pat.kind {
-            PatKind::Expr(PatExpr {
-                hir_id,
-                kind: PatExprKind::Path(qpath),
-                ..
-            }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
-            PatKind::TupleStruct(ref qpath, [pat], _) => {
-                matches!(pat.kind, PatKind::Wild)
-                    && is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), ResultErr)
-            },
-            _ => false,
-        })
-        && let unwrap_arm = &arms[1 - idx]
-        && !contains_return_break_continue_macro(or_arm.body)
-    {
-        Some((or_arm, unwrap_arm))
-    } else {
-        None
-    }
-}
-
-fn lint<'tcx>(
+pub fn check_match<'tcx>(
     cx: &LateContext<'tcx>,
-    expr: &Expr<'tcx>,
-    scrutinee: &'tcx Expr<'_>,
-    ty_name: &str,
-    or_body_snippet: &str,
-    indent: usize,
+    expr: &'tcx Expr<'tcx>,
+    scrutinee: &'tcx Expr<'tcx>,
+    arms: &'tcx [Arm<'tcx>],
 ) {
-    let reindented_or_body = reindent_multiline(or_body_snippet, true, Some(indent));
+    if let [arm1, arm2] = arms
+        // Make sure there are no guards to keep things simple
+        && arm1.guard.is_none()
+        && arm2.guard.is_none()
+        // Get the some and none bodies and the binding id of the some arm
+        && let Some(((body_some, binding_id), body_none)) = get_some_and_none_bodies(cx, arm1, arm2)
+    {
+        handle(cx, expr, "match", scrutinee, body_some, body_none, binding_id);
+    }
+}
 
-    let mut app = Applicability::MachineApplicable;
-    let suggestion = sugg::Sugg::hir_with_context(cx, scrutinee, expr.span.ctxt(), "..", &mut app).maybe_par();
-    span_lint_and_sugg(
-        cx,
-        MANUAL_UNWRAP_OR,
-        expr.span,
-        format!("this pattern reimplements `{ty_name}::unwrap_or`"),
-        "replace with",
-        format!("{suggestion}.unwrap_or({reindented_or_body})",),
-        app,
-    );
+pub fn check_if_let<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'tcx>,
+    pat: &'tcx Pat<'tcx>,
+    scrutinee: &'tcx Expr<'tcx>,
+    then_expr: &'tcx Expr<'tcx>,
+    else_expr: &'tcx Expr<'tcx>,
+) {
+    if let Some(binding_id) = get_some(cx, pat) {
+        handle(
+            cx,
+            expr,
+            "if let",
+            scrutinee,
+            peel_blocks(then_expr),
+            peel_blocks(else_expr),
+            binding_id,
+        );
+    }
 }

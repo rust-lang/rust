@@ -8,7 +8,6 @@ mod manual_utils;
 mod match_as_ref;
 mod match_bool;
 mod match_like_matches;
-mod match_on_vec_items;
 mod match_ref_pats;
 mod match_same_arms;
 mod match_single_binding;
@@ -724,38 +723,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for `match vec[idx]` or `match vec[n..m]`.
+    /// Checks if a `match` or `if let` expression can be simplified using
+    /// `.unwrap_or_default()`.
     ///
     /// ### Why is this bad?
-    /// This can panic at runtime.
+    /// It can be done in one call with `.unwrap_or_default()`.
     ///
     /// ### Example
-    /// ```rust, no_run
-    /// let arr = vec![0, 1, 2, 3];
-    /// let idx = 1;
+    /// ```no_run
+    /// let x: Option<String> = Some(String::new());
+    /// let y: String = match x {
+    ///     Some(v) => v,
+    ///     None => String::new(),
+    /// };
     ///
-    /// match arr[idx] {
-    ///     0 => println!("{}", 0),
-    ///     1 => println!("{}", 3),
-    ///     _ => {},
-    /// }
+    /// let x: Option<Vec<String>> = Some(Vec::new());
+    /// let y: Vec<String> = if let Some(v) = x {
+    ///     v
+    /// } else {
+    ///     Vec::new()
+    /// };
     /// ```
-    ///
     /// Use instead:
-    /// ```rust, no_run
-    /// let arr = vec![0, 1, 2, 3];
-    /// let idx = 1;
+    /// ```no_run
+    /// let x: Option<String> = Some(String::new());
+    /// let y: String = x.unwrap_or_default();
     ///
-    /// match arr.get(idx) {
-    ///     Some(0) => println!("{}", 0),
-    ///     Some(1) => println!("{}", 3),
-    ///     _ => {},
-    /// }
+    /// let x: Option<Vec<String>> = Some(Vec::new());
+    /// let y: Vec<String> = x.unwrap_or_default();
     /// ```
-    #[clippy::version = "1.45.0"]
-    pub MATCH_ON_VEC_ITEMS,
-    pedantic,
-    "matching on vector elements can panic"
+    #[clippy::version = "1.79.0"]
+    pub MANUAL_UNWRAP_OR_DEFAULT,
+    suspicious,
+    "check if a `match` or `if let` can be simplified with `unwrap_or_default`"
 }
 
 declare_clippy_lint! {
@@ -1040,7 +1040,7 @@ impl_lint_pass!(Matches => [
     NEEDLESS_MATCH,
     COLLAPSIBLE_MATCH,
     MANUAL_UNWRAP_OR,
-    MATCH_ON_VEC_ITEMS,
+    MANUAL_UNWRAP_OR_DEFAULT,
     MATCH_STR_CASE_MISMATCH,
     SIGNIFICANT_DROP_IN_SCRUTINEE,
     TRY_ERR,
@@ -1118,7 +1118,6 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
                     needless_match::check_match(cx, ex, arms, expr);
-                    match_on_vec_items::check(cx, ex);
                     match_str_case_mismatch::check(cx, ex, arms);
                     redundant_guards::check(cx, arms, self.msrv);
 

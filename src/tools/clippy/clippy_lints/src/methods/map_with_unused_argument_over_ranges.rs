@@ -41,7 +41,7 @@ fn extract_count_with_applicability(
             return Some(format!("{count}"));
         }
         let end_snippet = Sugg::hir_with_applicability(cx, end, "...", applicability)
-            .maybe_par()
+            .maybe_paren()
             .into_string();
         if lower_bound == 0 {
             if range.limits == RangeLimits::Closed {
