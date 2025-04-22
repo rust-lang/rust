@@ -1,46 +1,10 @@
+pub use super::common::Env;
 use crate::ffi::{OsStr, OsString};
-use crate::{fmt, io};
-
-pub struct EnvStrDebug<'a> {
-    iter: &'a [(OsString, OsString)],
-}
-
-impl fmt::Debug for EnvStrDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut list = f.debug_list();
-        for (a, b) in self.iter {
-            list.entry(&(a.to_str().unwrap(), b.to_str().unwrap()));
-        }
-        list.finish()
-    }
-}
-
-pub struct Env(crate::vec::IntoIter<(OsString, OsString)>);
-
-impl Env {
-    // FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
-    pub fn str_debug(&self) -> impl fmt::Debug + '_ {
-        EnvStrDebug { iter: self.0.as_slice() }
-    }
-}
-
-impl Iterator for Env {
-    type Item = (OsString, OsString);
-
-    fn next(&mut self) -> Option<(OsString, OsString)> {
-        self.0.next()
-    }
-}
-
-impl fmt::Debug for Env {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
+use crate::io;
 
 pub fn env() -> Env {
     let env = uefi_env::get_all().expect("not supported on this platform");
-    Env(env.into_iter())
+    Env::new(env)
 }
 
 pub fn getenv(key: &OsStr) -> Option<OsString> {

@@ -1,61 +1,17 @@
 use core::slice::memchr;
 
+pub use super::common::Env;
 use crate::ffi::{CStr, OsStr, OsString};
+use crate::io;
 use crate::os::raw::{c_char, c_int};
 use crate::os::solid::ffi::{OsStrExt, OsStringExt};
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::common::small_c_string::run_with_cstr;
-use crate::{fmt, io, vec};
 
 static ENV_LOCK: RwLock<()> = RwLock::new(());
 
 pub fn env_read_lock() -> impl Drop {
     ENV_LOCK.read().unwrap_or_else(PoisonError::into_inner)
-}
-
-pub struct Env {
-    iter: vec::IntoIter<(OsString, OsString)>,
-}
-
-// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
-pub struct EnvStrDebug<'a> {
-    slice: &'a [(OsString, OsString)],
-}
-
-impl fmt::Debug for EnvStrDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { slice } = self;
-        f.debug_list()
-            .entries(slice.iter().map(|(a, b)| (a.to_str().unwrap(), b.to_str().unwrap())))
-            .finish()
-    }
-}
-
-impl Env {
-    pub fn str_debug(&self) -> impl fmt::Debug + '_ {
-        let Self { iter } = self;
-        EnvStrDebug { slice: iter.as_slice() }
-    }
-}
-
-impl fmt::Debug for Env {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { iter } = self;
-        f.debug_list().entries(iter.as_slice()).finish()
-    }
-}
-
-impl !Send for Env {}
-impl !Sync for Env {}
-
-impl Iterator for Env {
-    type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> {
-        self.iter.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
@@ -76,7 +32,7 @@ pub fn env() -> Env {
                 environ = environ.add(1);
             }
         }
-        return Env { iter: result.into_iter() };
+        return Env::new(result);
     }
 
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {

@@ -1,10 +1,11 @@
 use core::slice::memchr;
 
+pub use super::common::Env;
 use crate::collections::HashMap;
 use crate::ffi::{CStr, OsStr, OsString, c_char};
+use crate::io;
 use crate::os::hermit::ffi::OsStringExt;
 use crate::sync::Mutex;
-use crate::{fmt, io, vec};
 
 static ENV: Mutex<Option<HashMap<OsString, OsString>>> = Mutex::new(None);
 
@@ -44,60 +45,15 @@ pub fn init(env: *const *const c_char) {
     }
 }
 
-pub struct Env {
-    iter: vec::IntoIter<(OsString, OsString)>,
-}
-
-// FIXME(https://github.com/rust-lang/rust/issues/114583): Remove this when <OsStr as Debug>::fmt matches <str as Debug>::fmt.
-pub struct EnvStrDebug<'a> {
-    slice: &'a [(OsString, OsString)],
-}
-
-impl fmt::Debug for EnvStrDebug<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { slice } = self;
-        f.debug_list()
-            .entries(slice.iter().map(|(a, b)| (a.to_str().unwrap(), b.to_str().unwrap())))
-            .finish()
-    }
-}
-
-impl Env {
-    pub fn str_debug(&self) -> impl fmt::Debug + '_ {
-        let Self { iter } = self;
-        EnvStrDebug { slice: iter.as_slice() }
-    }
-}
-
-impl fmt::Debug for Env {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { iter } = self;
-        f.debug_list().entries(iter.as_slice()).finish()
-    }
-}
-
-impl !Send for Env {}
-impl !Sync for Env {}
-
-impl Iterator for Env {
-    type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> {
-        self.iter.next()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
     let guard = ENV.lock().unwrap();
     let env = guard.as_ref().unwrap();
 
-    let result = env.iter().map(|(key, value)| (key.clone(), value.clone())).collect::<Vec<_>>();
+    let result = env.iter().map(|(key, value)| (key.clone(), value.clone())).collect();
 
-    Env { iter: result.into_iter() }
+    Env::new(result)
 }
 
 pub fn getenv(k: &OsStr) -> Option<OsString> {

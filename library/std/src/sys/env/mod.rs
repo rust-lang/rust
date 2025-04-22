@@ -2,6 +2,17 @@
 
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+#[cfg(any(
+    target_family = "unix",
+    target_os = "hermit",
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    target_os = "solid_asp3",
+    target_os = "uefi",
+    target_os = "wasi",
+    target_os = "xous",
+))]
+mod common;
+
 cfg_if::cfg_if! {
     if #[cfg(target_family = "unix")] {
         mod unix;
