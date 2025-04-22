@@ -1376,3 +1376,49 @@ pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'t
         _ => None,
     }
 }
+
+/// Check if a Ty<'_> of `Iterator` contains any mutable access to non-owning types by checking if
+/// it contains fields of mutable references or pointers, or references/pointers to non-`Freeze`
+/// types, or `PhantomData` types containing any of the previous. This can be used to check whether
+/// skipping iterating over an iterator will change its behavior.
+pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>) -> bool {
+    fn normalize_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+        cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty)
+    }
+
+    /// Check if `ty` contains mutable references or equivalent, which includes:
+    /// - A mutable reference/pointer.
+    /// - A reference/pointer to a non-`Freeze` type.
+    /// - A `PhantomData` type containing any of the previous.
+    fn has_non_owning_mutable_access_inner<'tcx>(
+        cx: &LateContext<'tcx>,
+        phantoms: &mut FxHashSet<Ty<'tcx>>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        match ty.kind() {
+            ty::Adt(adt_def, args) if adt_def.is_phantom_data() => {
+                phantoms.insert(ty)
+                    && args
+                        .types()
+                        .any(|arg_ty| has_non_owning_mutable_access_inner(cx, phantoms, arg_ty))
+            },
+            ty::Adt(adt_def, args) => adt_def.all_fields().any(|field| {
+                has_non_owning_mutable_access_inner(cx, phantoms, normalize_ty(cx, field.ty(cx.tcx, args)))
+            }),
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => has_non_owning_mutable_access_inner(cx, phantoms, *elem_ty),
+            ty::RawPtr(pointee_ty, mutability) | ty::Ref(_, pointee_ty, mutability) => {
+                mutability.is_mut() || !pointee_ty.is_freeze(cx.tcx, cx.typing_env())
+            },
+            ty::Closure(_, closure_args) => {
+                matches!(closure_args.types().next_back(), Some(captures) if has_non_owning_mutable_access_inner(cx, phantoms, captures))
+            },
+            ty::Tuple(tuple_args) => tuple_args
+                .iter()
+                .any(|arg_ty| has_non_owning_mutable_access_inner(cx, phantoms, arg_ty)),
+            _ => false,
+        }
+    }
+
+    let mut phantoms = FxHashSet::default();
+    has_non_owning_mutable_access_inner(cx, &mut phantoms, iter_ty)
+}
