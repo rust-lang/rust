@@ -16,6 +16,7 @@ mod caches;
 pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
 
 mod config;
+use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::DiagInner;
 use rustc_hashes::Hash64;
@@ -150,6 +151,8 @@ pub enum QuerySideEffect {
 
 pub trait QueryContext: HasDepContext {
     type QueryInfo: Clone;
+
+    fn jobserver_proxy(&self) -> &Proxy;
 
     fn next_job_id(self) -> QueryJobId;
 

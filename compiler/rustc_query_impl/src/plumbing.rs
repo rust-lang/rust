@@ -4,6 +4,7 @@
 
 use std::num::NonZero;
 
+use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordMap;
@@ -68,6 +69,11 @@ impl<'tcx> HasDepContext for QueryCtxt<'tcx> {
 
 impl<'tcx> QueryContext for QueryCtxt<'tcx> {
     type QueryInfo = QueryStackDeferred<'tcx>;
+
+    #[inline]
+    fn jobserver_proxy(&self) -> &Proxy {
+        &*self.jobserver_proxy
+    }
 
     #[inline]
     fn next_job_id(self) -> QueryJobId {
