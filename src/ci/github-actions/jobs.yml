@@ -603,6 +603,8 @@ auto:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnu
+        --set llvm.plugins=true
+        --set llvm.enzyme=true
         --enable-full-tools
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
