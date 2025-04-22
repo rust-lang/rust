@@ -9,7 +9,6 @@ use hir_def::{
 };
 use intern::sym;
 use rustc_index::IndexVec;
-use salsa::Cycle;
 use smallvec::SmallVec;
 use triomphe::Arc;
 
@@ -131,9 +130,8 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
     (get(sym::rustc_layout_scalar_valid_range_start), get(sym::rustc_layout_scalar_valid_range_end))
 }
 
-pub(crate) fn layout_of_adt_recover(
+pub(crate) fn layout_of_adt_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
     _: AdtId,
     _: Substitution,
     _: Arc<TraitEnvironment>,

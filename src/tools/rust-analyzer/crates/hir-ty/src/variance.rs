@@ -19,10 +19,10 @@ use crate::{
     AliasTy, Const, ConstScalar, DynTyExt, GenericArg, GenericArgData, Interner, Lifetime,
     LifetimeData, Ty, TyKind,
 };
-use base_db::salsa::Cycle;
 use chalk_ir::Mutability;
 use hir_def::signatures::StructFlags;
 use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId};
+use salsa::CycleRecoveryAction;
 use std::fmt;
 use std::ops::Not;
 use stdx::never;
@@ -55,9 +55,17 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
     variances.is_empty().not().then(|| Arc::from_iter(variances))
 }
 
-pub(crate) fn variances_of_cycle(
+pub(crate) fn variances_of_cycle_fn(
+    _db: &dyn HirDatabase,
+    _result: &Option<Arc<[Variance]>>,
+    _count: u32,
+    _def: GenericDefId,
+) -> CycleRecoveryAction<Option<Arc<[Variance]>>> {
+    CycleRecoveryAction::Iterate
+}
+
+pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
-    _cycle: &Cycle,
     def: GenericDefId,
 ) -> Option<Arc<[Variance]>> {
     let generics = generics(db, def);
@@ -953,16 +961,12 @@ struct S3<T>(S<T, T>);
 
     #[test]
     fn prove_fixedpoint() {
-        // FIXME: This is wrong, this should be `FixedPoint[T: covariant, U: covariant, V: covariant]`
-        // This is a limitation of current salsa where a cycle may only set a fallback value to the
-        // query result, but we need to solve a fixpoint here. The new salsa will have this
-        // fortunately.
         check(
             r#"
 struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
 "#,
             expect![[r#"
-                FixedPoint[T: bivariant, U: bivariant, V: bivariant]
+                FixedPoint[T: covariant, U: covariant, V: covariant]
             "#]],
         );
     }

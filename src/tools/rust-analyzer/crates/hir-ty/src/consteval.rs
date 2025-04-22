@@ -10,7 +10,6 @@ use hir_def::{
     type_ref::LiteralConstRef,
 };
 use hir_expand::Lookup;
-use salsa::Cycle;
 use stdx::never;
 use triomphe::Arc;
 
@@ -220,9 +219,8 @@ pub fn try_const_isize(db: &dyn HirDatabase, c: &Const) -> Option<i128> {
     }
 }
 
-pub(crate) fn const_eval_recover(
+pub(crate) fn const_eval_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
     _: GeneralConstId,
     _: Substitution,
     _: Option<Arc<TraitEnvironment>>,
@@ -230,17 +228,15 @@ pub(crate) fn const_eval_recover(
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_static_recover(
+pub(crate) fn const_eval_static_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
     _: StaticId,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_discriminant_recover(
+pub(crate) fn const_eval_discriminant_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
     _: EnumVariantId,
 ) -> Result<i128, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))

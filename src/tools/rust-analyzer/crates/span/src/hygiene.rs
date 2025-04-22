@@ -27,7 +27,10 @@ use crate::Edition;
 #[cfg(feature = "salsa")]
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct SyntaxContext(
-    salsa::Id,
+    /// # Invariant
+    ///
+    /// This is either a valid `salsa::Id` or a root `SyntaxContext`.
+    u32,
     std::marker::PhantomData<&'static salsa::plumbing::interned::Value<SyntaxContext>>,
 );
 
@@ -95,10 +98,11 @@ const _: () = {
         type Fields<'a> = SyntaxContextData;
         type Struct<'a> = SyntaxContext;
         fn struct_from_id<'db>(id: salsa::Id) -> Self::Struct<'db> {
-            SyntaxContext(id, std::marker::PhantomData)
+            SyntaxContext::from_salsa_id(id)
         }
         fn deref_struct(s: Self::Struct<'_>) -> salsa::Id {
-            s.0
+            s.as_salsa_id()
+                .expect("`SyntaxContext::deref_structs()` called on a root `SyntaxContext`")
         }
     }
     impl SyntaxContext {
@@ -108,19 +112,19 @@ const _: () = {
         {
             static CACHE: zalsa_::IngredientCache<zalsa_struct_::IngredientImpl<SyntaxContext>> =
                 zalsa_::IngredientCache::new();
-            CACHE.get_or_create(db.as_dyn_database(), || {
+            CACHE.get_or_create(db.zalsa(), || {
                 db.zalsa().add_or_lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
             })
         }
     }
     impl zalsa_::AsId for SyntaxContext {
         fn as_id(&self) -> salsa::Id {
-            self.0
+            self.as_salsa_id().expect("`SyntaxContext::as_id()` called on a root `SyntaxContext`")
         }
     }
     impl zalsa_::FromId for SyntaxContext {
         fn from_id(id: salsa::Id) -> Self {
-            Self(id, std::marker::PhantomData)
+            Self::from_salsa_id(id)
         }
     }
     unsafe impl Send for SyntaxContext {}
@@ -210,44 +214,44 @@ const _: () = {
         where
             Db: ?Sized + zalsa_::Database,
         {
-            if self.is_root() {
-                return None;
-            }
-            let fields = SyntaxContext::ingredient(db).fields(db.as_dyn_database(), self);
-            std::clone::Clone::clone(&fields.outer_expn)
+            let id = self.as_salsa_id()?;
+            let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
+            fields.outer_expn
         }
 
         pub fn outer_transparency<Db>(self, db: &'db Db) -> Transparency
         where
             Db: ?Sized + zalsa_::Database,
         {
-            if self.is_root() {
-                return Transparency::Opaque;
-            }
-            let fields = SyntaxContext::ingredient(db).fields(db.as_dyn_database(), self);
-            std::clone::Clone::clone(&fields.outer_transparency)
+            let Some(id) = self.as_salsa_id() else { return Transparency::Opaque };
+            let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
+            fields.outer_transparency
         }
 
         pub fn edition<Db>(self, db: &'db Db) -> Edition
         where
             Db: ?Sized + zalsa_::Database,
         {
-            if self.is_root() {
-                return Edition::from_u32(SyntaxContext::MAX_ID - self.0.as_u32());
+            match self.as_salsa_id() {
+                Some(id) => {
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
+                    fields.edition
+                }
+                None => Edition::from_u32(SyntaxContext::MAX_ID - self.into_u32()),
             }
-            let fields = SyntaxContext::ingredient(db).fields(db.as_dyn_database(), self);
-            std::clone::Clone::clone(&fields.edition)
         }
 
         pub fn parent<Db>(self, db: &'db Db) -> SyntaxContext
         where
             Db: ?Sized + zalsa_::Database,
         {
-            if self.is_root() {
-                return self;
+            match self.as_salsa_id() {
+                Some(id) => {
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
+                    fields.parent
+                }
+                None => self,
             }
-            let fields = SyntaxContext::ingredient(db).fields(db.as_dyn_database(), self);
-            std::clone::Clone::clone(&fields.parent)
         }
 
         /// This context, but with all transparent and semi-transparent expansions filtered away.
@@ -255,11 +259,13 @@ const _: () = {
         where
             Db: ?Sized + zalsa_::Database,
         {
-            if self.is_root() {
-                return self;
+            match self.as_salsa_id() {
+                Some(id) => {
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
+                    fields.opaque
+                }
+                None => self,
             }
-            let fields = SyntaxContext::ingredient(db).fields(db.as_dyn_database(), self);
-            std::clone::Clone::clone(&fields.opaque)
         }
 
         /// This context, but with all transparent expansions filtered away.
@@ -267,33 +273,19 @@ const _: () = {
         where
             Db: ?Sized + zalsa_::Database,
         {
-            if self.is_root() {
-                return self;
+            match self.as_salsa_id() {
+                Some(id) => {
+                    let fields = SyntaxContext::ingredient(db).data(db.as_dyn_database(), id);
+                    fields.opaque_and_semitransparent
+                }
+                None => self,
             }
-            let fields = SyntaxContext::ingredient(db).fields(db.as_dyn_database(), self);
-            std::clone::Clone::clone(&fields.opaque_and_semitransparent)
-        }
-
-        pub fn default_debug_fmt(this: Self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            salsa::with_attached_database(|db| {
-                let fields = SyntaxContext::ingredient(db).fields(db.as_dyn_database(), this);
-                let mut f = f.debug_struct("SyntaxContextData");
-                let f = f.field("outer_expn", &fields.outer_expn);
-                let f = f.field("outer_transparency", &fields.outer_expn);
-                let f = f.field("edition", &fields.edition);
-                let f = f.field("parent", &fields.parent);
-                let f = f.field("opaque", &fields.opaque);
-                let f = f.field("opaque_and_semitransparent", &fields.opaque_and_semitransparent);
-                f.finish()
-            })
-            .unwrap_or_else(|| {
-                f.debug_tuple("SyntaxContextData").field(&zalsa_::AsId::as_id(&this)).finish()
-            })
         }
     }
 };
 
 impl SyntaxContext {
+    #[inline]
     pub fn is_root(self) -> bool {
         (SyntaxContext::MAX_ID - Edition::LATEST as u32) <= self.into_u32()
             && self.into_u32() <= (SyntaxContext::MAX_ID - Edition::Edition2015 as u32)
@@ -307,9 +299,11 @@ impl SyntaxContext {
     }
 
     /// The root context, which is the parent of all other contexts. All [`FileId`]s have this context.
+    #[inline]
     pub const fn root(edition: Edition) -> Self {
         let edition = edition as u32;
-        SyntaxContext::from_u32(SyntaxContext::MAX_ID - edition)
+        // SAFETY: Roots are valid `SyntaxContext`s
+        unsafe { SyntaxContext::from_u32(SyntaxContext::MAX_ID - edition) }
     }
 }
 
@@ -317,12 +311,34 @@ impl SyntaxContext {
 impl SyntaxContext {
     const MAX_ID: u32 = salsa::Id::MAX_U32 - 1;
 
+    #[inline]
     pub const fn into_u32(self) -> u32 {
-        self.0.as_u32()
+        self.0
     }
 
-    pub const fn from_u32(u32: u32) -> Self {
-        Self(salsa::Id::from_u32(u32), std::marker::PhantomData)
+    /// # Safety
+    ///
+    /// The ID must be a valid `SyntaxContext`.
+    #[inline]
+    pub const unsafe fn from_u32(u32: u32) -> Self {
+        // INVARIANT: Our precondition.
+        Self(u32, std::marker::PhantomData)
+    }
+
+    #[inline]
+    fn as_salsa_id(self) -> Option<salsa::Id> {
+        if self.is_root() {
+            None
+        } else {
+            // SAFETY: By our invariant, this is either a root (which we verified it's not) or a valid `salsa::Id`.
+            unsafe { Some(salsa::Id::from_u32(self.0)) }
+        }
+    }
+
+    #[inline]
+    fn from_salsa_id(id: salsa::Id) -> Self {
+        // SAFETY: This comes from a Salsa ID.
+        unsafe { Self::from_u32(id.as_u32()) }
     }
 }
 #[cfg(not(feature = "salsa"))]
@@ -342,7 +358,10 @@ impl SyntaxContext {
         self.0
     }
 
-    pub const fn from_u32(u32: u32) -> Self {
+    /// # Safety
+    ///
+    /// None. This is always safe to call without the `salsa` feature.
+    pub const unsafe fn from_u32(u32: u32) -> Self {
         Self(u32)
     }
 }

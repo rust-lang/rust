@@ -136,7 +136,8 @@ pub fn from_assoc_type_id(id: AssocTypeId) -> TypeAliasId {
 
 pub fn from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> TypeOrConstParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = FromId::from_id(Id::from_u32(idx.idx.try_into().unwrap()));
+    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
+    let interned_id = FromId::from_id(unsafe { Id::from_u32(idx.idx.try_into().unwrap()) });
     db.lookup_intern_type_or_const_param_id(interned_id)
 }
 
@@ -150,7 +151,8 @@ pub fn to_placeholder_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Place
 
 pub fn lt_from_placeholder_idx(db: &dyn HirDatabase, idx: PlaceholderIndex) -> LifetimeParamId {
     assert_eq!(idx.ui, chalk_ir::UniverseIndex::ROOT);
-    let interned_id = FromId::from_id(Id::from_u32(idx.idx.try_into().unwrap()));
+    // SAFETY: We cannot really encapsulate this unfortunately, so just hope this is sound.
+    let interned_id = FromId::from_id(unsafe { Id::from_u32(idx.idx.try_into().unwrap()) });
     db.lookup_intern_lifetime_param_id(interned_id)
 }
 
