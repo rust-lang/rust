@@ -107,14 +107,11 @@ impl SerializedDepGraph {
         let header = self.edge_list_indices[source];
         let mut raw = &self.edge_list_data[header.start()..];
 
-        // The number of edges for this node is implicitly stored in the combination of the byte
-        // width and the length.
         let bytes_per_index = header.bytes_per_index();
-        let len = header.edges;
 
         // LLVM doesn't hoist EdgeHeader::mask so we do it ourselves.
         let mask = header.mask();
-        (0..len).map(move |_| {
+        (0..header.num_edges).map(move |_| {
             // Doing this slicing in this order ensures that the first bounds check suffices for
             // all the others.
             let index = &raw[..DEP_NODE_SIZE];
@@ -157,7 +154,7 @@ impl SerializedDepGraph {
 #[derive(Debug, Clone, Copy)]
 struct EdgeHeader {
     repr: usize,
-    edges: u32,
+    num_edges: u32,
 }
 
 impl EdgeHeader {
@@ -206,7 +203,7 @@ impl SerializedDepGraph {
         );
         let mut fingerprints = IndexVec::from_elem_n(Fingerprint::ZERO, node_count);
         let mut edge_list_indices =
-            IndexVec::from_elem_n(EdgeHeader { repr: 0, edges: 0 }, node_count);
+            IndexVec::from_elem_n(EdgeHeader { repr: 0, num_edges: 0 }, node_count);
 
         // This estimation assumes that all of the encoded bytes are for the edge lists or for the
         // fixed-size node headers. But that's not necessarily true; if any edge list has a length
@@ -419,10 +416,10 @@ impl<D: Deps> SerializedNodeHeader<D> {
     }
 
     #[inline]
-    fn edges_header(&self, edge_list_data: &[u8], edges: u32) -> EdgeHeader {
+    fn edges_header(&self, edge_list_data: &[u8], num_edges: u32) -> EdgeHeader {
         EdgeHeader {
             repr: (edge_list_data.len() << DEP_NODE_WIDTH_BITS) | (self.bytes_per_index() - 1),
-            edges,
+            num_edges,
         }
     }
 }
