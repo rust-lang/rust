@@ -231,8 +231,14 @@ pub(super) fn has_expandable_async_drops<'tcx>(
         if body[bb].is_cleanup {
             continue;
         }
-        let TerminatorKind::Drop { place, target: _, unwind: _, replace: _, drop: _, async_fut } =
-            body[bb].terminator().kind
+        let TerminatorKind::Drop {
+            place,
+            target: _,
+            unwind: _,
+            replace: _,
+            drop: _,
+            async_fut: Some(_),
+        } = body[bb].terminator().kind
         else {
             continue;
         };
@@ -240,12 +246,9 @@ pub(super) fn has_expandable_async_drops<'tcx>(
         if place_ty == coroutine_ty {
             continue;
         }
-        if async_fut.is_none() {
-            continue;
-        }
         return true;
     }
-    return false;
+    false
 }
 
 /// Expand Drop terminator for async drops into mainline poll-switch and dropline poll-switch
@@ -508,7 +511,8 @@ pub(super) fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
         elaborate_drop(
             &mut elaborator,
             *source_info,
-            Place::from(SELF_ARG),
+            Place::from(SELF_ARG)
+                .project_deeper(&[ProjectionElem::Downcast(None, VARIANT_UNRESUMED)], tcx),
             (),
             *target,
             unwind,

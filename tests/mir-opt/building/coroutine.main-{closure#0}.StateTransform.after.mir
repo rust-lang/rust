@@ -20,6 +20,7 @@
     storage_conflicts: BitMatrix(1x1) {
         (_s0, _s0),
     },
+    relocated_upvars: {},
 } */
 
 fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine.rs:18:5: 18:18}>, _2: String) -> CoroutineState<(&str, String, &Location<'_>), ()> {
