@@ -168,7 +168,6 @@ pub trait HirTyLowerer<'tcx> {
         item_def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
-        assoc_tag: ty::AssocTag,
     ) -> Result<(DefId, GenericArgsRef<'tcx>), ErrorGuaranteed>;
 
     fn lower_fn_sig(
@@ -1433,13 +1432,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_item = self
             .probe_assoc_item(assoc_ident, mode.assoc_tag(), hir_ref_id, span, trait_did)
             .expect("failed to find associated item");
-        let (def_id, args) = self.lower_assoc_shared(
-            span,
-            assoc_item.def_id,
-            assoc_segment,
-            bound,
-            mode.assoc_tag(),
-        )?;
+        let (def_id, args) =
+            self.lower_assoc_shared(span, assoc_item.def_id, assoc_segment, bound)?;
         let result = LoweredAssoc::Term(def_id, args);
 
         if let Some(variant_def_id) = variant_resolution {

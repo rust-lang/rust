@@ -803,6 +803,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         };
 
+        let trait_def_id = bound.def_id();
+        let assoc_fn = self
+            .probe_assoc_item(assoc_ident, ty::AssocTag::Fn, qpath_hir_id, span, trait_def_id)
+            .expect("failed to find associated fn");
+
         // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`,
         // which may happen via a higher-ranked where clause or supertrait.
         // This is the same restrictions as associated types; even though we could
@@ -815,16 +820,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 inferred_sugg: Some(span.with_hi(item_segment.ident.span.lo())),
                 bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder(),),
                 mpart_sugg: None,
-                what: "function",
+                what: assoc_fn.descr(),
             }));
         }
 
-        let trait_def_id = bound.def_id();
-        let assoc_ty = self
-            .probe_assoc_item(assoc_ident, ty::AssocTag::Fn, qpath_hir_id, span, trait_def_id)
-            .expect("failed to find associated type");
-
-        Ok((bound, assoc_ty.def_id))
+        Ok((bound, assoc_fn.def_id))
     }
 
     /// Do the common parts of lowering an RTN type. This involves extending the
