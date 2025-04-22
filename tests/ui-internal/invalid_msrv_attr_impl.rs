@@ -1,4 +1,4 @@
-#![deny(clippy::internal)]
+#![deny(clippy::missing_msrv_attr_impl)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
 

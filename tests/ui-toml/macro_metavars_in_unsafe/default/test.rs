@@ -251,6 +251,16 @@ pub mod issue13219 {
     }
 }
 
+#[macro_export]
+macro_rules! issue14488 {
+    ($e:expr) => {
+        #[expect(clippy::macro_metavars_in_unsafe)]
+        unsafe {
+            $e
+        }
+    };
+}
+
 fn main() {
     allow_works!(1);
     simple!(1);
@@ -271,4 +281,10 @@ fn main() {
     multiple_unsafe_blocks!(1, 1, 1);
     unsafe_from_root_ctxt!(unsafe { 1 });
     nested_macros!(1, 1);
+
+    // These two invocations lead to two expanded unsafe blocks, each with an `#[expect]` on it.
+    // Only of them gets a warning, which used to result in an unfulfilled expectation for the other
+    // expanded unsafe block.
+    issue14488!(1);
+    issue14488!(2);
 }

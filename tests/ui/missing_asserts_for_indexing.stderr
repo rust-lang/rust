@@ -301,5 +301,57 @@ LL |     let _ = v3[0] + v3[1] + v3[2];
    |                             ^^^^^
    = note: asserting the length before indexing will elide bounds checks
 
-error: aborting due to 11 previous errors
+error: indexing into a slice multiple times with an `assert` that does not cover the highest index
+  --> tests/ui/missing_asserts_for_indexing.rs:158:13
+   |
+LL |     assert_eq!(v1.len(), 2);
+   |     ----------------------- help: provide the highest index that is indexed with: `assert!(v1.len() == 3)`
+...
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing.rs:158:13
+   |
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |             ^^^^^
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing.rs:158:21
+   |
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |                     ^^^^^
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing.rs:158:29
+   |
+LL |     let _ = v1[0] + v1[1] + v1[2];
+   |                             ^^^^^
+   = note: asserting the length before indexing will elide bounds checks
+
+error: indexing into a slice multiple times with an `assert` that does not cover the highest index
+  --> tests/ui/missing_asserts_for_indexing.rs:163:13
+   |
+LL |     assert_eq!(2, v3.len());
+   |     ----------------------- help: provide the highest index that is indexed with: `assert!(v3.len() == 3)`
+...
+LL |     let _ = v3[0] + v3[1] + v3[2];
+   |             ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing.rs:163:13
+   |
+LL |     let _ = v3[0] + v3[1] + v3[2];
+   |             ^^^^^
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing.rs:163:21
+   |
+LL |     let _ = v3[0] + v3[1] + v3[2];
+   |                     ^^^^^
+note: slice indexed here
+  --> tests/ui/missing_asserts_for_indexing.rs:163:29
+   |
+LL |     let _ = v3[0] + v3[1] + v3[2];
+   |                             ^^^^^
+   = note: asserting the length before indexing will elide bounds checks
+
+error: aborting due to 13 previous errors
 

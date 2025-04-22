@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![deny(clippy::disallowed_methods)]
 
 extern crate rustc_errors;
 extern crate rustc_hir;

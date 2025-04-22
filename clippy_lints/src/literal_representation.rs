@@ -387,12 +387,11 @@ impl LiteralDigitGrouping {
 
         let first = groups.next().expect("At least one group");
 
-        if radix == Radix::Binary || radix == Radix::Octal || radix == Radix::Hexadecimal {
-            if let Some(second_size) = groups.next() {
-                if !groups.all(|i| i == second_size) || first > second_size {
-                    return Err(WarningType::UnusualByteGroupings);
-                }
-            }
+        if (radix == Radix::Binary || radix == Radix::Octal || radix == Radix::Hexadecimal)
+            && let Some(second_size) = groups.next()
+            && (!groups.all(|i| i == second_size) || first > second_size)
+        {
+            return Err(WarningType::UnusualByteGroupings);
         }
 
         if let Some(second) = groups.next() {

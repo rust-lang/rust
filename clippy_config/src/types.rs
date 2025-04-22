@@ -1,5 +1,7 @@
-use clippy_utils::def_path_def_ids;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag};
+use rustc_hir::PrimTy;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -21,6 +23,17 @@ pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
     path: String,
     reason: Option<String>,
     replacement: Option<String>,
+    /// Setting `allow_invalid` to true suppresses a warning if `path` does not refer to an existing
+    /// definition.
+    ///
+    /// This could be useful when conditional compilation is used, or when a clippy.toml file is
+    /// shared among multiple projects.
+    allow_invalid: bool,
+    /// The span of the `DisallowedPath`.
+    ///
+    /// Used for diagnostics.
+    #[serde(skip_serializing)]
+    span: Span,
 }
 
 impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<REPLACEMENT_ALLOWED> {
@@ -36,6 +49,8 @@ impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<R
             path: enum_.path().to_owned(),
             reason: enum_.reason().map(ToOwned::to_owned),
             replacement: enum_.replacement().map(ToOwned::to_owned),
+            allow_invalid: enum_.allow_invalid(),
+            span: Span::default(),
         })
     }
 }
@@ -50,6 +65,8 @@ enum DisallowedPathEnum {
         path: String,
         reason: Option<String>,
         replacement: Option<String>,
+        #[serde(rename = "allow-invalid")]
+        allow_invalid: Option<bool>,
     },
 }
 
@@ -58,7 +75,7 @@ impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
         &self.path
     }
 
-    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_, REPLACEMENT_ALLOWED> {
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) {
         move |diag| {
             if let Some(replacement) = &self.replacement {
                 diag.span_suggestion(
@@ -71,6 +88,14 @@ impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
                 diag.note(reason.clone());
             }
         }
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -94,20 +119,87 @@ impl DisallowedPathEnum {
             Self::Simple(_) => None,
         }
     }
+
+    fn allow_invalid(&self) -> bool {
+        match &self {
+            Self::WithReason { allow_invalid, .. } => allow_invalid.unwrap_or_default(),
+            Self::Simple(_) => false,
+        }
+    }
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
+#[allow(clippy::type_complexity)]
 pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
-    disallowed: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
-) -> DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> {
-    disallowed
-        .iter()
-        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x))
-        .flat_map(|(name, path, disallowed_path)| {
-            def_path_def_ids(tcx, &path).map(move |id| (id, (name, disallowed_path)))
-        })
-        .collect()
+    disallowed_paths: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
+    def_kind_predicate: impl Fn(DefKind) -> bool,
+    predicate_description: &str,
+    allow_prim_tys: bool,
+) -> (
+    DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)>,
+    FxHashMap<PrimTy, (&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)>,
+) {
+    let mut def_ids: DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> = DefIdMap::default();
+    let mut prim_tys: FxHashMap<PrimTy, (&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> =
+        FxHashMap::default();
+    for disallowed_path in disallowed_paths {
+        let path = disallowed_path.path();
+        let mut resolutions = clippy_utils::def_path_res(tcx, &path.split("::").collect::<Vec<_>>());
+
+        let mut found_def_id = None;
+        let mut found_prim_ty = false;
+        resolutions.retain(|res| match res {
+            Res::Def(def_kind, def_id) => {
+                found_def_id = Some(*def_id);
+                def_kind_predicate(*def_kind)
+            },
+            Res::PrimTy(_) => {
+                found_prim_ty = true;
+                allow_prim_tys
+            },
+            _ => false,
+        });
+
+        if resolutions.is_empty() {
+            let span = disallowed_path.span();
+
+            if let Some(def_id) = found_def_id {
+                tcx.sess.dcx().span_warn(
+                    span,
+                    format!(
+                        "expected a {predicate_description}, found {} {}",
+                        tcx.def_descr_article(def_id),
+                        tcx.def_descr(def_id)
+                    ),
+                );
+            } else if found_prim_ty {
+                tcx.sess.dcx().span_warn(
+                    span,
+                    format!("expected a {predicate_description}, found a primitive type",),
+                );
+            } else if !disallowed_path.allow_invalid {
+                tcx.sess.dcx().span_warn(
+                    span,
+                    format!("`{path}` does not refer to an existing {predicate_description}"),
+                );
+            }
+        }
+
+        for res in resolutions {
+            match res {
+                Res::Def(_, def_id) => {
+                    def_ids.insert(def_id, (path, disallowed_path));
+                },
+                Res::PrimTy(ty) => {
+                    prim_tys.insert(ty, (path, disallowed_path));
+                },
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    (def_ids, prim_tys)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]

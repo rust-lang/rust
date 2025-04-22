@@ -1,5 +1,5 @@
 error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead
-  --> tests/ui/filter_map_next_fixable.rs:7:32
+  --> tests/ui/filter_map_next_fixable.rs:6:32
    |
 LL |     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.iter().find_map(|s| s.parse().ok())`
@@ -8,7 +8,7 @@ LL |     let element: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next
    = help: to override `-D warnings` add `#[allow(clippy::filter_map_next)]`
 
 error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly expressed by calling `.find_map(..)` instead
-  --> tests/ui/filter_map_next_fixable.rs:21:26
+  --> tests/ui/filter_map_next_fixable.rs:20:26
    |
 LL |     let _: Option<i32> = a.iter().filter_map(|s| s.parse().ok()).next();
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.iter().find_map(|s| s.parse().ok())`

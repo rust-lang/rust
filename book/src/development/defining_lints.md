@@ -9,7 +9,7 @@ lint involves some boilerplate code.
 
 A lint type is the category of items and expressions in which your lint focuses on.
 
-As of the writing of this documentation update, there are 12 _types_ of lints
+As of the writing of this documentation update, there are 11 _types_ of lints
 besides the numerous standalone lints living under `clippy_lints/src/`:
 
 - `cargo`
@@ -23,7 +23,6 @@ besides the numerous standalone lints living under `clippy_lints/src/`:
 - `transmute`
 - `types`
 - `unit_types`
-- `utils / internal` (Clippy internal lints)
 
 These types group together lints that share some common behaviors. For instance,
 `functions` groups together lints that deal with some aspects of functions in

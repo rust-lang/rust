@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::items_after_test_module)]
 
 fn main() {}

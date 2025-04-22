@@ -1,0 +1,65 @@
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:7:24
+   |
+LL |     let _: *const u8 = 1 as *const _;
+   |                        ^^^^^^^^^^^^^ help: use: `std::ptr::dangling()`
+   |
+   = note: `-D clippy::manual-dangling-ptr` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_dangling_ptr)]`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:9:13
+   |
+LL |     let _ = 2 as *const u32;
+   |             ^^^^^^^^^^^^^^^ help: use: `std::ptr::dangling::<u32>()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:11:13
+   |
+LL |     let _ = 4 as *mut f32;
+   |             ^^^^^^^^^^^^^ help: use: `std::ptr::dangling_mut::<f32>()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:14:13
+   |
+LL |     let _ = mem::align_of::<u8>() as *const u8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `std::ptr::dangling::<u8>()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:16:13
+   |
+LL |     let _ = mem::align_of::<u32>() as *const u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `std::ptr::dangling::<u32>()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:18:13
+   |
+LL |     let _ = mem::align_of::<usize>() as *const usize;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `std::ptr::dangling::<usize>()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:21:9
+   |
+LL |     foo(4 as *const _, 4 as *mut _);
+   |         ^^^^^^^^^^^^^ help: use: `std::ptr::dangling()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:21:24
+   |
+LL |     foo(4 as *const _, 4 as *mut _);
+   |                        ^^^^^^^^^^^ help: use: `std::ptr::dangling_mut()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:41:9
+   |
+LL |     foo(4 as *const _, 4 as *mut _);
+   |         ^^^^^^^^^^^^^ help: use: `std::ptr::dangling()`
+
+error: manual creation of a dangling pointer
+  --> tests/ui/manual_dangling_ptr.rs:41:24
+   |
+LL |     foo(4 as *const _, 4 as *mut _);
+   |                        ^^^^^^^^^^^ help: use: `std::ptr::dangling_mut()`
+
+error: aborting due to 10 previous errors
+
