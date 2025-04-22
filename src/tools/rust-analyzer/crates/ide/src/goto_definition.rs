@@ -3476,4 +3476,74 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn offset_of() {
+        check(
+            r#"
+//- minicore: offset_of
+struct Foo {
+    field: i32,
+ // ^^^^^
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Foo, fiel$0d);
+}
+        "#,
+        );
+
+        check(
+            r#"
+//- minicore: offset_of
+struct Bar(Foo);
+struct Foo {
+    field: i32,
+ // ^^^^^
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Bar, 0.fiel$0d);
+}
+        "#,
+        );
+
+        check(
+            r#"
+//- minicore: offset_of
+struct Bar(Baz);
+enum Baz {
+    Abc(Foo),
+    None,
+}
+struct Foo {
+    field: i32,
+ // ^^^^^
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Bar, 0.Abc.0.fiel$0d);
+}
+        "#,
+        );
+
+        check(
+            r#"
+//- minicore: offset_of
+struct Bar(Baz);
+enum Baz {
+    Abc(Foo),
+ // ^^^
+    None,
+}
+struct Foo {
+    field: i32,
+}
+
+fn foo() {
+    let _ = core::mem::offset_of!(Bar, 0.Ab$0c.0.field);
+}
+        "#,
+        );
+    }
 }

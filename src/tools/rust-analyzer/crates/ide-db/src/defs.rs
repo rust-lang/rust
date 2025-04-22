@@ -839,6 +839,14 @@ impl NameRefClass {
                 ast::AsmRegSpec(_) => {
                     Some(NameRefClass::Definition(Definition::InlineAsmRegOrRegClass(()), None))
                 },
+                ast::OffsetOfExpr(_) => {
+                    let (def, subst) = sema.resolve_offset_of_field(name_ref)?;
+                    let def = match def {
+                        Either::Left(variant) => Definition::Variant(variant),
+                        Either::Right(field) => Definition::Field(field),
+                    };
+                    Some(NameRefClass::Definition(def, Some(subst)))
+                },
                 _ => None
             }
         }
