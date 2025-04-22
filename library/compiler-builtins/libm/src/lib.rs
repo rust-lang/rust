@@ -14,6 +14,7 @@
 #![allow(clippy::excessive_precision)]
 #![allow(clippy::float_cmp)]
 #![allow(clippy::int_plus_one)]
+#![allow(clippy::just_underscores_and_digits)]
 #![allow(clippy::many_single_char_names)]
 #![allow(clippy::mixed_case_hex_literals)]
 #![allow(clippy::needless_late_init)]

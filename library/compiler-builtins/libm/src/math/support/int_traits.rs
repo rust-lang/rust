@@ -40,6 +40,9 @@ pub trait Int:
     + PartialOrd
     + ops::AddAssign
     + ops::SubAssign
+    + ops::MulAssign
+    + ops::DivAssign
+    + ops::RemAssign
     + ops::BitAndAssign
     + ops::BitOrAssign
     + ops::BitXorAssign
@@ -51,6 +54,7 @@ pub trait Int:
     + ops::Sub<Output = Self>
     + ops::Mul<Output = Self>
     + ops::Div<Output = Self>
+    + ops::Rem<Output = Self>
     + ops::Shl<i32, Output = Self>
     + ops::Shl<u32, Output = Self>
     + ops::Shr<i32, Output = Self>

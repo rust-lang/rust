@@ -1,84 +1,68 @@
-/* SPDX-License-Identifier: MIT */
-/* origin: musl src/math/fmod.c. Ported to generic Rust algorithm in 2025, TG. */
-
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
 use super::super::{CastFrom, Float, Int, MinInt};
 
 #[inline]
 pub fn fmod<F: Float>(x: F, y: F) -> F {
-    let zero = F::Int::ZERO;
-    let one = F::Int::ONE;
-    let mut ix = x.to_bits();
-    let mut iy = y.to_bits();
-    let mut ex = x.ex().signed();
-    let mut ey = y.ex().signed();
-    let sx = ix & F::SIGN_MASK;
+    let _1 = F::Int::ONE;
+    let sx = x.to_bits() & F::SIGN_MASK;
+    let ux = x.to_bits() & !F::SIGN_MASK;
+    let uy = y.to_bits() & !F::SIGN_MASK;
 
-    if iy << 1 == zero || y.is_nan() || ex == F::EXP_SAT as i32 {
+    // Cases that return NaN:
+    //   NaN % _
+    //   Inf % _
+    //     _ % NaN
+    //     _ % 0
+    let x_nan_or_inf = ux & F::EXP_MASK == F::EXP_MASK;
+    let y_nan_or_zero = uy.wrapping_sub(_1) & F::EXP_MASK == F::EXP_MASK;
+    if x_nan_or_inf | y_nan_or_zero {
         return (x * y) / (x * y);
     }
 
-    if ix << 1 <= iy << 1 {
-        if ix << 1 == iy << 1 {
-            return F::ZERO * x;
-        }
+    if ux < uy {
+        // |x| < |y|
         return x;
     }
 
-    /* normalize x and y */
-    if ex == 0 {
-        let i = ix << (F::EXP_BITS + 1);
-        ex -= i.leading_zeros() as i32;
-        ix <<= -ex + 1;
-    } else {
-        ix &= F::Int::MAX >> F::EXP_BITS;
-        ix |= one << F::SIG_BITS;
+    let (num, ex) = into_sig_exp::<F>(ux);
+    let (div, ey) = into_sig_exp::<F>(uy);
+
+    // To compute `(num << ex) % (div << ey)`, first
+    // evaluate `rem = (num << (ex - ey)) % div` ...
+    let rem = reduction(num, ex - ey, div);
+    // ... so the result will be `rem << ey`
+
+    if rem.is_zero() {
+        // Return zero with the sign of `x`
+        return F::from_bits(sx);
+    };
+
+    // We would shift `rem` up by `ey`, but have to stop at `F::SIG_BITS`
+    let shift = ey.min(F::SIG_BITS - rem.ilog2());
+    // Anything past that is added to the exponent field
+    let bits = (rem << shift) + (F::Int::cast_from(ey - shift) << F::SIG_BITS);
+    F::from_bits(sx + bits)
+}
+
+/// Given the bits of a finite float, return a tuple of
+///  - the mantissa with the implicit bit (0 if subnormal, 1 otherwise)
+///  - the additional exponent past 1, (0 for subnormal, 0 or more otherwise)
+fn into_sig_exp<F: Float>(mut bits: F::Int) -> (F::Int, u32) {
+    bits &= !F::SIGN_MASK;
+    // Subtract 1 from the exponent, clamping at 0
+    let sat = bits.checked_sub(F::IMPLICIT_BIT).unwrap_or(F::Int::ZERO);
+    (
+        bits - (sat & F::EXP_MASK),
+        u32::cast_from(sat >> F::SIG_BITS),
+    )
+}
+
+/// Compute the remainder `(x * 2.pow(e)) % y` without overflow.
+fn reduction<I: Int>(mut x: I, e: u32, y: I) -> I {
+    x %= y;
+    for _ in 0..e {
+        x <<= 1;
+        x = x.checked_sub(y).unwrap_or(x);
     }
-
-    if ey == 0 {
-        let i = iy << (F::EXP_BITS + 1);
-        ey -= i.leading_zeros() as i32;
-        iy <<= -ey + 1;
-    } else {
-        iy &= F::Int::MAX >> F::EXP_BITS;
-        iy |= one << F::SIG_BITS;
-    }
-
-    /* x mod y */
-    while ex > ey {
-        let i = ix.wrapping_sub(iy);
-        if i >> (F::BITS - 1) == zero {
-            if i == zero {
-                return F::ZERO * x;
-            }
-            ix = i;
-        }
-
-        ix <<= 1;
-        ex -= 1;
-    }
-
-    let i = ix.wrapping_sub(iy);
-    if i >> (F::BITS - 1) == zero {
-        if i == zero {
-            return F::ZERO * x;
-        }
-
-        ix = i;
-    }
-
-    let shift = ix.leading_zeros().saturating_sub(F::EXP_BITS);
-    ix <<= shift;
-    ex -= shift as i32;
-
-    /* scale result */
-    if ex > 0 {
-        ix -= one << F::SIG_BITS;
-        ix |= F::Int::cast_from(ex) << F::SIG_BITS;
-    } else {
-        ix >>= -ex + 1;
-    }
-
-    ix |= sx;
-
-    F::from_bits(ix)
+    x
 }
