@@ -318,22 +318,7 @@ jobs:
           rustup default nightly
       - uses: Swatinem/rust-cache@v2
       - name: Run extensive tests
-        run: |
-          echo "Tests to run: '$TO_TEST'"
-          if [ -z "$TO_TEST" ]; then
-            echo "No tests to run, exiting."
-            exit
-          fi
-
-          set -x
-
-          # Run the non-extensive tests first to catch any easy failures
-          cargo t --profile release-checked -- "$TO_TEST"
-
-          LIBM_EXTENSIVE_TESTS="$TO_TEST" cargo test \
-            --features build-mpfr,unstable,force-soft-floats \
-            --profile release-checked \
-            -- extensive
+        run: ./ci/run-extensive.sh
       - name: Print test logs if available
         run: if [ -f "target/test-log.txt" ]; then cat target/test-log.txt; fi
         shell: bash
