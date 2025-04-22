@@ -21,7 +21,6 @@ use hir_def::{
     },
 };
 use itertools::chain;
-use stdx::TupleExt;
 use triomphe::Arc;
 
 use crate::{Interner, Substitution, db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx};
@@ -76,10 +75,13 @@ impl Generics {
         self.iter_parent().map(|(id, _)| id)
     }
 
-    pub(crate) fn iter_self_type_or_consts_id(
+    pub(crate) fn iter_self_type_or_consts(
         &self,
-    ) -> impl DoubleEndedIterator<Item = GenericParamId> + '_ {
-        self.params.iter_type_or_consts().map(from_toc_id(self)).map(TupleExt::head)
+    ) -> impl DoubleEndedIterator<Item = (LocalTypeOrConstParamId, &TypeOrConstParamData)> + '_
+    {
+        let mut toc = self.params.iter_type_or_consts();
+        let trait_self_param = self.has_trait_self_param.then(|| toc.next()).flatten();
+        chain!(trait_self_param, toc)
     }
 
     /// Iterate over the parent params followed by self params.
@@ -107,7 +109,7 @@ impl Generics {
     }
 
     /// Iterator over types and const params of parent.
-    fn iter_parent(
+    pub(crate) fn iter_parent(
         &self,
     ) -> impl DoubleEndedIterator<Item = (GenericParamId, GenericParamDataRef<'_>)> + '_ {
         self.parent_generics().into_iter().flat_map(|it| {
@@ -129,6 +131,10 @@ impl Generics {
         self.params.len()
     }
 
+    pub(crate) fn len_lifetimes_self(&self) -> usize {
+        self.params.len_lifetimes()
+    }
+
     /// (parent total, self param, type params, const params, impl trait list, lifetimes)
     pub(crate) fn provenance_split(&self) -> (usize, bool, usize, usize, usize, usize) {
         let mut self_param = false;
@@ -144,7 +150,7 @@ impl Generics {
             TypeOrConstParamData::ConstParamData(_) => const_params += 1,
         });
 
-        let lifetime_params = self.params.iter_lt().count();
+        let lifetime_params = self.params.len_lifetimes();
 
         let parent_len = self.parent_generics().map_or(0, Generics::len);
         (parent_len, self_param, type_params, const_params, impl_trait_params, lifetime_params)

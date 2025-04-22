@@ -6,14 +6,17 @@
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::{
-    DefWithBodyId, SyntheticSyntax,
-    expr_store::{ExprOrPatPtr, ExpressionStoreSourceMap, hir_segment_to_ast_segment},
+    DefWithBodyId, GenericParamId, SyntheticSyntax,
+    expr_store::{
+        ExprOrPatPtr, ExpressionStoreSourceMap, hir_assoc_type_binding_to_ast,
+        hir_generic_arg_to_ast, hir_segment_to_ast_segment,
+    },
     hir::ExprOrPatId,
 };
 use hir_expand::{HirFileId, InFile, mod_path::ModPath, name::Name};
 use hir_ty::{
-    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, PathLoweringDiagnostic,
-    TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, PathGenericsSource,
+    PathLoweringDiagnostic, TyLoweringDiagnostic, TyLoweringDiagnosticKind,
     db::HirDatabase,
     diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
 };
@@ -24,11 +27,11 @@ use syntax::{
 };
 use triomphe::Arc;
 
-use crate::{AssocItem, Field, Function, Local, Trait, Type};
+use crate::{AssocItem, Field, Function, GenericDef, Local, Trait, Type};
 
 pub use hir_def::VariantId;
 pub use hir_ty::{
-    GenericArgsProhibitedReason,
+    GenericArgsProhibitedReason, IncorrectGenericsLenKind,
     diagnostics::{CaseType, IncorrectCase},
 };
 
@@ -113,6 +116,8 @@ diagnostics![
     GenericArgsProhibited,
     ParenthesizedGenericArgsWithoutFnTrait,
     BadRtn,
+    IncorrectGenericsLen,
+    IncorrectGenericsOrder,
 ];
 
 #[derive(Debug)]
@@ -425,6 +430,39 @@ pub struct BadRtn {
     pub rtn: InFile<AstPtr<ast::ReturnTypeSyntax>>,
 }
 
+#[derive(Debug)]
+pub struct IncorrectGenericsLen {
+    /// Points at the name if there are no generics.
+    pub generics_or_segment: InFile<AstPtr<Either<ast::GenericArgList, ast::NameRef>>>,
+    pub kind: IncorrectGenericsLenKind,
+    pub provided: u32,
+    pub expected: u32,
+    pub def: GenericDef,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GenericArgKind {
+    Lifetime,
+    Type,
+    Const,
+}
+
+impl GenericArgKind {
+    fn from_id(id: GenericParamId) -> Self {
+        match id {
+            GenericParamId::TypeParamId(_) => GenericArgKind::Type,
+            GenericParamId::ConstParamId(_) => GenericArgKind::Const,
+            GenericParamId::LifetimeParamId(_) => GenericArgKind::Lifetime,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct IncorrectGenericsOrder {
+    pub provided_arg: InFile<AstPtr<ast::GenericArg>>,
+    pub expected_kind: GenericArgKind,
+}
+
 impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
@@ -714,6 +752,47 @@ impl AnyDiagnostic {
                 };
                 Self::path_diagnostic(diag, source.with_value(path))?
             }
+            &InferenceDiagnostic::MethodCallIncorrectGenericsLen {
+                expr,
+                provided_count,
+                expected_count,
+                kind,
+                def,
+            } => {
+                let syntax = expr_syntax(expr)?;
+                let file_id = syntax.file_id;
+                let syntax =
+                    syntax.with_value(syntax.value.cast::<ast::MethodCallExpr>()?).to_node(db);
+                let generics_or_name = syntax
+                    .generic_arg_list()
+                    .map(Either::Left)
+                    .or_else(|| syntax.name_ref().map(Either::Right))?;
+                let generics_or_name = InFile::new(file_id, AstPtr::new(&generics_or_name));
+                IncorrectGenericsLen {
+                    generics_or_segment: generics_or_name,
+                    kind,
+                    provided: provided_count,
+                    expected: expected_count,
+                    def: def.into(),
+                }
+                .into()
+            }
+            &InferenceDiagnostic::MethodCallIncorrectGenericsOrder {
+                expr,
+                param_id,
+                arg_idx,
+                has_self_arg,
+            } => {
+                let syntax = expr_syntax(expr)?;
+                let file_id = syntax.file_id;
+                let syntax =
+                    syntax.with_value(syntax.value.cast::<ast::MethodCallExpr>()?).to_node(db);
+                let generic_args = syntax.generic_arg_list()?;
+                let provided_arg = hir_generic_arg_to_ast(&generic_args, arg_idx, has_self_arg)?;
+                let provided_arg = InFile::new(file_id, AstPtr::new(&provided_arg));
+                let expected_kind = GenericArgKind::from_id(param_id);
+                IncorrectGenericsOrder { provided_arg, expected_kind }.into()
+            }
         })
     }
 
@@ -750,6 +829,38 @@ impl AnyDiagnostic {
                 let args = path.with_value(args);
                 ParenthesizedGenericArgsWithoutFnTrait { args }.into()
             }
+            PathLoweringDiagnostic::IncorrectGenericsLen {
+                generics_source,
+                provided_count,
+                expected_count,
+                kind,
+                def,
+            } => {
+                let generics_or_segment =
+                    path_generics_source_to_ast(&path.value, generics_source)?;
+                let generics_or_segment = path.with_value(AstPtr::new(&generics_or_segment));
+                IncorrectGenericsLen {
+                    generics_or_segment,
+                    kind,
+                    provided: provided_count,
+                    expected: expected_count,
+                    def: def.into(),
+                }
+                .into()
+            }
+            PathLoweringDiagnostic::IncorrectGenericsOrder {
+                generics_source,
+                param_id,
+                arg_idx,
+                has_self_arg,
+            } => {
+                let generic_args =
+                    path_generics_source_to_ast(&path.value, generics_source)?.left()?;
+                let provided_arg = hir_generic_arg_to_ast(&generic_args, arg_idx, has_self_arg)?;
+                let provided_arg = path.with_value(AstPtr::new(&provided_arg));
+                let expected_kind = GenericArgKind::from_id(param_id);
+                IncorrectGenericsOrder { provided_arg, expected_kind }.into()
+            }
         })
     }
 
@@ -770,4 +881,28 @@ impl AnyDiagnostic {
             }
         })
     }
+}
+
+fn path_generics_source_to_ast(
+    path: &ast::Path,
+    generics_source: PathGenericsSource,
+) -> Option<Either<ast::GenericArgList, ast::NameRef>> {
+    Some(match generics_source {
+        PathGenericsSource::Segment(segment) => {
+            let segment = hir_segment_to_ast_segment(path, segment)?;
+            segment
+                .generic_arg_list()
+                .map(Either::Left)
+                .or_else(|| segment.name_ref().map(Either::Right))?
+        }
+        PathGenericsSource::AssocType { segment, assoc_type } => {
+            let segment = hir_segment_to_ast_segment(path, segment)?;
+            let segment_args = segment.generic_arg_list()?;
+            let assoc = hir_assoc_type_binding_to_ast(&segment_args, assoc_type)?;
+            assoc
+                .generic_arg_list()
+                .map(Either::Left)
+                .or_else(|| assoc.name_ref().map(Either::Right))?
+        }
+    })
 }

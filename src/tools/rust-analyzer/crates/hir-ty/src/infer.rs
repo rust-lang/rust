@@ -34,8 +34,8 @@ use chalk_ir::{
 };
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, GenericDefId, ImplId, ItemContainerId,
-    Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, GenericDefId, GenericParamId, ImplId,
+    ItemContainerId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
@@ -55,8 +55,9 @@ use triomphe::Arc;
 
 use crate::{
     AliasEq, AliasTy, Binders, ClosureId, Const, DomainGoal, GenericArg, Goal, ImplTraitId,
-    ImplTraitIdx, InEnvironment, Interner, Lifetime, OpaqueTyId, ParamLoweringMode,
-    PathLoweringDiagnostic, ProjectionTy, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
+    ImplTraitIdx, InEnvironment, IncorrectGenericsLenKind, Interner, Lifetime, OpaqueTyId,
+    ParamLoweringMode, PathLoweringDiagnostic, ProjectionTy, Substitution, TraitEnvironment, Ty,
+    TyBuilder, TyExt,
     db::HirDatabase,
     fold_tys,
     generics::Generics,
@@ -66,7 +67,7 @@ use crate::{
         expr::ExprIsRead,
         unify::InferenceTable,
     },
-    lower::{ImplTraitLoweringMode, diagnostics::TyLoweringDiagnostic},
+    lower::{GenericArgsPosition, ImplTraitLoweringMode, diagnostics::TyLoweringDiagnostic},
     mir::MirSpan,
     to_assoc_type_id,
     traits::FnTrait,
@@ -274,6 +275,20 @@ pub enum InferenceDiagnostic {
     PathDiagnostic {
         node: ExprOrPatId,
         diag: PathLoweringDiagnostic,
+    },
+    MethodCallIncorrectGenericsLen {
+        expr: ExprId,
+        provided_count: u32,
+        expected_count: u32,
+        kind: IncorrectGenericsLenKind,
+        def: GenericDefId,
+    },
+    MethodCallIncorrectGenericsOrder {
+        expr: ExprId,
+        param_id: GenericParamId,
+        arg_idx: u32,
+        /// Whether the `GenericArgs` contains a `Self` arg.
+        has_self_arg: bool,
     },
 }
 
@@ -909,6 +924,7 @@ impl<'a> InferenceContext<'a> {
         let mut param_tys =
             self.with_ty_lowering(&data.store, InferenceTyDiagnosticSource::Signature, |ctx| {
                 ctx.type_param_mode(ParamLoweringMode::Placeholder);
+                ctx.in_fn_signature = true;
                 data.params.iter().map(|&type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>()
             });
 
@@ -953,8 +969,9 @@ impl<'a> InferenceContext<'a> {
                     InferenceTyDiagnosticSource::Signature,
                     |ctx| {
                         ctx.type_param_mode(ParamLoweringMode::Placeholder)
-                            .impl_trait_mode(ImplTraitLoweringMode::Opaque)
-                            .lower_ty(return_ty)
+                            .impl_trait_mode(ImplTraitLoweringMode::Opaque);
+                        ctx.in_fn_signature = true;
+                        ctx.lower_ty(return_ty)
                     },
                 );
                 let return_ty = self.insert_type_vars(return_ty);
@@ -1513,7 +1530,7 @@ impl<'a> InferenceContext<'a> {
             InferenceTyDiagnosticSource::Body,
             self.generic_def,
         );
-        let mut path_ctx = ctx.at_path(path, node);
+        let mut path_ctx = ctx.at_path(path, node, GenericArgsPosition::Value);
         let (resolution, unresolved) = if value_ns {
             let Some(res) = path_ctx.resolve_path_in_value_ns(HygieneId::ROOT) else {
                 return (self.err_ty(), None);

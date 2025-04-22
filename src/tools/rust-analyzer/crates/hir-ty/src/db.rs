@@ -200,6 +200,9 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         def: GenericDefId,
     ) -> (GenericDefaults, Diagnostics);
 
+    /// This returns an empty list if no parameter has default.
+    ///
+    /// The binders of the returned defaults are only up to (not including) this parameter.
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     #[salsa::transparent]
     fn generic_defaults(&self, def: GenericDefId) -> GenericDefaults;

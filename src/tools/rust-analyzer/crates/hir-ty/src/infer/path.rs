@@ -16,6 +16,7 @@ use crate::{
     consteval, error_lifetime,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
+    lower::GenericArgsPosition,
     method_resolution::{self, VisibleFromModule},
     to_chalk_trait_id,
 };
@@ -95,7 +96,7 @@ impl InferenceContext<'_> {
         };
 
         let substs = self.with_body_ty_lowering(|ctx| {
-            let mut path_ctx = ctx.at_path(path, id);
+            let mut path_ctx = ctx.at_path(path, id, GenericArgsPosition::Value);
             let last_segment = path.segments().len().checked_sub(1);
             if let Some(last_segment) = last_segment {
                 path_ctx.set_current_segment(last_segment)
@@ -163,9 +164,9 @@ impl InferenceContext<'_> {
             self.generic_def,
         );
         let mut path_ctx = if no_diagnostics {
-            ctx.at_path_forget_diagnostics(path)
+            ctx.at_path_forget_diagnostics(path, GenericArgsPosition::Value)
         } else {
-            ctx.at_path(path, id)
+            ctx.at_path(path, id, GenericArgsPosition::Value)
         };
         let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
             let last = path.segments().last()?;

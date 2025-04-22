@@ -138,6 +138,7 @@ impl GenericParamData {
 
 impl_from!(TypeParamData, ConstParamData, LifetimeParamData for GenericParamData);
 
+#[derive(Debug, Clone, Copy)]
 pub enum GenericParamDataRef<'a> {
     TypeParamData(&'a TypeParamData),
     ConstParamData(&'a ConstParamData),

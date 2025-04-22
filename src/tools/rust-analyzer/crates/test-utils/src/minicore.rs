@@ -1063,7 +1063,7 @@ pub mod cmp {
 // region:fmt
 pub mod fmt {
     pub struct Error;
-    pub type Result = Result<(), Error>;
+    pub type Result = crate::result::Result<(), Error>;
     pub struct Formatter<'a>;
     pub struct DebugTuple;
     pub struct DebugStruct;
