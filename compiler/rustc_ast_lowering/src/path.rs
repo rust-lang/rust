@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::GenericArg;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
-use rustc_middle::span_bug;
+use rustc_middle::{span_bug, ty};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
@@ -590,14 +590,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// lowering of `async Fn()` bounds to desugar to another trait like `LendingFn`.
     fn map_trait_to_async_trait(&self, def_id: DefId) -> Option<DefId> {
         let lang_items = self.tcx.lang_items();
-        if Some(def_id) == lang_items.fn_trait() {
-            lang_items.async_fn_trait()
-        } else if Some(def_id) == lang_items.fn_mut_trait() {
-            lang_items.async_fn_mut_trait()
-        } else if Some(def_id) == lang_items.fn_once_trait() {
-            lang_items.async_fn_once_trait()
-        } else {
-            None
+        match self.tcx.fn_trait_kind_from_def_id(def_id)? {
+            ty::ClosureKind::Fn => lang_items.async_fn_trait(),
+            ty::ClosureKind::FnMut => lang_items.async_fn_mut_trait(),
+            ty::ClosureKind::FnOnce => lang_items.async_fn_once_trait(),
         }
     }
 }

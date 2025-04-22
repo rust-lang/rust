@@ -146,7 +146,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             && leaf_trait_predicate.def_id() != root_pred.def_id()
                             // The root trait is not `Unsize`, as to avoid talking about it in
                             // `tests/ui/coercion/coerce-issue-49593-box-never.rs`.
-                            && Some(root_pred.def_id()) != self.tcx.lang_items().unsize_trait()
+                            && !self.tcx.is_lang_item(root_pred.def_id(), LangItem::Unsize)
                         {
                             (
                                 self.resolve_vars_if_possible(
@@ -2274,10 +2274,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // auto-traits or fundamental traits that might not be exactly what
         // the user might expect to be presented with. Instead this is
         // useful for less general traits.
-        if peeled
-            && !self.tcx.trait_is_auto(def_id)
-            && !self.tcx.lang_items().iter().any(|(_, id)| id == def_id)
-        {
+        if peeled && !self.tcx.trait_is_auto(def_id) && self.tcx.as_lang_item(def_id).is_none() {
             let impl_candidates = self.find_similar_impl_candidates(trait_pred);
             self.report_similar_impl_candidates(
                 &impl_candidates,
@@ -3013,8 +3010,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // This shouldn't be common unless manually implementing one of the
         // traits manually, but don't make it more confusing when it does
         // happen.
-        if Some(expected_trait_ref.def_id) != self.tcx.lang_items().coroutine_trait() && not_tupled
-        {
+        if !self.tcx.is_lang_item(expected_trait_ref.def_id, LangItem::Coroutine) && not_tupled {
             return Ok(self.report_and_explain_type_error(
                 TypeTrace::trait_refs(&obligation.cause, expected_trait_ref, found_trait_ref),
                 obligation.param_env,

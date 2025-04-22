@@ -925,7 +925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let detect_dotdot = |err: &mut Diag<'_>, ty: Ty<'_>, expr: &hir::Expr<'_>| {
             if let ty::Adt(adt, _) = ty.kind()
-                && self.tcx().lang_items().get(hir::LangItem::RangeFull) == Some(adt.did())
+                && self.tcx().is_lang_item(adt.did(), hir::LangItem::RangeFull)
                 && let hir::ExprKind::Struct(
                     hir::QPath::LangItem(hir::LangItem::RangeFull, _),
                     [],
