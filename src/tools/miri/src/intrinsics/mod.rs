@@ -602,6 +602,9 @@ fn fixed_float_value<S: Semantics>(
         // (-1)^(±INF) = 1
         ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => Some(one),
 
+        // FIXME(miri/#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
+        // the NaN. We should return either 1 or the NaN non-deterministically here.
+        // But for now, just handle them all the same
         // x^(±0) = 1 for any x, even a NaN
         ("powf32" | "powf64", [_, exp]) if exp.is_zero() => Some(one),
 
@@ -621,9 +624,10 @@ fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<
         (Category::Zero, x) if x % 2 == 0 => Some(IeeeFloat::<S>::ZERO),
 
         // x^0 = 1, if x is not a Signaling NaN
-        // FIXME: The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
+        // FIXME(miri/#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
         // the NaN. We should return either 1 or the NaN non-deterministically here.
-        (_, 0) if !base.is_signaling() => Some(IeeeFloat::<S>::one()),
+        // But for now, just handle them all the same
+        (_, 0) => Some(IeeeFloat::<S>::one()),
 
         _ => None,
     }
