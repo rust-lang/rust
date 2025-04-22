@@ -8906,7 +8906,7 @@ intrinsics:
     arguments: ["a: {neon_type[0]}", "b: {neon_type[1]}", "c: {neon_type[1]}"]
     return_type: "{neon_type[3]}"
     attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rsubhn2]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [rsubhn]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety: safe
     types:

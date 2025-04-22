@@ -290,6 +290,7 @@ mod tests {
                 assert_eq!(v.hwcap2, 0);
             }
         } else if #[cfg(target_arch = "aarch64")] {
+            #[cfg(target_endian = "little")]
             #[test]
             fn linux_artificial_aarch64() {
                 let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-artificial-aarch64.auxv");
@@ -298,6 +299,7 @@ mod tests {
                 assert_eq!(v.hwcap, 0x0123456789abcdef);
                 assert_eq!(v.hwcap2, 0x02468ace13579bdf);
             }
+            #[cfg(target_endian = "little")]
             #[test]
             fn linux_no_hwcap2_aarch64() {
                 let file = concat!(env!("CARGO_MANIFEST_DIR"), "/src/detect/test_data/linux-no-hwcap2-aarch64.auxv");

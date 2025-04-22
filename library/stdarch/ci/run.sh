@@ -187,7 +187,7 @@ case "${TARGET}" in
             --cppcompiler "${TEST_CXX_COMPILER}" \
             --skip "${TEST_SKIP_INTRINSICS}" \
             --target "${TARGET}" \
-            --linker "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER}" \
+            --linker "${CARGO_TARGET_AARCH64_BE_UNKNOWN_LINUX_GNU_LINKER}" \
             --cxx-toolchain-dir "${AARCH64_BE_TOOLCHAIN}"
         ;;
      *)

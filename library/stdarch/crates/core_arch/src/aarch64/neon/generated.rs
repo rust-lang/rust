@@ -24470,7 +24470,7 @@ pub fn vrsrad_n_u64<const N: i32>(a: u64, b: u64) -> u64 {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_high_s16)"]
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(rsubhn2))]
+#[cfg_attr(test, assert_instr(rsubhn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
     let x: int8x8_t = vrsubhn_s16(b, c);
@@ -24480,7 +24480,7 @@ pub fn vrsubhn_high_s16(a: int8x8_t, b: int16x8_t, c: int16x8_t) -> int8x16_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_high_s32)"]
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(rsubhn2))]
+#[cfg_attr(test, assert_instr(rsubhn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
     let x: int16x4_t = vrsubhn_s32(b, c);
@@ -24490,7 +24490,7 @@ pub fn vrsubhn_high_s32(a: int16x4_t, b: int32x4_t, c: int32x4_t) -> int16x8_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_high_s64)"]
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(rsubhn2))]
+#[cfg_attr(test, assert_instr(rsubhn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
     let x: int32x2_t = vrsubhn_s64(b, c);
@@ -24500,7 +24500,7 @@ pub fn vrsubhn_high_s64(a: int32x2_t, b: int64x2_t, c: int64x2_t) -> int32x4_t {
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_high_u16)"]
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(rsubhn2))]
+#[cfg_attr(test, assert_instr(rsubhn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_t {
     let x: uint8x8_t = vrsubhn_u16(b, c);
@@ -24510,7 +24510,7 @@ pub fn vrsubhn_high_u16(a: uint8x8_t, b: uint16x8_t, c: uint16x8_t) -> uint8x16_
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_high_u32)"]
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(rsubhn2))]
+#[cfg_attr(test, assert_instr(rsubhn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8_t {
     let x: uint16x4_t = vrsubhn_u32(b, c);
@@ -24520,7 +24520,7 @@ pub fn vrsubhn_high_u32(a: uint16x4_t, b: uint32x4_t, c: uint32x4_t) -> uint16x8
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrsubhn_high_u64)"]
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(rsubhn2))]
+#[cfg_attr(test, assert_instr(rsubhn))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub fn vrsubhn_high_u64(a: uint32x2_t, b: uint64x2_t, c: uint64x2_t) -> uint32x4_t {
     let x: uint32x2_t = vrsubhn_u64(b, c);

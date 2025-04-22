@@ -19,6 +19,7 @@ macro_rules! test_vtbl {
      - table[$table_t:ident]: [$($table_v:expr),*] |
      $(- ctrl[$ctrl_t:ident]: [$($ctrl_v:expr),*] => [$($exp_v:expr),*])|*
     ) => {
+        #[cfg(target_endian = "little")]
         #[simd_test(enable = "neon")]
         unsafe fn $test_name() {
             // create table as array, and transmute it to
@@ -168,6 +169,7 @@ macro_rules! test_vtbx {
      - ext[$ext_t:ident]: [$($ext_v:expr),*] |
      $(- ctrl[$ctrl_t:ident]: [$($ctrl_v:expr),*] => [$($exp_v:expr),*])|*
     ) => {
+        #[cfg(target_endian = "little")]
         #[simd_test(enable = "neon")]
         unsafe fn $test_name() {
             // create table as array, and transmute it to

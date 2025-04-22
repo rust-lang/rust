@@ -399,6 +399,7 @@ impl AtHwcap {
     }
 }
 
+#[cfg(target_endian = "little")]
 #[cfg(test)]
 mod tests {
     use super::*;
