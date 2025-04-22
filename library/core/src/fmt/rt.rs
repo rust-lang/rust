@@ -110,46 +110,45 @@ macro_rules! argument_new {
     };
 }
 
-#[rustc_diagnostic_item = "ArgumentMethods"]
 impl Argument<'_> {
     #[inline]
-    pub fn new_display<T: Display>(x: &T) -> Argument<'_> {
+    pub const fn new_display<T: Display>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Display>::fmt)
     }
     #[inline]
-    pub fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
+    pub const fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Debug>::fmt)
     }
     #[inline]
-    pub fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
+    pub const fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
         argument_new!(T, x, |_: &T, _| Ok(()))
     }
     #[inline]
-    pub fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
+    pub const fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Octal>::fmt)
     }
     #[inline]
-    pub fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
+    pub const fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as LowerHex>::fmt)
     }
     #[inline]
-    pub fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
+    pub const fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as UpperHex>::fmt)
     }
     #[inline]
-    pub fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
+    pub const fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Pointer>::fmt)
     }
     #[inline]
-    pub fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
+    pub const fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Binary>::fmt)
     }
     #[inline]
-    pub fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
+    pub const fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as LowerExp>::fmt)
     }
     #[inline]
-    pub fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
+    pub const fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as UpperExp>::fmt)
     }
     #[inline]

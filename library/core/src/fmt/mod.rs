@@ -625,6 +625,7 @@ pub struct Arguments<'a> {
 /// Used by the format_args!() macro to create a fmt::Arguments object.
 #[doc(hidden)]
 #[unstable(feature = "fmt_internals", issue = "none")]
+#[rustc_diagnostic_item = "FmtArgumentsNew"]
 impl<'a> Arguments<'a> {
     #[inline]
     pub const fn new_const<const N: usize>(pieces: &'a [&'static str; N]) -> Self {
@@ -670,7 +671,11 @@ impl<'a> Arguments<'a> {
     ) -> Arguments<'a> {
         Arguments { pieces, fmt: Some(fmt), args }
     }
+}
 
+#[doc(hidden)]
+#[unstable(feature = "fmt_internals", issue = "none")]
+impl<'a> Arguments<'a> {
     /// Estimates the length of the formatted text.
     ///
     /// This is intended to be used for setting initial `String` capacity
