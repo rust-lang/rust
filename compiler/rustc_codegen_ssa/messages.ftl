@@ -125,8 +125,7 @@ codegen_ssa_invalid_monomorphization_inserted_type = invalid monomorphization of
 
 codegen_ssa_invalid_monomorphization_invalid_bitmask = invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{$mask_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
-codegen_ssa_invalid_monomorphization_mask_type = invalid monomorphization of `{$name}` intrinsic: found mask element type is `{$ty}`, expected a signed integer type
-    .note = the mask may be widened, which only has the correct behavior for signed integers
+codegen_ssa_invalid_monomorphization_mask_wrong_element_type = invalid monomorphization of `{$name}` intrinsic: expected mask element type to be an integer, found `{$ty}`
 
 codegen_ssa_invalid_monomorphization_mismatched_lengths = invalid monomorphization of `{$name}` intrinsic: mismatched lengths: mask length `{$m_len}` != other vector length `{$v_len}`
 
@@ -158,8 +157,6 @@ codegen_ssa_invalid_monomorphization_simd_shuffle = invalid monomorphization of 
 
 codegen_ssa_invalid_monomorphization_simd_third = invalid monomorphization of `{$name}` intrinsic: expected SIMD third type, found non-SIMD `{$ty}`
 
-codegen_ssa_invalid_monomorphization_third_arg_element_type = invalid monomorphization of `{$name}` intrinsic: expected element type `{$expected_element}` of third argument `{$third_arg}` to be a signed integer type
-
 codegen_ssa_invalid_monomorphization_third_argument_length = invalid monomorphization of `{$name}` intrinsic: expected third argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}
 
 codegen_ssa_invalid_monomorphization_unrecognized_intrinsic = invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`
@@ -171,8 +168,6 @@ codegen_ssa_invalid_monomorphization_unsupported_operation = invalid monomorphiz
 codegen_ssa_invalid_monomorphization_unsupported_symbol = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` to `{$ret_ty}`
 
 codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` of size `{$size}` to `{$ret_ty}`
-
-codegen_ssa_invalid_monomorphization_vector_argument = invalid monomorphization of `{$name}` intrinsic: vector argument `{$in_ty}`'s element type `{$in_elem}`, expected integer element type
 
 codegen_ssa_invalid_no_sanitize = invalid argument for `no_sanitize`
     .note = expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`

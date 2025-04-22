@@ -1,44 +1,53 @@
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:14:1
+  --> $DIR/naked-invalid-attr.rs:13:1
    |
-LL |   #[naked]
-   |   ^^^^^^^^
+LL |   #[unsafe(naked)]
+   |   ^^^^^^^^^^^^^^^^
 LL |   #[repr(C)]
 LL | / struct S {
+LL | |     #[unsafe(naked)]
 LL | |     a: u32,
 LL | |     b: u32,
 LL | | }
    | |_- not a function definition
 
 error: attribute should be applied to a function definition
+  --> $DIR/naked-invalid-attr.rs:16:5
+   |
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
+LL |     a: u32,
+   |     ------ not a function definition
+
+error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:51:5
    |
-LL |     #[naked]
-   |     ^^^^^^^^
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
 LL |     || {};
    |     ----- not a function definition
 
 error: attribute should be applied to a function definition
   --> $DIR/naked-invalid-attr.rs:22:5
    |
-LL |     #[naked]
-   |     ^^^^^^^^
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
 LL |     extern "C" fn invoke(&self);
    |     ---------------------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:10:5
+  --> $DIR/naked-invalid-attr.rs:9:5
    |
-LL |     #[naked]
-   |     ^^^^^^^^
+LL |     #[unsafe(naked)]
+   |     ^^^^^^^^^^^^^^^^
 LL |     fn f();
    |     ------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/naked-invalid-attr.rs:5:1
+  --> $DIR/naked-invalid-attr.rs:4:1
    |
-LL | #![naked]
-   | ^^^^^^^^^ cannot be applied to crates
+LL | #![unsafe(naked)]
+   | ^^^^^^^^^^^^^^^^^ cannot be applied to crates
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 

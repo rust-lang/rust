@@ -1,5 +1,5 @@
 error[E0658]: `#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions
-  --> $DIR/feature-gate-naked_functions_target_feature.rs:9:1
+  --> $DIR/feature-gate-naked_functions_target_feature.rs:7:1
    |
 LL | #[target_feature(enable = "avx2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -56,7 +56,7 @@ impl TestCx<'_> {
                 self.diff_mir_files(from_file.into(), after.into())
             } else {
                 let mut output_file = Utf8PathBuf::new();
-                output_file.push(self.get_mir_dump_dir());
+                output_file.push(self.output_base_dir());
                 output_file.push(&from_file);
                 debug!("comparing the contents of: {} with {:?}", output_file, expected_file);
                 if !output_file.exists() {
@@ -100,7 +100,7 @@ impl TestCx<'_> {
 
     fn diff_mir_files(&self, before: Utf8PathBuf, after: Utf8PathBuf) -> String {
         let to_full_path = |path: Utf8PathBuf| {
-            let full = self.get_mir_dump_dir().join(&path);
+            let full = self.output_base_dir().join(&path);
             if !full.exists() {
                 panic!(
                     "the mir dump file for {} does not exist (requested in {})",

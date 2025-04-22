@@ -15,9 +15,11 @@ CI. See the [Crater chapter](crater.md) for more details.
 
 `cargotest` is a small tool which runs `cargo test` on a few sample projects
 (such as `servo`, `ripgrep`, `tokei`, etc.). This runs as part of CI and ensures
-there aren't any significant regressions.
+there aren't any significant regressions:
 
-> Example: `./x test src/tools/cargotest`
+```console
+./x test src/tools/cargotest
+```
 
 ### Large OSS Project builders
 

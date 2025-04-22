@@ -11,8 +11,8 @@ overall performance.
 
 ## Target Maintainers
 
-* [@Lokathor](https://github.com/lokathor)
-* [@corwinkuiper](https://github.com/corwinkuiper)
+[@Lokathor](https://github.com/lokathor)
+[@corwinkuiper](https://github.com/corwinkuiper)
 
 ## Testing
 

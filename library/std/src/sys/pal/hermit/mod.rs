@@ -18,7 +18,6 @@
 
 use crate::os::raw::c_char;
 
-pub mod env;
 pub mod futex;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

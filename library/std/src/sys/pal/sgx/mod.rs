@@ -9,7 +9,6 @@ use crate::io::ErrorKind;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
-pub mod env;
 mod libunwind_integration;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

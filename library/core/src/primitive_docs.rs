@@ -1307,10 +1307,12 @@ mod prim_f16 {}
 // FIXME: Is there a better place to put this?
 ///
 /// | `target_arch` | Extra payloads possible on this platform |
-/// |---------------|---------|
-/// | `x86`, `x86_64`, `arm`, `aarch64`, `riscv32`, `riscv64` | None |
+/// |---------------|------------------------------------------|
+// Sorted alphabetically
+/// | `aarch64`, `arm`, `arm64ec`, `loongarch64`, `powerpc` (except when `target_abi = "spe"`), `powerpc64`, `riscv32`, `riscv64`, `s390x`, `x86`, `x86_64` | None |
+/// | `nvptx64` | All payloads |
 /// | `sparc`, `sparc64` | The all-one payload |
-/// | `wasm32`, `wasm64` | If all input NaNs are quiet with all-zero payload: None.<br> Otherwise: all possible payloads. |
+/// | `wasm32`, `wasm64` | If all input NaNs are quiet with all-zero payload: None.<br> Otherwise: all payloads. |
 ///
 /// For targets not in this table, all payloads are possible.
 ///

@@ -2,7 +2,6 @@
 //@ only-x86_64
 
 #![crate_type = "lib"]
-#![feature(naked_functions, asm_const)]
 
 use std::arch::naked_asm;
 
@@ -28,21 +27,19 @@ fn test(x: u64) {
 // CHECK: add rax, 1
 // CHECK: add rax, 42
 
-#[naked]
+#[unsafe(naked)]
 pub extern "C" fn using_const_generics<const N: u64>(x: u64) -> u64 {
     const M: u64 = 42;
 
-    unsafe {
-        naked_asm!(
-            "xor rax, rax",
-            "add rax, rdi",
-            "add rax, {}",
-            "add rax, {}",
-            "ret",
-            const N,
-            const M,
-        )
-    }
+    naked_asm!(
+        "xor rax, rax",
+        "add rax, rdi",
+        "add rax, {}",
+        "add rax, {}",
+        "ret",
+        const N,
+        const M,
+    )
 }
 
 trait Invert {
@@ -60,16 +57,14 @@ impl Invert for i64 {
 // CHECK: call
 // CHECK: ret
 
-#[naked]
+#[unsafe(naked)]
 #[no_mangle]
 pub extern "C" fn generic_function<T: Invert>(x: i64) -> i64 {
-    unsafe {
-        naked_asm!(
-            "call {}",
-            "ret",
-            sym <T as Invert>::invert,
-        )
-    }
+    naked_asm!(
+        "call {}",
+        "ret",
+        sym <T as Invert>::invert,
+    )
 }
 
 #[derive(Copy, Clone)]
@@ -81,10 +76,10 @@ struct Foo(u64);
 // CHECK: mov rax, rdi
 
 impl Foo {
-    #[naked]
+    #[unsafe(naked)]
     #[no_mangle]
     extern "C" fn method(self) -> u64 {
-        unsafe { naked_asm!("mov rax, rdi", "ret") }
+        naked_asm!("mov rax, rdi", "ret")
     }
 }
 
@@ -97,10 +92,10 @@ trait Bar {
 }
 
 impl Bar for Foo {
-    #[naked]
+    #[unsafe(naked)]
     #[no_mangle]
     extern "C" fn trait_method(self) -> u64 {
-        unsafe { naked_asm!("mov rax, rdi", "ret") }
+        naked_asm!("mov rax, rdi", "ret")
     }
 }
 
@@ -109,7 +104,7 @@ impl Bar for Foo {
 // CHECK: lea rax, [rdi + rsi]
 
 // this previously ICE'd, see https://github.com/rust-lang/rust/issues/124375
-#[naked]
+#[unsafe(naked)]
 #[no_mangle]
 pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
     naked_asm!("lea rax, [rdi + rsi]", "ret");

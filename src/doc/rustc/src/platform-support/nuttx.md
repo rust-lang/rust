@@ -12,7 +12,7 @@ For brevity, many parts of the documentation will refer to Apache NuttX as simpl
 
 ## Target maintainers
 
-- Qi Huang [@no1wudi](https://github.com/no1wudi)
+[@no1wudi](https://github.com/no1wudi)
 
 ## Requirements
 

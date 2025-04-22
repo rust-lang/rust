@@ -1,4 +1,4 @@
-# Debugging and Testing Dependencies
+# Debugging and testing dependencies
 
 ## Testing the dependency graph
 

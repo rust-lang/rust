@@ -47,10 +47,10 @@ LL | #[diagnostic::on_unimplemented]
    = help: at least one of the `message`, `note` and `label` options are expected
 
 warning: there is no parameter `DoesNotExist` on trait `Test`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:32
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:44
    |
 LL | #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                            ^^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
@@ -167,10 +167,10 @@ LL | fn take_whatever(_: impl Whatever) {}
    |                          ^^^^^^^^ required by this bound in `take_whatever`
 
 warning: there is no parameter `DoesNotExist` on trait `Test`
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:32
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:44
    |
 LL | #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                            ^^^^^^^^^^^^
    |
    = help: expect either a generic argument name or `{Self}` as format argument
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
