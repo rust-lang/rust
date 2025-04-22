@@ -710,7 +710,7 @@ impl<D> StateDiffCollector<D> {
     }
 }
 
-impl<'tcx, A> ResultsVisitor<'_, 'tcx, A> for StateDiffCollector<A::Domain>
+impl<'tcx, A> ResultsVisitor<'tcx, A> for StateDiffCollector<A::Domain>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,

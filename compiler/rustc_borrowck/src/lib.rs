@@ -702,12 +702,12 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 // 2. loans made in overlapping scopes do not conflict
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
-impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, '_, 'tcx> {
+impl<'a, 'tcx> ResultsVisitor<'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<'a, '_, 'tcx> {
     fn visit_after_early_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain,
-        stmt: &'a Statement<'tcx>,
+        stmt: &Statement<'tcx>,
         location: Location,
     ) {
         debug!("MirBorrowckCtxt::process_statement({:?}, {:?}): {:?}", location, stmt, state);
@@ -783,7 +783,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
         &mut self,
         _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain,
-        term: &'a Terminator<'tcx>,
+        term: &Terminator<'tcx>,
         loc: Location,
     ) {
         debug!("MirBorrowckCtxt::process_terminator({:?}, {:?}): {:?}", loc, term, state);
@@ -896,7 +896,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
         &mut self,
         _results: &mut Results<'tcx, Borrowck<'a, 'tcx>>,
         state: &BorrowckDomain,
-        term: &'a Terminator<'tcx>,
+        term: &Terminator<'tcx>,
         loc: Location,
     ) {
         let span = term.source_info.span;
@@ -1363,7 +1363,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn consume_rvalue(
         &mut self,
         location: Location,
-        (rvalue, span): (&'a Rvalue<'tcx>, Span),
+        (rvalue, span): (&Rvalue<'tcx>, Span),
         state: &BorrowckDomain,
     ) {
         match rvalue {
@@ -1636,7 +1636,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn consume_operand(
         &mut self,
         location: Location,
-        (operand, span): (&'a Operand<'tcx>, Span),
+        (operand, span): (&Operand<'tcx>, Span),
         state: &BorrowckDomain,
     ) {
         match *operand {
