@@ -1120,6 +1120,11 @@ cc = ["@ZuseZ4"]
 [mentions."compiler/rustc_codegen_llvm/src/llvm/enzyme_ffi.rs"]
 cc = ["@ZuseZ4"]
 
+[mentions."library/core/src/fmt/rt.rs"]
+cc = ["@m-ou-se"]
+[mentions."compiler/rustc_ast_lowering/src/format.rs"]
+cc = ["@m-ou-se"]
+
 [assign]
 warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
