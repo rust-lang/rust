@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.71"
+itertools = "0.12"
 leb128 = "0.2.5"
 md5 = { package = "md-5" , version = "0.10.5" }
 miniz_oxide = "0.7.1"
