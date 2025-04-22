@@ -112,7 +112,7 @@ const _: () = {
         {
             static CACHE: zalsa_::IngredientCache<zalsa_struct_::IngredientImpl<SyntaxContext>> =
                 zalsa_::IngredientCache::new();
-            CACHE.get_or_create(db.as_dyn_database(), || {
+            CACHE.get_or_create(db.zalsa(), || {
                 db.zalsa().add_or_lookup_jar_by_type::<zalsa_struct_::JarImpl<SyntaxContext>>()
             })
         }
