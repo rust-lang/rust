@@ -21,6 +21,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -28,7 +29,6 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
-#![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
