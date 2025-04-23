@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use diagnostics::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
@@ -17,9 +18,9 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{BytePos, Pos, Span, Symbol};
 use tracing::debug;
 
+use crate::errors;
 use crate::lexer::diagnostics::TokenTreeDiagInfo;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
-use crate::{errors, make_unclosed_delims_error};
 
 mod diagnostics;
 mod tokentrees;
