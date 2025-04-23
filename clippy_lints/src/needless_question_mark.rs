@@ -1,6 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::path_res;
-use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Block, Body, Expr, ExprKind, LangItem, MatchSource, QPath};
@@ -9,52 +8,38 @@ use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Suggests alternatives for useless applications of `?` in terminating expressions
+    /// Suggests replacing `Ok(x?)` or `Some(x?)` with `x` in return positions where the `?` operator
+    /// is not needed to convert the type of `x`.
     ///
     /// ### Why is this bad?
     /// There's no reason to use `?` to short-circuit when execution of the body will end there anyway.
     ///
     /// ### Example
     /// ```no_run
-    /// struct TO {
-    ///     magic: Option<usize>,
+    /// # use std::num::ParseIntError;
+    /// fn f(s: &str) -> Option<usize> {
+    ///     Some(s.find('x')?)
     /// }
     ///
-    /// fn f(to: TO) -> Option<usize> {
-    ///     Some(to.magic?)
+    /// fn g(s: &str) -> Result<usize, ParseIntError> {
+    ///     Ok(s.parse()?)
     /// }
-    ///
-    /// struct TR {
-    ///     magic: Result<usize, bool>,
-    /// }
-    ///
-    /// fn g(tr: Result<TR, bool>) -> Result<usize, bool> {
-    ///     tr.and_then(|t| Ok(t.magic?))
-    /// }
-    ///
     /// ```
     /// Use instead:
     /// ```no_run
-    /// struct TO {
-    ///     magic: Option<usize>,
+    /// # use std::num::ParseIntError;
+    /// fn f(s: &str) -> Option<usize> {
+    ///     s.find('x')
     /// }
     ///
-    /// fn f(to: TO) -> Option<usize> {
-    ///     to.magic
-    /// }
-    ///
-    /// struct TR {
-    ///     magic: Result<usize, bool>,
-    /// }
-    ///
-    /// fn g(tr: Result<TR, bool>) -> Result<usize, bool> {
-    ///     tr.and_then(|t| t.magic)
+    /// fn g(s: &str) -> Result<usize, ParseIntError> {
+    ///     s.parse()
     /// }
     /// ```
     #[clippy::version = "1.51.0"]
     pub NEEDLESS_QUESTION_MARK,
     complexity,
-    "Suggest `value.inner_option` instead of `Some(value.inner_option?)`. The same goes for `Result<T, E>`."
+    "using `Ok(x?)` or `Some(x?)` where `x` would be equivalent"
 }
 
 declare_lint_pass!(NeedlessQuestionMark => [NEEDLESS_QUESTION_MARK]);
@@ -111,10 +96,10 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Call(path, [arg]) = expr.kind
         && let Res::Def(DefKind::Ctor(..), ctor_id) = path_res(cx, path)
         && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
-        && let sugg_remove = if cx.tcx.lang_items().option_some_variant() == Some(variant_id) {
-            "Some()"
+        && let variant = if cx.tcx.lang_items().option_some_variant() == Some(variant_id) {
+            "Some"
         } else if cx.tcx.lang_items().result_ok_variant() == Some(variant_id) {
-            "Ok()"
+            "Ok"
         } else {
             return;
         }
@@ -126,14 +111,25 @@ fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let inner_ty = cx.typeck_results().expr_ty(inner_expr)
         && expr_ty == inner_ty
     {
-        span_lint_and_sugg(
+        span_lint_hir_and_then(
             cx,
             NEEDLESS_QUESTION_MARK,
+            expr.hir_id,
             expr.span,
-            "question mark operator is useless here",
-            format!("try removing question mark and `{sugg_remove}`"),
-            format!("{}", snippet(cx, inner_expr.span, r#""...""#)),
-            Applicability::MachineApplicable,
+            format!("enclosing `{variant}` and `?` operator are unneeded"),
+            |diag| {
+                diag.multipart_suggestion(
+                    format!("remove the enclosing `{variant}` and `?` operator"),
+                    vec![
+                        (expr.span.until(inner_expr.span), String::new()),
+                        (
+                            inner_expr.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                            String::new(),
+                        ),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            },
         );
     }
 }
