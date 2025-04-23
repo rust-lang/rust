@@ -1249,7 +1249,7 @@ pub(crate) struct NakedFunctionIncompatibleAttribute {
     pub span: Span,
     #[label(passes_naked_attribute)]
     pub naked_span: Span,
-    pub attr: Symbol,
+    pub attr: String,
 }
 
 #[derive(Diagnostic)]

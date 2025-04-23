@@ -680,10 +680,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
 
                     if !other_attr.has_any_name(ALLOW_LIST) {
+                        let path = other_attr.path();
+                        let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
+                        let other_attr_name = path.join("::");
+
                         self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
                             span: other_attr.span(),
                             naked_span: attr.span(),
-                            attr: other_attr.name().unwrap(),
+                            attr: other_attr_name,
                         });
 
                         return;
