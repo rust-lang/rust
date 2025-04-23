@@ -61,7 +61,6 @@ impl Tool {
             artifacts_server,
             artifacts_with_llvm_assertions_server,
             git_merge_commit_email,
-            git_repository,
             nightly_branch,
         } = &self.config;
 
@@ -72,7 +71,6 @@ impl Tool {
             artifacts_with_llvm_assertions_server
         ));
         file_content.push_str(&format!("git_merge_commit_email={}\n", git_merge_commit_email));
-        file_content.push_str(&format!("git_repository={}\n", git_repository));
         file_content.push_str(&format!("nightly_branch={}\n", nightly_branch));
 
         file_content.push_str("\n");
