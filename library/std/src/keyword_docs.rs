@@ -109,6 +109,33 @@ mod as_keyword {}
 /// println!("{result}");
 /// ```
 ///
+/// It is also possible to exit from any *labelled* block returning the value early.
+/// If no value specified `break;` returns `()`.
+///
+/// ```rust
+/// let inputs = vec!["Cow", "Cat", "Dog", "Snake", "Cod"];
+///
+/// let mut results = vec![];
+/// for input in inputs {
+///     let result = 'filter: {
+///         if input.len() > 3 {
+///             break 'filter Err("Too long");
+///         };
+///
+///         if !input.contains("C") {
+///             break 'filter Err("No Cs");
+///         };
+///
+///         Ok(input.to_uppercase())
+///     };
+///
+///     results.push(result);
+/// }
+///
+/// // [Ok("COW"), Ok("CAT"), Err("No Cs"), Err("Too long"), Ok("COD")]
+/// println!("{:?}", results)
+/// ```
+///
 /// For more details consult the [Reference on "break expression"] and the [Reference on "break and
 /// loop values"].
 ///
