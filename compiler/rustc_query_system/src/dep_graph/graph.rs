@@ -1,7 +1,6 @@
 use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
@@ -354,7 +353,6 @@ impl<D: Deps> DepGraphData<D> {
                 node: Some(key),
                 reads: EdgesVec::new(),
                 read_set: Default::default(),
-                phantom_data: PhantomData,
             });
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
@@ -1301,7 +1299,6 @@ pub struct TaskDeps {
     node: Option<DepNode>,
     reads: EdgesVec,
     read_set: FxHashSet<DepNodeIndex>,
-    phantom_data: PhantomData<DepNode>,
 }
 
 impl Default for TaskDeps {
@@ -1311,7 +1308,6 @@ impl Default for TaskDeps {
             node: None,
             reads: EdgesVec::new(),
             read_set: FxHashSet::with_capacity_and_hasher(128, Default::default()),
-            phantom_data: PhantomData,
         }
     }
 }
