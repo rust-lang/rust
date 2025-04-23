@@ -9,7 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirId, Node, QPath};
 use rustc_hir_analysis::check::potentially_plural_count;
-use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
+use rustc_hir_analysis::hir_ty_lowering::{HirTyLowerer, PermitVariants};
 use rustc_index::IndexVec;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -2105,7 +2105,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself).raw);
-                let ty = self.lowerer().lower_resolved_ty_path(self_ty, path, hir_id, true);
+                let ty = self.lowerer().lower_resolved_ty_path(
+                    self_ty,
+                    path,
+                    hir_id,
+                    PermitVariants::Yes,
+                );
                 (path.res, LoweredTy::from_raw(self, path_span, ty))
             }
             QPath::TypeRelative(hir_self_ty, segment) => {
@@ -2117,7 +2122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     segment,
                     hir_id,
                     path_span,
-                    true,
+                    PermitVariants::Yes,
                 );
                 let ty = result
                     .map(|(ty, _, _)| ty)

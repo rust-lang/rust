@@ -245,33 +245,40 @@ pub enum FeedConstTy<'a, 'tcx> {
 
 #[derive(Debug, Clone, Copy)]
 enum LowerTypeRelativePathMode {
-    Type { permit_variants: bool },
+    Type(PermitVariants),
     Const,
 }
 
 impl LowerTypeRelativePathMode {
     fn assoc_tag(self) -> ty::AssocTag {
         match self {
-            Self::Type { .. } => ty::AssocTag::Type,
+            Self::Type(_) => ty::AssocTag::Type,
             Self::Const => ty::AssocTag::Const,
         }
     }
 
     fn def_kind(self) -> DefKind {
         match self {
-            Self::Type { .. } => DefKind::AssocTy,
+            Self::Type(_) => DefKind::AssocTy,
             Self::Const => DefKind::AssocConst,
         }
     }
 
-    fn permit_variants(self) -> bool {
+    fn permit_variants(self) -> PermitVariants {
         match self {
-            Self::Type { permit_variants } => permit_variants,
+            Self::Type(permit_variants) => permit_variants,
             // FIXME(mgca): Support paths like `Option::<T>::None` or `Option::<T>::Some` which
             // resolve to const ctors/fn items respectively.
-            Self::Const => false,
+            Self::Const => PermitVariants::No,
         }
     }
+}
+
+/// Whether to permit a path to resolve to an enum variant.
+#[derive(Debug, Clone, Copy)]
+pub enum PermitVariants {
+    Yes,
+    No,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1160,7 +1167,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         segment: &'tcx hir::PathSegment<'tcx>,
         qpath_hir_id: HirId,
         span: Span,
-        permit_variants: bool,
+        permit_variants: PermitVariants,
     ) -> Result<(Ty<'tcx>, DefKind, DefId), ErrorGuaranteed> {
         let tcx = self.tcx();
         match self.lower_type_relative_path(
@@ -1169,7 +1176,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             segment,
             qpath_hir_id,
             span,
-            LowerTypeRelativePathMode::Type { permit_variants },
+            LowerTypeRelativePathMode::Type(permit_variants),
         )? {
             TypeRelativePath::AssocItem(def_id, args) => {
                 let alias_ty = ty::AliasTy::new_from_args(tcx, def_id, args);
@@ -1245,7 +1252,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .iter()
                     .find(|vd| tcx.hygienic_eq(ident, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
-                    if mode.permit_variants() {
+                    if let PermitVariants::Yes = mode.permit_variants() {
                         tcx.check_stability(variant_def.def_id, Some(qpath_hir_id), span, None);
                         let _ = self.prohibit_generic_args(
                             slice::from_ref(segment).iter(),
@@ -2072,7 +2079,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         opt_self_ty: Option<Ty<'tcx>>,
         path: &hir::Path<'tcx>,
         hir_id: HirId,
-        permit_variants: bool,
+        permit_variants: PermitVariants,
     ) -> Ty<'tcx> {
         debug!(?path.res, ?opt_self_ty, ?path.segments);
         let tcx = self.tcx();
@@ -2103,7 +2110,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 self.lower_path_segment(span, did, path.segments.last().unwrap())
             }
-            Res::Def(kind @ DefKind::Variant, def_id) if permit_variants => {
+            Res::Def(kind @ DefKind::Variant, def_id)
+                if let PermitVariants::Yes = permit_variants =>
+            {
                 // Lower "variant type" as if it were a real type.
                 // The resulting `Ty` is type of the variant's enum for now.
                 assert_eq!(opt_self_ty, None);
@@ -2633,7 +2642,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself));
-                self.lower_resolved_ty_path(opt_self_ty, path, hir_ty.hir_id, false)
+                self.lower_resolved_ty_path(opt_self_ty, path, hir_ty.hir_id, PermitVariants::No)
             }
             &hir::TyKind::OpaqueDef(opaque_ty) => {
                 // If this is an RPITIT and we are using the new RPITIT lowering scheme, we
@@ -2696,7 +2705,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     segment,
                     hir_ty.hir_id,
                     hir_ty.span,
-                    false,
+                    PermitVariants::No,
                 )
                 .map(|(ty, _, _)| ty)
                 .unwrap_or_else(|guar| Ty::new_error(tcx, guar))
