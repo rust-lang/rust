@@ -5,7 +5,7 @@ fn bar() -> String {
     attr::fn bar() -> String { //~ ERROR expected identifier, found keyword `fn`
     //~^ ERROR expected one of `(`, `.`, `::`, `;`, `?`, `}`, or an operator, found `{`
     //~| ERROR expected `;`, found `bar`
-    //~| ERROR `->` used for field access or method call
+    //~| ERROR `->` is not valid syntax for field accesses and method calls
     #[attr]
     [1, 2, 3].iter().map().collect::<String>()
     #[attr]
