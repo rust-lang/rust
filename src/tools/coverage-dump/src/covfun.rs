@@ -5,7 +5,8 @@ use std::sync::OnceLock;
 use anyhow::{Context, anyhow};
 use regex::Regex;
 
-use crate::parser::{Parser, unescape_llvm_string_contents};
+use crate::llvm_utils::unescape_llvm_string_contents;
+use crate::parser::Parser;
 
 pub(crate) fn dump_covfun_mappings(
     llvm_ir: &str,

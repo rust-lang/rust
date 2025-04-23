@@ -1,4 +1,5 @@
 mod covfun;
+mod llvm_utils;
 mod parser;
 mod prf_names;
 

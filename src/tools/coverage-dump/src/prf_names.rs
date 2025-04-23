@@ -4,7 +4,8 @@ use std::sync::OnceLock;
 use anyhow::{anyhow, ensure};
 use regex::Regex;
 
-use crate::parser::{Parser, unescape_llvm_string_contents};
+use crate::llvm_utils::{truncated_md5, unescape_llvm_string_contents};
+use crate::parser::Parser;
 
 /// Scans through the contents of an LLVM IR assembly file to find `__llvm_prf_names`
 /// entries, decodes them, and creates a table that maps name hash values to
@@ -23,18 +24,6 @@ pub(crate) fn make_function_names_table(llvm_ir: &str) -> anyhow::Result<HashMap
 
         let payload = re.captures(line)?.get(1).unwrap().as_str();
         Some(payload)
-    }
-
-    /// LLVM's profiler/coverage metadata often uses an MD5 hash truncated to
-    /// 64 bits as a way to associate data stored in different tables/sections.
-    fn truncated_md5(bytes: &[u8]) -> u64 {
-        use md5::{Digest, Md5};
-        let mut hasher = Md5::new();
-        hasher.update(bytes);
-        let hash: [u8; 8] = hasher.finalize().as_slice()[..8].try_into().unwrap();
-        // The truncated hash is explicitly little-endian, regardless of host
-        // or target platform. (See `MD5Result::low` in LLVM's `MD5.h`.)
-        u64::from_le_bytes(hash)
     }
 
     fn demangle_if_able(symbol_name_bytes: &[u8]) -> anyhow::Result<String> {
