@@ -180,7 +180,7 @@
 # Note that this will attempt to download GCC even if there are local
 # modifications to the `src/gcc` submodule.
 # Currently, this is only supported for the `x86_64-unknown-linux-gnu` target.
-# download-ci-gcc = false
+#download-ci-gcc = false
 
 # =============================================================================
 # General build configuration options
