@@ -2605,8 +2605,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         // Scoping code checks the top level edition of the `if`; let's match it here.
         // The `CondChecker` also checks the edition of the `let` itself, just to make sure.
-        let let_chains_policy = LetChainsPolicy::EditionDependent { current_edition: lo.edition() };
-        let cond = self.parse_expr_cond(let_chains_policy)?;
+        let cond = self.parse_expr_cond(lo.edition())?;
         self.parse_if_after_cond(lo, cond)
     }
 
@@ -2716,16 +2715,16 @@ impl<'a> Parser<'a> {
 
     /// Parses the condition of a `if` or `while` expression.
     ///
-    /// The specified `edition` in `let_chains_policy` should be that of the whole `if` construct,
-    /// i.e. the same span we use to later decide whether the drop behaviour should be that of
-    /// edition `..=2021` or that of `2024..`.
+    /// The specified `edition` should be that of the whole `if` construct, i.e. the same span
+    /// we use to later decide whether the drop behaviour should be that of edition `..=2021`
+    /// or that of `2024..`.
     // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
-    pub fn parse_expr_cond(&mut self, let_chains_policy: LetChainsPolicy) -> PResult<'a, P<Expr>> {
+    pub fn parse_expr_cond(&mut self, edition: Edition) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_outer_attributes()?;
         let (mut cond, _) =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, attrs)?;
 
-        CondChecker::new(self, let_chains_policy).visit_expr(&mut cond);
+        CondChecker::new(self, edition).visit_expr(&mut cond);
 
         Ok(cond)
     }
@@ -3020,8 +3019,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `while` or `while let` expression (`while` token already eaten).
     fn parse_expr_while(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
-        let policy = LetChainsPolicy::EditionDependent { current_edition: lo.edition() };
-        let cond = self.parse_expr_cond(policy).map_err(|mut err| {
+        let cond = self.parse_expr_cond(lo.edition()).map_err(|mut err| {
             err.span_label(lo, "while parsing the condition of this `while` expression");
             err
         })?;
@@ -3426,7 +3424,8 @@ impl<'a> Parser<'a> {
         let if_span = self.prev_token.span;
         let mut cond = self.parse_match_guard_condition()?;
 
-        CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
+        // TODO explain
+        CondChecker::new(self, if_span.edition()).visit_expr(&mut cond);
 
         if has_let_expr(&cond) {
             let span = if_span.to(cond.span);
@@ -3455,7 +3454,7 @@ impl<'a> Parser<'a> {
                     unreachable!()
                 };
                 self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
-                CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
+                CondChecker::new(self, span.edition()).visit_expr(&mut cond);
                 let right = self.prev_token.span;
                 self.dcx().emit_err(errors::ParenthesesInMatchPat {
                     span: vec![left, right],
@@ -4026,13 +4025,6 @@ pub(crate) enum ForbiddenLetReason {
     NotSupportedParentheses(#[primary_span] Span),
 }
 
-/// Whether let chains are allowed on all editions, or it's edition dependent (allowed only on
-/// 2024 and later). In case of edition dependence, specify the currently present edition.
-pub enum LetChainsPolicy {
-    AlwaysAllowed,
-    EditionDependent { current_edition: Edition },
-}
-
 /// Visitor to check for invalid use of `ExprKind::Let` that can't
 /// easily be caught in parsing. For example:
 ///
@@ -4044,7 +4036,7 @@ pub enum LetChainsPolicy {
 /// ```
 struct CondChecker<'a> {
     parser: &'a Parser<'a>,
-    let_chains_policy: LetChainsPolicy,
+    current_edition: Edition,
     depth: u32,
     forbid_let_reason: Option<ForbiddenLetReason>,
     missing_let: Option<errors::MaybeMissingLet>,
@@ -4052,13 +4044,13 @@ struct CondChecker<'a> {
 }
 
 impl<'a> CondChecker<'a> {
-    fn new(parser: &'a Parser<'a>, let_chains_policy: LetChainsPolicy) -> Self {
+    fn new(parser: &'a Parser<'a>, current_edition: Edition) -> Self {
         CondChecker {
             parser,
             forbid_let_reason: None,
             missing_let: None,
             comparison: None,
-            let_chains_policy,
+            current_edition,
             depth: 0,
         }
     }
@@ -4083,13 +4075,8 @@ impl MutVisitor for CondChecker<'_> {
                     ));
                 } else if self.depth > 1 {
                     // Top level `let` is always allowed; only gate chains
-                    match self.let_chains_policy {
-                        LetChainsPolicy::AlwaysAllowed => (),
-                        LetChainsPolicy::EditionDependent { current_edition } => {
-                            if !current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
-                                self.parser.psess.gated_spans.gate(sym::let_chains, span);
-                            }
-                        }
+                    if !self.current_edition.at_least_rust_2024() || !span.at_least_rust_2024() {
+                        self.parser.psess.gated_spans.gate(sym::let_chains, span);
                     }
                 }
             }
