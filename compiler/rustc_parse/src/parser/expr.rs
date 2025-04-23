@@ -3020,7 +3020,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `while` or `while let` expression (`while` token already eaten).
     fn parse_expr_while(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
-        let policy = LetChainsPolicy::EditionDependent { current_edition: lo.edition() };
+        let policy = LetChainsPolicy::AlwaysAllowed;
         let cond = self.parse_expr_cond(policy).map_err(|mut err| {
             err.span_label(lo, "while parsing the condition of this `while` expression");
             err

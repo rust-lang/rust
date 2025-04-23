@@ -76,8 +76,6 @@ fn _while() {
     //~^ ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
     //~| ERROR expected expression, found `let` statement
-    //[no_feature]~| ERROR `let` expressions in this position are unstable
-    //[no_feature]~| ERROR `let` expressions in this position are unstable
 }
 
 #[cfg(not(nothing))]
