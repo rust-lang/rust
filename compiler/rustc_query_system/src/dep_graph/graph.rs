@@ -520,21 +520,26 @@ impl<D: Deps> DepGraph<D> {
             D::read_deps(|task_deps| match task_deps {
                 TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
                 TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
-                    self.read_index(data.encode_diagnostic(qcx, diagnostic));
+                    self.read_index(
+                        data.encode_side_effect(
+                            qcx,
+                            QuerySideEffect::Diagnostic(diagnostic.clone()),
+                        ),
+                    );
                 }
             })
         }
     }
     /// This forces a diagnostic node green by running its side effect. `prev_index` would
-    /// refer to a node created used `encode_diagnostic` in the previous session.
+    /// refer to a node created used [Self::record_diagnostic] in the previous session.
     #[inline]
-    pub fn force_diagnostic_node<Qcx: QueryContext>(
+    pub fn force_side_effect_node<Qcx: QueryContext>(
         &self,
         qcx: Qcx,
         prev_index: SerializedDepNodeIndex,
     ) {
         if let Some(ref data) = self.data {
-            data.force_diagnostic_node(qcx, prev_index);
+            data.force_side_effect_node(qcx, prev_index);
         }
     }
 
@@ -665,10 +670,10 @@ impl<D: Deps> DepGraphData<D> {
     /// This encodes a diagnostic by creating a node with an unique index and assoicating
     /// `diagnostic` with it, for use in the next session.
     #[inline]
-    fn encode_diagnostic<Qcx: QueryContext>(
+    fn encode_side_effect<Qcx: QueryContext>(
         &self,
         qcx: Qcx,
-        diagnostic: &DiagInner,
+        side_effect: QuerySideEffect,
     ) -> DepNodeIndex {
         // Use `send_new` so we get an unique index, even though the dep node is not.
         let dep_node_index = self.current.encoder.send_new(
@@ -677,19 +682,18 @@ impl<D: Deps> DepGraphData<D> {
                 hash: PackedFingerprint::from(Fingerprint::ZERO),
             },
             Fingerprint::ZERO,
-            // We want the side effect node to always be red so it will be forced and emit the
-            // diagnostic.
+            // We want the side effect node to always be red so it will be forced and apply
+            // the side effect
             std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
         );
-        let side_effect = QuerySideEffect::Diagnostic(diagnostic.clone());
         qcx.store_side_effect(dep_node_index, side_effect);
         dep_node_index
     }
 
     /// This forces a diagnostic node green by running its side effect. `prev_index` would
-    /// refer to a node created used `encode_diagnostic` in the previous session.
+    /// refer to a node created used [Self::encode_side_effect] in the previous session.
     #[inline]
-    fn force_diagnostic_node<Qcx: QueryContext>(
+    fn force_side_effect_node<Qcx: QueryContext>(
         &self,
         qcx: Qcx,
         prev_index: SerializedDepNodeIndex,
