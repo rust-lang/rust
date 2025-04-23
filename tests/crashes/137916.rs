@@ -1,5 +1,5 @@
 //@ known-bug: #137916
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 use std::ptr::null;
 
 async fn a() -> Box<dyn Send> {

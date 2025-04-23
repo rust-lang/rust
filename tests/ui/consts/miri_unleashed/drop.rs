@@ -1,5 +1,4 @@
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
-//@ error-pattern: calling non-const function `<Vec<i32> as Drop>::drop`
 
 use std::mem::ManuallyDrop;
 
@@ -15,5 +14,7 @@ static TEST_OK: () = {
 static TEST_BAD: () = {
     let _v: Vec<i32> = Vec::new();
 }; //~ ERROR could not evaluate static initializer
+   //~| NOTE calling non-const function `<Vec<i32> as Drop>::drop`
+   //~| NOTE inside `std::ptr::drop_in_place::<Vec<i32>> - shim(Some(Vec<i32>))`
 
 //~? WARN skipping const checks

@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
-use build_helper::git::get_closest_merge_commit;
+use build_helper::git::PathFreshness;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -181,26 +181,15 @@ pub const LLVM_INVALIDATION_PATHS: &[&str] = &[
     "src/version",
 ];
 
-/// This retrieves the LLVM sha we *want* to use, according to git history.
-pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
-    let llvm_sha = if is_git {
-        get_closest_merge_commit(Some(&config.src), &config.git_config(), LLVM_INVALIDATION_PATHS)
-            .unwrap()
+/// Detect whether LLVM sources have been modified locally or not.
+pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshness {
+    if is_git {
+        config.check_path_modifications(LLVM_INVALIDATION_PATHS)
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
-        info.sha.trim().to_owned()
+        PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() }
     } else {
-        "".to_owned()
-    };
-
-    if llvm_sha.is_empty() {
-        eprintln!("error: could not find commit hash for downloading LLVM");
-        eprintln!("HELP: maybe your repository history is too shallow?");
-        eprintln!("HELP: consider disabling `download-ci-llvm`");
-        eprintln!("HELP: or fetch enough history to include one upstream commit");
-        panic!();
+        PathFreshness::MissingUpstream
     }
-
-    llvm_sha
 }
 
 /// Returns whether the CI-found LLVM is currently usable.
@@ -370,8 +359,8 @@ impl Step for Llvm {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
-        // Libraries for ELF section compression.
-        if !target.is_windows() {
+        // Libraries for ELF section compression and profraw files merging.
+        if !target.is_msvc() {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
@@ -485,7 +474,7 @@ impl Step for Llvm {
         }
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
-        if !builder.is_builder_target(target) {
+        if !builder.config.is_host_target(target) {
             let LlvmResult { llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
@@ -637,7 +626,7 @@ fn configure_cmake(
     }
     cfg.target(&target.triple).host(&builder.config.build.triple);
 
-    if !builder.is_builder_target(target) {
+    if !builder.config.is_host_target(target) {
         cfg.define("CMAKE_CROSSCOMPILING", "True");
 
         // NOTE: Ideally, we wouldn't have to do this, and `cmake-rs` would just handle it for us.
@@ -1098,7 +1087,7 @@ impl Step for Lld {
             .define("LLVM_CMAKE_DIR", llvm_cmake_dir)
             .define("LLVM_INCLUDE_TESTS", "OFF");
 
-        if !builder.is_builder_target(target) {
+        if !builder.config.is_host_target(target) {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",

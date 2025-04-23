@@ -1,4 +1,3 @@
-//@ run-pass
-//@ ignore-test Not a test. Used by other tests
+//@ ignore-auxiliary (used by `./mod_file_with_path_attr.rs` and `mod_file.rs`)
 
 pub fn foo() -> isize { 10 }

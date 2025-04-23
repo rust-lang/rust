@@ -110,7 +110,7 @@ See [`compute_hir_hash`] for where the hash is actually computed.
 
 [SVH]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/svh/struct.Svh.html
 [incremental compilation]: ../queries/incremental-compilation.md
-[`compute_hir_hash`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/struct.LoweringContext.html#method.compute_hir_hash
+[`compute_hir_hash`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/fn.compute_hir_hash.html
 
 ### Stable Crate Id
 

@@ -5,15 +5,11 @@
 //!
 //! # Const intrinsics
 //!
-//! Note: any changes to the constness of intrinsics should be discussed with the language team.
-//! This includes changes in the stability of the constness.
-//!
-//! //FIXME(#132735) "old" style intrinsics support has been removed
-//! In order to make an intrinsic usable at compile-time, it needs to be declared in the "new"
-//! style, i.e. as a `#[rustc_intrinsic]` function, not inside an `extern` block. Then copy the
-//! implementation from <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
+//! In order to make an intrinsic unstable usable at compile-time, copy the implementation from
+//! <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
 //! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
-//! and make the intrinsic declaration a `const fn`.
+//! and make the intrinsic declaration below a `const fn`. This should be done in coordination with
+//! wg-const-eval.
 //!
 //! If an intrinsic is supposed to be used from a `const fn` with a `rustc_const_stable` attribute,
 //! `#[rustc_intrinsic_const_stable_indirect]` needs to be added to the intrinsic. Such a change requires
@@ -1330,7 +1326,9 @@ pub const fn unlikely(b: bool) -> bool {
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 ///
-/// The public form of this instrinsic is [`bool::select_unpredictable`].
+/// The public form of this instrinsic is [`core::hint::select_unpredictable`].
+/// However unlike the public form, the intrinsic will not drop the value that
+/// is not selected.
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -2308,19 +2306,7 @@ pub unsafe fn truncf128(x: f128) -> f128;
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f16(x: f16) -> f16;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f16(x: f16) -> f16 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf16(x: f16) -> f16;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf16(x) }
-}
 
 /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -2329,19 +2315,7 @@ pub fn round_ties_even_f16(x: f16) -> f16 {
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f32(x: f32) -> f32;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f32(x: f32) -> f32 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf32(x: f32) -> f32;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf32(x) }
-}
 
 /// Provided for compatibility with stdarch. DO NOT USE.
 #[inline(always)]
@@ -2356,19 +2330,7 @@ pub unsafe fn rintf32(x: f32) -> f32 {
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f64(x: f64) -> f64;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f64(x: f64) -> f64 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf64(x: f64) -> f64;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf64(x) }
-}
 
 /// Provided for compatibility with stdarch. DO NOT USE.
 #[inline(always)]
@@ -2383,19 +2345,7 @@ pub unsafe fn rintf64(x: f64) -> f64 {
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_nounwind]
-#[cfg(not(bootstrap))]
 pub fn round_ties_even_f128(x: f128) -> f128;
-
-/// To be removed on next bootstrap bump.
-#[cfg(bootstrap)]
-pub fn round_ties_even_f128(x: f128) -> f128 {
-    #[rustc_intrinsic]
-    #[rustc_nounwind]
-    unsafe fn rintf128(x: f128) -> f128;
-
-    // SAFETY: this intrinsic isn't actually unsafe
-    unsafe { rintf128(x) }
-}
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
 ///
@@ -2680,13 +2630,15 @@ pub const fn bswap<T: Copy>(x: T) -> T;
 #[rustc_intrinsic]
 pub const fn bitreverse<T: Copy>(x: T) -> T;
 
-/// Does a three-way comparison between the two integer arguments.
+/// Does a three-way comparison between the two arguments,
+/// which must be of character or integer (signed or unsigned) type.
 ///
-/// This is included as an intrinsic as it's useful to let it be one thing
-/// in MIR, rather than the multiple checks and switches that make its IR
-/// large and difficult to optimize.
+/// This was originally added because it greatly simplified the MIR in `cmp`
+/// implementations, and then LLVM 20 added a backend intrinsic for it too.
 ///
 /// The stabilized version of this intrinsic is [`Ord::cmp`].
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn three_way_compare<T: Copy>(lhs: T, rhss: T) -> crate::cmp::Ordering;
 
@@ -2787,6 +2739,7 @@ pub const fn carrying_mul_add<T: ~const fallback::CarryingMulAdd<Unsigned = U>, 
 /// `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`
 ///
 /// This intrinsic does not have a stable counterpart.
+#[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const unsafe fn exact_div<T: Copy>(x: T, y: T) -> T;
@@ -3451,20 +3404,62 @@ pub const fn contract_checks() -> bool {
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
-#[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+///
+/// Note that this function is a no-op during constant evaluation.
+#[unstable(feature = "contracts_internals", issue = "128044")]
+// Calls to this function get inserted by an AST expansion pass, which uses the equivalent of
+// `#[allow_internal_unstable]` to allow using `contracts_internals` functions. Const-checking
+// doesn't honor `#[allow_internal_unstable]`, so for the const feature gate we use the user-facing
+// `contracts` feature rather than the perma-unstable `contracts_internals`
+#[rustc_const_unstable(feature = "contracts", issue = "128044")]
 #[lang = "contract_check_requires"]
 #[rustc_intrinsic]
-pub fn contract_check_requires<C: Fn() -> bool>(cond: C) {
-    if contract_checks() && !cond() {
-        // Emit no unwind panic in case this was a safety requirement.
-        crate::panicking::panic_nounwind("failed requires check");
-    }
+pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
+    const_eval_select!(
+        @capture[C: Fn() -> bool + Copy] { cond: C } :
+        if const {
+                // Do nothing
+        } else {
+            if contract_checks() && !cond() {
+                // Emit no unwind panic in case this was a safety requirement.
+                crate::panicking::panic_nounwind("failed requires check");
+            }
+        }
+    )
 }
 
 /// Check if the post-condition `cond` has been met.
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
+///
+/// Note that this function is a no-op during constant evaluation.
+#[cfg(not(bootstrap))]
+#[unstable(feature = "contracts_internals", issue = "128044")]
+// Similar to `contract_check_requires`, we need to use the user-facing
+// `contracts` feature rather than the perma-unstable `contracts_internals`.
+// Const-checking doesn't honor allow_internal_unstable logic used by contract expansion.
+#[rustc_const_unstable(feature = "contracts", issue = "128044")]
+#[lang = "contract_check_ensures"]
+#[rustc_intrinsic]
+pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, ret: Ret) -> Ret {
+    const_eval_select!(
+        @capture[C: Fn(&Ret) -> bool + Copy, Ret] { cond: C, ret: Ret } -> Ret :
+        if const {
+            // Do nothing
+            ret
+        } else {
+            if contract_checks() && !cond(&ret) {
+                // Emit no unwind panic in case this was a safety requirement.
+                crate::panicking::panic_nounwind("failed ensures check");
+            }
+            ret
+        }
+    )
+}
+
+/// This is the old version of contract_check_ensures kept here for bootstrap only.
+#[cfg(bootstrap)]
 #[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[rustc_intrinsic]
 pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
@@ -3724,7 +3719,7 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3827,7 +3822,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -3907,7 +3902,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

@@ -1994,7 +1994,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .iter()
             .flat_map(|i| self.r.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers.
-            .filter(|item| matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter)
+            .filter(|item| item.is_fn() && !item.is_method())
             .filter_map(|item| {
                 // Only assoc fns that return `Self`
                 let fn_sig = self.r.tcx.fn_sig(item.def_id).skip_binder();
@@ -2007,8 +2007,9 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if def.did() != def_id {
                     return None;
                 }
-                let order = !item.name.as_str().starts_with("new");
-                Some((order, item.name, input_len))
+                let name = item.name();
+                let order = !name.as_str().starts_with("new");
+                Some((order, name, input_len))
             })
             .collect::<Vec<_>>();
         items.sort_by_key(|(order, _, _)| *order);
@@ -2238,7 +2239,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     .get(&def_id)
                                     .is_some_and(|sig| sig.has_self),
                                 None => {
-                                    self.r.tcx.fn_arg_names(def_id).first().is_some_and(|&ident| {
+                                    self.r.tcx.fn_arg_idents(def_id).first().is_some_and(|&ident| {
                                         matches!(ident, Some(Ident { name: kw::SelfLower, .. }))
                                     })
                                 }

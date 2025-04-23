@@ -174,16 +174,16 @@ mod macro_use {
     mod inner { #![macro_use] }
 
     #[macro_use] fn f() { }
-    //~^ `#[macro_use]` only has an effect
+    //~^ WARN `#[macro_use]` only has an effect
 
     #[macro_use] struct S;
-    //~^ `#[macro_use]` only has an effect
+    //~^ WARN `#[macro_use]` only has an effect
 
     #[macro_use] type T = S;
-    //~^ `#[macro_use]` only has an effect
+    //~^ WARN `#[macro_use]` only has an effect
 
     #[macro_use] impl S { }
-    //~^ `#[macro_use]` only has an effect
+    //~^ WARN `#[macro_use]` only has an effect
 }
 
 #[macro_export]

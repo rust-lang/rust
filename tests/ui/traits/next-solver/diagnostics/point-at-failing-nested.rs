@@ -20,5 +20,5 @@ impl Constrain for () {
 fn needs_foo<T: Foo>() {}
 fn main() {
     needs_foo::<()>();
-    //~^ the trait bound `(): Foo` is not satisfied
+    //~^ ERROR the trait bound `(): Foo` is not satisfied
 }

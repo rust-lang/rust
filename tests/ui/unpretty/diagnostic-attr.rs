@@ -1,5 +1,6 @@
 //@ compile-flags: -Zunpretty=hir
 //@ check-pass
+//@ edition: 2015
 
 #[diagnostic::on_unimplemented(
     message = "My Message for `ImportantTrait<{A}>` implemented for `{Self}`",

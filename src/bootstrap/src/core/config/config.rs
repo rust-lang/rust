@@ -6,16 +6,17 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::{self, Display};
+use std::hash::Hash;
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
+use build_helper::git::{GitConfig, PathFreshness, check_path_modifications, output_result};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
@@ -189,7 +190,7 @@ pub enum GccCiMode {
 ///
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation
-/// each field, see the corresponding fields in
+/// on each field, see the corresponding fields in
 /// `bootstrap.example.toml`.
 #[derive(Default, Clone)]
 pub struct Config {
@@ -417,7 +418,13 @@ pub struct Config {
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
 
+    /// Whether to use the precompiled stage0 libtest with compiletest.
+    pub compiletest_use_stage0_libtest: bool,
+
     pub is_running_on_ci: bool,
+
+    /// Cache for determining path modifications
+    pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -698,6 +705,7 @@ pub(crate) struct TomlConfig {
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
     profile: Option<String>,
+    include: Option<Vec<PathBuf>>,
 }
 
 /// This enum is used for deserializing change IDs from TOML, allowing both numeric values and the string `"ignore"`.
@@ -744,27 +752,35 @@ enum ReplaceOpt {
 }
 
 trait Merge {
-    fn merge(&mut self, other: Self, replace: ReplaceOpt);
+    fn merge(
+        &mut self,
+        parent_config_path: Option<PathBuf>,
+        included_extensions: &mut HashSet<PathBuf>,
+        other: Self,
+        replace: ReplaceOpt,
+    );
 }
 
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id }: Self,
+        parent_config_path: Option<PathBuf>,
+        included_extensions: &mut HashSet<PathBuf>,
+        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id, include }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
             if let Some(new) = y {
                 if let Some(original) = x {
-                    original.merge(new, replace);
+                    original.merge(None, &mut Default::default(), new, replace);
                 } else {
                     *x = Some(new);
                 }
             }
         }
 
-        self.change_id.inner.merge(change_id.inner, replace);
-        self.profile.merge(profile, replace);
+        self.change_id.inner.merge(None, &mut Default::default(), change_id.inner, replace);
+        self.profile.merge(None, &mut Default::default(), profile, replace);
 
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
@@ -779,12 +795,49 @@ impl Merge for TomlConfig {
             (Some(original_target), Some(new_target)) => {
                 for (triple, new) in new_target {
                     if let Some(original) = original_target.get_mut(&triple) {
-                        original.merge(new, replace);
+                        original.merge(None, &mut Default::default(), new, replace);
                     } else {
                         original_target.insert(triple, new);
                     }
                 }
             }
+        }
+
+        let parent_dir = parent_config_path
+            .as_ref()
+            .and_then(|p| p.parent().map(ToOwned::to_owned))
+            .unwrap_or_default();
+
+        // `include` handled later since we ignore duplicates using `ReplaceOpt::IgnoreDuplicate` to
+        // keep the upper-level configuration to take precedence.
+        for include_path in include.clone().unwrap_or_default().iter().rev() {
+            let include_path = parent_dir.join(include_path);
+            let include_path = include_path.canonicalize().unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to canonicalize '{}' path: {e}", include_path.display());
+                exit!(2);
+            });
+
+            let included_toml = Config::get_toml_inner(&include_path).unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
+                exit!(2);
+            });
+
+            assert!(
+                included_extensions.insert(include_path.clone()),
+                "Cyclic inclusion detected: '{}' is being included again before its previous inclusion was fully processed.",
+                include_path.display()
+            );
+
+            self.merge(
+                Some(include_path.clone()),
+                included_extensions,
+                included_toml,
+                // Ensures that parent configuration always takes precedence
+                // over child configurations.
+                ReplaceOpt::IgnoreDuplicate,
+            );
+
+            included_extensions.remove(&include_path);
         }
     }
 }
@@ -800,7 +853,13 @@ macro_rules! define_config {
         }
 
         impl Merge for $name {
-            fn merge(&mut self, other: Self, replace: ReplaceOpt) {
+            fn merge(
+                &mut self,
+                _parent_config_path: Option<PathBuf>,
+                _included_extensions: &mut HashSet<PathBuf>,
+                other: Self,
+                replace: ReplaceOpt
+            ) {
                 $(
                     match replace {
                         ReplaceOpt::IgnoreDuplicate => {
@@ -900,7 +959,13 @@ macro_rules! define_config {
 }
 
 impl<T> Merge for Option<T> {
-    fn merge(&mut self, other: Self, replace: ReplaceOpt) {
+    fn merge(
+        &mut self,
+        _parent_config_path: Option<PathBuf>,
+        _included_extensions: &mut HashSet<PathBuf>,
+        other: Self,
+        replace: ReplaceOpt,
+    ) {
         match replace {
             ReplaceOpt::IgnoreDuplicate => {
                 if self.is_none() {
@@ -983,6 +1048,7 @@ define_config! {
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
+        compiletest_use_stage0_libtest: Option<bool> = "compiletest-use-stage0-libtest",
         ccache: Option<StringOrBool> = "ccache",
         exclude: Option<Vec<PathBuf>> = "exclude",
     }
@@ -1359,13 +1425,15 @@ impl Config {
         Self::get_toml(&builder_config_path)
     }
 
-    #[cfg(test)]
-    pub(crate) fn get_toml(_: &Path) -> Result<TomlConfig, toml::de::Error> {
-        Ok(TomlConfig::default())
+    pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+        #[cfg(test)]
+        return Ok(TomlConfig::default());
+
+        #[cfg(not(test))]
+        Self::get_toml_inner(file)
     }
 
-    #[cfg(not(test))]
-    pub(crate) fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+    fn get_toml_inner(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
             t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
         // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
@@ -1540,14 +1608,12 @@ impl Config {
             }
         }
 
-        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
-        let ci_channel = file_content.trim_end();
-
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `bootstrap.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
             config.config = Some(if cfg!(not(test)) {
-                toml_path.canonicalize().unwrap()
+                toml_path = toml_path.canonicalize().unwrap();
+                toml_path.clone()
             } else {
                 toml_path.clone()
             });
@@ -1575,6 +1641,26 @@ impl Config {
             toml.profile = Some("dist".into());
         }
 
+        // Reverse the list to ensure the last added config extension remains the most dominant.
+        // For example, given ["a.toml", "b.toml"], "b.toml" should take precedence over "a.toml".
+        //
+        // This must be handled before applying the `profile` since `include`s should always take
+        // precedence over `profile`s.
+        for include_path in toml.include.clone().unwrap_or_default().iter().rev() {
+            let include_path = toml_path.parent().unwrap().join(include_path);
+
+            let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
+                eprintln!("ERROR: Failed to parse '{}': {e}", include_path.display());
+                exit!(2);
+            });
+            toml.merge(
+                Some(include_path),
+                &mut Default::default(),
+                included_toml,
+                ReplaceOpt::IgnoreDuplicate,
+            );
+        }
+
         if let Some(include) = &toml.profile {
             // Allows creating alias for profile names, allowing
             // profiles to be renamed while maintaining back compatibility
@@ -1596,7 +1682,12 @@ impl Config {
                 );
                 exit!(2);
             });
-            toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
+            toml.merge(
+                Some(include_path),
+                &mut Default::default(),
+                included_toml,
+                ReplaceOpt::IgnoreDuplicate,
+            );
         }
 
         let mut override_toml = TomlConfig::default();
@@ -1607,7 +1698,12 @@ impl Config {
 
             let mut err = match get_table(option) {
                 Ok(v) => {
-                    override_toml.merge(v, ReplaceOpt::ErrorOnDuplicate);
+                    override_toml.merge(
+                        None,
+                        &mut Default::default(),
+                        v,
+                        ReplaceOpt::ErrorOnDuplicate,
+                    );
                     continue;
                 }
                 Err(e) => e,
@@ -1618,7 +1714,12 @@ impl Config {
                 if !value.contains('"') {
                     match get_table(&format!(r#"{key}="{value}""#)) {
                         Ok(v) => {
-                            override_toml.merge(v, ReplaceOpt::ErrorOnDuplicate);
+                            override_toml.merge(
+                                None,
+                                &mut Default::default(),
+                                v,
+                                ReplaceOpt::ErrorOnDuplicate,
+                            );
                             continue;
                         }
                         Err(e) => err = e,
@@ -1628,7 +1729,7 @@ impl Config {
             eprintln!("failed to parse override `{option}`: `{err}");
             exit!(2)
         }
-        toml.merge(override_toml, ReplaceOpt::Override);
+        toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 
         config.change_id = toml.change_id.inner;
 
@@ -1682,6 +1783,7 @@ impl Config {
             optimized_compiler_builtins,
             jobs,
             compiletest_diff_tool,
+            compiletest_use_stage0_libtest,
             mut ccache,
             exclude,
         } = toml.build.unwrap_or_default();
@@ -1847,17 +1949,21 @@ impl Config {
         let mut lld_enabled = None;
         let mut std_features = None;
 
-        let is_user_configured_rust_channel =
-            if let Some(channel) = toml.rust.as_ref().and_then(|r| r.channel.clone()) {
-                if channel == "auto-detect" {
-                    config.channel = ci_channel.into();
-                } else {
-                    config.channel = channel;
-                }
+        let file_content = t!(fs::read_to_string(config.src.join("src/ci/channel")));
+        let ci_channel = file_content.trim_end();
+
+        let toml_channel = toml.rust.as_ref().and_then(|r| r.channel.clone());
+        let is_user_configured_rust_channel = match toml_channel {
+            Some(channel) if channel == "auto-detect" => {
+                config.channel = ci_channel.into();
                 true
-            } else {
-                false
-            };
+            }
+            Some(channel) => {
+                config.channel = channel;
+                true
+            }
+            None => false,
+        };
 
         let default = config.channel == "dev";
         config.omit_git_hash = toml.rust.as_ref().and_then(|r| r.omit_git_hash).unwrap_or(default);
@@ -1881,6 +1987,10 @@ impl Config {
                 && config.src.join("vendor").exists()
                 && config.src.join(".cargo/config.toml").exists(),
         );
+
+        if !is_user_configured_rust_channel && config.rust_info.is_from_tarball() {
+            config.channel = ci_channel.into();
+        }
 
         if let Some(rust) = toml.rust {
             let Rust {
@@ -2085,8 +2195,6 @@ impl Config {
 
                 config.channel = channel;
             }
-        } else if config.rust_info.is_from_tarball() && !is_user_configured_rust_channel {
-            ci_channel.clone_into(&mut config.channel);
         }
 
         if let Some(llvm) = toml.llvm {
@@ -2389,6 +2497,12 @@ impl Config {
             );
         }
 
+        if config.lld_enabled && config.is_system_llvm(config.build) {
+            eprintln!(
+                "Warning: LLD is enabled when using external llvm-config. LLD will not be built and copied to the sysroot."
+            );
+        }
+
         let default_std_features = BTreeSet::from([String::from("panic-unwind")]);
         config.rust_std_features = std_features.unwrap_or(default_std_features);
 
@@ -2415,6 +2529,7 @@ impl Config {
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
         config.compiletest_diff_tool = compiletest_diff_tool;
+        config.compiletest_use_stage0_libtest = compiletest_use_stage0_libtest.unwrap_or(true);
 
         let download_rustc = config.download_rustc_commit.is_some();
         config.explicit_stage_from_cli = flags.stage.is_some();
@@ -2879,6 +2994,13 @@ impl Config {
 
         let absolute_path = self.src.join(relative_path);
 
+        // NOTE: This check is required because `jj git clone` doesn't create directories for
+        // submodules, they are completely ignored. The code below assumes this directory exists,
+        // so create it here.
+        if !absolute_path.exists() {
+            t!(fs::create_dir_all(&absolute_path));
+        }
+
         // NOTE: The check for the empty directory is here because when running x.py the first time,
         // the submodule won't be checked out. Check it out now so we can build it.
         if !GitInfo::new(false, &absolute_path).is_managed_git_subrepository()
@@ -3074,19 +3196,30 @@ impl Config {
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged) {
-                Some(commit) => commit,
-                None => {
+            let freshness = self.check_path_modifications(&allowed_paths);
+            self.verbose(|| {
+                eprintln!("rustc freshness: {freshness:?}");
+            });
+            match freshness {
+                PathFreshness::LastModifiedUpstream { upstream } => upstream,
+                PathFreshness::HasLocalModifications { upstream } => {
                     if if_unchanged {
                         return None;
                     }
-                    println!("ERROR: could not find commit hash for downloading rustc");
-                    println!("HELP: maybe your repository history is too shallow?");
-                    println!(
-                        "HELP: consider setting `rust.download-rustc=false` in bootstrap.toml"
-                    );
-                    println!("HELP: or fetch enough history to include one upstream commit");
-                    crate::exit!(1);
+
+                    if self.is_running_on_ci {
+                        eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+                        eprintln!(
+                            "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+                        );
+                        return None;
+                    }
+
+                    upstream
+                }
+                PathFreshness::MissingUpstream => {
+                    eprintln!("No upstream commit found");
+                    return None;
                 }
             }
         } else {
@@ -3094,19 +3227,6 @@ impl Config {
                 .map(|info| info.sha.trim().to_owned())
                 .expect("git-commit-info is missing in the project root")
         };
-
-        if self.is_running_on_ci && {
-            let head_sha =
-                output(helpers::git(Some(&self.src)).arg("rev-parse").arg("HEAD").as_command_mut());
-            let head_sha = head_sha.trim();
-            commit == head_sha
-        } {
-            eprintln!("CI rustc commit matches with HEAD and we are in CI.");
-            eprintln!(
-                "`rustc.download-ci` functionality will be skipped as artifacts are not available."
-            );
-            return None;
-        }
 
         if debug_assertions_requested {
             eprintln!(
@@ -3145,9 +3265,7 @@ impl Config {
             self.update_submodule("src/llvm-project");
 
             // Check for untracked changes in `src/llvm-project` and other important places.
-            let has_changes = self
-                .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
-                .is_none();
+            let has_changes = self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
             // Return false if there are untracked changes, otherwise check if CI LLVM is available.
             if has_changes { false } else { llvm::is_ci_llvm_available_for_target(self, asserts) }
@@ -3178,51 +3296,70 @@ impl Config {
         }
     }
 
-    /// Returns the last commit in which any of `modified_paths` were changed,
-    /// or `None` if there are untracked changes in the working directory and `if_unchanged` is true.
-    pub fn last_modified_commit(
-        &self,
-        modified_paths: &[&str],
-        option_name: &str,
-        if_unchanged: bool,
-    ) -> Option<String> {
-        assert!(
-            self.rust_info.is_managed_git_subrepository(),
-            "Can't run `Config::last_modified_commit` on a non-git source."
-        );
-
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
-        if commit.is_empty() {
-            println!("error: could not find commit hash for downloading components from CI");
-            println!("help: maybe your repository history is too shallow?");
-            println!("help: consider disabling `{option_name}`");
-            println!("help: or fetch enough history to include one upstream commit");
-            crate::exit!(1);
+    /// Returns true if any of the `paths` have been modified locally.
+    pub fn has_changes_from_upstream(&self, paths: &[&'static str]) -> bool {
+        match self.check_path_modifications(paths) {
+            PathFreshness::LastModifiedUpstream { .. } => false,
+            PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
         }
+    }
 
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
-        let mut git = helpers::git(Some(&self.src));
-        git.args(["diff-index", "--quiet", &commit, "--"]).args(modified_paths);
+    /// Checks whether any of the given paths have been modified w.r.t. upstream.
+    pub fn check_path_modifications(&self, paths: &[&'static str]) -> PathFreshness {
+        // Checking path modifications through git can be relatively expensive (>100ms).
+        // We do not assume that the sources would change during bootstrap's execution,
+        // so we can cache the results here.
+        // Note that we do not use a static variable for the cache, because it would cause problems
+        // in tests that create separate `Config` instsances.
+        self.path_modification_cache
+            .lock()
+            .unwrap()
+            .entry(paths.to_vec())
+            .or_insert_with(|| {
+                check_path_modifications(&self.src, &self.git_config(), paths, CiEnv::current())
+                    .unwrap()
+            })
+            .clone()
+    }
 
-        let has_changes = !t!(git.as_command_mut().status()).success();
-        if has_changes {
-            if if_unchanged {
-                if self.is_verbose() {
-                    println!(
-                        "warning: saw changes to one of {modified_paths:?} since {commit}; \
-                            ignoring `{option_name}`"
-                    );
-                }
-                return None;
+    /// Checks if the given target is the same as the host target.
+    pub fn is_host_target(&self, target: TargetSelection) -> bool {
+        self.build == target
+    }
+
+    /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
+    /// In particular, we expect llvm sources to be available when this is false.
+    ///
+    /// NOTE: this is not the same as `!is_rust_llvm` when `llvm_has_patches` is set.
+    pub fn is_system_llvm(&self, target: TargetSelection) -> bool {
+        match self.target_config.get(&target) {
+            Some(Target { llvm_config: Some(_), .. }) => {
+                let ci_llvm = self.llvm_from_ci && self.is_host_target(target);
+                !ci_llvm
             }
-            println!(
-                "warning: `{option_name}` is enabled, but there are changes to one of {modified_paths:?}"
-            );
+            // We're building from the in-tree src/llvm-project sources.
+            Some(Target { llvm_config: None, .. }) => false,
+            None => false,
         }
+    }
 
-        Some(commit.to_string())
+    /// Returns `true` if this is our custom, patched, version of LLVM.
+    ///
+    /// This does not necessarily imply that we're managing the `llvm-project` submodule.
+    pub fn is_rust_llvm(&self, target: TargetSelection) -> bool {
+        match self.target_config.get(&target) {
+            // We're using a user-controlled version of LLVM. The user has explicitly told us whether the version has our patches.
+            // (They might be wrong, but that's not a supported use-case.)
+            // In particular, this tries to support `submodules = false` and `patches = false`, for using a newer version of LLVM that's not through `rust-lang/llvm-project`.
+            Some(Target { llvm_has_rust_patches: Some(patched), .. }) => *patched,
+            // The user hasn't promised the patches match.
+            // This only has our patches if it's downloaded from CI or built from source.
+            _ => !self.is_system_llvm(target),
+        }
+    }
+
+    pub fn ci_env(&self) -> CiEnv {
+        if self.is_running_on_ci { CiEnv::GitHubActions } else { CiEnv::None }
     }
 }
 

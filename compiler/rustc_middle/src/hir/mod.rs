@@ -83,44 +83,39 @@ impl ModuleItems {
         &self,
         f: impl Fn(ItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.free_items[..], |&id| f(id))
+        try_par_for_each_in(&self.free_items[..], |&&id| f(id))
     }
 
     pub fn par_trait_items(
         &self,
         f: impl Fn(TraitItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.trait_items[..], |&id| f(id))
+        try_par_for_each_in(&self.trait_items[..], |&&id| f(id))
     }
 
     pub fn par_impl_items(
         &self,
         f: impl Fn(ImplItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.impl_items[..], |&id| f(id))
+        try_par_for_each_in(&self.impl_items[..], |&&id| f(id))
     }
 
     pub fn par_foreign_items(
         &self,
         f: impl Fn(ForeignItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.foreign_items[..], |&id| f(id))
+        try_par_for_each_in(&self.foreign_items[..], |&&id| f(id))
     }
 
     pub fn par_opaques(
         &self,
         f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.opaques[..], |&id| f(id))
+        try_par_for_each_in(&self.opaques[..], |&&id| f(id))
     }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline(always)]
-    pub fn hir(self) -> map::Map<'tcx> {
-        map::Map { tcx: self }
-    }
-
     pub fn parent_module(self, id: HirId) -> LocalModDefId {
         if !id.is_owner() && self.def_kind(id.owner) == DefKind::Mod {
             LocalModDefId::new_unchecked(id.owner.def_id)
@@ -215,9 +210,9 @@ pub fn provide(providers: &mut Providers) {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
         tcx.hir_opt_ident_span(hir_id)
     };
-    providers.fn_arg_names = |tcx, def_id| {
+    providers.fn_arg_idents = |tcx, def_id| {
         if let Some(body_id) = tcx.hir_node_by_def_id(def_id).body_id() {
-            tcx.arena.alloc_from_iter(tcx.hir_body_param_names(body_id))
+            tcx.arena.alloc_from_iter(tcx.hir_body_param_idents(body_id))
         } else if let Node::TraitItem(&TraitItem {
             kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
             ..
@@ -231,7 +226,7 @@ pub fn provide(providers: &mut Providers) {
         } else {
             span_bug!(
                 tcx.hir_span(tcx.local_def_id_to_hir_id(def_id)),
-                "fn_arg_names: unexpected item {:?}",
+                "fn_arg_idents: unexpected item {:?}",
                 def_id
             );
         }

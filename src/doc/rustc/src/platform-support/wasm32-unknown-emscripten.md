@@ -36,8 +36,8 @@ If you are only targeting the web and need to access web APIs, the
 
 ## Target maintainers
 
-- Hood Chatham, https://github.com/hoodmane
-- Juniper Tyree, https://github.com/juntyr
+[@hoodmane](https://github.com/hoodmane)
+[@juntyr](https://github.com/juntyr)
 
 ## Requirements
 

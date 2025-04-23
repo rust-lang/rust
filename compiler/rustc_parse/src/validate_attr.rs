@@ -157,7 +157,7 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
 pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: &Attribute) {
     let attr_item = attr.get_normal_item();
 
-    if safety == AttributeSafety::Unsafe {
+    if let AttributeSafety::Unsafe { unsafe_since } = safety {
         if let ast::Safety::Default = attr_item.unsafety {
             let path_span = attr_item.path.span;
 
@@ -167,7 +167,13 @@ pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: 
             // square bracket respectively.
             let diag_span = attr_item.span();
 
-            if attr.span.at_least_rust_2024() {
+            // Attributes can be safe in earlier editions, and become unsafe in later ones.
+            let emit_error = match unsafe_since {
+                None => true,
+                Some(unsafe_since) => attr.span.edition() >= unsafe_since,
+            };
+
+            if emit_error {
                 psess.dcx().emit_err(errors::UnsafeAttrOutsideUnsafe {
                     span: path_span,
                     suggestion: errors::UnsafeAttrOutsideUnsafeSuggestion {

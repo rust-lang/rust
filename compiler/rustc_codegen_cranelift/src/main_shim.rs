@@ -1,6 +1,6 @@
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use rustc_hir::LangItem;
-use rustc_middle::ty::{AssocKind, GenericArg};
+use rustc_middle::ty::{AssocTag, GenericArg};
 use rustc_session::config::EntryFnType;
 use rustc_span::{DUMMY_SP, Ident};
 
@@ -104,10 +104,10 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let termination_trait = tcx.require_lang_item(LangItem::Termination, None);
                 let report = tcx
                     .associated_items(termination_trait)
-                    .find_by_name_and_kind(
+                    .find_by_ident_and_kind(
                         tcx,
                         Ident::from_str("report"),
-                        AssocKind::Fn,
+                        AssocTag::Fn,
                         termination_trait,
                     )
                     .unwrap();

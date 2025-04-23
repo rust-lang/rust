@@ -602,6 +602,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // We want to not actually read from memory for this visit. So, before
                     // walking this value, we have to make sure it is not a
                     // `Variants::Multiple`.
+                    // FIXME: the current logic here is layout-dependent, so enums with
+                    // multiple variants where all but 1 are uninhabited will be recursed into.
+                    // Is that truly what we want?
                     match v.layout.variants {
                         Variants::Multiple { .. } => {
                             // A multi-variant enum, or coroutine, or so.
@@ -1379,6 +1382,11 @@ pub(crate) fn bool_to_simd_element(b: bool, size: Size) -> Scalar {
 }
 
 pub(crate) fn simd_element_to_bool(elem: ImmTy<'_>) -> InterpResult<'_, bool> {
+    assert!(
+        matches!(elem.layout.ty.kind(), ty::Int(_) | ty::Uint(_)),
+        "SIMD mask element type must be an integer, but this is `{}`",
+        elem.layout.ty
+    );
     let val = elem.to_scalar().to_int(elem.layout.size)?;
     interp_ok(match val {
         0 => false,

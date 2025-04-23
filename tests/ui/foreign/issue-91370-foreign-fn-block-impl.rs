@@ -3,7 +3,7 @@
 extern "C" {
     //~^ `extern` blocks define existing foreign functions
     fn f() {
-        //~^ incorrect function inside `extern` block
+        //~^ ERROR incorrect function inside `extern` block
         //~| cannot have a body
         impl Copy for u8 {}
     }

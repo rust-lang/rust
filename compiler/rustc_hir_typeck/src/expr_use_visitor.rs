@@ -1000,6 +1000,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // determines whether to borrow *at the level of the deref pattern* rather than
                     // borrowing the bound place (since that inner place is inside the temporary that
                     // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
+                    // HACK: this could be a fake pattern corresponding to a deref inserted by match
+                    // ergonomics, in which case `pat.hir_id` will be the id of the subpattern.
                     let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpattern);
                     let mutability =
                         if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
@@ -1227,9 +1229,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         // actually this is somewhat "disjoint" from the code below
         // that aims to account for `ref x`.
         if let Some(vec) = self.cx.typeck_results().pat_adjustments().get(pat.hir_id) {
-            if let Some(first_ty) = vec.first() {
-                debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
-                return Ok(*first_ty);
+            if let Some(first_adjust) = vec.first() {
+                debug!("pat_ty(pat={:?}) found adjustment `{:?}`", pat, first_adjust);
+                return Ok(first_adjust.source);
             }
         } else if let PatKind::Ref(subpat, _) = pat.kind
             && self.cx.typeck_results().skipped_ref_pats().contains(pat.hir_id)
@@ -1502,16 +1504,21 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let mut projections = base_place.place.projections;
 
         let node_ty = self.cx.typeck_results().node_type(node);
-        // Opaque types can't have field projections, but we can instead convert
-        // the current place in-place (heh) to the hidden type, and then apply all
-        // follow up projections on that.
-        if node_ty != place_ty
-            && self
-                .cx
-                .try_structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), place_ty)
-                .is_impl_trait()
-        {
-            projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
+        if !self.cx.tcx().next_trait_solver_globally() {
+            // Opaque types can't have field projections, but we can instead convert
+            // the current place in-place (heh) to the hidden type, and then apply all
+            // follow up projections on that.
+            if node_ty != place_ty
+                && self
+                    .cx
+                    .try_structurally_resolve_type(
+                        self.cx.tcx().hir_span(base_place.hir_id),
+                        place_ty,
+                    )
+                    .is_impl_trait()
+            {
+                projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
+            }
         }
         projections.push(Projection { kind, ty });
         PlaceWithHirId::new(node, base_place.place.base_ty, base_place.place.base, projections)
@@ -1675,12 +1682,31 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         // Then we see that to get the same result, we must start with
         // `deref { deref { place_foo }}` instead of `place_foo` since the pattern is now `Some(x,)`
         // and not `&&Some(x,)`, even though its assigned type is that of `&&Some(x,)`.
-        for _ in
-            0..self.cx.typeck_results().pat_adjustments().get(pat.hir_id).map_or(0, |v| v.len())
-        {
+        let typeck_results = self.cx.typeck_results();
+        let adjustments: &[adjustment::PatAdjustment<'tcx>] =
+            typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
+        let mut adjusts = adjustments.iter().peekable();
+        while let Some(adjust) = adjusts.next() {
             debug!("applying adjustment to place_with_id={:?}", place_with_id);
-            place_with_id = self.cat_deref(pat.hir_id, place_with_id)?;
+            place_with_id = match adjust.kind {
+                adjustment::PatAdjust::BuiltinDeref => self.cat_deref(pat.hir_id, place_with_id)?,
+                adjustment::PatAdjust::OverloadedDeref => {
+                    // This adjustment corresponds to an overloaded deref; it borrows the scrutinee to
+                    // call `Deref::deref` or `DerefMut::deref_mut`. Invoke the callback before setting
+                    // `place_with_id` to the temporary storing the result of the deref.
+                    // HACK(dianne): giving the callback a fake deref pattern makes sure it behaves the
+                    // same as it would if this were an explicit deref pattern.
+                    op(&place_with_id, &hir::Pat { kind: PatKind::Deref(pat), ..*pat })?;
+                    let target_ty = match adjusts.peek() {
+                        Some(&&next_adjust) => next_adjust.source,
+                        // At the end of the deref chain, we get `pat`'s scrutinee.
+                        None => self.pat_ty_unadjusted(pat)?,
+                    };
+                    self.pat_deref_temp(pat.hir_id, pat, target_ty)?
+                }
+            };
         }
+        drop(typeck_results); // explicitly release borrow of typeck results, just in case.
         let place_with_id = place_with_id; // lose mutability
         debug!("applied adjustment derefs to get place_with_id={:?}", place_with_id);
 
@@ -1783,14 +1809,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_pattern(subplace, subpat, op)?;
             }
             PatKind::Deref(subpat) => {
-                let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpat);
-                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
-                let re_erased = self.cx.tcx().lifetimes.re_erased;
                 let ty = self.pat_ty_adjusted(subpat)?;
-                let ty = Ty::new_ref(self.cx.tcx(), re_erased, ty, mutability);
-                // A deref pattern generates a temporary.
-                let base = self.cat_rvalue(pat.hir_id, ty);
-                let place = self.cat_deref(pat.hir_id, base)?;
+                let place = self.pat_deref_temp(pat.hir_id, subpat, ty)?;
                 self.cat_pattern(place, subpat, op)?;
             }
 
@@ -1841,6 +1861,23 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
 
         Ok(())
+    }
+
+    /// Represents the place of the temp that stores the scrutinee of a deref pattern's interior.
+    fn pat_deref_temp(
+        &self,
+        hir_id: HirId,
+        inner: &hir::Pat<'_>,
+        target_ty: Ty<'tcx>,
+    ) -> Result<PlaceWithHirId<'tcx>, Cx::Error> {
+        let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(inner);
+        let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+        let re_erased = self.cx.tcx().lifetimes.re_erased;
+        let ty = Ty::new_ref(self.cx.tcx(), re_erased, target_ty, mutability);
+        // A deref pattern stores the result of `Deref::deref` or `DerefMut::deref_mut` ...
+        let base = self.cat_rvalue(hir_id, ty);
+        // ... and the inner pattern matches on the place behind that reference.
+        self.cat_deref(hir_id, base)
     }
 
     fn is_multivariant_adt(&self, ty: Ty<'tcx>, span: Span) -> bool {

@@ -46,21 +46,21 @@ pub fn test_zst(p: bool, a: (), b: ()) -> () {
 pub fn test_int2(p: bool, a: u64, b: u64) -> u64 {
     // CHECK-LABEL: define{{.*}} @test_int2
     // CHECK: select i1 %p, i64 %a, i64 %b, !unpredictable
-    p.select_unpredictable(a, b)
+    core::hint::select_unpredictable(p, a, b)
 }
 
 #[no_mangle]
 pub fn test_pair2(p: bool, a: (u64, u64), b: (u64, u64)) -> (u64, u64) {
     // CHECK-LABEL: define{{.*}} @test_pair2
     // CHECK: select i1 %p, {{.*}}, !unpredictable
-    p.select_unpredictable(a, b)
+    core::hint::select_unpredictable(p, a, b)
 }
 
 #[no_mangle]
 pub fn test_struct2(p: bool, a: Large, b: Large) -> Large {
     // CHECK-LABEL: define{{.*}} @test_struct2
     // CHECK: select i1 %p, {{.*}}, !unpredictable
-    p.select_unpredictable(a, b)
+    core::hint::select_unpredictable(p, a, b)
 }
 
 #[no_mangle]
@@ -68,5 +68,5 @@ pub fn test_zst2(p: bool, a: (), b: ()) -> () {
     // CHECK-LABEL: define{{.*}} @test_zst2
     // CHECK-NEXT: start:
     // CHECK-NEXT: ret void
-    p.select_unpredictable(a, b)
+    core::hint::select_unpredictable(p, a, b)
 }

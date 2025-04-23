@@ -4,7 +4,7 @@
 
 /// Inserts an element into a vector, returning the updated vector.
 ///
-/// `T` must be a vector with element type `U`.
+/// `T` must be a vector with element type `U`, and `idx` must be `const`.
 ///
 /// # Safety
 ///
@@ -15,14 +15,47 @@ pub const unsafe fn simd_insert<T, U>(x: T, idx: u32, val: U) -> T;
 
 /// Extracts an element from a vector.
 ///
+/// `T` must be a vector with element type `U`, and `idx` must be `const`.
+///
+/// # Safety
+///
+/// `idx` must be const and in-bounds of the vector.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub const unsafe fn simd_extract<T, U>(x: T, idx: u32) -> U;
+
+/// Inserts an element into a vector, returning the updated vector.
+///
 /// `T` must be a vector with element type `U`.
+///
+/// If the index is `const`, [`simd_insert`] may emit better assembly.
 ///
 /// # Safety
 ///
 /// `idx` must be in-bounds of the vector.
-#[rustc_intrinsic]
 #[rustc_nounwind]
-pub const unsafe fn simd_extract<T, U>(x: T, idx: u32) -> U;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub unsafe fn simd_insert_dyn<T, U>(mut x: T, idx: u32, val: U) -> T {
+    // SAFETY: `idx` must be in-bounds
+    unsafe { (&raw mut x).cast::<U>().add(idx as usize).write(val) }
+    x
+}
+
+/// Extracts an element from a vector.
+///
+/// `T` must be a vector with element type `U`.
+///
+/// If the index is `const`, [`simd_extract`] may emit better assembly.
+///
+/// # Safety
+///
+/// `idx` must be in-bounds of the vector.
+#[rustc_nounwind]
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub unsafe fn simd_extract_dyn<T, U>(x: T, idx: u32) -> U {
+    // SAFETY: `idx` must be in-bounds
+    unsafe { (&raw const x).cast::<U>().add(idx as usize).read() }
+}
 
 /// Adds two simd vectors elementwise.
 ///
@@ -271,7 +304,7 @@ pub unsafe fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 ///
 /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
 /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
@@ -292,7 +325,7 @@ pub unsafe fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
 ///
 /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, write the
 /// corresponding value in `val` to the pointer.
@@ -316,7 +349,7 @@ pub unsafe fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 ///
 /// `U` must be a pointer to the element type of `T`
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, read the corresponding
 /// pointer offset from `ptr`.
@@ -339,7 +372,7 @@ pub unsafe fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
 ///
 /// `U` must be a pointer to the element type of `T`
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, write the corresponding
 /// value in `val` to the pointer offset from `ptr`.
@@ -523,7 +556,7 @@ pub unsafe fn simd_bitmask<T, U>(x: T) -> U;
 ///
 /// `T` must be a vector.
 ///
-/// `M` must be a signed integer vector with the same length as `T` (but any element size).
+/// `M` must be an integer vector with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, select the element from
 /// `if_true`.  If the corresponding value in `mask` is `0`, select the element from

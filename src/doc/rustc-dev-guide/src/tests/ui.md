@@ -303,8 +303,7 @@ It should be preferred to using `error-pattern`, which is imprecise and non-exha
 ### `error-pattern`
 
 The `error-pattern` [directive](directives.md) can be used for runtime messages, which don't
-have a specific span, or for compile time messages if imprecise matching is required due to
-multi-line platform specific diagnostics.
+have a specific span, or in exceptional cases, for compile time messages.
 
 Let's think about this test:
 
@@ -317,8 +316,8 @@ fn main() {
 }
 ```
 
-We want to ensure this shows "index out of bounds" but we cannot use the `ERROR`
-annotation since the error doesn't have any span. Then it's time to use the
+We want to ensure this shows "index out of bounds", but we cannot use the `ERROR`
+annotation since the runtime error doesn't have any span. Then it's time to use the
 `error-pattern` directive:
 
 ```rust,ignore
@@ -331,27 +330,51 @@ fn main() {
 }
 ```
 
-But for strict testing, try to use the `ERROR` annotation as much as possible,
-including `//~?` annotations for diagnostics without span.
-For compile time diagnostics `error-pattern` should very rarely be necessary.
+Use of `error-pattern` is not recommended in general.
 
-Per-line annotations (`//~`) are still checked in tests using `error-pattern`,
-to opt out of these checks in exceptional cases use `//@ compile-flags: --error-format=human`.
+For strict testing of compile time output, try to use the line annotations `//~` as much as
+possible, including `//~?` annotations for diagnostics without spans.
 
-### Error levels
+If the compile time output is target dependent or too verbose, use directive
+`//@ dont-require-annotations: <diagnostic-kind>` to make the line annotation checking
+non-exhaustive.
+Some of the compiler messages can stay uncovered by annotations in this mode.
 
-The error levels that you can have are:
+For checking runtime output, `//@ check-run-results` may be preferable.
+
+Only use `error-pattern` if none of the above works.
+
+Line annotations `//~` are still checked in tests using `error-pattern`.
+In exceptional cases, use `//@ compile-flags: --error-format=human` to opt out of these checks.
+
+### Diagnostic kinds (error levels)
+
+The diagnostic kinds that you can have are:
 
 - `ERROR`
-- `WARN` or `WARNING`
+- `WARN` (or `WARNING`)
 - `NOTE`
-- `HELP` and `SUGGESTION`
+- `HELP`
+- `SUGGESTION`
 
-You are allowed to not include a level, but you should include it at least for
-the primary message.
-
-The `SUGGESTION` level is used for specifying what the expected replacement text
+The `SUGGESTION` kind is used for specifying what the expected replacement text
 should be for a diagnostic suggestion.
+
+`ERROR` and `WARN` kinds are required to be exhaustively covered by line annotations
+`//~` by default.
+
+Other kinds only need to be line-annotated if at least one annotation of that kind appears
+in the test file. For example, one `//~ NOTE` will also require all other `//~ NOTE`s in the file
+to be written out explicitly.
+
+Use directive `//@ dont-require-annotations` to opt out of exhaustive annotations.
+E.g. use `//@ dont-require-annotations: NOTE` to annotate notes selectively.
+Avoid using this directive for `ERROR`s and `WARN`ings, unless there's a serious reason, like
+target-dependent compiler output.
+
+Missing diagnostic kinds (`//~ message`) are currently accepted, but are being phased away.
+They will match any compiler output kind, but will not force exhaustive annotations for that kind.
+Prefer explicit kind and `//@ dont-require-annotations` to achieve the same effect.
 
 UI tests use the `-A unused` flag by default to ignore all unused warnings, as
 unused warnings are usually not the focus of a test. However, simple code
@@ -574,4 +597,27 @@ with "user-facing" Rust alone. Indeed, one could say that this slightly abuses
 the term "UI" (*user* interface) and turns such UI tests from black-box tests
 into white-box ones. Use them carefully and sparingly.
 
-[compiler debugging]: ../compiler-debugging.md#rustc_test-attributes
+[compiler debugging]: ../compiler-debugging.md#rustc_-test-attributes
+
+## UI test mode preset lint levels
+
+By default, test suites under UI test mode (`tests/ui`, `tests/ui-fulldeps`,
+but not `tests/rustdoc-ui`) will specify
+
+- `-A unused`
+- `-A internal_features`
+
+If:
+
+- The ui test's pass mode is below `run` (i.e. check or build).
+- No compare modes are specified.
+
+Since they can be very noisy in ui tests.
+
+You can override them with `compile-flags` lint level flags or
+in-source lint level attributes as required.
+
+Note that the `rustfix` version will *not* have `-A unused` passed,
+meaning that you may have to `#[allow(unused)]` to suppress `unused`
+lints on the rustfix'd file (because we might be testing rustfix
+on `unused` lints themselves).

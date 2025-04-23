@@ -217,14 +217,12 @@ mod llvm_enzyme {
                 ast::StmtKind::Item(iitem) => extract_item_info(iitem),
                 _ => None,
             },
-            Annotatable::AssocItem(assoc_item, Impl { of_trait: false }) => {
-                match &assoc_item.kind {
-                    ast::AssocItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
-                        Some((assoc_item.vis.clone(), sig.clone(), ident.clone()))
-                    }
-                    _ => None,
+            Annotatable::AssocItem(assoc_item, Impl { .. }) => match &assoc_item.kind {
+                ast::AssocItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
+                    Some((assoc_item.vis.clone(), sig.clone(), ident.clone()))
                 }
-            }
+                _ => None,
+            },
             _ => None,
         }) else {
             dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
@@ -234,7 +232,7 @@ mod llvm_enzyme {
         let meta_item_vec: ThinVec<MetaItemInner> = match meta_item.kind {
             ast::MetaItemKind::List(ref vec) => vec.clone(),
             _ => {
-                dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+                dcx.emit_err(errors::AutoDiffMissingConfig { span: item.span() });
                 return vec![item];
             }
         };
@@ -365,7 +363,7 @@ mod llvm_enzyme {
                 }
                 Annotatable::Item(iitem.clone())
             }
-            Annotatable::AssocItem(ref mut assoc_item, i @ Impl { of_trait: false }) => {
+            Annotatable::AssocItem(ref mut assoc_item, i @ Impl { .. }) => {
                 if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     assoc_item.attrs.push(attr);
                 }
@@ -596,15 +594,14 @@ mod llvm_enzyme {
                 }
             };
             let arg = ty.kind.is_simple_path().unwrap();
-            let sl: Vec<Symbol> = vec![arg, kw::Default];
-            let tmp = ecx.def_site_path(&sl);
+            let tmp = ecx.def_site_path(&[arg, kw::Default]);
             let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
             let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
             body.stmts.push(ecx.stmt_expr(default_call_expr));
             return body;
         }
 
-        let mut exprs: P<ast::Expr> = primal_call.clone();
+        let mut exprs: P<ast::Expr> = primal_call;
         let d_ret_ty = match d_sig.decl.output {
             FnRetTy::Ty(ref ty) => ty.clone(),
             FnRetTy::Default(span) => {
@@ -622,7 +619,7 @@ mod llvm_enzyme {
                 // type due to the Const return activity.
                 exprs = ecx.expr_call(new_decl_span, bb_call_expr, thin_vec![exprs]);
             } else {
-                let q = QSelf { ty: d_ret_ty.clone(), path_span: span, position: 0 };
+                let q = QSelf { ty: d_ret_ty, path_span: span, position: 0 };
                 let y =
                     ExprKind::Path(Some(P(q)), ecx.path_ident(span, Ident::from_str("default")));
                 let default_call_expr = ecx.expr(span, y);
@@ -640,8 +637,7 @@ mod llvm_enzyme {
                         let mut exprs2 = thin_vec![exprs];
                         for arg in args.iter().skip(1) {
                             let arg = arg.kind.is_simple_path().unwrap();
-                            let sl: Vec<Symbol> = vec![arg, kw::Default];
-                            let tmp = ecx.def_site_path(&sl);
+                            let tmp = ecx.def_site_path(&[arg, kw::Default]);
                             let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
                             let default_call_expr =
                                 ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
@@ -799,8 +795,19 @@ mod llvm_enzyme {
                         d_inputs.push(shadow_arg.clone());
                     }
                 }
-                DiffActivity::Dual | DiffActivity::DualOnly => {
-                    for i in 0..x.width {
+                DiffActivity::Dual
+                | DiffActivity::DualOnly
+                | DiffActivity::Dualv
+                | DiffActivity::DualvOnly => {
+                    // the *v variants get lowered to enzyme_dupv and enzyme_dupnoneedv, which cause
+                    // Enzyme to not expect N arguments, but one argument (which is instead larger).
+                    let iterations =
+                        if matches!(activity, DiffActivity::Dualv | DiffActivity::DualvOnly) {
+                            1
+                        } else {
+                            x.width
+                        };
+                    for i in 0..iterations {
                         let mut shadow_arg = arg.clone();
                         let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
                             ident.name
@@ -823,7 +830,7 @@ mod llvm_enzyme {
                 DiffActivity::Const => {
                     // Nothing to do here.
                 }
-                DiffActivity::None | DiffActivity::FakeActivitySize => {
+                DiffActivity::None | DiffActivity::FakeActivitySize(_) => {
                     panic!("Should not happen");
                 }
             }
@@ -887,8 +894,8 @@ mod llvm_enzyme {
                 }
             };
 
-            if let DiffActivity::Dual = x.ret_activity {
-                let kind = if x.width == 1 {
+            if matches!(x.ret_activity, DiffActivity::Dual | DiffActivity::Dualv) {
+                let kind = if x.width == 1 || matches!(x.ret_activity, DiffActivity::Dualv) {
                     // Dual can only be used for f32/f64 ret.
                     // In that case we return now a tuple with two floats.
                     TyKind::Tup(thin_vec![ty.clone(), ty.clone()])
@@ -903,7 +910,7 @@ mod llvm_enzyme {
                 let ty = P(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None });
                 d_decl.output = FnRetTy::Ty(ty);
             }
-            if let DiffActivity::DualOnly = x.ret_activity {
+            if matches!(x.ret_activity, DiffActivity::DualOnly | DiffActivity::DualvOnly) {
                 // No need to change the return type,
                 // we will just return the shadow in place of the primal return.
                 // However, if we have a width > 1, then we don't return -> T, but -> [T; width]

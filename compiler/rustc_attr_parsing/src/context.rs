@@ -15,7 +15,6 @@ use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInterna
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::repr::ReprParser;
-use crate::attributes::rustc::RustcMacroEdition2021Parser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
 };
@@ -77,7 +76,6 @@ attribute_groups!(
         // tidy-alphabetical-start
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
-        Single<RustcMacroEdition2021Parser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];
@@ -222,7 +220,7 @@ impl<'sess> AttributeParser<'sess> {
             // if we're only looking for a single attribute,
             // skip all the ones we don't care about
             if let Some(expected) = self.parse_only {
-                if attr.name_or_empty() != expected {
+                if !attr.has_name(expected) {
                     continue;
                 }
             }
@@ -232,7 +230,7 @@ impl<'sess> AttributeParser<'sess> {
             // that's expanded right? But no, sometimes, when parsing attributes on macros,
             // we already use the lowering logic and these are still there. So, when `omit_doc`
             // is set we *also* want to ignore these
-            if omit_doc == OmitDoc::Skip && attr.name_or_empty() == sym::doc {
+            if omit_doc == OmitDoc::Skip && attr.has_name(sym::doc) {
                 continue;
             }
 
@@ -250,7 +248,7 @@ impl<'sess> AttributeParser<'sess> {
                     }))
                 }
                 // // FIXME: make doc attributes go through a proper attribute parser
-                // ast::AttrKind::Normal(n) if n.name_or_empty() == sym::doc => {
+                // ast::AttrKind::Normal(n) if n.has_name(sym::doc) => {
                 //     let p = GenericMetaItemParser::from_attr(&n, self.dcx());
                 //
                 //     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
@@ -320,7 +318,7 @@ impl<'sess> AttributeParser<'sess> {
             ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(DelimArgs {
                 dspan: args.dspan,
                 delim: args.delim,
-                tokens: args.tokens.flattened(),
+                tokens: args.tokens.clone(),
             }),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle

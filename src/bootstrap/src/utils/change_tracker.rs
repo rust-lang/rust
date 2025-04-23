@@ -391,4 +391,14 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "You can now use `change-id = \"ignore\"` to suppress `change-id ` warnings in the console.",
     },
+    ChangeInfo {
+        change_id: 139386,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `build.compiletest-use-stage0-libtest` to force `compiletest` to use the stage 0 libtest.",
+    },
+    ChangeInfo {
+        change_id: 138934,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `include` to create config extensions.",
+    },
 ];

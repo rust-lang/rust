@@ -4,11 +4,11 @@ struct Foo<'a> {
 
 impl <'a> Foo<'a>{
     fn bar(self: &mut Foo) {
-    //~^ mismatched `self` parameter type
+    //~^ ERROR mismatched `self` parameter type
     //~| expected struct `Foo<'a>`
     //~| found struct `Foo<'_>`
     //~| lifetime mismatch
-    //~| mismatched `self` parameter type
+    //~| ERROR mismatched `self` parameter type
     //~| expected struct `Foo<'a>`
     //~| found struct `Foo<'_>`
     //~| lifetime mismatch

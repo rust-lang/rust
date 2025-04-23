@@ -8,11 +8,11 @@ const unsafe extern "C-unwind" fn bar() -> usize {
 
 fn main() {
     let a: [u8; foo()];
-    //~^ call to unsafe function `foo` is unsafe and requires unsafe function or block
+    //~^ ERROR call to unsafe function `foo` is unsafe and requires unsafe function or block
     foo();
     //~^ ERROR call to unsafe function `foo` is unsafe and requires unsafe function or block
     let b: [u8; bar()];
-    //~^ call to unsafe function `bar` is unsafe and requires unsafe function or block
+    //~^ ERROR call to unsafe function `bar` is unsafe and requires unsafe function or block
     bar();
     //~^ ERROR call to unsafe function `bar` is unsafe and requires unsafe function or block
 }

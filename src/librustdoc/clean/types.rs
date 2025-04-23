@@ -517,7 +517,7 @@ impl Item {
                     Some(RenderedLink {
                         original_text: s.clone(),
                         new_text: link_text.clone(),
-                        tooltip: link_tooltip(*id, fragment, cx),
+                        tooltip: link_tooltip(*id, fragment, cx).to_string(),
                         href,
                     })
                 } else {
@@ -788,7 +788,7 @@ impl Item {
                         }
                         _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
                     }
-                } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
+                } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
                             .replace("\\\n", "")
@@ -1407,34 +1407,30 @@ pub(crate) struct Function {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct FnDecl {
-    pub(crate) inputs: Arguments,
+    pub(crate) inputs: Vec<Parameter>,
     pub(crate) output: Type,
     pub(crate) c_variadic: bool,
 }
 
 impl FnDecl {
     pub(crate) fn receiver_type(&self) -> Option<&Type> {
-        self.inputs.values.first().and_then(|v| v.to_receiver())
+        self.inputs.first().and_then(|v| v.to_receiver())
     }
 }
 
+/// A function parameter.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct Arguments {
-    pub(crate) values: Vec<Argument>,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub(crate) struct Argument {
+pub(crate) struct Parameter {
+    pub(crate) name: Option<Symbol>,
     pub(crate) type_: Type,
-    pub(crate) name: Symbol,
     /// This field is used to represent "const" arguments from the `rustc_legacy_const_generics`
     /// feature. More information in <https://github.com/rust-lang/rust/issues/83167>.
     pub(crate) is_const: bool,
 }
 
-impl Argument {
+impl Parameter {
     pub(crate) fn to_receiver(&self) -> Option<&Type> {
-        if self.name == kw::SelfLower { Some(&self.type_) } else { None }
+        if self.name == Some(kw::SelfLower) { Some(&self.type_) } else { None }
     }
 }
 
@@ -2504,7 +2500,7 @@ impl Impl {
         self.trait_
             .as_ref()
             .map(|t| t.def_id())
-            .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.name).collect())
+            .map(|did| tcx.provided_trait_methods(did).map(|meth| meth.name()).collect())
             .unwrap_or_default()
     }
 

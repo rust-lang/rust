@@ -67,9 +67,9 @@ dependencies = [
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.152"
+version = "0.1.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2153cf213eb259361567720ce55f6446f17acd0ccca87fb6dc05360578228a58"
+checksum = "341e0830ca6170a4fcf02e92e57daf4b6f10142d48da32a547023867a6c8b35e"
 dependencies = [
  "cc",
  "rustc-std-workspace-core",
@@ -157,9 +157,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.171"
+version = "0.2.172"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c19937216e9d3aa9956d9bb8dfc0b0c8beb6058fc4f7a4dc4d850edf86a237d6"
+checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -176,9 +176,9 @@ dependencies = [
 
 [[package]]
 name = "miniz_oxide"
-version = "0.8.7"
+version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff70ce3e48ae43fa075863cef62e8b43b71a4f2382229920e0df362592919430"
+checksum = "3be647b768db090acb35d5ec5db2b0e1f1de11133ca123b9eacf5137868f892a"
 dependencies = [
  "adler2",
  "compiler_builtins",

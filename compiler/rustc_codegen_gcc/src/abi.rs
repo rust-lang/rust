@@ -9,6 +9,8 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
 use rustc_session::config;
+#[cfg(feature = "master")]
+use rustc_target::callconv::Conv;
 use rustc_target::callconv::{ArgAttributes, CastTarget, FnAbi, PassMode};
 
 use crate::builder::Builder;
@@ -105,6 +107,8 @@ pub trait FnAbiGccExt<'gcc, 'tcx> {
     // TODO(antoyo): return a function pointer type instead?
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc>;
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
+    #[cfg(feature = "master")]
+    fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>>;
 }
 
 impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
@@ -227,4 +231,47 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         );
         pointer_type
     }
+
+    #[cfg(feature = "master")]
+    fn gcc_cconv(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Option<FnAttribute<'gcc>> {
+        conv_to_fn_attribute(self.conv, &cx.tcx.sess.target.arch)
+    }
+}
+
+#[cfg(feature = "master")]
+pub fn conv_to_fn_attribute<'gcc>(conv: Conv, arch: &str) -> Option<FnAttribute<'gcc>> {
+    // TODO: handle the calling conventions returning None.
+    let attribute = match conv {
+        Conv::C
+        | Conv::Rust
+        | Conv::CCmseNonSecureCall
+        | Conv::CCmseNonSecureEntry
+        | Conv::RiscvInterrupt { .. } => return None,
+        Conv::Cold => return None,
+        Conv::PreserveMost => return None,
+        Conv::PreserveAll => return None,
+        Conv::GpuKernel => {
+            // TODO(antoyo): remove clippy allow attribute when this is implemented.
+            #[allow(clippy::if_same_then_else)]
+            if arch == "amdgpu" {
+                return None;
+            } else if arch == "nvptx64" {
+                return None;
+            } else {
+                panic!("Architecture {} does not support GpuKernel calling convention", arch);
+            }
+        }
+        Conv::AvrInterrupt => return None,
+        Conv::AvrNonBlockingInterrupt => return None,
+        Conv::ArmAapcs => return None,
+        Conv::Msp430Intr => return None,
+        Conv::X86Fastcall => return None,
+        Conv::X86Intr => return None,
+        Conv::X86Stdcall => return None,
+        Conv::X86ThisCall => return None,
+        Conv::X86VectorCall => return None,
+        Conv::X86_64SysV => FnAttribute::SysvAbi,
+        Conv::X86_64Win64 => FnAttribute::MsAbi,
+    };
+    Some(attribute)
 }

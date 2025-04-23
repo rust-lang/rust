@@ -36,6 +36,7 @@ const SUPPORTED_CALLING_CONVENTIONS: &[&str] = &[
     "wasm",
     "system",
     "system-unwind",
+    "rust-intrinsic",
     "rust-call",
     "unadjusted",
 ];

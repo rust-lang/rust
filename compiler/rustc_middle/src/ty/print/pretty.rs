@@ -63,6 +63,7 @@ thread_local! {
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static REDUCED_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
+    static NO_VISIBLE_PATH_IF_DOC_HIDDEN: Cell<bool> = const { Cell::new(false) };
     static RTN_MODE: Cell<RtnMode> = const { Cell::new(RtnMode::ForDiagnostic) };
 }
 
@@ -134,6 +135,8 @@ define_helper!(
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
+    /// Prevent selection of visible paths if the paths are through a doc hidden path.
+    fn with_no_visible_paths_if_doc_hidden(NoVisibleIfDocHiddenGuard, NO_VISIBLE_PATH_IF_DOC_HIDDEN);
 );
 
 #[must_use]
@@ -569,6 +572,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             return Ok(false);
         };
 
+        if self.tcx().is_doc_hidden(visible_parent) && with_no_visible_paths_if_doc_hidden() {
+            return Ok(false);
+        }
+
         let actual_parent = self.tcx().opt_parent(def_id);
         debug!(
             "try_print_visible_def_path: visible_parent={:?} actual_parent={:?}",
@@ -613,7 +620,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             // the children of the visible parent (as was done when computing
             // `visible_parent_map`), looking for the specific child we currently have and then
             // have access to the re-exported name.
-            DefPathData::TypeNs(Some(ref mut name)) if Some(visible_parent) != actual_parent => {
+            DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
                 // Item might be re-exported several times, but filter for the one
                 // that's public and whose identifier isn't `_`.
                 let reexport = self
@@ -634,7 +641,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             // Re-exported `extern crate` (#43189).
             DefPathData::CrateRoot => {
-                data = DefPathData::TypeNs(Some(self.tcx().crate_name(def_id.krate)));
+                data = DefPathData::TypeNs(self.tcx().crate_name(def_id.krate));
             }
             _ => {}
         }
@@ -1207,7 +1214,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             && assoc
                                 .trait_container(tcx)
                                 .is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::Coroutine))
-                            && assoc.name == rustc_span::sym::Return
+                            && assoc.opt_name() == Some(rustc_span::sym::Return)
                         {
                             if let ty::Coroutine(_, args) = args.type_at(0).kind() {
                                 let return_ty = args.as_coroutine().return_ty();
@@ -1230,7 +1237,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             p!(", ");
                         }
 
-                        p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name));
+                        p!(write("{} = ", tcx.associated_item(assoc_item_def_id).name()));
 
                         match term.unpack() {
                             TermKind::Ty(ty) => p!(print(ty)),
@@ -2520,7 +2527,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
 
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
-        match *region {
+        match region.kind() {
             ty::ReEarlyParam(ref data) => data.has_name(),
 
             ty::ReLateParam(ty::LateParamRegion { kind, .. }) => kind.is_named(),
@@ -2590,7 +2597,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // the user might want to diagnose an error, but there is basically no way
         // to fit that into a short string. Hence the recommendation to use
         // `explain_region()` or `note_and_explain_region()`.
-        match *region {
+        match region.kind() {
             ty::ReEarlyParam(data) => {
                 p!(write("{}", data.name));
                 return Ok(());
@@ -2680,7 +2687,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
-        let region = match *r {
+        let region = match r.kind() {
             ty::ReBound(db, br) if db >= self.current_index => {
                 *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
             }
@@ -2704,7 +2711,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             }
             _ => return r,
         };
-        if let ty::ReBound(debruijn1, br) = *region {
+        if let ty::ReBound(debruijn1, br) = region.kind() {
             assert_eq!(debruijn1, ty::INNERMOST);
             ty::Region::new_bound(self.tcx, self.current_index, br)
         } else {
@@ -3284,7 +3291,7 @@ define_print! {
     }
 
     ty::ExistentialProjection<'tcx> {
-        let name = cx.tcx().associated_item(self.def_id).name;
+        let name = cx.tcx().associated_item(self.def_id).name();
         // The args don't contain the self ty (as it has been erased) but the corresp.
         // generics do as the trait always has a self ty param. We need to offset.
         let args = &self.args[cx.tcx().generics_of(self.def_id).parent_count - 1..];

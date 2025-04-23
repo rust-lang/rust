@@ -22,7 +22,7 @@ other links:
 
 ## Target maintainers
 
-* [@Dirreke](https://github.com/Dirreke)
+[@Dirreke](https://github.com/Dirreke)
 
 ## Requirements
 

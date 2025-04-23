@@ -267,11 +267,16 @@ impl DefKind {
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::TyParam
-            | DefKind::ExternCrate => DefPathData::TypeNs(Some(name.unwrap())),
+            | DefKind::ExternCrate => DefPathData::TypeNs(name.unwrap()),
 
-            // An associated type names will be missing for an RPITIT. It will
-            // later be given a name with `synthetic` in it, if necessary.
-            DefKind::AssocTy => DefPathData::TypeNs(name),
+            // An associated type name will be missing for an RPITIT.
+            DefKind::AssocTy => {
+                if let Some(name) = name {
+                    DefPathData::TypeNs(name)
+                } else {
+                    DefPathData::AnonAssocTy
+                }
+            }
 
             // It's not exactly an anon const, but wrt DefPathData, there
             // is no difference.

@@ -1089,14 +1089,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This function checks whether the method is not static and does not accept other parameters than `self`.
     fn has_only_self_parameter(&self, method: &AssocItem) -> bool {
-        match method.kind {
-            ty::AssocKind::Fn => {
-                method.fn_has_self_parameter
-                    && self.tcx.fn_sig(method.def_id).skip_binder().inputs().skip_binder().len()
-                        == 1
-            }
-            _ => false,
-        }
+        method.is_method()
+            && self.tcx.fn_sig(method.def_id).skip_binder().inputs().skip_binder().len() == 1
     }
 
     /// If the given `HirId` corresponds to a block with a trailing expression, return that expression

@@ -63,7 +63,7 @@ fn dummy() {
 // Malformed, where args?
 #[autodiff]
 pub fn f7(x: f64) {
-    //~^ ERROR autodiff must be applied to function
+    //~^ ERROR autodiff requires at least a name and mode
     unimplemented!()
 }
 
@@ -77,7 +77,7 @@ pub fn f8(x: f64) {
 // Invalid attribute syntax
 #[autodiff = ""]
 pub fn f9(x: f64) {
-    //~^ ERROR autodiff must be applied to function
+    //~^ ERROR autodiff requires at least a name and mode
     unimplemented!()
 }
 

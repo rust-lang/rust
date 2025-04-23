@@ -4,6 +4,6 @@
 static mut A: &'static [u32] = &[1];
 static B: [u32; 1] = [0; unsafe { A.len() }];
 //~^ ERROR: evaluation of constant value failed
-//~| mutable global memory
+//~| NOTE mutable global memory
 
 fn main() {}

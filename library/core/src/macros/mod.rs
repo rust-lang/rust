@@ -237,9 +237,10 @@ pub macro assert_matches {
 /// ```
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
+#[rustc_macro_transparency = "semitransparent"]
 pub macro cfg_match {
     ({ $($tt:tt)* }) => {{
-        cfg_match! { $($tt)* }
+        $crate::cfg_match! { $($tt)* }
     }},
     (_ => { $($output:tt)* }) => {
         $($output)*
@@ -249,10 +250,10 @@ pub macro cfg_match {
         $($( $rest:tt )+)?
     ) => {
         #[cfg($cfg)]
-        cfg_match! { _ => $output }
+        $crate::cfg_match! { _ => $output }
         $(
             #[cfg(not($cfg))]
-            cfg_match! { $($rest)+ }
+            $crate::cfg_match! { $($rest)+ }
         )?
     },
 }
@@ -1753,7 +1754,6 @@ pub(crate) mod builtin {
         reason = "`type_alias_impl_trait` has open design concerns"
     )]
     #[rustc_builtin_macro]
-    #[cfg(not(bootstrap))]
     pub macro define_opaque($($tt:tt)*) {
         /* compiler built-in */
     }

@@ -514,7 +514,7 @@ pub(crate) mod rustc {
                 }
             }
             ty::Tuple(fields) => fields[i.as_usize()],
-            kind @ _ => unimplemented!(
+            kind => unimplemented!(
                 "only a subset of `Ty::ty_and_layout_field`'s functionality is implemented. implementation needed for {:?}",
                 kind
             ),

@@ -1,9 +1,8 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
 use rustc_abi::ExternAbi;
-use rustc_errors::codes::*;
-use rustc_errors::{DiagMessage, struct_span_code_err};
-use rustc_hir::{self as hir, Safety};
+use rustc_errors::DiagMessage;
+use rustc_hir::{self as hir};
 use rustc_middle::bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -26,17 +25,10 @@ fn equate_intrinsic_type<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
 ) {
     let (generics, span) = match tcx.hir_node_by_def_id(def_id) {
-        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. })
-        | hir::Node::ForeignItem(hir::ForeignItem {
-            kind: hir::ForeignItemKind::Fn(_, _, generics),
-            ..
-        }) => (tcx.generics_of(def_id), generics.span),
-        _ => {
-            struct_span_code_err!(tcx.dcx(), span, E0622, "intrinsic must be a function")
-                .with_span_label(span, "expected a function")
-                .emit();
-            return;
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. }) => {
+            (tcx.generics_of(def_id), generics.span)
         }
+        _ => tcx.dcx().span_bug(span, "intrinsic must be a function"),
     };
     let own_counts = generics.own_counts();
 
@@ -70,13 +62,7 @@ fn equate_intrinsic_type<'tcx>(
 }
 
 /// Returns the unsafety of the given intrinsic.
-pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
-    let has_safe_attr = if tcx.has_attr(intrinsic_id, sym::rustc_intrinsic) {
-        tcx.fn_sig(intrinsic_id).skip_binder().safety()
-    } else {
-        // Old-style intrinsics are never safe
-        Safety::Unsafe
-    };
+fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hir::Safety {
     let is_in_list = match tcx.item_name(intrinsic_id.into()) {
         // When adding a new intrinsic to this list,
         // it's usually worth updating that intrinsic's documentation
@@ -148,7 +134,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         _ => hir::Safety::Unsafe,
     };
 
-    if has_safe_attr != is_in_list {
+    if tcx.fn_sig(intrinsic_id).skip_binder().safety() != is_in_list {
         tcx.dcx().struct_span_err(
             tcx.def_span(intrinsic_id),
             DiagMessage::from(format!(
@@ -163,12 +149,11 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
 
 /// Remember to add all intrinsics here, in `compiler/rustc_codegen_llvm/src/intrinsic.rs`,
 /// and in `library/core/src/intrinsics.rs`.
-pub fn check_intrinsic_type(
+pub(crate) fn check_intrinsic_type(
     tcx: TyCtxt<'_>,
     intrinsic_id: LocalDefId,
     span: Span,
     intrinsic_name: Symbol,
-    abi: ExternAbi,
 ) {
     let generics = tcx.generics_of(intrinsic_id);
     let param = |n| {
@@ -232,15 +217,11 @@ pub fn check_intrinsic_type(
         };
         (n_tps, 0, 0, inputs, output, hir::Safety::Unsafe)
     } else if intrinsic_name == sym::contract_check_ensures {
-        // contract_check_ensures::<'a, Ret, C>(&'a Ret, C)
-        // where C: impl Fn(&'a Ret) -> bool,
+        // contract_check_ensures::<Ret, C>(Ret, C) -> Ret
+        // where C: for<'a> Fn(&'a Ret) -> bool,
         //
-        // so: two type params, one lifetime param, 0 const params, two inputs, no return
-
-        let p = generics.param_at(0, tcx);
-        let r = ty::Region::new_early_param(tcx, p.to_early_bound_region_data());
-        let ref_ret = Ty::new_imm_ref(tcx, r, param(1));
-        (2, 1, 0, vec![ref_ret, param(2)], tcx.types.unit, hir::Safety::Safe)
+        // so: two type params, 0 lifetime param, 0 const params, two inputs, no return
+        (2, 0, 0, vec![param(0), param(1)], param(1), hir::Safety::Safe)
     } else {
         let safety = intrinsic_operation_unsafety(tcx, intrinsic_id);
         let (n_tps, n_cts, inputs, output) = match intrinsic_name {
@@ -674,8 +655,12 @@ pub fn check_intrinsic_type(
             sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
             sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
             sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], tcx.types.unit),
-            sym::simd_insert => (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0)),
-            sym::simd_extract => (2, 0, vec![param(0), tcx.types.u32], param(1)),
+            sym::simd_insert | sym::simd_insert_dyn => {
+                (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0))
+            }
+            sym::simd_extract | sym::simd_extract_dyn => {
+                (2, 0, vec![param(0), tcx.types.u32], param(1))
+            }
             sym::simd_cast
             | sym::simd_as
             | sym::simd_cast_ptr
@@ -706,7 +691,7 @@ pub fn check_intrinsic_type(
         };
         (n_tps, 0, n_cts, inputs, output, safety)
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, safety, abi);
+    let sig = tcx.mk_fn_sig(inputs, output, false, safety, ExternAbi::Rust);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

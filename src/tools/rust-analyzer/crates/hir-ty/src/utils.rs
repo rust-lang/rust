@@ -18,6 +18,7 @@ use hir_def::{
     TypeOrConstParamId,
 };
 use hir_expand::name::Name;
+use intern::sym;
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -302,13 +303,26 @@ pub fn is_fn_unsafe_to_call(
 
     let loc = func.lookup(db.upcast());
     match loc.container {
-        hir_def::ItemContainerId::ExternBlockId(_block) => {
-            // Function in an `extern` block are always unsafe to call, except when
-            // it is marked as `safe`.
-            if data.is_safe() {
-                Unsafety::Safe
+        hir_def::ItemContainerId::ExternBlockId(block) => {
+            let id = block.lookup(db.upcast()).id;
+            let is_intrinsic_block =
+                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
+            if is_intrinsic_block {
+                // legacy intrinsics
+                // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
+                if db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists() {
+                    Unsafety::Safe
+                } else {
+                    Unsafety::Unsafe
+                }
             } else {
-                Unsafety::Unsafe
+                // Function in an `extern` block are always unsafe to call, except when
+                // it is marked as `safe`.
+                if data.is_safe() {
+                    Unsafety::Safe
+                } else {
+                    Unsafety::Unsafe
+                }
             }
         }
         _ => Unsafety::Safe,

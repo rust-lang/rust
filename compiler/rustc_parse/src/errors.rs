@@ -7,8 +7,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, SubdiagMessageOp,
-    Subdiagnostic,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, Subdiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -30,7 +29,6 @@ pub(crate) struct AmbiguousPlus {
 #[derive(Diagnostic)]
 #[diag(parse_maybe_recover_from_bad_type_plus, code = E0178)]
 pub(crate) struct BadTypePlus {
-    pub ty: String,
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
@@ -1551,11 +1549,7 @@ pub(crate) struct FnTraitMissingParen {
 }
 
 impl Subdiagnostic for FnTraitMissingParen {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
         diag.span_suggestion_short(
             self.span.shrink_to_hi(),
@@ -1598,9 +1592,6 @@ pub(crate) struct PathSingleColon {
 
     #[suggestion(applicability = "machine-applicable", code = ":", style = "verbose")]
     pub suggestion: Span,
-
-    #[note(parse_type_ascription_removed)]
-    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]
@@ -1617,9 +1608,6 @@ pub(crate) struct ColonAsSemi {
     #[primary_span]
     #[suggestion(applicability = "machine-applicable", code = ";", style = "verbose")]
     pub span: Span,
-
-    #[note(parse_type_ascription_removed)]
-    pub type_ascription: bool,
 }
 
 #[derive(Diagnostic)]
@@ -2806,6 +2794,8 @@ pub(crate) struct ReturnTypesUseThinArrow {
 pub(crate) struct NeedPlusAfterTraitObjectLifetime {
     #[primary_span]
     pub span: Span,
+    #[suggestion(code = " + /* Trait */", applicability = "has-placeholders")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]

@@ -363,7 +363,6 @@ fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
 
             state_specific_fields.into_iter().chain(common_fields).collect()
         },
-        // FIXME: this is a no-op. `build_generic_type_param_di_nodes` only works for Adts.
         |cx| build_generic_type_param_di_nodes(cx, coroutine_type_and_layout.ty),
     )
     .di_node

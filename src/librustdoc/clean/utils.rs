@@ -234,7 +234,7 @@ pub(super) fn clean_middle_path<'tcx>(
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
-    let name = cx.tcx.opt_item_name(did).unwrap_or(kw::Empty);
+    let name = cx.tcx.opt_item_name(did).unwrap_or(sym::dummy);
     Path {
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
@@ -303,13 +303,12 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     debug!("trying to get a name from pattern: {p:?}");
 
     Symbol::intern(&match &p.kind {
-        // FIXME(never_patterns): does this make sense?
-        PatKind::Missing => unreachable!(),
-        PatKind::Wild
-        | PatKind::Err(_)
+        PatKind::Err(_)
+        | PatKind::Missing // Let's not perpetuate anon params from Rust 2015; use `_` for them.
         | PatKind::Never
+        | PatKind::Range(..)
         | PatKind::Struct(..)
-        | PatKind::Range(..) => {
+        | PatKind::Wild => {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,

@@ -1,53 +1,6 @@
 //@ run-pass
-#![feature(intrinsics)]
-
-mod rusti {
-
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_cxchg_seqcst_seqcst<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_cxchg_acquire_acquire<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_cxchg_release_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_cxchgweak_acquire_acquire<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_cxchgweak_release_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_load_seqcst<T>(src: *const T) -> T;
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_load_acquire<T>(src: *const T) -> T;
-
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_store_seqcst<T>(dst: *mut T, val: T);
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_store_release<T>(dst: *mut T, val: T);
-
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xchg_seqcst<T>(dst: *mut T, src: T) -> T;
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xchg_acquire<T>(dst: *mut T, src: T) -> T;
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xchg_release<T>(dst: *mut T, src: T) -> T;
-
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xadd_seqcst<T>(dst: *mut T, src: T) -> T;
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xadd_acquire<T>(dst: *mut T, src: T) -> T;
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xadd_release<T>(dst: *mut T, src: T) -> T;
-
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xsub_seqcst<T>(dst: *mut T, src: T) -> T;
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xsub_acquire<T>(dst: *mut T, src: T) -> T;
-    #[rustc_intrinsic]
-    pub unsafe fn atomic_xsub_release<T>(dst: *mut T, src: T) -> T;
-}
+#![feature(core_intrinsics)]
+use std::intrinsics as rusti;
 
 pub fn main() {
     unsafe {

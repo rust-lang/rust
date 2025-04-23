@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
-use std::env;
 use std::fs::{File, remove_file};
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use build_helper::ci::CiEnv;
+use build_helper::git::PathFreshness;
 use clap::CommandFactory;
 use serde::Deserialize;
 
@@ -15,12 +16,34 @@ use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
+use crate::utils::tests::git::git_test;
 
 pub(crate) fn parse(config: &str) -> Config {
     Config::parse_inner(
         Flags::parse(&["check".to_string(), "--config=/does/not/exist".to_string()]),
         |&_| toml::from_str(&config),
     )
+}
+
+fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
+    let contents = std::fs::read_to_string(file).unwrap();
+    toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
+}
+
+/// Helps with debugging by using consistent test-specific directories instead of
+/// random temporary directories.
+fn prepare_test_specific_dir() -> PathBuf {
+    let current = std::thread::current();
+    // Replace "::" with "_" to make it safe for directory names on Windows systems
+    let test_path = current.name().unwrap().replace("::", "_");
+
+    let testdir = parse("").tempdir().join(test_path);
+
+    // clean up any old test files
+    let _ = fs::remove_dir_all(&testdir);
+    let _ = fs::create_dir_all(&testdir);
+
+    testdir
 }
 
 #[test]
@@ -30,9 +53,7 @@ fn download_ci_llvm() {
 
     let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
     if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci {
-        let has_changes = if_unchanged_config
-            .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
-            .is_none();
+        let has_changes = if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
         assert!(
             !has_changes,
@@ -538,4 +559,429 @@ fn test_ci_flag() {
 
     let config = Config::parse_inner(Flags::parse(&["check".into()]), |&_| toml::from_str(""));
     assert_eq!(config.is_running_on_ci, CiEnv::is_ci());
+}
+
+#[test]
+fn test_precedence_of_includes() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./extension.toml"]
+
+        [llvm]
+        link-jobs = 2
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        change-id=543
+        include = ["./extension2.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension2.toml");
+    let extension_content = br#"
+        change-id=742
+
+        [llvm]
+        link-jobs = 10
+
+        [build]
+        description = "Some creative description"
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+
+    assert_eq!(config.change_id.unwrap(), ChangeId::Id(543));
+    assert_eq!(config.llvm_link_jobs.unwrap(), 2);
+    assert_eq!(config.description.unwrap(), "Some creative description");
+}
+
+#[test]
+#[should_panic(expected = "Cyclic inclusion detected")]
+fn test_cyclic_include_direct() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        include = ["./config.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+#[should_panic(expected = "Cyclic inclusion detected")]
+fn test_cyclic_include_indirect() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        include = ["./extension2.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension2.toml");
+    let extension_content = br#"
+        include = ["./extension3.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension3.toml");
+    let extension_content = br#"
+        include = ["./extension.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+fn test_include_absolute_paths() {
+    let testdir = prepare_test_specific_dir();
+
+    let extension = testdir.join("extension.toml");
+    File::create(&extension).unwrap().write_all(&[]).unwrap();
+
+    let root_config = testdir.join("config.toml");
+    let extension_absolute_path =
+        extension.canonicalize().unwrap().to_str().unwrap().replace('\\', r"\\");
+    let root_config_content = format!(r#"include = ["{}"]"#, extension_absolute_path);
+    File::create(&root_config).unwrap().write_all(root_config_content.as_bytes()).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+fn test_include_relative_paths() {
+    let testdir = prepare_test_specific_dir();
+
+    let _ = fs::create_dir_all(&testdir.join("subdir/another_subdir"));
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        include = ["./subdir/extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("subdir/extension.toml");
+    let extension_content = br#"
+        include = ["../extension2.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension2.toml");
+    let extension_content = br#"
+        include = ["./subdir/another_subdir/extension3.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("subdir/another_subdir/extension3.toml");
+    let extension_content = br#"
+        include = ["../../extension4.toml"]
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let extension = testdir.join("extension4.toml");
+    File::create(extension).unwrap().write_all(&[]).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+}
+
+#[test]
+fn test_include_precedence_over_profile() {
+    let testdir = prepare_test_specific_dir();
+
+    let root_config = testdir.join("config.toml");
+    let root_config_content = br#"
+        profile = "dist"
+        include = ["./extension.toml"]
+    "#;
+    File::create(&root_config).unwrap().write_all(root_config_content).unwrap();
+
+    let extension = testdir.join("extension.toml");
+    let extension_content = br#"
+        [rust]
+        channel = "dev"
+    "#;
+    File::create(extension).unwrap().write_all(extension_content).unwrap();
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), format!("--config={}", root_config.to_str().unwrap())]),
+        get_toml,
+    );
+
+    // "dist" profile would normally set the channel to "auto-detect", but includes should
+    // override profile settings, so we expect this to be "dev" here.
+    assert_eq!(config.channel, "dev");
+}
+
+#[test]
+fn test_pr_ci_unchanged_anywhere() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_nonupstream_merge(&["b"]);
+        let src = ctx.check_modifications(&["c"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
+    });
+}
+
+#[test]
+fn test_pr_ci_changed_in_pr() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_nonupstream_merge(&["b"]);
+        let src = ctx.check_modifications(&["b"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::HasLocalModifications { upstream: sha });
+    });
+}
+
+#[test]
+fn test_auto_ci_unchanged_anywhere_select_parent() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_upstream_merge(&["b"]);
+        let src = ctx.check_modifications(&["c"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
+    });
+}
+
+#[test]
+fn test_auto_ci_changed_in_pr() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_upstream_merge(&["b", "c"]);
+        let src = ctx.check_modifications(&["c", "d"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::HasLocalModifications { upstream: sha });
+    });
+}
+
+#[test]
+fn test_local_uncommitted_modifications() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_branch("feature");
+        ctx.modify("a");
+
+        assert_eq!(
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_committed_modifications() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_upstream_merge(&["b", "c"]);
+        ctx.create_branch("feature");
+        ctx.modify("x");
+        ctx.commit();
+        ctx.modify("a");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_committed_modifications_subdirectory() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a/b/c"]);
+        ctx.create_upstream_merge(&["b", "c"]);
+        ctx.create_branch("feature");
+        ctx.modify("a/b/d");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.check_modifications(&["a/b"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_changes_in_head_upstream() {
+    git_test(|ctx| {
+        // We want to resolve to the upstream commit that made modifications to a,
+        // even if it is currently HEAD
+        let sha = ctx.create_upstream_merge(&["a"]);
+        assert_eq!(
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_changes_in_previous_upstream() {
+    git_test(|ctx| {
+        // We want to resolve to this commit, which modified a
+        let sha = ctx.create_upstream_merge(&["a", "e"]);
+        // Not to this commit, which is the latest upstream commit
+        ctx.create_upstream_merge(&["b", "c"]);
+        ctx.create_branch("feature");
+        ctx.modify("d");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.check_modifications(&["a"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_no_upstream_commit_with_changes() {
+    git_test(|ctx| {
+        ctx.create_upstream_merge(&["a", "e"]);
+        ctx.create_upstream_merge(&["a", "e"]);
+        // We want to fall back to this commit, because there are no commits
+        // that modified `x`.
+        let sha = ctx.create_upstream_merge(&["a", "e"]);
+        ctx.create_branch("feature");
+        ctx.modify("d");
+        ctx.commit();
+        assert_eq!(
+            ctx.check_modifications(&["x"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_no_upstream_commit() {
+    git_test(|ctx| {
+        let src = ctx.check_modifications(&["c", "d"], CiEnv::None);
+        assert_eq!(src, PathFreshness::MissingUpstream);
+    });
+}
+
+#[test]
+fn test_local_changes_negative_path() {
+    git_test(|ctx| {
+        let upstream = ctx.create_upstream_merge(&["a"]);
+        ctx.create_branch("feature");
+        ctx.modify("b");
+        ctx.modify("d");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.check_modifications(&[":!b", ":!d"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: upstream.clone() }
+        );
+        assert_eq!(
+            ctx.check_modifications(&[":!c"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: upstream.clone() }
+        );
+        assert_eq!(
+            ctx.check_modifications(&[":!d", ":!x"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream }
+        );
+    });
+}
+
+#[test]
+fn test_local_changes_subtree_that_used_bors() {
+    // Here we simulate a very specific situation related to subtrees.
+    // When you have merge commits locally, we should ignore them w.r.t. the artifact download
+    // logic.
+    // The upstream search code currently uses a simple heuristic:
+    // - Find commits by bors (or in general an author with the merge commit e-mail)
+    // - Find the newest such commit
+    // This should make it work even for subtrees that:
+    // - Used bors in the past (so they have bors merge commits in their history).
+    // - Use Josh to merge rustc into the subtree, in a way that the rustc history is the second
+    // parent, not the first one.
+    //
+    // In addition, when searching for modified files, we cannot simply start from HEAD, because
+    // in this situation git wouldn't find the right commit.
+    //
+    // This test checks that this specific scenario will resolve to the right rustc commit, both
+    // when finding a modified file and when finding a non-existent file (which essentially means
+    // that we just lookup the most recent upstream commit).
+    //
+    // See https://github.com/rust-lang/rust/issues/101907#issuecomment-2697671282 for more details.
+    git_test(|ctx| {
+        ctx.create_upstream_merge(&["a"]);
+
+        // Start unrelated subtree history
+        ctx.run_git(&["switch", "--orphan", "subtree"]);
+        ctx.modify("bar");
+        ctx.commit();
+        // Now we need to emulate old bors commits in the subtree.
+        // Git only has a resolution of one second, which is a problem, since our git logic orders
+        // merge commits by their date.
+        // To avoid sleeping in the test, we modify the commit date to be forcefully in the past.
+        ctx.create_upstream_merge(&["subtree/a"]);
+        ctx.run_git(&["commit", "--amend", "--date", "Wed Feb 16 14:00 2011 +0100", "--no-edit"]);
+
+        // Merge the subtree history into rustc
+        ctx.switch_to_branch("main");
+        ctx.run_git(&["merge", "subtree", "--allow-unrelated"]);
+
+        // Create a rustc commit that modifies a path that we're interested in (`x`)
+        let upstream_1 = ctx.create_upstream_merge(&["x"]);
+        // Create another bors commit
+        let upstream_2 = ctx.create_upstream_merge(&["a"]);
+
+        ctx.switch_to_branch("subtree");
+
+        // Create a subtree branch
+        ctx.create_branch("subtree-pr");
+        ctx.modify("baz");
+        ctx.commit();
+        // We merge rustc into this branch (simulating a "subtree pull")
+        ctx.merge("main", "committer <committer@foo.bar>");
+
+        // And then merge that branch into the subtree (simulating a situation right before a
+        // "subtree push")
+        ctx.switch_to_branch("subtree");
+        ctx.merge("subtree-pr", "committer <committer@foo.bar>");
+
+        // And we want to check that we resolve to the right commits.
+        assert_eq!(
+            ctx.check_modifications(&["x"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: upstream_1 }
+        );
+        assert_eq!(
+            ctx.check_modifications(&["nonexistent"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: upstream_2 }
+        );
+    });
 }

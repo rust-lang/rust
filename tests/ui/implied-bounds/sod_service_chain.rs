@@ -27,17 +27,17 @@ pub struct ServiceChainBuilder<P: Service, S: Service<Input = P::Output>> {
 }
 impl<P: Service, S: Service<Input = P::Output>> ServiceChainBuilder<P, S> {
     pub fn next<NS: Service<Input = S::Output>>(
-        //~^ the associated type
+        //~^ ERROR the associated type
+        //~| ERROR the associated type
+        //~| ERROR the associated type
         //~| the associated type
         //~| the associated type
         //~| the associated type
-        //~| the associated type
-        //~| the associated type
-        //~| may not live long enough
+        //~| ERROR may not live long enough
         self,
     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
-        //~^ the associated type
-        //~| the associated type
+        //~^ ERROR the associated type
+        //~| ERROR the associated type
         //~| the associated type
         //~| the associated type
         panic!();

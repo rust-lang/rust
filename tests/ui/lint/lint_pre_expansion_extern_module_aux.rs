@@ -1,3 +1,3 @@
-//@ ignore-test: not a test
+//@ ignore-auxiliary (used by `./lint-pre-expansion-extern-module.rs`)
 
 pub fn try() {}

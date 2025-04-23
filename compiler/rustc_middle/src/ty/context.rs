@@ -437,6 +437,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         )
     }
 
+    fn impl_self_is_guaranteed_unsized(self, impl_def_id: DefId) -> bool {
+        self.impl_self_is_guaranteed_unsized(impl_def_id)
+    }
+
     fn has_target_features(self, def_id: DefId) -> bool {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }
@@ -460,7 +464,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn associated_type_def_ids(self, def_id: DefId) -> impl IntoIterator<Item = DefId> {
         self.associated_items(def_id)
             .in_definition_order()
-            .filter(|assoc_item| matches!(assoc_item.kind, ty::AssocKind::Type))
+            .filter(|assoc_item| assoc_item.is_type())
             .map(|assoc_item| assoc_item.def_id)
     }
 
@@ -866,7 +870,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
                 .intern(kind, |kind| {
-                    let flags = super::flags::FlagComputation::for_kind(&kind);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_kind(&kind);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
@@ -892,7 +896,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Const(Interned::new_unchecked(
             self.const_
                 .intern(kind, |kind: ty::ConstKind<'_>| {
-                    let flags = super::flags::FlagComputation::for_const_kind(&kind);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_const_kind(&kind);
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
                     InternedInSet(self.arena.alloc(WithCachedTypeInfo {
@@ -908,7 +912,7 @@ impl<'tcx> CtxtInterners<'tcx> {
 
     fn stable_hash<'a, T: HashStable<StableHashingContext<'a>>>(
         &self,
-        flags: &ty::flags::FlagComputation,
+        flags: &ty::FlagComputation<TyCtxt<'tcx>>,
         sess: &'a Session,
         untracked: &'a Untracked,
         val: &T,
@@ -936,7 +940,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         Predicate(Interned::new_unchecked(
             self.predicate
                 .intern(kind, |kind| {
-                    let flags = super::flags::FlagComputation::for_predicate(kind);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_predicate(kind);
 
                     let stable_hash = self.stable_hash(&flags, sess, untracked, &kind);
 
@@ -957,7 +961,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         } else {
             self.clauses
                 .intern_ref(clauses, || {
-                    let flags = super::flags::FlagComputation::for_clauses(clauses);
+                    let flags = ty::FlagComputation::<TyCtxt<'tcx>>::for_clauses(clauses);
 
                     InternedInSet(ListWithCachedTypeInfo::from_arena(
                         &*self.arena,
@@ -2143,7 +2147,7 @@ impl<'tcx> TyCtxt<'tcx> {
             return vec![];
         };
 
-        let mut v = TraitObjectVisitor(vec![], self.hir());
+        let mut v = TraitObjectVisitor(vec![]);
         v.visit_ty_unambig(hir_output);
         v.0
     }
@@ -2156,7 +2160,7 @@ impl<'tcx> TyCtxt<'tcx> {
         scope_def_id: LocalDefId,
     ) -> Option<(Vec<&'tcx hir::Ty<'tcx>>, Span, Option<Span>)> {
         let hir_id = self.local_def_id_to_hir_id(scope_def_id);
-        let mut v = TraitObjectVisitor(vec![], self.hir());
+        let mut v = TraitObjectVisitor(vec![]);
         // when the return type is a type alias
         if let Some(hir::FnDecl { output: hir::FnRetTy::Return(hir_output), .. }) = self.hir_fn_decl_by_hir_id(hir_id)
             && let hir::TyKind::Path(hir::QPath::Resolved(

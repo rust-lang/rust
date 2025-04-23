@@ -459,8 +459,13 @@ pub fn eval_entry<'tcx>(
         ecx.handle_ice();
         panic::resume_unwind(panic_payload)
     });
-    // `Ok` can never happen.
+    // `Ok` can never happen; the interpreter loop always exits with an "error"
+    // (but that "error" might be just "regular program termination").
     let Err(err) = res.report_err();
+    // Show diagnostic, if any.
+    let (return_code, leak_check) = report_error(&ecx, err)?;
+
+    // If we get here there was no fatal error.
 
     // Machine cleanup. Only do this if all threads have terminated; threads that are still running
     // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
@@ -472,8 +477,7 @@ pub fn eval_entry<'tcx>(
         EnvVars::cleanup(&mut ecx).expect("error during env var cleanup");
     }
 
-    // Process the result.
-    let (return_code, leak_check) = report_error(&ecx, err)?;
+    // Possibly check for memory leaks.
     if leak_check && !ignore_leaks {
         // Check for thread leaks.
         if !ecx.have_all_terminated() {

@@ -16,14 +16,14 @@ error: in the trait associated type is declared without lifetime parameters, so 
 LL |     type Item = &usize;
    |                 ^ this lifetime must come from the implemented type
 
-error[E0195]: lifetime parameters or bounds on type `Item` do not match the trait declaration
+error[E0195]: lifetime parameters or bounds on associated type `Item` do not match the trait declaration
   --> $DIR/no_lending_iterators.rs:27:14
    |
 LL |     type Item;
-   |              - lifetimes in impl do not match this type in trait
+   |              - lifetimes in impl do not match this associated type in trait
 ...
 LL |     type Item<'a> = &'a isize;
-   |              ^^^^ lifetimes do not match type in trait
+   |              ^^^^ lifetimes do not match associated type in trait
 
 error: aborting due to 3 previous errors
 

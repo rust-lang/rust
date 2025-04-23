@@ -271,7 +271,7 @@ lint_expectation = this lint expectation is unfulfilled
 lint_extern_crate_not_idiomatic = `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `use`
 
-lint_extern_without_abi = extern declarations without an explicit ABI are deprecated
+lint_extern_without_abi = `extern` declarations without an explicit ABI are deprecated
     .label = ABI should be specified here
     .suggestion = explicitly specify the {$default_abi} ABI
 

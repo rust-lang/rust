@@ -11,7 +11,7 @@ use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
 use rustc_middle::{bug, ty};
-use rustc_span::{Pos, Symbol};
+use rustc_span::{Pos, Symbol, kw};
 use rustdoc_json_types::*;
 
 use crate::clean::{self, ItemId};
@@ -84,8 +84,8 @@ impl JsonRenderer<'_> {
                     let lo = span.lo(self.sess());
                     Some(Span {
                         filename: local_path,
-                        begin: (lo.line, lo.col.to_usize()),
-                        end: (hi.line, hi.col.to_usize()),
+                        begin: (lo.line, lo.col.to_usize() + 1),
+                        end: (hi.line, hi.col.to_usize() + 1),
                     })
                 } else {
                     None
@@ -609,9 +609,13 @@ impl FromClean<clean::FnDecl> for FunctionSignature {
         let clean::FnDecl { inputs, output, c_variadic } = decl;
         FunctionSignature {
             inputs: inputs
-                .values
                 .into_iter()
-                .map(|arg| (arg.name.to_string(), arg.type_.into_json(renderer)))
+                .map(|param| {
+                    // `_` is the most sensible name for missing param names.
+                    let name = param.name.unwrap_or(kw::Underscore).to_string();
+                    let type_ = param.type_.into_json(renderer);
+                    (name, type_)
+                })
                 .collect(),
             output: if output.is_unit() { None } else { Some(output.into_json(renderer)) },
             is_c_variadic: c_variadic,

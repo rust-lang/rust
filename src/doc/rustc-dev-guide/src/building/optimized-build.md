@@ -109,11 +109,16 @@ like Python or LLVM.
 
 Here is an example of how can `opt-dist` be used locally (outside of CI):
 
-1. Build the tool with the following command:
+1. Enable metrics in your `bootstrap.toml` file, because `opt-dist` expects it to be enabled:
+    ```toml
+   [build]
+   metrics = true
+   ```
+2. Build the tool with the following command:
     ```bash
     ./x build tools/opt-dist
     ```
-2. Run the tool with the `local` mode and provide necessary parameters:
+3. Run the tool with the `local` mode and provide necessary parameters:
     ```bash
     ./build/host/stage0-tools-bin/opt-dist local \
       --target-triple <target> \ # select target, e.g. "x86_64-unknown-linux-gnu"

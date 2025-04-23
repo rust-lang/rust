@@ -63,7 +63,7 @@ declare_features! (
     /// Allows using `const` operands in inline assembly.
     (accepted, asm_const, "1.82.0", Some(93332)),
     /// Allows using `label` operands in inline assembly.
-    (accepted, asm_goto, "CURRENT_RUSTC_VERSION", Some(119364)),
+    (accepted, asm_goto, "1.87.0", Some(119364)),
     /// Allows using `sym` operands in inline assembly.
     (accepted, asm_sym, "1.66.0", Some(93333)),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
@@ -95,6 +95,8 @@ declare_features! (
     (accepted, c_unwind, "1.81.0", Some(74990)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
+    /// Allows the use of `#[cfg(<true/false>)]`.
+    (accepted, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
@@ -298,6 +300,8 @@ declare_features! (
     /// Allows patterns with concurrent by-move and by-ref bindings.
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354)),
+    /// Allows using `#[naked]` on functions.
+    (accepted, naked_functions, "CURRENT_RUSTC_VERSION", Some(90957)),
     /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
     (accepted, native_link_modifiers, "1.61.0", Some(81490)),
     /// Allows specifying the bundle link modifier
@@ -332,7 +336,7 @@ declare_features! (
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
     (accepted, precise_capturing, "1.82.0", Some(123432)),
     /// Allows `use<..>` precise capturign on impl Trait in traits.
-    (accepted, precise_capturing_in_traits, "CURRENT_RUSTC_VERSION", Some(130044)),
+    (accepted, precise_capturing_in_traits, "1.87.0", Some(130044)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
     /// Allows multi-segment paths in attributes and derives.

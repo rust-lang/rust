@@ -688,7 +688,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let target_ty = self.monomorphize(target_ty);
                 let source_ty = self.monomorphize(source_ty);
                 let (source_ty, target_ty) =
-                    find_vtable_types_for_unsizing(self.tcx.at(span), source_ty, target_ty);
+                    find_tails_for_unsizing(self.tcx.at(span), source_ty, target_ty);
                 // This could also be a different Unsize instruction, like
                 // from a fixed sized array to a slice. But we are only
                 // interested in things that produce a vtable.
@@ -1037,36 +1037,35 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
 ///
 /// Finally, there is also the case of custom unsizing coercions, e.g., for
 /// smart pointers such as `Rc` and `Arc`.
-fn find_vtable_types_for_unsizing<'tcx>(
+fn find_tails_for_unsizing<'tcx>(
     tcx: TyCtxtAt<'tcx>,
     source_ty: Ty<'tcx>,
     target_ty: Ty<'tcx>,
 ) -> (Ty<'tcx>, Ty<'tcx>) {
-    let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
-        let typing_env = ty::TypingEnv::fully_monomorphized();
-        if tcx.type_has_metadata(inner_source, typing_env) {
-            (inner_source, inner_target)
-        } else {
-            tcx.struct_lockstep_tails_for_codegen(inner_source, inner_target, typing_env)
-        }
-    };
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    debug_assert!(!source_ty.has_param(), "{source_ty} should be fully monomorphic");
+    debug_assert!(!target_ty.has_param(), "{target_ty} should be fully monomorphic");
 
     match (source_ty.kind(), target_ty.kind()) {
-        (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(b, _))
-        | (&ty::RawPtr(a, _), &ty::RawPtr(b, _)) => ptr_vtable(a, b),
+        (
+            &ty::Ref(_, source_pointee, _),
+            &ty::Ref(_, target_pointee, _) | &ty::RawPtr(target_pointee, _),
+        )
+        | (&ty::RawPtr(source_pointee, _), &ty::RawPtr(target_pointee, _)) => {
+            tcx.struct_lockstep_tails_for_codegen(source_pointee, target_pointee, typing_env)
+        }
+
+        // `Box<T>` could go through the ADT code below, b/c it'll unpeel to `Unique<T>`,
+        // and eventually bottom out in a raw ref, but we can micro-optimize it here.
         (_, _)
             if let Some(source_boxed) = source_ty.boxed_ty()
                 && let Some(target_boxed) = target_ty.boxed_ty() =>
         {
-            ptr_vtable(source_boxed, target_boxed)
+            tcx.struct_lockstep_tails_for_codegen(source_boxed, target_boxed, typing_env)
         }
-
-        // T as dyn* Trait
-        (_, &ty::Dynamic(_, _, ty::DynStar)) => ptr_vtable(source_ty, target_ty),
 
         (&ty::Adt(source_adt_def, source_args), &ty::Adt(target_adt_def, target_args)) => {
             assert_eq!(source_adt_def, target_adt_def);
-
             let CustomCoerceUnsized::Struct(coerce_index) =
                 match crate::custom_coerce_unsize_info(tcx, source_ty, target_ty) {
                     Ok(ccu) => ccu,
@@ -1075,21 +1074,23 @@ fn find_vtable_types_for_unsizing<'tcx>(
                         return (e, e);
                     }
                 };
-
-            let source_fields = &source_adt_def.non_enum_variant().fields;
-            let target_fields = &target_adt_def.non_enum_variant().fields;
-
-            assert!(
-                coerce_index.index() < source_fields.len()
-                    && source_fields.len() == target_fields.len()
-            );
-
-            find_vtable_types_for_unsizing(
-                tcx,
-                source_fields[coerce_index].ty(*tcx, source_args),
-                target_fields[coerce_index].ty(*tcx, target_args),
-            )
+            let coerce_field = &source_adt_def.non_enum_variant().fields[coerce_index];
+            // We're getting a possibly unnormalized type, so normalize it.
+            let source_field =
+                tcx.normalize_erasing_regions(typing_env, coerce_field.ty(*tcx, source_args));
+            let target_field =
+                tcx.normalize_erasing_regions(typing_env, coerce_field.ty(*tcx, target_args));
+            find_tails_for_unsizing(tcx, source_field, target_field)
         }
+
+        // `T` as `dyn* Trait` unsizes *directly*.
+        //
+        // FIXME(dyn_star): This case is a bit awkward, b/c we're not really computing
+        // a tail here. We probably should handle this separately in the *caller* of
+        // this function, rather than returning something that is semantically different
+        // than what we return above.
+        (_, &ty::Dynamic(_, _, ty::DynStar)) => (source_ty, target_ty),
+
         _ => bug!(
             "find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",
             source_ty,
@@ -1308,7 +1309,7 @@ fn visit_mentioned_item<'tcx>(
         }
         MentionedItem::UnsizeCast { source_ty, target_ty } => {
             let (source_ty, target_ty) =
-                find_vtable_types_for_unsizing(tcx.at(span), source_ty, target_ty);
+                find_tails_for_unsizing(tcx.at(span), source_ty, target_ty);
             // This could also be a different Unsize instruction, like
             // from a fixed sized array to a slice. But we are only
             // interested in things that produce a vtable.
@@ -1689,7 +1690,7 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
             let mut recursion_depths = DefIdMap::default();
             collect_items_rec(
                 tcx,
-                dummy_spanned(root),
+                dummy_spanned(*root),
                 &state,
                 &mut recursion_depths,
                 recursion_limit,

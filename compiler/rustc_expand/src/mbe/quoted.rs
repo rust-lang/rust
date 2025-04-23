@@ -181,7 +181,10 @@ fn parse_tree<'a>(
                         if delim != Delimiter::Parenthesis {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
                                 sess,
-                                &Token { kind: token::OpenDelim(delim), span: delim_span.entire() },
+                                &Token {
+                                    kind: delim.as_open_token_kind(),
+                                    span: delim_span.entire(),
+                                },
                             );
                         }
                     } else {
@@ -217,7 +220,8 @@ fn parse_tree<'a>(
                             }
                             Delimiter::Parenthesis => {}
                             _ => {
-                                let token = pprust::token_kind_to_string(&token::OpenDelim(delim));
+                                let token =
+                                    pprust::token_kind_to_string(&delim.as_open_token_kind());
                                 sess.dcx().emit_err(errors::ExpectedParenOrBrace {
                                     span: delim_span.entire(),
                                     token,
@@ -283,7 +287,7 @@ fn parse_tree<'a>(
         }
 
         // `tree` is an arbitrary token. Keep it.
-        tokenstream::TokenTree::Token(token, _) => TokenTree::Token(token.clone()),
+        tokenstream::TokenTree::Token(token, _) => TokenTree::Token(*token),
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
@@ -321,7 +325,7 @@ fn parse_kleene_op(
     match iter.next() {
         Some(tokenstream::TokenTree::Token(token, _)) => match kleene_op(token) {
             Some(op) => Ok(Ok((op, token.span))),
-            None => Ok(Err(token.clone())),
+            None => Ok(Err(*token)),
         },
         tree => Err(tree.map_or(span, tokenstream::TokenTree::span)),
     }

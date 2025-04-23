@@ -46,7 +46,7 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
             GenericArgKind::Lifetime(lt) => match defining_scope_kind {
                 DefiningScopeKind::HirTypeck => continue,
                 DefiningScopeKind::MirBorrowck => {
-                    matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
+                    matches!(lt.kind(), ty::ReEarlyParam(_) | ty::ReLateParam(_))
                         || (lt.is_static() && opaque_env.param_equal_static(i))
                 }
             },
@@ -70,7 +70,7 @@ pub fn check_opaque_type_parameter_valid<'tcx>(
             opaque_env.param_is_error(i)?;
 
             return Err(infcx.dcx().emit_err(NonGenericOpaqueTypeParam {
-                ty: arg,
+                arg,
                 kind,
                 span,
                 param_span: tcx.def_span(opaque_param.def_id),

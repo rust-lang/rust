@@ -92,6 +92,9 @@ pub struct SerializedDepGraph {
     /// Stores a map from fingerprints to nodes per dep node kind.
     /// This is the reciprocal of `nodes`.
     index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
+    /// The number of previous compilation sessions. This is used to generate
+    /// unique anon dep nodes per session.
+    session_count: u64,
 }
 
 impl SerializedDepGraph {
@@ -145,6 +148,11 @@ impl SerializedDepGraph {
     #[inline]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
+    }
+
+    #[inline]
+    pub fn session_count(&self) -> u64 {
+        self.session_count
     }
 }
 
@@ -226,12 +234,12 @@ impl SerializedDepGraph {
 
             // If the length of this node's edge list is small, the length is stored in the header.
             // If it is not, we fall back to another decoder call.
-            let num_edges = node_header.len().unwrap_or_else(|| d.read_usize());
+            let num_edges = node_header.len().unwrap_or_else(|| d.read_u32());
 
             // The edges index list uses the same varint strategy as rmeta tables; we select the
             // number of byte elements per-array not per-element. This lets us read the whole edge
             // list for a node with one decoder call and also use the on-disk format in memory.
-            let edges_len_bytes = node_header.bytes_per_index() * num_edges;
+            let edges_len_bytes = node_header.bytes_per_index() * (num_edges as usize);
             // The in-memory structure for the edges list stores the byte width of the edges on
             // this node with the offset into the global edge data array.
             let edges_header = node_header.edges_header(&edge_list_data);
@@ -251,6 +259,8 @@ impl SerializedDepGraph {
         let mut index: Vec<_> = (0..(D::DEP_KIND_MAX + 1))
             .map(|_| UnhashMap::with_capacity_and_hasher(d.read_u32() as usize, Default::default()))
             .collect();
+
+        let session_count = d.read_u64();
 
         for (idx, node) in nodes.iter_enumerated() {
             if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
@@ -273,6 +283,7 @@ impl SerializedDepGraph {
             edge_list_indices,
             edge_list_data,
             index,
+            session_count,
         })
     }
 }
@@ -296,7 +307,7 @@ struct SerializedNodeHeader<D> {
 // The fields of a `SerializedNodeHeader`, this struct is an implementation detail and exists only
 // to make the implementation of `SerializedNodeHeader` simpler.
 struct Unpacked {
-    len: Option<usize>,
+    len: Option<u32>,
     bytes_per_index: usize,
     kind: DepKind,
     hash: PackedFingerprint,
@@ -352,7 +363,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
             assert_eq!(fingerprint, res.fingerprint());
             assert_eq!(node, res.node());
             if let Some(len) = res.len() {
-                assert_eq!(edge_count, len);
+                assert_eq!(edge_count, len as usize);
             }
         }
         Self { bytes, _marker: PhantomData }
@@ -366,7 +377,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
 
         let kind = head & mask(Self::KIND_BITS) as u16;
         let bytes_per_index = (head >> Self::KIND_BITS) & mask(Self::WIDTH_BITS) as u16;
-        let len = (head as usize) >> (Self::WIDTH_BITS + Self::KIND_BITS);
+        let len = (head as u32) >> (Self::WIDTH_BITS + Self::KIND_BITS);
 
         Unpacked {
             len: len.checked_sub(1),
@@ -378,7 +389,7 @@ impl<D: Deps> SerializedNodeHeader<D> {
     }
 
     #[inline]
-    fn len(&self) -> Option<usize> {
+    fn len(&self) -> Option<u32> {
         self.unpack().len
     }
 
@@ -421,7 +432,8 @@ impl NodeInfo {
         e.write_array(header.bytes);
 
         if header.len().is_none() {
-            e.emit_usize(edges.len());
+            // The edges are all unique and the number of unique indices is less than u32::MAX.
+            e.emit_u32(edges.len().try_into().unwrap());
         }
 
         let bytes_per_index = header.bytes_per_index();
@@ -456,7 +468,8 @@ impl NodeInfo {
         e.write_array(header.bytes);
 
         if header.len().is_none() {
-            e.emit_usize(edge_count);
+            // The edges are all unique and the number of unique indices is less than u32::MAX.
+            e.emit_u32(edge_count.try_into().unwrap());
         }
 
         let bytes_per_index = header.bytes_per_index();
@@ -601,7 +614,7 @@ impl<D: Deps> EncoderState<D> {
             stats: _,
             kind_stats,
             marker: _,
-            previous: _,
+            previous,
         } = self;
 
         let node_count = total_node_count.try_into().unwrap();
@@ -611,6 +624,8 @@ impl<D: Deps> EncoderState<D> {
         for count in kind_stats.iter() {
             count.encode(&mut encoder);
         }
+
+        previous.session_count.checked_add(1).unwrap().encode(&mut encoder);
 
         debug!(?node_count, ?edge_count);
         debug!("position: {:?}", encoder.position());
@@ -707,7 +722,8 @@ impl<D: Deps> GraphEncoder<D> {
         }
     }
 
-    pub(crate) fn send(
+    /// Encodes a node that does not exists in the previous graph.
+    pub(crate) fn send_new(
         &self,
         node: DepNode,
         fingerprint: Fingerprint,
@@ -716,6 +732,40 @@ impl<D: Deps> GraphEncoder<D> {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, fingerprint, edges };
         self.status.lock().as_mut().unwrap().encode_node(&node, &self.record_graph)
+    }
+
+    /// Encodes a node that exists in the previous graph, but was re-executed.
+    ///
+    /// This will also ensure the dep node is colored either red or green.
+    pub(crate) fn send_and_color(
+        &self,
+        prev_index: SerializedDepNodeIndex,
+        colors: &DepNodeColorMap,
+        node: DepNode,
+        fingerprint: Fingerprint,
+        edges: EdgesVec,
+        is_green: bool,
+    ) -> DepNodeIndex {
+        let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
+        let node = NodeInfo { node, fingerprint, edges };
+
+        let mut status = self.status.lock();
+        let status = status.as_mut().unwrap();
+
+        // Check colors inside the lock to avoid racing when `send_promoted` is called concurrently
+        // on the same index.
+        match colors.get(prev_index) {
+            None => {
+                let dep_node_index = status.encode_node(&node, &self.record_graph);
+                colors.insert(
+                    prev_index,
+                    if is_green { DepNodeColor::Green(dep_node_index) } else { DepNodeColor::Red },
+                );
+                dep_node_index
+            }
+            Some(DepNodeColor::Green(dep_node_index)) => dep_node_index,
+            Some(DepNodeColor::Red) => panic!(),
+        }
     }
 
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
@@ -733,8 +783,8 @@ impl<D: Deps> GraphEncoder<D> {
         let mut status = self.status.lock();
         let status = status.as_mut().unwrap();
 
-        // Check colors inside the lock to avoid racing when `send_promoted` is called concurrently
-        // on the same index.
+        // Check colors inside the lock to avoid racing when `send_promoted` or `send_and_color`
+        // is called concurrently on the same index.
         match colors.get(prev_index) {
             None => {
                 let dep_node_index =

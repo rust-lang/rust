@@ -10,6 +10,6 @@ struct A();
 fn main() {
     unsafe {
         std::arch::asm!("{}", in(xmm_reg) A());
-        //~^ use of empty SIMD vector `A`
+        //~^ ERROR use of empty SIMD vector `A`
     }
 }

@@ -49,7 +49,9 @@ use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::solve::InferCtxtSelectExt as _;
 use crate::traits::normalize::{normalize_with_depth, normalize_with_depth_to};
 use crate::traits::project::{ProjectAndUnifyResult, ProjectionCacheKeyExt};
-use crate::traits::{EvaluateConstErr, ProjectionCacheKey, Unimplemented, effects};
+use crate::traits::{
+    EvaluateConstErr, ProjectionCacheKey, Unimplemented, effects, sizedness_fast_path,
+};
 
 mod _match;
 mod candidate_assembly;
@@ -601,6 +603,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match previous_stack.head() {
             Some(h) => self.check_recursion_limit(&obligation, h.obligation)?,
             None => self.check_recursion_limit(&obligation, &obligation)?,
+        }
+
+        if sizedness_fast_path(self.tcx(), obligation.predicate) {
+            return Ok(EvaluatedToOk);
         }
 
         ensure_sufficient_stack(|| {

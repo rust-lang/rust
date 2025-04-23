@@ -1,0 +1,54 @@
+error[E0277]: the size for values of type `[()]` cannot be known at compilation time
+  --> $DIR/trivial-unsized-projection-2.rs:22:12
+   |
+LL | const FOO: <Tail as Bad>::Assert = todo!();
+   |            ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Tail`, the trait `Sized` is not implemented for `[()]`
+note: required because it appears within the type `Tail`
+  --> $DIR/trivial-unsized-projection-2.rs:17:8
+   |
+LL | struct Tail([()]);
+   |        ^^^^
+note: required by a bound in `Bad::Assert`
+  --> $DIR/trivial-unsized-projection-2.rs:14:15
+   |
+LL |     type Assert
+   |          ------ required by a bound in this associated type
+LL |     where
+LL |         Self: Sized;
+   |               ^^^^^ required by this bound in `Bad::Assert`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Assert: ?Sized
+   |                ++++++++
+
+error[E0277]: the size for values of type `[()]` cannot be known at compilation time
+  --> $DIR/trivial-unsized-projection-2.rs:22:12
+   |
+LL | const FOO: <Tail as Bad>::Assert = todo!();
+   |            ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `Tail`, the trait `Sized` is not implemented for `[()]`
+note: required because it appears within the type `Tail`
+  --> $DIR/trivial-unsized-projection-2.rs:17:8
+   |
+LL | struct Tail([()]);
+   |        ^^^^
+note: required by a bound in `Bad::Assert`
+  --> $DIR/trivial-unsized-projection-2.rs:14:15
+   |
+LL |     type Assert
+   |          ------ required by a bound in this associated type
+LL |     where
+LL |         Self: Sized;
+   |               ^^^^^ required by this bound in `Bad::Assert`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider relaxing the implicit `Sized` restriction
+   |
+LL |     type Assert: ?Sized
+   |                ++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

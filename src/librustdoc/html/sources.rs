@@ -3,7 +3,7 @@ use std::ffi::OsStr;
 use std::path::{Component, Path, PathBuf};
 use std::{fmt, fs};
 
-use rinja::Template;
+use askama::Template;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;

@@ -1,6 +1,7 @@
 //@ known-bug: #132430
 
-//@compile-flags: --edition=2018 --crate-type=lib
+//@ compile-flags: --crate-type=lib
+//@ edition: 2018
 #![feature(cmse_nonsecure_entry)]
 struct Test;
 

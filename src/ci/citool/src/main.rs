@@ -1,8 +1,10 @@
 mod analysis;
 mod cpu_usage;
 mod datadog;
+mod github;
 mod jobs;
 mod metrics;
+mod test_dashboard;
 mod utils;
 
 use std::collections::{BTreeMap, HashMap};
@@ -18,9 +20,11 @@ use serde_yaml::Value;
 use crate::analysis::{output_largest_duration_changes, output_test_diffs};
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
+use crate::github::JobInfoResolver;
 use crate::jobs::RunType;
 use crate::metrics::{JobMetrics, download_auto_job_metrics, download_job_metrics, load_metrics};
-use crate::utils::load_env_var;
+use crate::test_dashboard::generate_test_dashboard;
+use crate::utils::{load_env_var, output_details};
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
@@ -145,6 +149,7 @@ fn postprocess_metrics(
 ) -> anyhow::Result<()> {
     let metrics = load_metrics(&metrics_path)?;
 
+    let mut job_info_resolver = JobInfoResolver::new();
     if let (Some(parent), Some(job_name)) = (parent, job_name) {
         // This command is executed also on PR builds, which might not have parent metrics
         // available, because some PR jobs don't run on auto builds, and PR jobs do not upload metrics
@@ -160,7 +165,7 @@ fn postprocess_metrics(
                     job_name,
                     JobMetrics { parent: Some(parent_metrics), current: metrics },
                 )]);
-                output_test_diffs(&job_metrics);
+                output_test_diffs(&job_metrics, &mut job_info_resolver);
                 return Ok(());
             }
             Err(error) => {
@@ -177,11 +182,27 @@ fn postprocess_metrics(
 }
 
 fn post_merge_report(db: JobDatabase, current: String, parent: String) -> anyhow::Result<()> {
-    let metrics = download_auto_job_metrics(&db, &parent, &current)?;
+    let metrics = download_auto_job_metrics(&db, Some(&parent), &current)?;
 
     println!("\nComparing {parent} (parent) -> {current} (this PR)\n");
-    output_test_diffs(&metrics);
-    output_largest_duration_changes(&metrics);
+
+    let mut job_info_resolver = JobInfoResolver::new();
+    output_test_diffs(&metrics, &mut job_info_resolver);
+
+    output_details("Test dashboard", || {
+        println!(
+            r#"Run
+
+```bash
+cargo run --manifest-path src/ci/citool/Cargo.toml -- \
+    test-dashboard {current} --output-dir test-dashboard
+```
+And then open `test-dashboard/index.html` in your browser to see an overview of all executed tests.
+"#
+        );
+    });
+
+    output_largest_duration_changes(&metrics, &mut job_info_resolver);
 
     Ok(())
 }
@@ -229,6 +250,14 @@ enum Args {
         /// Current commit that will be compared to `parent`.
         current: String,
     },
+    /// Generate a directory containing a HTML dashboard of test results from a CI run.
+    TestDashboard {
+        /// Commit SHA that was tested on CI to analyze.
+        current: String,
+        /// Output path for the HTML directory.
+        #[clap(long)]
+        output_dir: PathBuf,
+    },
 }
 
 #[derive(clap::ValueEnum, Clone)]
@@ -270,7 +299,11 @@ fn main() -> anyhow::Result<()> {
             postprocess_metrics(metrics_path, parent, job_name)?;
         }
         Args::PostMergeReport { current, parent } => {
-            post_merge_report(load_db(default_jobs_file)?, current, parent)?;
+            post_merge_report(load_db(&default_jobs_file)?, current, parent)?;
+        }
+        Args::TestDashboard { current, output_dir } => {
+            let db = load_db(&default_jobs_file)?;
+            generate_test_dashboard(db, &current, &output_dir)?;
         }
     }
 

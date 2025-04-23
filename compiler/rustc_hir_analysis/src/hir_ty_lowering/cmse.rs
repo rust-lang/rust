@@ -49,13 +49,13 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                 Ok(Err(index)) => {
                     // fn(x: u32, u32, u32, u16, y: u16) -> u32,
                     //                           ^^^^^^
-                    let span = if let Some(ident) = bare_fn_ty.param_names[index] {
+                    let span = if let Some(ident) = bare_fn_ty.param_idents[index] {
                         ident.span.to(bare_fn_ty.decl.inputs[index].span)
                     } else {
                         bare_fn_ty.decl.inputs[index].span
                     }
                     .to(bare_fn_ty.decl.inputs.last().unwrap().span);
-                    let plural = bare_fn_ty.param_names.len() - index != 1;
+                    let plural = bare_fn_ty.param_idents.len() - index != 1;
                     dcx.emit_err(errors::CmseInputsStackSpill { span, plural, abi });
                 }
                 Err(layout_err) => {

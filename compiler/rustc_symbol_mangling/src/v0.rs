@@ -368,7 +368,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
     }
 
     fn print_region(&mut self, region: ty::Region<'_>) -> Result<(), PrintError> {
-        let i = match *region {
+        let i = match region.kind() {
             // Erased lifetimes use the index 0, for a
             // shorter mangling of `L_`.
             ty::ReErased => 0,
@@ -615,7 +615,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         cx.print_def_path(trait_ref.def_id, trait_ref.args)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
-                        let name = cx.tcx.associated_item(projection.def_id).name;
+                        let name = cx.tcx.associated_item(projection.def_id).name();
                         cx.push("p");
                         cx.push_ident(name.as_str());
                         match projection.term.unpack() {
@@ -776,7 +776,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                                     self.push_disambiguator(
                                         disambiguated_field.disambiguator as u64,
                                     );
-                                    self.push_ident(field_name.unwrap_or(kw::Empty).as_str());
+                                    self.push_ident(field_name.unwrap().as_str());
 
                                     field.print(self)?;
                                 }
@@ -858,7 +858,8 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             | DefPathData::GlobalAsm
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
-            | DefPathData::LifetimeNs(_) => {
+            | DefPathData::LifetimeNs(_)
+            | DefPathData::AnonAssocTy => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
             }
         };

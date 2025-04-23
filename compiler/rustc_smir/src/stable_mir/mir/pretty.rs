@@ -22,9 +22,10 @@ impl Display for Ty {
 impl Display for AssocKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            AssocKind::Fn => write!(f, "method"),
-            AssocKind::Const => write!(f, "associated const"),
-            AssocKind::Type => write!(f, "associated type"),
+            AssocKind::Fn { has_self: true, .. } => write!(f, "method"),
+            AssocKind::Fn { has_self: false, .. } => write!(f, "associated function"),
+            AssocKind::Const { .. } => write!(f, "associated const"),
+            AssocKind::Type { .. } => write!(f, "associated type"),
         }
     }
 }

@@ -9,7 +9,7 @@
 //@[aix] needs-llvm-components: powerpc
 
 #![crate_type = "lib"]
-#![feature(no_core, naked_functions, asm_experimental_arch, f128, linkage, fn_align)]
+#![feature(no_core, asm_experimental_arch, f128, linkage, fn_align)]
 #![no_core]
 
 // tests that naked functions work for the `powerpc64-ibm-aix` target.
@@ -29,7 +29,7 @@ use minicore::*;
 // CHECK-LABEL: blr:
 // CHECK: blr
 #[no_mangle]
-#[naked]
-unsafe extern "C" fn blr() {
+#[unsafe(naked)]
+extern "C" fn blr() {
     naked_asm!("blr")
 }

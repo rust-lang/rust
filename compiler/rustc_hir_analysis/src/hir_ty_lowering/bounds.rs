@@ -363,10 +363,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for hir_bound in hir_bounds {
             // In order to avoid cycles, when we're lowering `SelfTraitThatDefines`,
             // we skip over any traits that don't define the given associated type.
-            if let PredicateFilter::SelfTraitThatDefines(assoc_name) = predicate_filter {
+            if let PredicateFilter::SelfTraitThatDefines(assoc_ident) = predicate_filter {
                 if let Some(trait_ref) = hir_bound.trait_ref()
                     && let Some(trait_did) = trait_ref.trait_def_id()
-                    && self.tcx().trait_may_define_assoc_item(trait_did, assoc_name)
+                    && self.tcx().trait_may_define_assoc_item(trait_did, assoc_ident)
                 {
                     // Okay
                 } else {
@@ -431,16 +431,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
 
-        let assoc_kind = if constraint.gen_args.parenthesized
+        let assoc_tag = if constraint.gen_args.parenthesized
             == hir::GenericArgsParentheses::ReturnTypeNotation
         {
-            ty::AssocKind::Fn
+            ty::AssocTag::Fn
         } else if let hir::AssocItemConstraintKind::Equality { term: hir::Term::Const(_) } =
             constraint.kind
         {
-            ty::AssocKind::Const
+            ty::AssocTag::Const
         } else {
-            ty::AssocKind::Type
+            ty::AssocTag::Type
         };
 
         // Given something like `U: Trait<T = X>`, we want to produce a predicate like
@@ -453,7 +453,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         //     trait SuperTrait<A> { type T; }
         let candidate = if self.probe_trait_that_defines_assoc_item(
             trait_ref.def_id(),
-            assoc_kind,
+            assoc_tag,
             constraint.ident,
         ) {
             // Simple case: The assoc item is defined in the current trait.
@@ -464,7 +464,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self.probe_single_bound_for_assoc_item(
                 || traits::supertraits(tcx, trait_ref),
                 AssocItemQSelf::Trait(trait_ref.def_id()),
-                assoc_kind,
+                assoc_tag,
                 constraint.ident,
                 path_span,
                 Some(constraint),
@@ -474,7 +474,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let assoc_item = self
             .probe_assoc_item(
                 constraint.ident,
-                assoc_kind,
+                assoc_tag,
                 hir_ref_id,
                 constraint.span,
                 candidate.def_id(),
@@ -493,7 +493,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
             .or_insert(constraint.span);
 
-        let projection_term = if let ty::AssocKind::Fn = assoc_kind {
+        let projection_term = if let ty::AssocTag::Fn = assoc_tag {
             let bound_vars = tcx.late_bound_vars(constraint.hir_id);
             ty::Binder::bind_with_vars(
                 self.lower_return_type_notation_ty(candidate, assoc_item.def_id, path_span)?.into(),
@@ -542,7 +542,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         match constraint.kind {
-            hir::AssocItemConstraintKind::Equality { .. } if let ty::AssocKind::Fn = assoc_kind => {
+            hir::AssocItemConstraintKind::Equality { .. } if let ty::AssocTag::Fn = assoc_tag => {
                 return Err(self.dcx().emit_err(crate::errors::ReturnTypeNotationEqualityBound {
                     span: constraint.span,
                 }));
@@ -679,7 +679,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         trait_def_id,
                         hir_ty.span,
                         item_segment,
-                        ty::AssocKind::Type,
+                        ty::AssocTag::Type,
                     );
                     return Ty::new_error(tcx, guar);
                 };
@@ -771,7 +771,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         )
                     },
                     AssocItemQSelf::SelfTyAlias,
-                    ty::AssocKind::Fn,
+                    ty::AssocTag::Fn,
                     assoc_ident,
                     span,
                     None,
@@ -783,7 +783,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ) => self.probe_single_ty_param_bound_for_assoc_item(
                 param_did.expect_local(),
                 qself.span,
-                ty::AssocKind::Fn,
+                ty::AssocTag::Fn,
                 assoc_ident,
                 span,
             )?,
@@ -823,7 +823,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let trait_def_id = bound.def_id();
         let assoc_ty = self
-            .probe_assoc_item(assoc_ident, ty::AssocKind::Fn, qpath_hir_id, span, trait_def_id)
+            .probe_assoc_item(assoc_ident, ty::AssocTag::Fn, qpath_hir_id, span, trait_def_id)
             .expect("failed to find associated type");
 
         Ok((bound, assoc_ty.def_id))

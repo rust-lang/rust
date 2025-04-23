@@ -2,7 +2,6 @@
 // Behavior on aarch64 is tested by tests/codegen/fixed-x18.rs.
 //
 //@ revisions: x64 i686 arm riscv32 riscv64
-//@ error-pattern: the `-Zfixed-x18` flag is not supported
 //@ dont-check-compiler-stderr
 //
 //@ compile-flags: -Zfixed-x18

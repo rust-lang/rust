@@ -3,7 +3,6 @@
 //@ ignore-nvptx64
 //@ ignore-spirv
 
-#![feature(naked_functions)]
 #![crate_type = "lib"]
 
 use std::arch::naked_asm;
@@ -12,24 +11,24 @@ fn main() {
     test1();
 }
 
-#[naked]
+#[unsafe(naked)]
 extern "C" fn test1() {
-    unsafe { naked_asm!("") }
+    naked_asm!("")
 }
 
 extern "C" fn test2() {
-    unsafe { naked_asm!("") }
-    //~^ ERROR the `naked_asm!` macro can only be used in functions marked with `#[naked]`
+    naked_asm!("")
+    //~^ ERROR the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
 }
 
 extern "C" fn test3() {
-    unsafe { (|| naked_asm!(""))() }
-    //~^ ERROR the `naked_asm!` macro can only be used in functions marked with `#[naked]`
+    (|| naked_asm!(""))()
+    //~^ ERROR the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
 }
 
 fn test4() {
     async move {
-        unsafe {  naked_asm!("") } ;
-        //~^ ERROR the `naked_asm!` macro can only be used in functions marked with `#[naked]`
+        naked_asm!("");
+        //~^ ERROR the `naked_asm!` macro can only be used in functions marked with `#[unsafe(naked)]`
     };
 }

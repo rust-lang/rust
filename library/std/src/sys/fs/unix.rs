@@ -12,10 +12,11 @@ use libc::c_char;
     all(target_os = "linux", not(target_env = "musl")),
     target_os = "android",
     target_os = "fuchsia",
-    target_os = "hurd"
+    target_os = "hurd",
+    target_os = "illumos",
 ))]
 use libc::dirfd;
-#[cfg(target_os = "fuchsia")]
+#[cfg(any(target_os = "fuchsia", target_os = "illumos"))]
 use libc::fstatat as fstatat64;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
@@ -892,7 +893,8 @@ impl DirEntry {
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
             target_os = "fuchsia",
-            target_os = "hurd"
+            target_os = "hurd",
+            target_os = "illumos",
         ),
         not(miri) // no dirfd on Miri
     ))]
@@ -922,6 +924,7 @@ impl DirEntry {
             target_os = "android",
             target_os = "fuchsia",
             target_os = "hurd",
+            target_os = "illumos",
         )),
         miri
     ))]
@@ -1463,20 +1466,6 @@ impl File {
         Ok(())
     }
 
-    // FIXME(#115199): Rust currently omits weak function definitions
-    // and its metadata from LLVM IR.
-    #[cfg_attr(
-        any(
-            target_os = "android",
-            all(
-                target_os = "linux",
-                target_env = "gnu",
-                target_pointer_width = "32",
-                not(target_arch = "riscv32")
-            )
-        ),
-        no_sanitize(cfi)
-    )]
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         #[cfg(not(any(
             target_os = "redox",

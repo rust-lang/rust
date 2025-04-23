@@ -63,11 +63,13 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(min_specialization)]
 #![feature(never_type)]
+#![feature(next_index)]
 #![feature(numfmt)]
 #![feature(pattern)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
 #![feature(ptr_metadata)]
+#![feature(select_unpredictable)]
 #![feature(slice_from_ptr_range)]
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
@@ -147,6 +149,7 @@ mod ffi;
 mod fmt;
 mod future;
 mod hash;
+mod hint;
 mod intrinsics;
 mod io;
 mod iter;

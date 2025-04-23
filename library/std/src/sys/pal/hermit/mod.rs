@@ -18,8 +18,6 @@
 
 use crate::os::raw::c_char;
 
-pub mod args;
-pub mod env;
 pub mod futex;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
@@ -58,7 +56,7 @@ pub extern "C" fn __rust_abort() {
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     unsafe {
-        args::init(argc, argv);
+        crate::sys::args::init(argc, argv);
     }
 }
 

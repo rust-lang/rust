@@ -1,9 +1,8 @@
 // tidy-alphabetical-start
-#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![feature(never_type)]
 // tidy-alphabetical-end
 
-pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
+pub(crate) use rustc_data_structures::fx::FxIndexMap as Map;
 
 pub mod layout;
 mod maybe_transmutable;

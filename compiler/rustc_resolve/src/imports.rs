@@ -639,38 +639,38 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 if let Some(glob_binding) = resolution.shadowed_glob {
-                    let binding_id = match binding.kind {
-                        NameBindingKind::Res(res) => {
-                            Some(self.def_id_to_node_id[res.def_id().expect_local()])
-                        }
-                        NameBindingKind::Module(module) => {
-                            Some(self.def_id_to_node_id[module.def_id().expect_local()])
-                        }
-                        NameBindingKind::Import { import, .. } => import.id(),
-                    };
-
                     if binding.res() != Res::Err
                         && glob_binding.res() != Res::Err
                         && let NameBindingKind::Import { import: glob_import, .. } =
                             glob_binding.kind
-                        && let Some(binding_id) = binding_id
                         && let Some(glob_import_id) = glob_import.id()
                         && let glob_import_def_id = self.local_def_id(glob_import_id)
                         && self.effective_visibilities.is_exported(glob_import_def_id)
                         && glob_binding.vis.is_public()
                         && !binding.vis.is_public()
                     {
-                        self.lint_buffer.buffer_lint(
-                            HIDDEN_GLOB_REEXPORTS,
-                            binding_id,
-                            binding.span,
-                            BuiltinLintDiag::HiddenGlobReexports {
-                                name: key.ident.name.to_string(),
-                                namespace: key.ns.descr().to_owned(),
-                                glob_reexport_span: glob_binding.span,
-                                private_item_span: binding.span,
-                            },
-                        );
+                        let binding_id = match binding.kind {
+                            NameBindingKind::Res(res) => {
+                                Some(self.def_id_to_node_id(res.def_id().expect_local()))
+                            }
+                            NameBindingKind::Module(module) => {
+                                Some(self.def_id_to_node_id(module.def_id().expect_local()))
+                            }
+                            NameBindingKind::Import { import, .. } => import.id(),
+                        };
+                        if let Some(binding_id) = binding_id {
+                            self.lint_buffer.buffer_lint(
+                                HIDDEN_GLOB_REEXPORTS,
+                                binding_id,
+                                binding.span,
+                                BuiltinLintDiag::HiddenGlobReexports {
+                                    name: key.ident.name.to_string(),
+                                    namespace: key.ns.descr().to_owned(),
+                                    glob_reexport_span: glob_binding.span,
+                                    private_item_span: binding.span,
+                                },
+                            );
+                        }
                     }
                 }
             }
@@ -1012,7 +1012,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                         // 2 segments, so the `resolve_path` above won't trigger it.
                         let mut full_path = import.module_path.clone();
-                        full_path.push(Segment::from_ident(Ident::empty()));
+                        full_path.push(Segment::from_ident(Ident::dummy()));
                         self.lint_if_path_starts_with_module(Some(finalize), &full_path, None);
                     }
 

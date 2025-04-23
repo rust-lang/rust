@@ -980,27 +980,17 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        let tcx = self.tcx;
-        let mut projection = SmallVec::<[PlaceElem<'tcx>; 1]>::new();
-        loop {
-            if let Some(local) = self.try_as_local(copy_from_local_value, location) {
-                projection.reverse();
-                let place = Place { local, projection: tcx.mk_place_elems(projection.as_slice()) };
-                if rvalue.ty(self.local_decls, tcx) == place.ty(self.local_decls, tcx).ty {
-                    self.reused_locals.insert(local);
-                    *rvalue = Rvalue::Use(Operand::Copy(place));
-                    return Some(copy_from_value);
-                }
-                return None;
-            } else if let Value::Projection(pointer, proj) = *self.get(copy_from_local_value)
-                && let Some(proj) = self.try_as_place_elem(proj, location)
-            {
-                projection.push(proj);
-                copy_from_local_value = pointer;
-            } else {
-                return None;
+        // Allow introducing places with non-constant offsets, as those are still better than
+        // reconstructing an aggregate.
+        if let Some(place) = self.try_as_place(copy_from_local_value, location, true) {
+            if rvalue.ty(self.local_decls, self.tcx) == place.ty(self.local_decls, self.tcx).ty {
+                self.reused_locals.insert(place.local);
+                *rvalue = Rvalue::Use(Operand::Copy(place));
+                return Some(copy_from_local_value);
             }
         }
+
+        None
     }
 
     fn simplify_aggregate(
@@ -1672,14 +1662,14 @@ fn op_to_prop_const<'tcx>(
 }
 
 impl<'tcx> VnState<'_, 'tcx> {
-    /// If either [`Self::try_as_constant`] as [`Self::try_as_local`] succeeds,
+    /// If either [`Self::try_as_constant`] as [`Self::try_as_place`] succeeds,
     /// returns that result as an [`Operand`].
     fn try_as_operand(&mut self, index: VnIndex, location: Location) -> Option<Operand<'tcx>> {
         if let Some(const_) = self.try_as_constant(index) {
             Some(Operand::Constant(Box::new(const_)))
-        } else if let Some(local) = self.try_as_local(index, location) {
-            self.reused_locals.insert(local);
-            Some(Operand::Copy(local.into()))
+        } else if let Some(place) = self.try_as_place(index, location, false) {
+            self.reused_locals.insert(place.local);
+            Some(Operand::Copy(place))
         } else {
             None
         }
@@ -1710,6 +1700,35 @@ impl<'tcx> VnState<'_, 'tcx> {
 
         let const_ = Const::Val(value, op.layout.ty);
         Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_ })
+    }
+
+    /// Construct a place which holds the same value as `index` and for which all locals strictly
+    /// dominate `loc`. If you used this place, add its base local to `reused_locals` to remove
+    /// storage statements.
+    #[instrument(level = "trace", skip(self), ret)]
+    fn try_as_place(
+        &mut self,
+        mut index: VnIndex,
+        loc: Location,
+        allow_complex_projection: bool,
+    ) -> Option<Place<'tcx>> {
+        let mut projection = SmallVec::<[PlaceElem<'tcx>; 1]>::new();
+        loop {
+            if let Some(local) = self.try_as_local(index, loc) {
+                projection.reverse();
+                let place =
+                    Place { local, projection: self.tcx.mk_place_elems(projection.as_slice()) };
+                return Some(place);
+            } else if let Value::Projection(pointer, proj) = *self.get(index)
+                && (allow_complex_projection || proj.is_stable_offset())
+                && let Some(proj) = self.try_as_place_elem(proj, loc)
+            {
+                projection.push(proj);
+                index = pointer;
+            } else {
+                return None;
+            }
+        }
     }
 
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
@@ -1762,11 +1781,12 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             if let Some(value) = value {
                 if let Some(const_) = self.try_as_constant(value) {
                     *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-                } else if let Some(local) = self.try_as_local(value, location)
-                    && *rvalue != Rvalue::Use(Operand::Move(local.into()))
+                } else if let Some(place) = self.try_as_place(value, location, false)
+                    && *rvalue != Rvalue::Use(Operand::Move(place))
+                    && *rvalue != Rvalue::Use(Operand::Copy(place))
                 {
-                    *rvalue = Rvalue::Use(Operand::Copy(local.into()));
-                    self.reused_locals.insert(local);
+                    *rvalue = Rvalue::Use(Operand::Copy(place));
+                    self.reused_locals.insert(place.local);
                 }
             }
         }

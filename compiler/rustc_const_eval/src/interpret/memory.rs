@@ -872,8 +872,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
-        if self.get_fn_alloc(id).is_some() {
-            return AllocInfo::new(Size::ZERO, Align::ONE, AllocKind::Function, Mutability::Not);
+        if let Some(fn_val) = self.get_fn_alloc(id) {
+            let align = match fn_val {
+                FnVal::Instance(instance) => {
+                    // Function alignment can be set globally with the `-Zmin-function-alignment=<n>` flag;
+                    // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
+                    let fn_align = self.tcx.codegen_fn_attrs(instance.def_id()).alignment;
+                    let global_align = self.tcx.sess.opts.unstable_opts.min_function_alignment;
+
+                    Ord::max(global_align, fn_align).unwrap_or(Align::ONE)
+                }
+                // Machine-specific extra functions currently do not support alignment restrictions.
+                FnVal::Other(_) => Align::ONE,
+            };
+
+            return AllocInfo::new(Size::ZERO, align, AllocKind::Function, Mutability::Not);
         }
 
         // # Global allocations

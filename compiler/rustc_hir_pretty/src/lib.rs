@@ -397,7 +397,7 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             hir::TyKind::BareFn(f) => {
-                self.print_ty_fn(f.abi, f.safety, f.decl, None, f.generic_params, f.param_names);
+                self.print_ty_fn(f.abi, f.safety, f.decl, None, f.generic_params, f.param_idents);
             }
             hir::TyKind::UnsafeBinder(unsafe_binder) => {
                 self.print_unsafe_binder(unsafe_binder);
@@ -473,14 +473,14 @@ impl<'a> State<'a> {
         self.maybe_print_comment(item.span.lo());
         self.print_attrs_as_outer(self.attrs(item.hir_id()));
         match item.kind {
-            hir::ForeignItemKind::Fn(sig, arg_names, generics) => {
+            hir::ForeignItemKind::Fn(sig, arg_idents, generics) => {
                 self.head("");
                 self.print_fn(
                     sig.decl,
                     sig.header,
                     Some(item.ident.name),
                     generics,
-                    arg_names,
+                    arg_idents,
                     None,
                 );
                 self.end(); // end head-ibox
@@ -899,10 +899,10 @@ impl<'a> State<'a> {
         ident: Ident,
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
-        arg_names: &[Option<Ident>],
+        arg_idents: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
-        self.print_fn(m.decl, m.header, Some(ident.name), generics, arg_names, body_id);
+        self.print_fn(m.decl, m.header, Some(ident.name), generics, arg_idents, body_id);
     }
 
     fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
@@ -914,8 +914,8 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Const(ty, default) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
-            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_names)) => {
-                self.print_method_sig(ti.ident, sig, ti.generics, arg_names, None);
+            hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_idents)) => {
+                self.print_method_sig(ti.ident, sig, ti.generics, arg_idents, None);
                 self.word(";");
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
@@ -1871,10 +1871,11 @@ impl<'a> State<'a> {
     fn print_pat(&mut self, pat: &hir::Pat<'_>) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
-        // Pat isn't normalized, but the beauty of it
-        // is that it doesn't matter
+        // Pat isn't normalized, but the beauty of it is that it doesn't matter.
         match pat.kind {
-            PatKind::Missing => unreachable!(),
+            // Printing `_` isn't ideal for a missing pattern, but it's easy and good enough.
+            // E.g. `fn(u32)` gets printed as `fn(_: u32)`.
+            PatKind::Missing => self.word("_"),
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
             PatKind::Binding(BindingMode(by_ref, mutbl), _, ident, sub) => {
@@ -2122,7 +2123,7 @@ impl<'a> State<'a> {
         header: hir::FnHeader,
         name: Option<Symbol>,
         generics: &hir::Generics<'_>,
-        arg_names: &[Option<Ident>],
+        arg_idents: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn_header_info(header);
@@ -2134,16 +2135,16 @@ impl<'a> State<'a> {
         self.print_generic_params(generics.params);
 
         self.popen();
-        // Make sure we aren't supplied *both* `arg_names` and `body_id`.
-        assert!(arg_names.is_empty() || body_id.is_none());
+        // Make sure we aren't supplied *both* `arg_idents` and `body_id`.
+        assert!(arg_idents.is_empty() || body_id.is_none());
         let mut i = 0;
         let mut print_arg = |s: &mut Self, ty: Option<&hir::Ty<'_>>| {
             if i == 0 && decl.implicit_self.has_implicit_self() {
                 s.print_implicit_self(&decl.implicit_self);
             } else {
-                if let Some(arg_name) = arg_names.get(i) {
-                    if let Some(arg_name) = arg_name {
-                        s.word(arg_name.to_string());
+                if let Some(arg_ident) = arg_idents.get(i) {
+                    if let Some(arg_ident) = arg_ident {
+                        s.word(arg_ident.to_string());
                         s.word(":");
                         s.space();
                     }
@@ -2164,7 +2165,9 @@ impl<'a> State<'a> {
             s.end();
         });
         if decl.c_variadic {
-            self.word(", ");
+            if !decl.inputs.is_empty() {
+                self.word(", ");
+            }
             print_arg(self, None);
             self.word("...");
         }
@@ -2452,7 +2455,7 @@ impl<'a> State<'a> {
         decl: &hir::FnDecl<'_>,
         name: Option<Symbol>,
         generic_params: &[hir::GenericParam<'_>],
-        arg_names: &[Option<Ident>],
+        arg_idents: &[Option<Ident>],
     ) {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
@@ -2467,7 +2470,7 @@ impl<'a> State<'a> {
             },
             name,
             generics,
-            arg_names,
+            arg_idents,
             None,
         );
         self.end();

@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![feature(cfg_boolean_literals)]
 #![warn(unused)]
 
 macro_rules! foo {

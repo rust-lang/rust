@@ -1,5 +1,5 @@
 error[E0369]: binary operation `==` cannot be applied to type `(i32) is 0..=999999999`
-  --> $DIR/derives.rs:10:20
+  --> $DIR/derives.rs:11:20
    |
 LL | #[derive(Clone, Copy, PartialEq)]
    |                       --------- in this derive macro expansion

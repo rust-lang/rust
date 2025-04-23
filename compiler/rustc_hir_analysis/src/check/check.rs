@@ -397,8 +397,11 @@ fn best_definition_site_of_opaque<'tcx>(
                 return ControlFlow::Continue(());
             }
 
-            if let Some(hidden_ty) =
-                self.tcx.mir_borrowck(item_def_id).concrete_opaque_types.get(&self.opaque_def_id)
+            if let Some(hidden_ty) = self
+                .tcx
+                .mir_borrowck(item_def_id)
+                .ok()
+                .and_then(|opaque_types| opaque_types.0.get(&self.opaque_def_id))
             {
                 ControlFlow::Break((hidden_ty.span, item_def_id))
             } else {
@@ -413,9 +416,6 @@ fn best_definition_site_of_opaque<'tcx>(
             self.tcx
         }
         fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) -> Self::Result {
-            if let hir::ExprKind::Closure(closure) = ex.kind {
-                self.check(closure.def_id)?;
-            }
             intravisit::walk_expr(self, ex)
         }
         fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) -> Self::Result {
@@ -443,13 +443,13 @@ fn best_definition_site_of_opaque<'tcx>(
             let impl_def_id = tcx.local_parent(parent);
             for assoc in tcx.associated_items(impl_def_id).in_definition_order() {
                 match assoc.kind {
-                    ty::AssocKind::Const | ty::AssocKind::Fn => {
+                    ty::AssocKind::Const { .. } | ty::AssocKind::Fn { .. } => {
                         if let ControlFlow::Break(span) = locator.check(assoc.def_id.expect_local())
                         {
                             return Some(span);
                         }
                     }
-                    ty::AssocKind::Type => {}
+                    ty::AssocKind::Type { .. } => {}
                 }
             }
 
@@ -719,7 +719,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     def_id,
                     tcx.def_ident_span(def_id).unwrap(),
                     i.name,
-                    ExternAbi::Rust,
                 )
             }
         }
@@ -741,7 +740,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
-                    ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
+                    ty::AssocKind::Type { .. } if assoc_item.defaultness(tcx).has_value() => {
                         let trait_args = GenericArgs::identity_for_item(tcx, def_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
@@ -786,16 +785,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             for item in items {
                 let def_id = item.id.owner_id.def_id;
-
-                if tcx.has_attr(def_id, sym::rustc_intrinsic) {
-                    intrinsic::check_intrinsic_type(
-                        tcx,
-                        item.id.owner_id.def_id,
-                        item.span,
-                        item.ident.name,
-                        abi,
-                    );
-                }
 
                 let generics = tcx.generics_of(def_id);
                 let own_counts = generics.own_counts();
@@ -937,31 +926,7 @@ fn check_impl_items_against_trait<'tcx>(
 
     let trait_def = tcx.trait_def(trait_ref.def_id);
 
-    let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
-
-    let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let cause = ObligationCause::misc(tcx.def_span(impl_id), impl_id);
-    let param_env = tcx.param_env(impl_id);
-
-    let self_is_guaranteed_unsized = match tcx
-        .struct_tail_raw(
-            trait_ref.self_ty(),
-            |ty| {
-                ocx.structurally_normalize_ty(&cause, param_env, ty).unwrap_or_else(|_| {
-                    Ty::new_error_with_message(
-                        tcx,
-                        tcx.def_span(impl_id),
-                        "struct tail should be computable",
-                    )
-                })
-            },
-            || (),
-        )
-        .kind()
-    {
-        ty::Dynamic(_, _, ty::DynKind::Dyn) | ty::Slice(_) | ty::Str => true,
-        _ => false,
-    };
+    let self_is_guaranteed_unsize_self = tcx.impl_self_is_guaranteed_unsized(impl_id);
 
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
@@ -977,7 +942,7 @@ fn check_impl_items_against_trait<'tcx>(
 
         if res.is_ok() {
             match ty_impl_item.kind {
-                ty::AssocKind::Fn => {
+                ty::AssocKind::Fn { .. } => {
                     compare_impl_item::refine::check_refining_return_position_impl_trait_in_trait(
                         tcx,
                         ty_impl_item,
@@ -987,12 +952,12 @@ fn check_impl_items_against_trait<'tcx>(
                             .instantiate_identity(),
                     );
                 }
-                ty::AssocKind::Const => {}
-                ty::AssocKind::Type => {}
+                ty::AssocKind::Const { .. } => {}
+                ty::AssocKind::Type { .. } => {}
             }
         }
 
-        if self_is_guaranteed_unsized && tcx.generics_require_sized_self(ty_trait_item.def_id) {
+        if self_is_guaranteed_unsize_self && tcx.generics_require_sized_self(ty_trait_item.def_id) {
             tcx.emit_node_span_lint(
                 rustc_lint_defs::builtin::DEAD_CODE,
                 tcx.local_def_id_to_hir_id(ty_impl_item.def_id.expect_local()),
@@ -1027,7 +992,7 @@ fn check_impl_items_against_trait<'tcx>(
             if !is_implemented
                 && tcx.defaultness(impl_id).is_final()
                 // unsized types don't need to implement methods that have `Self: Sized` bounds.
-                && !(self_is_guaranteed_unsized && tcx.generics_require_sized_self(trait_item_id))
+                && !(self_is_guaranteed_unsize_self && tcx.generics_require_sized_self(trait_item_id))
             {
                 missing_items.push(tcx.associated_item(trait_item_id));
             }

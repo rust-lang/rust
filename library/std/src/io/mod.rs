@@ -310,7 +310,7 @@ pub use self::error::RawOsError;
 pub use self::error::SimpleMessage;
 #[unstable(feature = "io_const_error", issue = "133448")]
 pub use self::error::const_error;
-#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "anonymous_pipe", since = "1.87.0")]
 pub use self::pipe::{PipeReader, PipeWriter, pipe};
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
@@ -2658,6 +2658,10 @@ impl<T, U> Chain<T, U> {
 
     /// Gets references to the underlying readers in this `Chain`.
     ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying readers as doing so may corrupt the internal state of this
+    /// `Chain`.
+    ///
     /// # Examples
     ///
     /// ```no_run
@@ -2914,6 +2918,10 @@ impl<T> Take<T> {
     }
 
     /// Gets a reference to the underlying reader.
+    ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying reader as doing so may corrupt the internal limit of this
+    /// `Take`.
     ///
     /// # Examples
     ///

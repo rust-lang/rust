@@ -415,6 +415,7 @@ impl Command {
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
         target_vendor = "apple",
+        target_os = "cygwin",
     )))]
     fn posix_spawn(
         &mut self,
@@ -433,10 +434,8 @@ impl Command {
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
         target_vendor = "apple",
+        target_os = "cygwin",
     ))]
-    // FIXME(#115199): Rust currently omits weak function definitions
-    // and its metadata from LLVM IR.
-    #[cfg_attr(target_os = "linux", no_sanitize(cfi))]
     fn posix_spawn(
         &mut self,
         stdio: &ChildPipes,
@@ -587,7 +586,7 @@ impl Command {
         /// Some platforms can set a new working directory for a spawned process in the
         /// `posix_spawn` path. This function looks up the function pointer for adding
         /// such an action to a `posix_spawn_file_actions_t` struct.
-        #[cfg(not(all(target_os = "linux", target_env = "musl")))]
+        #[cfg(not(any(all(target_os = "linux", target_env = "musl"), target_os = "cygwin")))]
         fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
             use crate::sys::weak::weak;
 
@@ -621,7 +620,9 @@ impl Command {
         /// Weak symbol lookup doesn't work with statically linked libcs, so in cases
         /// where static linking is possible we need to either check for the presence
         /// of the symbol at compile time or know about it upfront.
-        #[cfg(all(target_os = "linux", target_env = "musl"))]
+        ///
+        /// Cygwin doesn't support weak symbol, so just link it.
+        #[cfg(any(all(target_os = "linux", target_env = "musl"), target_os = "cygwin"))]
         fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
             // Our minimum required musl supports this function, so we can just use it.
             Some(libc::posix_spawn_file_actions_addchdir_np)

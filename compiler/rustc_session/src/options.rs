@@ -1956,6 +1956,9 @@ options! {
         "allow the linker to link its default libraries (default: no)"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "import library generation tool (ignored except when targeting windows-gnu)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
+    dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
+        "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
@@ -2319,18 +2322,20 @@ options! {
     mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
-    mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
-        "keep place mention MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
-        (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
+    mir_preserve_ub: bool = (false, parse_bool, [TRACKED],
+        "keep place mention statements and reads in trivial SwitchInt terminators, which are interpreted \
+        e.g., by miri; implies -Zmir-opt-level=0 (default: no)"),
     mir_strip_debuginfo: MirStripDebugInfo = (MirStripDebugInfo::None, parse_mir_strip_debuginfo, [TRACKED],
         "Whether to remove some of the MIR debug info from methods.  Default: None"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
+    namespaced_crates: bool = (false, parse_bool, [TRACKED],
+        "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],

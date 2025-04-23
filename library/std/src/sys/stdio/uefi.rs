@@ -142,8 +142,12 @@ impl io::Write for Stderr {
 // UTF-16 character should occupy 4 bytes at most in UTF-8
 pub const STDIN_BUF_SIZE: usize = 4;
 
-pub fn is_ebadf(_err: &io::Error) -> bool {
-    false
+pub fn is_ebadf(err: &io::Error) -> bool {
+    if let Some(x) = err.raw_os_error() {
+        r_efi::efi::Status::UNSUPPORTED.as_usize() == x
+    } else {
+        false
+    }
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
