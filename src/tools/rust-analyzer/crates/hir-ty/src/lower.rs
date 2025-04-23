@@ -100,6 +100,7 @@ pub(crate) enum GenericArgsPosition {
     // to lowering already include them. We probably can't do that, but we will still need to
     // account for them when we properly implement lifetime elision.
     FnSignature,
+    OtherSignature,
 }
 
 #[derive(Debug)]

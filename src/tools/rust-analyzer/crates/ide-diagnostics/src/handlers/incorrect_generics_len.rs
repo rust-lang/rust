@@ -74,17 +74,19 @@ fn foo() {
         check_diagnostics(
             r#"
 struct Foo<'a, 'b>(&'a &'b ());
-struct Bar<'a>(&'a ());
 
-fn foo() -> Foo {
-    let _ = Foo;
-    let _ = Foo::<>;
-    let _ = Foo::<'static>;
-            // ^^^^^^^^^^^ error: this struct takes 2 lifetime arguments but 1 lifetime argument was supplied
+fn foo(Foo(_): Foo) -> Foo {
+    let _: Foo = Foo(&&());
+    let _: Foo::<> = Foo::<>(&&());
+    let _: Foo::<'static>
+           // ^^^^^^^^^^^ error: this struct takes 2 lifetime arguments but 1 lifetime argument was supplied
+                          = Foo::<'static>(&&());
+                            // ^^^^^^^^^^^ error: this struct takes 2 lifetime arguments but 1 lifetime argument was supplied
+    |_: Foo| -> Foo {loop{}};
+
     loop {}
 }
 
-fn bar(_v: Bar) -> Foo { loop {} }
         "#,
         );
     }
