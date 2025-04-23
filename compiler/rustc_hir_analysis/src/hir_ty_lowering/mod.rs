@@ -44,16 +44,14 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_session::parse::feature_err;
-use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::{debug, instrument};
 
-use self::errors::assoc_tag_str;
 use crate::check::check_abi_fn_ptr;
-use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, NoVariantNamed};
+use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -751,7 +749,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             trait_ref.path.segments.split_last().unwrap().1.iter(),
             GenericsArgsErrExtend::None,
         );
-        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, false);
+        self.report_internal_fn_trait(span, trait_def_id, trait_segment, false);
 
         let (generic_args, arg_count) = self.lower_generic_args_of_path(
             trait_ref.path.span,
@@ -926,7 +924,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_segment: &hir::PathSegment<'tcx>,
         is_impl: bool,
     ) -> ty::TraitRef<'tcx> {
-        self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
+        self.report_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
         let (generic_args, _) =
             self.lower_generic_args_of_path(span, trait_def_id, &[], trait_segment, Some(self_ty));
@@ -1032,15 +1030,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         });
 
         let Some(bound) = matching_candidates.next() else {
-            let reported = self.complain_about_assoc_item_not_found(
+            return Err(self.report_unresolved_assoc_item(
                 all_candidates,
                 qself,
                 assoc_tag,
                 assoc_ident,
                 span,
                 constraint,
-            );
-            return Err(reported);
+            ));
         };
         debug!(?bound);
 
@@ -1326,113 +1323,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
             )?,
             _ => {
-                let kind_str = assoc_tag_str(mode.assoc_tag());
-                let reported = if variant_def_id.is_some() {
-                    // Variant in type position
-                    let msg = format!("expected {kind_str}, found variant `{ident}`");
-                    self.dcx().span_err(span, msg)
-                } else if self_ty.is_enum() {
-                    let mut err = self.dcx().create_err(NoVariantNamed {
-                        span: ident.span,
-                        ident,
-                        ty: self_ty,
-                    });
-
-                    let adt_def = self_ty.ty_adt_def().expect("enum is not an ADT");
-                    if let Some(variant_name) = find_best_match_for_name(
-                        &adt_def
-                            .variants()
-                            .iter()
-                            .map(|variant| variant.name)
-                            .collect::<Vec<Symbol>>(),
-                        ident.name,
-                        None,
-                    ) && let Some(variant) =
-                        adt_def.variants().iter().find(|s| s.name == variant_name)
-                    {
-                        let mut suggestion = vec![(ident.span, variant_name.to_string())];
-                        if let hir::Node::Stmt(&hir::Stmt {
-                            kind: hir::StmtKind::Semi(expr), ..
-                        })
-                        | hir::Node::Expr(expr) = tcx.parent_hir_node(qpath_hir_id)
-                            && let hir::ExprKind::Struct(..) = expr.kind
-                        {
-                            match variant.ctor {
-                                None => {
-                                    // struct
-                                    suggestion = vec![(
-                                        ident.span.with_hi(expr.span.hi()),
-                                        if variant.fields.is_empty() {
-                                            format!("{variant_name} {{}}")
-                                        } else {
-                                            format!(
-                                                "{variant_name} {{ {} }}",
-                                                variant
-                                                    .fields
-                                                    .iter()
-                                                    .map(|f| format!("{}: /* value */", f.name))
-                                                    .collect::<Vec<_>>()
-                                                    .join(", ")
-                                            )
-                                        },
-                                    )];
-                                }
-                                Some((hir::def::CtorKind::Fn, def_id)) => {
-                                    // tuple
-                                    let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
-                                    let inputs = fn_sig.inputs().skip_binder();
-                                    suggestion = vec![(
-                                        ident.span.with_hi(expr.span.hi()),
-                                        format!(
-                                            "{variant_name}({})",
-                                            inputs
-                                                .iter()
-                                                .map(|i| format!("/* {i} */"))
-                                                .collect::<Vec<_>>()
-                                                .join(", ")
-                                        ),
-                                    )];
-                                }
-                                Some((hir::def::CtorKind::Const, _)) => {
-                                    // unit
-                                    suggestion = vec![(
-                                        ident.span.with_hi(expr.span.hi()),
-                                        variant_name.to_string(),
-                                    )];
-                                }
-                            }
-                        }
-                        err.multipart_suggestion_verbose(
-                            "there is a variant with a similar name",
-                            suggestion,
-                            Applicability::HasPlaceholders,
-                        );
-                    } else {
-                        err.span_label(ident.span, format!("variant not found in `{self_ty}`"));
-                    }
-
-                    if let Some(sp) = tcx.hir_span_if_local(adt_def.did()) {
-                        err.span_label(sp, format!("variant `{ident}` not found here"));
-                    }
-
-                    err.emit()
-                } else if let Err(reported) = self_ty.error_reported() {
-                    reported
-                } else {
-                    self.maybe_report_similar_assoc_fn(span, self_ty, hir_self_ty)?;
-
-                    let traits: Vec<_> = self.probe_traits_that_match_assoc_ty(self_ty, ident);
-
-                    // Don't print `ty::Error` to the user.
-                    self.report_ambiguous_assoc(
-                        span,
-                        &[self_ty.to_string()],
-                        &traits,
-                        ident.name,
-                        mode.assoc_tag(),
-                    )
-                };
-                return Err(reported);
+                return Err(self.report_unresolved_type_relative_path(
+                    self_ty,
+                    hir_self_ty,
+                    mode.assoc_tag(),
+                    ident,
+                    qpath_hir_id,
+                    span,
+                    variant_def_id,
+                ));
             }
         };
 
@@ -1626,7 +1525,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .collect();
 
         match &applicable_candidates[..] {
-            &[] => Err(self.complain_about_inherent_assoc_not_found(
+            &[] => Err(self.report_unresolved_inherent_assoc_item(
                 name,
                 self_ty,
                 candidates,
@@ -1637,7 +1536,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             &[applicable_candidate] => Ok(applicable_candidate),
 
-            &[_, ..] => Err(self.complain_about_ambiguous_inherent_assoc(
+            &[_, ..] => Err(self.report_ambiguous_inherent_assoc_item(
                 name,
                 applicable_candidates.into_iter().map(|(_, (candidate, _))| candidate).collect(),
                 span,
@@ -1833,7 +1732,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?trait_def_id);
 
         let Some(self_ty) = opt_self_ty else {
-            return Err(self.error_missing_qpath_self_ty(
+            return Err(self.report_missing_self_ty_for_resolved_path(
                 trait_def_id,
                 span,
                 item_segment,
@@ -1852,57 +1751,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         Ok((item_def_id, item_args))
     }
 
-    fn error_missing_qpath_self_ty(
-        &self,
-        trait_def_id: DefId,
-        span: Span,
-        item_segment: &hir::PathSegment<'tcx>,
-        assoc_tag: ty::AssocTag,
-    ) -> ErrorGuaranteed {
-        let tcx = self.tcx();
-        let path_str = tcx.def_path_str(trait_def_id);
-
-        let def_id = self.item_def_id();
-        debug!(item_def_id = ?def_id);
-
-        // FIXME: document why/how this is different from `tcx.local_parent(def_id)`
-        let parent_def_id = tcx.hir_get_parent_item(tcx.local_def_id_to_hir_id(def_id)).to_def_id();
-        debug!(?parent_def_id);
-
-        // If the trait in segment is the same as the trait defining the item,
-        // use the `<Self as ..>` syntax in the error.
-        let is_part_of_self_trait_constraints = def_id.to_def_id() == trait_def_id;
-        let is_part_of_fn_in_self_trait = parent_def_id == trait_def_id;
-
-        let type_names = if is_part_of_self_trait_constraints || is_part_of_fn_in_self_trait {
-            vec!["Self".to_string()]
-        } else {
-            // Find all the types that have an `impl` for the trait.
-            tcx.all_impls(trait_def_id)
-                .filter_map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
-                .filter(|header| {
-                    // Consider only accessible traits
-                    tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
-                        && header.polarity != ty::ImplPolarity::Negative
-                })
-                .map(|header| header.trait_ref.instantiate_identity().self_ty())
-                // We don't care about blanket impls.
-                .filter(|self_ty| !self_ty.has_non_region_param())
-                .map(|self_ty| tcx.erase_regions(self_ty).to_string())
-                .collect()
-        };
-        // FIXME: also look at `tcx.generics_of(self.item_def_id()).params` any that
-        // references the trait. Relevant for the first case in
-        // `src/test/ui/associated-types/associated-types-in-ambiguous-context.rs`
-        self.report_ambiguous_assoc(
-            span,
-            &type_names,
-            &[path_str],
-            item_segment.ident.name,
-            assoc_tag,
-        )
-    }
-
     pub fn prohibit_generic_args<'a>(
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
@@ -1911,7 +1759,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let args_visitors = segments.clone().flat_map(|segment| segment.args().args);
         let mut result = Ok(());
         if let Some(_) = args_visitors.clone().next() {
-            result = Err(self.report_prohibit_generics_error(
+            result = Err(self.report_prohibited_generic_args(
                 segments.clone(),
                 args_visitors,
                 err_extend,

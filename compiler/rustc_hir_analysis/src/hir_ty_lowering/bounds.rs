@@ -675,7 +675,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 // Good error for `where Trait::method(..): Send`.
                 let Some(self_ty) = opt_self_ty else {
-                    let guar = self.error_missing_qpath_self_ty(
+                    let guar = self.report_missing_self_ty_for_resolved_path(
                         trait_def_id,
                         hir_ty.span,
                         item_segment,
