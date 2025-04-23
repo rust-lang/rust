@@ -1,13 +1,24 @@
 error: expected expression, found keyword `extern`
-  --> $DIR/reparse-expr-issue-139495.rs:2:22
+  --> $DIR/reparse-expr-issue-139495.rs:2:24
    |
-LL |   ($abi : expr) => { extern $abi }
-   |                      ^^^^^^ expected expression
+LL |   ($abi: literal) => { extern $abi }
+   |                        ^^^^^^ expected expression
 ...
-LL |     m!(-2)
-   |     ------ in this macro invocation
+LL |     m1!(-2)
+   |     ------- in this macro invocation
    |
-   = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `m1` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 1 previous error
+error: expected expression, found keyword `extern`
+  --> $DIR/reparse-expr-issue-139495.rs:6:21
+   |
+LL |   ($abi: expr) => { extern $abi }
+   |                     ^^^^^^ expected expression
+...
+LL |     m2!(-2)
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `m2` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
 

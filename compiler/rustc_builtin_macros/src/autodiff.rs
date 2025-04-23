@@ -217,14 +217,12 @@ mod llvm_enzyme {
                 ast::StmtKind::Item(iitem) => extract_item_info(iitem),
                 _ => None,
             },
-            Annotatable::AssocItem(assoc_item, Impl { of_trait: false }) => {
-                match &assoc_item.kind {
-                    ast::AssocItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
-                        Some((assoc_item.vis.clone(), sig.clone(), ident.clone()))
-                    }
-                    _ => None,
+            Annotatable::AssocItem(assoc_item, Impl { .. }) => match &assoc_item.kind {
+                ast::AssocItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
+                    Some((assoc_item.vis.clone(), sig.clone(), ident.clone()))
                 }
-            }
+                _ => None,
+            },
             _ => None,
         }) else {
             dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
@@ -365,7 +363,7 @@ mod llvm_enzyme {
                 }
                 Annotatable::Item(iitem.clone())
             }
-            Annotatable::AssocItem(ref mut assoc_item, i @ Impl { of_trait: false }) => {
+            Annotatable::AssocItem(ref mut assoc_item, i @ Impl { .. }) => {
                 if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     assoc_item.attrs.push(attr);
                 }
