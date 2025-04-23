@@ -1,10 +1,12 @@
 //! Check that crates can be linked together with `-Z sanitizer=address` on msvc.
 //! See <https://github.com/rust-lang/rust/issues/124390>.
 
-//@ run-pass
-//@ compile-flags:-Zsanitizer=address
-//@ aux-build: asan_odr_win-2.rs
-//@ only-windows-msvc
+//@ ignore-test (FIXME #140189, cannot open file 'clang_rt.asan_dynamic_runtime_thunk-x86_64.lib')
+
+// FIXME @ run-pass
+// FIXME @ compile-flags:-Zsanitizer=address
+// FIXME @ aux-build: asan_odr_win-2.rs
+// FIXME @ only-windows-msvc
 
 extern crate othercrate;
 
