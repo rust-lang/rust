@@ -112,7 +112,7 @@ fn get_instances(body: mir::Body) -> Vec<Instance> {
 fn main() {
     let path = "defs_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),

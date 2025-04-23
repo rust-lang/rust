@@ -256,7 +256,7 @@ where
 ///         // Your code goes in here.
 /// #       ControlFlow::Continue(())
 ///     }
-/// #   let args = vec!["--verbose".to_string()];
+/// #   let args = &["--verbose".to_string()];
 ///     let result = run!(args, analyze_code);
 /// #   assert_eq!(result, Err(CompilerError::Skipped))
 /// # }
@@ -278,7 +278,7 @@ where
 ///         // Your code goes in here.
 /// #       ControlFlow::Continue(())
 ///     }
-/// #   let args = vec!["--verbose".to_string()];
+/// #   let args = &["--verbose".to_string()];
 /// #   let extra_args = vec![];
 ///     let result = run!(args, || analyze_code(extra_args));
 /// #   assert_eq!(result, Err(CompilerError::Skipped))
@@ -340,7 +340,6 @@ macro_rules! run_driver {
             C: Send,
             F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
-            args: Vec<String>,
             callback: Option<F>,
             result: Option<ControlFlow<B, C>>,
         }
@@ -352,14 +351,14 @@ macro_rules! run_driver {
             F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
             /// Creates a new `StableMir` instance, with given test_function and arguments.
-            pub fn new(args: Vec<String>, callback: F) -> Self {
-                StableMir { args, callback: Some(callback), result: None }
+            pub fn new(callback: F) -> Self {
+                StableMir { callback: Some(callback), result: None }
             }
 
             /// Runs the compiler against given target and tests it with `test_function`
-            pub fn run(&mut self) -> Result<C, CompilerError<B>> {
+            pub fn run(&mut self, args: &[String]) -> Result<C, CompilerError<B>> {
                 let compiler_result = rustc_driver::catch_fatal_errors(|| -> interface::Result::<()> {
-                    run_compiler(&self.args.clone(), self);
+                    run_compiler(&args, self);
                     Ok(())
                 });
                 match (compiler_result, self.result.take()) {
@@ -409,7 +408,7 @@ macro_rules! run_driver {
             }
         }
 
-        StableMir::new($args, $callback).run()
+        StableMir::new($callback).run($args)
     }};
 }
 
