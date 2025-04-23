@@ -3,16 +3,26 @@
 use std::fmt;
 use std::sync::LazyLock;
 
-const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])] = &[
-    (
+struct NestedOp {
+    float_ty: FloatTy,
+    rust_sig: Signature,
+    c_sig: Option<Signature>,
+    fn_list: &'static [&'static str],
+    public: bool,
+}
+
+/// We need a flat list to work with most of the time, but define things as a more convenient
+/// nested list.
+const ALL_OPERATIONS_NESTED: &[NestedOp] = &[
+    NestedOp {
         // `fn(f16) -> f16`
-        FloatTy::F16,
-        Signature {
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
             args: &[Ty::F16],
             returns: &[Ty::F16],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "ceilf16",
             "fabsf16",
             "floorf16",
@@ -22,16 +32,17 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "sqrtf16",
             "truncf16",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `fn(f32) -> f32`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "acosf",
             "acoshf",
             "asinf",
@@ -70,16 +81,17 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "y0f",
             "y1f",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `(f64) -> f64`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "acos",
             "acosh",
             "asin",
@@ -118,16 +130,17 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "y0",
             "y1",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `fn(f128) -> f128`
-        FloatTy::F128,
-        Signature {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
             args: &[Ty::F128],
             returns: &[Ty::F128],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "ceilf128",
             "fabsf128",
             "floorf128",
@@ -137,16 +150,17 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "sqrtf128",
             "truncf128",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `(f16, f16) -> f16`
-        FloatTy::F16,
-        Signature {
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
             args: &[Ty::F16, Ty::F16],
             returns: &[Ty::F16],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "copysignf16",
             "fdimf16",
             "fmaxf16",
@@ -157,16 +171,17 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "fminimumf16",
             "fmodf16",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `(f32, f32) -> f32`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32, Ty::F32],
             returns: &[Ty::F32],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "atan2f",
             "copysignf",
             "fdimf",
@@ -182,16 +197,17 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "powf",
             "remainderf",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `(f64, f64) -> f64`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64, Ty::F64],
             returns: &[Ty::F64],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "atan2",
             "copysign",
             "fdim",
@@ -207,16 +223,17 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "pow",
             "remainder",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `(f128, f128) -> f128`
-        FloatTy::F128,
-        Signature {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
             args: &[Ty::F128, Ty::F128],
             returns: &[Ty::F128],
         },
-        None,
-        &[
+        c_sig: None,
+        fn_list: &[
             "copysignf128",
             "fdimf128",
             "fmaxf128",
@@ -227,221 +244,241 @@ const ALL_OPERATIONS_NESTED: &[(FloatTy, Signature, Option<Signature>, &[&str])]
             "fminimumf128",
             "fmodf128",
         ],
-    ),
-    (
+        public: true,
+    },
+    NestedOp {
         // `(f32, f32, f32) -> f32`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32, Ty::F32, Ty::F32],
             returns: &[Ty::F32],
         },
-        None,
-        &["fmaf"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["fmaf"],
+        public: true,
+    },
+    NestedOp {
         // `(f64, f64, f64) -> f64`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64, Ty::F64, Ty::F64],
             returns: &[Ty::F64],
         },
-        None,
-        &["fma"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["fma"],
+        public: true,
+    },
+    NestedOp {
         // `(f128, f128, f128) -> f128`
-        FloatTy::F128,
-        Signature {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
             args: &[Ty::F128, Ty::F128, Ty::F128],
             returns: &[Ty::F128],
         },
-        None,
-        &["fmaf128"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["fmaf128"],
+        public: true,
+    },
+    NestedOp {
         // `(f32) -> i32`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::I32],
         },
-        None,
-        &["ilogbf"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["ilogbf"],
+        public: true,
+    },
+    NestedOp {
         // `(f64) -> i32`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::I32],
         },
-        None,
-        &["ilogb"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["ilogb"],
+        public: true,
+    },
+    NestedOp {
         // `(i32, f32) -> f32`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::I32, Ty::F32],
             returns: &[Ty::F32],
         },
-        None,
-        &["jnf", "ynf"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["jnf", "ynf"],
+        public: true,
+    },
+    NestedOp {
         // `(i32, f64) -> f64`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::I32, Ty::F64],
             returns: &[Ty::F64],
         },
-        None,
-        &["jn", "yn"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["jn", "yn"],
+        public: true,
+    },
+    NestedOp {
         // `(f16, i32) -> f16`
-        FloatTy::F16,
-        Signature {
+        float_ty: FloatTy::F16,
+        rust_sig: Signature {
             args: &[Ty::F16, Ty::I32],
             returns: &[Ty::F16],
         },
-        None,
-        &["ldexpf16", "scalbnf16"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["ldexpf16", "scalbnf16"],
+        public: true,
+    },
+    NestedOp {
         // `(f32, i32) -> f32`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32, Ty::I32],
             returns: &[Ty::F32],
         },
-        None,
-        &["ldexpf", "scalbnf"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["ldexpf", "scalbnf"],
+        public: true,
+    },
+    NestedOp {
         // `(f64, i64) -> f64`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64, Ty::I32],
             returns: &[Ty::F64],
         },
-        None,
-        &["ldexp", "scalbn"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["ldexp", "scalbn"],
+        public: true,
+    },
+    NestedOp {
         // `(f128, i32) -> f128`
-        FloatTy::F128,
-        Signature {
+        float_ty: FloatTy::F128,
+        rust_sig: Signature {
             args: &[Ty::F128, Ty::I32],
             returns: &[Ty::F128],
         },
-        None,
-        &["ldexpf128", "scalbnf128"],
-    ),
-    (
+        c_sig: None,
+        fn_list: &["ldexpf128", "scalbnf128"],
+        public: true,
+    },
+    NestedOp {
         // `(f32, &mut f32) -> f32` as `(f32) -> (f32, f32)`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32, Ty::F32],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F32, Ty::MutF32],
             returns: &[Ty::F32],
         }),
-        &["modff"],
-    ),
-    (
+        fn_list: &["modff"],
+        public: true,
+    },
+    NestedOp {
         // `(f64, &mut f64) -> f64` as  `(f64) -> (f64, f64)`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64, Ty::F64],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F64, Ty::MutF64],
             returns: &[Ty::F64],
         }),
-        &["modf"],
-    ),
-    (
+        fn_list: &["modf"],
+        public: true,
+    },
+    NestedOp {
         // `(f32, &mut c_int) -> f32` as `(f32) -> (f32, i32)`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32, Ty::I32],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F32, Ty::MutCInt],
             returns: &[Ty::F32],
         }),
-        &["frexpf", "lgammaf_r"],
-    ),
-    (
+        fn_list: &["frexpf", "lgammaf_r"],
+        public: true,
+    },
+    NestedOp {
         // `(f64, &mut c_int) -> f64` as `(f64) -> (f64, i32)`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64, Ty::I32],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F64, Ty::MutCInt],
             returns: &[Ty::F64],
         }),
-        &["frexp", "lgamma_r"],
-    ),
-    (
+        fn_list: &["frexp", "lgamma_r"],
+        public: true,
+    },
+    NestedOp {
         // `(f32, f32, &mut c_int) -> f32` as `(f32, f32) -> (f32, i32)`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32, Ty::F32],
             returns: &[Ty::F32, Ty::I32],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F32, Ty::F32, Ty::MutCInt],
             returns: &[Ty::F32],
         }),
-        &["remquof"],
-    ),
-    (
+        fn_list: &["remquof"],
+        public: true,
+    },
+    NestedOp {
         // `(f64, f64, &mut c_int) -> f64` as `(f64, f64) -> (f64, i32)`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64, Ty::F64],
             returns: &[Ty::F64, Ty::I32],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F64, Ty::F64, Ty::MutCInt],
             returns: &[Ty::F64],
         }),
-        &["remquo"],
-    ),
-    (
+        fn_list: &["remquo"],
+        public: true,
+    },
+    NestedOp {
         // `(f32, &mut f32, &mut f32)` as `(f32) -> (f32, f32)`
-        FloatTy::F32,
-        Signature {
+        float_ty: FloatTy::F32,
+        rust_sig: Signature {
             args: &[Ty::F32],
             returns: &[Ty::F32, Ty::F32],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F32, Ty::MutF32, Ty::MutF32],
             returns: &[],
         }),
-        &["sincosf"],
-    ),
-    (
+        fn_list: &["sincosf"],
+        public: true,
+    },
+    NestedOp {
         // `(f64, &mut f64, &mut f64)` as `(f64) -> (f64, f64)`
-        FloatTy::F64,
-        Signature {
+        float_ty: FloatTy::F64,
+        rust_sig: Signature {
             args: &[Ty::F64],
             returns: &[Ty::F64, Ty::F64],
         },
-        Some(Signature {
+        c_sig: Some(Signature {
             args: &[Ty::F64, Ty::MutF64, Ty::MutF64],
             returns: &[],
         }),
-        &["sincos"],
-    ),
+        fn_list: &["sincos"],
+        public: true,
+    },
 ];
 
 /// A type used in a function signature.
@@ -520,27 +557,31 @@ pub struct MathOpInfo {
     pub c_sig: Signature,
     /// Function signature for Rust implementations
     pub rust_sig: Signature,
+    /// True if part of libm's public API
+    pub public: bool,
 }
 
 /// A flat representation of `ALL_FUNCTIONS`.
 pub static ALL_OPERATIONS: LazyLock<Vec<MathOpInfo>> = LazyLock::new(|| {
     let mut ret = Vec::new();
 
-    for (base_fty, rust_sig, c_sig, names) in ALL_OPERATIONS_NESTED {
-        for name in *names {
+    for op in ALL_OPERATIONS_NESTED {
+        let fn_names = op.fn_list;
+        for name in fn_names {
             let api = MathOpInfo {
                 name,
-                float_ty: *base_fty,
-                rust_sig: rust_sig.clone(),
-                c_sig: c_sig.clone().unwrap_or_else(|| rust_sig.clone()),
+                float_ty: op.float_ty,
+                rust_sig: op.rust_sig.clone(),
+                c_sig: op.c_sig.clone().unwrap_or_else(|| op.rust_sig.clone()),
+                public: op.public,
             };
             ret.push(api);
         }
 
-        if !names.is_sorted() {
-            let mut sorted = (*names).to_owned();
+        if !fn_names.is_sorted() {
+            let mut sorted = (*fn_names).to_owned();
             sorted.sort_unstable();
-            panic!("names list is not sorted: {names:?}\nExpected: {sorted:?}");
+            panic!("names list is not sorted: {fn_names:?}\nExpected: {sorted:?}");
         }
     }
 

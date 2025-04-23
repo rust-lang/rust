@@ -12,7 +12,7 @@ use syn::visit_mut::VisitMut;
 use syn::{Ident, ItemEnum};
 
 const KNOWN_TYPES: &[&str] = &[
-    "FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet",
+    "FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet", "public",
 ];
 
 /// Populate an enum with a variant representing function. Names are in upper camel case.
@@ -80,6 +80,8 @@ pub fn base_name_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> p
 ///         RustArgs: $RustArgs:ty,
 ///         // The Rust version's return type (e.g. `(f32, f32)`)
 ///         RustRet: $RustRet:ty,
+///         // True if this is part of `libm`'s public API
+///         public: $public:expr,
 ///         // Attributes for the current function, if any
 ///         attrs: [$($attr:meta),*],
 ///         // Extra tokens passed directly (if any)
@@ -329,6 +331,7 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
         let c_ret = &func.c_sig.returns;
         let rust_args = &func.rust_sig.args;
         let rust_ret = &func.rust_sig.returns;
+        let public = func.public;
 
         let mut ty_fields = Vec::new();
         for ty in &input.emit_types {
@@ -340,6 +343,7 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
                 "RustFn" => quote! { RustFn: fn( #(#rust_args),* ,) -> ( #(#rust_ret),* ), },
                 "RustArgs" => quote! { RustArgs: ( #(#rust_args),* ,), },
                 "RustRet" => quote! { RustRet: ( #(#rust_ret),* ), },
+                "public" => quote! { public: #public, },
                 _ => unreachable!("checked in validation"),
             };
             ty_fields.push(field);
