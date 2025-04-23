@@ -58,6 +58,8 @@ jobs:
           os: ubuntu-latest
         - tuple: aarch64_be-unknown-linux-gnu
           os: ubuntu-latest
+        - tuple: riscv32gc-unknown-linux-gnu
+          os: ubuntu-latest
         - tuple: riscv64gc-unknown-linux-gnu
           os: ubuntu-latest
         - tuple: powerpc-unknown-linux-gnu
@@ -155,6 +157,11 @@ jobs:
             os: ubuntu-latest
           test_everything: true
         - target:
+            tuple: riscv32gc-unknown-linux-gnu
+            os: ubuntu-latest
+          test_everything: true
+          build_std: true
+        - target:
             tuple: riscv64gc-unknown-linux-gnu
             os: ubuntu-latest
           test_everything: true
@@ -237,7 +244,7 @@ jobs:
     # ... while Linux goes to `run-docker.sh`
     - run: ./ci/run-docker.sh ${{ matrix.target.tuple }}
       shell: bash
-      if: "matrix.target.os == 'ubuntu-latest' && !startsWith(matrix.target.tuple, 'thumb')"
+      if: matrix.target.os == 'ubuntu-latest' && !startsWith(matrix.target.tuple, 'thumb')
       env:
         TARGET: ${{ matrix.target.tuple }}
 
