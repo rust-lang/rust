@@ -411,15 +411,19 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                     push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
                 }
             }
+            let mut has_non_module_items = false;
             for stmt in &body.stmts {
                 let mut is_extern_crate = false;
                 match stmt.kind {
                     StmtKind::Item(ref item) => {
                         is_extern_crate = check_item(&item, &mut info, crate_name);
                     }
-                    StmtKind::Expr(ref expr) if matches!(expr.kind, ast::ExprKind::Err(_)) => {
-                        reset_error_count(&psess);
-                        return Err(());
+                    StmtKind::Expr(ref expr) => {
+                        if matches!(expr.kind, ast::ExprKind::Err(_)) {
+                            reset_error_count(&psess);
+                            return Err(());
+                        }
+                        has_non_module_items = true;
                     }
                     StmtKind::MacCall(ref mac_call) if !info.has_main_fn => {
                         let mut iter = mac_call.mac.args.tokens.iter();
@@ -441,7 +445,11 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                             }
                         }
                     }
-                    _ => {}
+                    // We do nothing in this case. Not marking it as `non_module_items` either.
+                    StmtKind::Empty => {}
+                    _ => {
+                        has_non_module_items = true;
+                    }
                 }
 
                 // Weirdly enough, the `Stmt` span doesn't include its attributes, so we need to
@@ -465,6 +473,11 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 } else {
                     push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
                 }
+            }
+            if has_non_module_items {
+                // FIXME: if `info.has_main_fn` is `true`, emit a warning here to mention that
+                // this code will not be called.
+                info.has_main_fn = false;
             }
             Ok(info)
         }
