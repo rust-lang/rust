@@ -257,7 +257,6 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
                     let lit_start = start + BytePos(prefix_len);
                     self.pos = lit_start;
                     self.cursor = Cursor::new(&str_before[prefix_len as usize..]);
-
                     self.report_unknown_prefix(start);
                     let prefix_span = self.mk_sp(start, lit_start);
                     return (Token::new(self.ident(start), prefix_span), preceded_by_whitespace);
@@ -790,13 +789,14 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
     fn report_unknown_prefix(&self, start: BytePos) {
         let prefix_span = self.mk_sp(start, self.pos);
         let prefix = self.str_from_to(start, self.pos);
-
         let expn_data = prefix_span.ctxt().outer_expn_data();
 
         if expn_data.edition.at_least_rust_2021() {
             // In Rust 2021, this is a hard error.
             let sugg = if prefix == "rb" {
                 Some(errors::UnknownPrefixSugg::UseBr(prefix_span))
+            } else if prefix == "rc" {
+                Some(errors::UnknownPrefixSugg::UseCr(prefix_span))
             } else if expn_data.is_root() {
                 if self.cursor.first() == '\''
                     && let Some(start) = self.last_lifetime
