@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-use anyhow::{anyhow, ensure};
 use regex::Regex;
 
 use crate::llvm_utils::{truncated_md5, unescape_llvm_string_contents};
@@ -43,26 +42,8 @@ pub(crate) fn make_function_names_table(llvm_ir: &str) -> anyhow::Result<HashMap
     for payload in llvm_ir.lines().filter_map(prf_names_payload).map(unescape_llvm_string_contents)
     {
         let mut parser = Parser::new(&payload);
-        let uncompressed_len = parser.read_uleb128_usize()?;
-        let compressed_len = parser.read_uleb128_usize()?;
-
-        let uncompressed_bytes_vec;
-        let uncompressed_bytes: &[u8] = if compressed_len == 0 {
-            // The symbol name bytes are uncompressed, so read them directly.
-            parser.read_n_bytes(uncompressed_len)?
-        } else {
-            // The symbol name bytes are compressed, so read and decompress them.
-            let compressed_bytes = parser.read_n_bytes(compressed_len)?;
-
-            uncompressed_bytes_vec = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
-                compressed_bytes,
-                uncompressed_len,
-            )
-            .map_err(|e| anyhow!("{e:?}"))?;
-            ensure!(uncompressed_bytes_vec.len() == uncompressed_len);
-
-            &uncompressed_bytes_vec
-        };
+        let uncompressed_bytes = parser.read_chunk_to_uncompressed_bytes()?;
+        parser.ensure_empty()?;
 
         // Symbol names in the payload are separated by `0x01` bytes.
         for raw_name in uncompressed_bytes.split(|&b| b == 0x01) {
@@ -70,8 +51,6 @@ pub(crate) fn make_function_names_table(llvm_ir: &str) -> anyhow::Result<HashMap
             let demangled = demangle_if_able(raw_name)?;
             map.insert(hash, demangled);
         }
-
-        parser.ensure_empty()?;
     }
 
     Ok(map)

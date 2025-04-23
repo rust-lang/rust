@@ -1,6 +1,10 @@
+use std::borrow::Cow;
 use std::sync::OnceLock;
 
+use anyhow::{anyhow, ensure};
 use regex::bytes;
+
+use crate::parser::Parser;
 
 #[cfg(test)]
 mod tests;
@@ -43,4 +47,39 @@ pub(crate) fn truncated_md5(bytes: &[u8]) -> u64 {
     // The truncated hash is explicitly little-endian, regardless of host
     // or target platform. (See `MD5Result::low` in LLVM's `MD5.h`.)
     u64::from_le_bytes(hash)
+}
+
+impl<'a> Parser<'a> {
+    /// Reads a sequence of:
+    /// - Length of uncompressed data in bytes, as ULEB128
+    /// - Length of compressed data in bytes (or 0), as ULEB128
+    /// - The indicated number of compressed or uncompressed bytes
+    ///
+    /// If the number of compressed bytes is 0, the subsequent bytes are
+    /// uncompressed. Otherwise, the subsequent bytes are compressed, and will
+    /// be decompressed.
+    ///
+    /// Returns the uncompressed bytes that were read directly or decompressed.
+    pub(crate) fn read_chunk_to_uncompressed_bytes(&mut self) -> anyhow::Result<Cow<'a, [u8]>> {
+        let uncompressed_len = self.read_uleb128_usize()?;
+        let compressed_len = self.read_uleb128_usize()?;
+
+        if compressed_len == 0 {
+            // The bytes are uncompressed, so read them directly.
+            let uncompressed_bytes = self.read_n_bytes(uncompressed_len)?;
+            Ok(Cow::Borrowed(uncompressed_bytes))
+        } else {
+            // The bytes are compressed, so read and decompress them.
+            let compressed_bytes = self.read_n_bytes(compressed_len)?;
+
+            let uncompressed_bytes = miniz_oxide::inflate::decompress_to_vec_zlib_with_limit(
+                compressed_bytes,
+                uncompressed_len,
+            )
+            .map_err(|e| anyhow!("{e:?}"))?;
+            ensure!(uncompressed_bytes.len() == uncompressed_len);
+
+            Ok(Cow::Owned(uncompressed_bytes))
+        }
+    }
 }
