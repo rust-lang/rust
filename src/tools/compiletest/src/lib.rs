@@ -745,7 +745,7 @@ fn modified_tests(config: &Config, dir: &Utf8Path) -> Result<Vec<Utf8PathBuf>, S
         &vec!["rs", "stderr", "fixed"],
     )?;
     // Add new test cases to the list, it will be convenient in daily development.
-    let untracked_files = get_git_untracked_files(&config.git_config(), None)?.unwrap_or(vec![]);
+    let untracked_files = get_git_untracked_files(Some(dir.as_std_path()))?.unwrap_or(vec![]);
 
     let all_paths = [&files[..], &untracked_files[..]].concat();
     let full_paths = {
