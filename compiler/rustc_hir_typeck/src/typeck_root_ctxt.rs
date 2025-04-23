@@ -83,7 +83,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
         let infcx =
-            tcx.infer_ctxt().ignoring_regions().build(TypingMode::analysis_in_body(tcx, def_id));
+            tcx.infer_ctxt().ignoring_regions().build(TypingMode::typeck_for_body(tcx, def_id));
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 
         TypeckRootCtxt {

@@ -32,6 +32,7 @@ mod needs_drop;
 mod opaque_types;
 mod representability;
 pub mod sig_types;
+mod stalled_generators;
 mod structural_match;
 mod ty;
 
@@ -50,4 +51,5 @@ pub fn provide(providers: &mut Providers) {
     ty::provide(providers);
     instance::provide(providers);
     structural_match::provide(providers);
+    stalled_generators::provide(providers);
 }

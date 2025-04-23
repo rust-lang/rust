@@ -110,10 +110,16 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 false,
             ),
             Ok((_, Certainty::Yes)) => {
-                bug!("did not expect successful goal when collecting ambiguity errors")
+                bug!(
+                    "did not expect successful goal when collecting ambiguity errors for `{:?}`",
+                    infcx.resolve_vars_if_possible(root_obligation.predicate),
+                )
             }
             Err(_) => {
-                bug!("did not expect selection error when collecting ambiguity errors")
+                bug!(
+                    "did not expect selection error when collecting ambiguity errors for `{:?}`",
+                    infcx.resolve_vars_if_possible(root_obligation.predicate),
+                )
             }
         }
     });

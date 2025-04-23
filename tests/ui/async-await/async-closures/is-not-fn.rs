@@ -6,5 +6,6 @@
 fn main() {
     fn needs_fn(x: impl FnOnce()) {}
     needs_fn(async || {});
-    //~^ ERROR expected `{async closure@is-not-fn.rs:8:14}` to return `()`
+    //[current]~^ ERROR expected `{async closure@is-not-fn.rs:8:14}` to return `()`
+    //[next]~^^ ERROR type mismatch resolving `{async closure body@$DIR/is-not-fn.rs:8:23: 8:25} == ()`
 }
