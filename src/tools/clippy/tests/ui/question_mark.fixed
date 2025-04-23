@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
+use std::sync::MutexGuard;
+
 fn some_func(a: Option<u32>) -> Option<u32> {
     a?;
 
@@ -429,4 +431,10 @@ fn msrv_1_13(arg: Option<i32>) -> Option<i32> {
     let val = arg?;
     println!("{}", val);
     Some(val)
+}
+
+fn issue_14615(a: MutexGuard<Option<u32>>) -> Option<String> {
+    let a = (*a)?;
+    //~^^^ question_mark
+    Some(format!("{a}"))
 }

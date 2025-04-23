@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
@@ -89,7 +91,7 @@ declare_clippy_lint! {
 #[derive(Debug)]
 struct ItemInfo {
     kind: &'static str,
-    name: Symbol,
+    name: Option<Symbol>,
     span: Span,
     mod_items: Option<NodeId>,
 }
@@ -315,8 +317,12 @@ impl EmptyLineAfter {
                     for stop in gaps.iter().flat_map(|gap| gap.prev_chunk) {
                         stop.comment_out(cx, &mut suggestions);
                     }
+                    let name = match info.name {
+                        Some(name) => format!("{} `{name}`", info.kind).into(),
+                        None => Cow::from("the following item"),
+                    };
                     diag.multipart_suggestion_verbose(
-                        format!("if the doc comment should not document `{}` comment it out", info.name),
+                        format!("if the doc comment should not document {name} then comment it out"),
                         suggestions,
                         Applicability::MaybeIncorrect,
                     );
@@ -381,13 +387,10 @@ impl EmptyLineAfter {
     ) {
         self.items.push(ItemInfo {
             kind: kind.descr(),
-            // FIXME: this `sym::empty` can be leaked, see
-            // https://github.com/rust-lang/rust/pull/138740#discussion_r2021979899
-            name: if let Some(ident) = ident { ident.name } else { kw::Empty },
-            span: if let Some(ident) = ident {
-                span.with_hi(ident.span.hi())
-            } else {
-                span.with_hi(span.lo())
+            name: ident.map(|ident| ident.name),
+            span: match ident {
+                Some(ident) => span.with_hi(ident.span.hi()),
+                None => span.shrink_to_lo(),
             },
             mod_items: match kind {
                 ItemKind::Mod(_, _, ModKind::Loaded(items, _, _, _)) => items
@@ -447,7 +450,7 @@ impl EarlyLintPass for EmptyLineAfter {
     fn check_crate(&mut self, _: &EarlyContext<'_>, krate: &Crate) {
         self.items.push(ItemInfo {
             kind: "crate",
-            name: kw::Crate,
+            name: Some(kw::Crate),
             span: krate.spans.inner_span.with_hi(krate.spans.inner_span.lo()),
             mod_items: krate
                 .items

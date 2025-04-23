@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{SpanlessEq, higher, is_trait_method, path_to_local_id, peel_blocks};
+use clippy_utils::{SpanlessEq, higher, is_trait_method, path_to_local_id, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -11,7 +11,7 @@ use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::symbol::{Ident, Symbol};
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP, RESULT_FILTER_MAP};
 
@@ -43,10 +43,10 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
 }
 
 fn is_option_filter_map(cx: &LateContext<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
-    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_some))
+    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym::is_some)
 }
 fn is_ok_filter_map(cx: &LateContext<'_>, filter_arg: &Expr<'_>, map_arg: &Expr<'_>) -> bool {
-    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym!(is_ok))
+    is_method(cx, map_arg, sym::unwrap) && is_method(cx, filter_arg, sym::is_ok)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -429,16 +429,15 @@ fn is_find_or_filter<'a>(
 }
 
 fn acceptable_methods(method: &PathSegment<'_>) -> bool {
-    let methods: [Symbol; 8] = [
-        sym::clone,
-        sym::as_ref,
-        sym!(copied),
-        sym!(cloned),
-        sym!(as_deref),
-        sym!(as_mut),
-        sym!(as_deref_mut),
-        sym!(to_owned),
-    ];
-
-    methods.contains(&method.ident.name)
+    matches!(
+        method.ident.name,
+        sym::clone
+            | sym::as_ref
+            | sym::copied
+            | sym::cloned
+            | sym::as_deref
+            | sym::as_mut
+            | sym::as_deref_mut
+            | sym::to_owned
+    )
 }

@@ -35,7 +35,7 @@ unsafe impl<RC, T: Send> Send for ArcGuard<RC, T> {}
 //~^ ERROR: some fields in `ArcGuard<RC, T>` are not safe to be sent to another thread
 
 // rusb / RUSTSEC-2020-0098
-extern "C" {
+unsafe extern "C" {
     type libusb_device_handle;
 }
 
@@ -90,7 +90,7 @@ unsafe impl<A, B> Send for MultiParam<A, B> {}
 //~^ ERROR: some fields in `MultiParam<A, B>` are not safe to be sent to another thread
 
 // Tests for raw pointer heuristic
-extern "C" {
+unsafe extern "C" {
     type NonSend;
 }
 

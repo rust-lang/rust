@@ -1,11 +1,11 @@
 error: stripping a prefix manually
-  --> tests/ui/manual_strip_fixable.rs:7:24
+  --> tests/ui/manual_strip_fixable.rs:8:24
    |
 LL |         let stripped = &s["ab".len()..];
    |                        ^^^^^^^^^^^^^^^^
    |
 note: the prefix was tested here
-  --> tests/ui/manual_strip_fixable.rs:6:5
+  --> tests/ui/manual_strip_fixable.rs:7:5
    |
 LL |     if s.starts_with("ab") {
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,13 +19,13 @@ LL ~         println!("{stripped}{}", stripped);
    |
 
 error: stripping a suffix manually
-  --> tests/ui/manual_strip_fixable.rs:13:24
+  --> tests/ui/manual_strip_fixable.rs:14:24
    |
 LL |         let stripped = &s[..s.len() - "bc".len()];
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the suffix was tested here
-  --> tests/ui/manual_strip_fixable.rs:12:5
+  --> tests/ui/manual_strip_fixable.rs:13:5
    |
 LL |     if s.ends_with("bc") {
    |     ^^^^^^^^^^^^^^^^^^^^^

@@ -127,7 +127,7 @@ error: manual implementation of `Option::map`
    |
 LL | /     match &mut Some(String::new()) {
 LL | |
-LL | |         Some(ref x) => Some(x.len()),
+LL | |         &mut Some(ref x) => Some(x.len()),
 LL | |         None => None,
 LL | |     };
    | |_____^ help: try: `Some(String::new()).as_ref().map(|x| x.len())`

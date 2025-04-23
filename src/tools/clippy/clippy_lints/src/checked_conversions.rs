@@ -253,11 +253,11 @@ fn get_types_from_cast<'a>(
         match limit.kind {
             // `from_type::from(_)`
             ExprKind::Call(path, _) => {
-                if let ExprKind::Path(ref path) = path.kind {
+                if let ExprKind::Path(ref path) = path.kind
                     // `to_type`
-                    if let Some(to_type) = get_implementing_type(path, types, func) {
-                        return Some((from_type, to_type));
-                    }
+                    && let Some(to_type) = get_implementing_type(path, types, func)
+                {
+                    return Some((from_type, to_type));
                 }
             },
             // `to_type::MAX`

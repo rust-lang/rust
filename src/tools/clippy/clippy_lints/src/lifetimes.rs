@@ -150,10 +150,10 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         } = item.kind
         {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
-        } else if let ItemKind::Impl(impl_) = item.kind {
-            if !item.span.from_expansion() {
-                report_extra_impl_lifetimes(cx, impl_);
-            }
+        } else if let ItemKind::Impl(impl_) = item.kind
+            && !item.span.from_expansion()
+        {
+            report_extra_impl_lifetimes(cx, impl_);
         }
     }
 
@@ -300,8 +300,8 @@ fn could_use_elision<'tcx>(
     let input_lts = input_visitor.lts;
     let output_lts = output_visitor.lts;
 
-    if let Some(trait_sig) = trait_sig
-        && non_elidable_self_type(cx, func, trait_sig.first().copied(), msrv)
+    if let Some(&[trait_sig]) = trait_sig
+        && non_elidable_self_type(cx, func, trait_sig, msrv)
     {
         return None;
     }
@@ -310,11 +310,11 @@ fn could_use_elision<'tcx>(
         let body = cx.tcx.hir_body(body_id);
 
         let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
-        if non_elidable_self_type(cx, func, Some(first_ident), msrv) {
+        if non_elidable_self_type(cx, func, first_ident, msrv) {
             return None;
         }
 
-        let mut checker = BodyLifetimeChecker;
+        let mut checker = BodyLifetimeChecker::new(cx);
         if checker.visit_expr(body.value).is_break() {
             return None;
         }
@@ -384,8 +384,8 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 }
 
 // elision doesn't work for explicit self types before Rust 1.81, see rust-lang/rust#69064
-fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Option<Ident>>, msrv: Msrv) -> bool {
-    if let Some(Some(ident)) = ident
+fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>, msrv: Msrv) -> bool {
+    if let Some(ident) = ident
         && ident.name == kw::SelfLower
         && !func.implicit_self.has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
@@ -911,10 +911,23 @@ fn elision_suggestions(
     Some(suggestions)
 }
 
-struct BodyLifetimeChecker;
+struct BodyLifetimeChecker<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
 
-impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
+impl<'tcx> BodyLifetimeChecker<'tcx> {
+    fn new(cx: &LateContext<'tcx>) -> Self {
+        Self { tcx: cx.tcx }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker<'tcx> {
     type Result = ControlFlow<()>;
+    type NestedFilter = middle_nested_filter::OnlyBodies;
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
+    }
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) -> ControlFlow<()> {
         if !lifetime.is_anonymous() && lifetime.ident.name != kw::StaticLifetime {

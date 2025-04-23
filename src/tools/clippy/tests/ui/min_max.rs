@@ -1,4 +1,3 @@
-#![warn(clippy::all)]
 #![allow(clippy::manual_clamp)]
 
 use std::cmp::{max as my_max, max, min as my_min, min};

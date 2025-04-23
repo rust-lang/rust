@@ -42,7 +42,7 @@ pub(super) fn check(
                     diag.span_suggestion_verbose(
                         expr.span,
                         "use `Into::into` instead",
-                        format!("{}.into()", from_sugg.maybe_par()),
+                        format!("{}.into()", from_sugg.maybe_paren()),
                         applicability,
                     );
                 },

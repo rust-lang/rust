@@ -47,16 +47,16 @@ pub(super) fn check_fn(
 }
 
 pub(super) fn check_trait_item(cx: &LateContext<'_>, item: &hir::TraitItem<'_>, too_many_arguments_threshold: u64) {
-    if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
+    if let hir::TraitItemKind::Fn(ref sig, _) = item.kind
         // don't lint extern functions decls, it's not their fault
-        if sig.header.abi == ExternAbi::Rust {
-            check_arg_number(
-                cx,
-                sig.decl,
-                item.span.with_hi(sig.decl.output.span().hi()),
-                too_many_arguments_threshold,
-            );
-        }
+        && sig.header.abi == ExternAbi::Rust
+    {
+        check_arg_number(
+            cx,
+            sig.decl,
+            item.span.with_hi(sig.decl.output.span().hi()),
+            too_many_arguments_threshold,
+        );
     }
 }
 

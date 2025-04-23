@@ -12,7 +12,7 @@ fn main() {
 // needless_collect
 trait Helper<'a>: Iterator<Item = fn()> {}
 
+// Should not be linted because we have no idea whether the iterator has side effects
 fn x(w: &mut dyn for<'a> Helper<'a>) {
     w.collect::<Vec<_>>().is_empty();
-    //~^ needless_collect
 }

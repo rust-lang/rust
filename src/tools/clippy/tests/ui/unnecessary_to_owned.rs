@@ -1,10 +1,11 @@
 #![allow(
+    clippy::manual_async_fn,
     clippy::needless_borrow,
     clippy::needless_borrows_for_generic_args,
-    clippy::ptr_arg,
-    clippy::manual_async_fn,
     clippy::needless_lifetimes,
-    clippy::owned_cow
+    clippy::owned_cow,
+    clippy::ptr_arg,
+    clippy::uninlined_format_args
 )]
 #![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 

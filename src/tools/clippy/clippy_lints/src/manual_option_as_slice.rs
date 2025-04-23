@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// _ = opt.as_slice();
     /// _ = opt.as_slice();
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.86.0"]
     pub MANUAL_OPTION_AS_SLICE,
     complexity,
     "manual `Option::as_slice`"

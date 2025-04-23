@@ -142,7 +142,20 @@ pub trait SpanRangeExt: SpanRange {
         map_range(cx.sess().source_map(), self.into_range(), f)
     }
 
-    /// Extends the range to include all preceding whitespace characters.
+    #[allow(rustdoc::invalid_rust_codeblocks, reason = "The codeblock is intentionally broken")]
+    /// Extends the range to include all preceding whitespace characters, unless there
+    /// are non-whitespace characters left on the same line after `self`.
+    ///
+    /// This extra condition prevents a problem when removing the '}' in:
+    /// ```ignore
+    ///   ( // There was an opening bracket after the parenthesis, which has been removed
+    ///     // This is a comment
+    ///    })
+    /// ```
+    /// Removing the whitespaces, including the linefeed, before the '}', would put the
+    /// closing parenthesis at the end of the `// This is a comment` line, which would
+    /// make it part of the comment as well. In this case, it is best to keep the span
+    /// on the '}' alone.
     fn with_leading_whitespace(self, cx: &impl HasSession) -> Range<BytePos> {
         with_leading_whitespace(cx.sess().source_map(), self.into_range())
     }
@@ -263,10 +276,15 @@ fn map_range(
 }
 
 fn with_leading_whitespace(sm: &SourceMap, sp: Range<BytePos>) -> Range<BytePos> {
-    map_range(sm, sp.clone(), |src, range| {
-        Some(src.get(..range.start)?.trim_end().len()..range.end)
+    map_range(sm, sp, |src, range| {
+        let non_blank_after = src.len() - src.get(range.end..)?.trim_start().len();
+        if src.get(range.end..non_blank_after)?.contains(['\r', '\n']) {
+            Some(src.get(..range.start)?.trim_end().len()..range.end)
+        } else {
+            Some(range)
+        }
     })
-    .unwrap_or(sp)
+    .unwrap()
 }
 
 fn trim_start(sm: &SourceMap, sp: Range<BytePos>) -> Range<BytePos> {
@@ -384,10 +402,10 @@ pub fn snippet_indent(sess: &impl HasSession, span: Span) -> Option<String> {
 // For some reason these attributes don't have any expansion info on them, so
 // we have to check it this way until there is a better way.
 pub fn is_present_in_source(sess: &impl HasSession, span: Span) -> bool {
-    if let Some(snippet) = snippet_opt(sess, span) {
-        if snippet.is_empty() {
-            return false;
-        }
+    if let Some(snippet) = snippet_opt(sess, span)
+        && snippet.is_empty()
+    {
+        return false;
     }
     true
 }
@@ -408,11 +426,11 @@ pub fn position_before_rarrow(s: &str) -> Option<usize> {
         let mut rpos = rpos;
         let chars: Vec<char> = s.chars().collect();
         while rpos > 1 {
-            if let Some(c) = chars.get(rpos - 1) {
-                if c.is_whitespace() {
-                    rpos -= 1;
-                    continue;
-                }
+            if let Some(c) = chars.get(rpos - 1)
+                && c.is_whitespace()
+            {
+                rpos -= 1;
+                continue;
             }
             break;
         }

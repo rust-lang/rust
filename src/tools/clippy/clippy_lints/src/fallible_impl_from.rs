@@ -75,10 +75,10 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
 
     impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
         fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-            if let Some(macro_call) = root_macro_call_first_node(self.lcx, expr) {
-                if is_panic(self.lcx, macro_call.def_id) {
-                    self.result.push(expr.span);
-                }
+            if let Some(macro_call) = root_macro_call_first_node(self.lcx, expr)
+                && is_panic(self.lcx, macro_call.def_id)
+            {
+                self.result.push(expr.span);
             }
 
             // check for `unwrap`

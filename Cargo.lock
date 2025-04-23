@@ -546,12 +546,14 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "clippy"
-version = "0.1.87"
+version = "0.1.88"
 dependencies = [
  "anstream",
+ "askama",
  "cargo_metadata 0.18.1",
  "clippy_config",
  "clippy_lints",
+ "clippy_lints_internal",
  "clippy_utils",
  "color-print",
  "filetime",
@@ -562,7 +564,6 @@ dependencies = [
  "pulldown-cmark 0.11.3",
  "quote",
  "regex",
- "rinja",
  "rustc_tools_util 0.4.2",
  "serde",
  "serde_json",
@@ -577,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.87"
+version = "0.1.88"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -602,7 +603,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.87"
+version = "0.1.88"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -610,12 +611,9 @@ dependencies = [
  "clippy_utils",
  "itertools",
  "quine-mc_cluskey",
- "regex",
  "regex-syntax 0.8.5",
  "semver",
  "serde",
- "serde_json",
- "tempfile",
  "toml 0.7.8",
  "unicode-normalization",
  "unicode-script",
@@ -624,8 +622,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "clippy_lints_internal"
+version = "0.0.1"
+dependencies = [
+ "clippy_config",
+ "clippy_utils",
+ "regex",
+ "rustc-semver",
+]
+
+[[package]]
 name = "clippy_utils"
-version = "0.1.87"
+version = "0.1.88"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -2245,22 +2253,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mime"
-version = "0.3.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
-
-[[package]]
-name = "mime_guess"
-version = "2.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7c44f8e672c00fe5308fa235f821cb4198414e1c77935c1ab6948d3fd78550e"
-dependencies = [
- "mime",
- "unicase",
-]
-
-[[package]]
 name = "minifier"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3085,45 +3077,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rinja"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dc4940d00595430b3d7d5a01f6222b5e5b51395d1120bdb28d854bb8abb17a5"
-dependencies = [
- "itoa",
- "rinja_derive",
-]
-
-[[package]]
-name = "rinja_derive"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08d9ed0146aef6e2825f1b1515f074510549efba38d71f4554eec32eb36ba18b"
-dependencies = [
- "basic-toml",
- "memchr",
- "mime",
- "mime_guess",
- "proc-macro2",
- "quote",
- "rinja_parser",
- "rustc-hash 2.1.1",
- "serde",
- "syn 2.0.100",
-]
-
-[[package]]
-name = "rinja_parser"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93f9a866e2e00a7a1fb27e46e9e324a6f7c0e7edc4543cae1d38f4e4a100c610"
-dependencies = [
- "memchr",
- "nom",
- "serde",
-]
-
-[[package]]
 name = "run_make_support"
 version = "0.2.0"
 dependencies = [
@@ -3195,6 +3148,12 @@ dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
 ]
+
+[[package]]
+name = "rustc-semver"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5be1bdc7edf596692617627bbfeaba522131b18e06ca4df2b6b689e3c5d5ce84"
 
 [[package]]
 name = "rustc-stable-hash"
