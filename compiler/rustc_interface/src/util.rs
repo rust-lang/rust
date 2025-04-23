@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{env, iter, thread};
+use std::num::NonZero;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -190,17 +191,18 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     let current_gcx = FromDyn::from(CurrentGcx::new());
     let current_gcx2 = current_gcx.clone();
 
-    let builder = rayon_core::ThreadPoolBuilder::new()
-        .thread_name(|_| "rustc".to_string())
-        .acquire_thread_handler(jobserver::acquire_thread)
-        .release_thread_handler(jobserver::release_thread)
-        .num_threads(threads)
-        .deadlock_handler(move || {
+    let config = chili::Config {
+        // .thread_name(|_| "rustc".to_string())
+        // .acquire_thread_handler(jobserver::acquire_thread)
+        // .release_thread_handler(jobserver::release_thread)
+        thread_count: NonZero::new(threads),
+        stack_size: NonZero::new(thread_stack_size),
+        deadlock_handler: Some(Box::new(move || {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
 
             let current_gcx2 = current_gcx2.clone();
-            let registry = rayon_core::Registry::current();
+            let pool = chili::ThreadPool::global();
             let session_globals = rustc_span::with_session_globals(|session_globals| {
                 session_globals as *const SessionGlobals as usize
             });
@@ -226,7 +228,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                                     // We need the complete map to ensure we find a cycle to break.
                                     QueryCtxt::new(tcx).collect_active_jobs().ok().expect("failed to collect active queries in deadlock handler")
                                 });
-                                break_query_cycles(query_map, &registry);
+                                break_query_cycles(query_map, &pool);
                             })
                         })
                     });
@@ -234,8 +236,11 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                     on_panic.disable();
                 })
                 .unwrap();
-        })
-        .stack_size(thread_stack_size);
+        })),
+        // TODO: Tune heartbeat_interval
+        // heartbeat_interval: Duration::from_micros(100),
+        ..Default::default()
+    };
 
     // We create the session globals on the main thread, then create the thread
     // pool. Upon creation, each worker thread created gets a copy of the
@@ -244,23 +249,21 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     rustc_span::create_session_globals_then(edition, extra_symbols, Some(sm_inputs), || {
         rustc_span::with_session_globals(|session_globals| {
             let session_globals = FromDyn::from(session_globals);
-            builder
-                .build_scoped(
-                    // Initialize each new worker thread when created.
-                    move |thread: rayon_core::ThreadBuilder| {
-                        // Register the thread for use with the `WorkerLocal` type.
-                        registry.register();
+            chili::ThreadPool::scoped_with_config(
+                config,
+                // Initialize each new worker thread when created.
+                move |thread: chili::ThreadBuilder| {
+                    // Register the thread for use with the `WorkerLocal` type.
+                    registry.register();
 
-                        rustc_span::set_session_globals_then(session_globals.into_inner(), || {
-                            thread.run()
-                        })
-                    },
-                    // Run `f` on the first thread in the thread pool.
-                    move |pool: &rayon_core::ThreadPool| {
-                        pool.install(|| f(current_gcx.into_inner()))
-                    },
-                )
-                .unwrap()
+                    rustc_span::set_session_globals_then(session_globals.into_inner(), || {
+                        thread.run()
+                    })
+                },
+                // Run `f` on the first thread in the thread pool.
+                move |pool: &chili::ThreadPool| pool.scope().install(|_| f(current_gcx.into_inner())),
+            )
+            .unwrap()
         })
     })
 }

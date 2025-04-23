@@ -58,49 +58,57 @@ where
     (a.unwrap(), b.unwrap())
 }
 
-/// Runs a list of blocks in parallel. The first block is executed immediately on
-/// the current thread. Use that for the longest running block.
-#[macro_export]
-macro_rules! parallel {
-        (impl $fblock:block [$($c:expr,)*] [$block:expr $(, $rest:expr)*]) => {
-            parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
-        };
-        (impl $fblock:block [$($blocks:expr,)*] []) => {
-            $crate::sync::parallel_guard(|guard| {
-                $crate::sync::scope(|s| {
-                    $(
-                        let block = $crate::sync::FromDyn::from(|| $blocks);
-                        s.spawn(move |_| {
-                            guard.run(move || block.into_inner()());
-                        });
-                    )*
-                    guard.run(|| $fblock);
-                });
-            });
-        };
-        ($fblock:block, $($blocks:block),*) => {
-            if $crate::sync::is_dyn_thread_safe() {
-                // Reverse the order of the later blocks since Rayon executes them in reverse order
-                // when using a single thread. This ensures the execution order matches that
-                // of a single threaded rustc.
-                parallel!(impl $fblock [] [$($blocks),*]);
-            } else {
-                $crate::sync::parallel_guard(|guard| {
-                    guard.run(|| $fblock);
-                    $(guard.run(|| $blocks);)*
-                });
-            }
-        };
-    }
-
-// This function only works when `mode::is_dyn_thread_safe()`.
-pub fn scope<'scope, OP, R>(op: OP) -> R
+pub fn join4<F0, F1, F2, F3, R0, R1, R2, R3>(
+    oper0: F0,
+    oper1: F1,
+    oper2: F2,
+    oper3: F3,
+) -> (R0, R1, R2, R3)
 where
-    OP: FnOnce(&rayon_core::Scope<'scope>) -> R + DynSend,
-    R: DynSend,
+    F0: FnOnce() -> R0 + DynSend,
+    F1: FnOnce() -> R1 + DynSend,
+    F2: FnOnce() -> R2 + DynSend,
+    F3: FnOnce() -> R3 + DynSend,
+    R0: DynSend,
+    R1: DynSend,
+    R2: DynSend,
+    R3: DynSend,
 {
-    let op = FromDyn::from(op);
-    rayon_core::scope(|s| FromDyn::from(op.into_inner()(s))).into_inner()
+    if mode::is_dyn_thread_safe() {
+        let oper0 = FromDyn::from(oper0);
+        let oper1 = FromDyn::from(oper1);
+        let oper2 = FromDyn::from(oper2);
+        let oper3 = FromDyn::from(oper3);
+        // Swap closures around because Chili executes second one on the current thread
+        let (r1, (r2, (r3, r0))) = parallel_guard(|guard| {
+            let mut scope = chili::Scope::global();
+            scope.join_with_heartbeat_every::<1, _, _, _, _>(
+                move |_| guard.run(move || FromDyn::from(oper1.into_inner()())),
+                move |scope| {
+                    scope.join_with_heartbeat_every::<1, _, _, _, _>(
+                        move |_| guard.run(move || FromDyn::from(oper2.into_inner()())),
+                        move |scope| {
+                            scope.join_with_heartbeat_every::<1, _, _, _, _>(
+                                move |_| guard.run(move || FromDyn::from(oper3.into_inner()())),
+                                move |_| guard.run(move || FromDyn::from(oper0.into_inner()())),
+                            )
+                        },
+                    )
+                },
+            )
+        });
+        (
+            r0.unwrap().into_inner(),
+            r1.unwrap().into_inner(),
+            r2.unwrap().into_inner(),
+            r3.unwrap().into_inner(),
+        )
+    } else {
+        let (r0, r1, r2, r3) = parallel_guard(|guard| {
+            (guard.run(oper0), guard.run(oper1), guard.run(oper2), guard.run(oper3))
+        });
+        (r0.unwrap(), r1.unwrap(), r2.unwrap(), r3.unwrap())
+    }
 }
 
 #[inline]
@@ -112,10 +120,11 @@ where
     if mode::is_dyn_thread_safe() {
         let oper_a = FromDyn::from(oper_a);
         let oper_b = FromDyn::from(oper_b);
-        let (a, b) = parallel_guard(|guard| {
-            rayon_core::join(
-                move || guard.run(move || FromDyn::from(oper_a.into_inner()())),
-                move || guard.run(move || FromDyn::from(oper_b.into_inner()())),
+        let (b, a) = parallel_guard(|guard| {
+            chili::Scope::global().join_with_heartbeat_every::<1, _, _, _, _>(
+                // Swap arguments around because Chili executes second one on the current thread
+                move |_| guard.run(move || FromDyn::from(oper_b.into_inner()())),
+                move |_| guard.run(move || FromDyn::from(oper_a.into_inner()())),
             )
         });
         (a.unwrap().into_inner(), b.unwrap().into_inner())
@@ -136,6 +145,7 @@ fn par_slice<I: DynSend>(
     }
 
     fn par_rec<I: DynSend, F: Fn(&mut I) + DynSync + DynSend>(
+        scope: &mut chili::Scope<'_>,
         items: &mut [I],
         state: &State<'_, F>,
     ) {
@@ -147,16 +157,21 @@ fn par_slice<I: DynSend>(
             let (left, right) = items.split_at_mut(items.len() / 2);
             let mut left = state.for_each.derive(left);
             let mut right = state.for_each.derive(right);
-            rayon_core::join(move || par_rec(*left, state), move || par_rec(*right, state));
+            scope.join(
+                // Swap arguments around because Chili executes second one on the current thread
+                move |scope| par_rec(scope, *right, state),
+                move |scope| par_rec(scope, *left, state),
+            );
         }
     }
 
+    let mut scope = chili::Scope::global();
     let state = State {
         for_each: FromDyn::from(for_each),
         guard,
         group: std::cmp::max(items.len() / 128, 1),
     };
-    par_rec(items, &state)
+    par_rec(&mut scope, items, &state)
 }
 
 pub fn par_for_each_in<I: DynSend, T: IntoIterator<Item = I>>(
