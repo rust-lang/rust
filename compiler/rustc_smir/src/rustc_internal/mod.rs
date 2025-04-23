@@ -21,7 +21,7 @@ use stable_mir::abi::Layout;
 use stable_mir::compiler_interface::SmirInterface;
 use stable_mir::ty::IndexedVal;
 
-use crate::rustc_smir::context::Context;
+use crate::rustc_smir::context::SmirCtxt;
 use crate::rustc_smir::{Stable, Tables};
 use crate::stable_mir;
 
@@ -197,7 +197,7 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx, F, T>(cx: &Context<'tcx>, f: F) -> T
+pub(crate) fn init<'tcx, F, T>(cx: &SmirCtxt<'tcx>, f: F) -> T
 where
     F: FnOnce() -> T,
 {
@@ -213,7 +213,7 @@ pub(crate) fn with_tables<R>(f: impl for<'tcx> FnOnce(&mut Tables<'tcx>) -> R) -
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let context = ptr as *const Context<'_>;
+        let context = ptr as *const SmirCtxt<'_>;
         let mut tables = unsafe { (*context).0.borrow_mut() };
         f(&mut *tables)
     })
@@ -223,7 +223,7 @@ pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
-    let tables = Context(RefCell::new(Tables {
+    let tables = SmirCtxt(RefCell::new(Tables {
         tcx,
         def_ids: IndexMap::default(),
         alloc_ids: IndexMap::default(),

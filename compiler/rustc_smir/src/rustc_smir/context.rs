@@ -1,7 +1,4 @@
-//! Implementation of `[stable_mir::compiler_interface::Context]` trait.
-//!
-//! This trait is currently the main interface between the Rust compiler,
-//! and the `stable_mir` crate.
+//! Implementation of StableMIR Context.
 
 #![allow(rustc::usage_of_qualified_ty)]
 
@@ -36,10 +33,13 @@ use crate::rustc_smir::builder::BodyBuilder;
 use crate::rustc_smir::{Stable, Tables, alloc, filter_def_ids, new_item_kind, smir_crate};
 use crate::stable_mir;
 
-/// Internal context holding direct rustc access.
-pub struct Context<'tcx>(pub RefCell<Tables<'tcx>>);
+/// Provides direct access to rustc's internal queries.
+///
+/// The [`crate::stable_mir::compiler_interface::SmirInterface`] must go through
+/// this context to obtain rustc-level information.
+pub struct SmirCtxt<'tcx>(pub RefCell<Tables<'tcx>>);
 
-impl<'tcx> Context<'tcx> {
+impl<'tcx> SmirCtxt<'tcx> {
     pub fn target_info(&self) -> MachineInfo {
         let mut tables = self.0.borrow_mut();
         MachineInfo {
