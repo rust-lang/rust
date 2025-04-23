@@ -760,6 +760,12 @@
 # [target.<tuple>] section.
 #jemalloc = false
 
+# Use mimalloc as the global allocator for the compiler. Rust code will prefer `mimalloc` over
+# `jemalloc` if that is also enabled.
+# This option is only tested on Windows. It can also be configured per-target in the
+# [target.<tuple>] section.
+#mimalloc = false
+
 # Run tests in various test suites with the "nll compare mode" in addition to
 # running the tests in normal mode. Largely only used on CI and during local
 # development of NLL

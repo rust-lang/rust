@@ -744,6 +744,9 @@ impl Build {
         if self.config.jemalloc(target) && check("jemalloc") {
             features.push("jemalloc");
         }
+        if self.config.mimalloc(target) && check("mimalloc") {
+            features.push("mimalloc");
+        }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
         }

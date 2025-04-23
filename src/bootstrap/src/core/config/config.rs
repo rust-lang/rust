@@ -347,6 +347,7 @@ pub struct Config {
     jemalloc: bool,
     #[cfg(test)]
     pub jemalloc: bool,
+    pub mimalloc: bool,
     pub control_flow_guard: bool,
     pub ehcont_guard: bool,
 
@@ -673,6 +674,7 @@ pub struct Target {
     pub codegen_backends: Option<Vec<String>>,
     pub optimized_compiler_builtins: Option<bool>,
     pub jemalloc: Option<bool>,
+    pub mimalloc: Option<bool>,
 }
 
 impl Target {
@@ -1316,6 +1318,7 @@ define_config! {
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
         jemalloc: Option<bool> = "jemalloc",
+        mimalloc: Option<bool> = "mimalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         control_flow_guard: Option<bool> = "control-flow-guard",
@@ -1358,6 +1361,7 @@ define_config! {
         runner: Option<String> = "runner",
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jemalloc: Option<bool> = "jemalloc",
+        mimalloc: Option<bool> = "mimalloc",
     }
 }
 
@@ -2032,6 +2036,7 @@ impl Config {
                 thin_lto_import_instr_limit,
                 remap_debuginfo,
                 jemalloc,
+                mimalloc,
                 test_compare_mode,
                 llvm_libunwind,
                 control_flow_guard,
@@ -2104,6 +2109,7 @@ impl Config {
             set(&mut config.rust_frame_pointers, frame_pointers);
             config.rust_stack_protector = stack_protector;
             set(&mut config.jemalloc, jemalloc);
+            set(&mut config.mimalloc, mimalloc);
             set(&mut config.test_compare_mode, test_compare_mode);
             set(&mut config.backtrace, backtrace);
             if rust_description.is_some() {
@@ -2369,6 +2375,7 @@ impl Config {
                 target.rpath = cfg.rpath;
                 target.optimized_compiler_builtins = cfg.optimized_compiler_builtins;
                 target.jemalloc = cfg.jemalloc;
+                target.mimalloc = cfg.mimalloc;
 
                 if let Some(ref backends) = cfg.codegen_backends {
                     let available_backends = ["llvm", "cranelift", "gcc"];
@@ -2955,6 +2962,10 @@ impl Config {
 
     pub fn jemalloc(&self, target: TargetSelection) -> bool {
         self.target_config.get(&target).and_then(|cfg| cfg.jemalloc).unwrap_or(self.jemalloc)
+    }
+
+    pub fn mimalloc(&self, target: TargetSelection) -> bool {
+        self.target_config.get(&target).and_then(|cfg| cfg.mimalloc).unwrap_or(self.mimalloc)
     }
 
     pub fn default_codegen_backend(&self, target: TargetSelection) -> Option<String> {
@@ -3556,6 +3567,7 @@ fn check_incompatible_options_for_ci_rustc(
         strip,
         lld_mode,
         jemalloc,
+        mimalloc,
         rpath,
         channel,
         description,
@@ -3619,6 +3631,7 @@ fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
     err!(current_rust_config.jemalloc, jemalloc, "rust");
+    err!(current_rust_config.mimalloc, mimalloc, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
     err!(current_rust_config.lto, lto, "rust");

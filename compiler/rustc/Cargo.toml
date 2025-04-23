@@ -30,5 +30,6 @@ features = ['unprefixed_malloc_on_supported_platforms']
 jemalloc = ['dep:tikv-jemalloc-sys']
 llvm = ['rustc_driver_impl/llvm']
 max_level_info = ['rustc_driver_impl/max_level_info']
+mimalloc = ['rustc_driver_impl/mimalloc']
 rustc_randomized_layouts = ['rustc_driver_impl/rustc_randomized_layouts']
 # tidy-alphabetical-end
