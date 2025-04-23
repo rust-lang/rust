@@ -1,16 +1,16 @@
-use crate::common::types::ProcessedCli;
+use crate::common::cli::ProcessedCli;
 use std::fs::File;
 use std::io::Write;
 
 pub mod argument;
+pub mod cli;
 pub mod compare;
 pub mod compile_c;
-pub mod format;
 pub mod gen_c;
 pub mod gen_rust;
+pub mod indentation;
 pub mod intrinsic;
-pub mod intrinsic_types;
-pub mod types;
+pub mod intrinsic_helpers;
 pub mod values;
 
 /// Architectures must support this trait

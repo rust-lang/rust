@@ -1,4 +1,4 @@
-use super::types::FailureReason;
+use super::cli::FailureReason;
 use rayon::prelude::*;
 use std::process::Command;
 

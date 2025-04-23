@@ -7,7 +7,7 @@ mod common;
 
 use arm::ArmArchitectureTest;
 use common::SupportedArchitectureTest;
-use common::types::{Cli, ProcessedCli};
+use common::cli::{Cli, ProcessedCli};
 
 fn main() {
     pretty_env_logger::init();

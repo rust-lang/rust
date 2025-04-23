@@ -1,12 +1,12 @@
 use super::constraint::Constraint;
 use crate::base_intrinsictype_trait_def_macro;
 use crate::common::argument::ArgumentList;
-use crate::common::format::Indentation;
+use crate::common::cli::Language;
+use crate::common::indentation::Indentation;
 use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
-use crate::common::intrinsic_types::{
+use crate::common::intrinsic_helpers::{
     BaseIntrinsicTypeDefinition, IntrinsicTypeDefinition, TypeKind,
 };
-use crate::common::types::Language;
 
 base_intrinsictype_trait_def_macro! {ArmIntrinsicType}
 

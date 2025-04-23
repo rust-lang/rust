@@ -44,7 +44,7 @@ pub struct Cli {
     pub generate_only: bool,
 
     /// Pass a target the test suite
-    #[arg(long, default_value_t = String::from("aarch64-unknown-linux-gnu"))]
+    #[arg(long, default_value_t = String::from("armv7-unknown-linux-gnueabihf"))]
     pub target: String,
 
     /// Set the linker

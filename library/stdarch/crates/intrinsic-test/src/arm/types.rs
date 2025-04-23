@@ -1,6 +1,6 @@
 use super::intrinsic::ArmIntrinsicType;
-use crate::common::intrinsic_types::{IntrinsicType, IntrinsicTypeDefinition, TypeKind};
-use crate::common::types::Language;
+use crate::common::cli::Language;
+use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition, TypeKind};
 
 impl IntrinsicTypeDefinition for ArmIntrinsicType {
     /// Gets a string containing the typename for this type in C format.

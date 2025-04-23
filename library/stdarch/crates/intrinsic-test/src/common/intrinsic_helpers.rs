@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 use itertools::Itertools as _;
 
-use crate::common::format::Indentation;
-use crate::common::types::Language;
+use crate::common::cli::Language;
+use crate::common::indentation::Indentation;
 use crate::common::values::value_for_array;
 
 #[derive(Debug, PartialEq, Copy, Clone)]

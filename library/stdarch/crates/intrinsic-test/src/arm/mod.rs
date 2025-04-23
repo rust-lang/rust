@@ -8,10 +8,10 @@ mod types;
 use crate::arm::constraint::Constraint;
 use crate::arm::intrinsic::ArmIntrinsicType;
 use crate::common::SupportedArchitectureTest;
+use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
 use crate::common::intrinsic::Intrinsic;
-use crate::common::intrinsic_types::{BaseIntrinsicTypeDefinition, TypeKind};
-use crate::common::types::ProcessedCli;
+use crate::common::intrinsic_helpers::{BaseIntrinsicTypeDefinition, TypeKind};
 use functions::{build_c, build_rust};
 use json_parser::get_neon_intrinsics;
 

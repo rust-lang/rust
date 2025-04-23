@@ -1,6 +1,6 @@
 use crate::common::argument::ArgumentList;
-use crate::common::format::Indentation;
-use crate::common::intrinsic_types::IntrinsicTypeDefinition;
+use crate::common::indentation::Indentation;
+use crate::common::intrinsic_helpers::IntrinsicTypeDefinition;
 
 use super::argument::MetadataDefinition;
 

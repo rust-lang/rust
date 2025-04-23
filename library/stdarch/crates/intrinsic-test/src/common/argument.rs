@@ -1,7 +1,6 @@
-use crate::common::format::Indentation;
-use crate::common::intrinsic_types::IntrinsicTypeDefinition;
-use crate::common::types::Language;
-use serde_json::Value;
+use crate::common::cli::Language;
+use crate::common::indentation::Indentation;
+use crate::common::intrinsic_helpers::IntrinsicTypeDefinition;
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
