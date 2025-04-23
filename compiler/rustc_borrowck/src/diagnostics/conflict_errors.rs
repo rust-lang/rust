@@ -1265,12 +1265,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 && let CallKind::FnCall { fn_trait_id, self_ty } = kind
                 && let ty::Param(_) = self_ty.kind()
                 && ty == self_ty
-                && [
-                    self.infcx.tcx.lang_items().fn_once_trait(),
-                    self.infcx.tcx.lang_items().fn_mut_trait(),
-                    self.infcx.tcx.lang_items().fn_trait(),
-                ]
-                .contains(&Some(fn_trait_id))
+                && self.infcx.tcx.fn_trait_kind_from_def_id(fn_trait_id).is_some()
             {
                 // Do not suggest `F: FnOnce() + Clone`.
                 false
