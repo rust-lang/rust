@@ -7,9 +7,8 @@ use std::{env, fs, iter};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, join, join4};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -902,8 +901,8 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     rustc_passes::hir_id_validator::check_crate(tcx);
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
-        parallel!(
-            {
+        join4(
+            || {
                 sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
 
                 sess.time("looking_for_derive_registrar", || {
@@ -912,7 +911,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
-            {
+            || {
                 tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
@@ -920,19 +919,19 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                     tcx.ensure_ok().check_mod_unstable_api_usage(module);
                 });
             },
-            {
+            || {
                 sess.time("unused_lib_feature_checking", || {
                     rustc_passes::stability::check_unused_or_stable_features(tcx)
                 });
             },
-            {
+            || {
                 // We force these queries to run,
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.
                 tcx.ensure_ok().limits(());
                 tcx.ensure_ok().stability_index(());
-            }
+            },
         );
     });
 
@@ -1027,36 +1026,36 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     }
 
     sess.time("misc_checking_3", || {
-        parallel!(
-            {
+        join(
+            || {
                 tcx.ensure_ok().effective_visibilities(());
 
-                parallel!(
-                    {
+                join4(
+                    || {
                         tcx.ensure_ok().check_private_in_public(());
                     },
-                    {
+                    || {
                         tcx.par_hir_for_each_module(|module| {
                             tcx.ensure_ok().check_mod_deathness(module)
                         });
                     },
-                    {
+                    || {
                         sess.time("lint_checking", || {
                             rustc_lint::check_crate(tcx);
                         });
                     },
-                    {
+                    || {
                         tcx.ensure_ok().clashing_extern_declarations(());
-                    }
+                    },
                 );
             },
-            {
+            || {
                 sess.time("privacy_checking_modules", || {
                     tcx.par_hir_for_each_module(|module| {
                         tcx.ensure_ok().check_mod_privacy(module);
                     });
                 });
-            }
+            },
         );
 
         // This check has to be run after all lints are done processing. We don't

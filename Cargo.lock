@@ -451,6 +451,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
+name = "chili"
+version = "0.2.1"
+source = "git+https://github.com/zetanumbers/chili.git?branch=rustc#7358b3027e7c69e884a97e13f5f95826dc14238d"
+
+[[package]]
 name = "chrono"
 version = "0.4.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3187,16 +3192,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustc-rayon-core"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f42932dcd3bcbe484b38a3ccf79b7906fac41c02d408b5b1bac26da3416efdb"
-dependencies = [
- "crossbeam-deque",
- "crossbeam-utils",
-]
-
-[[package]]
 name = "rustc-stable-hash"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3543,6 +3538,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "bitflags",
+ "chili",
  "either",
  "elsa",
  "ena",
@@ -3555,7 +3551,6 @@ dependencies = [
  "parking_lot",
  "portable-atomic",
  "rustc-hash 2.1.1",
- "rustc-rayon-core",
  "rustc-stable-hash",
  "rustc_arena",
  "rustc_graphviz",
@@ -3901,7 +3896,7 @@ dependencies = [
 name = "rustc_interface"
 version = "0.0.0"
 dependencies = [
- "rustc-rayon-core",
+ "chili",
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_lowering",
@@ -4061,10 +4056,10 @@ name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "chili",
  "either",
  "gsgdt",
  "polonius-engine",
- "rustc-rayon-core",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
@@ -4326,9 +4321,9 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
+ "chili",
  "hashbrown",
  "parking_lot",
- "rustc-rayon-core",
  "rustc_abi",
  "rustc_ast",
  "rustc_attr_data_structures",

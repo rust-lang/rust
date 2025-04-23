@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-rustc-rayon-core = { version = "0.5.0" }
+chili = { git = "https://github.com/zetanumbers/chili.git", branch = "rustc" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
