@@ -125,56 +125,19 @@ libm_macros::for_each_function! {
         // FIXME(correctness): exp functions have the wrong result on i586
         exp10 | exp10f | exp2 | exp2f => (true, Some(musl_math_sys::MACRO_FN_NAME)),
 
-        // Musl does not provide `f16` and `f128` functions
-        ceilf128
-        | ceilf16
-        | copysignf128
-        | copysignf16
-        | fabsf128
-        | fabsf16
-        | fdimf128
-        | fdimf16
-        | floorf128
-        | floorf16
-        | fmaf128
-        | fmaxf128
-        | fmaxf16
-        | fmaximum
+        // Musl does not provide `f16` and `f128` functions, as well as a handful of others
+        fmaximum
         | fmaximum_num
         | fmaximum_numf
-        | fmaximum_numf128
-        | fmaximum_numf16
         | fmaximumf
-        | fmaximumf128
-        | fmaximumf16
-        | fminf128
-        | fminf16
         | fminimum
         | fminimum_num
         | fminimum_numf
-        | fminimum_numf128
-        | fminimum_numf16
         | fminimumf
-        | fminimumf128
-        | fminimumf16
-        | fmodf128
-        | fmodf16
-        | ldexpf128
-        | ldexpf16
-        | rintf128
-        | rintf16
         | roundeven
         | roundevenf
-        | roundevenf128
-        | roundevenf16
-        | roundf128
-        | roundf16
-        | scalbnf128
-        | scalbnf16
-        | sqrtf128
-        | sqrtf16
-        | truncf128
-        | truncf16 => (false, None),
+        | ALL_F16
+        | ALL_F128 => (false, None),
 
         // By default we never skip (false) and always have a musl function available
         _ => (false, Some(musl_math_sys::MACRO_FN_NAME))

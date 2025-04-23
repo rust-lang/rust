@@ -6,7 +6,7 @@ use syn::parse::{Parse, ParseStream, Parser};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::{self, Comma};
-use syn::{Arm, Attribute, Expr, ExprMatch, Ident, Meta, Token, bracketed};
+use syn::{Arm, Attribute, Expr, ExprMatch, Ident, LitBool, Meta, Token, bracketed};
 
 /// The input to our macro; just a list of `field: value` items.
 #[derive(Debug)]
@@ -50,6 +50,8 @@ pub struct StructuredInput {
     pub emit_types: Vec<Ident>,
     /// Skip these functions
     pub skip: Vec<Ident>,
+    /// If true, omit f16 and f128 functions that aren't present in other libraries.
+    pub skip_f16_f128: bool,
     /// Invoke only for these functions
     pub only: Option<Vec<Ident>>,
     /// Attributes that get applied to specific functions
@@ -70,6 +72,7 @@ impl StructuredInput {
         let cb_expr = expect_field(&mut map, "callback")?;
         let emit_types_expr = expect_field(&mut map, "emit_types").ok();
         let skip_expr = expect_field(&mut map, "skip").ok();
+        let skip_f16_f128 = expect_field(&mut map, "skip_f16_f128").ok();
         let only_expr = expect_field(&mut map, "only").ok();
         let attr_expr = expect_field(&mut map, "attributes").ok();
         let extra = expect_field(&mut map, "extra").ok();
@@ -91,6 +94,11 @@ impl StructuredInput {
         let skip = match skip_expr {
             Some(expr) => Parser::parse2(parse_ident_array, expr.into_token_stream())?,
             None => Vec::new(),
+        };
+
+        let skip_f16_f128 = match skip_f16_f128 {
+            Some(expr) => expect_litbool(expr)?.value,
+            None => false,
         };
 
         let only_span = only_expr.as_ref().map(|expr| expr.span());
@@ -122,6 +130,7 @@ impl StructuredInput {
             callback: expect_ident(cb_expr)?,
             emit_types,
             skip,
+            skip_f16_f128,
             only,
             only_span,
             attributes,
@@ -217,6 +226,11 @@ fn expect_field(v: &mut Vec<Mapping>, name: &str) -> syn::Result<Expr> {
 
 /// Coerce an expression into a simple identifier.
 fn expect_ident(expr: Expr) -> syn::Result<Ident> {
+    syn::parse2(expr.into_token_stream())
+}
+
+/// Coerce an expression into a simple keyword.
+fn expect_litbool(expr: Expr) -> syn::Result<LitBool> {
     syn::parse2(expr.into_token_stream())
 }
 

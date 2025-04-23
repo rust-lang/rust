@@ -116,6 +116,9 @@ pub fn base_name_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> p
 ///     // a simplified match-like syntax.
 ///     fn_extra: match MACRO_FN_NAME {
 ///         hypot | hypotf => |x| x.hypot(),
+///         // `ALL_*` magic matchers also work to extract specific types
+///         ALL_F64 => |x| x,
+///         // The default pattern gets applied to everything that did not match
 ///         _ => |x| x,
 ///     },
 /// }
@@ -138,6 +141,27 @@ pub fn for_each_function(tokens: pm::TokenStream) -> pm::TokenStream {
 ///
 /// Returns the list of function names that we should expand for.
 fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>> {
+    // Replace magic mappers with a list of relevant functions.
+    if let Some(map) = &mut input.fn_extra {
+        for (name, ty) in [
+            ("ALL_F16", FloatTy::F16),
+            ("ALL_F32", FloatTy::F32),
+            ("ALL_F64", FloatTy::F64),
+            ("ALL_F128", FloatTy::F128),
+        ] {
+            let Some(k) = map.keys().find(|key| *key == name) else {
+                continue;
+            };
+
+            let key = k.clone();
+            let val = map.remove(&key).unwrap();
+
+            for op in ALL_OPERATIONS.iter().filter(|op| op.float_ty == ty) {
+                map.insert(Ident::new(op.name, key.span()), val.clone());
+            }
+        }
+    }
+
     // Collect lists of all functions that are provied as macro inputs in various fields (only,
     // skip, attributes).
     let attr_mentions = input
@@ -192,6 +216,12 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
 
         // If there is a `skip` list that contains this function name, skip it
         if input.skip.iter().any(|s| s == fn_name) {
+            continue;
+        }
+
+        // Omit f16 and f128 functions if requested
+        if input.skip_f16_f128 && (func.float_ty == FloatTy::F16 || func.float_ty == FloatTy::F128)
+        {
             continue;
         }
 

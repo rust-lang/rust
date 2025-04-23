@@ -103,3 +103,75 @@ mod test_emit_types {
         emit_types: [RustFn, RustArgs],
     }
 }
+
+#[test]
+fn test_skip_f16_f128() {
+    macro_rules! skip_f16_f128 {
+        (
+        fn_name: $fn_name:ident,
+        attrs: [$($attr:meta),*],
+        extra: $vec:ident,
+    ) => {
+            $vec.push(stringify!($fn_name));
+        };
+    }
+
+    let mut v = Vec::new();
+    // Test with no extra, no skip, and no attributes
+    libm_macros::for_each_function! {
+        callback: skip_f16_f128,
+        skip_f16_f128: true,
+        extra: v,
+    }
+
+    for name in v {
+        assert!(!name.contains("f16"), "{name}");
+        assert!(!name.contains("f128"), "{name}");
+    }
+}
+
+#[test]
+fn test_fn_extra_expansion() {
+    macro_rules! fn_extra_expansion {
+        (
+            fn_name: $fn_name:ident,
+            attrs: [$($attr:meta),*],
+            fn_extra: $vec:expr,
+        ) => {
+            $vec.push(stringify!($fn_name));
+        };
+    }
+
+    let mut vf16 = Vec::new();
+    let mut vf32 = Vec::new();
+    let mut vf64 = Vec::new();
+    let mut vf128 = Vec::new();
+
+    // Test with no extra, no skip, and no attributes
+    libm_macros::for_each_function! {
+        callback: fn_extra_expansion,
+        fn_extra: match MACRO_FN_NAME {
+            ALL_F16 => vf16,
+            ALL_F32 => vf32,
+            ALL_F64 => vf64,
+            ALL_F128 => vf128,
+        }
+    }
+
+    // Skip functions with a suffix after the type spec
+    vf16.retain(|name| !name.ends_with("_r"));
+    vf32.retain(|name| !name.ends_with("_r"));
+    vf64.retain(|name| !name.ends_with("_r"));
+    vf128.retain(|name| !name.ends_with("_r"));
+
+    for name in vf16 {
+        assert!(name.ends_with("f16"), "{name}");
+    }
+    for name in vf32 {
+        assert!(name.ends_with("f"), "{name}");
+    }
+    let _ = vf64;
+    for name in vf128 {
+        assert!(name.ends_with("f128"), "{name}");
+    }
+}
