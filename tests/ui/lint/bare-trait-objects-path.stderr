@@ -55,7 +55,13 @@ error[E0223]: ambiguous associated type
   --> $DIR/bare-trait-objects-path.rs:23:12
    |
 LL |     let _: Dyn::Ty;
-   |            ^^^^^^^ help: use fully-qualified syntax: `<dyn Dyn as Assoc>::Ty`
+   |            ^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: Dyn::Ty;
+LL +     let _: <dyn Dyn as Assoc>::Ty;
+   |
 
 error: aborting due to 1 previous error; 4 warnings emitted
 

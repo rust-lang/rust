@@ -3,7 +3,8 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, listify, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, SuggestionStyle, listify, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -443,7 +444,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             &type_names,
             &[path_str],
-            item_segment.ident.name,
+            item_segment.ident,
             assoc_tag,
         )
     }
@@ -552,12 +553,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             let traits: Vec<_> = self.probe_traits_that_match_assoc_ty(self_ty, ident);
 
-            // Don't print `ty::Error` to the user.
             self.report_ambiguous_assoc_item_path(
                 span,
                 &[self_ty.to_string()],
                 &traits,
-                ident.name,
+                ident,
                 assoc_tag,
             )
         }
@@ -568,7 +568,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         types: &[String],
         traits: &[String],
-        name: Symbol,
+        ident: Ident,
         assoc_tag: ty::AssocTag,
     ) -> ErrorGuaranteed {
         let kind_str = assoc_tag_str(assoc_tag);
@@ -588,6 +588,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Applicability::MachineApplicable,
             );
         } else {
+            let sugg_sp = span.until(ident.span);
+
             let mut types = types.to_vec();
             types.sort();
             let mut traits = traits.to_vec();
@@ -595,76 +597,79 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match (&types[..], &traits[..]) {
                 ([], []) => {
                     err.span_suggestion_verbose(
-                        span,
+                        sugg_sp,
                         format!(
                             "if there were a type named `Type` that implements a trait named \
-                             `Trait` with associated {kind_str} `{name}`, you could use the \
+                             `Trait` with associated {kind_str} `{ident}`, you could use the \
                              fully-qualified path",
                         ),
-                        format!("<Type as Trait>::{name}"),
+                        "<Type as Trait>::",
                         Applicability::HasPlaceholders,
                     );
                 }
                 ([], [trait_str]) => {
                     err.span_suggestion_verbose(
-                        span,
+                        sugg_sp,
                         format!(
                             "if there were a type named `Example` that implemented `{trait_str}`, \
                              you could use the fully-qualified path",
                         ),
-                        format!("<Example as {trait_str}>::{name}"),
+                        format!("<Example as {trait_str}>::"),
                         Applicability::HasPlaceholders,
                     );
                 }
                 ([], traits) => {
-                    err.span_suggestions(
-                        span,
+                    err.span_suggestions_with_style(
+                        sugg_sp,
                         format!(
                             "if there were a type named `Example` that implemented one of the \
-                             traits with associated {kind_str} `{name}`, you could use the \
+                             traits with associated {kind_str} `{ident}`, you could use the \
                              fully-qualified path",
                         ),
-                        traits.iter().map(|trait_str| format!("<Example as {trait_str}>::{name}")),
+                        traits.iter().map(|trait_str| format!("<Example as {trait_str}>::")),
                         Applicability::HasPlaceholders,
+                        SuggestionStyle::ShowAlways,
                     );
                 }
                 ([type_str], []) => {
                     err.span_suggestion_verbose(
-                        span,
+                        sugg_sp,
                         format!(
-                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{ident}` \
                              implemented for `{type_str}`, you could use the fully-qualified path",
                         ),
-                        format!("<{type_str} as Example>::{name}"),
+                        format!("<{type_str} as Example>::"),
                         Applicability::HasPlaceholders,
                     );
                 }
                 (types, []) => {
-                    err.span_suggestions(
-                        span,
+                    err.span_suggestions_with_style(
+                        sugg_sp,
                         format!(
-                            "if there were a trait named `Example` with associated {kind_str} `{name}` \
+                            "if there were a trait named `Example` with associated {kind_str} `{ident}` \
                              implemented for one of the types, you could use the fully-qualified \
                              path",
                         ),
                         types
                             .into_iter()
-                            .map(|type_str| format!("<{type_str} as Example>::{name}")),
+                            .map(|type_str| format!("<{type_str} as Example>::")),
                         Applicability::HasPlaceholders,
+                        SuggestionStyle::ShowAlways,
                     );
                 }
                 (types, traits) => {
                     let mut suggestions = vec![];
                     for type_str in types {
                         for trait_str in traits {
-                            suggestions.push(format!("<{type_str} as {trait_str}>::{name}"));
+                            suggestions.push(format!("<{type_str} as {trait_str}>::"));
                         }
                     }
-                    err.span_suggestions(
-                        span,
+                    err.span_suggestions_with_style(
+                        sugg_sp,
                         "use fully-qualified syntax",
                         suggestions,
                         Applicability::MachineApplicable,
+                        SuggestionStyle::ShowAlways,
                     );
                 }
             }
