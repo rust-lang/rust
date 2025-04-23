@@ -38,8 +38,8 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
-    self, AssocTag, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty,
-    TyCtxt, TypeVisitableExt, TypingMode, Upcast, fold_regions,
+    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty, TyCtxt,
+    TypeVisitableExt, TypingMode, Upcast, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -937,7 +937,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn probe_trait_that_defines_assoc_item(
         &self,
         trait_def_id: DefId,
-        assoc_tag: AssocTag,
+        assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
     ) -> bool {
         self.tcx()
@@ -980,7 +980,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         ty_param_def_id: LocalDefId,
         ty_param_span: Span,
-        assoc_tag: AssocTag,
+        assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
     ) -> Result<ty::PolyTraitRef<'tcx>, ErrorGuaranteed> {
@@ -1015,7 +1015,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         all_candidates: impl Fn() -> I,
         qself: AssocItemQSelf,
-        assoc_tag: AssocTag,
+        assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'tcx>>,
@@ -1238,7 +1238,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Result<TypeRelativePath<'tcx>, ErrorGuaranteed> {
         debug!(%self_ty, ?segment.ident);
         let tcx = self.tcx();
-        let ident = segment.ident;
 
         // Check if we have an enum variant or an inherent associated type.
         let mut variant_def_id = None;
@@ -1247,7 +1246,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let variant_def = adt_def
                     .variants()
                     .iter()
-                    .find(|vd| tcx.hygienic_eq(ident, vd.ident(tcx), adt_def.did()));
+                    .find(|vd| tcx.hygienic_eq(segment.ident, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
                     if let PermitVariants::Yes = mode.permit_variants() {
                         tcx.check_stability(variant_def.def_id, Some(qpath_hir_id), span, None);
@@ -1282,13 +1281,70 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
+        let (item_def_id, bound) = self.resolve_type_relative_path(
+            self_ty,
+            hir_self_ty,
+            mode.assoc_tag(),
+            segment,
+            qpath_hir_id,
+            span,
+            variant_def_id,
+        )?;
+
+        let (item_def_id, args) = self.lower_assoc_item_path(span, item_def_id, segment, bound)?;
+
+        if let Some(variant_def_id) = variant_def_id {
+            tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, qpath_hir_id, span, |lint| {
+                lint.primary_message("ambiguous associated item");
+                let mut could_refer_to = |kind: DefKind, def_id, also| {
+                    let note_msg = format!(
+                        "`{}` could{} refer to the {} defined here",
+                        segment.ident,
+                        also,
+                        tcx.def_kind_descr(kind, def_id)
+                    );
+                    lint.span_note(tcx.def_span(def_id), note_msg);
+                };
+
+                could_refer_to(DefKind::Variant, variant_def_id, "");
+                could_refer_to(mode.def_kind(), item_def_id, " also");
+
+                lint.span_suggestion(
+                    span,
+                    "use fully-qualified syntax",
+                    format!(
+                        "<{} as {}>::{}",
+                        self_ty,
+                        tcx.item_name(bound.def_id()),
+                        segment.ident
+                    ),
+                    Applicability::MachineApplicable,
+                );
+            });
+        }
+
+        Ok(TypeRelativePath::AssocItem(item_def_id, args))
+    }
+
+    /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.
+    fn resolve_type_relative_path(
+        &self,
+        self_ty: Ty<'tcx>,
+        hir_self_ty: &'tcx hir::Ty<'tcx>,
+        assoc_tag: ty::AssocTag,
+        segment: &'tcx hir::PathSegment<'tcx>,
+        qpath_hir_id: HirId,
+        span: Span,
+        variant_def_id: Option<DefId>,
+    ) -> Result<(DefId, ty::PolyTraitRef<'tcx>), ErrorGuaranteed> {
+        let tcx = self.tcx();
+
         let self_ty_res = match hir_self_ty.kind {
             hir::TyKind::Path(hir::QPath::Resolved(_, path)) => path.res,
             _ => Res::Err,
         };
 
-        // Find the type of the associated item, and the trait where the associated
-        // item is declared.
+        // Find the type of the assoc item, and the trait where the associated item is declared.
         let bound = match (self_ty.kind(), self_ty_res) {
             (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
                 // `Self` in an impl of a trait -- we have a concrete self type and a
@@ -1300,14 +1356,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 self.probe_single_bound_for_assoc_item(
                     || {
-                        traits::supertraits(
-                            tcx,
-                            ty::Binder::dummy(trait_ref.instantiate_identity()),
-                        )
+                        let trait_ref = ty::Binder::dummy(trait_ref.instantiate_identity());
+                        traits::supertraits(tcx, trait_ref)
                     },
                     AssocItemQSelf::SelfTyAlias,
-                    mode.assoc_tag(),
-                    ident,
+                    assoc_tag,
+                    segment.ident,
                     span,
                     None,
                 )?
@@ -1318,16 +1372,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ) => self.probe_single_ty_param_bound_for_assoc_item(
                 param_did.expect_local(),
                 hir_self_ty.span,
-                mode.assoc_tag(),
-                ident,
+                assoc_tag,
+                segment.ident,
                 span,
             )?,
             _ => {
                 return Err(self.report_unresolved_type_relative_path(
                     self_ty,
                     hir_self_ty,
-                    mode.assoc_tag(),
-                    ident,
+                    assoc_tag,
+                    segment.ident,
                     qpath_hir_id,
                     span,
                     variant_def_id,
@@ -1335,38 +1389,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         };
 
-        let trait_def_id = bound.def_id();
         let assoc_item = self
-            .probe_assoc_item(ident, mode.assoc_tag(), qpath_hir_id, span, trait_def_id)
+            .probe_assoc_item(segment.ident, assoc_tag, qpath_hir_id, span, bound.def_id())
             .expect("failed to find associated item");
-        let (def_id, args) = self.lower_assoc_item_path(span, assoc_item.def_id, segment, bound)?;
-        let result = TypeRelativePath::AssocItem(def_id, args);
 
-        if let Some(variant_def_id) = variant_def_id {
-            tcx.node_span_lint(AMBIGUOUS_ASSOCIATED_ITEMS, qpath_hir_id, span, |lint| {
-                lint.primary_message("ambiguous associated item");
-                let mut could_refer_to = |kind: DefKind, def_id, also| {
-                    let note_msg = format!(
-                        "`{}` could{} refer to the {} defined here",
-                        ident,
-                        also,
-                        tcx.def_kind_descr(kind, def_id)
-                    );
-                    lint.span_note(tcx.def_span(def_id), note_msg);
-                };
-
-                could_refer_to(DefKind::Variant, variant_def_id, "");
-                could_refer_to(mode.def_kind(), assoc_item.def_id, " also");
-
-                lint.span_suggestion(
-                    span,
-                    "use fully-qualified syntax",
-                    format!("<{} as {}>::{}", self_ty, tcx.item_name(trait_def_id), ident),
-                    Applicability::MachineApplicable,
-                );
-            });
-        }
-        Ok(result)
+        Ok((assoc_item.def_id, bound))
     }
 
     /// Search for inherent associated items for use at the type level.
