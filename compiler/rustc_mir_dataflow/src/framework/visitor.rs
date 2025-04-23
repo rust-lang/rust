@@ -8,7 +8,7 @@ pub fn visit_results<'mir, 'tcx, A>(
     body: &'mir mir::Body<'tcx>,
     blocks: impl IntoIterator<Item = BasicBlock>,
     results: &mut Results<'tcx, A>,
-    vis: &mut impl ResultsVisitor<'mir, 'tcx, A>,
+    vis: &mut impl ResultsVisitor<'tcx, A>,
 ) where
     A: Analysis<'tcx>,
 {
@@ -29,7 +29,7 @@ pub fn visit_results<'mir, 'tcx, A>(
 /// A visitor over the results of an `Analysis`. Use this when you want to inspect domain values in
 /// many or all locations; use `ResultsCursor` if you want to inspect domain values only in certain
 /// locations.
-pub trait ResultsVisitor<'mir, 'tcx, A>
+pub trait ResultsVisitor<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -40,7 +40,7 @@ where
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,
-        _statement: &'mir mir::Statement<'tcx>,
+        _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
     }
@@ -50,7 +50,7 @@ where
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,
-        _statement: &'mir mir::Statement<'tcx>,
+        _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
     }
@@ -60,7 +60,7 @@ where
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,
-        _terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
     }
@@ -72,7 +72,7 @@ where
         &mut self,
         _results: &mut Results<'tcx, A>,
         _state: &A::Domain,
-        _terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
     }
