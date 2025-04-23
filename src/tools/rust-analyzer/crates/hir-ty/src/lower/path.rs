@@ -921,19 +921,19 @@ fn check_generic_args_len(
         }
     }
 
+    // FIXME: Function signature lifetime elision has to be considered here once we have it
     let infer_lifetimes =
-        (position != GenericArgsPosition::Type || infer_args) && provided_lifetimes_count == 0;
+        position != GenericArgsPosition::OtherSignature && provided_lifetimes_count == 0;
 
-    let min_expected_lifetime_args =
-        if infer_lifetimes { 0 } else { def_generics.len_lifetimes_self() };
     let max_expected_lifetime_args = def_generics.len_lifetimes_self();
-    if !(min_expected_lifetime_args..=max_expected_lifetime_args)
-        .contains(&provided_lifetimes_count)
+    let min_expected_lifetime_args = if infer_lifetimes { 0 } else { max_expected_lifetime_args };
+    if provided_lifetimes_count < min_expected_lifetime_args
+        || max_expected_lifetime_args < provided_lifetimes_count
     {
         ctx.report_len_mismatch(
             def,
             provided_lifetimes_count as u32,
-            def_generics.len_lifetimes_self() as u32,
+            max_expected_lifetime_args as u32,
             IncorrectGenericsLenKind::Lifetimes,
         );
         had_error = true;
@@ -950,10 +950,12 @@ fn check_generic_args_len(
             TypeOrConstParamData::ConstParamData(_) => true,
         })
         .count();
+    let expected_max = named_type_and_const_params_count;
     let expected_min =
         if infer_args { 0 } else { named_type_and_const_params_count - defaults_count };
-    let expected_max = named_type_and_const_params_count;
-    if !(expected_min..=expected_max).contains(&provided_types_and_consts_count) {
+    if provided_types_and_consts_count < expected_min
+        || expected_max < provided_types_and_consts_count
+    {
         ctx.report_len_mismatch(
             def,
             provided_types_and_consts_count as u32,
