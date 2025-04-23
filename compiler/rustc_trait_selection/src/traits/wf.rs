@@ -1,3 +1,8 @@
+//! Core logic responsible for determining what it means for various type system
+//! primitives to be "well formed". Actually checking whether these primitives are
+//! well formed is performed elsewhere (e.g. during type checking or item well formedness
+//! checking).
+
 use std::iter;
 
 use rustc_hir as hir;
