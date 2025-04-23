@@ -3566,11 +3566,6 @@ macro_rules! int_impl {
                       without modifying the original"]
         #[inline(always)]
         pub const fn signum(self) -> Self {
-            // Picking the right way to phrase this is complicated
-            // (<https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign>)
-            // so delegate it to `Ord` which is already producing -1/0/+1
-            // exactly like we need and can be the place to deal with the complexity.
-
             crate::intrinsics::three_way_compare(self, 0) as Self
         }
 
