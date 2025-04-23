@@ -43,11 +43,8 @@ use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
 use tracing::debug;
 
-use crate::errors::{
-    self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
-};
+use crate::errors::{self, IncorrectVisibilityRestriction, NonStringAbiLiteral};
 use crate::exp;
-use crate::lexer::UnmatchedDelim;
 
 #[cfg(test)]
 mod tests;
@@ -1743,27 +1740,6 @@ impl<'a> Parser<'a> {
             _ => self.prev_token.span,
         }
     }
-}
-
-pub(crate) fn make_unclosed_delims_error(
-    unmatched: UnmatchedDelim,
-    psess: &ParseSess,
-) -> Option<Diag<'_>> {
-    // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
-    // `unmatched_delims` only for error recovery in the `Parser`.
-    let found_delim = unmatched.found_delim?;
-    let mut spans = vec![unmatched.found_span];
-    if let Some(sp) = unmatched.unclosed_span {
-        spans.push(sp);
-    };
-    let err = psess.dcx().create_err(MismatchedClosingDelimiter {
-        spans,
-        delimiter: pprust::token_kind_to_string(&found_delim.as_close_token_kind()).to_string(),
-        unmatched: unmatched.found_span,
-        opening_candidate: unmatched.candidate_span,
-        unclosed: unmatched.unclosed_span,
-    });
-    Some(err)
 }
 
 /// A helper struct used when building an `AttrTokenStream` from

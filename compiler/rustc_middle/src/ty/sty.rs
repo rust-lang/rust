@@ -1774,9 +1774,7 @@ impl<'tcx> Ty<'tcx> {
             match pointee_ty.ptr_metadata_ty_or_tail(tcx, |x| x) {
                 Ok(metadata_ty) => metadata_ty,
                 Err(tail_ty) => {
-                    let Some(metadata_def_id) = tcx.lang_items().metadata_type() else {
-                        bug!("No metadata_type lang item while looking at {self:?}")
-                    };
+                    let metadata_def_id = tcx.require_lang_item(LangItem::Metadata, None);
                     Ty::new_projection(tcx, metadata_def_id, [tail_ty])
                 }
             }

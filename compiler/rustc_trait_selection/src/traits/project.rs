@@ -965,36 +965,38 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
                 let tcx = selcx.tcx();
-                let lang_items = selcx.tcx().lang_items();
-                if [
-                    lang_items.coroutine_trait(),
-                    lang_items.future_trait(),
-                    lang_items.iterator_trait(),
-                    lang_items.async_iterator_trait(),
-                    lang_items.fn_trait(),
-                    lang_items.fn_mut_trait(),
-                    lang_items.fn_once_trait(),
-                    lang_items.async_fn_trait(),
-                    lang_items.async_fn_mut_trait(),
-                    lang_items.async_fn_once_trait(),
-                ]
-                .contains(&Some(trait_ref.def_id))
-                {
-                    true
-                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncFnKindHelper) {
-                    // FIXME(async_closures): Validity constraints here could be cleaned up.
-                    if obligation.predicate.args.type_at(0).is_ty_var()
-                        || obligation.predicate.args.type_at(4).is_ty_var()
-                        || obligation.predicate.args.type_at(5).is_ty_var()
-                    {
-                        candidate_set.mark_ambiguous();
-                        true
-                    } else {
-                        obligation.predicate.args.type_at(0).to_opt_closure_kind().is_some()
-                            && obligation.predicate.args.type_at(1).to_opt_closure_kind().is_some()
+                match selcx.tcx().as_lang_item(trait_ref.def_id) {
+                    Some(
+                        LangItem::Coroutine
+                        | LangItem::Future
+                        | LangItem::Iterator
+                        | LangItem::AsyncIterator
+                        | LangItem::Fn
+                        | LangItem::FnMut
+                        | LangItem::FnOnce
+                        | LangItem::AsyncFn
+                        | LangItem::AsyncFnMut
+                        | LangItem::AsyncFnOnce,
+                    ) => true,
+                    Some(LangItem::AsyncFnKindHelper) => {
+                        // FIXME(async_closures): Validity constraints here could be cleaned up.
+                        if obligation.predicate.args.type_at(0).is_ty_var()
+                            || obligation.predicate.args.type_at(4).is_ty_var()
+                            || obligation.predicate.args.type_at(5).is_ty_var()
+                        {
+                            candidate_set.mark_ambiguous();
+                            true
+                        } else {
+                            obligation.predicate.args.type_at(0).to_opt_closure_kind().is_some()
+                                && obligation
+                                    .predicate
+                                    .args
+                                    .type_at(1)
+                                    .to_opt_closure_kind()
+                                    .is_some()
+                        }
                     }
-                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::DiscriminantKind) {
-                    match self_ty.kind() {
+                    Some(LangItem::DiscriminantKind) => match self_ty.kind() {
                         ty::Bool
                         | ty::Char
                         | ty::Int(_)
@@ -1031,9 +1033,8 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Placeholder(..)
                         | ty::Infer(..)
                         | ty::Error(_) => false,
-                    }
-                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::AsyncDestruct) {
-                    match self_ty.kind() {
+                    },
+                    Some(LangItem::AsyncDestruct) => match self_ty.kind() {
                         ty::Bool
                         | ty::Char
                         | ty::Int(_)
@@ -1068,101 +1069,104 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                         | ty::Placeholder(..)
                         | ty::Infer(_)
                         | ty::Error(_) => false,
-                    }
-                } else if tcx.is_lang_item(trait_ref.def_id, LangItem::PointeeTrait) {
-                    let tail = selcx.tcx().struct_tail_raw(
-                        self_ty,
-                        |ty| {
-                            // We throw away any obligations we get from this, since we normalize
-                            // and confirm these obligations once again during confirmation
-                            normalize_with_depth(
-                                selcx,
-                                obligation.param_env,
-                                obligation.cause.clone(),
-                                obligation.recursion_depth + 1,
-                                ty,
-                            )
-                            .value
-                        },
-                        || {},
-                    );
+                    },
+                    Some(LangItem::PointeeTrait) => {
+                        let tail = selcx.tcx().struct_tail_raw(
+                            self_ty,
+                            |ty| {
+                                // We throw away any obligations we get from this, since we normalize
+                                // and confirm these obligations once again during confirmation
+                                normalize_with_depth(
+                                    selcx,
+                                    obligation.param_env,
+                                    obligation.cause.clone(),
+                                    obligation.recursion_depth + 1,
+                                    ty,
+                                )
+                                .value
+                            },
+                            || {},
+                        );
 
-                    match tail.kind() {
-                        ty::Bool
-                        | ty::Char
-                        | ty::Int(_)
-                        | ty::Uint(_)
-                        | ty::Float(_)
-                        | ty::Str
-                        | ty::Array(..)
-                        | ty::Pat(..)
-                        | ty::Slice(_)
-                        | ty::RawPtr(..)
-                        | ty::Ref(..)
-                        | ty::FnDef(..)
-                        | ty::FnPtr(..)
-                        | ty::Dynamic(..)
-                        | ty::Closure(..)
-                        | ty::CoroutineClosure(..)
-                        | ty::Coroutine(..)
-                        | ty::CoroutineWitness(..)
-                        | ty::Never
-                        // Extern types have unit metadata, according to RFC 2850
-                        | ty::Foreign(_)
-                        // If returned by `struct_tail` this is a unit struct
-                        // without any fields, or not a struct, and therefore is Sized.
-                        | ty::Adt(..)
-                        // If returned by `struct_tail` this is the empty tuple.
-                        | ty::Tuple(..)
-                        // Integers and floats are always Sized, and so have unit type metadata.
-                        | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..))
-                        // This happens if we reach the recursion limit when finding the struct tail.
-                        | ty::Error(..) => true,
+                        match tail.kind() {
+                            ty::Bool
+                            | ty::Char
+                            | ty::Int(_)
+                            | ty::Uint(_)
+                            | ty::Float(_)
+                            | ty::Str
+                            | ty::Array(..)
+                            | ty::Pat(..)
+                            | ty::Slice(_)
+                            | ty::RawPtr(..)
+                            | ty::Ref(..)
+                            | ty::FnDef(..)
+                            | ty::FnPtr(..)
+                            | ty::Dynamic(..)
+                            | ty::Closure(..)
+                            | ty::CoroutineClosure(..)
+                            | ty::Coroutine(..)
+                            | ty::CoroutineWitness(..)
+                            | ty::Never
+                            // Extern types have unit metadata, according to RFC 2850
+                            | ty::Foreign(_)
+                            // If returned by `struct_tail` this is a unit struct
+                            // without any fields, or not a struct, and therefore is Sized.
+                            | ty::Adt(..)
+                            // If returned by `struct_tail` this is the empty tuple.
+                            | ty::Tuple(..)
+                            // Integers and floats are always Sized, and so have unit type metadata.
+                            | ty::Infer(ty::InferTy::IntVar(_) | ty::InferTy::FloatVar(..))
+                            // This happens if we reach the recursion limit when finding the struct tail.
+                            | ty::Error(..) => true,
 
-                        // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata` if able.
-                        // Otherwise, type parameters, opaques, and unnormalized projections have
-                        // unit metadata if they're known (e.g. by the param_env) to be sized.
-                        ty::Param(_) | ty::Alias(..)
-                            if self_ty != tail
-                                || selcx.infcx.predicate_must_hold_modulo_regions(
-                                    &obligation.with(
-                                        selcx.tcx(),
-                                        ty::TraitRef::new(
+                            // We normalize from `Wrapper<Tail>::Metadata` to `Tail::Metadata` if able.
+                            // Otherwise, type parameters, opaques, and unnormalized projections have
+                            // unit metadata if they're known (e.g. by the param_env) to be sized.
+                            ty::Param(_) | ty::Alias(..)
+                                if self_ty != tail
+                                    || selcx.infcx.predicate_must_hold_modulo_regions(
+                                        &obligation.with(
                                             selcx.tcx(),
-                                            selcx.tcx().require_lang_item(
-                                                LangItem::Sized,
-                                                Some(obligation.cause.span),
+                                            ty::TraitRef::new(
+                                                selcx.tcx(),
+                                                selcx.tcx().require_lang_item(
+                                                    LangItem::Sized,
+                                                    Some(obligation.cause.span),
+                                                ),
+                                                [self_ty],
                                             ),
-                                            [self_ty],
                                         ),
-                                    ),
-                                ) =>
-                        {
-                            true
-                        }
-
-                        ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
-
-                        // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
-                        ty::Param(_)
-                        | ty::Alias(..)
-                        | ty::Bound(..)
-                        | ty::Placeholder(..)
-                        | ty::Infer(..) => {
-                            if tail.has_infer_types() {
-                                candidate_set.mark_ambiguous();
+                                    ) =>
+                            {
+                                true
                             }
-                            false
+
+                            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+
+                            // FIXME(compiler-errors): are Bound and Placeholder types ever known sized?
+                            ty::Param(_)
+                            | ty::Alias(..)
+                            | ty::Bound(..)
+                            | ty::Placeholder(..)
+                            | ty::Infer(..) => {
+                                if tail.has_infer_types() {
+                                    candidate_set.mark_ambiguous();
+                                }
+                                false
+                            }
                         }
                     }
-                } else if tcx.trait_is_auto(trait_ref.def_id) {
-                    tcx.dcx().span_delayed_bug(
-                        tcx.def_span(obligation.predicate.def_id),
-                        "associated types not allowed on auto traits",
-                    );
-                    false
-                } else {
-                    bug!("unexpected builtin trait with associated type: {trait_ref:?}")
+                    _ if tcx.trait_is_auto(trait_ref.def_id) => {
+                        tcx.dcx().span_delayed_bug(
+                            tcx.def_span(obligation.predicate.def_id),
+                            "associated types not allowed on auto traits",
+                        );
+                        false
+                    }
+                    _ => {
+                        bug!("unexpected builtin trait with associated type: {trait_ref:?}")
+                    }
                 }
             }
             ImplSource::Param(..) => {

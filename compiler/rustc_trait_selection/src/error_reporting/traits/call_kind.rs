@@ -81,9 +81,7 @@ pub fn call_kind<'tcx>(
         }
     });
 
-    let fn_call = parent.and_then(|p| {
-        lang_items::FN_TRAITS.iter().filter_map(|&l| tcx.lang_items().get(l)).find(|&id| id == p)
-    });
+    let fn_call = parent.filter(|&p| tcx.fn_trait_kind_from_def_id(p).is_some());
 
     let operator = if !from_hir_call && let Some(p) = parent {
         lang_items::OPERATORS.iter().filter_map(|&l| tcx.lang_items().get(l)).find(|&id| id == p)

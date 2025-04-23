@@ -2,8 +2,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_errors::DiagMessage;
-use rustc_hir::{self as hir};
-use rustc_middle::bug;
+use rustc_hir::{self as hir, LangItem};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
@@ -173,23 +172,22 @@ pub(crate) fn check_intrinsic_type(
         ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
     ]);
     let mk_va_list_ty = |mutbl| {
-        tcx.lang_items().va_list().map(|did| {
-            let region = ty::Region::new_bound(
-                tcx,
-                ty::INNERMOST,
-                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
-            );
-            let env_region = ty::Region::new_bound(
-                tcx,
-                ty::INNERMOST,
-                ty::BoundRegion {
-                    var: ty::BoundVar::from_u32(2),
-                    kind: ty::BoundRegionKind::ClosureEnv,
-                },
-            );
-            let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
-            (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
-        })
+        let did = tcx.require_lang_item(LangItem::VaList, Some(span));
+        let region = ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
+        );
+        let env_region = ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion {
+                var: ty::BoundVar::from_u32(2),
+                kind: ty::BoundRegionKind::ClosureEnv,
+            },
+        );
+        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
+        (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
     let (n_tps, n_lts, n_cts, inputs, output, safety) = if name_str.starts_with("atomic_") {
@@ -548,23 +546,17 @@ pub(crate) fn check_intrinsic_type(
                 )
             }
 
-            sym::va_start | sym::va_end => match mk_va_list_ty(hir::Mutability::Mut) {
-                Some((va_list_ref_ty, _)) => (0, 0, vec![va_list_ref_ty], tcx.types.unit),
-                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
-            },
+            sym::va_start | sym::va_end => {
+                (0, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], tcx.types.unit)
+            }
 
-            sym::va_copy => match mk_va_list_ty(hir::Mutability::Not) {
-                Some((va_list_ref_ty, va_list_ty)) => {
-                    let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
-                    (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.types.unit)
-                }
-                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
-            },
+            sym::va_copy => {
+                let (va_list_ref_ty, va_list_ty) = mk_va_list_ty(hir::Mutability::Not);
+                let va_list_ptr_ty = Ty::new_mut_ptr(tcx, va_list_ty);
+                (0, 0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.types.unit)
+            }
 
-            sym::va_arg => match mk_va_list_ty(hir::Mutability::Mut) {
-                Some((va_list_ref_ty, _)) => (1, 0, vec![va_list_ref_ty], param(0)),
-                None => bug!("`va_list` lang item needed for C-variadic intrinsics"),
-            },
+            sym::va_arg => (1, 0, vec![mk_va_list_ty(hir::Mutability::Mut).0], param(0)),
 
             sym::nontemporal_store => {
                 (1, 0, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], tcx.types.unit)
