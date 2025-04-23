@@ -142,6 +142,7 @@ pub trait SpanRangeExt: SpanRange {
         map_range(cx.sess().source_map(), self.into_range(), f)
     }
 
+    #[allow(rustdoc::invalid_rust_codeblocks, reason = "The codeblock is intentionally broken")]
     /// Extends the range to include all preceding whitespace characters, unless there
     /// are non-whitespace characters left on the same line after `self`.
     ///
