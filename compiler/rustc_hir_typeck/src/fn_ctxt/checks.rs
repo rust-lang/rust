@@ -2105,15 +2105,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match *qpath {
             QPath::Resolved(ref maybe_qself, path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.lower_ty(qself).raw);
-                let ty = self.lowerer().lower_path(self_ty, path, hir_id, true);
+                let ty = self.lowerer().lower_resolved_ty_path(self_ty, path, hir_id, true);
                 (path.res, LoweredTy::from_raw(self, path_span, ty))
             }
-            QPath::TypeRelative(qself, segment) => {
-                let ty = self.lower_ty(qself);
+            QPath::TypeRelative(hir_self_ty, segment) => {
+                let self_ty = self.lower_ty(hir_self_ty);
 
-                let result = self
-                    .lowerer()
-                    .lower_assoc_path_ty(hir_id, path_span, ty.raw, qself, segment, true);
+                let result = self.lowerer().lower_type_relative_ty_path(
+                    self_ty.raw,
+                    hir_self_ty,
+                    segment,
+                    hir_id,
+                    path_span,
+                    true,
+                );
                 let ty = result
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));

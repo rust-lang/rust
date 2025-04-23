@@ -737,7 +737,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     /// Perform type-dependent lookup for a *method* for return type notation.
-    /// This generally mirrors `<dyn HirTyLowerer>::lower_assoc_path`.
+    /// This generally mirrors `<dyn HirTyLowerer>::lower_type_relative_path`.
     fn resolve_type_relative_return_type_notation(
         &self,
         qself: &'tcx hir::Ty<'tcx>,
