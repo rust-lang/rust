@@ -885,12 +885,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 CrateDepKind::MacrosOnly => CrateDepKind::MacrosOnly,
                 _ => dep.kind,
             };
-            let cnum =
-                self.maybe_resolve_crate(dep.name, dep_kind, CrateOrigin::IndirectDependency {
+            let cnum = self.maybe_resolve_crate(
+                dep.name,
+                dep_kind,
+                CrateOrigin::IndirectDependency {
                     dep_root,
                     parent_private: parent_is_private,
                     dep: &dep,
-                })?;
+                },
+            )?;
             crate_num_map.push(cnum);
         }
 
@@ -1330,12 +1333,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 let cnum = self.resolve_crate(name, item.span, dep_kind, CrateOrigin::Extern)?;
 
                 let path_len = definitions.def_path(def_id).data.len();
-                self.cstore.update_extern_crate(cnum, ExternCrate {
-                    src: ExternCrateSource::Extern(def_id.to_def_id()),
-                    span: item.span,
-                    path_len,
-                    dependency_of: LOCAL_CRATE,
-                });
+                self.cstore.update_extern_crate(
+                    cnum,
+                    ExternCrate {
+                        src: ExternCrateSource::Extern(def_id.to_def_id()),
+                        span: item.span,
+                        path_len,
+                        dependency_of: LOCAL_CRATE,
+                    },
+                );
                 Some(cnum)
             }
             _ => bug!(),
@@ -1345,13 +1351,16 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     pub fn process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
         let cnum = self.resolve_crate(name, span, CrateDepKind::Explicit, CrateOrigin::Extern)?;
 
-        self.cstore.update_extern_crate(cnum, ExternCrate {
-            src: ExternCrateSource::Path,
-            span,
-            // to have the least priority in `update_extern_crate`
-            path_len: usize::MAX,
-            dependency_of: LOCAL_CRATE,
-        });
+        self.cstore.update_extern_crate(
+            cnum,
+            ExternCrate {
+                src: ExternCrateSource::Path,
+                span,
+                // to have the least priority in `update_extern_crate`
+                path_len: usize::MAX,
+                dependency_of: LOCAL_CRATE,
+            },
+        );
 
         Some(cnum)
     }
