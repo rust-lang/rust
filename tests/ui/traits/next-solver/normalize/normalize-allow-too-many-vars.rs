@@ -1,4 +1,5 @@
 //@ check-pass
+//@ compile-flags: -Znext-solver
 
 // When canonicalizing a response in the trait solver, we bail with overflow
 // if there are too many non-region inference variables. Doing so in normalizes-to
