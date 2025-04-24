@@ -27,10 +27,10 @@ use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for expressions that could be replaced by the question mark operator.
+    /// Checks for expressions that could be replaced by the `?` operator.
     ///
     /// ### Why is this bad?
-    /// Question mark usage is more idiomatic.
+    /// Using the `?` operator is shorter and more idiomatic.
     ///
     /// ### Example
     /// ```ignore
@@ -47,7 +47,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub QUESTION_MARK,
     style,
-    "checks for expressions that could be replaced by the question mark operator"
+    "checks for expressions that could be replaced by the `?` operator"
 }
 
 pub struct QuestionMark {
@@ -280,7 +280,7 @@ fn expr_return_none_or_err(
 /// }
 /// ```
 ///
-/// If it matches, it will suggest to use the question mark operator instead
+/// If it matches, it will suggest to use the `?` operator instead
 fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
         && !is_else_clause(cx.tcx, expr)
