@@ -1,9 +1,9 @@
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{env, iter, thread};
-use std::num::NonZero;
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -249,7 +249,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     rustc_span::create_session_globals_then(edition, extra_symbols, Some(sm_inputs), || {
         rustc_span::with_session_globals(|session_globals| {
             let session_globals = FromDyn::from(session_globals);
-            chili::ThreadPool::scoped_with_config(
+            chili::ThreadPool::scoped_global(
                 config,
                 // Initialize each new worker thread when created.
                 move |thread: chili::ThreadBuilder| {
@@ -261,7 +261,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                     })
                 },
                 // Run `f` on the first thread in the thread pool.
-                move |pool: &chili::ThreadPool| pool.scope().install(|_| f(current_gcx.into_inner())),
+                move || chili::Scope::global().install(|_| f(current_gcx.into_inner())),
             )
             .unwrap()
         })
