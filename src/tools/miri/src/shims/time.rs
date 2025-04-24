@@ -191,10 +191,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 tm_zone.push('+');
             }
             let offset_hour = offset_in_seconds.abs() / 3600;
-            write!(tm_zone, "{:02}", offset_hour).unwrap();
+            write!(tm_zone, "{offset_hour:02}").unwrap();
             let offset_min = (offset_in_seconds.abs() % 3600) / 60;
             if offset_min != 0 {
-                write!(tm_zone, "{:02}", offset_min).unwrap();
+                write!(tm_zone, "{offset_min:02}").unwrap();
             }
 
             // Add null terminator for C string compatibility.
