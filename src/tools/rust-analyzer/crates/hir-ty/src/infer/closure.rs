@@ -440,6 +440,8 @@ impl InferenceContext<'_> {
         // collect explicitly written argument types
         for arg_type in arg_types.iter() {
             let arg_ty = match arg_type {
+                // FIXME: I think rustc actually lowers closure params with `LifetimeElisionKind::AnonymousCreateParameter`
+                // (but the return type with infer).
                 Some(type_ref) => self.make_body_ty(*type_ref),
                 None => self.table.new_type_var(),
             };

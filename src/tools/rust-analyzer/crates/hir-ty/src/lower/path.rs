@@ -27,8 +27,8 @@ use crate::{
     db::HirDatabase,
     error_lifetime,
     generics::{Generics, generics},
-    lower::{GenericArgsPosition, named_associated_type_shorthand_candidates},
-    to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
+    lower::{LifetimeElisionKind, named_associated_type_shorthand_candidates},
+    static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
     utils::associated_type_by_name_including_super_traits,
 };
 
@@ -52,7 +52,6 @@ pub(crate) struct PathLoweringContext<'a, 'b> {
     current_segment_idx: usize,
     /// Contains the previous segment if `current_segment_idx == segments.len()`
     current_or_prev_segment: PathSegment<'a>,
-    position: GenericArgsPosition,
 }
 
 impl<'a, 'b> PathLoweringContext<'a, 'b> {
@@ -61,7 +60,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         ctx: &'a mut TyLoweringContext<'b>,
         on_diagnostic: PathDiagnosticCallback<'a>,
         path: &'a Path,
-        position: GenericArgsPosition,
     ) -> Self {
         let segments = path.segments();
         let first_segment = segments.first().unwrap_or(PathSegment::MISSING);
@@ -72,7 +70,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             segments,
             current_segment_idx: 0,
             current_or_prev_segment: first_segment,
-            position,
         }
     }
 
@@ -122,6 +119,19 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             .expect("invalid segment passed to PathLoweringContext::set_current_segment()");
     }
 
+    #[inline]
+    fn with_lifetime_elision<T>(
+        &mut self,
+        lifetime_elision: LifetimeElisionKind,
+        f: impl FnOnce(&mut PathLoweringContext<'_, '_>) -> T,
+    ) -> T {
+        let old_lifetime_elision =
+            std::mem::replace(&mut self.ctx.lifetime_elision, lifetime_elision);
+        let result = f(self);
+        self.ctx.lifetime_elision = old_lifetime_elision;
+        result
+    }
+
     pub(crate) fn lower_ty_relative_path(
         &mut self,
         ty: Ty,
@@ -139,22 +149,6 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 (TyKind::Error.intern(Interner), None)
             }
         }
-    }
-
-    fn prohibit_parenthesized_generic_args(&mut self) -> bool {
-        if let Some(generic_args) = self.current_or_prev_segment.args_and_bindings {
-            match generic_args.parenthesized {
-                GenericArgsParentheses::No => {}
-                GenericArgsParentheses::ReturnTypeNotation | GenericArgsParentheses::ParenSugar => {
-                    let segment = self.current_segment_u32();
-                    self.on_diagnostic(
-                        PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
-                    );
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     // When calling this, the current segment is the resolved segment (we don't advance it yet).
@@ -189,6 +183,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                                     associated_ty.into(),
                                     false,
                                     None,
+                                    true,
                                 );
                                 let substitution = Substitution::from_iter(
                                     Interner,
@@ -511,7 +506,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 // generic params. It's inefficient to splice the `Substitution`s, so we may want
                 // that method to optionally take parent `Substitution` as we already know them at
                 // this point (`t.substitution`).
-                let substs = self.substs_from_path_segment(associated_ty.into(), false, None);
+                let substs = self.substs_from_path_segment(associated_ty.into(), false, None, true);
 
                 let substs = Substitution::from_iter(
                     Interner,
@@ -539,7 +534,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             TyDefId::AdtId(it) => it.into(),
             TyDefId::TypeAliasId(it) => it.into(),
         };
-        let substs = self.substs_from_path_segment(generic_def, infer_args, None);
+        let substs = self.substs_from_path_segment(generic_def, infer_args, None, false);
         self.ctx.db.ty(typeable).substitute(Interner, &substs)
     }
 
@@ -552,6 +547,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         // special-case enum variants
         resolved: ValueTyDefId,
         infer_args: bool,
+        lowering_assoc_type_generics: bool,
     ) -> Substitution {
         let prev_current_segment_idx = self.current_segment_idx;
         let prev_current_segment = self.current_or_prev_segment;
@@ -588,7 +584,12 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 var.lookup(self.ctx.db).parent.into()
             }
         };
-        let result = self.substs_from_path_segment(generic_def, infer_args, None);
+        let result = self.substs_from_path_segment(
+            generic_def,
+            infer_args,
+            None,
+            lowering_assoc_type_generics,
+        );
         self.current_segment_idx = prev_current_segment_idx;
         self.current_or_prev_segment = prev_current_segment;
         result
@@ -599,26 +600,41 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         def: GenericDefId,
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
+        lowering_assoc_type_generics: bool,
     ) -> Substitution {
-        let prohibit_parens = match def {
-            GenericDefId::TraitId(trait_) => {
-                // RTN is prohibited anyways if we got here.
-                let is_rtn =
-                    self.current_or_prev_segment.args_and_bindings.is_some_and(|generics| {
-                        generics.parenthesized == GenericArgsParentheses::ReturnTypeNotation
-                    });
-                let is_fn_trait = !self
-                    .ctx
-                    .db
-                    .trait_signature(trait_)
-                    .flags
-                    .contains(TraitFlags::RUSTC_PAREN_SUGAR);
-                is_rtn || is_fn_trait
+        let mut lifetime_elision = self.ctx.lifetime_elision.clone();
+
+        if let Some(args) = self.current_or_prev_segment.args_and_bindings {
+            if args.parenthesized != GenericArgsParentheses::No {
+                let prohibit_parens = match def {
+                    GenericDefId::TraitId(trait_) => {
+                        // RTN is prohibited anyways if we got here.
+                        let is_rtn =
+                            args.parenthesized == GenericArgsParentheses::ReturnTypeNotation;
+                        let is_fn_trait = self
+                            .ctx
+                            .db
+                            .trait_signature(trait_)
+                            .flags
+                            .contains(TraitFlags::RUSTC_PAREN_SUGAR);
+                        is_rtn || !is_fn_trait
+                    }
+                    _ => true,
+                };
+
+                if prohibit_parens {
+                    let segment = self.current_segment_u32();
+                    self.on_diagnostic(
+                        PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
+                    );
+
+                    return TyBuilder::unknown_subst(self.ctx.db, def);
+                }
+
+                // `Fn()`-style generics are treated like functions for the purpose of lifetime elision.
+                lifetime_elision =
+                    LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false };
             }
-            _ => true,
-        };
-        if prohibit_parens && self.prohibit_parenthesized_generic_args() {
-            return TyBuilder::unknown_subst(self.ctx.db, def);
         }
 
         self.substs_from_args_and_bindings(
@@ -627,6 +643,8 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             infer_args,
             explicit_self_ty,
             PathGenericsSource::Segment(self.current_segment_u32()),
+            lowering_assoc_type_generics,
+            lifetime_elision,
         )
     }
 
@@ -637,6 +655,8 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
         generics_source: PathGenericsSource,
+        lowering_assoc_type_generics: bool,
+        lifetime_elision: LifetimeElisionKind,
     ) -> Substitution {
         struct LowererCtx<'a, 'b, 'c> {
             ctx: &'a mut PathLoweringContext<'b, 'c>,
@@ -761,6 +781,36 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     GenericParamId::LifetimeParamId(_) => error_lifetime().cast(Interner),
                 }
             }
+
+            fn report_elided_lifetimes_in_path(
+                &mut self,
+                def: GenericDefId,
+                expected_count: u32,
+                hard_error: bool,
+            ) {
+                self.ctx.on_diagnostic(PathLoweringDiagnostic::ElidedLifetimesInPath {
+                    generics_source: self.generics_source,
+                    def,
+                    expected_count,
+                    hard_error,
+                });
+            }
+
+            fn report_elision_failure(&mut self, def: GenericDefId, expected_count: u32) {
+                self.ctx.on_diagnostic(PathLoweringDiagnostic::ElisionFailure {
+                    generics_source: self.generics_source,
+                    def,
+                    expected_count,
+                });
+            }
+
+            fn report_missing_lifetime(&mut self, def: GenericDefId, expected_count: u32) {
+                self.ctx.on_diagnostic(PathLoweringDiagnostic::MissingLifetime {
+                    generics_source: self.generics_source,
+                    def,
+                    expected_count,
+                });
+            }
         }
 
         substs_from_args_and_bindings(
@@ -769,7 +819,8 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             args_and_bindings,
             def,
             infer_args,
-            self.position,
+            lifetime_elision,
+            lowering_assoc_type_generics,
             explicit_self_ty,
             &mut LowererCtx { ctx: self, generics_source },
         )
@@ -789,7 +840,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         resolved: TraitId,
         explicit_self_ty: Ty,
     ) -> Substitution {
-        self.substs_from_path_segment(resolved.into(), false, Some(explicit_self_ty))
+        self.substs_from_path_segment(resolved.into(), false, Some(explicit_self_ty), false)
     }
 
     pub(super) fn assoc_type_bindings_from_type_bound<'c>(
@@ -807,20 +858,25 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                     None => return SmallVec::new(),
                     Some(t) => t,
                 };
-                // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
-                // generic params. It's inefficient to splice the `Substitution`s, so we may want
-                // that method to optionally take parent `Substitution` as we already know them at
-                // this point (`super_trait_ref.substitution`).
-                let substitution = self.substs_from_args_and_bindings(
-                    binding.args.as_ref(),
-                    associated_ty.into(),
-                    false, // this is not relevant
-                    Some(super_trait_ref.self_type_parameter(Interner)),
-                    PathGenericsSource::AssocType {
-                        segment: self.current_segment_u32(),
-                        assoc_type: binding_idx as u32,
-                    },
-                );
+                let substitution =
+                    self.with_lifetime_elision(LifetimeElisionKind::AnonymousReportError, |this| {
+                        // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
+                        // generic params. It's inefficient to splice the `Substitution`s, so we may want
+                        // that method to optionally take parent `Substitution` as we already know them at
+                        // this point (`super_trait_ref.substitution`).
+                        this.substs_from_args_and_bindings(
+                            binding.args.as_ref(),
+                            associated_ty.into(),
+                            false, // this is not relevant
+                            Some(super_trait_ref.self_type_parameter(Interner)),
+                            PathGenericsSource::AssocType {
+                                segment: this.current_segment_u32(),
+                                assoc_type: binding_idx as u32,
+                            },
+                            false,
+                            this.ctx.lifetime_elision.clone(),
+                        )
+                    });
                 let substitution = Substitution::from_iter(
                     Interner,
                     super_trait_ref.substitution.iter(Interner).chain(
@@ -836,25 +892,48 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 let mut predicates: SmallVec<[_; 1]> = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
                 );
+
                 if let Some(type_ref) = binding.type_ref {
-                    match (&self.ctx.store[type_ref], self.ctx.impl_trait_mode.mode) {
-                        (TypeRef::ImplTrait(_), ImplTraitLoweringMode::Disallowed) => (),
-                        (_, ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque) => {
-                            let ty = self.ctx.lower_ty(type_ref);
-                            let alias_eq =
-                                AliasEq { alias: AliasTy::Projection(projection_ty.clone()), ty };
-                            predicates
-                                .push(crate::wrap_empty_binders(WhereClause::AliasEq(alias_eq)));
+                    let lifetime_elision =
+                        if args_and_bindings.parenthesized == GenericArgsParentheses::ParenSugar {
+                            // `Fn()`-style generics are elided like functions. This is `Output` (we lower to it in hir-def).
+                            LifetimeElisionKind::for_fn_ret()
+                        } else {
+                            self.ctx.lifetime_elision.clone()
+                        };
+                    self.with_lifetime_elision(lifetime_elision, |this| {
+                        match (&this.ctx.store[type_ref], this.ctx.impl_trait_mode.mode) {
+                            (TypeRef::ImplTrait(_), ImplTraitLoweringMode::Disallowed) => (),
+                            (
+                                _,
+                                ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque,
+                            ) => {
+                                let ty = this.ctx.lower_ty(type_ref);
+                                let alias_eq = AliasEq {
+                                    alias: AliasTy::Projection(projection_ty.clone()),
+                                    ty,
+                                };
+                                predicates.push(crate::wrap_empty_binders(WhereClause::AliasEq(
+                                    alias_eq,
+                                )));
+                            }
                         }
+                    });
+                }
+
+                self.with_lifetime_elision(LifetimeElisionKind::AnonymousReportError, |this| {
+                    for bound in binding.bounds.iter() {
+                        predicates.extend(
+                            this.ctx.lower_type_bound(
+                                bound,
+                                TyKind::Alias(AliasTy::Projection(projection_ty.clone()))
+                                    .intern(Interner),
+                                false,
+                            ),
+                        );
                     }
-                }
-                for bound in binding.bounds.iter() {
-                    predicates.extend(self.ctx.lower_type_bound(
-                        bound,
-                        TyKind::Alias(AliasTy::Projection(projection_ty.clone())).intern(Interner),
-                        false,
-                    ));
-                }
+                });
+
                 predicates
             })
         })
@@ -868,6 +947,17 @@ pub(crate) enum TypeLikeConst<'a> {
 }
 
 pub(crate) trait GenericArgsLowerer {
+    fn report_elided_lifetimes_in_path(
+        &mut self,
+        def: GenericDefId,
+        expected_count: u32,
+        hard_error: bool,
+    );
+
+    fn report_elision_failure(&mut self, def: GenericDefId, expected_count: u32);
+
+    fn report_missing_lifetime(&mut self, def: GenericDefId, expected_count: u32);
+
     fn report_len_mismatch(
         &mut self,
         def: GenericDefId,
@@ -905,7 +995,8 @@ fn check_generic_args_len(
     def: GenericDefId,
     def_generics: &Generics,
     infer_args: bool,
-    position: GenericArgsPosition,
+    lifetime_elision: &LifetimeElisionKind,
+    lowering_assoc_type_generics: bool,
     ctx: &mut impl GenericArgsLowerer,
 ) -> bool {
     let mut had_error = false;
@@ -921,19 +1012,37 @@ fn check_generic_args_len(
         }
     }
 
-    // FIXME: Function signature lifetime elision has to be considered here once we have it
-    let infer_lifetimes =
-        position != GenericArgsPosition::OtherSignature && provided_lifetimes_count == 0;
-
-    let max_expected_lifetime_args = def_generics.len_lifetimes_self();
-    let min_expected_lifetime_args = if infer_lifetimes { 0 } else { max_expected_lifetime_args };
-    if provided_lifetimes_count < min_expected_lifetime_args
-        || max_expected_lifetime_args < provided_lifetimes_count
-    {
+    let lifetime_args_len = def_generics.len_lifetimes_self();
+    if provided_lifetimes_count == 0 && lifetime_args_len > 0 && !lowering_assoc_type_generics {
+        // In generic associated types, we never allow inferring the lifetimes.
+        match lifetime_elision {
+            &LifetimeElisionKind::AnonymousCreateParameter { report_in_path } => {
+                ctx.report_elided_lifetimes_in_path(def, lifetime_args_len as u32, report_in_path);
+                had_error |= report_in_path;
+            }
+            LifetimeElisionKind::AnonymousReportError => {
+                ctx.report_missing_lifetime(def, lifetime_args_len as u32);
+                had_error = true
+            }
+            LifetimeElisionKind::ElisionFailure => {
+                ctx.report_elision_failure(def, lifetime_args_len as u32);
+                had_error = true;
+            }
+            LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: _ } => {
+                // FIXME: Check there are other lifetimes in scope, and error/lint.
+            }
+            LifetimeElisionKind::Elided(_) => {
+                ctx.report_elided_lifetimes_in_path(def, lifetime_args_len as u32, false);
+            }
+            LifetimeElisionKind::Infer => {
+                // Allow eliding lifetimes.
+            }
+        }
+    } else if lifetime_args_len != provided_lifetimes_count {
         ctx.report_len_mismatch(
             def,
             provided_lifetimes_count as u32,
-            max_expected_lifetime_args as u32,
+            lifetime_args_len as u32,
             IncorrectGenericsLenKind::Lifetimes,
         );
         had_error = true;
@@ -974,7 +1083,8 @@ pub(crate) fn substs_from_args_and_bindings(
     args_and_bindings: Option<&GenericArgs>,
     def: GenericDefId,
     mut infer_args: bool,
-    position: GenericArgsPosition,
+    lifetime_elision: LifetimeElisionKind,
+    lowering_assoc_type_generics: bool,
     explicit_self_ty: Option<Ty>,
     ctx: &mut impl GenericArgsLowerer,
 ) -> Substitution {
@@ -991,8 +1101,15 @@ pub(crate) fn substs_from_args_and_bindings(
         args_slice.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_)));
     infer_args &= !has_non_lifetime_args;
 
-    let had_count_error =
-        check_generic_args_len(args_and_bindings, def, &def_generics, infer_args, position, ctx);
+    let had_count_error = check_generic_args_len(
+        args_and_bindings,
+        def,
+        &def_generics,
+        infer_args,
+        &lifetime_elision,
+        lowering_assoc_type_generics,
+        ctx,
+    );
 
     let mut substs = Vec::with_capacity(def_generics.len());
 
@@ -1120,7 +1237,29 @@ pub(crate) fn substs_from_args_and_bindings(
 
             (None, Some(&(param_id, param))) => {
                 // If there are fewer arguments than parameters, it means we're inferring the remaining arguments.
-                substs.push(ctx.inferred_kind(def, param_id, param, infer_args, &substs));
+                let param = if let GenericParamId::LifetimeParamId(_) = param_id {
+                    match &lifetime_elision {
+                        LifetimeElisionKind::ElisionFailure
+                        | LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true }
+                        | LifetimeElisionKind::AnonymousReportError => {
+                            assert!(had_count_error);
+                            ctx.inferred_kind(def, param_id, param, infer_args, &substs)
+                        }
+                        LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: _ } => {
+                            static_lifetime().cast(Interner)
+                        }
+                        LifetimeElisionKind::Elided(lifetime) => lifetime.clone().cast(Interner),
+                        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false }
+                        | LifetimeElisionKind::Infer => {
+                            // FIXME: With `AnonymousCreateParameter`, we need to create a new lifetime parameter here
+                            // (but this will probably be done in hir-def lowering instead).
+                            ctx.inferred_kind(def, param_id, param, infer_args, &substs)
+                        }
+                    }
+                } else {
+                    ctx.inferred_kind(def, param_id, param, infer_args, &substs)
+                };
+                substs.push(param);
                 params.next();
             }
 

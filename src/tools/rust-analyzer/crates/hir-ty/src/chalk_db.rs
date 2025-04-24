@@ -27,6 +27,7 @@ use crate::{
     db::{HirDatabase, InternedCoroutine},
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     generics::generics,
+    lower::LifetimeElisionKind,
     make_binders, make_single_type_binders,
     mapping::{ToChalk, TypeAliasAsValue, from_chalk},
     method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TraitImpls, TyFingerprint},
@@ -632,9 +633,14 @@ pub(crate) fn associated_ty_data_query(
     let type_alias_data = db.type_alias_signature(type_alias);
     let generic_params = generics(db, type_alias.into());
     let resolver = hir_def::resolver::HasResolver::resolver(type_alias, db);
-    let mut ctx =
-        crate::TyLoweringContext::new(db, &resolver, &type_alias_data.store, type_alias.into())
-            .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
+    let mut ctx = crate::TyLoweringContext::new(
+        db,
+        &resolver,
+        &type_alias_data.store,
+        type_alias.into(),
+        LifetimeElisionKind::AnonymousReportError,
+    )
+    .with_type_param_mode(crate::lower::ParamLoweringMode::Variable);
 
     let trait_subst = TyBuilder::subst_for_def(db, trait_, None)
         .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, 0)

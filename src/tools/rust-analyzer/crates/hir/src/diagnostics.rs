@@ -118,6 +118,8 @@ diagnostics![
     BadRtn,
     IncorrectGenericsLen,
     IncorrectGenericsOrder,
+    MissingLifetime,
+    ElidedLifetimesInPath,
 ];
 
 #[derive(Debug)]
@@ -438,6 +440,23 @@ pub struct IncorrectGenericsLen {
     pub provided: u32,
     pub expected: u32,
     pub def: GenericDef,
+}
+
+#[derive(Debug)]
+pub struct MissingLifetime {
+    /// Points at the name if there are no generics.
+    pub generics_or_segment: InFile<AstPtr<Either<ast::GenericArgList, ast::NameRef>>>,
+    pub expected: u32,
+    pub def: GenericDef,
+}
+
+#[derive(Debug)]
+pub struct ElidedLifetimesInPath {
+    /// Points at the name if there are no generics.
+    pub generics_or_segment: InFile<AstPtr<Either<ast::GenericArgList, ast::NameRef>>>,
+    pub expected: u32,
+    pub def: GenericDef,
+    pub hard_error: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -860,6 +879,31 @@ impl AnyDiagnostic {
                 let provided_arg = path.with_value(AstPtr::new(&provided_arg));
                 let expected_kind = GenericArgKind::from_id(param_id);
                 IncorrectGenericsOrder { provided_arg, expected_kind }.into()
+            }
+            PathLoweringDiagnostic::MissingLifetime { generics_source, expected_count, def }
+            | PathLoweringDiagnostic::ElisionFailure { generics_source, expected_count, def } => {
+                let generics_or_segment =
+                    path_generics_source_to_ast(&path.value, generics_source)?;
+                let generics_or_segment = path.with_value(AstPtr::new(&generics_or_segment));
+                MissingLifetime { generics_or_segment, expected: expected_count, def: def.into() }
+                    .into()
+            }
+            PathLoweringDiagnostic::ElidedLifetimesInPath {
+                generics_source,
+                expected_count,
+                def,
+                hard_error,
+            } => {
+                let generics_or_segment =
+                    path_generics_source_to_ast(&path.value, generics_source)?;
+                let generics_or_segment = path.with_value(AstPtr::new(&generics_or_segment));
+                ElidedLifetimesInPath {
+                    generics_or_segment,
+                    expected: expected_count,
+                    def: def.into(),
+                    hard_error,
+                }
+                .into()
             }
         })
     }

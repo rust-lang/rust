@@ -37,7 +37,7 @@ use crate::{
     },
     lang_items::lang_items_for_bin_op,
     lower::{
-        GenericArgsPosition, ParamLoweringMode, lower_to_chalk_mutability,
+        LifetimeElisionKind, ParamLoweringMode, lower_to_chalk_mutability,
         path::{GenericArgsLowerer, TypeLikeConst, substs_from_args_and_bindings},
     },
     mapping::{ToChalk, from_chalk},
@@ -2162,6 +2162,23 @@ impl InferenceContext<'_> {
                     }
                 }
             }
+
+            fn report_elided_lifetimes_in_path(
+                &mut self,
+                _def: GenericDefId,
+                _expected_count: u32,
+                _hard_error: bool,
+            ) {
+                unreachable!("we set `LifetimeElisionKind::Infer`")
+            }
+
+            fn report_elision_failure(&mut self, _def: GenericDefId, _expected_count: u32) {
+                unreachable!("we set `LifetimeElisionKind::Infer`")
+            }
+
+            fn report_missing_lifetime(&mut self, _def: GenericDefId, _expected_count: u32) {
+                unreachable!("we set `LifetimeElisionKind::Infer`")
+            }
         }
 
         substs_from_args_and_bindings(
@@ -2170,7 +2187,8 @@ impl InferenceContext<'_> {
             generic_args,
             def,
             true,
-            GenericArgsPosition::MethodCall,
+            LifetimeElisionKind::Infer,
+            false,
             None,
             &mut LowererCtx { ctx: self, expr },
         )

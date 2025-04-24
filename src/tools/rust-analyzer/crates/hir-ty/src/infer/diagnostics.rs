@@ -12,7 +12,7 @@ use hir_def::expr_store::path::Path;
 use hir_def::{hir::ExprOrPatId, resolver::Resolver};
 use la_arena::{Idx, RawIdx};
 
-use crate::lower::GenericArgsPosition;
+use crate::lower::LifetimeElisionKind;
 use crate::{
     InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringContext, TyLoweringDiagnostic,
     db::HirDatabase,
@@ -66,8 +66,13 @@ impl<'a> InferenceTyLoweringContext<'a> {
         diagnostics: &'a Diagnostics,
         source: InferenceTyDiagnosticSource,
         generic_def: GenericDefId,
+        lifetime_elision: LifetimeElisionKind,
     ) -> Self {
-        Self { ctx: TyLoweringContext::new(db, resolver, store, generic_def), diagnostics, source }
+        Self {
+            ctx: TyLoweringContext::new(db, resolver, store, generic_def, lifetime_elision),
+            diagnostics,
+            source,
+        }
     }
 
     #[inline]
@@ -75,7 +80,6 @@ impl<'a> InferenceTyLoweringContext<'a> {
         &'b mut self,
         path: &'b Path,
         node: ExprOrPatId,
-        position: GenericArgsPosition,
     ) -> PathLoweringContext<'b, 'a> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData { diagnostics: self.diagnostics, node }),
@@ -85,14 +89,13 @@ impl<'a> InferenceTyLoweringContext<'a> {
                     .push(InferenceDiagnostic::PathDiagnostic { node: data.node, diag });
             },
         };
-        PathLoweringContext::new(&mut self.ctx, on_diagnostic, path, position)
+        PathLoweringContext::new(&mut self.ctx, on_diagnostic, path)
     }
 
     #[inline]
     pub(super) fn at_path_forget_diagnostics<'b>(
         &'b mut self,
         path: &'b Path,
-        position: GenericArgsPosition,
     ) -> PathLoweringContext<'b, 'a> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData {
@@ -101,7 +104,7 @@ impl<'a> InferenceTyLoweringContext<'a> {
             }),
             callback: |_data, _, _diag| {},
         };
-        PathLoweringContext::new(&mut self.ctx, on_diagnostic, path, position)
+        PathLoweringContext::new(&mut self.ctx, on_diagnostic, path)
     }
 
     #[inline]
