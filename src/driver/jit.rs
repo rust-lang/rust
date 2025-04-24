@@ -84,7 +84,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
 
     tcx.dcx().abort_if_errors();
 
-    jit_module.finalize_definitions();
+    let mut jit_module = jit_module.finalize_definitions();
 
     println!(
         "Rustc codegen cranelift will JIT run the executable, because -Cllvm-args=mode=jit was passed"
@@ -104,7 +104,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_args: Vec<String>) -> ! {
         call_conv: jit_module.target_config().default_call_conv,
     };
     let start_func_id = jit_module.declare_function("main", Linkage::Import, &start_sig).unwrap();
-    let finalized_start: *const u8 = jit_module.module.get_finalized_function(start_func_id);
+    let finalized_start: *const u8 = jit_module.get_finalized_function(start_func_id);
 
     let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
         unsafe { ::std::mem::transmute(finalized_start) };

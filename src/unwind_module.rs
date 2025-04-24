@@ -33,13 +33,10 @@ impl UnwindModule<ObjectModule> {
 
 #[cfg(feature = "jit")]
 impl UnwindModule<cranelift_jit::JITModule> {
-    pub(crate) fn finalize_definitions(&mut self) {
+    pub(crate) fn finalize_definitions(mut self) -> cranelift_jit::JITModule {
         self.module.finalize_definitions().unwrap();
-        let prev_unwind_context = std::mem::replace(
-            &mut self.unwind_context,
-            UnwindContext::new(&mut self.module, false),
-        );
-        unsafe { prev_unwind_context.register_jit(&self.module) };
+        unsafe { self.unwind_context.register_jit(&self.module) };
+        self.module
     }
 }
 
