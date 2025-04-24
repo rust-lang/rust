@@ -172,4 +172,16 @@ fn foo<T: Trait<Assoc<i32> = bool>>() {}
         "#,
         );
     }
+
+    #[test]
+    fn regression_19669() {
+        check_diagnostics(
+            r#"
+//- minicore: from
+fn main() {
+    let _: i32 = Into::into(0);
+}
+"#,
+        );
+    }
 }

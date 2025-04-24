@@ -207,7 +207,7 @@ impl InferenceContext<'_> {
                         (TypeNs::TraitId(trait_), true) => {
                             let self_ty = self.table.new_type_var();
                             let trait_ref =
-                                path_ctx.lower_trait_ref_from_resolved_path(trait_, self_ty);
+                                path_ctx.lower_trait_ref_from_resolved_path(trait_, self_ty, true);
                             drop_ctx(ctx, no_diagnostics);
                             self.resolve_trait_assoc_item(trait_ref, last_segment, id)
                         }

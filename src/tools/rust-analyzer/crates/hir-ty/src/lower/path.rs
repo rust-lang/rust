@@ -166,6 +166,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         let trait_ref = self.lower_trait_ref_from_resolved_path(
                             trait_,
                             TyKind::Error.intern(Interner),
+                            infer_args,
                         );
 
                         self.skip_resolved_segment();
@@ -830,8 +831,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         &mut self,
         resolved: TraitId,
         explicit_self_ty: Ty,
+        infer_args: bool,
     ) -> TraitRef {
-        let substs = self.trait_ref_substs_from_path(resolved, explicit_self_ty);
+        let substs = self.trait_ref_substs_from_path(resolved, explicit_self_ty, infer_args);
         TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
     }
 
@@ -839,8 +841,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         &mut self,
         resolved: TraitId,
         explicit_self_ty: Ty,
+        infer_args: bool,
     ) -> Substitution {
-        self.substs_from_path_segment(resolved.into(), false, Some(explicit_self_ty), false)
+        self.substs_from_path_segment(resolved.into(), infer_args, Some(explicit_self_ty), false)
     }
 
     pub(super) fn assoc_type_bindings_from_type_bound<'c>(

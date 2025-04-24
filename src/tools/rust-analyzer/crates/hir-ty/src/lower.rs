@@ -538,7 +538,7 @@ impl<'a> TyLoweringContext<'a> {
             TypeNs::TraitId(tr) => tr,
             _ => return None,
         };
-        Some((ctx.lower_trait_ref_from_resolved_path(resolved, explicit_self_ty), ctx))
+        Some((ctx.lower_trait_ref_from_resolved_path(resolved, explicit_self_ty, false), ctx))
     }
 
     fn lower_trait_ref(
