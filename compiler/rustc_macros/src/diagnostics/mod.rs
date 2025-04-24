@@ -55,8 +55,7 @@ use synstructure::Structure;
 ///
 /// See rustc dev guide for more examples on using the `#[derive(Diagnostic)]`:
 /// <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html>
-pub(super) fn diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
-    s.underscore_const(true);
+pub(super) fn diagnostic_derive(s: Structure<'_>) -> TokenStream {
     DiagnosticDerive::new(s).into_tokens()
 }
 
@@ -102,8 +101,7 @@ pub(super) fn diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
 ///
 /// See rustc dev guide for more examples on using the `#[derive(LintDiagnostic)]`:
 /// <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#reference>
-pub(super) fn lint_diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
-    s.underscore_const(true);
+pub(super) fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
     LintDiagnosticDerive::new(s).into_tokens()
 }
 
@@ -153,7 +151,6 @@ pub(super) fn lint_diagnostic_derive(mut s: Structure<'_>) -> TokenStream {
 ///
 /// diag.subdiagnostic(RawIdentifierSuggestion { span, applicability, ident });
 /// ```
-pub(super) fn subdiagnostic_derive(mut s: Structure<'_>) -> TokenStream {
-    s.underscore_const(true);
+pub(super) fn subdiagnostic_derive(s: Structure<'_>) -> TokenStream {
     SubdiagnosticDerive::new().into_tokens(s)
 }

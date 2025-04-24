@@ -18,9 +18,10 @@ use rustc_span::def_id::{CrateNum, DefId};
 use scoped_tls::scoped_thread_local;
 use stable_mir::Error;
 use stable_mir::abi::Layout;
+use stable_mir::compiler_interface::SmirInterface;
 use stable_mir::ty::IndexedVal;
 
-use crate::rustc_smir::context::TablesWrapper;
+use crate::rustc_smir::context::SmirCtxt;
 use crate::rustc_smir::{Stable, Tables};
 use crate::stable_mir;
 
@@ -196,12 +197,12 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx, F, T>(tables: &TablesWrapper<'tcx>, f: F) -> T
+pub(crate) fn init<'tcx, F, T>(cx: &SmirCtxt<'tcx>, f: F) -> T
 where
     F: FnOnce() -> T,
 {
     assert!(!TLV.is_set());
-    let ptr = tables as *const _ as *const ();
+    let ptr = cx as *const _ as *const ();
     TLV.set(&Cell::new(ptr), || f())
 }
 
@@ -212,8 +213,8 @@ pub(crate) fn with_tables<R>(f: impl for<'tcx> FnOnce(&mut Tables<'tcx>) -> R) -
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let wrapper = ptr as *const TablesWrapper<'_>;
-        let mut tables = unsafe { (*wrapper).0.borrow_mut() };
+        let context = ptr as *const SmirCtxt<'_>;
+        let mut tables = unsafe { (*context).0.borrow_mut() };
         f(&mut *tables)
     })
 }
@@ -222,7 +223,7 @@ pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
-    let tables = TablesWrapper(RefCell::new(Tables {
+    let tables = SmirCtxt(RefCell::new(Tables {
         tcx,
         def_ids: IndexMap::default(),
         alloc_ids: IndexMap::default(),
@@ -233,7 +234,12 @@ where
         mir_consts: IndexMap::default(),
         layouts: IndexMap::default(),
     }));
-    stable_mir::compiler_interface::run(&tables, || init(&tables, f))
+
+    let interface = SmirInterface { cx: tables };
+
+    // Pass the `SmirInterface` to compiler_interface::run
+    // and initialize the rustc-specific TLS with tables.
+    stable_mir::compiler_interface::run(&interface, || init(&interface.cx, f))
 }
 
 /// Instantiate and run the compiler with the provided arguments and callback.
@@ -256,7 +262,7 @@ where
 ///         // Your code goes in here.
 /// #       ControlFlow::Continue(())
 ///     }
-/// #   let args = vec!["--verbose".to_string()];
+/// #   let args = &["--verbose".to_string()];
 ///     let result = run!(args, analyze_code);
 /// #   assert_eq!(result, Err(CompilerError::Skipped))
 /// # }
@@ -278,7 +284,7 @@ where
 ///         // Your code goes in here.
 /// #       ControlFlow::Continue(())
 ///     }
-/// #   let args = vec!["--verbose".to_string()];
+/// #   let args = &["--verbose".to_string()];
 /// #   let extra_args = vec![];
 ///     let result = run!(args, || analyze_code(extra_args));
 /// #   assert_eq!(result, Err(CompilerError::Skipped))
@@ -340,7 +346,6 @@ macro_rules! run_driver {
             C: Send,
             F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
-            args: Vec<String>,
             callback: Option<F>,
             result: Option<ControlFlow<B, C>>,
         }
@@ -352,14 +357,14 @@ macro_rules! run_driver {
             F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
             /// Creates a new `StableMir` instance, with given test_function and arguments.
-            pub fn new(args: Vec<String>, callback: F) -> Self {
-                StableMir { args, callback: Some(callback), result: None }
+            pub fn new(callback: F) -> Self {
+                StableMir { callback: Some(callback), result: None }
             }
 
             /// Runs the compiler against given target and tests it with `test_function`
-            pub fn run(&mut self) -> Result<C, CompilerError<B>> {
+            pub fn run(&mut self, args: &[String]) -> Result<C, CompilerError<B>> {
                 let compiler_result = rustc_driver::catch_fatal_errors(|| -> interface::Result::<()> {
-                    run_compiler(&self.args.clone(), self);
+                    run_compiler(&args, self);
                     Ok(())
                 });
                 match (compiler_result, self.result.take()) {
@@ -409,7 +414,7 @@ macro_rules! run_driver {
             }
         }
 
-        StableMir::new($args, $callback).run()
+        StableMir::new($callback).run($args)
     }};
 }
 

@@ -78,7 +78,7 @@ impl<'a> MirVisitor for PlaceVisitor<'a> {
 fn main() {
     let path = "ty_fold_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
