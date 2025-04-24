@@ -2015,6 +2015,12 @@ fn add_linked_symbol_object(
         file.set_mangling(object::write::Mangling::None);
     }
 
+    if file.format() == object::BinaryFormat::MachO {
+        // Divide up the sections into sub-sections via symbols for dead code stripping.
+        // Without this flag, unused `#[no_mangle]` or `#[used]` cannot be discard on MachO targets.
+        file.set_subsections_via_symbols();
+    }
+
     // ld64 requires a relocation to load undefined symbols, see below.
     // Not strictly needed if linking with lld, but might as well do it there too.
     let ld64_section_helper = if file.format() == object::BinaryFormat::MachO {
