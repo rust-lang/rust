@@ -227,7 +227,7 @@ impl GenericParamsCollector {
             (_, TypeBound::Error | TypeBound::Use(_)) => return,
             (Either::Left(type_ref), bound) => match hrtb_lifetimes {
                 Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
-                    lifetimes: hrtb_lifetimes.to_vec().into_boxed_slice(),
+                    lifetimes: ThinVec::from_iter(hrtb_lifetimes.iter().cloned()),
                     target: type_ref,
                     bound,
                 },

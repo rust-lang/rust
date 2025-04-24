@@ -4,6 +4,7 @@ use std::{ops, sync::LazyLock};
 use hir_expand::name::Name;
 use la_arena::{Arena, Idx, RawIdx};
 use stdx::impl_from;
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
@@ -171,7 +172,7 @@ impl ops::Index<LocalLifetimeParamId> for GenericParams {
 pub enum WherePredicate {
     TypeBound { target: TypeRefId, bound: TypeBound },
     Lifetime { target: LifetimeRef, bound: LifetimeRef },
-    ForLifetime { lifetimes: Box<[Name]>, target: TypeRefId, bound: TypeBound },
+    ForLifetime { lifetimes: ThinVec<Name>, target: TypeRefId, bound: TypeBound },
 }
 
 static EMPTY: LazyLock<Arc<GenericParams>> = LazyLock::new(|| {
