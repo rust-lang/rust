@@ -701,6 +701,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ThinBitSet<T> {
 
 impl<S: Encoder, T> Encodable<S> for ThinBitSet<T> {
     fn encode(&self, s: &mut S) {
+        /* FIXME: This is new incompatable encoding
         // The encoding is as follows:
         //
         // The `inline` and `empty_unallocated` variants are encoded as a single `Word`. Here, we
@@ -729,11 +730,16 @@ impl<S: Encoder, T> Encodable<S> for ThinBitSet<T> {
             debug_assert!(word >> WORD_BITS - 2 != 0, "the 2 most significant bits must not be 0");
             word.encode(s);
         }
+        */
+
+        // Old compatable encoding.
+        self.words().collect::<Vec<Word>>().encode(s);
     }
 }
 
 impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
     fn decode(d: &mut D) -> Self {
+        /* FIXME: This is new incompatable decoding.
         // First we read one `Word` and check the variant.
         let word = Word::decode(d);
         if word >> WORD_BITS - 2 == 0x0 {
@@ -762,6 +768,15 @@ impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
             // and the union is `repr(C)`.
             Self { inline: word }
         }
+        */
+
+        // Old compatable decoding.
+        let words = Vec::<Word>::decode(d);
+        let mut set = GrowableBitSet::<usize>::new_empty();
+        for x in BitIter::from_slice(words.as_slice()) {
+            set.insert(x);
+        }
+        unsafe { std::mem::transmute::<ThinBitSet<usize>, ThinBitSet<T>>(set.bit_set) }
     }
 }
 
@@ -862,6 +877,7 @@ impl BitSetOnHeap {
     }
 
     /// Get the number of words.
+    #[expect(dead_code)] // FIXME: Needed for the new Encodable/Decodable implementation.
     #[inline]
     fn n_words(&self) -> Word {
         let ptr = (self.0 << 2) as *const Word;
