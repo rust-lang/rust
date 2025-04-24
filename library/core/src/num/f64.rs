@@ -1004,7 +1004,7 @@ impl f64 {
         }
     }
 
-    /// Calculates the middle point of `self` and `rhs`.
+    /// Calculates the midpoint (average) between `self` and `rhs`.
     ///
     /// This returns NaN when *either* argument is NaN or if a combination of
     /// +inf and -inf is provided as arguments.
@@ -1016,6 +1016,7 @@ impl f64 {
     /// assert_eq!((-5.5f64).midpoint(8.0), 1.25);
     /// ```
     #[inline]
+    #[doc(alias = "average")]
     #[stable(feature = "num_midpoint", since = "1.85.0")]
     #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
     pub const fn midpoint(self, other: f64) -> f64 {

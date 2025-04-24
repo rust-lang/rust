@@ -130,7 +130,7 @@ depending on the target pointer size.
 
 macro_rules! midpoint_impl {
     ($SelfT:ty, unsigned) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large unsigned integral type. This implies that the result is
@@ -146,6 +146,8 @@ macro_rules! midpoint_impl {
         #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
             // Use the well known branchless algorithm from Hacker's Delight to compute
@@ -154,7 +156,7 @@ macro_rules! midpoint_impl {
         }
     };
     ($SelfT:ty, signed) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large signed integral type. This implies that the result is
@@ -173,6 +175,9 @@ macro_rules! midpoint_impl {
         #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average_ceil")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: Self) -> Self {
             // Use the well known branchless algorithm from Hacker's Delight to compute
@@ -184,7 +189,7 @@ macro_rules! midpoint_impl {
         }
     };
     ($SelfT:ty, $WideT:ty, unsigned) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large unsigned integral type. This implies that the result is
@@ -200,13 +205,15 @@ macro_rules! midpoint_impl {
         #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
             ((self as $WideT + rhs as $WideT) / 2) as $SelfT
         }
     };
     ($SelfT:ty, $WideT:ty, signed) => {
-        /// Calculates the middle point of `self` and `rhs`.
+        /// Calculates the midpoint (average) between `self` and `rhs`.
         ///
         /// `midpoint(a, b)` is `(a + b) / 2` as if it were performed in a
         /// sufficiently-large signed integral type. This implies that the result is
@@ -225,6 +232,9 @@ macro_rules! midpoint_impl {
         #[rustc_const_stable(feature = "num_midpoint_signed", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
+        #[doc(alias = "average_floor")]
+        #[doc(alias = "average_ceil")]
+        #[doc(alias = "average")]
         #[inline]
         pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
             ((self as $WideT + rhs as $WideT) / 2) as $SelfT

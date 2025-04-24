@@ -1710,12 +1710,16 @@ impl<'test> TestCx<'test> {
         rustc.args(&self.props.compile_flags);
 
         // FIXME(jieyouxu): we should report a fatal error or warning if user wrote `-Cpanic=` with
-        // something that's not `abort`, however, by moving this last we should override previous
-        // `-Cpanic=`s
+        // something that's not `abort` and `-Cforce-unwind-tables` with a value that is not `yes`,
+        // however, by moving this last we should override previous `-Cpanic`s and
+        // `-Cforce-unwind-tables`s. Note that checking here is very fragile, because we'd have to
+        // account for all possible compile flag splittings (they have some... intricacies and are
+        // not yet normalized).
         //
         // `minicore` requires `#![no_std]` and `#![no_core]`, which means no unwinding panics.
         if self.props.add_core_stubs {
             rustc.arg("-Cpanic=abort");
+            rustc.arg("-Cforce-unwind-tables=yes");
         }
 
         rustc
