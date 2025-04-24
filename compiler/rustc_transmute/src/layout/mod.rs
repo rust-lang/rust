@@ -1,5 +1,6 @@
 use std::fmt::{self, Debug};
 use std::hash::Hash;
+use std::ops::RangeInclusive;
 
 pub(crate) mod tree;
 pub(crate) use tree::Tree;
@@ -10,18 +11,56 @@ pub(crate) use dfa::Dfa;
 #[derive(Debug)]
 pub(crate) struct Uninhabited;
 
-/// An instance of a byte is either initialized to a particular value, or uninitialized.
-#[derive(Hash, Eq, PartialEq, Clone, Copy)]
-pub(crate) enum Byte {
-    Uninit,
-    Init(u8),
+/// A range of byte values, or the uninit byte.
+#[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
+pub(crate) struct Byte {
+    // An inclusive-inclusive range. We use this instead of `RangeInclusive`
+    // because `RangeInclusive: !Copy`.
+    //
+    // `None` means uninit.
+    //
+    // FIXME(@joshlf): Optimize this representation. Some pairs of values (where
+    // `lo > hi`) are illegal, and we could use these to represent `None`.
+    range: Option<(u8, u8)>,
+}
+
+impl Byte {
+    fn new(range: RangeInclusive<u8>) -> Self {
+        Self { range: Some((*range.start(), *range.end())) }
+    }
+
+    fn from_val(val: u8) -> Self {
+        Self { range: Some((val, val)) }
+    }
+
+    pub(crate) fn uninit() -> Byte {
+        Byte { range: None }
+    }
+
+    /// Returns `None` if `self` is the uninit byte.
+    pub(crate) fn range(&self) -> Option<RangeInclusive<u8>> {
+        self.range.map(|(lo, hi)| lo..=hi)
+    }
+
+    /// Are any of the values in `self` transmutable into `other`?
+    ///
+    /// Note two special cases: An uninit byte is only transmutable into another
+    /// uninit byte. Any byte is transmutable into an uninit byte.
+    pub(crate) fn transmutable_into(&self, other: &Byte) -> bool {
+        match (self.range, other.range) {
+            (None, None) => true,
+            (None, Some(_)) => false,
+            (Some(_), None) => true,
+            (Some((slo, shi)), Some((olo, ohi))) => slo <= ohi && olo <= shi,
+        }
+    }
 }
 
 impl fmt::Debug for Byte {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self {
-            Self::Uninit => f.write_str("??u8"),
-            Self::Init(b) => write!(f, "{b:#04x}u8"),
+        match self.range {
+            None => write!(f, "uninit"),
+            Some((lo, hi)) => write!(f, "{lo}..={hi}"),
         }
     }
 }
@@ -29,7 +68,7 @@ impl fmt::Debug for Byte {
 #[cfg(test)]
 impl From<u8> for Byte {
     fn from(src: u8) -> Self {
-        Self::Init(src)
+        Self::from_val(src)
     }
 }
 
@@ -59,6 +98,21 @@ impl Ref for ! {
     }
     fn is_mutable(&self) -> bool {
         unreachable!()
+    }
+}
+
+#[cfg(test)]
+impl<const N: usize> Ref for [(); N] {
+    fn min_align(&self) -> usize {
+        N
+    }
+
+    fn size(&self) -> usize {
+        N
+    }
+
+    fn is_mutable(&self) -> bool {
+        false
     }
 }
 

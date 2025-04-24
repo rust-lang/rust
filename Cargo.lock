@@ -4521,6 +4521,7 @@ dependencies = [
  "rustc_hir",
  "rustc_middle",
  "rustc_span",
+ "smallvec",
  "tracing",
 ]
 
