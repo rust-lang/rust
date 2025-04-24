@@ -527,6 +527,9 @@ impl Resolver {
                 _ => None,
             }),
             LifetimeRef::Placeholder | LifetimeRef::Error => None,
+            LifetimeRef::Param(lifetime_param_id) => {
+                Some(LifetimeNs::LifetimeParam(*lifetime_param_id))
+            }
         }
     }
 

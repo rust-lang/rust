@@ -4,7 +4,7 @@ use std::iter;
 
 use crate::{
     lang_item::LangItemTarget,
-    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRefId},
+    type_ref::{ConstRef, LifetimeRefId, TypeBound, TypeRefId},
 };
 use hir_expand::{
     mod_path::{ModPath, PathKind},
@@ -91,7 +91,7 @@ pub struct AssociatedTypeBinding {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GenericArg {
     Type(TypeRefId),
-    Lifetime(LifetimeRef),
+    Lifetime(LifetimeRefId),
     Const(ConstRef),
 }
 

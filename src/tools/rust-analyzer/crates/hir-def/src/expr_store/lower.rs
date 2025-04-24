@@ -35,7 +35,8 @@ use crate::{
     db::DefDatabase,
     expr_store::{
         Body, BodySourceMap, ExprPtr, ExpressionStore, ExpressionStoreBuilder,
-        ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, PatPtr, TypePtr,
+        ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, LifetimePtr,
+        PatPtr, TypePtr,
         expander::Expander,
         lower::generics::ImplTraitLowerFn,
         path::{AssociatedTypeBinding, GenericArg, GenericArgs, GenericArgsParentheses, Path},
@@ -56,8 +57,8 @@ use crate::{
     lang_item::LangItem,
     nameres::{DefMap, LocalDefMap, MacroSubNs},
     type_ref::{
-        ArrayType, ConstRef, FnType, LifetimeRef, Mutability, PathId, Rawness, RefType,
-        TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, UseArgRef,
+        ArrayType, ConstRef, FnType, LifetimeRef, LifetimeRefId, Mutability, PathId, Rawness,
+        RefType, TraitBoundModifier, TraitRef, TypeBound, TypeRef, TypeRefId, UseArgRef,
     },
 };
 
@@ -568,20 +569,21 @@ impl ExprCollector<'_> {
         }
     }
 
-    pub fn lower_lifetime_ref(&mut self, lifetime: ast::Lifetime) -> LifetimeRef {
+    pub fn lower_lifetime_ref(&mut self, lifetime: ast::Lifetime) -> LifetimeRefId {
         // FIXME: Keyword check?
-        match &*lifetime.text() {
+        let lifetime_ref = match &*lifetime.text() {
             "" | "'" => LifetimeRef::Error,
             "'static" => LifetimeRef::Static,
             "'_" => LifetimeRef::Placeholder,
             text => LifetimeRef::Named(Name::new_lifetime(text)),
-        }
+        };
+        self.alloc_lifetime_ref(lifetime_ref, AstPtr::new(&lifetime))
     }
 
-    pub fn lower_lifetime_ref_opt(&mut self, lifetime: Option<ast::Lifetime>) -> LifetimeRef {
+    pub fn lower_lifetime_ref_opt(&mut self, lifetime: Option<ast::Lifetime>) -> LifetimeRefId {
         match lifetime {
             Some(lifetime) => self.lower_lifetime_ref(lifetime),
-            None => LifetimeRef::Placeholder,
+            None => self.alloc_lifetime_ref_desugared(LifetimeRef::Placeholder),
         }
     }
 
@@ -735,6 +737,30 @@ impl ExprCollector<'_> {
         id
     }
 
+    fn alloc_lifetime_ref(
+        &mut self,
+        lifetime_ref: LifetimeRef,
+        node: LifetimePtr,
+    ) -> LifetimeRefId {
+        let id = self.store.lifetimes.alloc(lifetime_ref);
+        let ptr = self.expander.in_file(node);
+        self.source_map.lifetime_map_back.insert(id, ptr);
+        self.source_map.lifetime_map.insert(ptr, id);
+        id
+    }
+
+    fn alloc_type_ref_desugared(&mut self, type_ref: TypeRef) -> TypeRefId {
+        self.store.types.alloc(type_ref)
+    }
+
+    fn alloc_lifetime_ref_desugared(&mut self, lifetime_ref: LifetimeRef) -> LifetimeRefId {
+        self.store.lifetimes.alloc(lifetime_ref)
+    }
+
+    fn alloc_error_type(&mut self) -> TypeRefId {
+        self.store.types.alloc(TypeRef::Error)
+    }
+
     pub fn lower_path(
         &mut self,
         ast: ast::Path,
@@ -752,14 +778,6 @@ impl ExprCollector<'_> {
         let result = f(self);
         self.outer_impl_trait = old;
         result
-    }
-
-    fn alloc_type_ref_desugared(&mut self, type_ref: TypeRef) -> TypeRefId {
-        self.store.types.alloc(type_ref)
-    }
-
-    fn alloc_error_type(&mut self) -> TypeRefId {
-        self.store.types.alloc(TypeRef::Error)
     }
 
     pub fn impl_trait_error_allocator(
@@ -962,7 +980,7 @@ impl ExprCollector<'_> {
                         .lifetime_params()
                         .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
                         .collect(),
-                    None => Box::default(),
+                    None => ThinVec::default(),
                 };
                 let path = for_type.ty().and_then(|ty| match &ty {
                     ast::Type::PathType(path_type) => {
