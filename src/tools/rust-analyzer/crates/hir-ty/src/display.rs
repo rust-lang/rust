@@ -23,7 +23,8 @@ use hir_def::{
     nameres::DefMap,
     signatures::VariantFields,
     type_ref::{
-        ConstRef, LifetimeRef, TraitBoundModifier, TypeBound, TypeRef, TypeRefId, UseArgRef,
+        ConstRef, LifetimeRef, LifetimeRefId, TraitBoundModifier, TypeBound, TypeRef, TypeRefId,
+        UseArgRef,
     },
     visibility::Visibility,
 };
@@ -2085,20 +2086,29 @@ impl<T: HirDisplayWithExpressionStore> HirDisplay for ExpressionStoreAdapter<'_,
         T::hir_fmt(&self.0, f, self.1)
     }
 }
-impl HirDisplayWithExpressionStore for LifetimeRef {
+impl HirDisplayWithExpressionStore for LifetimeRefId {
     fn hir_fmt(
         &self,
         f: &mut HirFormatter<'_>,
-        _store: &ExpressionStore,
+        store: &ExpressionStore,
     ) -> Result<(), HirDisplayError> {
-        match self {
+        match &store[*self] {
             LifetimeRef::Named(name) => write!(f, "{}", name.display(f.db, f.edition())),
             LifetimeRef::Static => write!(f, "'static"),
             LifetimeRef::Placeholder => write!(f, "'_"),
             LifetimeRef::Error => write!(f, "'{{error}}"),
+            &LifetimeRef::Param(lifetime_param_id) => {
+                let generic_params = f.db.generic_params(lifetime_param_id.parent);
+                write!(
+                    f,
+                    "{}",
+                    generic_params[lifetime_param_id.local_id].name.display(f.db, f.edition())
+                )
+            }
         }
     }
 }
+
 impl HirDisplayWithExpressionStore for TypeRefId {
     fn hir_fmt(
         &self,

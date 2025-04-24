@@ -43,7 +43,7 @@ use hir_def::{
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     signatures::{ConstSignature, StaticSignature},
-    type_ref::{ConstRef, LifetimeRef, TypeRefId},
+    type_ref::{ConstRef, LifetimeRefId, TypeRefId},
 };
 use hir_expand::{mod_path::ModPath, name::Name};
 use indexmap::IndexSet;
@@ -1391,7 +1391,7 @@ impl<'a> InferenceContext<'a> {
         self.result.standard_types.unknown.clone()
     }
 
-    fn make_body_lifetime(&mut self, lifetime_ref: &LifetimeRef) -> Lifetime {
+    fn make_body_lifetime(&mut self, lifetime_ref: LifetimeRefId) -> Lifetime {
         let lt = self.with_ty_lowering(
             self.body,
             InferenceTyDiagnosticSource::Body,

@@ -20,7 +20,7 @@ use crate::{
         ConstParamData, GenericParams, LifetimeParamData, TypeOrConstParamData, TypeParamData,
         TypeParamProvenance, WherePredicate,
     },
-    type_ref::{LifetimeRef, TypeBound, TypeRef, TypeRefId},
+    type_ref::{LifetimeRef, LifetimeRefId, TypeBound, TypeRef, TypeRefId},
 };
 
 pub(crate) type ImplTraitLowerFn<'l> = &'l mut dyn for<'ec, 'db> FnMut(
@@ -149,14 +149,14 @@ impl GenericParamsCollector {
                     let _idx = self.type_or_consts.alloc(param.into());
                 }
                 ast::GenericParam::LifetimeParam(lifetime_param) => {
-                    let lifetime_ref = ec.lower_lifetime_ref_opt(lifetime_param.lifetime());
-                    if let LifetimeRef::Named(name) = &lifetime_ref {
+                    let lifetime = ec.lower_lifetime_ref_opt(lifetime_param.lifetime());
+                    if let LifetimeRef::Named(name) = &ec.store.lifetimes[lifetime] {
                         let param = LifetimeParamData { name: name.clone() };
                         let _idx = self.lifetimes.alloc(param);
                         self.lower_bounds(
                             ec,
                             lifetime_param.type_bound_list(),
-                            Either::Right(lifetime_ref),
+                            Either::Right(lifetime),
                         );
                     }
                 }
@@ -192,7 +192,7 @@ impl GenericParamsCollector {
                     .collect()
             });
             for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                self.lower_type_bound_as_predicate(ec, bound, lifetimes.as_deref(), target.clone());
+                self.lower_type_bound_as_predicate(ec, bound, lifetimes.as_deref(), target);
             }
         }
     }
@@ -201,10 +201,10 @@ impl GenericParamsCollector {
         &mut self,
         ec: &mut ExprCollector<'_>,
         type_bounds: Option<ast::TypeBoundList>,
-        target: Either<TypeRefId, LifetimeRef>,
+        target: Either<TypeRefId, LifetimeRefId>,
     ) {
         for bound in type_bounds.iter().flat_map(|type_bound_list| type_bound_list.bounds()) {
-            self.lower_type_bound_as_predicate(ec, bound, None, target.clone());
+            self.lower_type_bound_as_predicate(ec, bound, None, target);
         }
     }
 
@@ -213,7 +213,7 @@ impl GenericParamsCollector {
         ec: &mut ExprCollector<'_>,
         bound: ast::TypeBound,
         hrtb_lifetimes: Option<&[Name]>,
-        target: Either<TypeRefId, LifetimeRef>,
+        target: Either<TypeRefId, LifetimeRefId>,
     ) {
         let bound = ec.lower_type_bound(
             bound,

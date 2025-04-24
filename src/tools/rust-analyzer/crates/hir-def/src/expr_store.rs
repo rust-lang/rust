@@ -31,7 +31,7 @@ use crate::{
         PatId, RecordFieldPat, Statement,
     },
     nameres::DefMap,
-    type_ref::{PathId, TypeRef, TypeRefId},
+    type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
 };
 
 pub use self::body::{Body, BodySourceMap};
@@ -87,6 +87,9 @@ pub type MacroCallPtr = AstPtr<ast::MacroCall>;
 pub type TypePtr = AstPtr<ast::Type>;
 pub type TypeSource = InFile<TypePtr>;
 
+pub type LifetimePtr = AstPtr<ast::Lifetime>;
+pub type LifetimeSource = InFile<LifetimePtr>;
+
 #[derive(Debug, Eq, PartialEq)]
 pub struct ExpressionStore {
     pub exprs: Arena<Expr>,
@@ -94,6 +97,7 @@ pub struct ExpressionStore {
     pub bindings: Arena<Binding>,
     pub labels: Arena<Label>,
     pub types: Arena<TypeRef>,
+    pub lifetimes: Arena<LifetimeRef>,
     /// Id of the closure/coroutine that owns the corresponding binding. If a binding is owned by the
     /// top level expression, it will not be listed in here.
     pub binding_owners: FxHashMap<BindingId, ExprId>,
@@ -130,6 +134,9 @@ pub struct ExpressionStoreSourceMap {
     types_map_back: ArenaMap<TypeRefId, TypeSource>,
     types_map: FxHashMap<TypeSource, TypeRefId>,
 
+    lifetime_map_back: ArenaMap<LifetimeRefId, LifetimeSource>,
+    lifetime_map: FxHashMap<LifetimeSource, LifetimeRefId>,
+
     template_map: Option<Box<FormatTemplate>>,
 
     pub expansions: FxHashMap<InFile<MacroCallPtr>, MacroCallId>,
@@ -146,6 +153,7 @@ pub struct ExpressionStoreBuilder {
     pub pats: Arena<Pat>,
     pub bindings: Arena<Binding>,
     pub labels: Arena<Label>,
+    pub lifetimes: Arena<LifetimeRef>,
     pub binding_owners: FxHashMap<BindingId, ExprId>,
     pub types: Arena<TypeRef>,
     block_scopes: Vec<BlockId>,
@@ -187,6 +195,7 @@ impl ExpressionStoreBuilder {
             mut binding_owners,
             mut ident_hygiene,
             mut types,
+            mut lifetimes,
         } = self;
         exprs.shrink_to_fit();
         labels.shrink_to_fit();
@@ -195,6 +204,7 @@ impl ExpressionStoreBuilder {
         binding_owners.shrink_to_fit();
         ident_hygiene.shrink_to_fit();
         types.shrink_to_fit();
+        lifetimes.shrink_to_fit();
 
         ExpressionStore {
             exprs,
@@ -203,6 +213,7 @@ impl ExpressionStoreBuilder {
             labels,
             binding_owners,
             types,
+            lifetimes,
             block_scopes: block_scopes.into_boxed_slice(),
             ident_hygiene,
         }
@@ -604,6 +615,15 @@ impl Index<TypeRefId> for ExpressionStore {
         &self.types[b]
     }
 }
+
+impl Index<LifetimeRefId> for ExpressionStore {
+    type Output = LifetimeRef;
+
+    fn index(&self, b: LifetimeRefId) -> &LifetimeRef {
+        &self.lifetimes[b]
+    }
+}
+
 impl Index<PathId> for ExpressionStore {
     type Output = Path;
 
@@ -745,6 +765,8 @@ impl ExpressionStoreSourceMap {
             binding_definitions,
             types_map,
             types_map_back,
+            lifetime_map_back,
+            lifetime_map,
         } = self;
         if let Some(template_map) = template_map {
             let FormatTemplate {
@@ -769,5 +791,7 @@ impl ExpressionStoreSourceMap {
         binding_definitions.shrink_to_fit();
         types_map.shrink_to_fit();
         types_map_back.shrink_to_fit();
+        lifetime_map.shrink_to_fit();
+        lifetime_map_back.shrink_to_fit();
     }
 }

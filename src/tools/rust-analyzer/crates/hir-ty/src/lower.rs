@@ -35,7 +35,7 @@ use hir_def::{
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
     signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
     type_ref::{
-        ConstRef, LifetimeRef, LiteralConstRef, PathId, TraitBoundModifier,
+        ConstRef, LifetimeRefId, LiteralConstRef, PathId, TraitBoundModifier,
         TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
     },
 };
@@ -370,7 +370,7 @@ impl<'a> TyLoweringContext<'a> {
                 let lifetime = ref_
                     .lifetime
                     .as_ref()
-                    .map_or_else(error_lifetime, |lr| self.lower_lifetime(lr));
+                    .map_or_else(error_lifetime, |&lr| self.lower_lifetime(lr));
                 TyKind::Ref(lower_to_chalk_mutability(ref_.mutability), lifetime, inner_ty)
                     .intern(Interner)
             }
@@ -561,7 +561,7 @@ impl<'a> TyLoweringContext<'a> {
                 let self_ty = self.lower_ty(*target);
                 Either::Left(self.lower_type_bound(bound, self_ty, ignore_bindings))
             }
-            WherePredicate::Lifetime { bound, target } => Either::Right(iter::once(
+            &WherePredicate::Lifetime { bound, target } => Either::Right(iter::once(
                 crate::wrap_empty_binders(WhereClause::LifetimeOutlives(LifetimeOutlives {
                     a: self.lower_lifetime(bound),
                     b: self.lower_lifetime(target),
@@ -604,7 +604,7 @@ impl<'a> TyLoweringContext<'a> {
                     self.unsized_types.insert(self_ty);
                 }
             }
-            TypeBound::Lifetime(l) => {
+            &TypeBound::Lifetime(l) => {
                 let lifetime = self.lower_lifetime(l);
                 clause = Some(crate::wrap_empty_binders(WhereClause::TypeOutlives(TypeOutlives {
                     ty: self_ty,
@@ -755,8 +755,8 @@ impl<'a> TyLoweringContext<'a> {
         ImplTrait { bounds: crate::make_single_type_binders(predicates) }
     }
 
-    pub fn lower_lifetime(&self, lifetime: &LifetimeRef) -> Lifetime {
-        match self.resolver.resolve_lifetime(lifetime) {
+    pub fn lower_lifetime(&self, lifetime: LifetimeRefId) -> Lifetime {
+        match self.resolver.resolve_lifetime(&self.store[lifetime]) {
             Some(resolution) => match resolution {
                 LifetimeNs::Static => static_lifetime(),
                 LifetimeNs::LifetimeParam(id) => match self.type_param_mode {

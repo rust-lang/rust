@@ -702,7 +702,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
             ) -> crate::GenericArg {
                 match (param, arg) {
                     (GenericParamDataRef::LifetimeParamData(_), GenericArg::Lifetime(lifetime)) => {
-                        self.ctx.ctx.lower_lifetime(lifetime).cast(Interner)
+                        self.ctx.ctx.lower_lifetime(*lifetime).cast(Interner)
                     }
                     (GenericParamDataRef::TypeParamData(_), GenericArg::Type(type_ref)) => {
                         self.ctx.ctx.lower_ty(*type_ref).cast(Interner)

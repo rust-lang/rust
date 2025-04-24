@@ -11,7 +11,7 @@ use crate::{
     AdtId, ConstParamId, GenericDefId, LifetimeParamId, TypeOrConstParamId, TypeParamId,
     db::DefDatabase,
     expr_store::{ExpressionStore, ExpressionStoreSourceMap},
-    type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRefId},
+    type_ref::{ConstRef, LifetimeRefId, TypeBound, TypeRefId},
 };
 
 pub type LocalTypeOrConstParamId = Idx<TypeOrConstParamData>;
@@ -171,7 +171,7 @@ impl ops::Index<LocalLifetimeParamId> for GenericParams {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
     TypeBound { target: TypeRefId, bound: TypeBound },
-    Lifetime { target: LifetimeRef, bound: LifetimeRef },
+    Lifetime { target: LifetimeRefId, bound: LifetimeRefId },
     ForLifetime { lifetimes: ThinVec<Name>, target: TypeRefId, bound: TypeBound },
 }
 

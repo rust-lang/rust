@@ -9,7 +9,7 @@ use la_arena::Idx;
 use thin_vec::ThinVec;
 
 use crate::{
-    TypeParamId,
+    LifetimeParamId, TypeParamId,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{
         ExpressionStore,
@@ -123,7 +123,7 @@ pub struct ArrayType {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RefType {
     pub ty: TypeRefId,
-    pub lifetime: Option<LifetimeRef>,
+    pub lifetime: Option<LifetimeRefId>,
     pub mutability: Mutability,
 }
 
@@ -135,6 +135,8 @@ pub enum TypeRef {
     Tuple(ThinVec<TypeRefId>),
     Path(Path),
     RawPtr(TypeRefId, Mutability),
+    // FIXME: Unbox this once `Idx` has a niche,
+    // as `RefType` should shrink by 4 bytes then
     Reference(Box<RefType>),
     Array(ArrayType),
     Slice(TypeRefId),
@@ -151,30 +153,33 @@ const _: () = assert!(size_of::<TypeRef>() == 16);
 
 pub type TypeRefId = Idx<TypeRef>;
 
+pub type LifetimeRefId = Idx<LifetimeRef>;
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LifetimeRef {
     Named(Name),
     Static,
     Placeholder,
+    Param(LifetimeParamId),
     Error,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TypeBound {
     Path(PathId, TraitBoundModifier),
-    ForLifetime(Box<[Name]>, PathId),
-    Lifetime(LifetimeRef),
-    Use(Box<[UseArgRef]>),
+    ForLifetime(ThinVec<Name>, PathId),
+    Lifetime(LifetimeRefId),
+    Use(ThinVec<UseArgRef>),
     Error,
 }
 
 #[cfg(target_pointer_width = "64")]
-const _: [(); 24] = [(); size_of::<TypeBound>()];
+const _: [(); 16] = [(); size_of::<TypeBound>()];
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum UseArgRef {
     Name(Name),
-    Lifetime(LifetimeRef),
+    Lifetime(LifetimeRefId),
 }
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the

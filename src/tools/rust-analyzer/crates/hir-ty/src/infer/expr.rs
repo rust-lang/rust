@@ -2099,7 +2099,7 @@ impl InferenceContext<'_> {
             ) -> crate::GenericArg {
                 match (param, arg) {
                     (GenericParamDataRef::LifetimeParamData(_), GenericArg::Lifetime(lifetime)) => {
-                        self.ctx.make_body_lifetime(lifetime).cast(Interner)
+                        self.ctx.make_body_lifetime(*lifetime).cast(Interner)
                     }
                     (GenericParamDataRef::TypeParamData(_), GenericArg::Type(type_ref)) => {
                         self.ctx.make_body_ty(*type_ref).cast(Interner)
