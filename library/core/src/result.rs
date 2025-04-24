@@ -598,6 +598,10 @@ impl<T, E> Result<T, E> {
     ///
     /// let x: Result<u32, &str> = Err("hey");
     /// assert_eq!(x.is_ok_and(|x| x > 1), false);
+    ///
+    /// let x: Result<String, &str> = Ok("ownership".to_string());
+    /// assert_eq!(x.as_ref().is_ok_and(|x| x.len() > 1), true);
+    /// println!("still alive {:?}", x);
     /// ```
     #[must_use]
     #[inline]
@@ -643,6 +647,10 @@ impl<T, E> Result<T, E> {
     ///
     /// let x: Result<u32, Error> = Ok(123);
     /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), false);
+    ///
+    /// let x: Result<u32, &str> = Err("ownership");
+    /// assert_eq!(x.as_ref().is_err_and(|x| x.len() > 1), true);
+    /// println!("still alive {:?}", x);
     /// ```
     #[must_use]
     #[inline]
