@@ -98,7 +98,7 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             let arg_snip = snippet(cx, arg_span, "..");
             let expr_snip;
             let eq_impl;
-            if with_deref.is_implemented() {
+            if with_deref.is_implemented() && !arg_ty.peel_refs().is_str() {
                 expr_snip = format!("*{arg_snip}");
                 eq_impl = with_deref;
             } else {

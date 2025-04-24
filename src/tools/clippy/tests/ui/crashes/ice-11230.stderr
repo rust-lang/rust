@@ -7,14 +7,5 @@ LL |     for v in A.iter() {}
    = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::explicit_iter_loop)]`
 
-error: avoid using `collect()` when not needed
-  --> tests/ui/crashes/ice-11230.rs:16:7
-   |
-LL |     w.collect::<Vec<_>>().is_empty();
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `next().is_none()`
-   |
-   = note: `-D clippy::needless-collect` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_collect)]`
-
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

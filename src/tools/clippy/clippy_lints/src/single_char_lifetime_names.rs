@@ -45,19 +45,20 @@ impl EarlyLintPass for SingleCharLifetimeNames {
             return;
         }
 
-        if let GenericParamKind::Lifetime = param.kind {
-            if !param.is_placeholder && param.ident.as_str().len() <= 2 {
-                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-                span_lint_and_then(
-                    ctx,
-                    SINGLE_CHAR_LIFETIME_NAMES,
-                    param.ident.span,
-                    "single-character lifetime names are likely uninformative",
-                    |diag| {
-                        diag.help("use a more informative name");
-                    },
-                );
-            }
+        if let GenericParamKind::Lifetime = param.kind
+            && !param.is_placeholder
+            && param.ident.as_str().len() <= 2
+        {
+            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            span_lint_and_then(
+                ctx,
+                SINGLE_CHAR_LIFETIME_NAMES,
+                param.ident.span,
+                "single-character lifetime names are likely uninformative",
+                |diag| {
+                    diag.help("use a more informative name");
+                },
+            );
         }
     }
 }

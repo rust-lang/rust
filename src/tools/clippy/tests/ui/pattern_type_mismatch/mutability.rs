@@ -1,5 +1,5 @@
-#![allow(clippy::all)]
 #![warn(clippy::pattern_type_mismatch)]
+#![allow(clippy::single_match)]
 
 fn main() {}
 

@@ -1,4 +1,4 @@
-#![deny(clippy::internal)]
+#![deny(clippy::lint_without_lint_pass)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
 

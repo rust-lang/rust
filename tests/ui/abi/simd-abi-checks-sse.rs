@@ -3,8 +3,7 @@
 //@ compile-flags: --crate-type=rlib --target=i586-unknown-linux-gnu
 //@ compile-flags: -Ctarget-cpu=pentium4 -C target-feature=-sse,-sse2
 //@ add-core-stubs
-//@ build-pass
-//@ ignore-pass (test emits codegen-time warnings)
+//@ build-fail
 //@ needs-llvm-components: x86
 #![feature(no_core, repr_simd)]
 #![no_core]
@@ -18,6 +17,5 @@ pub struct SseVector([i64; 2]);
 
 #[no_mangle]
 pub unsafe extern "C" fn f(_: SseVector) {
-    //~^ WARN this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
-    //~| WARNING this was previously accepted by the compiler
+    //~^ ERROR: this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
 }

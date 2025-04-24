@@ -8,7 +8,7 @@ error: internal compiler error: Would you like some help with that?
 LL | fn it_looks_like_you_are_trying_to_kill_clippy() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: delayed at clippy_lints/src/utils/internal_lints/produce_ice.rs - disabled backtrace
+note: delayed at clippy_lints_internal/src/produce_ice.rs - disabled backtrace
   --> tests/ui-internal/custom_ice_message.rs:12:1
    |
 LL | fn it_looks_like_you_are_trying_to_kill_clippy() {}

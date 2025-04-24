@@ -103,7 +103,7 @@ enum Parens {
 ///
 /// e.g. `-(x + y + 0)` cannot be reduced to `-x + y`, as the behavior changes silently.
 /// e.g. `1u64 + ((x + y + 0i32) as u64)` cannot be reduced to `1u64 + x + y as u64`, since
-/// the the cast expression will not apply to the same expression.
+/// the cast expression will not apply to the same expression.
 /// e.g. `0 + if b { 1 } else { 2 } + if b { 3 } else { 4 }` cannot be reduced
 /// to `if b { 1 } else { 2 } + if b { 3 } else { 4 }` where the `if` could be
 /// interpreted as a statement. The same behavior happens for `match`, `loop`,

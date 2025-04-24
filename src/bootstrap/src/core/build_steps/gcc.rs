@@ -96,6 +96,8 @@ pub enum GccBuildStatus {
 /// Returns a path to the libgccjit.so file.
 #[cfg(not(test))]
 fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<PathBuf> {
+    use build_helper::git::PathFreshness;
+
     // Try to download GCC from CI if configured and available
     if !matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::DownloadFromCi) {
         return None;
@@ -104,18 +106,40 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
         eprintln!("GCC CI download is only available for the `x86_64-unknown-linux-gnu` target");
         return None;
     }
-    let sha =
-        detect_gcc_sha(&builder.config, builder.config.rust_info.is_managed_git_subrepository());
-    let root = ci_gcc_root(&builder.config);
-    let gcc_stamp = BuildStamp::new(&root).with_prefix("gcc").add_stamp(&sha);
-    if !gcc_stamp.is_up_to_date() && !builder.config.dry_run() {
-        builder.config.download_ci_gcc(&sha, &root);
-        t!(gcc_stamp.write());
-    }
+    let source = detect_gcc_freshness(
+        &builder.config,
+        builder.config.rust_info.is_managed_git_subrepository(),
+    );
+    builder.verbose(|| {
+        eprintln!("GCC freshness: {source:?}");
+    });
+    match source {
+        PathFreshness::LastModifiedUpstream { upstream } => {
+            // Download from upstream CI
+            let root = ci_gcc_root(&builder.config);
+            let gcc_stamp = BuildStamp::new(&root).with_prefix("gcc").add_stamp(&upstream);
+            if !gcc_stamp.is_up_to_date() && !builder.config.dry_run() {
+                builder.config.download_ci_gcc(&upstream, &root);
+                t!(gcc_stamp.write());
+            }
 
-    let libgccjit = root.join("lib").join("libgccjit.so");
-    create_lib_alias(builder, &libgccjit);
-    Some(libgccjit)
+            let libgccjit = root.join("lib").join("libgccjit.so");
+            create_lib_alias(builder, &libgccjit);
+            Some(libgccjit)
+        }
+        PathFreshness::HasLocalModifications { .. } => {
+            // We have local modifications, rebuild GCC.
+            eprintln!("Found local GCC modifications, GCC will *not* be downloaded");
+            None
+        }
+        PathFreshness::MissingUpstream => {
+            eprintln!("error: could not find commit hash for downloading GCC");
+            eprintln!("HELP: maybe your repository history is too shallow?");
+            eprintln!("HELP: consider disabling `download-ci-gcc`");
+            eprintln!("HELP: or fetch enough history to include one upstream commit");
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -264,31 +288,16 @@ fn ci_gcc_root(config: &crate::Config) -> PathBuf {
     config.out.join(config.build).join("ci-gcc")
 }
 
-/// This retrieves the GCC sha we *want* to use, according to git history.
+/// Detect whether GCC sources have been modified locally or not.
 #[cfg(not(test))]
-fn detect_gcc_sha(config: &crate::Config, is_git: bool) -> String {
-    use build_helper::git::get_closest_merge_commit;
+fn detect_gcc_freshness(config: &crate::Config, is_git: bool) -> build_helper::git::PathFreshness {
+    use build_helper::git::PathFreshness;
 
-    let gcc_sha = if is_git {
-        get_closest_merge_commit(
-            Some(&config.src),
-            &config.git_config(),
-            &["src/gcc", "src/bootstrap/download-ci-gcc-stamp"],
-        )
-        .unwrap()
+    if is_git {
+        config.check_path_modifications(&["src/gcc", "src/bootstrap/download-ci-gcc-stamp"])
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
-        info.sha.trim().to_owned()
+        PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() }
     } else {
-        "".to_owned()
-    };
-
-    if gcc_sha.is_empty() {
-        eprintln!("error: could not find commit hash for downloading GCC");
-        eprintln!("HELP: maybe your repository history is too shallow?");
-        eprintln!("HELP: consider disabling `download-ci-gcc`");
-        eprintln!("HELP: or fetch enough history to include one upstream commit");
-        panic!();
+        PathFreshness::MissingUpstream
     }
-
-    gcc_sha
 }

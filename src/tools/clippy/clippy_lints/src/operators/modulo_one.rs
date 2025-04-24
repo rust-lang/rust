@@ -12,15 +12,15 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, right:
             span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
         }
 
-        if let ty::Int(ity) = cx.typeck_results().expr_ty(right).kind() {
-            if is_integer_const(cx, right, unsext(cx.tcx, -1, *ity)) {
-                span_lint(
-                    cx,
-                    MODULO_ONE,
-                    expr.span,
-                    "any number modulo -1 will panic/overflow or result in 0",
-                );
-            }
+        if let ty::Int(ity) = cx.typeck_results().expr_ty(right).kind()
+            && is_integer_const(cx, right, unsext(cx.tcx, -1, *ity))
+        {
+            span_lint(
+                cx,
+                MODULO_ONE,
+                expr.span,
+                "any number modulo -1 will panic/overflow or result in 0",
+            );
         }
     }
 }

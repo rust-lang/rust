@@ -1,4 +1,4 @@
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, impl_lint_pass};
@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
             return;
         };
-        if Some(method_def_id) != cx.tcx.lang_items().into_iter_fn() {
+        if !cx.tcx.is_lang_item(method_def_id, LangItem::IntoIterIntoIter) {
             return;
         }
 

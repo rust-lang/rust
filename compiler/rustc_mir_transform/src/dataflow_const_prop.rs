@@ -958,13 +958,13 @@ fn try_write_constant<'tcx>(
     interp_ok(())
 }
 
-impl<'mir, 'tcx> ResultsVisitor<'mir, 'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx> {
+impl<'tcx> ResultsVisitor<'tcx, ConstAnalysis<'_, 'tcx>> for Collector<'_, 'tcx> {
     #[instrument(level = "trace", skip(self, results, statement))]
     fn visit_after_early_statement_effect(
         &mut self,
         results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
         state: &State<FlatSet<Scalar>>,
-        statement: &'mir Statement<'tcx>,
+        statement: &Statement<'tcx>,
         location: Location,
     ) {
         match &statement.kind {
@@ -986,7 +986,7 @@ impl<'mir, 'tcx> ResultsVisitor<'mir, 'tcx, ConstAnalysis<'_, 'tcx>> for Collect
         &mut self,
         results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
         state: &State<FlatSet<Scalar>>,
-        statement: &'mir Statement<'tcx>,
+        statement: &Statement<'tcx>,
         location: Location,
     ) {
         match statement.kind {
@@ -1011,7 +1011,7 @@ impl<'mir, 'tcx> ResultsVisitor<'mir, 'tcx, ConstAnalysis<'_, 'tcx>> for Collect
         &mut self,
         results: &mut Results<'tcx, ConstAnalysis<'_, 'tcx>>,
         state: &State<FlatSet<Scalar>>,
-        terminator: &'mir Terminator<'tcx>,
+        terminator: &Terminator<'tcx>,
         location: Location,
     ) {
         OperandCollector {

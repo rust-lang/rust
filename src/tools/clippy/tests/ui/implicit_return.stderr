@@ -183,5 +183,93 @@ help: add `return` as shown
 LL |     return true
    |     ++++++
 
-error: aborting due to 16 previous errors
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:170:22
+   |
+LL |     let _ = async || 0;
+   |                      ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || return 0;
+   |                      ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:173:31
+   |
+LL |     let _ = async || -> i32 { 0 };
+   |                               ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || -> i32 { return 0 };
+   |                               ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:175:28
+   |
+LL |     let _ = async |a: i32| a;
+   |                            ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async |a: i32| return a;
+   |                            ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:178:30
+   |
+LL |     let _ = async |a: i32| { a };
+   |                              ^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async |a: i32| { return a };
+   |                              ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:187:22
+   |
+LL |     let _ = async || foo().await;
+   |                      ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || return foo().await;
+   |                      ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:191:9
+   |
+LL |         foo().await
+   |         ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |         return foo().await
+   |         ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:195:24
+   |
+LL |     let _ = async || { foo().await };
+   |                        ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || { return foo().await };
+   |                        ++++++
+
+error: missing `return` statement
+  --> tests/ui/implicit_return.rs:197:32
+   |
+LL |     let _ = async || -> bool { foo().await };
+   |                                ^^^^^
+   |
+help: add `return` as shown
+   |
+LL |     let _ = async || -> bool { return foo().await };
+   |                                ++++++
+
+error: aborting due to 24 previous errors
 

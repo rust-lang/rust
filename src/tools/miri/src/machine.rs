@@ -721,9 +721,8 @@ impl<'tcx> MiriMachine<'tcx> {
                 // Check if host target == the session target.
                 if host_triple != target_triple {
                     panic!(
-                        "calling external C functions in linked .so file requires host and target to be the same: host={}, target={}",
-                        host_triple,
-                        target_triple,
+                        "calling native C functions in linked .so file requires host and target to be the same: \
+                        host={host_triple}, target={target_triple}",
                     );
                 }
                 // Note: it is the user's responsibility to provide a correct SO file.

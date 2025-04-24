@@ -95,14 +95,13 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 return;
             };
 
-            if then_search.is_key_used_and_no_copy || else_search.is_key_used_and_no_copy {
-                span_lint(cx, MAP_ENTRY, expr.span, lint_msg);
-                return;
-            }
-
             if then_search.edits.is_empty() && else_search.edits.is_empty() {
                 // No insertions
                 return;
+            } else if then_search.is_key_used_and_no_copy || else_search.is_key_used_and_no_copy {
+                // If there are other uses of the key, and the key is not copy,
+                // we cannot perform a fix automatically, but continue to emit a lint.
+                None
             } else if then_search.edits.is_empty() || else_search.edits.is_empty() {
                 // if .. { insert } else { .. } or if .. { .. } else { insert }
                 let ((then_str, entry_kind), else_str) = match (else_search.edits.is_empty(), contains_expr.negated) {
@@ -123,10 +122,10 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                         snippet_with_applicability(cx, then_expr.span, "{ .. }", &mut app),
                     ),
                 };
-                format!(
+                Some(format!(
                     "if let {}::{entry_kind} = {map_str}.entry({key_str}) {then_str} else {else_str}",
                     map_ty.entry_path(),
-                )
+                ))
             } else {
                 // if .. { insert } else { insert }
                 let ((then_str, then_entry), (else_str, else_entry)) = if contains_expr.negated {
@@ -142,13 +141,13 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 };
                 let indent_str = snippet_indent(cx, expr.span);
                 let indent_str = indent_str.as_deref().unwrap_or("");
-                format!(
+                Some(format!(
                     "match {map_str}.entry({key_str}) {{\n{indent_str}    {entry}::{then_entry} => {}\n\
                         {indent_str}    {entry}::{else_entry} => {}\n{indent_str}}}",
                     reindent_multiline(&then_str, true, Some(4 + indent_str.len())),
                     reindent_multiline(&else_str, true, Some(4 + indent_str.len())),
                     entry = map_ty.entry_path(),
-                )
+                ))
             }
         } else {
             if then_search.edits.is_empty() {
@@ -163,17 +162,17 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 } else {
                     then_search.snippet_occupied(cx, then_expr.span, &mut app)
                 };
-                format!(
+                Some(format!(
                     "if let {}::{entry_kind} = {map_str}.entry({key_str}) {body_str}",
                     map_ty.entry_path(),
-                )
+                ))
             } else if let Some(insertion) = then_search.as_single_insertion() {
                 let value_str = snippet_with_context(cx, insertion.value.span, then_expr.span.ctxt(), "..", &mut app).0;
                 if contains_expr.negated {
                     if insertion.value.can_have_side_effects() {
-                        format!("{map_str}.entry({key_str}).or_insert_with(|| {value_str});")
+                        Some(format!("{map_str}.entry({key_str}).or_insert_with(|| {value_str});"))
                     } else {
-                        format!("{map_str}.entry({key_str}).or_insert({value_str});")
+                        Some(format!("{map_str}.entry({key_str}).or_insert({value_str});"))
                     }
                 } else {
                     // TODO: suggest using `if let Some(v) = map.get_mut(k) { .. }` here.
@@ -183,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             } else {
                 let block_str = then_search.snippet_closure(cx, then_expr.span, &mut app);
                 if contains_expr.negated {
-                    format!("{map_str}.entry({key_str}).or_insert_with(|| {block_str});")
+                    Some(format!("{map_str}.entry({key_str}).or_insert_with(|| {block_str});"))
                 } else {
                     // TODO: suggest using `if let Some(v) = map.get_mut(k) { .. }` here.
                     // This would need to be a different lint.
@@ -192,7 +191,11 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             }
         };
 
-        span_lint_and_sugg(cx, MAP_ENTRY, expr.span, lint_msg, "try", sugg, app);
+        if let Some(sugg) = sugg {
+            span_lint_and_sugg(cx, MAP_ENTRY, expr.span, lint_msg, "try", sugg, app);
+        } else {
+            span_lint(cx, MAP_ENTRY, expr.span, lint_msg);
+        }
     }
 }
 

@@ -1,25 +1,31 @@
+use std::fmt::Write as _;
+
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_path_diagnostic_item, sugg};
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::def::Res;
+use rustc_hir::{self as hir, Expr, ExprKind, GenericArg, QPath, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::GenericParamDefKind;
 use rustc_span::sym;
 
 use super::FROM_ITER_INSTEAD_OF_COLLECT;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>], func: &hir::Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, args: &[Expr<'_>], func: &Expr<'_>) {
     if is_path_diagnostic_item(cx, func, sym::from_iter_fn)
-        && let ty = cx.typeck_results().expr_ty(expr)
         && let arg_ty = cx.typeck_results().expr_ty(&args[0])
         && let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && implements_trait(cx, arg_ty, iter_id, &[])
     {
-        // `expr` implements `FromIterator` trait
-        let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_par();
-        let turbofish = extract_turbofish(cx, expr, ty);
+        let mut app = Applicability::MaybeIncorrect;
+        let turbofish = match func.kind {
+            ExprKind::Path(QPath::TypeRelative(hir_ty, _)) => build_full_type(cx, hir_ty, &mut app),
+            ExprKind::Path(QPath::Resolved(Some(self_ty), _)) => build_full_type(cx, self_ty, &mut app),
+            _ => return,
+        };
+        let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_paren();
         let sugg = format!("{iter_expr}.collect::<{turbofish}>()");
         span_lint_and_sugg(
             cx,
@@ -28,54 +34,47 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             "usage of `FromIterator::from_iter`",
             "use `.collect()` instead of `::from_iter()`",
             sugg,
-            Applicability::MaybeIncorrect,
+            app,
         );
     }
 }
 
-fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'_>) -> String {
-    fn strip_angle_brackets(s: &str) -> Option<&str> {
-        s.strip_prefix('<')?.strip_suffix('>')
-    }
-
-    let call_site = expr.span.source_callsite();
-    if let Some(snippet) = call_site.get_source_text(cx)
-        && let snippet_split = snippet.split("::").collect::<Vec<_>>()
-        && let Some((_, elements)) = snippet_split.split_last()
+/// Build a type which can be used in a turbofish syntax from `hir_ty`, either by copying the
+/// existing generic arguments with the exception of elided lifetimes, or by inserting placeholders
+/// for types and consts without default values.
+fn build_full_type(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, app: &mut Applicability) -> String {
+    if let TyKind::Path(ty_qpath) = hir_ty.kind
+        && let QPath::Resolved(None, ty_path) = &ty_qpath
+        && let Res::Def(_, ty_did) = ty_path.res
     {
-        if let [type_specifier, _] = snippet_split.as_slice()
-            && let Some(type_specifier) = strip_angle_brackets(type_specifier)
-            && let Some((type_specifier, ..)) = type_specifier.split_once(" as ")
-        {
-            type_specifier.to_string()
+        let mut ty_str = itertools::join(ty_path.segments.iter().map(|s| s.ident), "::");
+        let mut first = true;
+        let mut append = |arg: &str| {
+            write!(&mut ty_str, "{}{arg}", [", ", "<"][usize::from(first)]).unwrap();
+            first = false;
+        };
+        if let Some(args) = ty_path.segments.last().and_then(|segment| segment.args) {
+            args.args
+                .iter()
+                .filter(|arg| !matches!(arg, GenericArg::Lifetime(lt) if lt.is_elided()))
+                .for_each(|arg| append(&snippet_with_applicability(cx, arg.span().source_callsite(), "_", app)));
         } else {
-            // is there a type specifier? (i.e.: like `<u32>` in `collections::BTreeSet::<u32>::`)
-            if let Some(type_specifier) = snippet_split.iter().find(|e| strip_angle_brackets(e).is_some()) {
-                // remove the type specifier from the path elements
-                let without_ts = elements
-                    .iter()
-                    .filter_map(|e| {
-                        if e == type_specifier {
-                            None
-                        } else {
-                            Some((*e).to_string())
-                        }
-                    })
-                    .collect::<Vec<_>>();
-                // join and add the type specifier at the end (i.e.: `collections::BTreeSet<u32>`)
-                format!("{}{type_specifier}", without_ts.join("::"))
-            } else {
-                // type is not explicitly specified so wildcards are needed
-                // i.e.: 2 wildcards in `std::collections::BTreeMap<&i32, &char>`
-                let ty_str = ty.to_string();
-                let start = ty_str.find('<').unwrap_or(0);
-                let end = ty_str.find('>').unwrap_or(ty_str.len());
-                let nb_wildcard = ty_str[start..end].split(',').count();
-                let wildcards = format!("_{}", ", _".repeat(nb_wildcard - 1));
-                format!("{}<{wildcards}>", elements.join("::"))
-            }
+            cx.tcx
+                .generics_of(ty_did)
+                .own_params
+                .iter()
+                .filter(|param| {
+                    matches!(
+                        param.kind,
+                        GenericParamDefKind::Type { has_default: false, .. }
+                            | GenericParamDefKind::Const { has_default: false, .. }
+                    )
+                })
+                .for_each(|_| append("_"));
         }
+        ty_str.push_str([">", ""][usize::from(first)]);
+        ty_str
     } else {
-        ty.to_string()
+        snippet_with_applicability(cx, hir_ty.span.source_callsite(), "_", app).into()
     }
 }

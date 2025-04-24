@@ -1,18 +1,26 @@
 use std::marker::PhantomData;
 use std::mem;
+use std::ops::ControlFlow;
 
 use rustc_data_structures::thinvec::ExtractIf;
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
+};
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
+use rustc_span::Span;
+use rustc_type_ir::data_structures::DelayedSet;
 use tracing::instrument;
 
 use self::derive_errors::*;
 use super::Certainty;
 use super::delegate::SolverDelegate;
+use super::inspect::{self, ProofTreeInferCtxtExt};
 use crate::traits::{FulfillmentError, ScrubbedTraitError};
 
 mod derive_errors;
@@ -39,7 +47,7 @@ pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
     _errors: PhantomData<E>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct ObligationStorage<'tcx> {
     /// Obligations which resulted in an overflow in fulfillment itself.
     ///
@@ -55,20 +63,23 @@ impl<'tcx> ObligationStorage<'tcx> {
         self.pending.push(obligation);
     }
 
+    fn has_pending_obligations(&self) -> bool {
+        !self.pending.is_empty() || !self.overflowed.is_empty()
+    }
+
     fn clone_pending(&self) -> PredicateObligations<'tcx> {
         let mut obligations = self.pending.clone();
         obligations.extend(self.overflowed.iter().cloned());
         obligations
     }
 
-    fn take_pending(&mut self) -> PredicateObligations<'tcx> {
-        let mut obligations = mem::take(&mut self.pending);
-        obligations.append(&mut self.overflowed);
-        obligations
-    }
-
-    fn unstalled_for_select(&mut self) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'tcx {
-        mem::take(&mut self.pending).into_iter()
+    fn drain_pending(
+        &mut self,
+        cond: impl Fn(&PredicateObligation<'tcx>) -> bool,
+    ) -> PredicateObligations<'tcx> {
+        let (unstalled, pending) = mem::take(&mut self.pending).into_iter().partition(cond);
+        self.pending = pending;
+        unstalled
     }
 
     fn on_fulfillment_overflow(&mut self, infcx: &InferCtxt<'tcx>) {
@@ -160,7 +171,7 @@ where
             }
 
             let mut has_changed = false;
-            for obligation in self.obligations.unstalled_for_select() {
+            for obligation in self.obligations.drain_pending(|_| true) {
                 let goal = obligation.as_goal();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
                     .evaluate_root_goal(goal, GenerateProofTree::No, obligation.cause.span)
@@ -196,15 +207,95 @@ where
     }
 
     fn has_pending_obligations(&self) -> bool {
-        !self.obligations.pending.is_empty() || !self.obligations.overflowed.is_empty()
+        self.obligations.has_pending_obligations()
     }
 
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         self.obligations.clone_pending()
     }
 
-    fn drain_unstalled_obligations(&mut self, _: &InferCtxt<'tcx>) -> PredicateObligations<'tcx> {
-        self.obligations.take_pending()
+    fn drain_stalled_obligations_for_coroutines(
+        &mut self,
+        infcx: &InferCtxt<'tcx>,
+    ) -> PredicateObligations<'tcx> {
+        let stalled_generators = match infcx.typing_mode() {
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
+            }
+            TypingMode::Coherence
+            | TypingMode::Borrowck { defining_opaque_types: _ }
+            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+            | TypingMode::PostAnalysis => return Default::default(),
+        };
+
+        if stalled_generators.is_empty() {
+            return Default::default();
+        }
+
+        self.obligations.drain_pending(|obl| {
+            infcx.probe(|_| {
+                infcx
+                    .visit_proof_tree(
+                        obl.as_goal(),
+                        &mut StalledOnCoroutines {
+                            stalled_generators,
+                            span: obl.cause.span,
+                            cache: Default::default(),
+                        },
+                    )
+                    .is_break()
+            })
+        })
+    }
+}
+
+/// Detect if a goal is stalled on a coroutine that is owned by the current typeck root.
+///
+/// This function can (erroneously) fail to detect a predicate, i.e. it doesn't need to
+/// be complete. However, this will lead to ambiguity errors, so we want to make it
+/// accurate.
+///
+/// This function can be also return false positives, which will lead to poor diagnostics
+/// so we want to keep this visitor *precise* too.
+struct StalledOnCoroutines<'tcx> {
+    stalled_generators: &'tcx ty::List<LocalDefId>,
+    span: Span,
+    cache: DelayedSet<Ty<'tcx>>,
+}
+
+impl<'tcx> inspect::ProofTreeVisitor<'tcx> for StalledOnCoroutines<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn span(&self) -> rustc_span::Span {
+        self.span
+    }
+
+    fn visit_goal(&mut self, inspect_goal: &super::inspect::InspectGoal<'_, 'tcx>) -> Self::Result {
+        inspect_goal.goal().predicate.visit_with(self)?;
+
+        if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
+            candidate.visit_nested_no_probe(self)
+        } else {
+            ControlFlow::Continue(())
+        }
+    }
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for StalledOnCoroutines<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
+        if !self.cache.insert(ty) {
+            return ControlFlow::Continue(());
+        }
+
+        if let ty::CoroutineWitness(def_id, _) = *ty.kind()
+            && def_id.as_local().is_some_and(|def_id| self.stalled_generators.contains(&def_id))
+        {
+            return ControlFlow::Break(());
+        }
+
+        ty.super_visit_with(self)
     }
 }
 

@@ -1,5 +1,6 @@
 use std::ops::ControlFlow;
 
+use rustc_hir::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
@@ -109,10 +110,16 @@ pub(super) fn fulfillment_error_for_stalled<'tcx>(
                 false,
             ),
             Ok((_, Certainty::Yes)) => {
-                bug!("did not expect successful goal when collecting ambiguity errors")
+                bug!(
+                    "did not expect successful goal when collecting ambiguity errors for `{:?}`",
+                    infcx.resolve_vars_if_possible(root_obligation.predicate),
+                )
             }
             Err(_) => {
-                bug!("did not expect selection error when collecting ambiguity errors")
+                bug!(
+                    "did not expect selection error when collecting ambiguity errors for `{:?}`",
+                    infcx.resolve_vars_if_possible(root_obligation.predicate),
+                )
             }
         }
     });
@@ -452,9 +459,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
         // We do this as a separate loop so that we do not choose to tell the user about some nested
         // goal before we encounter a `T: FnPtr` nested goal.
         for nested_goal in &nested_goals {
-            if let Some(fn_ptr_trait) = tcx.lang_items().fn_ptr_trait()
-                && let Some(poly_trait_pred) = nested_goal.goal().predicate.as_trait_clause()
-                && poly_trait_pred.def_id() == fn_ptr_trait
+            if let Some(poly_trait_pred) = nested_goal.goal().predicate.as_trait_clause()
+                && tcx.is_lang_item(poly_trait_pred.def_id(), LangItem::FnPtrTrait)
                 && let Err(NoSolution) = nested_goal.result()
             {
                 return ControlFlow::Break(self.obligation.clone());

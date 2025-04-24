@@ -111,14 +111,10 @@ impl Step for Std {
         // the `rust.download-rustc=true` option.
         let force_recompile = builder.rust_info().is_managed_git_subrepository()
             && builder.download_rustc()
-            && builder.config.last_modified_commit(&["library"], "download-rustc", true).is_none();
+            && builder.config.has_changes_from_upstream(&["library"]);
 
         trace!("is managed git repo: {}", builder.rust_info().is_managed_git_subrepository());
         trace!("download_rustc: {}", builder.download_rustc());
-        trace!(
-            "last modified commit: {:?}",
-            builder.config.last_modified_commit(&["library"], "download-rustc", true)
-        );
         trace!(force_recompile);
 
         run.builder.ensure(Std {

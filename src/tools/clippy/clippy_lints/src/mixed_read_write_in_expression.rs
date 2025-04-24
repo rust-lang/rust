@@ -135,10 +135,10 @@ impl<'tcx> DivergenceVisitor<'_, 'tcx> {
     }
 
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
-        if let Some(macro_call) = root_macro_call_first_node(self.cx, e) {
-            if self.cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
-                return;
-            }
+        if let Some(macro_call) = root_macro_call_first_node(self.cx, e)
+            && self.cx.tcx.item_name(macro_call.def_id).as_str() == "todo"
+        {
+            return;
         }
         span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
     }
@@ -328,22 +328,22 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
             return;
         }
 
-        if path_to_local_id(expr, self.var) {
+        if path_to_local_id(expr, self.var)
             // Check that this is a read, not a write.
-            if !is_in_assignment_position(self.cx, expr) {
-                span_lint_and_then(
-                    self.cx,
-                    MIXED_READ_WRITE_IN_EXPRESSION,
-                    expr.span,
-                    format!("unsequenced read of `{}`", self.cx.tcx.hir_name(self.var)),
-                    |diag| {
-                        diag.span_note(
-                            self.write_expr.span,
-                            "whether read occurs before this write depends on evaluation order",
-                        );
-                    },
-                );
-            }
+            && !is_in_assignment_position(self.cx, expr)
+        {
+            span_lint_and_then(
+                self.cx,
+                MIXED_READ_WRITE_IN_EXPRESSION,
+                expr.span,
+                format!("unsequenced read of `{}`", self.cx.tcx.hir_name(self.var)),
+                |diag| {
+                    diag.span_note(
+                        self.write_expr.span,
+                        "whether read occurs before this write depends on evaluation order",
+                    );
+                },
+            );
         }
         match expr.kind {
             // We're about to descend a closure. Since we don't know when (or
@@ -373,10 +373,10 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
 
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprKind::Assign(lhs, ..) = parent.kind {
-            return lhs.hir_id == expr.hir_id;
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let ExprKind::Assign(lhs, ..) = parent.kind
+    {
+        return lhs.hir_id == expr.hir_id;
     }
     false
 }

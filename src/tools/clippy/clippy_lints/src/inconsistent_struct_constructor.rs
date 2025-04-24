@@ -65,13 +65,13 @@ declare_clippy_lint! {
 }
 
 pub struct InconsistentStructConstructor {
-    lint_inconsistent_struct_field_initializers: bool,
+    check_inconsistent_struct_field_initializers: bool,
 }
 
 impl InconsistentStructConstructor {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            lint_inconsistent_struct_field_initializers: conf.lint_inconsistent_struct_field_initializers,
+            check_inconsistent_struct_field_initializers: conf.check_inconsistent_struct_field_initializers,
         }
     }
 }
@@ -86,7 +86,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
         let all_fields_are_shorthand = fields.iter().all(|f| f.is_shorthand);
         let applicability = if all_fields_are_shorthand {
             Applicability::MachineApplicable
-        } else if self.lint_inconsistent_struct_field_initializers {
+        } else if self.check_inconsistent_struct_field_initializers {
             Applicability::MaybeIncorrect
         } else {
             return;

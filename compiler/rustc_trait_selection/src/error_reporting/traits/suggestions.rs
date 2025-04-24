@@ -3844,12 +3844,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     );
                     if let ty::PredicateKind::Clause(clause) = failed_pred.kind().skip_binder()
                         && let ty::ClauseKind::Trait(pred) = clause
-                        && [
-                            tcx.lang_items().fn_once_trait(),
-                            tcx.lang_items().fn_mut_trait(),
-                            tcx.lang_items().fn_trait(),
-                        ]
-                        .contains(&Some(pred.def_id()))
+                        && tcx.fn_trait_kind_from_def_id(pred.def_id()).is_some()
                     {
                         if let [stmt, ..] = block.stmts
                             && let hir::StmtKind::Semi(value) = stmt.kind

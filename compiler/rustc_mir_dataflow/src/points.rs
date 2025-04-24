@@ -120,12 +120,12 @@ struct Visitor<'a, N: Idx> {
     values: SparseIntervalMatrix<N, PointIndex>,
 }
 
-impl<'mir, 'tcx, A, N> ResultsVisitor<'mir, 'tcx, A> for Visitor<'_, N>
+impl<'tcx, A, N> ResultsVisitor<'tcx, A> for Visitor<'_, N>
 where
     A: Analysis<'tcx, Domain = DenseBitSet<N>>,
     N: Idx,
 {
-    fn visit_after_primary_statement_effect(
+    fn visit_after_primary_statement_effect<'mir>(
         &mut self,
         _results: &mut Results<'tcx, A>,
         state: &A::Domain,
@@ -139,7 +139,7 @@ where
         });
     }
 
-    fn visit_after_primary_terminator_effect(
+    fn visit_after_primary_terminator_effect<'mir>(
         &mut self,
         _results: &mut Results<'tcx, A>,
         state: &A::Domain,

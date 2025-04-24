@@ -8,6 +8,7 @@ use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{self as hir, AmbigArg, HirId};
+use rustc_infer::traits::solve::Goal;
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -763,7 +764,32 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let value = self.fcx.resolve_vars_if_possible(value);
-        let value = value.fold_with(&mut Resolver::new(self.fcx, span, self.body, true));
+
+        let mut goals = vec![];
+        let value =
+            value.fold_with(&mut Resolver::new(self.fcx, span, self.body, true, &mut goals));
+
+        // Ensure that we resolve goals we get from normalizing coroutine interiors,
+        // but we shouldn't expect those goals to need normalizing (or else we'd get
+        // into a somewhat awkward fixpoint situation, and we don't need it anyways).
+        let mut unexpected_goals = vec![];
+        self.typeck_results.coroutine_stalled_predicates.extend(
+            goals
+                .into_iter()
+                .map(|pred| {
+                    self.fcx.resolve_vars_if_possible(pred).fold_with(&mut Resolver::new(
+                        self.fcx,
+                        span,
+                        self.body,
+                        false,
+                        &mut unexpected_goals,
+                    ))
+                })
+                // FIXME: throwing away the param-env :(
+                .map(|goal| (goal.predicate, self.fcx.misc(span.to_span(self.fcx.tcx)))),
+        );
+        assert_eq!(unexpected_goals, vec![]);
+
         assert!(!value.has_infer());
 
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure
@@ -781,7 +807,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let value = self.fcx.resolve_vars_if_possible(value);
-        let value = value.fold_with(&mut Resolver::new(self.fcx, span, self.body, false));
+
+        let mut goals = vec![];
+        let value =
+            value.fold_with(&mut Resolver::new(self.fcx, span, self.body, false, &mut goals));
+        assert_eq!(goals, vec![]);
+
         assert!(!value.has_infer());
 
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure
@@ -818,6 +849,7 @@ struct Resolver<'cx, 'tcx> {
     /// Whether we should normalize using the new solver, disabled
     /// both when using the old solver and when resolving predicates.
     should_normalize: bool,
+    nested_goals: &'cx mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
 }
 
 impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
@@ -826,8 +858,9 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,
         should_normalize: bool,
+        nested_goals: &'cx mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> Resolver<'cx, 'tcx> {
-        Resolver { fcx, span, body, should_normalize }
+        Resolver { fcx, span, body, nested_goals, should_normalize }
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
@@ -864,12 +897,18 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
             let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
             let universes = vec![None; outer_exclusive_binder(value).as_usize()];
-            solve::deeply_normalize_with_skipped_universes(at, value, universes).unwrap_or_else(
-                |errors| {
+            match solve::deeply_normalize_with_skipped_universes_and_ambiguous_goals(
+                at, value, universes,
+            ) {
+                Ok((value, goals)) => {
+                    self.nested_goals.extend(goals);
+                    value
+                }
+                Err(errors) => {
                     let guar = self.fcx.err_ctxt().report_fulfillment_errors(errors);
                     new_err(tcx, guar)
-                },
-            )
+                }
+            }
         } else {
             value
         };
