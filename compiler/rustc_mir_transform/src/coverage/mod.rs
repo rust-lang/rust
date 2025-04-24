@@ -1,8 +1,7 @@
-pub(super) mod query;
-
 mod counters;
 mod graph;
 mod mappings;
+pub(super) mod query;
 mod spans;
 #[cfg(test)]
 mod tests;
