@@ -239,4 +239,7 @@ pub fn provide(providers: &mut Providers) {
     providers.in_scope_traits_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
     };
+    providers.create_def_raw = |tcx, (parent, data, disambiguator)| {
+        tcx.untracked().definitions.write().create_def(parent, data, disambiguator)
+    }
 }

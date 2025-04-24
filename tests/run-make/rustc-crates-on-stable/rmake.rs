@@ -8,6 +8,8 @@ fn main() {
     cargo()
         // Ensure `proc-macro2`'s nightly detection is disabled
         .env("RUSTC_STAGE", "0")
+        // Avoid loading stale data from the stage 0 compiler in case that one was incremental
+        .env("CARGO_INCREMENTAL", "0")
         .env("RUSTC", rustc_path())
         // We want to disallow all nightly features to simulate a stable build
         .env("RUSTFLAGS", "-Zallow-features=")

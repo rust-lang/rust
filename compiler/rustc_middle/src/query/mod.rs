@@ -159,6 +159,11 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
+    /// Used to handle incremental replays of [`TyCtxt::create_def`] invocations from tracked queries.
+    query create_def_raw(key: (LocalDefId, rustc_hir::definitions::DefPathData, u32)) -> LocalDefId {
+        desc { "generating a new def id" }
+    }
+
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
     /// If you call `tcx.hir_crate(())` we will have to assume that any change

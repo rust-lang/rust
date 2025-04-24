@@ -10,8 +10,8 @@ use std::hash::Hash;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
-use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable};
+use rustc_index::{IndexVec, static_assert_size};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -281,7 +281,7 @@ impl DefPath {
 }
 
 /// New variants should only be added in synchronization with `enum DefKind`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
@@ -326,6 +326,8 @@ pub enum DefPathData {
     /// Additional static data referred to by a static.
     NestedStatic,
 }
+
+static_assert_size!(DefPathData, 8);
 
 impl Definitions {
     pub fn def_path_table(&self) -> &DefPathTable {
@@ -388,20 +390,18 @@ impl Definitions {
         &mut self,
         parent: LocalDefId,
         data: DefPathData,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: u32,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
-            "create_def(parent={}, data={data:?})",
+            "create_def(parent={}, data={data:?}, disambiguator: {disambiguator})",
             self.def_path(parent).to_string_no_crate_verbose(),
         );
 
         // The root node must be created in `new()`.
         assert!(data != DefPathData::CrateRoot);
 
-        // Find the next free disambiguator for this key.
-        let disambiguator = disambiguator.next(parent, data);
         let key = DefKey {
             parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
