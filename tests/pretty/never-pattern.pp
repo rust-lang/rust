@@ -12,7 +12,6 @@ use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
 
-fn f(x: Result<u32, !>) {
-    _ = match x { Ok(x) => x, Err(!) , }; }
+fn f(x: Result<u32, !>) { _ = match x { Ok(x) => x, Err(!) , }; }
 
-    fn main() {}
+fn main() {}

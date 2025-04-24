@@ -876,6 +876,7 @@ impl<'a> State<'a> {
                 }
             }
         } else {
+            self.end(); // Close the ibox for the pattern.
             self.word(",");
         }
         self.end(); // Close enclosing cbox.
