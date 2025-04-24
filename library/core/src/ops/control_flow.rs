@@ -187,6 +187,28 @@ impl<B, C> ControlFlow<B, C> {
         }
     }
 
+    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// `ControlFlow` was `Break` and `Err` if otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(control_flow_ok)]
+    ///
+    /// use std::ops::ControlFlow;
+    ///
+    /// assert_eq!(ControlFlow::<&str, i32>::Break("Stop right there!").break_ok(), Ok("Stop right there!"));
+    /// assert_eq!(ControlFlow::<&str, i32>::Continue(3).break_ok(), Err(3));
+    /// ```
+    #[inline]
+    #[unstable(feature = "control_flow_ok", issue = "140266")]
+    pub fn break_ok(self) -> Result<B, C> {
+        match self {
+            ControlFlow::Continue(c) => Err(c),
+            ControlFlow::Break(b) => Ok(b),
+        }
+    }
+
     /// Maps `ControlFlow<B, C>` to `ControlFlow<T, C>` by applying a function
     /// to the break value in case it exists.
     #[inline]
@@ -215,6 +237,28 @@ impl<B, C> ControlFlow<B, C> {
         match self {
             ControlFlow::Continue(x) => Some(x),
             ControlFlow::Break(..) => None,
+        }
+    }
+
+    /// Converts the `ControlFlow` into an `Result` which is `Ok` if the
+    /// `ControlFlow` was `Continue` and `Err` if otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(control_flow_ok)]
+    ///
+    /// use std::ops::ControlFlow;
+    ///
+    /// assert_eq!(ControlFlow::<&str, i32>::Break("Stop right there!").continue_ok(), Err("Stop right there!"));
+    /// assert_eq!(ControlFlow::<&str, i32>::Continue(3).continue_ok(), Ok(3));
+    /// ```
+    #[inline]
+    #[unstable(feature = "control_flow_ok", issue = "140266")]
+    pub fn continue_ok(self) -> Result<C, B> {
+        match self {
+            ControlFlow::Continue(c) => Ok(c),
+            ControlFlow::Break(b) => Err(b),
         }
     }
 
