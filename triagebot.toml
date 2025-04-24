@@ -585,6 +585,11 @@ trigger_files = [
     "src/tools/compiletest"
 ]
 
+[autolabel."A-test-infra-minicore"]
+trigger_files = [
+    "tests/auxiliary/minicore.rs",
+]
+
 [autolabel."A-rustc-dev-guide"]
 trigger_files = [
     "src/doc/rustc-dev-guide",
@@ -867,6 +872,10 @@ cc = ["@GuillaumeGomez"]
 
 [mentions."tests/run-make/"]
 message = "This PR modifies `run-make` tests."
+cc = ["@jieyouxu"]
+
+[mentions."tests/auxiliary/minicore.rs"]
+message = "This PR modifies `tests/auxiliary/minicore.rs`."
 cc = ["@jieyouxu"]
 
 [mentions."src/rustdoc-json-types"]
