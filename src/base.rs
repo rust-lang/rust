@@ -566,7 +566,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 );
             }
             TerminatorKind::UnwindTerminate(reason) => {
-                codegen_unwind_terminate(fx, source_info, *reason);
+                codegen_unwind_terminate(fx, Some(source_info.span), *reason);
             }
             TerminatorKind::UnwindResume => {
                 // FIXME implement unwinding
@@ -1117,18 +1117,10 @@ pub(crate) fn codegen_panic_nounwind<'tcx>(
 
 pub(crate) fn codegen_unwind_terminate<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
-    source_info: mir::SourceInfo,
+    span: Option<Span>,
     reason: UnwindTerminateReason,
 ) {
-    let args = [];
-
-    codegen_panic_inner(
-        fx,
-        reason.lang_item(),
-        &args,
-        UnwindAction::Terminate(UnwindTerminateReason::Abi),
-        Some(source_info.span),
-    );
+    codegen_panic_inner(fx, reason.lang_item(), &[], UnwindAction::Unreachable, span);
 }
 
 fn codegen_panic_inner<'tcx>(
