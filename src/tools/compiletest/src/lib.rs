@@ -189,7 +189,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "run tests which rely on commit version being compiled into the binaries",
         )
         .optopt("", "edition", "default Rust edition", "EDITION")
-        .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
         .reqopt(
             "",
@@ -441,7 +440,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         nocapture: matches.opt_present("no-capture"),
 
-        git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
