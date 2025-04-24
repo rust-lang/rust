@@ -158,6 +158,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.copy_op(&val, dest)?;
             }
 
+            sym::fadd_algebraic
+            | sym::fsub_algebraic
+            | sym::fmul_algebraic
+            | sym::fdiv_algebraic
+            | sym::frem_algebraic => {
+                let a = self.read_immediate(&args[0])?;
+                let b = self.read_immediate(&args[1])?;
+
+                let op = match intrinsic_name {
+                    sym::fadd_algebraic => BinOp::Add,
+                    sym::fsub_algebraic => BinOp::Sub,
+                    sym::fmul_algebraic => BinOp::Mul,
+                    sym::fdiv_algebraic => BinOp::Div,
+                    sym::frem_algebraic => BinOp::Rem,
+
+                    _ => bug!(),
+                };
+
+                let res = self.binary_op(op, &a, &b)?;
+                // `binary_op` already called `generate_nan` if needed.
+
+                // FIXME: Miri should add some non-determinism to the result here to catch any dependences on exact computations. This has previously been done, but the behaviour was removed as part of constification.
+                self.write_immediate(*res, dest)?;
+            }
+
             sym::ctpop
             | sym::cttz
             | sym::cttz_nonzero
