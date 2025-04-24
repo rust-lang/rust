@@ -2,7 +2,7 @@
 // Use that command to update this file and do not edit by hand.
 // Manual edits will be overwritten.
 
-pub static LINTS: &[&crate::LintInfo] = &[
+pub static LINTS: &[&::declare_clippy_lint::LintInfo] = &[
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
     crate::approx_const::APPROX_CONSTANT_INFO,

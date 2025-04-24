@@ -13,7 +13,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
-
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 use std::slice;
