@@ -121,7 +121,7 @@ jobs:
       - name: Push changes to a branch and create PR
         run: |
           # `git diff --exit-code` "succeeds" if the diff is empty.
-          if git diff --exit-code HEAD^; then exit 0; fi
+          if git diff --exit-code HEAD^; then echo "Nothing changed in rustc, skipping PR"; exit 0; fi
           # The diff is non-empty, create a PR.
           BRANCH="rustup-$(date -u +%Y-%m-%d)"
           git switch -c $BRANCH
