@@ -34,7 +34,7 @@ use crate::{
     },
     lang_item::LangItem,
     src::HasSource,
-    type_ref::{TraitRef, TypeBound, TypeRef, TypeRefId},
+    type_ref::{TraitRef, TypeBound, TypeRefId},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -877,7 +877,8 @@ fn lower_fields<'a>(
         if attrs.is_cfg_enabled(cfg_options) {
             arena.alloc(FieldData {
                 name: field.name.clone(),
-                type_ref: col.lower_type_ref_opt(ty, &mut |_| TypeRef::Error),
+                type_ref: col
+                    .lower_type_ref_opt(ty, &mut ExprCollector::impl_trait_error_allocator),
                 visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
                 is_unsafe: field.is_unsafe,
             });

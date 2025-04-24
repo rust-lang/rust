@@ -16,9 +16,7 @@ use hir_def::{
     db::DefDatabase,
     expr_store::{ExpressionStore, path::Path},
     find_path::{self, PrefixKind},
-    hir::generics::{
-        TypeOrConstParamData, TypeParamProvenance, WherePredicate, WherePredicateTypeTarget,
-    },
+    hir::generics::{TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_scope::ItemInNs,
     item_tree::FieldsShape,
     lang_item::{LangItem, LangItemTarget},
@@ -2119,15 +2117,15 @@ impl HirDisplayWithExpressionStore for TypeRefId {
                             generic_params
                                 .where_predicates()
                                 .filter_map(|it| match it {
-                                    WherePredicate::TypeBound {
-                                        target: WherePredicateTypeTarget::TypeOrConstParam(p),
-                                        bound,
+                                    WherePredicate::TypeBound { target, bound }
+                                    | WherePredicate::ForLifetime { lifetimes: _, target, bound }
+                                        if matches!(
+                                            store[*target],
+                                            TypeRef::TypeParam(t) if t == *param
+                                        ) =>
+                                    {
+                                        Some(bound)
                                     }
-                                    | WherePredicate::ForLifetime {
-                                        lifetimes: _,
-                                        target: WherePredicateTypeTarget::TypeOrConstParam(p),
-                                        bound,
-                                    } if *p == param.local_id() => Some(bound),
                                     _ => None,
                                 })
                                 .map(ExpressionStoreAdapter::wrap(store)),

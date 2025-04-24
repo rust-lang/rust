@@ -11,7 +11,7 @@ use chalk_ir::{
 use hir_def::{
     EnumId, EnumVariantId, FunctionId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId,
     db::DefDatabase,
-    hir::generics::{WherePredicate, WherePredicateTypeTarget},
+    hir::generics::WherePredicate,
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
@@ -170,15 +170,10 @@ fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
-                let is_trait = match *target {
-                    WherePredicateTypeTarget::TypeRef(type_ref) => match &store[type_ref] {
-                        TypeRef::Path(p) => p.is_self_type(),
-                        TypeRef::TypeParam(p) => Some(p.local_id()) == trait_self,
-                        _ => false,
-                    },
-                    WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
-                        Some(local_id) == trait_self
-                    }
+                let is_trait = match &store[*target] {
+                    TypeRef::Path(p) => p.is_self_type(),
+                    TypeRef::TypeParam(p) => Some(p.local_id()) == trait_self,
+                    _ => false,
                 };
                 match is_trait {
                     true => bound.as_path(&store),

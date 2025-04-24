@@ -4,17 +4,15 @@ use either::Either;
 use hir_def::{
     AdtId, GenericDefId,
     expr_store::ExpressionStore,
-    hir::generics::{
-        GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
-        WherePredicateTypeTarget,
-    },
+    hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_tree::FieldsShape,
     lang_item::LangItem,
     signatures::{StaticFlags, TraitFlags},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TypeBound, TypeRef, TypeRefId},
 };
 use hir_ty::{
     AliasEq, AliasTy, Interner, ProjectionTyExt, TraitRefExt, TyKind, WhereClause,
+    db::HirDatabase,
     display::{
         HirDisplay, HirDisplayError, HirDisplayWithExpressionStore, HirFormatter, SizedByDefault,
         hir_display_with_store, write_bounds_like_dyn_trait_with_prefix, write_visibility,
@@ -43,7 +41,8 @@ impl HirDisplay for Function {
                 if f.show_container_bounds() && !params.is_empty() {
                     write_trait_header(&trait_, f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(&params).then_some((params, params_store))
+                    has_disaplayable_predicates(f.db, &params, &params_store)
+                        .then_some((params, params_store))
                 } else {
                     None
                 }
@@ -53,7 +52,8 @@ impl HirDisplay for Function {
                 if f.show_container_bounds() && !params.is_empty() {
                     write_impl_header(&impl_, f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(&params).then_some((params, params_store))
+                    has_disaplayable_predicates(f.db, &params, &params_store)
+                        .then_some((params, params_store))
                 } else {
                     None
                 }
@@ -619,7 +619,7 @@ fn write_where_clause(
     f: &mut HirFormatter<'_>,
 ) -> Result<bool, HirDisplayError> {
     let (params, store) = f.db.generic_params_and_store(def);
-    if !has_disaplayable_predicates(&params) {
+    if !has_disaplayable_predicates(f.db, &params, &store) {
         return Ok(false);
     }
 
@@ -629,12 +629,18 @@ fn write_where_clause(
     Ok(true)
 }
 
-fn has_disaplayable_predicates(params: &GenericParams) -> bool {
+fn has_disaplayable_predicates(
+    db: &dyn HirDatabase,
+    params: &GenericParams,
+    store: &ExpressionStore,
+) -> bool {
     params.where_predicates().any(|pred| {
         !matches!(
             pred,
-            WherePredicate::TypeBound { target: WherePredicateTypeTarget::TypeOrConstParam(id), .. }
-            if params[*id].name().is_none()
+            WherePredicate::TypeBound { target, .. }
+            if  matches!(store[*target],
+                TypeRef::TypeParam(id) if db.generic_params(id.parent())[id.local_id()].name().is_none()
+            )
         )
     })
 }
@@ -647,18 +653,10 @@ fn write_where_predicates(
     use WherePredicate::*;
 
     // unnamed type targets are displayed inline with the argument itself, e.g. `f: impl Y`.
-    let is_unnamed_type_target = |params: &GenericParams, target: &WherePredicateTypeTarget| {
-        matches!(target,
-            WherePredicateTypeTarget::TypeOrConstParam(id) if params[*id].name().is_none()
+    let is_unnamed_type_target = |target: TypeRefId| {
+        matches!(store[target],
+            TypeRef::TypeParam(id) if f.db.generic_params(id.parent())[id.local_id()].name().is_none()
         )
-    };
-
-    let write_target = |target: &WherePredicateTypeTarget, f: &mut HirFormatter<'_>| match target {
-        WherePredicateTypeTarget::TypeRef(ty) => ty.hir_fmt(f, store),
-        WherePredicateTypeTarget::TypeOrConstParam(id) => match params[*id].name() {
-            Some(name) => write!(f, "{}", name.display(f.db, f.edition())),
-            None => f.write_str("{unnamed}"),
-        },
     };
 
     let check_same_target = |pred1: &WherePredicate, pred2: &WherePredicate| match (pred1, pred2) {
@@ -673,14 +671,14 @@ fn write_where_predicates(
 
     let mut iter = params.where_predicates().peekable();
     while let Some(pred) = iter.next() {
-        if matches!(pred, TypeBound { target, .. } if is_unnamed_type_target(params, target)) {
+        if matches!(pred, TypeBound { target, .. } if is_unnamed_type_target(*target)) {
             continue;
         }
 
         f.write_str("\n    ")?;
         match pred {
             TypeBound { target, bound } => {
-                write_target(target, f)?;
+                target.hir_fmt(f, store)?;
                 f.write_str(": ")?;
                 bound.hir_fmt(f, store)?;
             }
@@ -692,7 +690,7 @@ fn write_where_predicates(
             ForLifetime { lifetimes, target, bound } => {
                 let lifetimes = lifetimes.iter().map(|it| it.display(f.db, f.edition())).join(", ");
                 write!(f, "for<{lifetimes}> ")?;
-                write_target(target, f)?;
+                target.hir_fmt(f, store)?;
                 f.write_str(": ")?;
                 bound.hir_fmt(f, store)?;
             }

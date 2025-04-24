@@ -26,7 +26,7 @@ use hir_def::{
     lang_item::LangItem,
     nameres::MacroSubNs,
     resolver::{HasResolver, Resolver, TypeNs, ValueNs, resolver_for_scope},
-    type_ref::{Mutability, TypeRef, TypeRefId},
+    type_ref::{Mutability, TypeRefId},
 };
 use hir_expand::{
     HirFileId, InFile, MacroCallId,
@@ -1004,9 +1004,11 @@ impl SourceAnalyzer {
 
         // FIXME: collectiong here shouldnt be necessary?
         let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
-        let hir_path = collector.lower_path(path.clone(), &mut |_| TypeRef::Error)?;
-        let parent_hir_path =
-            path.parent_path().and_then(|p| collector.lower_path(p, &mut |_| TypeRef::Error));
+        let hir_path =
+            collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
+        let parent_hir_path = path
+            .parent_path()
+            .and_then(|p| collector.lower_path(p, &mut ExprCollector::impl_trait_error_allocator));
         let store = collector.store.finish();
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are
