@@ -1,6 +1,6 @@
 #[expect(dead_code, unreachable_pub)]
 mod old_dense_bit_set;
-pub mod thin_bit_set;
+mod thin_bit_set;
 use std::marker::PhantomData;
 #[cfg(not(feature = "nightly"))]
 use std::mem;
