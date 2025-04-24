@@ -177,7 +177,7 @@ impl InferenceContext<'_> {
             let ty = self.table.normalize_associated_types_in(ty);
 
             path_ctx.ignore_last_segment();
-            let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns);
+            let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns, true);
             drop_ctx(ctx, no_diagnostics);
             let ty = self.table.insert_type_vars(ty);
             let ty = self.table.normalize_associated_types_in(ty);
@@ -207,7 +207,7 @@ impl InferenceContext<'_> {
                         (TypeNs::TraitId(trait_), true) => {
                             let self_ty = self.table.new_type_var();
                             let trait_ref =
-                                path_ctx.lower_trait_ref_from_resolved_path(trait_, self_ty);
+                                path_ctx.lower_trait_ref_from_resolved_path(trait_, self_ty, true);
                             drop_ctx(ctx, no_diagnostics);
                             self.resolve_trait_assoc_item(trait_ref, last_segment, id)
                         }

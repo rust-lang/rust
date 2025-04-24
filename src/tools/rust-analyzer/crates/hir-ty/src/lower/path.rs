@@ -137,12 +137,13 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         ty: Ty,
         // We need the original resolution to lower `Self::AssocTy` correctly
         res: Option<TypeNs>,
+        infer_args: bool,
     ) -> (Ty, Option<TypeNs>) {
         match self.segments.len() - self.current_segment_idx {
             0 => (ty, res),
             1 => {
                 // resolve unselected assoc types
-                (self.select_associated_type(res), None)
+                (self.select_associated_type(res, infer_args), None)
             }
             _ => {
                 // FIXME report error (ambiguous associated type)
@@ -166,6 +167,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         let trait_ref = self.lower_trait_ref_from_resolved_path(
                             trait_,
                             TyKind::Error.intern(Interner),
+                            infer_args,
                         );
 
                         self.skip_resolved_segment();
@@ -181,7 +183,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                                 // this point (`trait_ref.substitution`).
                                 let substitution = self.substs_from_path_segment(
                                     associated_ty.into(),
-                                    false,
+                                    infer_args,
                                     None,
                                     true,
                                 );
@@ -276,7 +278,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         };
 
         self.skip_resolved_segment();
-        self.lower_ty_relative_path(ty, Some(resolution))
+        self.lower_ty_relative_path(ty, Some(resolution), infer_args)
     }
 
     fn handle_type_ns_resolution(&mut self, resolution: &TypeNs) {
@@ -472,7 +474,7 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         Some(res)
     }
 
-    fn select_associated_type(&mut self, res: Option<TypeNs>) -> Ty {
+    fn select_associated_type(&mut self, res: Option<TypeNs>, infer_args: bool) -> Ty {
         let Some(res) = res else {
             return TyKind::Error.intern(Interner);
         };
@@ -506,7 +508,8 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                 // generic params. It's inefficient to splice the `Substitution`s, so we may want
                 // that method to optionally take parent `Substitution` as we already know them at
                 // this point (`t.substitution`).
-                let substs = self.substs_from_path_segment(associated_ty.into(), false, None, true);
+                let substs =
+                    self.substs_from_path_segment(associated_ty.into(), infer_args, None, true);
 
                 let substs = Substitution::from_iter(
                     Interner,
@@ -830,8 +833,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         &mut self,
         resolved: TraitId,
         explicit_self_ty: Ty,
+        infer_args: bool,
     ) -> TraitRef {
-        let substs = self.trait_ref_substs_from_path(resolved, explicit_self_ty);
+        let substs = self.trait_ref_substs_from_path(resolved, explicit_self_ty, infer_args);
         TraitRef { trait_id: to_chalk_trait_id(resolved), substitution: substs }
     }
 
@@ -839,8 +843,9 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
         &mut self,
         resolved: TraitId,
         explicit_self_ty: Ty,
+        infer_args: bool,
     ) -> Substitution {
-        self.substs_from_path_segment(resolved.into(), false, Some(explicit_self_ty), false)
+        self.substs_from_path_segment(resolved.into(), infer_args, Some(explicit_self_ty), false)
     }
 
     pub(super) fn assoc_type_bindings_from_type_bound<'c>(
