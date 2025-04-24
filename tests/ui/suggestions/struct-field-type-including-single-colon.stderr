@@ -1,53 +1,40 @@
-error: path separator must be a double colon
+error: found single colon in a struct field type path
   --> $DIR/struct-field-type-including-single-colon.rs:9:11
    |
 LL |     a: foo:A,
    |           ^
    |
-   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
-help: use a double colon instead
+help: write a path separator here
    |
 LL |     a: foo::A,
    |            +
 
-error: path separator must be a double colon
+error: expected `,`, or `}`, found `:`
+  --> $DIR/struct-field-type-including-single-colon.rs:9:11
+   |
+LL | struct Foo {
+   |        --- while parsing this struct
+LL |     a: foo:A,
+   |           ^
+
+error: found single colon in a struct field type path
   --> $DIR/struct-field-type-including-single-colon.rs:15:16
    |
 LL |     b: foo::bar:B,
    |                ^
    |
-   = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
-help: use a double colon instead
+help: write a path separator here
    |
 LL |     b: foo::bar::B,
    |                 +
 
-error[E0603]: struct `A` is private
-  --> $DIR/struct-field-type-including-single-colon.rs:9:12
+error: expected `,`, or `}`, found `:`
+  --> $DIR/struct-field-type-including-single-colon.rs:15:16
    |
-LL |     a: foo:A,
-   |            ^ private struct
-   |
-note: the struct `A` is defined here
-  --> $DIR/struct-field-type-including-single-colon.rs:2:5
-   |
-LL |     struct A;
-   |     ^^^^^^^^^
-
-error[E0603]: module `bar` is private
-  --> $DIR/struct-field-type-including-single-colon.rs:15:13
-   |
+LL | struct Bar {
+   |        --- while parsing this struct
 LL |     b: foo::bar:B,
-   |             ^^^ - struct `B` is not publicly re-exported
-   |             |
-   |             private module
-   |
-note: the module `bar` is defined here
-  --> $DIR/struct-field-type-including-single-colon.rs:3:5
-   |
-LL |     mod bar {
-   |     ^^^^^^^
+   |                ^
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0603`.
