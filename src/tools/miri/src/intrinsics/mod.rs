@@ -8,7 +8,7 @@ use std::ops::Neg;
 use rand::Rng;
 use rustc_abi::Size;
 use rustc_apfloat::ieee::{IeeeFloat, Semantics};
-use rustc_apfloat::{self, Category, Float, Round};
+use rustc_apfloat::{self, Float, Round};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 use rustc_span::{Symbol, sym};
@@ -620,12 +620,6 @@ fn fixed_float_value<S: Semantics>(
 /// (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
 fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<IeeeFloat<S>> {
     match (base.category(), exp) {
-        // ±0^x = ±0 with x an odd integer.
-        (Category::Zero, x) if x % 2 != 0 => Some(base), // preserve sign of zero
-
-        // ±0^x = +0 with x an even integer.
-        (Category::Zero, x) if x % 2 == 0 => Some(IeeeFloat::<S>::ZERO),
-
         // x^0 = 1, if x is not a Signaling NaN
         // FIXME(miri/#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
         // the NaN. We should return either 1 or the NaN non-deterministically here.
