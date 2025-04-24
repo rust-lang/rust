@@ -2599,3 +2599,55 @@ impl Step for Gcc {
         tarball.generate()
     }
 }
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Enzyme {
+    pub target: TargetSelection,
+}
+
+impl Step for Enzyme {
+    type Output = Option<GeneratedTarball>;
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("enzyme")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Enzyme { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let mut tarball = Tarball::new(builder, "enzyme", &self.target.triple);
+        let enzyme_dir =
+            builder.ensure(super::llvm::Enzyme { target: self.target }).join("build/Enzyme");
+
+        tarball.set_overlay(OverlayKind::Enzyme);
+        tarball.is_preview(true);
+
+        if let Some(llvm_config) = builder.llvm_config(builder.config.build) {
+            let major = llvm::get_llvm_version_major(builder, &llvm_config);
+            let prefix = format!("libEnzyme-{major}");
+            let mut found = false;
+
+            for entry in std::fs::read_dir(&enzyme_dir)
+                .unwrap_or_else(|_| panic!("Failed to read {:?}", enzyme_dir))
+            {
+                let path = entry.unwrap().path();
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    if name.starts_with(&prefix) && is_dylib(&path) {
+                        tarball.add_file(path, "", FileType::NativeLibrary);
+                        found = true;
+                    }
+                }
+            }
+
+            assert!(found, "Enzyme library starting with '{}' not found", prefix);
+            tarball.add_legal_and_readme_to("share/doc/enzyme");
+            return Some(tarball.generate());
+        }
+
+        None
+    }
+}

@@ -1084,7 +1084,8 @@ impl<'a> Builder<'a> {
                 dist::PlainSourceTarball,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
-                dist::Gcc
+                dist::Gcc,
+                dist::Enzyme
             ),
             Kind::Install => describe!(
                 install::Docs,
