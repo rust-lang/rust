@@ -3101,7 +3101,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
     sm.span_take_while(span, |&ch| ch == ' ' || ch == ';')
 }
 
-/// Returns whether the given let pattern and else body can be turned into a question mark
+/// Returns whether the given let pattern and else body can be turned into the `?` operator
 ///
 /// For this example:
 /// ```ignore
@@ -3124,8 +3124,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
 /// ```
 ///
 /// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
-/// the question mark operator is applicable here. Callers have to check whether we are in a
-/// constant or not.
+/// the `?` operator is applicable here. Callers have to check whether we are in a constant or not.
 pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
     cx: &LateContext<'_>,
     pat: &'a Pat<'hir>,
