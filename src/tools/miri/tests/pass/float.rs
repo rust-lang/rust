@@ -55,7 +55,7 @@ macro_rules! assert_approx_eq {
 /// ```
 /// 0 | 1111111 | 01..0
 /// ```
-const SINGLE_SNAN: f32 = f32::from_bits(0x7fa00000);
+const SNAN_F32: f32 = f32::from_bits(0x7fa00000);
 
 /// From IEEE 754 a Signaling NaN for double precision has the following representation:
 /// ```
@@ -67,7 +67,7 @@ const SINGLE_SNAN: f32 = f32::from_bits(0x7fa00000);
 /// ```
 /// 0 | 1111 1111 111 | 01..0
 /// ```
-const DOUBLE_SNAN: f64 = f64::from_bits(0x7ff4000000000000);
+const SNAN_F64: f64 = f64::from_bits(0x7ff4000000000000);
 
 fn main() {
     basic();
@@ -1046,8 +1046,8 @@ pub fn libm() {
 
     // For pow (powf in rust) the C standard says:
     // x^0 = 1 for all x even a sNaN
-    assert_eq!(SINGLE_SNAN.powf(0.0), 1.0);
-    assert_eq!(DOUBLE_SNAN.powf(0.0), 1.0);
+    assert_eq!(SNAN_F32.powf(0.0), 1.0);
+    assert_eq!(SNAN_F64.powf(0.0), 1.0);
     // f*::NAN is a quiet NAN and should return 1 as well.
     assert_eq!(f32::NAN.powf(0.0), 1.0);
     assert_eq!(f64::NAN.powf(0.0), 1.0);
@@ -1076,10 +1076,15 @@ pub fn libm() {
     assert_eq!(0f32.powi(9), 0.0);
     assert_eq!(0f64.powi(99), 0.0);
 
-    assert_eq!((-0f32).powi(10), 0.0);
-    assert_eq!((-0f64).powi(100), 0.0);
-    assert_eq!((-0f32).powi(9), -0.0);
-    assert_eq!((-0f64).powi(99), -0.0);
+    assert_biteq((-0f32).powf(10.0), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f64).powf(100.0), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f32).powf(9.0), -0.0, "-0^x = -0 where x is negative");
+    assert_biteq((-0f64).powf(99.0), -0.0, "-0^x = -0 where x is negative");
+
+    assert_biteq((-0f32).powi(10), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f64).powi(100), 0.0, "-0^x = +0 where x is positive");
+    assert_biteq((-0f32).powi(9), -0.0, "-0^x = -0 where x is negative");
+    assert_biteq((-0f64).powi(99), -0.0, "-0^x = -0 where x is negative");
 
     assert_approx_eq!(1f32.exp(), f32::consts::E);
     assert_approx_eq!(1f64.exp(), f64::consts::E);
