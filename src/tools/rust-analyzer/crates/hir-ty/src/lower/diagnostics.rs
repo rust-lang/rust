@@ -63,6 +63,24 @@ pub enum PathLoweringDiagnostic {
         /// Whether the `GenericArgs` contains a `Self` arg.
         has_self_arg: bool,
     },
+    ElidedLifetimesInPath {
+        generics_source: PathGenericsSource,
+        def: GenericDefId,
+        expected_count: u32,
+        hard_error: bool,
+    },
+    /// An elided lifetimes was used (either implicitly, by not specifying lifetimes, or explicitly, by using `'_`),
+    /// but lifetime elision could not find a lifetime to replace it with.
+    ElisionFailure {
+        generics_source: PathGenericsSource,
+        def: GenericDefId,
+        expected_count: u32,
+    },
+    MissingLifetime {
+        generics_source: PathGenericsSource,
+        def: GenericDefId,
+        expected_count: u32,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

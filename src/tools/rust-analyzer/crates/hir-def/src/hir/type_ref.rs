@@ -106,6 +106,14 @@ pub struct FnType {
     pub abi: Option<Symbol>,
 }
 
+impl FnType {
+    #[inline]
+    pub fn split_params_and_ret(&self) -> (&[(Option<Name>, TypeRefId)], TypeRefId) {
+        let (ret, params) = self.params.split_last().expect("should have at least return type");
+        (params, ret.1)
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ArrayType {
     pub ty: TypeRefId,

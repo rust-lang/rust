@@ -94,8 +94,8 @@ pub use infer::{
 };
 pub use interner::Interner;
 pub use lower::{
-    ImplTraitLoweringMode, ParamLoweringMode, TyDefId, TyLoweringContext, ValueTyDefId,
-    associated_type_shorthand_candidates, diagnostics::*,
+    ImplTraitLoweringMode, LifetimeElisionKind, ParamLoweringMode, TyDefId, TyLoweringContext,
+    ValueTyDefId, associated_type_shorthand_candidates, diagnostics::*,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
@@ -529,13 +529,13 @@ pub type PolyFnSig = Binders<CallableSig>;
 
 impl CallableSig {
     pub fn from_params_and_return(
-        params: impl ExactSizeIterator<Item = Ty>,
+        params: impl Iterator<Item = Ty>,
         ret: Ty,
         is_varargs: bool,
         safety: Safety,
         abi: FnAbi,
     ) -> CallableSig {
-        let mut params_and_return = Vec::with_capacity(params.len() + 1);
+        let mut params_and_return = Vec::with_capacity(params.size_hint().0 + 1);
         params_and_return.extend(params);
         params_and_return.push(ret);
         CallableSig { params_and_return: params_and_return.into(), is_varargs, safety, abi }

@@ -25,8 +25,8 @@ use chalk_ir::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, LocalFieldId, Lookup, StaticId,
-    StructId, TypeAliasId, TypeOrConstParamId, UnionId, VariantId,
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LocalFieldId,
+    Lookup, StaticId, StructId, TypeAliasId, TypeOrConstParamId, UnionId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{ExpressionStore, path::Path},
     hir::generics::{
@@ -35,7 +35,7 @@ use hir_def::{
     item_tree::FieldsShape,
     lang_item::LangItem,
     resolver::{HasResolver, LifetimeNs, Resolver, TypeNs},
-    signatures::{TraitFlags, TypeAliasFlags},
+    signatures::{FunctionSignature, TraitFlags, TypeAliasFlags},
     type_ref::{
         ConstRef, LifetimeRef, LiteralConstRef, PathId, TraitBoundModifier,
         TraitRef as HirTraitRef, TypeBound, TypeRef, TypeRefId,
@@ -86,21 +86,70 @@ impl ImplTraitLoweringState {
 
 pub(crate) struct PathDiagnosticCallbackData(TypeRefId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum GenericArgsPosition {
-    Type,
-    /// E.g. functions.
-    Value,
-    MethodCall,
-    // FIXME: This is a temporary variant we need to work around the lack of lifetime elision.
-    // The reason for its existence is that in `check_generic_args_len()`, without this, we will
-    // not infer elide lifetimes.
-    // They indeed should not be inferred - they should be elided - but we won't elide them either,
-    // emitting an error instead. rustc elides them in late resolve, and the generics it passes
-    // to lowering already include them. We probably can't do that, but we will still need to
-    // account for them when we properly implement lifetime elision.
-    FnSignature,
-    OtherSignature,
+#[derive(Debug, Clone)]
+pub enum LifetimeElisionKind {
+    /// Create a new anonymous lifetime parameter and reference it.
+    ///
+    /// If `report_in_path`, report an error when encountering lifetime elision in a path:
+    /// ```compile_fail
+    /// struct Foo<'a> { x: &'a () }
+    /// async fn foo(x: Foo) {}
+    /// ```
+    ///
+    /// Note: the error should not trigger when the elided lifetime is in a pattern or
+    /// expression-position path:
+    /// ```
+    /// struct Foo<'a> { x: &'a () }
+    /// async fn foo(Foo { x: _ }: Foo<'_>) {}
+    /// ```
+    AnonymousCreateParameter { report_in_path: bool },
+
+    /// Replace all anonymous lifetimes by provided lifetime.
+    Elided(Lifetime),
+
+    /// Give a hard error when either `&` or `'_` is written. Used to
+    /// rule out things like `where T: Foo<'_>`. Does not imply an
+    /// error on default object bounds (e.g., `Box<dyn Foo>`).
+    AnonymousReportError,
+
+    /// Resolves elided lifetimes to `'static` if there are no other lifetimes in scope,
+    /// otherwise give a warning that the previous behavior of introducing a new early-bound
+    /// lifetime is a bug and will be removed (if `only_lint` is enabled).
+    StaticIfNoLifetimeInScope { only_lint: bool },
+
+    /// Signal we cannot find which should be the anonymous lifetime.
+    ElisionFailure,
+
+    /// Infer all elided lifetimes.
+    Infer,
+}
+
+impl LifetimeElisionKind {
+    #[inline]
+    pub(crate) fn for_const(const_parent: ItemContainerId) -> LifetimeElisionKind {
+        match const_parent {
+            ItemContainerId::ExternBlockId(_) | ItemContainerId::ModuleId(_) => {
+                LifetimeElisionKind::Elided(static_lifetime())
+            }
+            ItemContainerId::ImplId(_) => {
+                LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: true }
+            }
+            ItemContainerId::TraitId(_) => {
+                LifetimeElisionKind::StaticIfNoLifetimeInScope { only_lint: false }
+            }
+        }
+    }
+
+    #[inline]
+    pub(crate) fn for_fn_params(data: &FunctionSignature) -> LifetimeElisionKind {
+        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: data.is_async() }
+    }
+
+    #[inline]
+    pub(crate) fn for_fn_ret() -> LifetimeElisionKind {
+        // FIXME: We should use the elided lifetime here, or `ElisionFailure`.
+        LifetimeElisionKind::Elided(error_lifetime())
+    }
 }
 
 #[derive(Debug)]
@@ -120,7 +169,7 @@ pub struct TyLoweringContext<'a> {
     /// Tracks types with explicit `?Sized` bounds.
     pub(crate) unsized_types: FxHashSet<Ty>,
     pub(crate) diagnostics: Vec<TyLoweringDiagnostic>,
-    pub(crate) in_fn_signature: bool,
+    lifetime_elision: LifetimeElisionKind,
 }
 
 impl<'a> TyLoweringContext<'a> {
@@ -129,6 +178,7 @@ impl<'a> TyLoweringContext<'a> {
         resolver: &'a Resolver,
         store: &'a ExpressionStore,
         def: GenericDefId,
+        lifetime_elision: LifetimeElisionKind,
     ) -> Self {
         let impl_trait_mode = ImplTraitLoweringState::new(ImplTraitLoweringMode::Disallowed);
         let type_param_mode = ParamLoweringMode::Placeholder;
@@ -144,7 +194,7 @@ impl<'a> TyLoweringContext<'a> {
             type_param_mode,
             unsized_types: FxHashSet::default(),
             diagnostics: Vec::new(),
-            in_fn_signature: false,
+            lifetime_elision,
         }
     }
 
@@ -165,6 +215,17 @@ impl<'a> TyLoweringContext<'a> {
         f: impl FnOnce(&mut TyLoweringContext<'_>) -> T,
     ) -> T {
         self.with_debruijn(self.in_binders.shifted_in_from(debruijn), f)
+    }
+
+    fn with_lifetime_elision<T>(
+        &mut self,
+        lifetime_elision: LifetimeElisionKind,
+        f: impl FnOnce(&mut TyLoweringContext<'_>) -> T,
+    ) -> T {
+        let old_lifetime_elision = mem::replace(&mut self.lifetime_elision, lifetime_elision);
+        let result = f(self);
+        self.lifetime_elision = old_lifetime_elision;
+        result
     }
 
     pub fn with_impl_trait_mode(self, impl_trait_mode: ImplTraitLoweringMode) -> Self {
@@ -318,10 +379,18 @@ impl<'a> TyLoweringContext<'a> {
             TypeRef::Placeholder => TyKind::Error.intern(Interner),
             TypeRef::Fn(fn_) => {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
-                    Substitution::from_iter(
-                        Interner,
-                        fn_.params.iter().map(|&(_, tr)| ctx.lower_ty(tr)),
-                    )
+                    let (params, ret) = fn_.split_params_and_ret();
+                    let mut subst = Vec::with_capacity(fn_.params.len());
+                    ctx.with_lifetime_elision(
+                        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: false },
+                        |ctx| {
+                            subst.extend(params.iter().map(|&(_, tr)| ctx.lower_ty(tr)));
+                        },
+                    );
+                    ctx.with_lifetime_elision(LifetimeElisionKind::for_fn_ret(), |ctx| {
+                        subst.push(ctx.lower_ty(ret));
+                    });
+                    Substitution::from_iter(Interner, subst)
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly
@@ -431,11 +500,6 @@ impl<'a> TyLoweringContext<'a> {
             self,
             Self::on_path_diagnostic_callback(path_id.type_ref()),
             &self.store[path_id],
-            if self.in_fn_signature {
-                GenericArgsPosition::FnSignature
-            } else {
-                GenericArgsPosition::Type
-            },
         )
     }
 
@@ -855,8 +919,14 @@ pub(crate) fn field_types_with_diagnostics_query(
     };
     let generics = generics(db, def);
     let mut res = ArenaMap::default();
-    let mut ctx = TyLoweringContext::new(db, &resolver, &var_data.store, def)
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &var_data.store,
+        def,
+        LifetimeElisionKind::AnonymousReportError,
+    )
+    .with_type_param_mode(ParamLoweringMode::Variable);
     for (field_id, field_data) in var_data.fields().iter() {
         res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(field_data.type_ref)));
     }
@@ -879,8 +949,14 @@ pub(crate) fn generic_predicates_for_param_query(
 ) -> GenericPredicates {
     let generics = generics(db, def);
     let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, generics.store(), def)
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        generics.store(),
+        def,
+        LifetimeElisionKind::AnonymousReportError,
+    )
+    .with_type_param_mode(ParamLoweringMode::Variable);
 
     // we have to filter out all other predicates *first*, before attempting to lower them
     let predicate = |pred: &_, generics: &Generics, ctx: &mut TyLoweringContext<'_>| match pred {
@@ -987,8 +1063,14 @@ pub(crate) fn trait_environment_query(
 ) -> Arc<TraitEnvironment> {
     let generics = generics(db, def);
     let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, generics.store(), def)
-        .with_type_param_mode(ParamLoweringMode::Placeholder);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        generics.store(),
+        def,
+        LifetimeElisionKind::AnonymousReportError,
+    )
+    .with_type_param_mode(ParamLoweringMode::Placeholder);
     let mut traits_in_scope = Vec::new();
     let mut clauses = Vec::new();
     for maybe_parent_generics in
@@ -1086,8 +1168,14 @@ where
 {
     let generics = generics(db, def);
     let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, generics.store(), def)
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        generics.store(),
+        def,
+        LifetimeElisionKind::AnonymousReportError,
+    )
+    .with_type_param_mode(ParamLoweringMode::Variable);
 
     let mut predicates = Vec::new();
     for maybe_parent_generics in
@@ -1188,9 +1276,15 @@ pub(crate) fn generic_defaults_with_diagnostics_query(
     }
     let resolver = def.resolver(db);
 
-    let mut ctx = TyLoweringContext::new(db, &resolver, generic_params.store(), def)
-        .with_impl_trait_mode(ImplTraitLoweringMode::Disallowed)
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        generic_params.store(),
+        def,
+        LifetimeElisionKind::AnonymousReportError,
+    )
+    .with_impl_trait_mode(ImplTraitLoweringMode::Disallowed)
+    .with_type_param_mode(ParamLoweringMode::Variable);
     let mut idx = 0;
     let mut has_any_default = false;
     let mut defaults = generic_params
@@ -1273,17 +1367,27 @@ pub(crate) fn generic_defaults_with_diagnostics_cycle_result(
 fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
     let data = db.function_signature(def);
     let resolver = def.resolver(db);
-    let mut ctx_params = TyLoweringContext::new(db, &resolver, &data.store, def.into())
-        .with_type_param_mode(ParamLoweringMode::Variable);
-    ctx_params.in_fn_signature = true;
+    let mut ctx_params = TyLoweringContext::new(
+        db,
+        &resolver,
+        &data.store,
+        def.into(),
+        LifetimeElisionKind::for_fn_params(&data),
+    )
+    .with_type_param_mode(ParamLoweringMode::Variable);
     let params = data.params.iter().map(|&tr| ctx_params.lower_ty(tr));
 
     let ret = match data.ret_type {
         Some(ret_type) => {
-            let mut ctx_ret = TyLoweringContext::new(db, &resolver, &data.store, def.into())
-                .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-                .with_type_param_mode(ParamLoweringMode::Variable);
-            ctx_ret.in_fn_signature = true;
+            let mut ctx_ret = TyLoweringContext::new(
+                db,
+                &resolver,
+                &data.store,
+                def.into(),
+                LifetimeElisionKind::for_fn_ret(),
+            )
+            .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
+            .with_type_param_mode(ParamLoweringMode::Variable);
             ctx_ret.lower_ty(ret_type)
         }
         None => TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner),
@@ -1316,8 +1420,15 @@ fn type_for_const(db: &dyn HirDatabase, def: ConstId) -> Binders<Ty> {
     let data = db.const_signature(def);
     let generics = generics(db, def.into());
     let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, &data.store, def.into())
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let parent = def.loc(db).container;
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &data.store,
+        def.into(),
+        LifetimeElisionKind::for_const(parent),
+    )
+    .with_type_param_mode(ParamLoweringMode::Variable);
 
     make_binders(db, &generics, ctx.lower_ty(data.type_ref))
 }
@@ -1326,18 +1437,20 @@ fn type_for_const(db: &dyn HirDatabase, def: ConstId) -> Binders<Ty> {
 fn type_for_static(db: &dyn HirDatabase, def: StaticId) -> Binders<Ty> {
     let data = db.static_signature(def);
     let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, &data.store, def.into());
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &data.store,
+        def.into(),
+        LifetimeElisionKind::Elided(static_lifetime()),
+    );
 
     Binders::empty(Interner, ctx.lower_ty(data.type_ref))
 }
 
 fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnSig {
-    let struct_data = db.variant_fields(def.into());
-    let fields = struct_data.fields();
-    let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, &struct_data.store, def.into())
-        .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = fields.iter().map(|(_, field)| ctx.lower_ty(field.type_ref));
+    let field_tys = db.field_types(def.into());
+    let params = field_tys.iter().map(|(_, ty)| ty.skip_binders().clone());
     let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
     Binders::new(
         binders,
@@ -1364,13 +1477,9 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Bi
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
-    let var_data = db.variant_fields(def.into());
-    let fields = var_data.fields();
-    let resolver = def.resolver(db);
+    let field_tys = db.field_types(def.into());
+    let params = field_tys.iter().map(|(_, ty)| ty.skip_binders().clone());
     let parent = def.lookup(db).parent;
-    let mut ctx = TyLoweringContext::new(db, &resolver, &var_data.store, parent.into())
-        .with_type_param_mode(ParamLoweringMode::Variable);
-    let params = fields.iter().map(|(_, field)| ctx.lower_ty(field.type_ref));
     let (ret, binders) = type_for_adt(db, parent.into()).into_value_and_skipped_binders();
     Binders::new(
         binders,
@@ -1429,9 +1538,15 @@ pub(crate) fn type_for_type_alias_with_diagnostics_query(
     } else {
         let resolver = t.resolver(db);
         let alias = db.type_alias_signature(t);
-        let mut ctx = TyLoweringContext::new(db, &resolver, &alias.store, t.into())
-            .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-            .with_type_param_mode(ParamLoweringMode::Variable);
+        let mut ctx = TyLoweringContext::new(
+            db,
+            &resolver,
+            &alias.store,
+            t.into(),
+            LifetimeElisionKind::AnonymousReportError,
+        )
+        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
+        .with_type_param_mode(ParamLoweringMode::Variable);
         let res = alias
             .ty
             .map(|type_ref| ctx.lower_ty(type_ref))
@@ -1517,8 +1632,14 @@ pub(crate) fn impl_self_ty_with_diagnostics_query(
     let impl_data = db.impl_signature(impl_id);
     let resolver = impl_id.resolver(db);
     let generics = generics(db, impl_id.into());
-    let mut ctx = TyLoweringContext::new(db, &resolver, &impl_data.store, impl_id.into())
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &impl_data.store,
+        impl_id.into(),
+        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
+    )
+    .with_type_param_mode(ParamLoweringMode::Variable);
     (
         make_binders(db, &generics, ctx.lower_ty(impl_data.self_ty)),
         create_diagnostics(ctx.diagnostics),
@@ -1537,7 +1658,13 @@ pub(crate) fn const_param_ty_with_diagnostics_query(
     let (parent_data, store) = db.generic_params_and_store(def.parent());
     let data = &parent_data[def.local_id()];
     let resolver = def.parent().resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, &store, def.parent());
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &store,
+        def.parent(),
+        LifetimeElisionKind::AnonymousReportError,
+    );
     let ty = match data {
         TypeOrConstParamData::TypeParamData(_) => {
             never!();
@@ -1566,8 +1693,14 @@ pub(crate) fn impl_trait_with_diagnostics_query(
 ) -> Option<(Binders<TraitRef>, Diagnostics)> {
     let impl_data = db.impl_signature(impl_id);
     let resolver = impl_id.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, &impl_data.store, impl_id.into())
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &impl_data.store,
+        impl_id.into(),
+        LifetimeElisionKind::AnonymousCreateParameter { report_in_path: true },
+    )
+    .with_type_param_mode(ParamLoweringMode::Variable);
     let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();
     let target_trait = impl_data.target_trait.as_ref()?;
     let trait_ref = Binders::new(binders, ctx.lower_trait_ref(target_trait, self_ty)?);
@@ -1581,9 +1714,10 @@ pub(crate) fn return_type_impl_traits(
     // FIXME unify with fn_sig_for_fn instead of doing lowering twice, maybe
     let data = db.function_signature(def);
     let resolver = def.resolver(db);
-    let mut ctx_ret = TyLoweringContext::new(db, &resolver, &data.store, def.into())
-        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx_ret =
+        TyLoweringContext::new(db, &resolver, &data.store, def.into(), LifetimeElisionKind::Infer)
+            .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
+            .with_type_param_mode(ParamLoweringMode::Variable);
     if let Some(ret_type) = data.ret_type {
         let _ret = ctx_ret.lower_ty(ret_type);
     }
@@ -1603,9 +1737,15 @@ pub(crate) fn type_alias_impl_traits(
 ) -> Option<Arc<Binders<ImplTraits>>> {
     let data = db.type_alias_signature(def);
     let resolver = def.resolver(db);
-    let mut ctx = TyLoweringContext::new(db, &resolver, &data.store, def.into())
-        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
-        .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx = TyLoweringContext::new(
+        db,
+        &resolver,
+        &data.store,
+        def.into(),
+        LifetimeElisionKind::AnonymousReportError,
+    )
+    .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
+    .with_type_param_mode(ParamLoweringMode::Variable);
     if let Some(type_ref) = data.ty {
         let _ty = ctx.lower_ty(type_ref);
     }
