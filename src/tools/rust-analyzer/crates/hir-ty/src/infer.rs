@@ -1675,7 +1675,7 @@ impl<'a> InferenceContext<'a> {
                     // `lower_partly_resolved_path()` returns `None` as type namespace unless
                     // `remaining_segments` is empty, which is never the case here. We don't know
                     // which namespace the new `ty` is in until normalized anyway.
-                    (ty, _) = path_ctx.lower_partly_resolved_path(resolution, false);
+                    (ty, _) = path_ctx.lower_partly_resolved_path(resolution, true);
                     tried_resolving_once = true;
 
                     ty = self.table.insert_type_vars(ty);

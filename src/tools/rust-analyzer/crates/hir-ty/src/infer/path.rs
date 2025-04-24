@@ -177,7 +177,7 @@ impl InferenceContext<'_> {
             let ty = self.table.normalize_associated_types_in(ty);
 
             path_ctx.ignore_last_segment();
-            let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns);
+            let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns, true);
             drop_ctx(ctx, no_diagnostics);
             let ty = self.table.insert_type_vars(ty);
             let ty = self.table.normalize_associated_types_in(ty);

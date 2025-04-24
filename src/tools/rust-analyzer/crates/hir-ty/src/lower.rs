@@ -508,7 +508,7 @@ impl<'a> TyLoweringContext<'a> {
         if let Some(type_ref) = path.type_anchor() {
             let (ty, res) = self.lower_ty_ext(type_ref);
             let mut ctx = self.at_path(path_id);
-            return ctx.lower_ty_relative_path(ty, res);
+            return ctx.lower_ty_relative_path(ty, res, false);
         }
 
         let mut ctx = self.at_path(path_id);
