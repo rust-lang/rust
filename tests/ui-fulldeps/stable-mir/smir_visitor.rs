@@ -183,14 +183,14 @@ impl mir::MutMirVisitor for TestMutVisitor {
 fn main() {
     let path = "sim_visitor_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args.clone(), test_visitor).unwrap();
+    run!(args, test_visitor).unwrap();
     run!(args, test_mut_visitor).unwrap();
 }
 

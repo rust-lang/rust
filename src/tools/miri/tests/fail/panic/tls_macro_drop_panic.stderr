@@ -1,7 +1,7 @@
 
 thread $NAME panicked at tests/fail/panic/tls_macro_drop_panic.rs:LL:CC:
 ow
-fatal runtime error: thread local panicked on drop
+fatal runtime error: thread local panicked on drop, aborting
 error: abnormal termination: the program aborted execution
 
 error: aborting due to 1 previous error

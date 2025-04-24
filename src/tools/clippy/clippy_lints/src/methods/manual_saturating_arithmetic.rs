@@ -106,15 +106,15 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
     };
 
     let check_lit = |expr: &hir::Expr<'_>, check_min: bool| {
-        if let hir::ExprKind::Lit(lit) = &expr.kind {
-            if let ast::LitKind::Int(value, _) = lit.node {
-                if value == maxval {
-                    return Some(MinMax::Max);
-                }
+        if let hir::ExprKind::Lit(lit) = &expr.kind
+            && let ast::LitKind::Int(value, _) = lit.node
+        {
+            if value == maxval {
+                return Some(MinMax::Max);
+            }
 
-                if check_min && value == minval {
-                    return Some(MinMax::Min);
-                }
+            if check_min && value == minval {
+                return Some(MinMax::Min);
             }
         }
 
@@ -125,10 +125,10 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
         return r;
     }
 
-    if ty.is_signed() {
-        if let hir::ExprKind::Unary(hir::UnOp::Neg, val) = &expr.kind {
-            return check_lit(val, true);
-        }
+    if ty.is_signed()
+        && let hir::ExprKind::Unary(hir::UnOp::Neg, val) = &expr.kind
+    {
+        return check_lit(val, true);
     }
 
     None

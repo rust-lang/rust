@@ -387,6 +387,15 @@ rustc_queries! {
         }
     }
 
+    query stalled_generators_within(
+        key: LocalDefId
+    ) -> &'tcx ty::List<LocalDefId> {
+        desc {
+            |tcx| "computing the coroutines defined within `{}`",
+            tcx.def_path_str(key.to_def_id())
+        }
+    }
+
     /// Returns the explicitly user-written *bounds* on the associated or opaque type given by `DefId`
     /// that must be proven true at definition site (and which can be assumed at usage sites).
     ///

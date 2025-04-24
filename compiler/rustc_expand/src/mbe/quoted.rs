@@ -181,7 +181,10 @@ fn parse_tree<'a>(
                         if delim != Delimiter::Parenthesis {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
                                 sess,
-                                &Token { kind: token::OpenDelim(delim), span: delim_span.entire() },
+                                &Token {
+                                    kind: delim.as_open_token_kind(),
+                                    span: delim_span.entire(),
+                                },
                             );
                         }
                     } else {
@@ -217,7 +220,8 @@ fn parse_tree<'a>(
                             }
                             Delimiter::Parenthesis => {}
                             _ => {
-                                let token = pprust::token_kind_to_string(&token::OpenDelim(delim));
+                                let token =
+                                    pprust::token_kind_to_string(&delim.as_open_token_kind());
                                 sess.dcx().emit_err(errors::ExpectedParenOrBrace {
                                     span: delim_span.entire(),
                                     token,

@@ -71,8 +71,10 @@ fn f(op: u8, op2: Data, unrelated: u8) {
 }
 
 unsafe fn f2(op: u8) {
-    (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
-    //~^ eager_transmute
+    unsafe {
+        (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
+        //~^ eager_transmute
+    }
 }
 
 #[rustc_layout_scalar_valid_range_end(254)]

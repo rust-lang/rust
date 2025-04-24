@@ -114,24 +114,9 @@ where
         self.reachable_blocks.insert_all()
     }
 
-    /// Returns the underlying `Results`.
-    pub fn results(&self) -> &Results<'tcx, A> {
-        &self.results
-    }
-
-    /// Returns the underlying `Results`.
-    pub fn mut_results(&mut self) -> &mut Results<'tcx, A> {
-        &mut self.results
-    }
-
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
         &self.results.analysis
-    }
-
-    /// Returns the `Analysis` used to generate the underlying `Results`.
-    pub fn mut_analysis(&mut self) -> &mut A {
-        &mut self.results.analysis
     }
 
     /// Resets the cursor to hold the entry set for the given basic block.

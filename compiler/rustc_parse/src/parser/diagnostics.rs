@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
+use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
@@ -304,10 +304,10 @@ impl<'a> Parser<'a> {
             TokenKind::Comma,
             TokenKind::Semi,
             TokenKind::PathSep,
-            TokenKind::OpenDelim(Delimiter::Brace),
-            TokenKind::OpenDelim(Delimiter::Parenthesis),
-            TokenKind::CloseDelim(Delimiter::Brace),
-            TokenKind::CloseDelim(Delimiter::Parenthesis),
+            TokenKind::OpenBrace,
+            TokenKind::OpenParen,
+            TokenKind::CloseBrace,
+            TokenKind::CloseParen,
         ];
         if let TokenKind::DocComment(..) = self.prev_token.kind
             && valid_follow.contains(&self.token.kind)
@@ -507,7 +507,7 @@ impl<'a> Parser<'a> {
             } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
                 // The current token is in the same line as the prior token, not recoverable.
             } else if [token::Comma, token::Colon].contains(&self.token.kind)
-                && self.prev_token == token::CloseDelim(Delimiter::Parenthesis)
+                && self.prev_token == token::CloseParen
             {
                 // Likely typo: The current token is on a new line and is expected to be
                 // `.`, `;`, `?`, or an operator after a close delimiter token.
@@ -518,8 +518,7 @@ impl<'a> Parser<'a> {
                 //         ^
                 // https://github.com/rust-lang/rust/issues/72253
             } else if self.look_ahead(1, |t| {
-                t == &token::CloseDelim(Delimiter::Brace)
-                    || t.can_begin_expr() && *t != token::Colon
+                t == &token::CloseBrace || t.can_begin_expr() && *t != token::Colon
             }) && [token::Comma, token::Colon].contains(&self.token.kind)
             {
                 // Likely typo: `,` → `;` or `:` → `;`. This is triggered if the current token is
@@ -537,7 +536,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 return Ok(guar);
             } else if self.look_ahead(0, |t| {
-                t == &token::CloseDelim(Delimiter::Brace)
+                t == &token::CloseBrace
                     || ((t.can_begin_expr() || t.can_begin_item())
                         && t != &token::Semi
                         && t != &token::Pound)
@@ -675,8 +674,7 @@ impl<'a> Parser<'a> {
 
         // `pub` may be used for an item or `pub(crate)`
         if self.prev_token.is_ident_named(sym::public)
-            && (self.token.can_begin_item()
-                || self.token == TokenKind::OpenDelim(Delimiter::Parenthesis))
+            && (self.token.can_begin_item() || self.token == TokenKind::OpenParen)
         {
             err.span_suggestion_short(
                 self.prev_token.span,
@@ -843,9 +841,7 @@ impl<'a> Parser<'a> {
                 if expr.attrs.len() == 1 { "this attribute" } else { "these attributes" },
             ),
         );
-        if self.token == token::Pound
-            && self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Bracket))
-        {
+        if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
             // We have
             // #[attr]
             // expr
@@ -1037,9 +1033,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         err.span_label(lo.to(decl_hi), "while parsing the body of this closure");
         let guar = match before.kind {
-            token::OpenDelim(Delimiter::Brace)
-                if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) =>
-            {
+            token::OpenBrace if token.kind != token::OpenBrace => {
                 // `{ || () }` should have been `|| { () }`
                 err.multipart_suggestion(
                     "you might have meant to open the body of the closure, instead of enclosing \
@@ -1054,9 +1048,7 @@ impl<'a> Parser<'a> {
                 self.eat_to_tokens(&[exp!(CloseBrace)]);
                 guar
             }
-            token::OpenDelim(Delimiter::Parenthesis)
-                if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) =>
-            {
+            token::OpenParen if token.kind != token::OpenBrace => {
                 // We are within a function call or tuple, we can emit the error
                 // and recover.
                 self.eat_to_tokens(&[exp!(CloseParen), exp!(Comma)]);
@@ -1071,7 +1063,7 @@ impl<'a> Parser<'a> {
                 );
                 err.emit()
             }
-            _ if !matches!(token.kind, token::OpenDelim(Delimiter::Brace)) => {
+            _ if token.kind != token::OpenBrace => {
                 // We don't have a heuristic to correctly identify where the block
                 // should be closed.
                 err.multipart_suggestion_verbose(
@@ -1225,7 +1217,7 @@ impl<'a> Parser<'a> {
                         trailing_span = trailing_span.to(self.token.span);
                         self.bump();
                     }
-                    if self.token == token::OpenDelim(Delimiter::Parenthesis) {
+                    if self.token == token::OpenParen {
                         // Recover from bad turbofish: `foo.collect::Vec<_>()`.
                         segment.args = Some(AngleBracketedArgs { args, span }.into());
 
@@ -1470,9 +1462,7 @@ impl<'a> Parser<'a> {
                         let modifiers = [(token::Lt, 1), (token::Gt, -1), (token::Shr, -2)];
                         self.consume_tts(1, &modifiers);
 
-                        if !&[token::OpenDelim(Delimiter::Parenthesis), token::PathSep]
-                            .contains(&self.token.kind)
-                        {
+                        if !matches!(self.token.kind, token::OpenParen | token::PathSep) {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
                             // parser and bail out.
                             self.restore_snapshot(snapshot);
@@ -1510,7 +1500,7 @@ impl<'a> Parser<'a> {
                                 Err(self.dcx().create_err(err))
                             }
                         }
-                    } else if self.token == token::OpenDelim(Delimiter::Parenthesis) {
+                    } else if self.token == token::OpenParen {
                         // We have high certainty that this was a bad turbofish at this point.
                         // `foo< bar >(`
                         if let ExprKind::Binary(o, ..) = inner_op.kind
@@ -1570,10 +1560,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `(`
 
         // Consume the fn call arguments.
-        let modifiers = [
-            (token::OpenDelim(Delimiter::Parenthesis), 1),
-            (token::CloseDelim(Delimiter::Parenthesis), -1),
-        ];
+        let modifiers = [(token::OpenParen, 1), (token::CloseParen, -1)];
         self.consume_tts(1, &modifiers);
 
         if self.token == token::Eof {
@@ -1978,7 +1965,7 @@ impl<'a> Parser<'a> {
 
     fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, P<Expr>, bool)> {
         let is_question = self.eat(exp!(Question)); // Handle `await? <expr>`.
-        let expr = if self.token == token::OpenDelim(Delimiter::Brace) {
+        let expr = if self.token == token::OpenBrace {
             // Handle `await { <expr> }`.
             // This needs to be handled separately from the next arm to avoid
             // interpreting `await { <expr> }?` as `<expr>?.await`.
@@ -2014,9 +2001,7 @@ impl<'a> Parser<'a> {
 
     /// If encountering `future.await()`, consumes and emits an error.
     pub(super) fn recover_from_await_method_call(&mut self) {
-        if self.token == token::OpenDelim(Delimiter::Parenthesis)
-            && self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
-        {
+        if self.token == token::OpenParen && self.look_ahead(1, |t| t == &token::CloseParen) {
             // future.await()
             let lo = self.token.span;
             self.bump(); // (
@@ -2029,9 +2014,7 @@ impl<'a> Parser<'a> {
     ///
     /// If encountering `x.use()`, consumes and emits an error.
     pub(super) fn recover_from_use(&mut self) {
-        if self.token == token::OpenDelim(Delimiter::Parenthesis)
-            && self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
-        {
+        if self.token == token::OpenParen && self.look_ahead(1, |t| t == &token::CloseParen) {
             // var.use()
             let lo = self.token.span;
             self.bump(); // (
@@ -2045,7 +2028,7 @@ impl<'a> Parser<'a> {
     pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
         let is_try = self.token.is_keyword(kw::Try);
         let is_questionmark = self.look_ahead(1, |t| t == &token::Bang); //check for !
-        let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(Delimiter::Parenthesis)); //check for (
+        let is_open = self.look_ahead(2, |t| t == &token::OpenParen); //check for (
 
         if is_try && is_questionmark && is_open {
             let lo = self.token.span;
@@ -2053,7 +2036,7 @@ impl<'a> Parser<'a> {
             self.bump(); //remove !
             let try_span = lo.to(self.token.span); //we take the try!( span
             self.bump(); //remove (
-            let is_empty = self.token == token::CloseDelim(Delimiter::Parenthesis); //check if the block is empty
+            let is_empty = self.token == token::CloseParen; //check if the block is empty
             self.consume_block(exp!(OpenParen), exp!(CloseParen), ConsumeClosingDelim::No); //eat the block
             let hi = self.token.span;
             self.bump(); //remove )
@@ -2148,7 +2131,7 @@ impl<'a> Parser<'a> {
         loop {
             debug!("recover_stmt_ loop {:?}", self.token);
             match self.token.kind {
-                token::OpenDelim(Delimiter::Brace) => {
+                token::OpenBrace => {
                     brace_depth += 1;
                     self.bump();
                     if break_on_block == BlockMode::Break && brace_depth == 1 && bracket_depth == 0
@@ -2156,11 +2139,11 @@ impl<'a> Parser<'a> {
                         in_block = true;
                     }
                 }
-                token::OpenDelim(Delimiter::Bracket) => {
+                token::OpenBracket => {
                     bracket_depth += 1;
                     self.bump();
                 }
-                token::CloseDelim(Delimiter::Brace) => {
+                token::CloseBrace => {
                     if brace_depth == 0 {
                         debug!("recover_stmt_ return - close delim {:?}", self.token);
                         break;
@@ -2172,7 +2155,7 @@ impl<'a> Parser<'a> {
                         break;
                     }
                 }
-                token::CloseDelim(Delimiter::Bracket) => {
+                token::CloseBracket => {
                     bracket_depth -= 1;
                     if bracket_depth < 0 {
                         bracket_depth = 0;
@@ -2219,12 +2202,10 @@ impl<'a> Parser<'a> {
         if let token::DocComment(..) = self.token.kind {
             self.dcx().emit_err(DocCommentOnParamType { span: self.token.span });
             self.bump();
-        } else if self.token == token::Pound
-            && self.look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Bracket))
-        {
+        } else if self.token == token::Pound && self.look_ahead(1, |t| *t == token::OpenBracket) {
             let lo = self.token.span;
             // Skip every token until next possible arg.
-            while self.token != token::CloseDelim(Delimiter::Bracket) {
+            while self.token != token::CloseBracket {
                 self.bump();
             }
             let sp = lo.to(self.token.span);
@@ -2243,9 +2224,7 @@ impl<'a> Parser<'a> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
         if self.check_ident()
-            && self.look_ahead(1, |t| {
-                *t == token::Comma || *t == token::CloseDelim(Delimiter::Parenthesis)
-            })
+            && self.look_ahead(1, |t| *t == token::Comma || *t == token::CloseParen)
         {
             // `fn foo(String s) {}`
             let ident = self.parse_ident().unwrap();
@@ -2261,7 +2240,7 @@ impl<'a> Parser<'a> {
         } else if require_name
             && (self.token == token::Comma
                 || self.token == token::Lt
-                || self.token == token::CloseDelim(Delimiter::Parenthesis))
+                || self.token == token::CloseParen)
         {
             let rfc_note = "anonymous parameters are removed in the 2018 edition (see RFC 1685)";
 
@@ -2872,7 +2851,7 @@ impl<'a> Parser<'a> {
         // Check for `'a : {`
         if !(self.check_lifetime()
             && self.look_ahead(1, |t| *t == token::Colon)
-            && self.look_ahead(2, |t| *t == token::OpenDelim(Delimiter::Brace)))
+            && self.look_ahead(2, |t| *t == token::OpenBrace))
         {
             return false;
         }

@@ -5,7 +5,7 @@ use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypingEnv};
-use rustc_session::lint::builtin::{ABI_UNSUPPORTED_VECTOR_TYPES, WASM_C_ABI};
+use rustc_session::lint::builtin::WASM_C_ABI;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, Conv, FnAbi, PassMode};
@@ -50,34 +50,24 @@ fn do_check_simd_vector_abi<'tcx>(
             let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
                 Some((_, feature)) => feature,
                 None => {
-                    let (span, hir_id) = loc();
-                    tcx.emit_node_span_lint(
-                        ABI_UNSUPPORTED_VECTOR_TYPES,
-                        hir_id,
+                    let (span, _hir_id) = loc();
+                    tcx.dcx().emit_err(errors::AbiErrorUnsupportedVectorType {
                         span,
-                        errors::AbiErrorUnsupportedVectorType {
-                            span,
-                            ty: arg_abi.layout.ty,
-                            is_call,
-                        },
-                    );
+                        ty: arg_abi.layout.ty,
+                        is_call,
+                    });
                     continue;
                 }
             };
             if !have_feature(Symbol::intern(feature)) {
                 // Emit error.
-                let (span, hir_id) = loc();
-                tcx.emit_node_span_lint(
-                    ABI_UNSUPPORTED_VECTOR_TYPES,
-                    hir_id,
+                let (span, _hir_id) = loc();
+                tcx.dcx().emit_err(errors::AbiErrorDisabledVectorType {
                     span,
-                    errors::AbiErrorDisabledVectorType {
-                        span,
-                        required_feature: feature,
-                        ty: arg_abi.layout.ty,
-                        is_call,
-                    },
-                );
+                    required_feature: feature,
+                    ty: arg_abi.layout.ty,
+                    is_call,
+                });
             }
         }
     }
@@ -96,6 +86,12 @@ fn do_check_simd_vector_abi<'tcx>(
 /// Determines whether the given argument is passed the same way on the old and new wasm ABIs.
 fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool {
     if matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
+        return true;
+    }
+
+    // Both the old and the new ABIs treat vector types like `v128` the same
+    // way.
+    if uses_vector_registers(&arg.mode, &arg.layout.backend_repr) {
         return true;
     }
 

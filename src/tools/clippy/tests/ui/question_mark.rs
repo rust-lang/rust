@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
+use std::sync::MutexGuard;
+
 fn some_func(a: Option<u32>) -> Option<u32> {
     if a.is_none() {
         //~^ question_mark
@@ -523,4 +525,12 @@ fn msrv_1_13(arg: Option<i32>) -> Option<i32> {
     };
     println!("{}", val);
     Some(val)
+}
+
+fn issue_14615(a: MutexGuard<Option<u32>>) -> Option<String> {
+    let Some(a) = *a else {
+        return None;
+    };
+    //~^^^ question_mark
+    Some(format!("{a}"))
 }

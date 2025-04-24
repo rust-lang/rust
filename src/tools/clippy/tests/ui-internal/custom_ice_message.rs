@@ -6,7 +6,7 @@
 //@normalize-stderr-test: "rustc 1\.\d+.* running on .*" -> "rustc <version> running on <target>"
 //@normalize-stderr-test: "(?ms)query stack during panic:\n.*end of query stack\n" -> ""
 
-#![deny(clippy::internal)]
+#![deny(clippy::produce_ice)]
 #![allow(clippy::missing_clippy_version_attribute)]
 
 fn it_looks_like_you_are_trying_to_kill_clippy() {}

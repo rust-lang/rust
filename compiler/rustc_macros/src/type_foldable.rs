@@ -6,8 +6,6 @@ pub(super) fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_m
         panic!("cannot derive on union")
     }
 
-    s.underscore_const(true);
-
     if !s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
         s.add_impl_generic(parse_quote! { 'tcx });
     }

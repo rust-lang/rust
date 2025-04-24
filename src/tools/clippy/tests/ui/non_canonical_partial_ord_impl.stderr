@@ -31,5 +31,18 @@ LL -     fn partial_cmp(&self, _: &Self) -> Option<Ordering> {
 LL +     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
    |
 
-error: aborting due to 2 previous errors
+error: non-canonical implementation of `partial_cmp` on an `Ord` type
+  --> tests/ui/non_canonical_partial_ord_impl.rs:198:1
+   |
+LL | /  impl PartialOrd for K {
+LL | |
+LL | |      fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+   | | _____________________________________________________________-
+LL | ||         Ordering::Greater.into()
+LL | ||     }
+   | ||_____- help: change this to: `{ Some(self.cmp(other)) }`
+LL | |  }
+   | |__^
+
+error: aborting due to 3 previous errors
 

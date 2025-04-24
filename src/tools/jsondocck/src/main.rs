@@ -154,6 +154,7 @@ impl CommandKind {
 static LINE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
     RegexBuilder::new(
         r#"
+        ^\s*
         //@\s+
         (?P<negated>!?)
         (?P<cmd>[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)

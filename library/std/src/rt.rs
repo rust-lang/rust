@@ -46,7 +46,7 @@ macro_rules! rtprintpanic {
 macro_rules! rtabort {
     ($($t:tt)*) => {
         {
-            rtprintpanic!("fatal runtime error: {}\n", format_args!($($t)*));
+            rtprintpanic!("fatal runtime error: {}, aborting\n", format_args!($($t)*));
             crate::sys::abort_internal();
         }
     }

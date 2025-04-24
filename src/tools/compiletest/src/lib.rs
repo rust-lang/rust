@@ -203,7 +203,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "COMMAND",
         )
         .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
-        .optflag("n", "new-executor", "enables the new test executor instead of using libtest")
+        .optflag("N", "no-new-executor", "disables the new test executor, and uses libtest instead")
         .optopt(
             "",
             "debugger",
@@ -450,7 +450,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         minicore_path: opt_path(matches, "minicore-path"),
 
-        new_executor: matches.opt_present("new-executor"),
+        no_new_executor: matches.opt_present("no-new-executor"),
     }
 }
 
@@ -577,9 +577,10 @@ pub fn run_tests(config: Arc<Config>) {
     // Delegate to the executor to filter and run the big list of test structures
     // created during test discovery. When the executor decides to run a test,
     // it will return control to the rest of compiletest by calling `runtest::run`.
-    let res = if config.new_executor {
+    let res = if !config.no_new_executor {
         Ok(executor::run_tests(&config, tests))
     } else {
+        // FIXME(Zalathar): Eventually remove the libtest executor entirely.
         crate::executor::libtest::execute_tests(&config, tests)
     };
 
@@ -745,7 +746,7 @@ fn modified_tests(config: &Config, dir: &Utf8Path) -> Result<Vec<Utf8PathBuf>, S
         &vec!["rs", "stderr", "fixed"],
     )?;
     // Add new test cases to the list, it will be convenient in daily development.
-    let untracked_files = get_git_untracked_files(&config.git_config(), None)?.unwrap_or(vec![]);
+    let untracked_files = get_git_untracked_files(Some(dir.as_std_path()))?.unwrap_or(vec![]);
 
     let all_paths = [&files[..], &untracked_files[..]].concat();
     let full_paths = {

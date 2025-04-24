@@ -770,12 +770,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.bclose(span, empty);
             }
             delim => {
-                let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
+                let token_str = self.token_kind_to_string(&delim.as_open_token_kind());
                 self.word(token_str);
                 self.ibox(0);
                 self.print_tts(tts, convert_dollar_crate);
                 self.end();
-                let token_str = self.token_kind_to_string(&token::CloseDelim(delim));
+                let token_str = self.token_kind_to_string(&delim.as_close_token_kind());
                 self.word(token_str);
             }
         }
@@ -799,7 +799,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             has_bang,
             Some(*ident),
             macro_def.body.delim,
-            &macro_def.body.tokens.clone(),
+            &macro_def.body.tokens,
             true,
             sp,
         );
@@ -932,14 +932,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::RArrow => "->".into(),
             token::LArrow => "<-".into(),
             token::FatArrow => "=>".into(),
-            token::OpenDelim(Delimiter::Parenthesis) => "(".into(),
-            token::CloseDelim(Delimiter::Parenthesis) => ")".into(),
-            token::OpenDelim(Delimiter::Bracket) => "[".into(),
-            token::CloseDelim(Delimiter::Bracket) => "]".into(),
-            token::OpenDelim(Delimiter::Brace) => "{".into(),
-            token::CloseDelim(Delimiter::Brace) => "}".into(),
-            token::OpenDelim(Delimiter::Invisible(_))
-            | token::CloseDelim(Delimiter::Invisible(_)) => "".into(),
+            token::OpenParen => "(".into(),
+            token::CloseParen => ")".into(),
+            token::OpenBracket => "[".into(),
+            token::CloseBracket => "]".into(),
+            token::OpenBrace => "{".into(),
+            token::CloseBrace => "}".into(),
+            token::OpenInvisible(_) | token::CloseInvisible(_) => "".into(),
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
@@ -1469,7 +1468,7 @@ impl<'a> State<'a> {
             true,
             None,
             m.args.delim,
-            &m.args.tokens.clone(),
+            &m.args.tokens,
             true,
             m.span(),
         );

@@ -1,6 +1,5 @@
 //@ check-pass
-
-#![feature(let_chains)]
+//@ edition:2024
 
 fn main() {
     let opt = Some("foo bar");

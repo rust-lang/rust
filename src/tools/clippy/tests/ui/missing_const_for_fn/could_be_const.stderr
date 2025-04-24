@@ -212,12 +212,12 @@ LL |     const fn union_access_can_be_const() {
 error: this could be a `const fn`
   --> tests/ui/missing_const_for_fn/could_be_const.rs:147:9
    |
-LL |         extern "C" fn c() {}
-   |         ^^^^^^^^^^^^^^^^^^^^
+LL |         unsafe extern "C" fn c() {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: make the function `const`
    |
-LL |         const extern "C" fn c() {}
+LL |         const unsafe extern "C" fn c() {}
    |         +++++
 
 error: this could be a `const fn`

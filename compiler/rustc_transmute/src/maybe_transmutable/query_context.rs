@@ -8,9 +8,17 @@ pub(crate) trait QueryContext {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use std::marker::PhantomData;
+
     use super::QueryContext;
 
-    pub(crate) struct UltraMinimal;
+    pub(crate) struct UltraMinimal<R = !>(PhantomData<R>);
+
+    impl<R> Default for UltraMinimal<R> {
+        fn default() -> Self {
+            Self(PhantomData)
+        }
+    }
 
     #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
     pub(crate) enum Def {
@@ -24,9 +32,9 @@ pub(crate) mod test {
         }
     }
 
-    impl QueryContext for UltraMinimal {
+    impl<R: crate::layout::Ref> QueryContext for UltraMinimal<R> {
         type Def = Def;
-        type Ref = !;
+        type Ref = R;
     }
 }
 

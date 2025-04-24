@@ -1,5 +1,5 @@
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
-  --> tests/ui/ref_option/ref_option_traits.rs:17:5
+  --> tests/ui/ref_option/ref_option_traits.rs:16:5
    |
 LL |     fn trait_opt(&self, a: &Option<String>);
    |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^^
@@ -10,7 +10,7 @@ LL |     fn trait_opt(&self, a: &Option<String>);
    = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
 
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
-  --> tests/ui/ref_option/ref_option_traits.rs:19:5
+  --> tests/ui/ref_option/ref_option_traits.rs:18:5
    |
 LL |     fn trait_ret(&self) -> &Option<String>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^

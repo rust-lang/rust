@@ -635,34 +635,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut obligations = vec![];
 
-        for &(coroutine_def_id, interior) in coroutines.iter() {
-            debug!(?coroutine_def_id);
+        if !self.next_trait_solver() {
+            for &(coroutine_def_id, interior) in coroutines.iter() {
+                debug!(?coroutine_def_id);
 
-            // Create the `CoroutineWitness` type that we will unify with `interior`.
-            let args = ty::GenericArgs::identity_for_item(
-                self.tcx,
-                self.tcx.typeck_root_def_id(coroutine_def_id.to_def_id()),
-            );
-            let witness = Ty::new_coroutine_witness(self.tcx, coroutine_def_id.to_def_id(), args);
+                // Create the `CoroutineWitness` type that we will unify with `interior`.
+                let args = ty::GenericArgs::identity_for_item(
+                    self.tcx,
+                    self.tcx.typeck_root_def_id(coroutine_def_id.to_def_id()),
+                );
+                let witness =
+                    Ty::new_coroutine_witness(self.tcx, coroutine_def_id.to_def_id(), args);
 
-            // Unify `interior` with `witness` and collect all the resulting obligations.
-            let span = self.tcx.hir_body_owned_by(coroutine_def_id).value.span;
-            let ty::Infer(ty::InferTy::TyVar(_)) = interior.kind() else {
-                span_bug!(span, "coroutine interior witness not infer: {:?}", interior.kind())
-            };
-            let ok = self
-                .at(&self.misc(span), self.param_env)
-                // Will never define opaque types, as all we do is instantiate a type variable.
-                .eq(DefineOpaqueTypes::Yes, interior, witness)
-                .expect("Failed to unify coroutine interior type");
+                // Unify `interior` with `witness` and collect all the resulting obligations.
+                let span = self.tcx.hir_body_owned_by(coroutine_def_id).value.span;
+                let ty::Infer(ty::InferTy::TyVar(_)) = interior.kind() else {
+                    span_bug!(span, "coroutine interior witness not infer: {:?}", interior.kind())
+                };
+                let ok = self
+                    .at(&self.misc(span), self.param_env)
+                    // Will never define opaque types, as all we do is instantiate a type variable.
+                    .eq(DefineOpaqueTypes::Yes, interior, witness)
+                    .expect("Failed to unify coroutine interior type");
 
-            obligations.extend(ok.obligations);
+                obligations.extend(ok.obligations);
+            }
         }
 
-        // FIXME: Use a real visitor for unstalled obligations in the new solver.
         if !coroutines.is_empty() {
-            obligations
-                .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
+            obligations.extend(
+                self.fulfillment_cx
+                    .borrow_mut()
+                    .drain_stalled_obligations_for_coroutines(&self.infcx),
+            );
         }
 
         self.typeck_results

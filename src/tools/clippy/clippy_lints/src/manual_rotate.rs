@@ -101,7 +101,7 @@ impl LateLintPass<'_> for ManualRotate {
                     (r_shift_dir, r_amount)
                 };
                 let mut applicability = Applicability::MachineApplicable;
-                let expr_sugg = sugg::Sugg::hir_with_applicability(cx, l_expr, "_", &mut applicability).maybe_par();
+                let expr_sugg = sugg::Sugg::hir_with_applicability(cx, l_expr, "_", &mut applicability).maybe_paren();
                 span_lint_and_sugg(
                     cx,
                     MANUAL_ROTATE,

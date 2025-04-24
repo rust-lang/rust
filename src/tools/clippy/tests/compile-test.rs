@@ -2,6 +2,8 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(unused_extern_crates)]
 
+use askama::Template;
+use askama::filters::Safe;
 use cargo_metadata::Message;
 use cargo_metadata::diagnostic::{Applicability, Diagnostic};
 use clippy_config::ClippyConfiguration;
@@ -9,11 +11,10 @@ use clippy_lints::LintInfo;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
 use pulldown_cmark::{Options, Parser, html};
-use rinja::Template;
-use rinja::filters::Safe;
 use serde::Deserialize;
 use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::Flag;
+use ui_test::custom_flags::edition::Edition;
 use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::spanned::Spanned;
 use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict, status_emitter};
@@ -86,13 +87,13 @@ fn extern_flags() -> Vec<String> {
             let name = name.strip_prefix("lib").unwrap_or(name);
             Some((name, path_str))
         };
-        if let Some((name, path)) = parse_name_path() {
-            if TEST_DEPENDENCIES.contains(&name) {
-                // A dependency may be listed twice if it is available in sysroot,
-                // and the sysroot dependencies are listed first. As of the writing,
-                // this only seems to apply to if_chain.
-                crates.insert(name, path);
-            }
+        if let Some((name, path)) = parse_name_path()
+            && TEST_DEPENDENCIES.contains(&name)
+        {
+            // A dependency may be listed twice if it is available in sysroot,
+            // and the sysroot dependencies are listed first. As of the writing,
+            // this only seems to apply to if_chain.
+            crates.insert(name, path);
         }
     }
     let not_found: Vec<&str> = TEST_DEPENDENCIES
@@ -147,11 +148,16 @@ impl TestContext {
                 .map(|filters| filters.split(',').map(str::to_string).collect())
                 .unwrap_or_default(),
             target: None,
-            bless_command: Some("cargo uibless".into()),
+            bless_command: Some(if IS_RUSTC_TEST_SUITE {
+                "./x test src/tools/clippy --bless".into()
+            } else {
+                "cargo uibless".into()
+            }),
             out_dir: target_dir.join("ui_test"),
             ..Config::rustc(Path::new("tests").join(test_dir))
         };
         let defaults = config.comment_defaults.base();
+        defaults.set_custom("edition", Edition("2024".into()));
         defaults.exit_status = None.into();
         if mandatory_annotations {
             defaults.require_annotations = Some(Spanned::dummy(true)).into();

@@ -31,155 +31,154 @@ pub(super) fn check<'tcx>(
         ref end,
         limits,
     }) = higher::Range::hir(arg)
-    {
         // the var must be a single name
-        if let PatKind::Binding(_, canonical_id, ident, _) = pat.kind {
-            let mut visitor = VarVisitor {
-                cx,
-                var: canonical_id,
-                indexed_mut: FxHashSet::default(),
-                indexed_indirectly: FxHashMap::default(),
-                indexed_directly: FxIndexMap::default(),
-                referenced: FxHashSet::default(),
-                nonindex: false,
-                prefer_mutable: false,
+        && let PatKind::Binding(_, canonical_id, ident, _) = pat.kind
+    {
+        let mut visitor = VarVisitor {
+            cx,
+            var: canonical_id,
+            indexed_mut: FxHashSet::default(),
+            indexed_indirectly: FxHashMap::default(),
+            indexed_directly: FxIndexMap::default(),
+            referenced: FxHashSet::default(),
+            nonindex: false,
+            prefer_mutable: false,
+        };
+        walk_expr(&mut visitor, body);
+
+        // linting condition: we only indexed one variable, and indexed it directly
+        if visitor.indexed_indirectly.is_empty() && visitor.indexed_directly.len() == 1 {
+            let (indexed, (indexed_extent, indexed_ty)) = visitor
+                .indexed_directly
+                .into_iter()
+                .next()
+                .expect("already checked that we have exactly 1 element");
+
+            // ensure that the indexed variable was declared before the loop, see #601
+            if let Some(indexed_extent) = indexed_extent {
+                let parent_def_id = cx.tcx.hir_get_parent_item(expr.hir_id);
+                let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
+                let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
+                if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
+                    return;
+                }
+            }
+
+            // don't lint if the container that is indexed does not have .iter() method
+            let has_iter = has_iter_method(cx, indexed_ty);
+            if has_iter.is_none() {
+                return;
+            }
+
+            // don't lint if the container that is indexed into is also used without
+            // indexing
+            if visitor.referenced.contains(&indexed) {
+                return;
+            }
+
+            let starts_at_zero = is_integer_const(cx, start, 0);
+
+            let skip = if starts_at_zero {
+                String::new()
+            } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start, cx) {
+                return;
+            } else {
+                format!(".skip({})", snippet(cx, start.span, ".."))
             };
-            walk_expr(&mut visitor, body);
 
-            // linting condition: we only indexed one variable, and indexed it directly
-            if visitor.indexed_indirectly.is_empty() && visitor.indexed_directly.len() == 1 {
-                let (indexed, (indexed_extent, indexed_ty)) = visitor
-                    .indexed_directly
-                    .into_iter()
-                    .next()
-                    .expect("already checked that we have exactly 1 element");
+            let mut end_is_start_plus_val = false;
 
-                // ensure that the indexed variable was declared before the loop, see #601
-                if let Some(indexed_extent) = indexed_extent {
-                    let parent_def_id = cx.tcx.hir_get_parent_item(expr.hir_id);
-                    let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
-                    let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
-                    if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
-                        return;
+            let take = if let Some(end) = *end {
+                let mut take_expr = end;
+
+                if let ExprKind::Binary(ref op, left, right) = end.kind
+                    && op.node == BinOpKind::Add
+                {
+                    let start_equal_left = SpanlessEq::new(cx).eq_expr(start, left);
+                    let start_equal_right = SpanlessEq::new(cx).eq_expr(start, right);
+
+                    if start_equal_left {
+                        take_expr = right;
+                    } else if start_equal_right {
+                        take_expr = left;
                     }
+
+                    end_is_start_plus_val = start_equal_left | start_equal_right;
                 }
 
-                // don't lint if the container that is indexed does not have .iter() method
-                let has_iter = has_iter_method(cx, indexed_ty);
-                if has_iter.is_none() {
-                    return;
-                }
-
-                // don't lint if the container that is indexed into is also used without
-                // indexing
-                if visitor.referenced.contains(&indexed) {
-                    return;
-                }
-
-                let starts_at_zero = is_integer_const(cx, start, 0);
-
-                let skip = if starts_at_zero {
+                if is_len_call(end, indexed) || is_end_eq_array_len(cx, end, limits, indexed_ty) {
                     String::new()
-                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, start, cx) {
+                } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr, cx) {
                     return;
                 } else {
-                    format!(".skip({})", snippet(cx, start.span, ".."))
-                };
-
-                let mut end_is_start_plus_val = false;
-
-                let take = if let Some(end) = *end {
-                    let mut take_expr = end;
-
-                    if let ExprKind::Binary(ref op, left, right) = end.kind {
-                        if op.node == BinOpKind::Add {
-                            let start_equal_left = SpanlessEq::new(cx).eq_expr(start, left);
-                            let start_equal_right = SpanlessEq::new(cx).eq_expr(start, right);
-
-                            if start_equal_left {
-                                take_expr = right;
-                            } else if start_equal_right {
-                                take_expr = left;
-                            }
-
-                            end_is_start_plus_val = start_equal_left | start_equal_right;
-                        }
-                    }
-
-                    if is_len_call(end, indexed) || is_end_eq_array_len(cx, end, limits, indexed_ty) {
-                        String::new()
-                    } else if visitor.indexed_mut.contains(&indexed) && contains_name(indexed, take_expr, cx) {
-                        return;
-                    } else {
-                        match limits {
-                            ast::RangeLimits::Closed => {
-                                let take_expr = sugg::Sugg::hir(cx, take_expr, "<count>");
-                                format!(".take({})", take_expr + sugg::ONE)
-                            },
-                            ast::RangeLimits::HalfOpen => {
-                                format!(".take({})", snippet(cx, take_expr.span, ".."))
-                            },
-                        }
-                    }
-                } else {
-                    String::new()
-                };
-
-                let (ref_mut, method) = if visitor.indexed_mut.contains(&indexed) {
-                    ("mut ", "iter_mut")
-                } else {
-                    ("", "iter")
-                };
-
-                let take_is_empty = take.is_empty();
-                let mut method_1 = take;
-                let mut method_2 = skip;
-
-                if end_is_start_plus_val {
-                    mem::swap(&mut method_1, &mut method_2);
-                }
-
-                if visitor.nonindex {
-                    span_lint_and_then(
-                        cx,
-                        NEEDLESS_RANGE_LOOP,
-                        arg.span,
-                        format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
-                        |diag| {
-                            diag.multipart_suggestion(
-                                "consider using an iterator and enumerate()",
-                                vec![
-                                    (pat.span, format!("({}, <item>)", ident.name)),
-                                    (
-                                        arg.span,
-                                        format!("{indexed}.{method}().enumerate(){method_1}{method_2}"),
-                                    ),
-                                ],
-                                Applicability::HasPlaceholders,
-                            );
+                    match limits {
+                        ast::RangeLimits::Closed => {
+                            let take_expr = sugg::Sugg::hir(cx, take_expr, "<count>");
+                            format!(".take({})", take_expr + sugg::ONE)
                         },
-                    );
-                } else {
-                    let repl = if starts_at_zero && take_is_empty {
-                        format!("&{ref_mut}{indexed}")
-                    } else {
-                        format!("{indexed}.{method}(){method_1}{method_2}")
-                    };
-
-                    span_lint_and_then(
-                        cx,
-                        NEEDLESS_RANGE_LOOP,
-                        arg.span,
-                        format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
-                        |diag| {
-                            diag.multipart_suggestion(
-                                "consider using an iterator",
-                                vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
-                                Applicability::HasPlaceholders,
-                            );
+                        ast::RangeLimits::HalfOpen => {
+                            format!(".take({})", snippet(cx, take_expr.span, ".."))
                         },
-                    );
+                    }
                 }
+            } else {
+                String::new()
+            };
+
+            let (ref_mut, method) = if visitor.indexed_mut.contains(&indexed) {
+                ("mut ", "iter_mut")
+            } else {
+                ("", "iter")
+            };
+
+            let take_is_empty = take.is_empty();
+            let mut method_1 = take;
+            let mut method_2 = skip;
+
+            if end_is_start_plus_val {
+                mem::swap(&mut method_1, &mut method_2);
+            }
+
+            if visitor.nonindex {
+                span_lint_and_then(
+                    cx,
+                    NEEDLESS_RANGE_LOOP,
+                    arg.span,
+                    format!("the loop variable `{}` is used to index `{indexed}`", ident.name),
+                    |diag| {
+                        diag.multipart_suggestion(
+                            "consider using an iterator and enumerate()",
+                            vec![
+                                (pat.span, format!("({}, <item>)", ident.name)),
+                                (
+                                    arg.span,
+                                    format!("{indexed}.{method}().enumerate(){method_1}{method_2}"),
+                                ),
+                            ],
+                            Applicability::HasPlaceholders,
+                        );
+                    },
+                );
+            } else {
+                let repl = if starts_at_zero && take_is_empty {
+                    format!("&{ref_mut}{indexed}")
+                } else {
+                    format!("{indexed}.{method}(){method_1}{method_2}")
+                };
+
+                span_lint_and_then(
+                    cx,
+                    NEEDLESS_RANGE_LOOP,
+                    arg.span,
+                    format!("the loop variable `{}` is only used to index `{indexed}`", ident.name),
+                    |diag| {
+                        diag.multipart_suggestion(
+                            "consider using an iterator",
+                            vec![(pat.span, "<item>".to_string()), (arg.span, repl)],
+                            Applicability::HasPlaceholders,
+                        );
+                    },
+                );
             }
         }
     }
@@ -346,10 +345,10 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
                 for expr in args {
                     let ty = self.cx.typeck_results().expr_ty_adjusted(expr);
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
-                        if mutbl == Mutability::Mut {
-                            self.prefer_mutable = true;
-                        }
+                    if let ty::Ref(_, _, mutbl) = *ty.kind()
+                        && mutbl == Mutability::Mut
+                    {
+                        self.prefer_mutable = true;
                     }
                     self.visit_expr(expr);
                 }
@@ -361,10 +360,10 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
                     iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;
-                    if let ty::Ref(_, _, mutbl) = *ty.kind() {
-                        if mutbl == Mutability::Mut {
-                            self.prefer_mutable = true;
-                        }
+                    if let ty::Ref(_, _, mutbl) = *ty.kind()
+                        && mutbl == Mutability::Mut
+                    {
+                        self.prefer_mutable = true;
                     }
                     self.visit_expr(expr);
                 }

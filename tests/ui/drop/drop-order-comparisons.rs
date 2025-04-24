@@ -24,7 +24,7 @@
 //@ [e2024] edition: 2024
 //@ run-pass
 
-#![feature(let_chains)]
+#![cfg_attr(e2021, feature(let_chains))]
 #![cfg_attr(e2021, warn(rust_2024_compatibility))]
 
 fn t_bindings() {

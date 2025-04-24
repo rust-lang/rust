@@ -74,10 +74,10 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
 fn in_trait_impl(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let parent_id = cx.tcx.hir_get_parent_item(hir_id);
     let second_parent_id = cx.tcx.hir_get_parent_item(parent_id.into()).def_id;
-    if let Node::Item(item) = cx.tcx.hir_node_by_def_id(second_parent_id) {
-        if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
-            return true;
-        }
+    if let Node::Item(item) = cx.tcx.hir_node_by_def_id(second_parent_id)
+        && let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind
+    {
+        return true;
     }
     false
 }

@@ -1,3 +1,5 @@
+extern crate test;
+
 use itertools::Itertools;
 
 use super::query_context::test::{Def, UltraMinimal};
@@ -12,15 +14,25 @@ trait Representation {
 
 impl Representation for Tree {
     fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!> {
-        crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, UltraMinimal)
-            .answer()
+        crate::maybe_transmutable::MaybeTransmutableQuery::new(
+            src,
+            dst,
+            assume,
+            UltraMinimal::default(),
+        )
+        .answer()
     }
 }
 
 impl Representation for Dfa {
     fn is_transmutable(src: Self, dst: Self, assume: Assume) -> Answer<!> {
-        crate::maybe_transmutable::MaybeTransmutableQuery::new(src, dst, assume, UltraMinimal)
-            .answer()
+        crate::maybe_transmutable::MaybeTransmutableQuery::new(
+            src,
+            dst,
+            assume,
+            UltraMinimal::default(),
+        )
+        .answer()
     }
 }
 
@@ -89,6 +101,36 @@ mod safety {
     }
 }
 
+mod size {
+    use super::*;
+
+    #[test]
+    fn size() {
+        let small = Tree::number(1);
+        let large = Tree::number(2);
+
+        for alignment in [false, true] {
+            for lifetimes in [false, true] {
+                for safety in [false, true] {
+                    for validity in [false, true] {
+                        let assume = Assume { alignment, lifetimes, safety, validity };
+                        assert_eq!(
+                            is_transmutable(&small, &large, assume),
+                            Answer::No(Reason::DstIsTooBig),
+                            "assume: {assume:?}"
+                        );
+                        assert_eq!(
+                            is_transmutable(&large, &small, assume),
+                            Answer::Yes,
+                            "assume: {assume:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
 mod bool {
     use super::*;
 
@@ -110,6 +152,27 @@ mod bool {
             is_transmutable(&src, &src, Assume { validity: true, ..Assume::default() }),
             Answer::Yes
         );
+    }
+
+    #[test]
+    fn transmute_u8() {
+        let bool = &Tree::bool();
+        let u8 = &Tree::u8();
+        for (src, dst, assume_validity, answer) in [
+            (bool, u8, false, Answer::Yes),
+            (bool, u8, true, Answer::Yes),
+            (u8, bool, false, Answer::No(Reason::DstIsBitIncompatible)),
+            (u8, bool, true, Answer::Yes),
+        ] {
+            assert_eq!(
+                is_transmutable(
+                    src,
+                    dst,
+                    Assume { validity: assume_validity, ..Assume::default() }
+                ),
+                answer
+            );
+        }
     }
 
     #[test]
@@ -175,6 +238,62 @@ mod bool {
     }
 }
 
+mod uninit {
+    use super::*;
+
+    #[test]
+    fn size() {
+        let mu = Tree::uninit();
+        let u8 = Tree::u8();
+
+        for alignment in [false, true] {
+            for lifetimes in [false, true] {
+                for safety in [false, true] {
+                    for validity in [false, true] {
+                        let assume = Assume { alignment, lifetimes, safety, validity };
+
+                        let want = if validity {
+                            Answer::Yes
+                        } else {
+                            Answer::No(Reason::DstIsBitIncompatible)
+                        };
+
+                        assert_eq!(is_transmutable(&mu, &u8, assume), want, "assume: {assume:?}");
+                        assert_eq!(
+                            is_transmutable(&u8, &mu, assume),
+                            Answer::Yes,
+                            "assume: {assume:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+mod alt {
+    use super::*;
+    use crate::Answer;
+
+    #[test]
+    fn should_permit_identity_transmutation() {
+        type Tree = layout::Tree<Def, !>;
+
+        let x = Tree::Seq(vec![Tree::from_bits(0), Tree::from_bits(0)]);
+        let y = Tree::Seq(vec![Tree::bool(), Tree::from_bits(1)]);
+        let layout = Tree::Alt(vec![x, y]);
+
+        let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
+            layout.clone(),
+            layout.clone(),
+            crate::Assume::default(),
+            UltraMinimal::default(),
+        )
+        .answer();
+        assert_eq!(answer, Answer::Yes, "layout:{:#?}", layout);
+    }
+}
+
 mod union {
     use super::*;
 
@@ -201,5 +320,61 @@ mod union {
 
         assert_eq!(is_transmutable(&s, &u, Assume::default()), Answer::Yes);
         assert_eq!(is_transmutable(&t, &u, Assume::default()), Answer::Yes);
+    }
+}
+
+mod r#ref {
+    use super::*;
+
+    #[test]
+    fn should_permit_identity_transmutation() {
+        type Tree = crate::layout::Tree<Def, [(); 1]>;
+
+        let layout = Tree::Seq(vec![Tree::from_bits(0), Tree::Ref([()])]);
+
+        let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
+            layout.clone(),
+            layout,
+            Assume::default(),
+            UltraMinimal::default(),
+        )
+        .answer();
+        assert_eq!(answer, Answer::If(crate::Condition::IfTransmutable { src: [()], dst: [()] }));
+    }
+}
+
+mod benches {
+    use std::hint::black_box;
+
+    use test::Bencher;
+
+    use super::*;
+
+    #[bench]
+    fn bench_dfa_from_tree(b: &mut Bencher) {
+        let num = Tree::number(8).prune(&|_| false);
+        let num = black_box(num);
+
+        b.iter(|| {
+            let _ = black_box(Dfa::from_tree(num.clone()));
+        })
+    }
+
+    #[bench]
+    fn bench_transmute(b: &mut Bencher) {
+        let num = Tree::number(8).prune(&|_| false);
+        let dfa = black_box(Dfa::from_tree(num).unwrap());
+
+        b.iter(|| {
+            let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
+                dfa.clone(),
+                dfa.clone(),
+                Assume::default(),
+                UltraMinimal::default(),
+            )
+            .answer();
+            let answer = std::hint::black_box(answer);
+            assert_eq!(answer, Answer::Yes);
+        })
     }
 }

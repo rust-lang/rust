@@ -95,6 +95,8 @@ fn test_nan() {
     assert!(!nan.is_sign_negative());
     assert!(!nan.is_normal());
     assert_eq!(Fp::Nan, nan.classify());
+    // Ensure the quiet bit is set.
+    assert!(nan.to_bits() & (1 << (f16::MANTISSA_DIGITS - 2)) != 0);
 }
 
 #[test]
