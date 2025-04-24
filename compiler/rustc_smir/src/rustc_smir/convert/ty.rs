@@ -16,7 +16,7 @@ impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
             ty::Projection => stable_mir::ty::AliasKind::Projection,
             ty::Inherent => stable_mir::ty::AliasKind::Inherent,
             ty::Opaque => stable_mir::ty::AliasKind::Opaque,
-            ty::Weak => stable_mir::ty::AliasKind::Weak,
+            ty::Free => stable_mir::ty::AliasKind::Free,
         }
     }
 }

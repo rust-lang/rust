@@ -1682,7 +1682,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Alias(ty::Projection, ..) => Some(12),
                 ty::Alias(ty::Inherent, ..) => Some(13),
                 ty::Alias(ty::Opaque, ..) => Some(14),
-                ty::Alias(ty::Weak, ..) => Some(15),
+                ty::Alias(ty::Free, ..) => Some(15),
                 ty::Never => Some(16),
                 ty::Adt(..) => Some(17),
                 ty::Coroutine(..) => Some(18),

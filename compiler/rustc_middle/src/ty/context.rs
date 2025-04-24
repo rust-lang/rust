@@ -226,7 +226,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 }
             }
             DefKind::OpaqueTy => ty::Opaque,
-            DefKind::TyAlias => ty::Weak,
+            DefKind::TyAlias => ty::Free,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
@@ -242,7 +242,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 }
             }
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
-            DefKind::TyAlias => ty::AliasTermKind::WeakTy,
+            DefKind::TyAlias => ty::AliasTermKind::FreeTy,
             DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
             DefKind::AnonConst | DefKind::Const | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasTermKind::UnevaluatedConst

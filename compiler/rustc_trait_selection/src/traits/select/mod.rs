@@ -2323,7 +2323,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
-            | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
+            | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);

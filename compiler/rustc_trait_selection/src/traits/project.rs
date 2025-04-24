@@ -468,7 +468,7 @@ fn normalize_to_error<'a, 'tcx>(
         ty::AliasTermKind::ProjectionTy
         | ty::AliasTermKind::InherentTy
         | ty::AliasTermKind::OpaqueTy
-        | ty::AliasTermKind::WeakTy => selcx.infcx.next_ty_var(cause.span).into(),
+        | ty::AliasTermKind::FreeTy => selcx.infcx.next_ty_var(cause.span).into(),
         ty::AliasTermKind::UnevaluatedConst | ty::AliasTermKind::ProjectionConst => {
             selcx.infcx.next_const_var(cause.span).into()
         }

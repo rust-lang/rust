@@ -150,7 +150,7 @@ impl<'tcx> InherentCollect<'tcx> {
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
         let self_ty = self.tcx.type_of(id).instantiate_identity();
-        let mut self_ty = self.tcx.peel_off_weak_alias_tys(self_ty);
+        let mut self_ty = self.tcx.peel_off_free_alias_tys(self_ty);
         // We allow impls on pattern types exactly when we allow impls on the base type.
         // FIXME(pattern_types): Figure out the exact coherence rules we want here.
         while let ty::Pat(base, _) = *self_ty.kind() {
@@ -188,7 +188,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
-            | ty::Alias(ty::Weak, _)
+            | ty::Alias(ty::Free, _)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {
