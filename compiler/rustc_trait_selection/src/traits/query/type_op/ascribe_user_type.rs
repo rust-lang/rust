@@ -117,8 +117,7 @@ fn relate_mir_and_user_args<'tcx>(
             CRATE_DEF_ID,
             ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
         );
-        let instantiated_predicate =
-            ocx.normalize(&cause.clone(), param_env, instantiated_predicate);
+        let instantiated_predicate = ocx.normalize(&cause, param_env, instantiated_predicate);
 
         ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
     }
