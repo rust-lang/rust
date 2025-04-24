@@ -442,16 +442,22 @@ impl f64 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f64 = 1.7976931348623157e+308_f64;
 
-    /// One greater than the minimum possible normal power of 2 exponent.
+    /// One greater than the minimum possible *normal* power of 2 exponent
+    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
-    /// If <i>x</i>&nbsp;=&nbsp;`MIN_EXP`, then normal numbers
-    /// ≥&nbsp;0.5&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    /// This corresponds to the exact minimum possible *normal* power of 2 exponent
+    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
+    /// In other words, all normal numbers representable by this type are
+    /// greater than or equal to 0.5&nbsp;×&nbsp;2<sup><i>MIN_EXP</i></sup>.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_EXP: i32 = -1021;
-    /// Maximum possible power of 2 exponent.
+    /// One greater than the maximum possible power of 2 exponent
+    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
-    /// If <i>x</i>&nbsp;=&nbsp;`MAX_EXP`, then normal numbers
-    /// &lt;&nbsp;1&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    /// This corresponds to the exact maximum possible power of 2 exponent
+    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
+    /// In other words, all numbers representable by this type are
+    /// strictly less than 2<sup><i>MAX_EXP</i></sup>.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_EXP: i32 = 1024;
 
@@ -718,8 +724,7 @@ impl f64 {
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
-        // SAFETY: This is just transmuting to get the sign bit, it's fine.
-        unsafe { mem::transmute::<f64, u64>(self) & Self::SIGN_MASK != 0 }
+        self.to_bits() & Self::SIGN_MASK != 0
     }
 
     #[must_use]
@@ -1095,6 +1100,7 @@ impl f64 {
                   without modifying the original"]
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
     #[inline]
     pub const fn to_bits(self) -> u64 {
         // SAFETY: `u64` is a plain old datatype so we can always transmute to it.
@@ -1141,6 +1147,7 @@ impl f64 {
     #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
     pub const fn from_bits(v: u64) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u64` is a plain old datatype so we can always transmute from it.
@@ -1515,8 +1522,9 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_add(self, rhs: f64) -> f64 {
+    pub const fn algebraic_add(self, rhs: f64) -> f64 {
         intrinsics::fadd_algebraic(self, rhs)
     }
 
@@ -1525,8 +1533,9 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_sub(self, rhs: f64) -> f64 {
+    pub const fn algebraic_sub(self, rhs: f64) -> f64 {
         intrinsics::fsub_algebraic(self, rhs)
     }
 
@@ -1535,8 +1544,9 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_mul(self, rhs: f64) -> f64 {
+    pub const fn algebraic_mul(self, rhs: f64) -> f64 {
         intrinsics::fmul_algebraic(self, rhs)
     }
 
@@ -1545,8 +1555,9 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_div(self, rhs: f64) -> f64 {
+    pub const fn algebraic_div(self, rhs: f64) -> f64 {
         intrinsics::fdiv_algebraic(self, rhs)
     }
 
@@ -1555,8 +1566,9 @@ impl f64 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_rem(self, rhs: f64) -> f64 {
+    pub const fn algebraic_rem(self, rhs: f64) -> f64 {
         intrinsics::frem_algebraic(self, rhs)
     }
 }
