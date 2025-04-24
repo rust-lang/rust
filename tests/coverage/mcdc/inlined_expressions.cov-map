@@ -1,7 +1,7 @@
 Function name: inlined_expressions::inlined_instance
 Raw bytes (50): 0x[01, 01, 02, 01, 05, 05, 09, 06, 01, 07, 01, 01, 06, 28, 03, 02, 01, 05, 00, 0b, 30, 05, 02, 01, 02, 00, 00, 05, 00, 06, 05, 00, 0a, 00, 0b, 30, 09, 06, 02, 00, 00, 00, 0a, 00, 0b, 01, 01, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inlined_expressions.rs
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Counter(2)

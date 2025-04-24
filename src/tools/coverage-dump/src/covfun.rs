@@ -53,11 +53,10 @@ pub(crate) fn dump_covfun_mappings(
         for i in 0..num_files {
             let global_file_id = parser.read_uleb128_usize()?;
             let &CovfunLineData { filenames_hash, .. } = line_data;
-            #[expect(unused)] // Removed later in this PR.
             let Some(filename) = filename_tables.lookup(filenames_hash, global_file_id) else {
                 bail!("couldn't resolve global file: {filenames_hash}, {global_file_id}");
             };
-            println!("- file {i} => global file {global_file_id}");
+            println!("- file {i} => {filename}");
         }
 
         let num_expressions = parser.read_uleb128_u32()?;

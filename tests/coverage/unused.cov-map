@@ -1,7 +1,7 @@
 Function name: unused::foo::<f32>
 Raw bytes (40): 0x[01, 01, 03, 05, 01, 05, 0b, 01, 09, 06, 01, 03, 01, 01, 12, 05, 02, 0b, 00, 11, 02, 01, 09, 00, 0f, 06, 00, 13, 00, 19, 02, 01, 09, 00, 0f, 01, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unused.rs
 Number of expressions: 3
 - expression 0 operands: lhs = Counter(1), rhs = Counter(0)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
@@ -21,7 +21,7 @@ Highest counter ID seen: c1
 Function name: unused::foo::<u32>
 Raw bytes (40): 0x[01, 01, 03, 05, 01, 05, 0b, 01, 09, 06, 01, 03, 01, 01, 12, 05, 02, 0b, 00, 11, 02, 01, 09, 00, 0f, 06, 00, 13, 00, 19, 02, 01, 09, 00, 0f, 01, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unused.rs
 Number of expressions: 3
 - expression 0 operands: lhs = Counter(1), rhs = Counter(0)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(2, Add)
@@ -41,7 +41,7 @@ Highest counter ID seen: c1
 Function name: unused::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 25, 01, 04, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unused.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 37, 1) to (start + 4, 2)
@@ -50,7 +50,7 @@ Highest counter ID seen: c0
 Function name: unused::unused_func (unused)
 Raw bytes (24): 0x[01, 01, 00, 04, 00, 13, 01, 01, 0e, 00, 01, 0f, 02, 06, 00, 02, 05, 00, 06, 00, 01, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unused.rs
 Number of expressions: 0
 Number of file 0 mappings: 4
 - Code(Zero) at (prev + 19, 1) to (start + 1, 14)
@@ -62,7 +62,7 @@ Highest counter ID seen: (none)
 Function name: unused::unused_func2 (unused)
 Raw bytes (24): 0x[01, 01, 00, 04, 00, 19, 01, 01, 0e, 00, 01, 0f, 02, 06, 00, 02, 05, 00, 06, 00, 01, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unused.rs
 Number of expressions: 0
 Number of file 0 mappings: 4
 - Code(Zero) at (prev + 25, 1) to (start + 1, 14)
@@ -74,7 +74,7 @@ Highest counter ID seen: (none)
 Function name: unused::unused_func3 (unused)
 Raw bytes (24): 0x[01, 01, 00, 04, 00, 1f, 01, 01, 0e, 00, 01, 0f, 02, 06, 00, 02, 05, 00, 06, 00, 01, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unused.rs
 Number of expressions: 0
 Number of file 0 mappings: 4
 - Code(Zero) at (prev + 31, 1) to (start + 1, 14)
@@ -86,7 +86,7 @@ Highest counter ID seen: (none)
 Function name: unused::unused_template_func::<_> (unused)
 Raw bytes (34): 0x[01, 01, 00, 06, 00, 0b, 01, 01, 12, 00, 02, 0b, 00, 11, 00, 01, 09, 00, 0f, 00, 00, 13, 00, 19, 00, 01, 09, 00, 0f, 00, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unused.rs
 Number of expressions: 0
 Number of file 0 mappings: 6
 - Code(Zero) at (prev + 11, 1) to (start + 1, 18)

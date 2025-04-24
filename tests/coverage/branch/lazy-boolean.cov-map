@@ -1,7 +1,7 @@
 Function name: lazy_boolean::branch_and
 Raw bytes (38): 0x[01, 01, 01, 01, 05, 06, 01, 13, 01, 01, 0e, 01, 04, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 02, 00, 0d, 00, 0e, 05, 00, 12, 00, 13, 01, 01, 05, 01, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/lazy-boolean.rs
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 6
@@ -18,7 +18,7 @@ Highest counter ID seen: c1
 Function name: lazy_boolean::branch_or
 Raw bytes (38): 0x[01, 01, 01, 01, 05, 06, 01, 1b, 01, 01, 0e, 01, 04, 09, 00, 0a, 01, 00, 0d, 00, 0e, 20, 05, 02, 00, 0d, 00, 0e, 02, 00, 12, 00, 13, 01, 01, 05, 01, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/lazy-boolean.rs
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 6
@@ -36,7 +36,7 @@ Highest counter ID seen: c1
 Function name: lazy_boolean::chain
 Raw bytes (141): 0x[01, 01, 0f, 01, 05, 05, 09, 09, 0d, 01, 11, 01, 11, 01, 3b, 11, 15, 01, 3b, 11, 15, 01, 37, 3b, 19, 11, 15, 01, 37, 3b, 19, 11, 15, 13, 01, 24, 01, 01, 0e, 01, 04, 09, 00, 0a, 01, 00, 0d, 00, 12, 20, 05, 02, 00, 0d, 00, 12, 05, 00, 16, 00, 1b, 20, 09, 06, 00, 16, 00, 1b, 09, 00, 1f, 00, 24, 20, 0d, 0a, 00, 1f, 00, 24, 0d, 00, 28, 00, 2d, 01, 01, 05, 00, 10, 01, 03, 09, 00, 0a, 01, 00, 0d, 00, 12, 20, 11, 12, 00, 0d, 00, 12, 12, 00, 16, 00, 1b, 20, 15, 1e, 00, 16, 00, 1b, 1e, 00, 1f, 00, 24, 20, 19, 32, 00, 1f, 00, 24, 32, 00, 28, 00, 2d, 01, 01, 05, 01, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/lazy-boolean.rs
 Number of expressions: 15
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Counter(2)
@@ -93,7 +93,7 @@ Highest counter ID seen: c6
 Function name: lazy_boolean::nested_mixed
 Raw bytes (137): 0x[01, 01, 0d, 01, 05, 01, 1f, 05, 09, 05, 09, 1f, 0d, 05, 09, 1f, 0d, 05, 09, 01, 11, 11, 15, 01, 15, 01, 33, 15, 19, 13, 01, 31, 01, 01, 0e, 01, 04, 09, 00, 0a, 01, 00, 0e, 00, 13, 20, 05, 02, 00, 0e, 00, 13, 02, 00, 17, 00, 1d, 20, 09, 06, 00, 17, 00, 1d, 1f, 00, 23, 00, 28, 20, 0d, 1a, 00, 23, 00, 28, 1a, 00, 2c, 00, 33, 01, 01, 05, 00, 10, 01, 03, 09, 00, 0a, 01, 00, 0e, 00, 13, 20, 11, 22, 00, 0e, 00, 13, 11, 00, 17, 00, 1c, 20, 15, 26, 00, 17, 00, 1c, 2a, 00, 22, 00, 28, 20, 19, 2e, 00, 22, 00, 28, 19, 00, 2c, 00, 33, 01, 01, 05, 01, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/lazy-boolean.rs
 Number of expressions: 13
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(0), rhs = Expression(7, Add)
