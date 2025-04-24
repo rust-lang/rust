@@ -572,6 +572,10 @@ pub(crate) unsafe fn llvm_optimize(
 
     let consider_ad = cfg!(llvm_enzyme) && config.autodiff.contains(&config::AutoDiff::Enable);
     let run_enzyme = autodiff_stage == AutodiffStage::DuringAD;
+    let print_before_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModBefore);
+    let print_after_enzyme = config.autodiff.contains(&config::AutoDiff::PrintModAfter);
+    let print_passes = config.autodiff.contains(&config::AutoDiff::PrintPasses);
+    let merge_functions;
     let unroll_loops;
     let vectorize_slp;
     let vectorize_loop;
@@ -579,13 +583,20 @@ pub(crate) unsafe fn llvm_optimize(
     // When we build rustc with enzyme/autodiff support, we want to postpone size-increasing
     // optimizations until after differentiation. Our pipeline is thus: (opt + enzyme), (full opt).
     // We therefore have two calls to llvm_optimize, if autodiff is used.
+    //
+    // We also must disable merge_functions, since autodiff placeholder/dummy bodies tend to be
+    // identical. We run opts before AD, so there is a chance that LLVM will merge our dummies.
+    // In that case, we lack some dummy bodies and can't replace them with the real AD code anymore.
+    // We then would need to abort compilation. This was especially common in test cases.
     if consider_ad && autodiff_stage != AutodiffStage::PostAD {
+        merge_functions = false;
         unroll_loops = false;
         vectorize_slp = false;
         vectorize_loop = false;
     } else {
         unroll_loops =
             opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+        merge_functions = config.merge_functions;
         vectorize_slp = config.vectorize_slp;
         vectorize_loop = config.vectorize_loop;
     }
@@ -663,13 +674,16 @@ pub(crate) unsafe fn llvm_optimize(
             thin_lto_buffer,
             config.emit_thin_lto,
             config.emit_thin_lto_summary,
-            config.merge_functions,
+            merge_functions,
             unroll_loops,
             vectorize_slp,
             vectorize_loop,
             config.no_builtins,
             config.emit_lifetime_markers,
             run_enzyme,
+            print_before_enzyme,
+            print_after_enzyme,
+            print_passes,
             sanitizer_options.as_ref(),
             pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
             pgo_use_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),

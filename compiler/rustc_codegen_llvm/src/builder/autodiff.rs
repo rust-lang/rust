@@ -473,7 +473,7 @@ pub(crate) fn differentiate<'ll>(
         return Err(diag_handler.handle().emit_almost_fatal(AutoDiffWithoutEnable));
     }
 
-    // Before dumping the module, we want all the TypeTrees to become part of the module.
+    // Here we replace the placeholder code with the actual autodiff code, which calls Enzyme.
     for item in diff_items.iter() {
         let name = item.source.clone();
         let fn_def: Option<&llvm::Value> = cx.get_function(&name);
