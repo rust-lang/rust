@@ -4,6 +4,7 @@ use std::{ops, sync::LazyLock};
 use hir_expand::name::Name;
 use la_arena::{Arena, Idx, RawIdx};
 use stdx::impl_from;
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
@@ -12,10 +13,6 @@ use crate::{
     expr_store::{ExpressionStore, ExpressionStoreSourceMap},
     type_ref::{ConstRef, LifetimeRef, TypeBound, TypeRefId},
 };
-
-/// The index of the self param in the generic of the non-parent definition.
-const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
-    LocalTypeOrConstParamId::from_raw(RawIdx::from_u32(0));
 
 pub type LocalTypeOrConstParamId = Idx<TypeOrConstParamData>;
 pub type LocalLifetimeParamId = Idx<LifetimeParamData>;
@@ -173,17 +170,9 @@ impl ops::Index<LocalLifetimeParamId> for GenericParams {
 /// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
-    TypeBound { target: WherePredicateTypeTarget, bound: TypeBound },
+    TypeBound { target: TypeRefId, bound: TypeBound },
     Lifetime { target: LifetimeRef, bound: LifetimeRef },
-    ForLifetime { lifetimes: Box<[Name]>, target: WherePredicateTypeTarget, bound: TypeBound },
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub enum WherePredicateTypeTarget {
-    TypeRef(TypeRefId),
-    // FIXME: This can be folded into the above now that `TypeRef` can refer to `TypeParam`?
-    /// For desugared where predicates that can directly refer to a type param.
-    TypeOrConstParam(LocalTypeOrConstParamId),
+    ForLifetime { lifetimes: ThinVec<Name>, target: TypeRefId, bound: TypeBound },
 }
 
 static EMPTY: LazyLock<Arc<GenericParams>> = LazyLock::new(|| {
@@ -193,7 +182,12 @@ static EMPTY: LazyLock<Arc<GenericParams>> = LazyLock::new(|| {
         where_predicates: Box::default(),
     })
 });
+
 impl GenericParams {
+    /// The index of the self param in the generic of the non-parent definition.
+    pub(crate) const SELF_PARAM_ID_IN_SELF: la_arena::Idx<TypeOrConstParamData> =
+        LocalTypeOrConstParamId::from_raw(RawIdx::from_u32(0));
+
     pub fn new(db: &dyn DefDatabase, def: GenericDefId) -> Arc<GenericParams> {
         match def {
             GenericDefId::AdtId(AdtId::EnumId(it)) => db.enum_signature(it).generic_params.clone(),
@@ -388,13 +382,13 @@ impl GenericParams {
             return None;
         }
         matches!(
-            self.type_or_consts[SELF_PARAM_ID_IN_SELF],
+            self.type_or_consts[Self::SELF_PARAM_ID_IN_SELF],
             TypeOrConstParamData::TypeParamData(TypeParamData {
                 provenance: TypeParamProvenance::TraitSelf,
                 ..
             })
         )
-        .then(|| SELF_PARAM_ID_IN_SELF)
+        .then(|| Self::SELF_PARAM_ID_IN_SELF)
     }
 
     pub fn find_lifetime_by_name(

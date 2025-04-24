@@ -37,6 +37,7 @@ use crate::{
         Body, BodySourceMap, ExprPtr, ExpressionStore, ExpressionStoreBuilder,
         ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, PatPtr, TypePtr,
         expander::Expander,
+        lower::generics::ImplTraitLowerFn,
         path::{AssociatedTypeBinding, GenericArg, GenericArgs, GenericArgsParentheses, Path},
     },
     hir::{
@@ -193,7 +194,8 @@ pub(crate) fn lower_type_ref(
     type_ref: InFile<Option<ast::Type>>,
 ) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId) {
     let mut expr_collector = ExprCollector::new(db, module, type_ref.file_id);
-    let type_ref = expr_collector.lower_type_ref_opt(type_ref.value, &mut TypeRef::ImplTrait);
+    let type_ref =
+        expr_collector.lower_type_ref_opt(type_ref.value, &mut ExprCollector::impl_trait_allocator);
     (expr_collector.store.finish(), expr_collector.source_map, type_ref)
 }
 
@@ -206,8 +208,8 @@ pub(crate) fn lower_generic_params(
     where_clause: Option<ast::WhereClause>,
 ) -> (Arc<ExpressionStore>, Arc<GenericParams>, ExpressionStoreSourceMap) {
     let mut expr_collector = ExprCollector::new(db, module, file_id);
-    let mut collector = generics::GenericParamsCollector::new(&mut expr_collector, def);
-    collector.lower(param_list, where_clause);
+    let mut collector = generics::GenericParamsCollector::new(def);
+    collector.lower(&mut expr_collector, param_list, where_clause);
     let params = collector.finish();
     (Arc::new(expr_collector.store.finish()), params, expr_collector.source_map)
 }
@@ -223,13 +225,18 @@ pub(crate) fn lower_impl(
         expr_collector.lower_type_ref_opt_disallow_impl_trait(impl_syntax.value.self_ty());
     let trait_ = impl_syntax.value.trait_().and_then(|it| match &it {
         ast::Type::PathType(path_type) => {
-            let path = expr_collector.lower_path_type(path_type, &mut |_| TypeRef::Error)?;
+            let path = expr_collector
+                .lower_path_type(path_type, &mut ExprCollector::impl_trait_allocator)?;
             Some(TraitRef { path: expr_collector.alloc_path(path, AstPtr::new(&it)) })
         }
         _ => None,
     });
-    let mut collector = generics::GenericParamsCollector::new(&mut expr_collector, impl_id.into());
-    collector.lower(impl_syntax.value.generic_param_list(), impl_syntax.value.where_clause());
+    let mut collector = generics::GenericParamsCollector::new(impl_id.into());
+    collector.lower(
+        &mut expr_collector,
+        impl_syntax.value.generic_param_list(),
+        impl_syntax.value.where_clause(),
+    );
     let params = collector.finish();
     (expr_collector.store.finish(), expr_collector.source_map, self_ty, trait_, params)
 }
@@ -241,9 +248,16 @@ pub(crate) fn lower_trait(
     trait_id: TraitId,
 ) -> (ExpressionStore, ExpressionStoreSourceMap, Arc<GenericParams>) {
     let mut expr_collector = ExprCollector::new(db, module, trait_syntax.file_id);
-    let mut collector = generics::GenericParamsCollector::new(&mut expr_collector, trait_id.into());
-    collector.fill_self_param(trait_syntax.value.type_bound_list());
-    collector.lower(trait_syntax.value.generic_param_list(), trait_syntax.value.where_clause());
+    let mut collector = generics::GenericParamsCollector::with_self_param(
+        &mut expr_collector,
+        trait_id.into(),
+        trait_syntax.value.type_bound_list(),
+    );
+    collector.lower(
+        &mut expr_collector,
+        trait_syntax.value.generic_param_list(),
+        trait_syntax.value.where_clause(),
+    );
     let params = collector.finish();
     (expr_collector.store.finish(), expr_collector.source_map, params)
 }
@@ -255,9 +269,16 @@ pub(crate) fn lower_trait_alias(
     trait_id: TraitAliasId,
 ) -> (ExpressionStore, ExpressionStoreSourceMap, Arc<GenericParams>) {
     let mut expr_collector = ExprCollector::new(db, module, trait_syntax.file_id);
-    let mut collector = generics::GenericParamsCollector::new(&mut expr_collector, trait_id.into());
-    collector.fill_self_param(trait_syntax.value.type_bound_list());
-    collector.lower(trait_syntax.value.generic_param_list(), trait_syntax.value.where_clause());
+    let mut collector = generics::GenericParamsCollector::with_self_param(
+        &mut expr_collector,
+        trait_id.into(),
+        trait_syntax.value.type_bound_list(),
+    );
+    collector.lower(
+        &mut expr_collector,
+        trait_syntax.value.generic_param_list(),
+        trait_syntax.value.where_clause(),
+    );
     let params = collector.finish();
     (expr_collector.store.finish(), expr_collector.source_map, params)
 }
@@ -281,16 +302,23 @@ pub(crate) fn lower_type_alias(
         .map(|bounds| {
             bounds
                 .bounds()
-                .map(|bound| expr_collector.lower_type_bound(bound, &mut TypeRef::ImplTrait))
+                .map(|bound| {
+                    expr_collector.lower_type_bound(bound, &mut ExprCollector::impl_trait_allocator)
+                })
                 .collect()
         })
         .unwrap_or_default();
-    let mut collector =
-        generics::GenericParamsCollector::new(&mut expr_collector, type_alias_id.into());
-    collector.lower(alias.value.generic_param_list(), alias.value.where_clause());
+    let mut collector = generics::GenericParamsCollector::new(type_alias_id.into());
+    collector.lower(
+        &mut expr_collector,
+        alias.value.generic_param_list(),
+        alias.value.where_clause(),
+    );
     let params = collector.finish();
-    let type_ref =
-        alias.value.ty().map(|ty| expr_collector.lower_type_ref(ty, &mut TypeRef::ImplTrait));
+    let type_ref = alias
+        .value
+        .ty()
+        .map(|ty| expr_collector.lower_type_ref(ty, &mut ExprCollector::impl_trait_allocator));
     (expr_collector.store.finish(), expr_collector.source_map, params, bounds, type_ref)
 }
 
@@ -309,13 +337,12 @@ pub(crate) fn lower_function(
     bool,
 ) {
     let mut expr_collector = ExprCollector::new(db, module, fn_.file_id);
-    let mut collector =
-        generics::GenericParamsCollector::new(&mut expr_collector, function_id.into());
-    collector.lower(fn_.value.generic_param_list(), fn_.value.where_clause());
+    let mut collector = generics::GenericParamsCollector::new(function_id.into());
+    collector.lower(&mut expr_collector, fn_.value.generic_param_list(), fn_.value.where_clause());
     let mut params = vec![];
     let mut has_self_param = false;
     let mut has_variadic = false;
-    collector.collect_impl_trait(|collector, mut impl_trait_lower_fn| {
+    collector.collect_impl_trait(&mut expr_collector, |collector, mut impl_trait_lower_fn| {
         if let Some(param_list) = fn_.value.param_list() {
             if let Some(param) = param_list.self_param() {
                 let enabled = collector.expander.is_cfg_enabled(db, module.krate(), &param);
@@ -368,10 +395,9 @@ pub(crate) fn lower_function(
         }
     });
     let generics = collector.finish();
-    let return_type = fn_
-        .value
-        .ret_type()
-        .map(|ret_type| expr_collector.lower_type_ref_opt(ret_type.ty(), &mut TypeRef::ImplTrait));
+    let return_type = fn_.value.ret_type().map(|ret_type| {
+        expr_collector.lower_type_ref_opt(ret_type.ty(), &mut ExprCollector::impl_trait_allocator)
+    });
 
     let return_type = if fn_.value.async_token().is_some() {
         let path = hir_expand::mod_path::path![core::future::Future];
@@ -563,7 +589,7 @@ impl ExprCollector<'_> {
     pub fn lower_type_ref(
         &mut self,
         node: ast::Type,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> TypeRefId {
         let ty = match &node {
             ast::Type::ParenType(inner) => {
@@ -653,11 +679,11 @@ impl ExprCollector<'_> {
                     // Disallow nested impl traits
                     TypeRef::Error
                 } else {
-                    self.with_outer_impl_trait_scope(true, |this| {
+                    return self.with_outer_impl_trait_scope(true, |this| {
                         let type_bounds =
                             this.type_bounds_from_ast(inner.type_bound_list(), impl_trait_lower_fn);
-                        impl_trait_lower_fn(type_bounds)
-                    })
+                        impl_trait_lower_fn(this, AstPtr::new(&node), type_bounds)
+                    });
                 }
             }
             ast::Type::DynTraitType(inner) => TypeRef::DynTrait(
@@ -680,13 +706,13 @@ impl ExprCollector<'_> {
     }
 
     pub(crate) fn lower_type_ref_disallow_impl_trait(&mut self, node: ast::Type) -> TypeRefId {
-        self.lower_type_ref(node, &mut |_| TypeRef::Error)
+        self.lower_type_ref(node, &mut Self::impl_trait_error_allocator)
     }
 
     pub(crate) fn lower_type_ref_opt(
         &mut self,
         node: Option<ast::Type>,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> TypeRefId {
         match node {
             Some(node) => self.lower_type_ref(node, impl_trait_lower_fn),
@@ -698,7 +724,7 @@ impl ExprCollector<'_> {
         &mut self,
         node: Option<ast::Type>,
     ) -> TypeRefId {
-        self.lower_type_ref_opt(node, &mut |_| TypeRef::Error)
+        self.lower_type_ref_opt(node, &mut Self::impl_trait_error_allocator)
     }
 
     fn alloc_type_ref(&mut self, type_ref: TypeRef, node: TypePtr) -> TypeRefId {
@@ -712,7 +738,7 @@ impl ExprCollector<'_> {
     pub fn lower_path(
         &mut self,
         ast: ast::Path,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> Option<Path> {
         super::lower::path::lower_path(self, ast, impl_trait_lower_fn)
     }
@@ -736,6 +762,22 @@ impl ExprCollector<'_> {
         self.store.types.alloc(TypeRef::Error)
     }
 
+    pub fn impl_trait_error_allocator(
+        ec: &mut ExprCollector<'_>,
+        ptr: TypePtr,
+        _: ThinVec<TypeBound>,
+    ) -> TypeRefId {
+        ec.alloc_type_ref(TypeRef::Error, ptr)
+    }
+
+    fn impl_trait_allocator(
+        ec: &mut ExprCollector<'_>,
+        ptr: TypePtr,
+        bounds: ThinVec<TypeBound>,
+    ) -> TypeRefId {
+        ec.alloc_type_ref(TypeRef::ImplTrait(bounds), ptr)
+    }
+
     fn alloc_path(&mut self, path: Path, node: TypePtr) -> PathId {
         PathId::from_type_ref_unchecked(self.alloc_type_ref(TypeRef::Path(path), node))
     }
@@ -746,7 +788,7 @@ impl ExprCollector<'_> {
         &mut self,
         args: Option<ast::ParenthesizedArgList>,
         ret_type: Option<ast::RetType>,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> Option<GenericArgs> {
         let params = args?;
         let mut param_types = Vec::new();
@@ -786,7 +828,7 @@ impl ExprCollector<'_> {
     pub(super) fn lower_generic_args(
         &mut self,
         node: ast::GenericArgList,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> Option<GenericArgs> {
         // This needs to be kept in sync with `hir_generic_arg_to_ast()`.
         let mut args = Vec::new();
@@ -877,7 +919,7 @@ impl ExprCollector<'_> {
     fn type_bounds_from_ast(
         &mut self,
         type_bounds_opt: Option<ast::TypeBoundList>,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> ThinVec<TypeBound> {
         if let Some(type_bounds) = type_bounds_opt {
             ThinVec::from_iter(Vec::from_iter(
@@ -891,7 +933,7 @@ impl ExprCollector<'_> {
     fn lower_path_type(
         &mut self,
         path_type: &ast::PathType,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> Option<Path> {
         let path = self.lower_path(path_type.path()?, impl_trait_lower_fn)?;
         Some(path)
@@ -900,7 +942,7 @@ impl ExprCollector<'_> {
     fn lower_type_bound(
         &mut self,
         node: ast::TypeBound,
-        impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+        impl_trait_lower_fn: ImplTraitLowerFn<'_>,
     ) -> TypeBound {
         match node.kind() {
             ast::TypeBoundKind::PathType(path_type) => {
@@ -1081,7 +1123,9 @@ impl ExprCollector<'_> {
                 let method_name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
                 let generic_args = e
                     .generic_arg_list()
-                    .and_then(|it| self.lower_generic_args(it, &mut |_| TypeRef::Error))
+                    .and_then(|it| {
+                        self.lower_generic_args(it, &mut Self::impl_trait_error_allocator)
+                    })
                     .map(Box::new);
                 self.alloc_expr(
                     Expr::MethodCall { receiver, method_name, args, generic_args },
@@ -1162,7 +1206,7 @@ impl ExprCollector<'_> {
             ast::Expr::RecordExpr(e) => {
                 let path = e
                     .path()
-                    .and_then(|path| self.lower_path(path, &mut |_| TypeRef::Error))
+                    .and_then(|path| self.lower_path(path, &mut Self::impl_trait_error_allocator))
                     .map(Box::new);
                 let record_lit = if let Some(nfl) = e.record_expr_field_list() {
                     let fields = nfl
@@ -1390,7 +1434,7 @@ impl ExprCollector<'_> {
 
     fn collect_expr_path(&mut self, e: ast::PathExpr) -> Option<(Path, HygieneId)> {
         e.path().and_then(|path| {
-            let path = self.lower_path(path, &mut |_| TypeRef::Error)?;
+            let path = self.lower_path(path, &mut Self::impl_trait_error_allocator)?;
             // Need to enable `mod_path.len() < 1` for `self`.
             let may_be_variable = matches!(&path, Path::BarePath(mod_path) if mod_path.len() <= 1);
             let hygiene = if may_be_variable {
@@ -1459,7 +1503,7 @@ impl ExprCollector<'_> {
                 let path = collect_path(self, e.expr()?)?;
                 let path = path
                     .path()
-                    .and_then(|path| self.lower_path(path, &mut |_| TypeRef::Error))
+                    .and_then(|path| self.lower_path(path, &mut Self::impl_trait_error_allocator))
                     .map(Box::new);
                 let (ellipsis, args) = collect_tuple(self, e.arg_list()?.args());
                 self.alloc_pat_from_expr(Pat::TupleStruct { path, args, ellipsis }, syntax_ptr)
@@ -1488,7 +1532,7 @@ impl ExprCollector<'_> {
             ast::Expr::RecordExpr(e) => {
                 let path = e
                     .path()
-                    .and_then(|path| self.lower_path(path, &mut |_| TypeRef::Error))
+                    .and_then(|path| self.lower_path(path, &mut Self::impl_trait_error_allocator))
                     .map(Box::new);
                 let record_field_list = e.record_expr_field_list()?;
                 let ellipsis = record_field_list.dotdot_token().is_some();
@@ -2225,7 +2269,7 @@ impl ExprCollector<'_> {
             ast::Pat::TupleStructPat(p) => {
                 let path = p
                     .path()
-                    .and_then(|path| self.lower_path(path, &mut |_| TypeRef::Error))
+                    .and_then(|path| self.lower_path(path, &mut Self::impl_trait_error_allocator))
                     .map(Box::new);
                 let (args, ellipsis) = self.collect_tuple_pat(
                     p.fields(),
@@ -2240,7 +2284,9 @@ impl ExprCollector<'_> {
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
-                let path = p.path().and_then(|path| self.lower_path(path, &mut |_| TypeRef::Error));
+                let path = p
+                    .path()
+                    .and_then(|path| self.lower_path(path, &mut Self::impl_trait_error_allocator));
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::OrPat(p) => 'b: {
@@ -2289,7 +2335,7 @@ impl ExprCollector<'_> {
             ast::Pat::RecordPat(p) => {
                 let path = p
                     .path()
-                    .and_then(|path| self.lower_path(path, &mut |_| TypeRef::Error))
+                    .and_then(|path| self.lower_path(path, &mut Self::impl_trait_error_allocator))
                     .map(Box::new);
                 let record_pat_field_list =
                     &p.record_pat_field_list().expect("every struct should have a field list");
@@ -2385,7 +2431,9 @@ impl ExprCollector<'_> {
                                 .map(|path| self.alloc_expr_from_pat(Expr::Path(path), ptr)),
                             ast::Pat::PathPat(p) => p
                                 .path()
-                                .and_then(|path| self.lower_path(path, &mut |_| TypeRef::Error))
+                                .and_then(|path| {
+                                    self.lower_path(path, &mut Self::impl_trait_error_allocator)
+                                })
                                 .map(|parsed| self.alloc_expr_from_pat(Expr::Path(parsed), ptr)),
                             // We only need to handle literal, ident (if bare) and path patterns here,
                             // as any other pattern as a range pattern operand is semantically invalid.

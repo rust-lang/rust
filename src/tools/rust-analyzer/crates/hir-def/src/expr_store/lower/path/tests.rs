@@ -15,14 +15,13 @@ use crate::{
         pretty,
     },
     test_db::TestDB,
-    type_ref::TypeRef,
 };
 
 fn lower_path(path: ast::Path) -> (TestDB, ExpressionStore, Option<Path>) {
     let (db, file_id) = TestDB::with_single_file("");
     let krate = db.fetch_test_crate();
     let mut ctx = ExprCollector::new(&db, db.crate_def_map(krate).root_module_id(), file_id.into());
-    let lowered_path = ctx.lower_path(path, &mut TypeRef::ImplTrait);
+    let lowered_path = ctx.lower_path(path, &mut ExprCollector::impl_trait_allocator);
     let store = ctx.store.finish();
     (db, store, lowered_path)
 }

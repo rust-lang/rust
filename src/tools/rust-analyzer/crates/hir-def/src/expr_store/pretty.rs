@@ -16,7 +16,7 @@ use crate::{
     expr_store::path::{GenericArg, GenericArgs},
     hir::{
         Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, Statement,
-        generics::{GenericParams, WherePredicate, WherePredicateTypeTarget},
+        generics::{GenericParams, WherePredicate},
     },
     lang_item::LangItemTarget,
     signatures::{FnFlags, FunctionSignature, StructSignature},
@@ -336,21 +336,11 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                     w!(p, ",\n");
                 }
                 match pred {
-                    WherePredicate::TypeBound { target, bound } => match target {
-                        &WherePredicateTypeTarget::TypeRef(idx) => {
-                            p.print_type_ref(idx);
-                            w!(p, ": ");
-                            p.print_type_bounds(std::slice::from_ref(bound));
-                        }
-                        WherePredicateTypeTarget::TypeOrConstParam(idx) => {
-                            match generic_params[*idx].name() {
-                                Some(name) => w!(p, "{}", name.display(db, p.edition)),
-                                None => w!(p, "Param[{}]", idx.into_raw()),
-                            }
-                            w!(p, ": ");
-                            p.print_type_bounds(std::slice::from_ref(bound));
-                        }
-                    },
+                    WherePredicate::TypeBound { target, bound } => {
+                        p.print_type_ref(*target);
+                        w!(p, ": ");
+                        p.print_type_bounds(std::slice::from_ref(bound));
+                    }
                     WherePredicate::Lifetime { target, bound } => {
                         p.print_lifetime_ref(target);
                         w!(p, ": ");
@@ -365,21 +355,9 @@ fn print_where_clauses(db: &dyn DefDatabase, generic_params: &GenericParams, p: 
                             w!(p, "{}", lifetime.display(db, p.edition));
                         }
                         w!(p, "> ");
-                        match target {
-                            WherePredicateTypeTarget::TypeRef(idx) => {
-                                p.print_type_ref(*idx);
-                                w!(p, ": ");
-                                p.print_type_bounds(std::slice::from_ref(bound));
-                            }
-                            WherePredicateTypeTarget::TypeOrConstParam(idx) => {
-                                match generic_params[*idx].name() {
-                                    Some(name) => w!(p, "{}", name.display(db, p.edition)),
-                                    None => w!(p, "Param[{}]", idx.into_raw()),
-                                }
-                                w!(p, ": ");
-                                p.print_type_bounds(std::slice::from_ref(bound));
-                            }
-                        }
+                        p.print_type_ref(*target);
+                        w!(p, ": ");
+                        p.print_type_bounds(std::slice::from_ref(bound));
                     }
                 }
             }

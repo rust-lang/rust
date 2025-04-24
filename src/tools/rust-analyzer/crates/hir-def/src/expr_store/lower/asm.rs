@@ -11,7 +11,6 @@ use tt::TextRange;
 use crate::{
     expr_store::lower::{ExprCollector, FxIndexSet},
     hir::{AsmOperand, AsmOptions, Expr, ExprId, InlineAsm, InlineAsmRegOrRegClass},
-    type_ref::TypeRef,
 };
 
 impl ExprCollector<'_> {
@@ -159,10 +158,12 @@ impl ExprCollector<'_> {
                                 AsmOperand::Const(self.collect_expr_opt(c.expr()))
                             }
                             ast::AsmOperand::AsmSym(s) => {
-                                let Some(path) = s
-                                    .path()
-                                    .and_then(|p| self.lower_path(p, &mut |_| TypeRef::Error))
-                                else {
+                                let Some(path) = s.path().and_then(|p| {
+                                    self.lower_path(
+                                        p,
+                                        &mut ExprCollector::impl_trait_error_allocator,
+                                    )
+                                }) else {
                                     continue;
                                 };
                                 AsmOperand::Sym(path)

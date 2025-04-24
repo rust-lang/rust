@@ -5,7 +5,10 @@ mod tests;
 
 use std::iter;
 
-use crate::expr_store::{lower::ExprCollector, path::NormalPath};
+use crate::expr_store::{
+    lower::{ExprCollector, generics::ImplTraitLowerFn},
+    path::NormalPath,
+};
 
 use hir_expand::{
     mod_path::{ModPath, PathKind, resolve_crate_root},
@@ -16,11 +19,10 @@ use syntax::{
     AstPtr,
     ast::{self, AstNode, HasGenericArgs},
 };
-use thin_vec::ThinVec;
 
 use crate::{
     expr_store::path::{GenericArg, GenericArgs, Path},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::TypeRef,
 };
 
 #[cfg(test)]
@@ -36,7 +38,7 @@ thread_local! {
 pub(super) fn lower_path(
     collector: &mut ExprCollector<'_>,
     mut path: ast::Path,
-    impl_trait_lower_fn: &mut impl FnMut(ThinVec<TypeBound>) -> TypeRef,
+    impl_trait_lower_fn: ImplTraitLowerFn<'_>,
 ) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
