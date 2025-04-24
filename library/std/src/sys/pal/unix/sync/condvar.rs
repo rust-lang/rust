@@ -64,7 +64,10 @@ impl Condvar {
         // https://gist.github.com/stepancheg/198db4623a20aad2ad7cddb8fda4a63c
         //
         // To work around this issue, the timeout is clamped to 1000 years.
-        #[cfg(target_vendor = "apple")]
+        //
+        // Cygwin implementation is based on NT API and a super large timeout
+        // makes the syscall block forever.
+        #[cfg(any(target_vendor = "apple", target_os = "cygwin"))]
         let dur = Duration::min(dur, Duration::from_secs(1000 * 365 * 86400));
 
         let timeout = Timespec::now(Self::CLOCK).checked_add_duration(&dur);
