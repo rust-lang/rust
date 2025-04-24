@@ -260,8 +260,8 @@
 //! is [`Ok`] or [`Err`], respectively.
 //!
 //! The [`is_ok_and`] and [`is_err_and`] methods apply the provided function
-//! to the contents of the [`Result`] to produce a boolean value. If the [`Result`]` does not have the expected variant
-//! then `false` is returned instead without executing the function.
+//! to the contents of the [`Result`] to produce a boolean value. If the [`Result`] does not have the expected variant
+//! then [`false`] is returned instead without executing the function.
 //!
 //! [`is_err`]: Result::is_err
 //! [`is_ok`]: Result::is_ok
