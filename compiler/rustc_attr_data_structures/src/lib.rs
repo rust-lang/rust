@@ -1,7 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(rust_logo)]
-#![feature(let_chains)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
