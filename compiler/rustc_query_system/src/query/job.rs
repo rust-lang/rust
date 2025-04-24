@@ -236,7 +236,7 @@ impl<I> QueryLatch<I> {
             // If this detects a deadlock and the deadlock handler wants to resume this thread
             // we have to be in the `wait` call. This is ensured by the deadlock handler
             // getting the self.info lock.
-            chili::ThreadPool::global().mark_blocked();
+            chili::mark_blocked().unwrap();
             jobserver::release_thread();
             waiter.condvar.wait(&mut info);
             // Release the lock before we potentially block in `acquire_thread`
@@ -250,9 +250,8 @@ impl<I> QueryLatch<I> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
         info.complete = true;
-        let pool = chili::ThreadPool::global();
         for waiter in info.waiters.drain(..) {
-            pool.mark_unblocked();
+            chili::mark_unblocked().unwrap();
             waiter.condvar.notify_one();
         }
     }
@@ -504,7 +503,7 @@ fn remove_cycle<I: Clone>(
 /// uses a query latch and then resuming that waiter.
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
-pub fn break_query_cycles<I: Clone + Debug>(query_map: QueryMap<I>, pool: &chili::ThreadPool) {
+pub fn break_query_cycles<I: Clone + Debug>(query_map: QueryMap<I>) {
     let mut wakelist = Vec::new();
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
 
@@ -535,7 +534,7 @@ pub fn break_query_cycles<I: Clone + Debug>(query_map: QueryMap<I>, pool: &chili
     // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
     // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
     for _ in 0..wakelist.len() {
-        pool.mark_unblocked();
+        chili::mark_unblocked().unwrap();
     }
 
     for waiter in wakelist.into_iter() {

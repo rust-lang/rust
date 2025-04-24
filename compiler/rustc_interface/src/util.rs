@@ -202,7 +202,6 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
             // locals to it. The new thread runs the deadlock handler.
 
             let current_gcx2 = current_gcx2.clone();
-            let pool = chili::ThreadPool::global();
             let session_globals = rustc_span::with_session_globals(|session_globals| {
                 session_globals as *const SessionGlobals as usize
             });
@@ -228,7 +227,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                                     // We need the complete map to ensure we find a cycle to break.
                                     QueryCtxt::new(tcx).collect_active_jobs().ok().expect("failed to collect active queries in deadlock handler")
                                 });
-                                break_query_cycles(query_map, &pool);
+                                break_query_cycles(query_map);
                             })
                         })
                     });
@@ -261,7 +260,11 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                     })
                 },
                 // Run `f` on the first thread in the thread pool.
-                move || chili::Scope::global().install(|_| f(current_gcx.into_inner())),
+                move || {
+                    chili::Scope::with_current(|scope| {
+                        scope.unwrap().install(|_| f(current_gcx.into_inner()))
+                    })
+                },
             )
             .unwrap()
         })

@@ -81,21 +81,22 @@ where
         let oper3 = FromDyn::from(oper3);
         // Swap closures around because Chili executes second one on the current thread
         let (r1, (r2, (r3, r0))) = parallel_guard(|guard| {
-            let mut scope = chili::Scope::global();
-            scope.join_with_heartbeat_every::<1, _, _, _, _>(
-                move |_| guard.run(move || FromDyn::from(oper1.into_inner()())),
-                move |scope| {
-                    scope.join_with_heartbeat_every::<1, _, _, _, _>(
-                        move |_| guard.run(move || FromDyn::from(oper2.into_inner()())),
-                        move |scope| {
-                            scope.join_with_heartbeat_every::<1, _, _, _, _>(
-                                move |_| guard.run(move || FromDyn::from(oper3.into_inner()())),
-                                move |_| guard.run(move || FromDyn::from(oper0.into_inner()())),
-                            )
-                        },
-                    )
-                },
-            )
+            chili::Scope::with_current(|scope| {
+                scope.unwrap().join(
+                    move |_| guard.run(move || FromDyn::from(oper1.into_inner()())),
+                    move |scope| {
+                        scope.join(
+                            move |_| guard.run(move || FromDyn::from(oper2.into_inner()())),
+                            move |scope| {
+                                scope.join(
+                                    move |_| guard.run(move || FromDyn::from(oper3.into_inner()())),
+                                    move |_| guard.run(move || FromDyn::from(oper0.into_inner()())),
+                                )
+                            },
+                        )
+                    },
+                )
+            })
         });
         (
             r0.unwrap().into_inner(),
@@ -121,11 +122,13 @@ where
         let oper_a = FromDyn::from(oper_a);
         let oper_b = FromDyn::from(oper_b);
         let (b, a) = parallel_guard(|guard| {
-            chili::Scope::global().join_with_heartbeat_every::<1, _, _, _, _>(
-                // Swap arguments around because Chili executes second one on the current thread
-                move |_| guard.run(move || FromDyn::from(oper_b.into_inner()())),
-                move |_| guard.run(move || FromDyn::from(oper_a.into_inner()())),
-            )
+            chili::Scope::with_current(|scope| {
+                scope.unwrap().join(
+                    // Swap arguments around because Chili executes second one on the current thread
+                    move |_| guard.run(move || FromDyn::from(oper_b.into_inner()())),
+                    move |_| guard.run(move || FromDyn::from(oper_a.into_inner()())),
+                )
+            })
         });
         (a.unwrap().into_inner(), b.unwrap().into_inner())
     } else {
@@ -165,13 +168,12 @@ fn par_slice<I: DynSend>(
         }
     }
 
-    let mut scope = chili::Scope::global();
     let state = State {
         for_each: FromDyn::from(for_each),
         guard,
         group: std::cmp::max(items.len() / 128, 1),
     };
-    par_rec(&mut scope, items, &state)
+    chili::Scope::with_current(|scope| par_rec(&mut scope.unwrap(), items, &state));
 }
 
 pub fn par_for_each_in<I: DynSend, T: IntoIterator<Item = I>>(
