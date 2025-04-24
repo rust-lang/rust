@@ -750,7 +750,7 @@ fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), Err
                         ObligationCause::misc(impl_span, checker.impl_def_id),
                         param_env,
                         nontrivial_field_ty,
-                        tcx.lang_items().pointer_like().unwrap(),
+                        tcx.require_lang_item(LangItem::PointerLike, Some(impl_span)),
                     );
                     // FIXME(dyn-star): We should regionck this implementation.
                     if ocx.select_all_or_error().is_empty() {

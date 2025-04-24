@@ -159,19 +159,21 @@ paths for Clippy can be found in [paths.rs][paths]
 To check if our type defines a method called `some_method`:
 
 ```rust
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::return_ty;
+use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::{sym, return_ty};
 
 impl<'tcx> LateLintPass<'tcx> for MyTypeImpl {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         // Check if item is a method/function
         if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
             // Check the method is named `some_method`
-            && impl_item.ident.name.as_str() == "some_method"
+            //
+            // Add `some_method` to `clippy_utils::sym` if it's not already there
+            && impl_item.ident.name == sym::some_method
             // We can also check it has a parameter `self`
             && signature.decl.implicit_self.has_implicit_self()
             // We can go further and even check if its return type is `String`
-            && is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id), sym!(string_type))
+            && is_type_lang_item(cx, return_ty(cx, impl_item.hir_id), LangItem::String)
         {
             // ...
         }

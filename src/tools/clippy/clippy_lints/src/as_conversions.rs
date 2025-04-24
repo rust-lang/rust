@@ -12,17 +12,17 @@ declare_clippy_lint! {
     /// regardless of whether good alternatives exist or not. If you want more
     /// precise lints for `as`, please consider using these separate lints:
     ///
-    /// - clippy::cast_lossless
-    /// - clippy::cast_possible_truncation
-    /// - clippy::cast_possible_wrap
-    /// - clippy::cast_precision_loss
-    /// - clippy::cast_sign_loss
-    /// - clippy::char_lit_as_u8
-    /// - clippy::fn_to_numeric_cast
-    /// - clippy::fn_to_numeric_cast_with_truncation
-    /// - clippy::ptr_as_ptr
-    /// - clippy::unnecessary_cast
-    /// - invalid_reference_casting
+    /// - `clippy::cast_lossless`
+    /// - `clippy::cast_possible_truncation`
+    /// - `clippy::cast_possible_wrap`
+    /// - `clippy::cast_precision_loss`
+    /// - `clippy::cast_sign_loss`
+    /// - `clippy::char_lit_as_u8`
+    /// - `clippy::fn_to_numeric_cast`
+    /// - `clippy::fn_to_numeric_cast_with_truncation`
+    /// - `clippy::ptr_as_ptr`
+    /// - `clippy::unnecessary_cast`
+    /// - `invalid_reference_casting`
     ///
     /// There is a good explanation the reason why this lint should work in this
     /// way and how it is useful [in this

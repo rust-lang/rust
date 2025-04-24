@@ -1457,15 +1457,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => (None, None),
                         };
 
-                        let ranges = &[
-                            self.tcx.lang_items().range_struct(),
-                            self.tcx.lang_items().range_from_struct(),
-                            self.tcx.lang_items().range_to_struct(),
-                            self.tcx.lang_items().range_full_struct(),
-                            self.tcx.lang_items().range_inclusive_struct(),
-                            self.tcx.lang_items().range_to_inclusive_struct(),
-                        ];
-                        if type_def_id != None && ranges.contains(&type_def_id) {
+                        let is_range = match type_def_id.and_then(|id| self.tcx.as_lang_item(id)) {
+                            Some(
+                                LangItem::Range
+                                | LangItem::RangeFrom
+                                | LangItem::RangeTo
+                                | LangItem::RangeFull
+                                | LangItem::RangeInclusiveStruct
+                                | LangItem::RangeToInclusive,
+                            ) => true,
+                            _ => false,
+                        };
+                        if is_range {
                             if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
                                 let msg = "constants only support matching by type, \
                                     if you meant to match against a range of values, \

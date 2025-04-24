@@ -43,7 +43,7 @@ extern "C" fn c_abi_fn(arg_one: u32, arg_two: usize) {}
 
 extern "C" fn c_abi_fn_again(arg_one: u32, arg_two: usize) {}
 
-extern "C" {
+unsafe extern "C" {
     fn c_abi_in_block(arg_one: u32, arg_two: usize);
 }
 

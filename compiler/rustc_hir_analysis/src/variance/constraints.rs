@@ -107,7 +107,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         let current_item = &CurrentItem { inferred_start };
         let ty = tcx.type_of(def_id).instantiate_identity();
 
-        // The type as returned by `type_of` is the underlying type and generally not a weak projection.
+        // The type as returned by `type_of` is the underlying type and generally not a free alias.
         // Therefore we need to check the `DefKind` first.
         if let DefKind::TyAlias = tcx.def_kind(def_id)
             && tcx.type_alias_is_lazy(def_id)
@@ -282,7 +282,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_invariant_args(current, data.args, variance);
             }
 
-            ty::Alias(ty::Weak, ref data) => {
+            ty::Alias(ty::Free, ref data) => {
                 self.add_constraints_from_args(current, data.def_id, data.args, variance);
             }
 

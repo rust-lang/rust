@@ -147,7 +147,7 @@ following:
 
 First, take note of the toolchain
 [override](https://rust-lang.github.io/rustup/overrides.html) in
-`/rust-toolchain`. We will use this override to install Clippy into the right
+`/rust-toolchain.toml`. We will use this override to install Clippy into the right
 toolchain.
 
 > Tip: You can view the active toolchain for the current directory with `rustup

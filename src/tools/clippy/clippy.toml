@@ -1,15 +1,20 @@
 avoid-breaking-exported-api = false
 
-lint-inconsistent-struct-field-initializers = true
+check-inconsistent-struct-field-initializers = true
+
+lint-commented-code = true
 
 [[disallowed-methods]]
 path = "rustc_lint::context::LintContext::lint"
 reason = "this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint*` functions instead"
+allow-invalid = true
 
 [[disallowed-methods]]
 path = "rustc_lint::context::LintContext::span_lint"
 reason = "this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint*` functions instead"
+allow-invalid = true
 
 [[disallowed-methods]]
 path = "rustc_middle::ty::context::TyCtxt::node_span_lint"
 reason = "this function does not add a link to our documentation, please use the `clippy_utils::diagnostics::span_lint_hir*` functions instead"
+allow-invalid = true

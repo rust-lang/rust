@@ -11,12 +11,12 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
+use build_helper::git::{GitConfig, PathFreshness, check_path_modifications, output_result};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
@@ -422,6 +422,9 @@ pub struct Config {
     pub compiletest_use_stage0_libtest: bool,
 
     pub is_running_on_ci: bool,
+
+    /// Cache for determining path modifications
+    pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -3193,19 +3196,30 @@ impl Config {
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged) {
-                Some(commit) => commit,
-                None => {
+            let freshness = self.check_path_modifications(&allowed_paths);
+            self.verbose(|| {
+                eprintln!("rustc freshness: {freshness:?}");
+            });
+            match freshness {
+                PathFreshness::LastModifiedUpstream { upstream } => upstream,
+                PathFreshness::HasLocalModifications { upstream } => {
                     if if_unchanged {
                         return None;
                     }
-                    println!("ERROR: could not find commit hash for downloading rustc");
-                    println!("HELP: maybe your repository history is too shallow?");
-                    println!(
-                        "HELP: consider setting `rust.download-rustc=false` in bootstrap.toml"
-                    );
-                    println!("HELP: or fetch enough history to include one upstream commit");
-                    crate::exit!(1);
+
+                    if self.is_running_on_ci {
+                        eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+                        eprintln!(
+                            "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+                        );
+                        return None;
+                    }
+
+                    upstream
+                }
+                PathFreshness::MissingUpstream => {
+                    eprintln!("No upstream commit found");
+                    return None;
                 }
             }
         } else {
@@ -3213,19 +3227,6 @@ impl Config {
                 .map(|info| info.sha.trim().to_owned())
                 .expect("git-commit-info is missing in the project root")
         };
-
-        if self.is_running_on_ci && {
-            let head_sha =
-                output(helpers::git(Some(&self.src)).arg("rev-parse").arg("HEAD").as_command_mut());
-            let head_sha = head_sha.trim();
-            commit == head_sha
-        } {
-            eprintln!("CI rustc commit matches with HEAD and we are in CI.");
-            eprintln!(
-                "`rustc.download-ci` functionality will be skipped as artifacts are not available."
-            );
-            return None;
-        }
 
         if debug_assertions_requested {
             eprintln!(
@@ -3264,9 +3265,7 @@ impl Config {
             self.update_submodule("src/llvm-project");
 
             // Check for untracked changes in `src/llvm-project` and other important places.
-            let has_changes = self
-                .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
-                .is_none();
+            let has_changes = self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
             // Return false if there are untracked changes, otherwise check if CI LLVM is available.
             if has_changes { false } else { llvm::is_ci_llvm_available_for_target(self, asserts) }
@@ -3297,51 +3296,30 @@ impl Config {
         }
     }
 
-    /// Returns the last commit in which any of `modified_paths` were changed,
-    /// or `None` if there are untracked changes in the working directory and `if_unchanged` is true.
-    pub fn last_modified_commit(
-        &self,
-        modified_paths: &[&str],
-        option_name: &str,
-        if_unchanged: bool,
-    ) -> Option<String> {
-        assert!(
-            self.rust_info.is_managed_git_subrepository(),
-            "Can't run `Config::last_modified_commit` on a non-git source."
-        );
-
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
-        if commit.is_empty() {
-            println!("error: could not find commit hash for downloading components from CI");
-            println!("help: maybe your repository history is too shallow?");
-            println!("help: consider disabling `{option_name}`");
-            println!("help: or fetch enough history to include one upstream commit");
-            crate::exit!(1);
+    /// Returns true if any of the `paths` have been modified locally.
+    pub fn has_changes_from_upstream(&self, paths: &[&'static str]) -> bool {
+        match self.check_path_modifications(paths) {
+            PathFreshness::LastModifiedUpstream { .. } => false,
+            PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
         }
+    }
 
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
-        let mut git = helpers::git(Some(&self.src));
-        git.args(["diff-index", "--quiet", &commit, "--"]).args(modified_paths);
-
-        let has_changes = !t!(git.as_command_mut().status()).success();
-        if has_changes {
-            if if_unchanged {
-                if self.is_verbose() {
-                    println!(
-                        "warning: saw changes to one of {modified_paths:?} since {commit}; \
-                            ignoring `{option_name}`"
-                    );
-                }
-                return None;
-            }
-            println!(
-                "warning: `{option_name}` is enabled, but there are changes to one of {modified_paths:?}"
-            );
-        }
-
-        Some(commit.to_string())
+    /// Checks whether any of the given paths have been modified w.r.t. upstream.
+    pub fn check_path_modifications(&self, paths: &[&'static str]) -> PathFreshness {
+        // Checking path modifications through git can be relatively expensive (>100ms).
+        // We do not assume that the sources would change during bootstrap's execution,
+        // so we can cache the results here.
+        // Note that we do not use a static variable for the cache, because it would cause problems
+        // in tests that create separate `Config` instsances.
+        self.path_modification_cache
+            .lock()
+            .unwrap()
+            .entry(paths.to_vec())
+            .or_insert_with(|| {
+                check_path_modifications(&self.src, &self.git_config(), paths, CiEnv::current())
+                    .unwrap()
+            })
+            .clone()
     }
 
     /// Checks if the given target is the same as the host target.
@@ -3378,6 +3356,10 @@ impl Config {
             // This only has our patches if it's downloaded from CI or built from source.
             _ => !self.is_system_llvm(target),
         }
+    }
+
+    pub fn ci_env(&self) -> CiEnv {
+        if self.is_running_on_ci { CiEnv::GitHubActions } else { CiEnv::None }
     }
 }
 

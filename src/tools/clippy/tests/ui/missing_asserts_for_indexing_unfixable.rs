@@ -73,4 +73,17 @@ pub fn issue11856(values: &[i32]) -> usize {
     ascending.len()
 }
 
+fn assert_after_indexing(v1: &[u8]) {
+    let _ = v1[1] + v1[2];
+    //~^ ERROR: indexing into a slice multiple times without an `assert`
+    assert!(v1.len() > 2);
+}
+
+fn issue14255(v1: &[u8]) {
+    assert_ne!(v1.len(), 2);
+
+    let _ = v1[0] + v1[1] + v1[2];
+    //~^ missing_asserts_for_indexing
+}
+
 fn main() {}

@@ -139,7 +139,7 @@ impl<'tcx> TyCtxt<'tcx> {
     {
         let mut collector = LateBoundRegionsCollector::new(just_constrained);
         let value = value.skip_binder();
-        let value = if just_constrained { self.expand_weak_alias_tys(value) } else { value };
+        let value = if just_constrained { self.expand_free_alias_tys(value) } else { value };
         value.visit_with(&mut collector);
         collector.regions
     }
@@ -182,8 +182,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
                 ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) => {
                     return;
                 }
-                // All weak alias types should've been expanded beforehand.
-                ty::Alias(ty::Weak, _) => bug!("unexpected weak alias type"),
+                // All free alias types should've been expanded beforehand.
+                ty::Alias(ty::Free, _) => bug!("unexpected free alias type"),
                 _ => {}
             }
         }

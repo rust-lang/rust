@@ -80,18 +80,20 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                     path
                 },
                 PatKind::TupleStruct(path, patterns, ..) => {
-                    if let Some(id) = cx.qpath_res(path, pat.hir_id).opt_def_id() {
-                        if arm.guard.is_none() && patterns.iter().all(|p| !is_refutable(cx, p)) {
-                            missing_variants.retain(|e| e.ctor_def_id() != Some(id));
-                        }
+                    if let Some(id) = cx.qpath_res(path, pat.hir_id).opt_def_id()
+                        && arm.guard.is_none()
+                        && patterns.iter().all(|p| !is_refutable(cx, p))
+                    {
+                        missing_variants.retain(|e| e.ctor_def_id() != Some(id));
                     }
                     path
                 },
                 PatKind::Struct(path, patterns, ..) => {
-                    if let Some(id) = cx.qpath_res(path, pat.hir_id).opt_def_id() {
-                        if arm.guard.is_none() && patterns.iter().all(|p| !is_refutable(cx, p.pat)) {
-                            missing_variants.retain(|e| e.def_id != id);
-                        }
+                    if let Some(id) = cx.qpath_res(path, pat.hir_id).opt_def_id()
+                        && arm.guard.is_none()
+                        && patterns.iter().all(|p| !is_refutable(cx, p.pat))
+                    {
+                        missing_variants.retain(|e| e.def_id != id);
                     }
                     path
                 },

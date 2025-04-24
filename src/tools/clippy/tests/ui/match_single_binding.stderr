@@ -336,5 +336,47 @@ LL | |             _ => println!("1"),
 LL | |         },
    | |_________^ help: consider using the match body instead: `println!("1")`
 
-error: aborting due to 24 previous errors
+error: this match could be replaced by its scrutinee and body
+  --> tests/ui/match_single_binding.rs:239:5
+   |
+LL | /     match dbg!(3) {
+LL | |         _ => println!("here"),
+LL | |     }
+   | |_____^
+   |
+help: consider using the scrutinee and body instead
+   |
+LL ~     dbg!(3);
+LL +     println!("here");
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:243:5
+   |
+LL | /     match dbg!(3) {
+LL | |         id!(a) => println!("found {a}"),
+LL | |     }
+   | |_____^
+   |
+help: consider using a `let` statement
+   |
+LL ~     let id!(a) = dbg!(3);
+LL +     println!("found {a}");
+   |
+
+error: this match could be written as a `let` statement
+  --> tests/ui/match_single_binding.rs:247:5
+   |
+LL | /     let id!(_a) = match dbg!(3) {
+LL | |         id!(b) => dbg!(b + 1),
+LL | |     };
+   | |______^
+   |
+help: consider using a `let` statement
+   |
+LL ~     let id!(b) = dbg!(3);
+LL +     let id!(_a) = dbg!(b + 1);
+   |
+
+error: aborting due to 27 previous errors
 

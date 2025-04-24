@@ -157,10 +157,10 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 );
             }
 
-            ty::Alias(ty::Weak, alias) => {
+            ty::Alias(ty::Free, alias) => {
                 // This corresponds to a type like `Type<'a, T>`.
                 // We check inferred and explicit predicates.
-                debug!("Weak");
+                debug!("Free");
                 check_inferred_predicates(
                     tcx,
                     alias.def_id,

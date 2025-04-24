@@ -9,26 +9,27 @@ use super::NEEDLESS_OPTION_TAKE;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     // Checks if expression type is equal to sym::Option and if the expr is not a syntactic place
-    if !recv.is_syntactic_place_expr() && is_expr_option(cx, recv) {
-        if let Some(function_name) = source_of_temporary_value(recv) {
-            span_lint_and_then(
-                cx,
-                NEEDLESS_OPTION_TAKE,
-                expr.span,
-                "called `Option::take()` on a temporary value",
-                |diag| {
-                    diag.note(format!(
-                        "`{function_name}` creates a temporary value, so calling take() has no effect"
-                    ));
-                    diag.span_suggestion(
-                        expr.span.with_lo(recv.span.hi()),
-                        "remove",
-                        "",
-                        Applicability::MachineApplicable,
-                    );
-                },
-            );
-        }
+    if !recv.is_syntactic_place_expr()
+        && is_expr_option(cx, recv)
+        && let Some(function_name) = source_of_temporary_value(recv)
+    {
+        span_lint_and_then(
+            cx,
+            NEEDLESS_OPTION_TAKE,
+            expr.span,
+            "called `Option::take()` on a temporary value",
+            |diag| {
+                diag.note(format!(
+                    "`{function_name}` creates a temporary value, so calling take() has no effect"
+                ));
+                diag.span_suggestion(
+                    expr.span.with_lo(recv.span.hi()),
+                    "remove",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+            },
+        );
     }
 }
 
@@ -44,10 +45,10 @@ fn is_expr_option(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 fn source_of_temporary_value<'a>(expr: &'a Expr<'_>) -> Option<&'a str> {
     match expr.peel_borrows().kind {
         ExprKind::Call(function, _) => {
-            if let ExprKind::Path(QPath::Resolved(_, func_path)) = function.kind {
-                if !func_path.segments.is_empty() {
-                    return Some(func_path.segments[0].ident.name.as_str());
-                }
+            if let ExprKind::Path(QPath::Resolved(_, func_path)) = function.kind
+                && !func_path.segments.is_empty()
+            {
+                return Some(func_path.segments[0].ident.name.as_str());
             }
             if let ExprKind::Path(QPath::TypeRelative(_, func_path_segment)) = function.kind {
                 return Some(func_path_segment.ident.name.as_str());

@@ -33,7 +33,7 @@ pub(super) fn check<'tcx>(
                             diag.span_suggestion_verbose(
                                 e.span,
                                 "use `pointer::cast` instead",
-                                format!("{}.cast::<{to_pointee_ty}>()", arg.maybe_par()),
+                                format!("{}.cast::<{to_pointee_ty}>()", arg.maybe_paren()),
                                 Applicability::MaybeIncorrect,
                             );
                         } else if from_pointee_ty == to_pointee_ty
@@ -48,7 +48,7 @@ pub(super) fn check<'tcx>(
                             diag.span_suggestion_verbose(
                                 e.span,
                                 format!("use `pointer::{method}` instead"),
-                                format!("{}.{method}()", arg.maybe_par()),
+                                format!("{}.{method}()", arg.maybe_paren()),
                                 Applicability::MaybeIncorrect,
                             );
                         } else {

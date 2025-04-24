@@ -253,7 +253,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 }
             }
 
-            ty::Projection | ty::Inherent | ty::Weak => {
+            ty::Projection | ty::Inherent | ty::Free => {
                 // See note in `rustc_trait_selection::traits::project`
 
                 let infcx = self.infcx;
@@ -275,7 +275,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 let result = match kind {
                     ty::Projection => tcx.normalize_canonicalized_projection_ty(c_data),
-                    ty::Weak => tcx.normalize_canonicalized_weak_ty(c_data),
+                    ty::Free => tcx.normalize_canonicalized_free_alias(c_data),
                     ty::Inherent => tcx.normalize_canonicalized_inherent_projection_ty(c_data),
                     kind => unreachable!("did not expect {kind:?} due to match arm above"),
                 }?;
@@ -313,10 +313,10 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 };
                 // `tcx.normalize_canonicalized_projection_ty` may normalize to a type that
                 // still has unevaluated consts, so keep normalizing here if that's the case.
-                // Similarly, `tcx.normalize_canonicalized_weak_ty` will only unwrap one layer
+                // Similarly, `tcx.normalize_canonicalized_free_alias` will only unwrap one layer
                 // of type and we need to continue folding it to reveal the TAIT behind it.
                 if res != ty
-                    && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) || kind == ty::Weak)
+                    && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION) || kind == ty::Free)
                 {
                     res.try_fold_with(self)?
                 } else {

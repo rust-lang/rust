@@ -2141,6 +2141,13 @@ pub(crate) enum UnknownPrefixSugg {
     )]
     UseBr(#[primary_span] Span),
     #[suggestion(
+        parse_suggestion_cr,
+        code = "cr",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    UseCr(#[primary_span] Span),
+    #[suggestion(
         parse_suggestion_whitespace,
         code = " ",
         applicability = "maybe-incorrect",

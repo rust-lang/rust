@@ -958,7 +958,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = ty::AliasTy::new_from_args(tcx, did, args);
-            Ty::new_alias(tcx, ty::Weak, alias_ty)
+            Ty::new_alias(tcx, ty::Free, alias_ty)
         } else {
             tcx.at(span).type_of(did).instantiate(tcx, args)
         }

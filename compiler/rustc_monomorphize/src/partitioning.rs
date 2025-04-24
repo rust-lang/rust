@@ -223,7 +223,7 @@ where
         match mono_item.instantiation_mode(cx.tcx) {
             InstantiationMode::GloballyShared { .. } => {}
             InstantiationMode::LocalCopy => {
-                if Some(mono_item.def_id()) != cx.tcx.lang_items().start_fn() {
+                if !cx.tcx.is_lang_item(mono_item.def_id(), LangItem::Start) {
                     continue;
                 }
             }

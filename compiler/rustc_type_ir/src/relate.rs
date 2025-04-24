@@ -273,7 +273,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
                 ty::AliasTermKind::ProjectionTy
-                | ty::AliasTermKind::WeakTy
+                | ty::AliasTermKind::FreeTy
                 | ty::AliasTermKind::InherentTy
                 | ty::AliasTermKind::UnevaluatedConst
                 | ty::AliasTermKind::ProjectionConst => {

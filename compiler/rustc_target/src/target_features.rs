@@ -775,7 +775,7 @@ const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[
     (32768, "zvl32768b"),
     (65536, "zvl65536b"),
 ];
-// Always warn on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
+// Always error on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
 const SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[/*(64, "vis")*/];
 
 const HEXAGON_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =

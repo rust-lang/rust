@@ -115,7 +115,7 @@ mod with_type_coercion {
     fn with_fn_ret(s: &Option<String>) -> Option<(String, &str)> {
         // Don't lint, `map` doesn't work as the return type is adjusted.
         match s {
-            Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+            Some(x) => Some({ if let Some(s) = s { (x.clone(), s) } else { panic!() } }),
             None => None,
         }
     }
@@ -124,7 +124,7 @@ mod with_type_coercion {
         if true {
             // Don't lint, `map` doesn't work as the return type is adjusted.
             return match s {
-                Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+                Some(x) => Some({ if let Some(s) = s { (x.clone(), s) } else { panic!() } }),
                 None => None,
             };
         }
@@ -136,7 +136,7 @@ mod with_type_coercion {
         let x: Option<(String, &'a str)>;
         x = {
             match s {
-                Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
+                Some(x) => Some({ if let Some(s) = s { (x.clone(), s) } else { panic!() } }),
                 None => None,
             }
         };

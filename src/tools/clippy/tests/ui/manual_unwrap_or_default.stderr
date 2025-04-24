@@ -76,15 +76,26 @@ LL | |     };
    | |_____^ help: replace it with: `x.unwrap_or_default()`
 
 error: match can be simplified with `.unwrap_or_default()`
-  --> tests/ui/manual_unwrap_or_default.rs:73:20
+  --> tests/ui/manual_unwrap_or_default.rs:74:24
    |
-LL |           Some(_) => match *b {
-   |  ____________________^
+LL |               Some(_) => match *b {
+   |  ________________________^
 LL | |
-LL | |             Some(v) => v,
-LL | |             _ => 0,
-LL | |         },
-   | |_________^ help: replace it with: `(*b).unwrap_or_default()`
+LL | |                 Some(v) => v,
+LL | |                 _ => 0,
+LL | |             },
+   | |_____________^ help: replace it with: `(*b).unwrap_or_default()`
 
-error: aborting due to 8 previous errors
+error: if let can be simplified with `.unwrap_or_default()`
+  --> tests/ui/manual_unwrap_or_default.rs:143:5
+   |
+LL | /     if let Some(x) = Some(42) {
+LL | |
+LL | |         x
+LL | |     } else {
+LL | |         0
+LL | |     }
+   | |_____^ help: replace it with: `Some(42).unwrap_or_default()`
+
+error: aborting due to 9 previous errors
 

@@ -213,7 +213,7 @@ where
                     }
                 }
             }
-            ty::Alias(kind @ (ty::Inherent | ty::Weak | ty::Projection), data) => {
+            ty::Alias(kind @ (ty::Inherent | ty::Free | ty::Projection), data) => {
                 if self.def_id_visitor.skip_assoc_tys() {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -227,7 +227,7 @@ where
                     data.def_id,
                     match kind {
                         ty::Inherent | ty::Projection => "associated type",
-                        ty::Weak => "type alias",
+                        ty::Free => "type alias",
                         ty::Opaque => unreachable!(),
                     },
                     &LazyDefPathStr { def_id: data.def_id, tcx },

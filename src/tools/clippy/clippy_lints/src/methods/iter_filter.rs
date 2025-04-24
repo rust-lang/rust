@@ -6,12 +6,12 @@ use super::{ITER_FILTER_IS_OK, ITER_FILTER_IS_SOME};
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline};
-use clippy_utils::{get_parent_expr, is_trait_method, peel_blocks, span_contains_comment};
+use clippy_utils::{get_parent_expr, is_trait_method, peel_blocks, span_contains_comment, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::QPath;
 use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol, sym};
+use rustc_span::symbol::{Ident, Symbol};
 
 ///
 /// Returns true if the expression is a method call to `method_name`
@@ -154,7 +154,7 @@ fn expression_type(
         if let Some(opt_defid) = cx.tcx.get_diagnostic_item(sym::Option)
             && let opt_ty = cx.tcx.type_of(opt_defid).skip_binder()
             && iter_item_ty.ty_adt_def() == opt_ty.ty_adt_def()
-            && is_method(cx, filter_arg, sym::Option, sym!(is_some), &[])
+            && is_method(cx, filter_arg, sym::Option, sym::is_some, &[])
         {
             return Some(FilterType::IsSome);
         }
@@ -162,7 +162,7 @@ fn expression_type(
         if let Some(opt_defid) = cx.tcx.get_diagnostic_item(sym::Result)
             && let opt_ty = cx.tcx.type_of(opt_defid).skip_binder()
             && iter_item_ty.ty_adt_def() == opt_ty.ty_adt_def()
-            && is_method(cx, filter_arg, sym::Result, sym!(is_ok), &[])
+            && is_method(cx, filter_arg, sym::Result, sym::is_ok, &[])
         {
             return Some(FilterType::IsOk);
         }
