@@ -35,6 +35,7 @@ use minicore::*;
 pub fn return_f32(x: f32) -> f32 {
     // CHECK: movss {{.*}}(%ebp), %xmm0
     // CHECK-NEXT: popl %ebp
+    // linux-NEXT: .cfi_def_cfa
     // CHECK-NEXT: retl
     x
 }
@@ -44,6 +45,7 @@ pub fn return_f32(x: f32) -> f32 {
 pub fn return_f64(x: f64) -> f64 {
     // CHECK: movsd {{.*}}(%ebp), %xmm0
     // CHECK-NEXT: popl %ebp
+    // linux-NEXT: .cfi_def_cfa
     // CHECK-NEXT: retl
     x
 }
@@ -313,9 +315,13 @@ pub unsafe fn call_other_f64(x: &mut (usize, f64)) {
 #[no_mangle]
 pub fn return_f16(x: f16) -> f16 {
     // CHECK: pushl %ebp
+    // linux-NEXT: .cfi_def_cfa_offset
+    // linux-NEXT: .cfi_offset
     // CHECK-NEXT: movl %esp, %ebp
+    // linux-NEXT: .cfi_def_cfa_register
     // CHECK-NEXT: pinsrw $0, 8(%ebp), %xmm0
     // CHECK-NEXT: popl %ebp
+    // linux-NEXT: .cfi_def_cfa
     // CHECK-NEXT: retl
     x
 }
@@ -324,10 +330,14 @@ pub fn return_f16(x: f16) -> f16 {
 #[no_mangle]
 pub fn return_f128(x: f128) -> f128 {
     // CHECK: pushl %ebp
+    // linux-NEXT: .cfi_def_cfa_offset
+    // linux-NEXT: .cfi_offset
     // CHECK-NEXT: movl %esp, %ebp
+    // linux-NEXT: .cfi_def_cfa_register
     // linux-NEXT: movaps 8(%ebp), %xmm0
     // win-NEXT: movups 8(%ebp), %xmm0
     // CHECK-NEXT: popl %ebp
+    // linux-NEXT: .cfi_def_cfa
     // CHECK-NEXT: retl
     x
 }
