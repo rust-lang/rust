@@ -40,6 +40,26 @@ const GATED_CFGS: &[GatedCfg] = &[
     // this is consistent with naming of the compiler flag it's for
     (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
     (sym::emscripten_wasm_eh, sym::cfg_emscripten_wasm_eh, Features::cfg_emscripten_wasm_eh),
+    (
+        sym::target_has_reliable_f16,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f16_math,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f128,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f128_math,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
