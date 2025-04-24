@@ -159,8 +159,8 @@
 //!
 //! ## Querying the variant
 //!
-//! The [`is_some`] and [`is_none`] methods borrow of the [`Option`]
-//! and return [`true`] if the [`Option`] is [`Some`] or [`None`], respectively.
+//! The [`is_some`] and [`is_none`] methods return [`true`] if the [`Option`]
+//! is [`Some`] or [`None`], respectively.
 //!
 //! The [`is_some_and`] and [`is_none_or`] methods apply the provided function
 //! to the contents of the [`Option`] to produce a boolean value.
