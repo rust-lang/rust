@@ -26,28 +26,36 @@ You need to have a local clone of the HelenOS repository and the HelenOS toolcha
 
 ### HelenOS toolchain setup
 
-For compilation of standard library, you need to build the HelenOS toolchain (because Rust needs to use `*-helenos-gcc` as linker) and shared libraries. See [this HelenOS wiki page](https://www.helenos.org/wiki/UsersGuide/CompilingFromSource#a2.Buildasupportedcross-compiler) for instruction on setting up the build. At the end of step 4 (_Configure and build_), invoke `ninja export-dev` to build the shared libraries.
+For compilation of standard library, you need to build the HelenOS toolchain (because Rust needs to use `*-helenos-gcc` as linker) and its libraries (libc and a few others). See [this HelenOS wiki page](https://www.helenos.org/wiki/UsersGuide/CompilingFromSource#a2.Buildasupportedcross-compiler) for instruction on setting up the build. At the end of step 4 (_Configure and build_), after `ninja image_path`, invoke `ninja export-dev` to build the shared libraries.
 
-Then copy these shared libraries from `export-dev/lib` to the path where the compiler automatically searches for them. This will be the directory where you installed the toolchain (for example `~/.local/share/HelenOS/cross/i686-helenos/lib`). You can see this path with this command:
+Copy the libraries to the path where the compiler automatically searches for them. This will be the directory where you installed the toolchain (for example `~/.local/share/HelenOS/cross/i686-helenos/lib`). In the folder where you built HelenOS, you can run these commands:
 
 ```sh
 touch /tmp/test.c
-i686-helenos-gcc -v -c /tmp/test.c 2>&1 | grep LIBRARY_PATH
+HELENOS_LIB_PATH="$(realpath "$(i686-helenos-gcc -v -c /tmp/test.c 2>&1 | grep LIBRARY_PATH | cut -d= -f2 | cut -d: -f3)")"
+# use amd64-helenos-gcc above for x86_64 toolchain, etc
+cp export-dev/lib/* dist/lib/libc.so.0 dist/lib/libposix.so.0 "$HELENOS_LIB_PATH"
+ln -s libposix.so.0 "$HELENOS_LIB_PATH/libposix.so"
+ln -s libc.so.0 "$HELENOS_LIB_PATH/libc.so"
 ```
+
+This automatically determines the library path, copies the libraries, and creates the necessary unversioned shared library symlinks.
 
 ### Building the target
 
 When you have the HelenOS toolchain set up and installed in your path, you can build the Rust toolchain using the standard procedure. See [rustc dev guide](https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html).
 
+In the most simple case, this means that you can run `./x build library --stage 1 --target x86_64-unknown-linux-gnu,i686-unknown-helenos` (the first target triple should be your host machine, adjust accordingly). Then run `rustup toolchain link mytoolchain build/host/stage1` to allow using your toolchain for building Rust programs.
+
 ### Building Rust programs
 
-Use the toolchain that you have built above and run `cargo build --target <arch>-unknown-helenos`.
+If you linked the toolchain above as `mytoolchain`, run `cargo +mytoolchain build --target <arch>-unknown-helenos`.
 
 ## Testing
 
 After you build a Rust program for HelenOS, you can put it into the `dist` directory of the HelenOS build, build the ISO image, and then run it either in an emulator, or on real hardware. See HelenOS wiki for further instructions on running the OS.
 
-Running the Rust testsuite has not been attempted yet due to missing host tools and networking code.
+Running the Rust testsuite has not been attempted yet due to missing host tools (thus the test suite can't be run natively) and insufficient networking support (thus we can't use the `remote-test-server` tool).
 
 ## Cross-compilation toolchains and C code
 

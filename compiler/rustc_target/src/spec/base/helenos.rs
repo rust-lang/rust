@@ -1,4 +1,4 @@
-use crate::spec::{PanicStrategy, RelroLevel, TargetOptions};
+use crate::spec::{PanicStrategy, RelroLevel, StackProbeType, TargetOptions};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
@@ -10,6 +10,7 @@ pub(crate) fn opts() -> TargetOptions {
         has_rpath: true,
         relro_level: RelroLevel::Full,
         panic_strategy: PanicStrategy::Abort,
+        stack_probes: StackProbeType::Inline,
 
         ..Default::default()
     }

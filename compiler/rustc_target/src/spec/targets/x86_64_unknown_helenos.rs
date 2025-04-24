@@ -1,11 +1,10 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::helenos::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);
-    base.stack_probes = StackProbeType::Inline;
     base.linker = Some("amd64-helenos-gcc".into());
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
 
@@ -15,7 +14,7 @@ pub(crate) fn target() -> Target {
             description: Some("64-bit HelenOS".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: None,
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:
