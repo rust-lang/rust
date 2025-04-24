@@ -67,5 +67,4 @@ builtin_functions! {
     fn malloc(size: size_t) -> *mut c_void;
     fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
     fn free(p: *mut c_void) -> ();
-
 }
