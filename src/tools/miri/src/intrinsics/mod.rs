@@ -582,8 +582,10 @@ fn apply_random_float_error_to_imm<'tcx>(
 /// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
 /// - powf32, powf64
 ///
-/// Returns Some(`output`) if the `intrinsic` results in a defined fixed `output` specified in the C standard when given `args`
-/// as arguments. Outputs such as INF and zero are not considered. Otherwise this returns None.
+/// Returns `Some(output)` if the `intrinsic` results in a defined fixed `output` specified in the C standard
+/// (specifically, C23 annex F.10)  when given `args` as arguments. Outputs that are unaffected by a relative error
+/// (such as INF and zero) are not handled here, they are assumed to be handled by the underlying
+/// implementation. Returns `None` if no specific value is guaranteed.
 fn fixed_float_value<S: Semantics>(
     intrinsic_name: &str,
     args: &[IeeeFloat<S>],
@@ -604,7 +606,7 @@ fn fixed_float_value<S: Semantics>(
 
         // FIXME(miri/#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
         // the NaN. We should return either 1 or the NaN non-deterministically here.
-        // But for now, just handle them all the same
+        // But for now, just handle them all the same.
         // x^(±0) = 1 for any x, even a NaN
         ("powf32" | "powf64", [_, exp]) if exp.is_zero() => Some(one),
 
@@ -614,7 +616,8 @@ fn fixed_float_value<S: Semantics>(
     }
 }
 
-/// Returns Some(`output`) if `powi` results in a fixed value specified in the C standard when doing `base^exp` else None.
+/// Returns `Some(output)` if `powi` (called `pown` in C) results in a fixed value specified in the C standard
+/// (specifically, C23 annex F.10.4.6) when doing `base^exp`. Otherwise, returns `None`.
 fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<IeeeFloat<S>> {
     match (base.category(), exp) {
         // ±0^x = ±0 with x an odd integer.
@@ -626,7 +629,7 @@ fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<
         // x^0 = 1, if x is not a Signaling NaN
         // FIXME(miri/#4286): The C ecosystem is inconsistent with handling sNaN's, some return 1 others propogate
         // the NaN. We should return either 1 or the NaN non-deterministically here.
-        // But for now, just handle them all the same
+        // But for now, just handle them all the same.
         (_, 0) => Some(IeeeFloat::<S>::one()),
 
         _ => None,
