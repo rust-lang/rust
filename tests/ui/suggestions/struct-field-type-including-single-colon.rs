@@ -7,14 +7,14 @@ mod foo {
 
 struct Foo {
     a: foo:A,
-    //~^ ERROR path separator must be a double colon
-    //~| ERROR struct `A` is private
+    //~^ ERROR found single colon in a struct field type path
+    //~| ERROR expected `,`, or `}`, found `:`
 }
 
 struct Bar {
     b: foo::bar:B,
-    //~^ ERROR path separator must be a double colon
-    //~| ERROR module `bar` is private
+    //~^ ERROR found single colon in a struct field type path
+    //~| ERROR expected `,`, or `}`, found `:`
 }
 
 fn main() {}
