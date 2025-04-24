@@ -256,12 +256,12 @@
 //!
 //! ## Querying the variant
 //!
-//! The [`is_ok`] and [`is_err`] methods borrow of the [`Result`]
-//! and return [`true`] if the [`Result`] is [`Ok`] or [`Err`], respectively.
+//! The [`is_ok`] and [`is_err`] methods return [`true`] if the [`Result`]
+//! is [`Ok`] or [`Err`], respectively.
 //!
 //! The [`is_ok_and`] and [`is_err_and`] methods apply the provided function
-//! to the contents of the [`Result`] to produce a boolean value. If this is [`Err`]
-//! then a default result is returned instead without executing the function.
+//! to the contents of the [`Result`] to produce a boolean value. If the [`Result`]` does not have the expected variant
+//! then `false` is returned instead without executing the function.
 //!
 //! [`is_err`]: Result::is_err
 //! [`is_ok`]: Result::is_ok
@@ -347,9 +347,9 @@
 //! * [`map`] transforms [`Result<T, E>`] into [`Result<U, E>`] by applying
 //!   the provided function to the contained value of [`Ok`] and leaving
 //!   [`Err`] values unchanged
-//! * [`inspect`] takes ownership of the [`Result`] and applies the
+//! * [`inspect`] takes ownership of the [`Result`], applies the
 //!   provided function to the contained value by reference,
-//!   and then the [`Result`] is returned
+//!   and then returns the [`Result`]
 //!
 //! [`map`]: Result::map
 //! [`inspect`]: Result::inspect
@@ -359,9 +359,9 @@
 //! * [`map_err`] transforms [`Result<T, E>`] into [`Result<T, F>`] by
 //!   applying the provided function to the contained value of [`Err`] and
 //!   leaving [`Ok`] values unchanged
-//! * [`inspect_err`] takes ownership of the [`Result`] and applies the
+//! * [`inspect_err`] takes ownership of the [`Result`], applies the
 //!   provided function to the contained value of [`Err`] by reference,
-//!   and then the [`Result`] is returned
+//!   and then returns the [`Result`]
 //!
 //! [`map_err`]: Result::map_err
 //! [`inspect_err`]: Result::inspect_err
