@@ -916,7 +916,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_delim_args(&self, args: &DelimArgs) -> DelimArgs {
-        DelimArgs { dspan: args.dspan, delim: args.delim, tokens: args.tokens.clone() }
+        args.clone()
     }
 
     /// Lower an associated item constraint.
