@@ -116,7 +116,7 @@ impl Cargo {
             // as they don't invoke rustc at all.
             Kind::Clean | Kind::Suggest | Kind::Format | Kind::Setup => {}
             _ => {
-                cargo.configure_linker(builder);
+                cargo.configure_linker(builder, mode);
             }
         }
 
@@ -205,7 +205,7 @@ impl Cargo {
         self
     }
 
-    fn configure_linker(&mut self, builder: &Builder<'_>) -> &mut Cargo {
+    fn configure_linker(&mut self, builder: &Builder<'_>, mode: Mode) -> &mut Cargo {
         let target = self.target;
         let compiler = self.compiler;
 
@@ -260,7 +260,15 @@ impl Cargo {
             }
         }
 
-        for arg in linker_args(builder, compiler.host, LldThreads::Yes) {
+        // When determining flags for the host (build scripts/proc macros),
+        // we use the snapshot compiler when building `Mode::Std` tools, and
+        // the current compiler when building anything else.
+        // We need to determine the current stage here to pass proper linker args (e.g. -C vs -Z)
+        // to the compiler used to compile build scripts.
+        // This should stay synchronized with the [cargo] function.
+        let host_stage = if mode == Mode::Std { 0 } else { compiler.stage };
+
+        for arg in linker_args(builder, compiler.host, LldThreads::Yes, host_stage) {
             self.hostflags.arg(&arg);
         }
 
@@ -270,10 +278,10 @@ impl Cargo {
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
         // `linker_args` here.
-        for flag in linker_flags(builder, target, LldThreads::Yes) {
+        for flag in linker_flags(builder, target, LldThreads::Yes, compiler.stage) {
             self.rustflags.arg(&flag);
         }
-        for arg in linker_args(builder, target, LldThreads::Yes) {
+        for arg in linker_args(builder, target, LldThreads::Yes, compiler.stage) {
             self.rustdocflags.arg(&arg);
         }
 
