@@ -18,6 +18,9 @@
      * @param {boolean} isHidden
      */
     function scrollToLoc(elt, loc, isHidden) {
+        /** @type {HTMLElement[]} */
+        // blocked on https://github.com/microsoft/TypeScript/issues/29037
+        // @ts-expect-error
         const lines = elt.querySelectorAll("[data-nosnippet]");
         let scrollOffset;
 
@@ -57,6 +60,8 @@
     window.updateScrapedExample = (example, buttonHolder) => {
         let locIndex = 0;
         const highlights = Array.prototype.slice.call(example.querySelectorAll(".highlight"));
+
+        /** @type {HTMLAnchorElement} */
         const link = nonnull(example.querySelector(".scraped-example-title a"));
         let expandButton = null;
 
@@ -72,6 +77,7 @@
             const prev = createScrapeButton(buttonHolder, "prev", "Previous usage");
 
             // Toggle through list of examples in a given file
+            /** @type {function(function(): void): void} */
             const onChangeLoc = changeIndex => {
                 removeClass(highlights[locIndex], "focus");
                 changeIndex();
@@ -117,14 +123,13 @@
     /**
      * Intitialize the `locs` field
      *
-     * @param {HTMLElement} example
+     * @param {HTMLElement & {locs?: rustdoc.ScrapedLoc[]}} example
      * @param {boolean} isHidden
      */
     function setupLoc(example, isHidden) {
-        // @ts-expect-error
-        example.locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
+        const locs = example.locs = JSON.parse(nonnull(nonnull(example.attributes.getNamedItem("data-locs")).textContent));
         // Start with the first example in view
-        scrollToLoc(example, example.locs[0][0], isHidden);
+        scrollToLoc(example, locs[0][0], isHidden);
     }
 
     const firstExamples = document.querySelectorAll(".scraped-example-list > .scraped-example");
