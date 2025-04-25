@@ -100,6 +100,30 @@ pub struct Argument<'a> {
     pub format: FormatSpec<'a>,
 }
 
+impl<'a> Argument<'a> {
+    pub fn is_identifier(&self) -> bool {
+        matches!(self.position, Position::ArgumentNamed(_))
+            && matches!(
+                self.format,
+                FormatSpec {
+                    fill: None,
+                    fill_span: None,
+                    align: AlignUnknown,
+                    sign: None,
+                    alternate: false,
+                    zero_pad: false,
+                    debug_hex: None,
+                    precision: CountImplied,
+                    precision_span: None,
+                    width: CountImplied,
+                    width_span: None,
+                    ty: "",
+                    ty_span: None,
+                },
+            )
+    }
+}
+
 /// Specification for the formatting of an argument in the format string.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct FormatSpec<'a> {
@@ -894,52 +918,73 @@ impl<'a> Parser<'a> {
     }
 
     fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: Argument<'a>) {
-        if let Some(end) = self.consume_pos('.') {
-            let byte_pos = self.to_span_index(end);
-            let start = InnerOffset(byte_pos.0 + 1);
-            let field = self.argument(start);
-            // We can only parse simple `foo.bar` field access or `foo.0` tuple index access, any
-            // deeper nesting, or another type of expression, like method calls, are not supported
-            if !self.consume('}') {
-                return;
+        // If the argument is an identifier, it may be a field access.
+        if arg.is_identifier() {
+            if let Some(end) = self.consume_pos('.') {
+                let byte_pos = self.to_span_index(end);
+                let start = InnerOffset(byte_pos.0 + 1);
+                let field = self.argument(start);
+                // We can only parse simple `foo.bar` field access or `foo.0` tuple index access, any
+                // deeper nesting, or another type of expression, like method calls, are not supported
+                if !self.consume('}') {
+                    return;
+                }
+                if let ArgumentNamed(_) = arg.position {
+                    match field.position {
+                        ArgumentNamed(_) => {
+                            self.errors.insert(
+                                0,
+                                ParseError {
+                                    description: "field access isn't supported".to_string(),
+                                    note: None,
+                                    label: "not supported".to_string(),
+                                    span: InnerSpan::new(
+                                        arg.position_span.start,
+                                        field.position_span.end,
+                                    ),
+                                    secondary_label: None,
+                                    suggestion: Suggestion::UsePositional,
+                                },
+                            );
+                        }
+                        ArgumentIs(_) => {
+                            self.errors.insert(
+                                0,
+                                ParseError {
+                                    description: "tuple index access isn't supported".to_string(),
+                                    note: None,
+                                    label: "not supported".to_string(),
+                                    span: InnerSpan::new(
+                                        arg.position_span.start,
+                                        field.position_span.end,
+                                    ),
+                                    secondary_label: None,
+                                    suggestion: Suggestion::UsePositional,
+                                },
+                            );
+                        }
+                        _ => {}
+                    };
+                }
             }
-            if let ArgumentNamed(_) = arg.position {
-                match field.position {
-                    ArgumentNamed(_) => {
-                        self.errors.insert(
-                            0,
-                            ParseError {
-                                description: "field access isn't supported".to_string(),
-                                note: None,
-                                label: "not supported".to_string(),
-                                span: InnerSpan::new(
-                                    arg.position_span.start,
-                                    field.position_span.end,
-                                ),
-                                secondary_label: None,
-                                suggestion: Suggestion::UsePositional,
-                            },
-                        );
-                    }
-                    ArgumentIs(_) => {
-                        self.errors.insert(
-                            0,
-                            ParseError {
-                                description: "tuple index access isn't supported".to_string(),
-                                note: None,
-                                label: "not supported".to_string(),
-                                span: InnerSpan::new(
-                                    arg.position_span.start,
-                                    field.position_span.end,
-                                ),
-                                secondary_label: None,
-                                suggestion: Suggestion::UsePositional,
-                            },
-                        );
-                    }
-                    _ => {}
-                };
-            }
+        } else if matches!(arg.position, ArgumentNamed(_) | ArgumentIs(_)) {
+            let arg_name = match arg.position {
+                ArgumentNamed(arg_name) => &format!("`{arg_name}`"),
+                ArgumentIs(arg_index) => &format!("at index `{arg_index}`"),
+                _ => unreachable!(),
+            };
+
+            self.errors.insert(
+                0,
+                ParseError {
+                    description: format!("invalid format string for argument {}", arg_name),
+                    note: None,
+                    label: format!("invalid format specifier for this argument"),
+                    span: InnerSpan::new(arg.position_span.start, arg.position_span.end),
+                    secondary_label: None,
+                    suggestion: Suggestion::None,
+                },
+            );
         }
     }
 
