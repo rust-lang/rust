@@ -36,8 +36,8 @@ fn main() {
                                 lit.set_span(crate::Span::recover_proc_macro_span(2));
                                 lit
                             } else {
-                               ::core::panicking::panic("internal error: entered unreachable code")
-                           }
+                                ::core::panicking::panic("internal error: entered unreachable code")
+                            }
                     }), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
                         crate::Spacing::Alone)), &mut ts);
@@ -55,8 +55,8 @@ fn main() {
                                 lit.set_span(crate::Span::recover_proc_macro_span(5));
                                 lit
                             } else {
-                               ::core::panicking::panic("internal error: entered unreachable code")
-                           }
+                                ::core::panicking::panic("internal error: entered unreachable code")
+                            }
                     }), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
                         crate::Spacing::Alone)), &mut ts);
