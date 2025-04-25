@@ -444,8 +444,6 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                             }
                         }
                     }
-                    // We do nothing in this case. Not marking it as `non_module_items` either.
-                    StmtKind::Empty => {}
                     _ => {
                         has_non_items = true;
                     }
