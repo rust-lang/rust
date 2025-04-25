@@ -193,8 +193,8 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
 
     let config = chili::Config {
         // .thread_name(|_| "rustc".to_string())
-        // .acquire_thread_handler(jobserver::acquire_thread)
-        // .release_thread_handler(jobserver::release_thread)
+        acquire_thread_handler: Some(Box::new(jobserver::acquire_thread)),
+        release_thread_handler: Some(Box::new(jobserver::release_thread)),
         thread_count: NonZero::new(threads),
         stack_size: NonZero::new(thread_stack_size),
         deadlock_handler: Some(Box::new(move || {

@@ -453,7 +453,7 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 [[package]]
 name = "chili"
 version = "0.2.1"
-source = "git+https://github.com/zetanumbers/chili.git?branch=rustc#d757f72a50d57742498e2fe49e6f120d028cd3e8"
+source = "git+https://github.com/zetanumbers/chili.git?branch=rustc#b0170bfb0020b5f7e22ee6d1fe9440015822b53f"
 
 [[package]]
 name = "chrono"
