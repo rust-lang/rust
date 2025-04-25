@@ -1927,7 +1927,7 @@ impl AttrArgs {
 }
 
 /// Delimited arguments, as used in `#[attr()/[]/{}]` or `mac!()/[]/{}`.
-#[derive(Clone, Encodable, Decodable, Debug)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct DelimArgs {
     pub dspan: DelimSpan,
     pub delim: Delimiter, // Note: `Delimiter::Invisible` never occurs
@@ -1939,18 +1939,6 @@ impl DelimArgs {
     /// when used as a standalone item or statement.
     pub fn need_semicolon(&self) -> bool {
         !matches!(self, DelimArgs { delim: Delimiter::Brace, .. })
-    }
-}
-
-impl<CTX> HashStable<CTX> for DelimArgs
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        let DelimArgs { dspan, delim, tokens } = self;
-        dspan.hash_stable(ctx, hasher);
-        delim.hash_stable(ctx, hasher);
-        tokens.hash_stable(ctx, hasher);
     }
 }
 

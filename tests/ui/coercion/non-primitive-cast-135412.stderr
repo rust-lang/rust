@@ -1,11 +1,5 @@
-error[E0605]: non-primitive cast: `&&[i32; 1]` as `&[_]`
-  --> $DIR/issue-73886.rs:2:13
-   |
-LL |     let _ = &&[0] as &[_];
-   |             ^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
-
 error[E0605]: non-primitive cast: `u32` as `Option<_>`
-  --> $DIR/issue-73886.rs:4:13
+  --> $DIR/non-primitive-cast-135412.rs:6:13
    |
 LL |     let _ = 7u32 as Option<_>;
    |             ^^^^^^^^^^^^^^^^^
@@ -15,6 +9,19 @@ help: consider using the `From` trait instead
    |
 LL -     let _ = 7u32 as Option<_>;
 LL +     let _ = Option::<_>::from(7u32);
+   |
+
+error[E0605]: non-primitive cast: `&'static str` as `Arc<str>`
+  --> $DIR/non-primitive-cast-135412.rs:8:13
+   |
+LL |     let _ = "String" as Arc<str>;
+   |             ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
+help: consider using the `From` trait instead
+   |
+LL -     let _ = "String" as Arc<str>;
+LL +     let _ = Arc::<str>::from("String");
    |
 
 error: aborting due to 2 previous errors

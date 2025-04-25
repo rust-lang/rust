@@ -2319,7 +2319,10 @@ details.toggle > summary:not(.hideme)::before {
 	doc block while aligning it with the impl block items. */
 .implementors-toggle > .docblock,
 /* We indent trait items as well. */
-#main-content > .methods > :not(.item-info) {
+#main-content > .methods > :not(.item-info),
+.impl > .item-info,
+.impl > .docblock,
+.impl + .docblock {
 	margin-left: var(--impl-items-indent);
 }
 

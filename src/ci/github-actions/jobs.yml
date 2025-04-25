@@ -56,6 +56,15 @@ runners:
   - &job-aarch64-linux-8c
     os: ubuntu-24.04-arm64-8core-32gb
     <<: *base-job
+
+  # Codebuild runners are provisioned in
+  # https://github.com/rust-lang/simpleinfra/blob/b7ddd5e6bec8a93ec30510cdddec02c5666fefe9/terragrunt/accounts/ci-prod/ci-runners/terragrunt.hcl#L2
+  - &job-linux-36c-codebuild
+    free_disk: true
+    codebuild: true
+    os: codebuild-ubuntu-22-36c-$github.run_id-$github.run_attempt
+    <<: *base-job
+
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py check compiletest --set build.compiletest-use-stage0-libtest=true && ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
@@ -151,7 +160,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-arm-linux
-    <<: *job-linux-8c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-armhf-linux
     <<: *job-linux-4c
