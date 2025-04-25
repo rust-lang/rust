@@ -1,15 +1,12 @@
 //! Module defining all known symbols required by the rest of rust-analyzer.
 #![allow(non_upper_case_globals)]
 
-use std::hash::{BuildHasherDefault, Hash as _, Hasher as _};
+use std::hash::{BuildHasher, BuildHasherDefault};
 
 use dashmap::{DashMap, SharedValue};
 use rustc_hash::FxHasher;
 
-use crate::{
-    Symbol,
-    symbol::{SymbolProxy, TaggedArcPtr},
-};
+use crate::{Symbol, symbol::TaggedArcPtr};
 
 macro_rules! define_symbols {
     (@WITH_NAME: $($alias:ident = $value:literal,)* @PLAIN: $($name:ident,)*) => {
@@ -28,28 +25,23 @@ macro_rules! define_symbols {
         )*
 
 
-        pub(super) fn prefill() -> DashMap<SymbolProxy, (), BuildHasherDefault<FxHasher>> {
-            let mut dashmap_ = <DashMap<SymbolProxy, (), BuildHasherDefault<FxHasher>>>::with_hasher(BuildHasherDefault::default());
+        pub(super) fn prefill() -> DashMap<Symbol, (), BuildHasherDefault<FxHasher>> {
+            let mut dashmap_ = <DashMap<Symbol, (), BuildHasherDefault<FxHasher>>>::with_hasher(BuildHasherDefault::default());
 
-            let hash_thing_ = |hasher_: &BuildHasherDefault<FxHasher>, it_: &SymbolProxy| {
-                let mut hasher_ = std::hash::BuildHasher::build_hasher(hasher_);
-                it_.hash(&mut hasher_);
-                hasher_.finish()
-            };
+            let hasher_ = dashmap_.hasher().clone();
+            let hash_one = |it_: &str| hasher_.hash_one(it_);
             {
                 $(
-
-                    let proxy_ = SymbolProxy($name.repr);
-                    let hash_ = hash_thing_(dashmap_.hasher(), &proxy_);
+                    let s = stringify!($name);
+                    let hash_ = hash_one(s);
                     let shard_idx_ = dashmap_.determine_shard(hash_ as usize);
-                    dashmap_.shards_mut()[shard_idx_].get_mut().raw_entry_mut().from_hash(hash_, |k| k == &proxy_).insert(proxy_, SharedValue::new(()));
+                    dashmap_.shards_mut()[shard_idx_].get_mut().insert(hash_, ($name, SharedValue::new(())), |(x, _)| hash_one(x.as_str()));
                 )*
                 $(
-
-                    let proxy_ = SymbolProxy($alias.repr);
-                    let hash_ = hash_thing_(dashmap_.hasher(), &proxy_);
+                    let s = $value;
+                    let hash_ = hash_one(s);
                     let shard_idx_ = dashmap_.determine_shard(hash_ as usize);
-                    dashmap_.shards_mut()[shard_idx_].get_mut().raw_entry_mut().from_hash(hash_, |k| k == &proxy_).insert(proxy_, SharedValue::new(()));
+                    dashmap_.shards_mut()[shard_idx_].get_mut().insert(hash_, ($alias, SharedValue::new(())), |(x, _)| hash_one(x.as_str()));
                 )*
             }
             dashmap_

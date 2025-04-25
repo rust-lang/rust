@@ -110,6 +110,11 @@ impl CfgOptions {
         enabled.sort_unstable();
         HashableCfgOptions { _enabled: enabled }
     }
+
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.enabled.shrink_to_fit();
+    }
 }
 
 impl Extend<CfgAtom> for CfgOptions {

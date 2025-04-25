@@ -493,7 +493,7 @@ pub struct InferenceResult {
     /// ```
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
     pub binding_modes: ArenaMap<PatId, BindingMode>,
-    pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
+    pub expr_adjustments: FxHashMap<ExprId, Box<[Adjustment]>>,
     pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
     // FIXME: remove this field
     pub mutated_bindings_in_closure: FxHashSet<BindingId>,
@@ -785,8 +785,8 @@ impl<'a> InferenceContext<'a> {
         // Comment from rustc:
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
-        let mut apply_adjustments = |expr, adj| {
-            expr_adjustments.insert(expr, adj);
+        let mut apply_adjustments = |expr, adj: Vec<_>| {
+            expr_adjustments.insert(expr, adj.into_boxed_slice());
         };
         let mut set_coercion_cast = |expr| {
             coercion_casts.insert(expr);
@@ -808,22 +808,27 @@ impl<'a> InferenceContext<'a> {
             *ty = table.resolve_completely(ty.clone());
             *has_errors = *has_errors || ty.contains_unknown();
         }
+        type_of_expr.shrink_to_fit();
         for ty in type_of_pat.values_mut() {
             *ty = table.resolve_completely(ty.clone());
             *has_errors = *has_errors || ty.contains_unknown();
         }
+        type_of_pat.shrink_to_fit();
         for ty in type_of_binding.values_mut() {
             *ty = table.resolve_completely(ty.clone());
             *has_errors = *has_errors || ty.contains_unknown();
         }
+        type_of_binding.shrink_to_fit();
         for ty in type_of_rpit.values_mut() {
             *ty = table.resolve_completely(ty.clone());
             *has_errors = *has_errors || ty.contains_unknown();
         }
+        type_of_rpit.shrink_to_fit();
         for ty in type_of_for_iterator.values_mut() {
             *ty = table.resolve_completely(ty.clone());
             *has_errors = *has_errors || ty.contains_unknown();
         }
+        type_of_for_iterator.shrink_to_fit();
 
         *has_errors |= !type_mismatches.is_empty();
 
@@ -838,6 +843,7 @@ impl<'a> InferenceContext<'a> {
             )
             .is_ok()
         });
+        type_mismatches.shrink_to_fit();
         diagnostics.retain_mut(|diagnostic| {
             use InferenceDiagnostic::*;
             match diagnostic {
@@ -866,24 +872,29 @@ impl<'a> InferenceContext<'a> {
             }
             true
         });
+        diagnostics.shrink_to_fit();
         for (_, subst) in method_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
             *has_errors =
                 *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
         }
+        method_resolutions.shrink_to_fit();
         for (_, subst) in assoc_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
             *has_errors =
                 *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
         }
+        assoc_resolutions.shrink_to_fit();
         for adjustment in expr_adjustments.values_mut().flatten() {
             adjustment.target = table.resolve_completely(adjustment.target.clone());
             *has_errors = *has_errors || adjustment.target.contains_unknown();
         }
+        expr_adjustments.shrink_to_fit();
         for adjustment in pat_adjustments.values_mut().flatten() {
             *adjustment = table.resolve_completely(adjustment.clone());
             *has_errors = *has_errors || adjustment.contains_unknown();
         }
+        pat_adjustments.shrink_to_fit();
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
             .enumerate()
@@ -893,6 +904,7 @@ impl<'a> InferenceContext<'a> {
                     *has_errors || subst.type_parameters(Interner).any(|ty| ty.contains_unknown());
             })
             .collect();
+        result.tuple_field_access_types.shrink_to_fit();
 
         result.diagnostics = diagnostics;
 
@@ -1261,7 +1273,7 @@ impl<'a> InferenceContext<'a> {
         self.result.type_of_expr.insert(expr, ty);
     }
 
-    fn write_expr_adj(&mut self, expr: ExprId, adjustments: Vec<Adjustment>) {
+    fn write_expr_adj(&mut self, expr: ExprId, adjustments: Box<[Adjustment]>) {
         if adjustments.is_empty() {
             return;
         }

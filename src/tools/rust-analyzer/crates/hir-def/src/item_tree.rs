@@ -223,7 +223,10 @@ impl ItemTree {
     }
 
     fn shrink_to_fit(&mut self) {
-        if let Some(data) = &mut self.data {
+        let ItemTree { top_level, attrs, data } = self;
+        top_level.shrink_to_fit();
+        attrs.shrink_to_fit();
+        if let Some(data) = data {
             let ItemTreeData {
                 uses,
                 extern_crates,

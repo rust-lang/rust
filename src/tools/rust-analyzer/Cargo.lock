@@ -79,7 +79,7 @@ name = "base-db"
 version = "0.0.0"
 dependencies = [
  "cfg",
- "dashmap 5.5.3",
+ "dashmap",
  "intern",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "query-group-macro",
@@ -321,19 +321,6 @@ checksum = "90eeab0aa92f3f9b4e87f258c72b139c207d251f9cbc1080a0086b86a8870dd3"
 dependencies = [
  "nix",
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "dashmap"
-version = "5.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "978747c1d849a7d2ee5e8adc0159961c48fb7e5db2f06af6723b80123bb53856"
-dependencies = [
- "cfg-if",
- "hashbrown 0.14.5",
- "lock_api",
- "once_cell",
- "parking_lot_core",
 ]
 
 [[package]]
@@ -1051,7 +1038,7 @@ dependencies = [
 name = "intern"
 version = "0.0.0"
 dependencies = [
- "dashmap 5.5.3",
+ "dashmap",
  "hashbrown 0.14.5",
  "rustc-hash 2.1.1",
  "triomphe",
@@ -2045,7 +2032,7 @@ checksum = "1be22155f8d9732518b2db2bf379fe6f0b2375e76b08b7c8fe6c1b887d548c24"
 dependencies = [
  "boxcar",
  "crossbeam-queue",
- "dashmap 6.1.0",
+ "dashmap",
  "hashbrown 0.15.2",
  "hashlink",
  "indexmap",

@@ -812,7 +812,7 @@ impl InferenceContext<'_> {
                         self_ty.clone(),
                         self.table.new_lifetime_var(),
                     ));
-                    self.write_expr_adj(*base, adj);
+                    self.write_expr_adj(*base, adj.into_boxed_slice());
                     if let Some(func) = self
                         .db
                         .trait_items(index_trait)
@@ -1356,10 +1356,10 @@ impl InferenceContext<'_> {
                     if let TyKind::Ref(mtbl, lt, _) = p_left.kind(Interner) {
                         self.write_expr_adj(
                             lhs,
-                            vec![Adjustment {
+                            Box::new([Adjustment {
                                 kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
                                 target: p_left.clone(),
-                            }],
+                            }]),
                         );
                     }
                 }
@@ -1368,10 +1368,10 @@ impl InferenceContext<'_> {
                     if let TyKind::Ref(mtbl, lt, _) = p_right.kind(Interner) {
                         self.write_expr_adj(
                             rhs,
-                            vec![Adjustment {
+                            Box::new([Adjustment {
                                 kind: Adjust::Borrow(AutoBorrow::Ref(lt.clone(), *mtbl)),
                                 target: p_right.clone(),
-                            }],
+                            }]),
                         );
                     }
                 }
@@ -1627,7 +1627,7 @@ impl InferenceContext<'_> {
 
         match self.lookup_field(&receiver_ty, name) {
             Some((ty, field_id, adjustments, is_public)) => {
-                self.write_expr_adj(receiver, adjustments);
+                self.write_expr_adj(receiver, adjustments.into_boxed_slice());
                 self.result.field_resolutions.insert(tgt_expr, field_id);
                 if !is_public {
                     if let Either::Left(field) = field_id {
@@ -1662,7 +1662,7 @@ impl InferenceContext<'_> {
                     Some((adjust, func, _)) => {
                         let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
                         let substs = self.substs_for_method_call(tgt_expr, func.into(), None);
-                        self.write_expr_adj(receiver, adjustments);
+                        self.write_expr_adj(receiver, adjustments.into_boxed_slice());
                         self.write_method_resolution(tgt_expr, func, substs.clone());
 
                         self.check_method_call(
@@ -1725,7 +1725,7 @@ impl InferenceContext<'_> {
                         tgt_expr,
                     );
                 }
-                self.write_expr_adj(callee, adjustments);
+                self.write_expr_adj(callee, adjustments.into_boxed_slice());
                 (params, ret_ty)
             }
             None => {
@@ -1809,7 +1809,7 @@ impl InferenceContext<'_> {
                 }
 
                 let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
-                self.write_expr_adj(receiver, adjustments);
+                self.write_expr_adj(receiver, adjustments.into_boxed_slice());
 
                 let substs = self.substs_for_method_call(tgt_expr, func.into(), generic_args);
                 self.write_method_resolution(tgt_expr, func, substs.clone());
@@ -1828,7 +1828,7 @@ impl InferenceContext<'_> {
                 let field_with_same_name_exists = match self.lookup_field(&receiver_ty, method_name)
                 {
                     Some((ty, field_id, adjustments, _public)) => {
-                        self.write_expr_adj(receiver, adjustments);
+                        self.write_expr_adj(receiver, adjustments.into_boxed_slice());
                         self.result.field_resolutions.insert(tgt_expr, field_id);
                         Some(ty)
                     }

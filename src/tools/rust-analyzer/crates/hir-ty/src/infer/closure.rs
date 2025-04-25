@@ -869,8 +869,8 @@ impl CapturedItemWithoutTy {
 impl InferenceContext<'_> {
     fn place_of_expr(&mut self, tgt_expr: ExprId) -> Option<HirPlace> {
         let r = self.place_of_expr_without_adjust(tgt_expr)?;
-        let default = vec![];
-        let adjustments = self.result.expr_adjustments.get(&tgt_expr).unwrap_or(&default);
+        let adjustments =
+            self.result.expr_adjustments.get(&tgt_expr).map(|it| &**it).unwrap_or_default();
         apply_adjusts_to_place(&mut self.current_capture_span_stack, r, adjustments)
     }
 
@@ -1701,7 +1701,7 @@ impl InferenceContext<'_> {
             for (derefed_callee, callee_ty, params, expr) in exprs {
                 if let &Expr::Call { callee, .. } = &self.body[expr] {
                     let mut adjustments =
-                        self.result.expr_adjustments.remove(&callee).unwrap_or_default();
+                        self.result.expr_adjustments.remove(&callee).unwrap_or_default().into_vec();
                     self.write_fn_trait_method_resolution(
                         kind,
                         &derefed_callee,
@@ -1710,7 +1710,7 @@ impl InferenceContext<'_> {
                         &params,
                         expr,
                     );
-                    self.result.expr_adjustments.insert(callee, adjustments);
+                    self.result.expr_adjustments.insert(callee, adjustments.into_boxed_slice());
                 }
             }
         }
