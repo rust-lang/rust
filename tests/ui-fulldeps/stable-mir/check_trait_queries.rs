@@ -72,7 +72,7 @@ fn assert_impl(impl_names: &HashSet<String>, target: &str) {
 fn main() {
     let path = "trait_queries.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),

@@ -13,7 +13,7 @@ fn read_i16(buffer: &[u8], index: usize) -> i16 {
     const SIZE: usize = size_of::<i16>();
     let mut bytes: [u8; SIZE] = [0u8; SIZE];
     bytes.copy_from_slice(&buffer[(index * SIZE)..(index * SIZE + SIZE)]);
-    unsafe { std::mem::transmute(bytes) }
+    i16::from_ne_bytes(bytes)
 }
 
 fn mse(samples: usize, frame_buf: &[i16], buf_ref: &[u8]) -> f64 {

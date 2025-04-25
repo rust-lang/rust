@@ -5,7 +5,6 @@ use crate::ci::CiEnv;
 
 #[derive(Debug)]
 pub struct GitConfig<'a> {
-    pub git_repository: &'a str,
     pub nightly_branch: &'a str,
     pub git_merge_commit_email: &'a str,
 }

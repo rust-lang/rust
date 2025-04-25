@@ -54,4 +54,25 @@ if let [b] = &mut *v {
 assert_eq!(v, [Box::new(Some(2))]);
 ```
 
+Additionally, when `deref_patterns` is enabled, string literal patterns may be written where `str`
+is expected. Likewise, byte string literal patterns may be written where `[u8]` or `[u8; _]` is
+expected. This lets them be used in `deref!(_)` patterns:
+
+```rust
+# #![feature(deref_patterns)]
+# #![allow(incomplete_features)]
+match ("test".to_string(), b"test".to_vec()) {
+    (deref!("test"), deref!(b"test")) => {}
+    _ => panic!(),
+}
+
+// Matching on slices and arrays using literals is possible elsewhere as well:
+match *"test" {
+    "test" => {}
+    _ => panic!(),
+}
+```
+
+Implicit deref pattern syntax is not yet supported for string or byte string literals.
+
 [smart pointers in the standard library]: https://doc.rust-lang.org/std/ops/trait.DerefPure.html#implementors

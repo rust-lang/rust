@@ -23,7 +23,31 @@ help: consider dereferencing to access the inner value using the Deref trait
 LL |     match *Box::new(0) {
    |           +
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/needs-gate.rs:18:9
+   |
+LL |     match *"test" {
+   |           ------- this expression has type `str`
+LL |         "test" => {}
+   |         ^^^^^^ expected `str`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/needs-gate.rs:23:9
+   |
+LL |     match *b"test" {
+   |           -------- this expression has type `[u8; 4]`
+LL |         b"test" => {}
+   |         ^^^^^^^ expected `[u8; 4]`, found `&[u8; 4]`
+
+error[E0308]: mismatched types
+  --> $DIR/needs-gate.rs:28:9
+   |
+LL |     match *(b"test" as &[u8]) {
+   |           ------------------- this expression has type `[u8]`
+LL |         b"test" => {}
+   |         ^^^^^^^ expected `[u8]`, found `&[u8; 4]`
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.

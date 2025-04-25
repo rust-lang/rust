@@ -28,8 +28,9 @@ use crate::back::write::{
 use crate::errors::{
     DynamicLinkingWithLTO, LlvmError, LtoBitcodeFromRlib, LtoDisallowed, LtoDylib, LtoProcMacro,
 };
+use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, build_string};
-use crate::{LlvmCodegenBackend, ModuleLlvm};
+use crate::{LlvmCodegenBackend, ModuleLlvm, SimpleCx, attributes};
 
 /// We keep track of the computed LTO cache keys from the previous
 /// session to determine which CGUs we can reuse.
@@ -584,12 +585,10 @@ fn thin_lto(
     }
 }
 
-fn enable_autodiff_settings(ad: &[config::AutoDiff], module: &mut ModuleCodegen<ModuleLlvm>) {
+fn enable_autodiff_settings(ad: &[config::AutoDiff]) {
     for &val in ad {
+        // We intentionally don't use a wildcard, to not forget handling anything new.
         match val {
-            config::AutoDiff::PrintModBefore => {
-                unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
-            }
             config::AutoDiff::PrintPerf => {
                 llvm::set_print_perf(true);
             }
@@ -603,17 +602,23 @@ fn enable_autodiff_settings(ad: &[config::AutoDiff], module: &mut ModuleCodegen<
                 llvm::set_inline(true);
             }
             config::AutoDiff::LooseTypes => {
-                llvm::set_loose_types(false);
+                llvm::set_loose_types(true);
             }
             config::AutoDiff::PrintSteps => {
                 llvm::set_print(true);
             }
-            // We handle this below
+            // We handle this in the PassWrapper.cpp
+            config::AutoDiff::PrintPasses => {}
+            // We handle this in the PassWrapper.cpp
+            config::AutoDiff::PrintModBefore => {}
+            // We handle this in the PassWrapper.cpp
             config::AutoDiff::PrintModAfter => {}
-            // We handle this below
+            // We handle this in the PassWrapper.cpp
             config::AutoDiff::PrintModFinal => {}
             // This is required and already checked
             config::AutoDiff::Enable => {}
+            // We handle this below
+            config::AutoDiff::NoPostopt => {}
         }
     }
     // This helps with handling enums for now.
@@ -647,27 +652,52 @@ pub(crate) fn run_pass_manager(
     // We then run the llvm_optimize function a second time, to optimize the code which we generated
     // in the enzyme differentiation pass.
     let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
-    let stage =
-        if enable_ad { write::AutodiffStage::DuringAD } else { write::AutodiffStage::PostAD };
+    let stage = if thin {
+        write::AutodiffStage::PreAD
+    } else {
+        if enable_ad { write::AutodiffStage::DuringAD } else { write::AutodiffStage::PostAD }
+    };
 
     if enable_ad {
-        enable_autodiff_settings(&config.autodiff, module);
+        enable_autodiff_settings(&config.autodiff);
     }
 
     unsafe {
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
     }
 
-    if cfg!(llvm_enzyme) && enable_ad {
-        // This is the post-autodiff IR, mainly used for testing and educational purposes.
-        if config.autodiff.contains(&config::AutoDiff::PrintModAfter) {
-            unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
+    if cfg!(llvm_enzyme) && enable_ad && !thin {
+        let cx =
+            SimpleCx::new(module.module_llvm.llmod(), &module.module_llvm.llcx, cgcx.pointer_size);
+
+        for function in cx.get_functions() {
+            let enzyme_marker = "enzyme_marker";
+            if attributes::has_string_attr(function, enzyme_marker) {
+                // Sanity check: Ensure 'noinline' is present before replacing it.
+                assert!(
+                    !attributes::has_attr(function, Function, llvm::AttributeKind::NoInline),
+                    "Expected __enzyme function to have 'noinline' before adding 'alwaysinline'"
+                );
+
+                attributes::remove_from_llfn(function, Function, llvm::AttributeKind::NoInline);
+                attributes::remove_string_attr_from_llfn(function, enzyme_marker);
+
+                assert!(
+                    !attributes::has_string_attr(function, enzyme_marker),
+                    "Expected function to not have 'enzyme_marker'"
+                );
+
+                let always_inline = llvm::AttributeKind::AlwaysInline.create_attr(cx.llcx);
+                attributes::apply_to_llfn(function, Function, &[always_inline]);
+            }
         }
 
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
-        unsafe {
-            write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
+        if !config.autodiff.contains(&config::AutoDiff::NoPostopt) {
+            unsafe {
+                write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
+            }
         }
 
         // This is the final IR, so people should be able to inspect the optimized autodiff output,

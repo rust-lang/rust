@@ -443,16 +443,22 @@ impl f32 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX: f32 = 3.40282347e+38_f32;
 
-    /// One greater than the minimum possible normal power of 2 exponent.
+    /// One greater than the minimum possible *normal* power of 2 exponent
+    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
-    /// If <i>x</i>&nbsp;=&nbsp;`MIN_EXP`, then normal numbers
-    /// ≥&nbsp;0.5&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    /// This corresponds to the exact minimum possible *normal* power of 2 exponent
+    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
+    /// In other words, all normal numbers representable by this type are
+    /// greater than or equal to 0.5&nbsp;×&nbsp;2<sup><i>MIN_EXP</i></sup>.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MIN_EXP: i32 = -125;
-    /// Maximum possible power of 2 exponent.
+    /// One greater than the maximum possible power of 2 exponent
+    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
-    /// If <i>x</i>&nbsp;=&nbsp;`MAX_EXP`, then normal numbers
-    /// &lt;&nbsp;1&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    /// This corresponds to the exact maximum possible power of 2 exponent
+    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
+    /// In other words, all numbers representable by this type are
+    /// strictly less than 2<sup><i>MAX_EXP</i></sup>.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const MAX_EXP: i32 = 128;
 
@@ -710,8 +716,7 @@ impl f32 {
     pub const fn is_sign_negative(self) -> bool {
         // IEEE754 says: isSignMinus(x) is true if and only if x has negative sign. isSignMinus
         // applies to zeros and NaNs as well.
-        // SAFETY: This is just transmuting to get the sign bit, it's fine.
-        unsafe { mem::transmute::<f32, u32>(self) & 0x8000_0000 != 0 }
+        self.to_bits() & 0x8000_0000 != 0
     }
 
     /// Returns the least number greater than `self`.
@@ -986,7 +991,7 @@ impl f32 {
         }
     }
 
-    /// Calculates the middle point of `self` and `rhs`.
+    /// Calculates the midpoint (average) between `self` and `rhs`.
     ///
     /// This returns NaN when *either* argument is NaN or if a combination of
     /// +inf and -inf is provided as arguments.
@@ -998,6 +1003,7 @@ impl f32 {
     /// assert_eq!((-5.5f32).midpoint(8.0), 1.25);
     /// ```
     #[inline]
+    #[doc(alias = "average")]
     #[stable(feature = "num_midpoint", since = "1.85.0")]
     #[rustc_const_stable(feature = "num_midpoint", since = "1.85.0")]
     pub const fn midpoint(self, other: f32) -> f32 {
@@ -1096,6 +1102,7 @@ impl f32 {
     #[stable(feature = "float_bits_conv", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
     pub const fn to_bits(self) -> u32 {
         // SAFETY: `u32` is a plain old datatype so we can always transmute to it.
         unsafe { mem::transmute(self) }
@@ -1141,6 +1148,7 @@ impl f32 {
     #[rustc_const_stable(feature = "const_float_bits_conv", since = "1.83.0")]
     #[must_use]
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
     pub const fn from_bits(v: u32) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u32` is a plain old datatype so we can always transmute from it.
@@ -1515,8 +1523,9 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_add(self, rhs: f32) -> f32 {
+    pub const fn algebraic_add(self, rhs: f32) -> f32 {
         intrinsics::fadd_algebraic(self, rhs)
     }
 
@@ -1525,8 +1534,9 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_sub(self, rhs: f32) -> f32 {
+    pub const fn algebraic_sub(self, rhs: f32) -> f32 {
         intrinsics::fsub_algebraic(self, rhs)
     }
 
@@ -1535,8 +1545,9 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_mul(self, rhs: f32) -> f32 {
+    pub const fn algebraic_mul(self, rhs: f32) -> f32 {
         intrinsics::fmul_algebraic(self, rhs)
     }
 
@@ -1545,8 +1556,9 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_div(self, rhs: f32) -> f32 {
+    pub const fn algebraic_div(self, rhs: f32) -> f32 {
         intrinsics::fdiv_algebraic(self, rhs)
     }
 
@@ -1555,8 +1567,9 @@ impl f32 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_rem(self, rhs: f32) -> f32 {
+    pub const fn algebraic_rem(self, rhs: f32) -> f32 {
         intrinsics::frem_algebraic(self, rhs)
     }
 }

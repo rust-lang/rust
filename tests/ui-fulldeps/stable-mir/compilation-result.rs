@@ -25,40 +25,42 @@ use std::io::Write;
 fn main() {
     let path = "input_compilation_result_test.rs";
     generate_input(&path).unwrap();
-    let args = vec!["rustc".to_string(), path.to_string()];
-    test_continue(args.clone());
-    test_break(args.clone());
-    test_failed(args.clone());
-    test_skipped(args.clone());
+    let args = &["rustc".to_string(), path.to_string()];
+    test_continue(args);
+    test_break(args);
+    test_failed(args);
+    test_skipped(args);
     test_captured(args)
 }
 
-fn test_continue(args: Vec<String>) {
+fn test_continue(args: &[String]) {
     let result = run!(args, || ControlFlow::Continue::<(), bool>(true));
     assert_eq!(result, Ok(true));
 }
 
-fn test_break(args: Vec<String>) {
+fn test_break(args: &[String]) {
     let result = run!(args, || ControlFlow::Break::<bool, i32>(false));
     assert_eq!(result, Err(stable_mir::CompilerError::Interrupted(false)));
 }
 
 #[allow(unreachable_code)]
-fn test_skipped(mut args: Vec<String>) {
+fn test_skipped(args: &[String]) {
+    let mut args = args.to_vec();
     args.push("--version".to_string());
-    let result = run!(args, || unreachable!() as ControlFlow<()>);
+    let result = run!(&args, || unreachable!() as ControlFlow<()>);
     assert_eq!(result, Err(stable_mir::CompilerError::Skipped));
 }
 
 #[allow(unreachable_code)]
-fn test_failed(mut args: Vec<String>) {
+fn test_failed(args: &[String]) {
+    let mut args = args.to_vec();
     args.push("--cfg=broken".to_string());
-    let result = run!(args, || unreachable!() as ControlFlow<()>);
+    let result = run!(&args, || unreachable!() as ControlFlow<()>);
     assert_eq!(result, Err(stable_mir::CompilerError::Failed));
 }
 
 /// Test that we are able to pass a closure and set the return according to the captured value.
-fn test_captured(args: Vec<String>) {
+fn test_captured(args: &[String]) {
     let captured = "10".to_string();
     let result = run!(args, || ControlFlow::Continue::<(), usize>(captured.len()));
     assert_eq!(result, Ok(captured.len()));
