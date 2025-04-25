@@ -8,7 +8,7 @@ struct MaxReached(usize);
 struct Maxes(IndexVec<usize, MaxReached>, fn(usize) -> usize);
 type UsizeSccs = Sccs<usize, usize>;
 
-impl Annotations<usize, usize, MaxReached> for Maxes {
+impl Annotations<usize> for Maxes {
     fn new(&self, element: usize) -> MaxReached {
         MaxReached(self.1(element))
     }
@@ -17,6 +17,9 @@ impl Annotations<usize, usize, MaxReached> for Maxes {
         let i = self.0.push(annotation);
         assert!(i == scc);
     }
+
+    type Ann = MaxReached;
+    type SccIdx = usize;
 }
 
 impl Maxes {
@@ -57,7 +60,7 @@ impl MinMaxes {
     }
 }
 
-impl Annotations<usize, usize, MinMaxIn> for MinMaxes {
+impl Annotations<usize> for MinMaxes {
     fn new(&self, element: usize) -> MinMaxIn {
         self.1(element)
     }
@@ -66,6 +69,9 @@ impl Annotations<usize, usize, MinMaxIn> for MinMaxes {
         let i = self.0.push(annotation);
         assert!(i == scc);
     }
+
+    type Ann = MinMaxIn;
+    type SccIdx = usize;
 }
 
 impl Annotation for MinMaxIn {

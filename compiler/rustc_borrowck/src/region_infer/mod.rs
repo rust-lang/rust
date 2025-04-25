@@ -110,9 +110,7 @@ impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
     }
 }
 
-impl scc::Annotations<RegionVid, ConstraintSccIndex, RegionTracker>
-    for SccAnnotations<'_, '_, RegionTracker>
-{
+impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
     fn new(&self, element: RegionVid) -> RegionTracker {
         RegionTracker::new(element, &self.definitions[element])
     }
@@ -121,6 +119,9 @@ impl scc::Annotations<RegionVid, ConstraintSccIndex, RegionTracker>
         let idx = self.scc_to_annotation.push(annotation);
         assert!(idx == scc);
     }
+
+    type Ann = RegionTracker;
+    type SccIdx = ConstraintSccIndex;
 }
 
 impl RegionTracker {
@@ -786,10 +787,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!(value = ?self.scc_values.region_value_str(scc_a));
     }
 
-    fn scc_annotations(&self) -> &IndexVec<ConstraintSccIndex, RegionTracker> {
-        &self.scc_annotations
-    }
-
     /// Invoked for each `R0 member of [R1..Rn]` constraint.
     ///
     /// `scc` is the SCC containing R0, and `choice_regions` are the
@@ -831,7 +828,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
-        if !self.scc_annotations()[scc].min_universe().is_root() {
+        if !self.scc_universe(scc).is_root() {
             return;
         }
 
@@ -907,8 +904,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// in `scc_a`. Used during constraint propagation, and only once
     /// the value of `scc_b` has been computed.
     fn universe_compatible(&self, scc_b: ConstraintSccIndex, scc_a: ConstraintSccIndex) -> bool {
-        let a_annotation = self.scc_annotations()[scc_a];
-        let b_annotation = self.scc_annotations()[scc_b];
+        let a_annotation = self.scc_annotations[scc_a];
+        let b_annotation = self.scc_annotations[scc_b];
         let a_universe = a_annotation.min_universe();
 
         // If scc_b's declared universe is a subset of
@@ -1024,7 +1021,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "lower_bound = {:?} r_scc={:?} universe={:?}",
             lower_bound,
             r_scc,
-            self.scc_annotations()[r_scc].min_universe()
+            self.scc_universe(r_scc)
         );
         // If the type test requires that `T: 'a` where `'a` is a
         // placeholder from another universe, that effectively requires
@@ -1505,7 +1502,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The minimum universe of any variable reachable from this
     /// SCC, inside or outside of it.
     fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
-        self.scc_annotations()[scc].min_universe()
+        self.scc_annotations[scc].min_universe()
     }
 
     /// Checks the final value for the free region `fr` to see if it
@@ -2249,7 +2246,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
-        self.scc_annotations()[scc].representative
+        self.scc_annotations[scc].representative
     }
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {
