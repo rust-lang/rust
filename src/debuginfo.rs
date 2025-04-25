@@ -126,14 +126,15 @@ fn make_mir_scope<'gcc, 'tcx>(
         return;
     };
 
-    if let Some(ref vars) = *variables {
-        if !vars.contains(scope) && scope_data.inlined.is_none() {
-            // Do not create a DIScope if there are no variables defined in this
-            // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
-            debug_context.scopes[scope] = parent_scope;
-            instantiated.insert(scope);
-            return;
-        }
+    if let Some(ref vars) = *variables
+        && !vars.contains(scope)
+        && scope_data.inlined.is_none()
+    {
+        // Do not create a DIScope if there are no variables defined in this
+        // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
+        debug_context.scopes[scope] = parent_scope;
+        instantiated.insert(scope);
+        return;
     }
 
     let loc = cx.lookup_debug_loc(scope_data.span.lo());
