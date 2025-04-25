@@ -412,20 +412,6 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         }
     }
 
-    pub(crate) fn add_normalizes_to_goal(
-        &mut self,
-        delegate: &D,
-        max_input_universe: ty::UniverseIndex,
-        goal: Goal<I, ty::NormalizesTo<I>>,
-    ) {
-        self.add_goal(
-            delegate,
-            max_input_universe,
-            GoalSource::TypeRelating,
-            goal.with(delegate.cx(), goal.predicate),
-        );
-    }
-
     pub(crate) fn add_goal(
         &mut self,
         delegate: &D,

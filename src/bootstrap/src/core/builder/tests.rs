@@ -449,6 +449,7 @@ mod dist {
     use pretty_assertions::assert_eq;
 
     use super::{Config, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, first, run_build};
+    use crate::Flags;
     use crate::core::builder::*;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
@@ -683,6 +684,37 @@ mod dist {
                 compile::Assemble { target_compiler: Compiler::new(1, a) },
                 compile::Assemble { target_compiler: Compiler::new(2, a) },
                 compile::Assemble { target_compiler: Compiler::new(2, b) },
+            ]
+        );
+    }
+
+    /// This also serves as an important regression test for <https://github.com/rust-lang/rust/issues/138123>
+    /// and <https://github.com/rust-lang/rust/issues/138004>.
+    #[test]
+    fn dist_all_cross() {
+        let cmd_args =
+            &["dist", "--stage", "2", "--dry-run", "--config=/does/not/exist"].map(str::to_owned);
+        let config_str = r#"
+            [rust]
+            channel = "nightly"
+
+            [build]
+            extended = true
+
+            build = "i686-unknown-haiku"
+            host = ["i686-unknown-netbsd"]
+            target = ["i686-unknown-netbsd"]
+        "#;
+        let config = Config::parse_inner(Flags::parse(cmd_args), |&_| toml::from_str(config_str));
+        let mut cache = run_build(&[], config);
+
+        // Stage 2 `compile::Rustc` should **NEVER** be cached here.
+        assert_eq!(
+            first(cache.all::<compile::Rustc>()),
+            &[
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_3, stage = 1),
             ]
         );
     }

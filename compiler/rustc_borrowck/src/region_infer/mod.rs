@@ -1628,30 +1628,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
         debug!("check_bound_universal_region: longer_fr_scc={:?}", longer_fr_scc,);
 
-        for error_element in self.scc_values.elements_contained_in(longer_fr_scc) {
-            match error_element {
-                RegionElement::Location(_) | RegionElement::RootUniversalRegion(_) => {}
-                // If we have some bound universal region `'a`, then the only
-                // elements it can contain is itself -- we don't know anything
-                // else about it!
-                RegionElement::PlaceholderRegion(placeholder1) => {
-                    if placeholder == placeholder1 {
-                        continue;
-                    }
-                }
-            }
-
+        // If we have some bound universal region `'a`, then the only
+        // elements it can contain is itself -- we don't know anything
+        // else about it!
+        if let Some(error_element) = self
+            .scc_values
+            .elements_contained_in(longer_fr_scc)
+            .find(|e| *e != RegionElement::PlaceholderRegion(placeholder))
+        {
+            // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
             errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
                 longer_fr,
                 error_element,
                 placeholder,
             });
-
-            // Stop after the first error, it gets too noisy otherwise, and does not provide more
-            // information.
-            break;
+        } else {
+            debug!("check_bound_universal_region: all bounds satisfied");
         }
-        debug!("check_bound_universal_region: all bounds satisfied");
     }
 
     #[instrument(level = "debug", skip(self, infcx, errors_buffer))]
@@ -2071,7 +2064,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 constraint.category
             };
 
-            match category {
+            let interest = match category {
                 // Returns usually provide a type to blame and have specially written diagnostics,
                 // so prioritize them.
                 ConstraintCategory::Return(_) => 0,
@@ -2123,9 +2116,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // specific, and are not used for relations that would make sense to blame.
                 ConstraintCategory::BoringNoLocation => 6,
                 // Do not blame internal constraints.
-                ConstraintCategory::Internal => 7,
-                ConstraintCategory::IllegalUniverse => 8,
-            }
+                ConstraintCategory::IllegalUniverse => 7,
+                ConstraintCategory::Internal => 8,
+            };
+
+            debug!("constraint {constraint:?} category: {category:?}, interest: {interest:?}");
+
+            interest
         };
 
         let best_choice = if blame_source {
