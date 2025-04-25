@@ -407,7 +407,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                     push_to_s(&mut info.crate_attrs, source, attr.span, &mut prev_span_hi);
                 }
             }
-            let mut has_non_module_items = false;
+            let mut has_non_items = false;
             for stmt in &body.stmts {
                 let mut is_extern_crate = false;
                 match stmt.kind {
@@ -419,8 +419,11 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                             reset_error_count(&psess);
                             return Err(());
                         }
-                        has_non_module_items = true;
+                        has_non_items = true;
                     }
+                    // We assume that the macro calls will expand to item(s) even though they could
+                    // expand to statements and expressions. And the simple fact that we're trying
+                    // to retrieve a `main` function inside it is a terrible idea.
                     StmtKind::MacCall(ref mac_call) if !info.has_main_fn => {
                         let mut iter = mac_call.mac.args.tokens.iter();
 
@@ -444,7 +447,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                     // We do nothing in this case. Not marking it as `non_module_items` either.
                     StmtKind::Empty => {}
                     _ => {
-                        has_non_module_items = true;
+                        has_non_items = true;
                     }
                 }
 
@@ -470,7 +473,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                     push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
                 }
             }
-            if has_non_module_items {
+            if has_non_items {
                 // FIXME: if `info.has_main_fn` is `true`, emit a warning here to mention that
                 // this code will not be called.
                 info.has_main_fn = false;
