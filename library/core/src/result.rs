@@ -342,7 +342,7 @@
 //! [`Some(v)`]: Option::Some
 //! [`transpose`]: Result::transpose
 //!
-//! This method transforms the contained value of the [`Ok`] variant:
+//! These methods transform the contained value of the [`Ok`] variant:
 //!
 //! * [`map`] transforms [`Result<T, E>`] into [`Result<U, E>`] by applying
 //!   the provided function to the contained value of [`Ok`] and leaving
@@ -354,7 +354,7 @@
 //! [`map`]: Result::map
 //! [`inspect`]: Result::inspect
 //!
-//! This method transforms the contained value of the [`Err`] variant:
+//! These methods transform the contained value of the [`Err`] variant:
 //!
 //! * [`map_err`] transforms [`Result<T, E>`] into [`Result<T, F>`] by
 //!   applying the provided function to the contained value of [`Err`] and
