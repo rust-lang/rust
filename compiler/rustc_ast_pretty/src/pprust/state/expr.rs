@@ -30,7 +30,7 @@ impl<'a> State<'a> {
                     self.print_else(e.as_deref())
                 }
                 // Final `else` block.
-                ast::ExprKind::Block(b, _) => {
+                ast::ExprKind::Block(b, None) => {
                     self.cbox(0);
                     self.ibox(0);
                     self.word(" else ");
