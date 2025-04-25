@@ -816,24 +816,22 @@ mod tests {
         check(
             r#"
 fn foo() {
-    unsafe fn this_is_unsafe_function() {
-    }
+    unsafe fn this_is_unsafe_function() {}
 
-    
     unsa$0fe {
   //^^^^^^
         let raw_ptr = &42 as *const i32;
         let val = *raw_ptr;
                 //^^^^^^^^
-        
+
         let mut_ptr = &mut 5 as *mut i32;
         *mut_ptr = 10;
       //^^^^^^^^
-        
+
         this_is_unsafe_function();
       //^^^^^^^^^^^^^^^^^^^^^^^^^
     }
-    
+
 }
 "#,
         );
