@@ -15,6 +15,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{self as hir, LangItem, Node};
 use rustc_infer::infer::{InferOk, TypeTrace};
+use rustc_infer::traits::ImplSource;
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::SignatureMismatchData;
 use rustc_middle::traits::select::OverflowError;
@@ -48,8 +49,8 @@ use crate::infer::{self, InferCtxt, InferCtxtExt as _};
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{
     MismatchedProjectionTypes, NormalizeExt, Obligation, ObligationCause, ObligationCauseCode,
-    ObligationCtxt, Overflow, PredicateObligation, SelectionError, SignatureMismatch,
-    TraitDynIncompatible, elaborate,
+    ObligationCtxt, Overflow, PredicateObligation, SelectionContext, SelectionError,
+    SignatureMismatch, TraitDynIncompatible, elaborate, specialization_graph,
 };
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
@@ -1495,32 +1496,33 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            let secondary_span = (|| {
+            let secondary_span = self.probe(|_| {
                 let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
                     predicate.kind().skip_binder()
                 else {
                     return None;
                 };
 
-                let mut associated_items = vec![];
-                self.tcx.for_each_relevant_impl(
-                    self.tcx.trait_of_item(proj.projection_term.def_id)?,
-                    proj.projection_term.self_ty(),
-                    |impl_def_id| {
-                        associated_items.extend(
-                            self.tcx.associated_items(impl_def_id).in_definition_order().find(
-                                |assoc| {
-                                    assoc.trait_item_def_id == Some(proj.projection_term.def_id)
-                                },
-                            ),
-                        );
-                    },
-                );
-
-                let [associated_item]: &[ty::AssocItem] = &associated_items[..] else {
+                let Ok(Some(ImplSource::UserDefined(impl_data))) = SelectionContext::new(self)
+                    .poly_select(&obligation.with(
+                        self.tcx,
+                        predicate.kind().rebind(proj.projection_term.trait_ref(self.tcx)),
+                    ))
+                else {
                     return None;
                 };
-                match self.tcx.hir_get_if_local(associated_item.def_id) {
+
+                let Ok(node) =
+                    specialization_graph::assoc_def(self.tcx, impl_data.impl_def_id, proj.def_id())
+                else {
+                    return None;
+                };
+
+                if !node.is_final() {
+                    return None;
+                }
+
+                match self.tcx.hir_get_if_local(node.item.def_id) {
                     Some(
                         hir::Node::TraitItem(hir::TraitItem {
                             kind: hir::TraitItemKind::Type(_, Some(ty)),
@@ -1543,7 +1545,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     )),
                     _ => None,
                 }
-            })();
+            });
 
             self.note_type_err(
                 &mut diag,
