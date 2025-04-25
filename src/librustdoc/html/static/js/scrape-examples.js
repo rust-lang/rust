@@ -127,7 +127,9 @@
      * @param {boolean} isHidden
      */
     function setupLoc(example, isHidden) {
-        const locs = example.locs = JSON.parse(nonnull(nonnull(example.attributes.getNamedItem("data-locs")).textContent));
+        const locs_str = example.attributes.getNamedItem("data-locs")).textContent;
+        const locs = example.locs =
+              JSON.parse(nonnull(nonnull(locs_str));
         // Start with the first example in view
         scrollToLoc(example, locs[0][0], isHidden);
     }
