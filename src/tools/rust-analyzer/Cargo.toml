@@ -158,11 +158,10 @@ triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
 url = "2.5.4"
 xshell = "0.2.7"
 
-
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
-dashmap = { version = "=5.5.3", features = ["raw-api"] }
+dashmap = { version = "=6.1.0", features = ["raw-api", "inline"] }
 # We need to freeze the version of the crate, as it needs to match with dashmap
-hashbrown = { version = "=0.14.5", features = [
+hashbrown = { version = "0.14.0", features = [
   "inline-more",
 ], default-features = false }
 
