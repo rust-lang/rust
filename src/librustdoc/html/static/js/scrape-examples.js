@@ -1,7 +1,4 @@
-/* global addClass, hasClass, removeClass, onEachLazy */
-
-// Eventually fix this.
-// @ts-nocheck
+/* global addClass, hasClass, removeClass, onEachLazy, nonnull */
 
 "use strict";
 
@@ -14,7 +11,12 @@
     const DEFAULT_MAX_LINES = 5;
     const HIDDEN_MAX_LINES = 10;
 
-    // Scroll code block to the given code location
+    /**
+     * Scroll code block to the given code location
+     * @param {HTMLElement} elt
+     * @param {[number, number]} loc
+     * @param {boolean} isHidden
+     */
     function scrollToLoc(elt, loc, isHidden) {
         const lines = elt.querySelectorAll("[data-nosnippet]");
         let scrollOffset;
@@ -35,10 +37,15 @@
             scrollOffset = offsetMid - halfHeight;
         }
 
-        lines[0].parentElement.scrollTo(0, scrollOffset);
-        elt.querySelector(".rust").scrollTo(0, scrollOffset);
+        nonnull(lines[0].parentElement).scrollTo(0, scrollOffset);
+        nonnull(elt.querySelector(".rust")).scrollTo(0, scrollOffset);
     }
 
+    /**
+     * @param {HTMLElement} parent
+     * @param {string} className
+     * @param {string} content
+     */
     function createScrapeButton(parent, className, content) {
         const button = document.createElement("button");
         button.className = className;
@@ -50,14 +57,15 @@
     window.updateScrapedExample = (example, buttonHolder) => {
         let locIndex = 0;
         const highlights = Array.prototype.slice.call(example.querySelectorAll(".highlight"));
-        const link = example.querySelector(".scraped-example-title a");
+        const link = nonnull(example.querySelector(".scraped-example-title a"));
         let expandButton = null;
 
         if (!example.classList.contains("expanded")) {
             expandButton = createScrapeButton(buttonHolder, "expand", "Show all");
         }
-        const isHidden = example.parentElement.classList.contains("more-scraped-examples");
+        const isHidden = nonnull(example.parentElement).classList.contains("more-scraped-examples");
 
+        // @ts-expect-error
         const locs = example.locs;
         if (locs.length > 1) {
             const next = createScrapeButton(buttonHolder, "next", "Next usage");
@@ -106,7 +114,14 @@
         }
     };
 
+    /**
+     * Intitialize the `locs` field
+     *
+     * @param {HTMLElement} example
+     * @param {boolean} isHidden
+     */
     function setupLoc(example, isHidden) {
+        // @ts-expect-error
         example.locs = JSON.parse(example.attributes.getNamedItem("data-locs").textContent);
         // Start with the first example in view
         scrollToLoc(example, example.locs[0][0], isHidden);
