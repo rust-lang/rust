@@ -4158,7 +4158,6 @@ dependencies = [
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
- "rustc_serialize",
  "rustc_type_ir",
  "rustc_type_ir_macros",
  "tracing",
