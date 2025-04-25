@@ -6,13 +6,15 @@ use rustc_lint::LateContext;
 use rustc_span::{BytePos, Pos, Span};
 use url::Url;
 
-use crate::doc::DOC_MARKDOWN;
+use crate::doc::{DOC_MARKDOWN, Fragments};
+use std::ops::{ControlFlow, Range};
 
 pub fn check(
     cx: &LateContext<'_>,
     valid_idents: &FxHashSet<String>,
     text: &str,
-    span: Span,
+    fragments: &Fragments<'_>,
+    fragment_range: Range<usize>,
     code_level: isize,
     blockquote_level: isize,
 ) {
@@ -64,23 +66,38 @@ pub fn check(
             close_parens += 1;
         }
 
-        // Adjust for the current word
-        let offset = word.as_ptr() as usize - text.as_ptr() as usize;
-        let span = Span::new(
-            span.lo() + BytePos::from_usize(offset),
-            span.lo() + BytePos::from_usize(offset + word.len()),
-            span.ctxt(),
-            span.parent(),
-        );
+        // We'll use this offset to calculate the span to lint.
+        let fragment_offset = word.as_ptr() as usize - text.as_ptr() as usize;
 
-        check_word(cx, word, span, code_level, blockquote_level);
+        // Adjust for the current word
+        if check_word(
+            cx,
+            word,
+            fragments,
+            &fragment_range,
+            fragment_offset,
+            code_level,
+            blockquote_level,
+        )
+        .is_break()
+        {
+            return;
+        }
     }
 }
 
-fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, blockquote_level: isize) {
+fn check_word(
+    cx: &LateContext<'_>,
+    word: &str,
+    fragments: &Fragments<'_>,
+    range: &Range<usize>,
+    fragment_offset: usize,
+    code_level: isize,
+    blockquote_level: isize,
+) -> ControlFlow<()> {
     /// Checks if a string is upper-camel-case, i.e., starts with an uppercase and
     /// contains at least two uppercase letters (`Clippy` is ok) and one lower-case
-    /// letter (`NASA` is ok).
+    /// letter (`NASA` is ok).[
     /// Plurals are also excluded (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
         if s.starts_with(|c: char| c.is_ascii_digit() | c.is_ascii_lowercase()) {
@@ -117,6 +134,17 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
         // try to get around the fact that `foo::bar` parses as a valid URL
         && !url.cannot_be_a_base()
     {
+        let Some(fragment_span) = fragments.span(cx, range.clone()) else {
+            return ControlFlow::Break(());
+        };
+
+        let span = Span::new(
+            fragment_span.lo() + BytePos::from_usize(fragment_offset),
+            fragment_span.lo() + BytePos::from_usize(fragment_offset + word.len()),
+            fragment_span.ctxt(),
+            fragment_span.parent(),
+        );
+
         span_lint_and_sugg(
             cx,
             DOC_MARKDOWN,
@@ -126,17 +154,28 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
             format!("<{word}>"),
             Applicability::MachineApplicable,
         );
-        return;
+        return ControlFlow::Continue(());
     }
 
     // We assume that mixed-case words are not meant to be put inside backticks. (Issue #2343)
     //
     // We also assume that backticks are not necessary if inside a quote. (Issue #10262)
     if code_level > 0 || blockquote_level > 0 || (has_underscore(word) && has_hyphen(word)) {
-        return;
+        return ControlFlow::Break(());
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) || word.ends_with("()") {
+        let Some(fragment_span) = fragments.span(cx, range.clone()) else {
+            return ControlFlow::Break(());
+        };
+
+        let span = Span::new(
+            fragment_span.lo() + BytePos::from_usize(fragment_offset),
+            fragment_span.lo() + BytePos::from_usize(fragment_offset + word.len()),
+            fragment_span.ctxt(),
+            fragment_span.parent(),
+        );
+
         span_lint_and_then(
             cx,
             DOC_MARKDOWN,
@@ -149,4 +188,5 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
             },
         );
     }
+    ControlFlow::Continue(())
 }
