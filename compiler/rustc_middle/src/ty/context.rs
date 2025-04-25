@@ -590,6 +590,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.defaultness(def_id).has_value()
     }
 
+    fn impl_specializes(self, impl_def_id: Self::DefId, victim_def_id: Self::DefId) -> bool {
+        self.specializes((impl_def_id, victim_def_id))
+    }
+
     fn impl_is_default(self, impl_def_id: DefId) -> bool {
         self.defaultness(impl_def_id).is_default()
     }
