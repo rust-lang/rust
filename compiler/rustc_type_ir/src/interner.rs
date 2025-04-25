@@ -286,6 +286,8 @@ pub trait Interner:
 
     fn has_item_definition(self, def_id: Self::DefId) -> bool;
 
+    fn impl_specializes(self, impl_def_id: Self::DefId, victim_def_id: Self::DefId) -> bool;
+
     fn impl_is_default(self, impl_def_id: Self::DefId) -> bool;
 
     fn impl_trait_ref(self, impl_def_id: Self::DefId) -> ty::EarlyBinder<Self, ty::TraitRef<Self>>;
