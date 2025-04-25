@@ -2749,6 +2749,25 @@ fn main() {
 }
 
 #[test]
+fn doctest_remove_underscore_from_used_variables() {
+    check_doc_test(
+        "remove_underscore_from_used_variables",
+        r#####"
+fn main() {
+    let mut _$0foo = 1;
+    _foo = 2;
+}
+"#####,
+        r#####"
+fn main() {
+    let mut foo = 1;
+    foo = 2;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_unused_imports() {
     check_doc_test(
         "remove_unused_imports",
