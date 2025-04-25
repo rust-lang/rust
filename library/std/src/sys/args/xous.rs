@@ -1,9 +1,6 @@
+pub use super::common::Args;
 use crate::sys::pal::os::get_application_parameters;
 use crate::sys::pal::os::params::ArgumentList;
-
-#[path = "common.rs"]
-mod common;
-pub use common::Args;
 
 pub fn args() -> Args {
     let Some(params) = get_application_parameters() else {

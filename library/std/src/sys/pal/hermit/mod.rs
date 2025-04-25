@@ -16,7 +16,10 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(missing_docs, nonstandard_style)]
 
+use crate::io::ErrorKind;
+use crate::os::hermit::hermit_abi;
 use crate::os::raw::c_char;
+use crate::sys::env;
 
 pub mod futex;
 pub mod os;
@@ -24,9 +27,6 @@ pub mod os;
 pub mod pipe;
 pub mod thread;
 pub mod time;
-
-use crate::io::ErrorKind;
-use crate::os::hermit::hermit_abi;
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
@@ -76,7 +76,7 @@ pub unsafe extern "C" fn runtime_entry(
     }
 
     // initialize environment
-    os::init_environment(env);
+    env::init(env);
 
     let result = unsafe { main(argc as isize, argv) };
 
