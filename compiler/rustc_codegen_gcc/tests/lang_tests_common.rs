@@ -1,5 +1,7 @@
 //! The common code for `tests/lang_tests_*.rs`
 
+#![allow(clippy::uninlined_format_args)]
+
 use std::env::{self, current_dir};
 use std::path::{Path, PathBuf};
 use std::process::Command;
