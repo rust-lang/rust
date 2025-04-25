@@ -43,7 +43,7 @@ impl_internable!(
     InternedWrapper<ConstData>,
     InternedWrapper<ConstScalar>,
     InternedWrapper<Vec<CanonicalVarKind>>,
-    InternedWrapper<Vec<ProgramClause>>,
+    InternedWrapper<Box<[ProgramClause]>>,
     InternedWrapper<Vec<QuantifiedWhereClause>>,
     InternedWrapper<SmallVec<[Variance; 16]>>,
 );
@@ -60,7 +60,7 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedGoal = Arc<GoalData>;
     type InternedGoals = Vec<Goal>;
     type InternedSubstitution = Interned<InternedWrapper<SmallVec<[GenericArg; 2]>>>;
-    type InternedProgramClauses = Interned<InternedWrapper<Vec<ProgramClause>>>;
+    type InternedProgramClauses = Interned<InternedWrapper<Box<[ProgramClause]>>>;
     type InternedProgramClause = ProgramClauseData;
     type InternedQuantifiedWhereClauses = Interned<InternedWrapper<Vec<QuantifiedWhereClause>>>;
     type InternedVariableKinds = Interned<InternedWrapper<Vec<VariableKind>>>;

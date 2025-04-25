@@ -422,8 +422,8 @@ impl CrateGraphBuilder {
         edition: Edition,
         display_name: Option<CrateDisplayName>,
         version: Option<String>,
-        cfg_options: CfgOptions,
-        potential_cfg_options: Option<CfgOptions>,
+        mut cfg_options: CfgOptions,
+        mut potential_cfg_options: Option<CfgOptions>,
         mut env: Env,
         origin: CrateOrigin,
         is_proc_macro: bool,
@@ -431,6 +431,10 @@ impl CrateGraphBuilder {
         ws_data: Arc<CrateWorkspaceData>,
     ) -> CrateBuilderId {
         env.entries.shrink_to_fit();
+        cfg_options.shrink_to_fit();
+        if let Some(potential_cfg_options) = &mut potential_cfg_options {
+            potential_cfg_options.shrink_to_fit();
+        }
         self.arena.alloc(CrateBuilder {
             basic: CrateData {
                 root_file_id,
