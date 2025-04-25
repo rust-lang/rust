@@ -839,6 +839,7 @@ mod types {
     }
 
     /// TyKind::MacCall
+    #[expect(deprecated)] // concat_idents is deprecated
     fn ty_mac_call() {
         let _: concat_idents!(T);
         let _: concat_idents![T];
