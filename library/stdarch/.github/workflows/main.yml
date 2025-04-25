@@ -129,8 +129,8 @@ jobs:
             os: ubuntu-latest
           test_everything: true
         - target:
-          tuple: aarch64_be-unknown-linux-gnu
-          os: ubuntu-latest
+            tuple: aarch64_be-unknown-linux-gnu
+            os: ubuntu-latest
           test_everything: true
           build_std: true
         - target:
@@ -200,8 +200,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        submodules: recursive
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
