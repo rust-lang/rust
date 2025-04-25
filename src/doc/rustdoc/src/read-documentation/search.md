@@ -89,7 +89,7 @@ the standard library and functions that are included in the results list:
 
 ### Non-functions in type-based search
 Certain items that are not functions are treated as though they
-were a semantically equivelent function.
+were a semantically equivalent function.
 
 For example, struct fields are treated as though they were getter methods.
 This means that a search for `CpuidResult -> u32` will show
