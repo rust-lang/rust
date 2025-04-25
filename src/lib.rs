@@ -22,7 +22,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
-#![allow(clippy::needless_lifetimes)]
+#![allow(clippy::needless_lifetimes, clippy::uninlined_format_args)]
 
 // Some "regular" crates we want to share with rustc
 extern crate object;

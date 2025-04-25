@@ -136,14 +136,12 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
         });
     features.extend(feats);
 
-    if diagnostics {
-        if let Some(f) = check_tied_features(sess, &featsmap) {
-            sess.dcx().emit_err(TargetFeatureDisableOrEnable {
-                features: f,
-                span: None,
-                missing_features: None,
-            });
-        }
+    if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
+        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
+            features: f,
+            span: None,
+            missing_features: None,
+        });
     }
 
     features
