@@ -1065,7 +1065,7 @@ impl<'a> State<'a> {
             match els_inner.kind {
                 // Another `else if` block.
                 hir::ExprKind::If(i, then, e) => {
-                    self.cbox(INDENT_UNIT);
+                    self.cbox(0);
                     self.ibox(0);
                     self.word(" else if ");
                     self.print_expr_as_cond(i);
@@ -1075,7 +1075,7 @@ impl<'a> State<'a> {
                 }
                 // Final `else` block.
                 hir::ExprKind::Block(b, _) => {
-                    self.cbox(INDENT_UNIT);
+                    self.cbox(0);
                     self.ibox(0);
                     self.word(" else ");
                     self.print_block(b);
@@ -1094,7 +1094,9 @@ impl<'a> State<'a> {
         blk: &hir::Expr<'_>,
         elseopt: Option<&hir::Expr<'_>>,
     ) {
-        self.head("if");
+        self.cbox(0);
+        self.ibox(0);
+        self.word_nbsp("if");
         self.print_expr_as_cond(test);
         self.space();
         self.print_expr(blk);
