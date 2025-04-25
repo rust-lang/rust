@@ -491,4 +491,11 @@ declare namespace rustdoc {
         options?: string[],
         default: string | boolean,
     }
+
+    /**
+     * Single element in the data-locs field of a scraped example.
+     * First field is the start and end char index,
+     * other fields seem to be unused.
+     */
+    type ScrapedLoc = [[number, number], string, string]
 }
