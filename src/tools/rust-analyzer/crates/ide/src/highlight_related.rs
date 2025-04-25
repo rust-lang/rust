@@ -89,6 +89,9 @@ pub(crate) fn highlight_related(
         T![break] | T![loop] | T![while] | T![continue] if config.break_points => {
             highlight_break_points(sema, token).remove(&file_id)
         }
+        T![unsafe] if token.parent_ancestors().find_map(ast::BlockExpr::cast).is_some() => {
+            highlight_unsafe_points(sema, token).remove(&file_id)
+        }
         T![|] if config.closure_captures => {
             highlight_closure_captures(sema, token, file_id, span_file_id.file_id())
         }
@@ -704,6 +707,60 @@ impl<'a> WalkExpandedExprCtx<'a> {
             _ => false,
         }
     }
+}
+
+pub(crate) fn highlight_unsafe_points(
+    sema: &Semantics<'_, RootDatabase>,
+    token: SyntaxToken,
+) -> FxHashMap<EditionedFileId, Vec<HighlightedRange>> {
+    fn hl(
+        sema: &Semantics<'_, RootDatabase>,
+        unsafe_token: Option<SyntaxToken>,
+        block_expr: Option<ast::BlockExpr>,
+    ) -> Option<FxHashMap<EditionedFileId, Vec<HighlightedRange>>> {
+        let mut highlights: FxHashMap<EditionedFileId, Vec<_>> = FxHashMap::default();
+
+        let mut push_to_highlights = |file_id, range| {
+            if let Some(FileRange { file_id, range }) = original_frange(sema.db, file_id, range) {
+                let hrange = HighlightedRange { category: ReferenceCategory::empty(), range };
+                highlights.entry(file_id).or_default().push(hrange);
+            }
+        };
+
+        // highlight unsafe keyword itself
+        let unsafe_token = unsafe_token?;
+        let unsafe_token_file_id = sema.hir_file_for(&unsafe_token.parent()?);
+        push_to_highlights(unsafe_token_file_id, Some(unsafe_token.text_range()));
+
+        if let Some(block) = block_expr {
+            if let Some(node) = block.syntax().ancestors().find(|n| ast::Fn::can_cast(n.kind())) {
+                if let Some(function) = ast::Fn::cast(node) {
+                    // highlight unsafe keyword of the function
+                    if let Some(unsafe_token) = function.unsafe_token() {
+                        push_to_highlights(unsafe_token_file_id, Some(unsafe_token.text_range()));
+                    }
+                    // highlight unsafe operations
+                    if let Some(f) = sema.to_def(&function) {
+                        let unsafe_ops = sema.get_unsafe_ops(f.into());
+                        for unsafe_op in unsafe_ops {
+                            push_to_highlights(
+                                unsafe_op.file_id,
+                                Some(unsafe_op.value.text_range()),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        Some(highlights)
+    }
+
+    let Some(block_expr) = token.parent().and_then(ast::BlockExpr::cast) else {
+        return FxHashMap::default();
+    };
+
+    hl(sema, Some(token), Some(block_expr)).unwrap_or_default()
 }
 
 #[cfg(test)]
