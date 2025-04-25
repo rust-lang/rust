@@ -5,6 +5,7 @@
 //   stdout: 10
 //     10
 //     42
+//     1
 
 #![feature(no_core)]
 #![no_std]
