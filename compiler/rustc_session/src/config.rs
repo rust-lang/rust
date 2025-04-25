@@ -246,6 +246,10 @@ pub enum AutoDiff {
     /// Print the module after running autodiff and optimizations.
     PrintModFinal,
 
+    /// Print all passes scheduled by LLVM
+    PrintPasses,
+    /// Disable extra opt run after running autodiff
+    NoPostopt,
     /// Enzyme's loose type debug helper (can cause incorrect gradients!!)
     /// Usable in cases where Enzyme errors with `can not deduce type of X`.
     LooseTypes,

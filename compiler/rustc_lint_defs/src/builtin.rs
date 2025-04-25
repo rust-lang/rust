@@ -117,6 +117,7 @@ declare_lint_pass! {
         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
+        UNNECESSARY_TRANSMUTES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -4907,6 +4908,30 @@ declare_lint! {
     pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
     Warn,
     "detects pointer to integer transmutes in const functions and associated constants",
+}
+
+declare_lint! {
+    /// The `unnecessary_transmutes` lint detects transmutations that have safer alternatives.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn bytes_at_home(x: [u8; 4]) -> u32 {
+    ///   unsafe { std::mem::transmute(x) }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Using an explicit method is preferable over calls to
+    /// [`transmute`](https://doc.rust-lang.org/std/mem/fn.transmute.html) as
+    /// they more clearly communicate the intent, are easier to review, and
+    /// are less likely to accidentally result in unsoundness.
+    pub UNNECESSARY_TRANSMUTES,
+    Warn,
+    "detects transmutes that are shadowed by std methods"
 }
 
 declare_lint! {

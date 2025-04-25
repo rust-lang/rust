@@ -759,20 +759,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
+        // Additionally, when `deref_patterns` is enabled, byte string literal patterns may have
+        // types `[u8]` or `[u8; N]`, in order to type, e.g., `deref!(b"..."): Vec<u8>`.
         let mut pat_ty = ty;
         if let hir::PatExprKind::Lit {
             lit: Spanned { node: ast::LitKind::ByteStr(..), .. }, ..
         } = lt.kind
         {
+            let tcx = self.tcx;
             let expected = self.structurally_resolve_type(span, expected);
-            if let ty::Ref(_, inner_ty, _) = *expected.kind()
-                && self.try_structurally_resolve_type(span, inner_ty).is_slice()
-            {
-                let tcx = self.tcx;
-                trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
-                pat_ty =
-                    Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_slice(tcx, tcx.types.u8));
+            match *expected.kind() {
+                // Allow `b"...": &[u8]`
+                ty::Ref(_, inner_ty, _)
+                    if self.try_structurally_resolve_type(span, inner_ty).is_slice() =>
+                {
+                    trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
+                    pat_ty = Ty::new_imm_ref(
+                        tcx,
+                        tcx.lifetimes.re_static,
+                        Ty::new_slice(tcx, tcx.types.u8),
+                    );
+                }
+                // Allow `b"...": [u8; 3]` for `deref_patterns`
+                ty::Array(..) if tcx.features().deref_patterns() => {
+                    pat_ty = match *ty.kind() {
+                        ty::Ref(_, inner_ty, _) => inner_ty,
+                        _ => span_bug!(span, "found byte string literal with non-ref type {ty:?}"),
+                    }
+                }
+                // Allow `b"...": [u8]` for `deref_patterns`
+                ty::Slice(..) if tcx.features().deref_patterns() => {
+                    pat_ty = Ty::new_slice(tcx, tcx.types.u8);
+                }
+                // Otherwise, `b"...": &[u8; 3]`
+                _ => {}
             }
+        }
+
+        // When `deref_patterns` is enabled, in order to allow `deref!("..."): String`, we allow
+        // string literal patterns to have type `str`. This is accounted for when lowering to MIR.
+        if self.tcx.features().deref_patterns()
+            && let hir::PatExprKind::Lit {
+                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
+            } = lt.kind
+            && self.try_structurally_resolve_type(span, expected).is_str()
+        {
+            pat_ty = self.tcx.types.str_;
         }
 
         if self.tcx.features().string_deref_patterns()

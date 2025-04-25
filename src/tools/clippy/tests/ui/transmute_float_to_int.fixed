@@ -1,5 +1,5 @@
 #![warn(clippy::transmute_float_to_int)]
-#![allow(clippy::missing_transmute_annotations)]
+#![allow(clippy::missing_transmute_annotations, unnecessary_transmutes)]
 #![feature(f128)]
 #![feature(f16)]
 

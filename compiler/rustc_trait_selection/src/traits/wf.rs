@@ -1,3 +1,8 @@
+//! Core logic responsible for determining what it means for various type system
+//! primitives to be "well formed". Actually checking whether these primitives are
+//! well formed is performed elsewhere (e.g. during type checking or item well formedness
+//! checking).
+
 use std::iter;
 
 use rustc_hir as hir;
@@ -15,12 +20,13 @@ use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
 use crate::traits;
+
 /// Returns the set of obligations needed to make `arg` well-formed.
 /// If `arg` contains unresolved inference variables, this may include
 /// further WF obligations. However, if `arg` IS an unresolved
 /// inference variable, returns `None`, because we are not able to
-/// make any progress at all. This is to prevent "livelock" where we
-/// say "$0 is WF if $0 is WF".
+/// make any progress at all. This is to prevent cycles where we
+/// say "?0 is WF if ?0 is WF".
 pub fn obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -29,14 +35,14 @@ pub fn obligations<'tcx>(
     arg: GenericArg<'tcx>,
     span: Span,
 ) -> Option<PredicateObligations<'tcx>> {
-    // Handle the "livelock" case (see comment above) by bailing out if necessary.
+    // Handle the "cycle" case (see comment above) by bailing out if necessary.
     let arg = match arg.unpack() {
         GenericArgKind::Type(ty) => {
             match ty.kind() {
                 ty::Infer(ty::TyVar(_)) => {
                     let resolved_ty = infcx.shallow_resolve(ty);
                     if resolved_ty == ty {
-                        // No progress, bail out to prevent "livelock".
+                        // No progress, bail out to prevent cycles.
                         return None;
                     } else {
                         resolved_ty
@@ -51,7 +57,7 @@ pub fn obligations<'tcx>(
                 ty::ConstKind::Infer(_) => {
                     let resolved = infcx.shallow_resolve_const(ct);
                     if resolved == ct {
-                        // No progress.
+                        // No progress, bail out to prevent cycles.
                         return None;
                     } else {
                         resolved
@@ -74,7 +80,7 @@ pub fn obligations<'tcx>(
         recursion_depth,
         item: None,
     };
-    wf.compute(arg);
+    wf.add_wf_preds_for_generic_arg(arg);
     debug!("wf::obligations({:?}, body_id={:?}) = {:?}", arg, body_id, wf.out);
 
     let result = wf.normalize(infcx);
@@ -97,7 +103,7 @@ pub fn unnormalized_obligations<'tcx>(
 
     // However, if `arg` IS an unresolved inference variable, returns `None`,
     // because we are not able to make any progress at all. This is to prevent
-    // "livelock" where we say "$0 is WF if $0 is WF".
+    // cycles where we say "?0 is WF if ?0 is WF".
     if arg.is_non_region_infer() {
         return None;
     }
@@ -115,7 +121,7 @@ pub fn unnormalized_obligations<'tcx>(
         recursion_depth: 0,
         item: None,
     };
-    wf.compute(arg);
+    wf.add_wf_preds_for_generic_arg(arg);
     Some(wf.out)
 }
 
@@ -140,7 +146,7 @@ pub fn trait_obligations<'tcx>(
         recursion_depth: 0,
         item: Some(item),
     };
-    wf.compute_trait_pred(trait_pred, Elaborate::All);
+    wf.add_wf_preds_for_trait_pred(trait_pred, Elaborate::All);
     debug!(obligations = ?wf.out);
     wf.normalize(infcx)
 }
@@ -171,7 +177,7 @@ pub fn clause_obligations<'tcx>(
     // It's ok to skip the binder here because wf code is prepared for it
     match clause.kind().skip_binder() {
         ty::ClauseKind::Trait(t) => {
-            wf.compute_trait_pred(t, Elaborate::None);
+            wf.add_wf_preds_for_trait_pred(t, Elaborate::None);
         }
         ty::ClauseKind::HostEffect(..) => {
             // Technically the well-formedness of this predicate is implied by
@@ -179,22 +185,22 @@ pub fn clause_obligations<'tcx>(
         }
         ty::ClauseKind::RegionOutlives(..) => {}
         ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-            wf.compute(ty.into());
+            wf.add_wf_preds_for_generic_arg(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
-            wf.compute_alias_term(t.projection_term);
-            wf.compute(t.term.into_arg());
+            wf.add_wf_preds_for_alias_term(t.projection_term);
+            wf.add_wf_preds_for_generic_arg(t.term.into_arg());
         }
         ty::ClauseKind::ConstArgHasType(ct, ty) => {
-            wf.compute(ct.into());
-            wf.compute(ty.into());
+            wf.add_wf_preds_for_generic_arg(ct.into());
+            wf.add_wf_preds_for_generic_arg(ty.into());
         }
         ty::ClauseKind::WellFormed(arg) => {
-            wf.compute(arg);
+            wf.add_wf_preds_for_generic_arg(arg);
         }
 
         ty::ClauseKind::ConstEvaluatable(ct) => {
-            wf.compute(ct.into());
+            wf.add_wf_preds_for_generic_arg(ct.into());
         }
     }
 
@@ -372,14 +378,18 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     }
 
     /// Pushes the obligations required for `trait_ref` to be WF into `self.out`.
-    fn compute_trait_pred(&mut self, trait_pred: ty::TraitPredicate<'tcx>, elaborate: Elaborate) {
+    fn add_wf_preds_for_trait_pred(
+        &mut self,
+        trait_pred: ty::TraitPredicate<'tcx>,
+        elaborate: Elaborate,
+    ) {
         let tcx = self.tcx();
         let trait_ref = trait_pred.trait_ref;
 
         // Negative trait predicates don't require supertraits to hold, just
         // that their args are WF.
         if trait_pred.polarity == ty::PredicatePolarity::Negative {
-            self.compute_negative_trait_pred(trait_ref);
+            self.add_wf_preds_for_negative_trait_pred(trait_ref);
             return;
         }
 
@@ -445,15 +455,15 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     // Compute the obligations that are required for `trait_ref` to be WF,
     // given that it is a *negative* trait predicate.
-    fn compute_negative_trait_pred(&mut self, trait_ref: ty::TraitRef<'tcx>) {
+    fn add_wf_preds_for_negative_trait_pred(&mut self, trait_ref: ty::TraitRef<'tcx>) {
         for arg in trait_ref.args {
-            self.compute(arg);
+            self.add_wf_preds_for_generic_arg(arg);
         }
     }
 
     /// Pushes the obligations required for an alias (except inherent) to be WF
     /// into `self.out`.
-    fn compute_alias_term(&mut self, data: ty::AliasTerm<'tcx>) {
+    fn add_wf_preds_for_alias_term(&mut self, data: ty::AliasTerm<'tcx>) {
         // A projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -478,13 +488,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         let obligations = self.nominal_obligations(data.def_id, data.args);
         self.out.extend(obligations);
 
-        self.compute_projection_args(data.args);
+        self.add_wf_preds_for_projection_args(data.args);
     }
 
     /// Pushes the obligations required for an inherent alias to be WF
     /// into `self.out`.
     // FIXME(inherent_associated_types): Merge this function with `fn compute_alias`.
-    fn compute_inherent_projection(&mut self, data: ty::AliasTy<'tcx>) {
+    fn add_wf_preds_for_inherent_projection(&mut self, data: ty::AliasTy<'tcx>) {
         // An inherent projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -511,7 +521,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         data.args.visit_with(self);
     }
 
-    fn compute_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
+    fn add_wf_preds_for_projection_args(&mut self, args: GenericArgsRef<'tcx>) {
         let tcx = self.tcx();
         let cause = self.cause(ObligationCauseCode::WellFormed(None));
         let param_env = self.param_env;
@@ -557,7 +567,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
     /// Pushes all the predicates needed to validate that `ty` is WF into `out`.
     #[instrument(level = "debug", skip(self))]
-    fn compute(&mut self, arg: GenericArg<'tcx>) {
+    fn add_wf_preds_for_generic_arg(&mut self, arg: GenericArg<'tcx>) {
         arg.visit_with(self);
         debug!(?self.out);
     }
@@ -596,7 +606,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             .collect()
     }
 
-    fn from_object_ty(
+    fn add_wf_preds_for_dyn_ty(
         &mut self,
         ty: Ty<'tcx>,
         data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
@@ -651,6 +661,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     outlives,
                 ));
             }
+
+            // We don't add any wf predicates corresponding to the trait ref's generic arguments
+            // which allows code like this to compile:
+            // ```rust
+            // trait Trait<T: Sized> {}
+            // fn foo(_: &dyn Trait<[u32]>) {}
+            // ```
         }
     }
 }
@@ -761,7 +778,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.out.extend(obligations);
             }
             ty::Alias(ty::Inherent, data) => {
-                self.compute_inherent_projection(data);
+                self.add_wf_preds_for_inherent_projection(data);
                 return; // Subtree handled by compute_inherent_projection.
             }
 
@@ -895,7 +912,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 //
                 // Here, we defer WF checking due to higher-ranked
                 // regions. This is perhaps not ideal.
-                self.from_object_ty(t, data, r);
+                self.add_wf_preds_for_dyn_ty(t, data, r);
 
                 // FIXME(#27579) RFC also considers adding trait
                 // obligations that don't refer to Self and
@@ -917,11 +934,11 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             // 1. Check if they have been resolved, and if so proceed with
             //    THAT type.
             // 2. If not, we've at least simplified things (e.g., we went
-            //    from `Vec<$0>: WF` to `$0: WF`), so we can
+            //    from `Vec?0>: WF` to `?0: WF`), so we can
             //    register a pending obligation and keep
             //    moving. (Goal is that an "inductive hypothesis"
             //    is satisfied to ensure termination.)
-            // See also the comment on `fn obligations`, describing "livelock"
+            // See also the comment on `fn obligations`, describing cycle
             // prevention, which happens before this can be reached.
             ty::Infer(_) => {
                 let cause = self.cause(ObligationCauseCode::WellFormed(None));

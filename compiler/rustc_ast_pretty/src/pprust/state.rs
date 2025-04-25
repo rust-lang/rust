@@ -799,7 +799,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             has_bang,
             Some(*ident),
             macro_def.body.delim,
-            &macro_def.body.tokens.clone(),
+            &macro_def.body.tokens,
             true,
             sp,
         );
@@ -1468,7 +1468,7 @@ impl<'a> State<'a> {
             true,
             None,
             m.args.delim,
-            &m.args.tokens.clone(),
+            &m.args.tokens,
             true,
             m.span(),
         );

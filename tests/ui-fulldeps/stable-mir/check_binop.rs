@@ -81,7 +81,7 @@ impl<'a> MirVisitor for Visitor<'a> {
 fn main() {
     let path = "binop_input.rs";
     generate_input(&path).unwrap();
-    let args = vec!["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
+    let args = &["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
     run!(args, test_binops).unwrap();
 }
 

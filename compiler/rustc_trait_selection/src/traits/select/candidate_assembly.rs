@@ -240,8 +240,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if !drcx.args_may_unify(obligation_args, bound_trait_ref.skip_binder().args) {
                 continue;
             }
-            // FIXME(oli-obk): it is suspicious that we are dropping the constness and
-            // polarity here.
             let wc = self.where_clause_may_apply(stack, bound_trait_ref)?;
             if wc.may_apply() {
                 candidates.vec.push(ParamCandidate(bound));

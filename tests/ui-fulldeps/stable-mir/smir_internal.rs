@@ -40,7 +40,7 @@ fn test_translation(tcx: TyCtxt<'_>) -> ControlFlow<()> {
 fn main() {
     let path = "internal_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

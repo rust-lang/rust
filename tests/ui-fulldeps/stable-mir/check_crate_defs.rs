@@ -84,7 +84,7 @@ fn contains<T: CrateDef + std::fmt::Debug>(items: &[T], expected: &[&str]) {
 fn main() {
     let path = "crate_definitions.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),

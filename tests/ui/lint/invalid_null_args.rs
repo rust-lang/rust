@@ -1,19 +1,19 @@
 // check-fail
 // run-rustfix
+#![allow(unnecessary_transmutes)]
 
-use std::ptr;
-use std::mem;
+use std::{mem, ptr};
 
 unsafe fn null_ptr() {
     ptr::write(
-    //~^ ERROR calling this function with a null pointer is undefined behavior
+        //~^ ERROR calling this function with a null pointer is undefined behavior
         ptr::null_mut() as *mut u32,
         mem::transmute::<[u8; 4], _>([0, 0, 0, 255]),
     );
 
     let null_ptr = ptr::null_mut();
     ptr::write(
-    //~^ ERROR calling this function with a null pointer is undefined behavior
+        //~^ ERROR calling this function with a null pointer is undefined behavior
         null_ptr as *mut u32,
         mem::transmute::<[u8; 4], _>([0, 0, 0, 255]),
     );
@@ -38,10 +38,10 @@ unsafe fn null_ptr() {
     ptr::copy_nonoverlapping::<usize>(ptr::null(), ptr::NonNull::dangling().as_ptr(), 0);
     //~^ ERROR calling this function with a null pointer is undefined behavior
     ptr::copy_nonoverlapping::<usize>(
-    //~^ ERROR calling this function with a null pointer is undefined behavior
+        //~^ ERROR calling this function with a null pointer is undefined behavior
         ptr::NonNull::dangling().as_ptr(),
         ptr::null_mut(),
-        0
+        0,
     );
 
     #[derive(Copy, Clone)]

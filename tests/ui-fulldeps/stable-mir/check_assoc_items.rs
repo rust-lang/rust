@@ -85,7 +85,7 @@ fn check_items<T: CrateDef>(items: &[T], expected: &[&str]) {
 fn main() {
     let path = "assoc_items.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
