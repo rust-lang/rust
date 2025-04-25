@@ -119,7 +119,7 @@ mod break_keyword {}
 
 #[doc(keyword = "const")]
 //
-/// Compile-time constants, compile-time evaluable functions, and raw pointers.
+/// Compile-time constants, compile-time blocks, compile-time evaluable functions, and raw pointers.
 ///
 /// ## Compile-time constants
 ///
@@ -166,6 +166,12 @@ mod break_keyword {}
 ///
 /// For more detail on `const`, see the [Rust Book] or the [Reference].
 ///
+/// ## Compile-time blocks
+///
+/// The `const` keyword can also be used to define a block of code that is evaluated at compile time.
+/// This is useful for ensuring certain computations are completed before optimizations happen, as well as
+/// before runtime. For more details, see the [Reference][const-blocks].
+///
 /// ## Compile-time evaluable functions
 ///
 /// The other main use of the `const` keyword is in `const fn`. This marks a function as being
@@ -184,6 +190,7 @@ mod break_keyword {}
 /// [pointer primitive]: pointer
 /// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#constants
 /// [Reference]: ../reference/items/constant-items.html
+/// [const-blocks]: ../reference/expressions/block-expr.html#const-blocks
 /// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
 

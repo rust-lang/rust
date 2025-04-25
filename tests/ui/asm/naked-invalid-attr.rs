@@ -51,3 +51,12 @@ fn main() {
     #[unsafe(naked)] //~ ERROR should be applied to a function definition
     || {};
 }
+
+// Check that the path of an attribute without a name is printed correctly (issue #140082)
+#[::a]
+//~^ ERROR attribute incompatible with `#[unsafe(naked)]`
+//~| ERROR failed to resolve: use of unresolved module or unlinked crate `a`
+#[unsafe(naked)]
+extern "C" fn issue_140082() {
+    naked_asm!("")
+}

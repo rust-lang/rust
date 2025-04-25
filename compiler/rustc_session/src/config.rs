@@ -1650,7 +1650,7 @@ The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE
 static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
     format!(
         "Compiler information to print on stdout (or to a file)\n\
-        INFO may be one of ({}).",
+        INFO may be one of <{}>.",
         PRINT_KINDS.iter().map(|(name, _)| format!("{name}")).collect::<Vec<_>>().join("|")
     )
 });
@@ -1669,6 +1669,13 @@ static EMIT_HELP: LazyLock<String> = LazyLock::new(|| {
 
 /// Returns all rustc command line options, including metadata for
 /// each option, such as whether the option is stable.
+///
+/// # Option style guidelines
+///
+/// - `<param>`: Indicates a required parameter
+/// - `[param]`: Indicates an optional parameter
+/// - `|`: Indicates a mutually exclusive option
+/// - `*`: a list element with description
 pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     use OptionKind::{Flag, FlagMulti, Multi, Opt};
     use OptionStability::{Stable, Unstable};
@@ -1683,18 +1690,18 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "cfg",
             "Configure the compilation environment.\n\
-                SPEC supports the syntax `NAME[=\"VALUE\"]`.",
-            "SPEC",
+                SPEC supports the syntax `<NAME>[=\"<VALUE>\"]`.",
+            "<SPEC>",
         ),
-        opt(Stable, Multi, "", "check-cfg", "Provide list of expected cfgs for checking", "SPEC"),
+        opt(Stable, Multi, "", "check-cfg", "Provide list of expected cfgs for checking", "<SPEC>"),
         opt(
             Stable,
             Multi,
             "L",
             "",
             "Add a directory to the library search path. \
-                The optional KIND can be one of dependency, crate, native, framework, or all (the default).",
-            "[KIND=]PATH",
+                The optional KIND can be one of <dependency|crate|native|framework|all> (default: all).",
+            "[<KIND>=]<PATH>",
         ),
         opt(
             Stable,
@@ -1703,46 +1710,46 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "Link the generated crate(s) to the specified native\n\
                 library NAME. The optional KIND can be one of\n\
-                static, framework, or dylib (the default).\n\
+                <static|framework|dylib> (default: dylib).\n\
                 Optional comma separated MODIFIERS\n\
-                (bundle|verbatim|whole-archive|as-needed)\n\
+                <bundle|verbatim|whole-archive|as-needed>\n\
                 may be specified each with a prefix of either '+' to\n\
                 enable or '-' to disable.",
-            "[KIND[:MODIFIERS]=]NAME[:RENAME]",
+            "[<KIND>[:<MODIFIERS>]=]<NAME>[:<RENAME>]",
         ),
         make_crate_type_option(),
-        opt(Stable, Opt, "", "crate-name", "Specify the name of the crate being built", "NAME"),
+        opt(Stable, Opt, "", "crate-name", "Specify the name of the crate being built", "<NAME>"),
         opt(Stable, Opt, "", "edition", &EDITION_STRING, EDITION_NAME_LIST),
-        opt(Stable, Multi, "", "emit", &EMIT_HELP, "TYPE[=FILE]"),
-        opt(Stable, Multi, "", "print", &PRINT_HELP, "INFO[=FILE]"),
+        opt(Stable, Multi, "", "emit", &EMIT_HELP, "<TYPE>[=<FILE>]"),
+        opt(Stable, Multi, "", "print", &PRINT_HELP, "<INFO>[=<FILE>]"),
         opt(Stable, FlagMulti, "g", "", "Equivalent to -C debuginfo=2", ""),
         opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=3", ""),
-        opt(Stable, Opt, "o", "", "Write output to <filename>", "FILENAME"),
-        opt(Stable, Opt, "", "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
+        opt(Stable, Opt, "o", "", "Write output to FILENAME", "<FILENAME>"),
+        opt(Stable, Opt, "", "out-dir", "Write output to compiler-chosen filename in DIR", "<DIR>"),
         opt(
             Stable,
             Opt,
             "",
             "explain",
             "Provide a detailed explanation of an error message",
-            "OPT",
+            "<OPT>",
         ),
         opt(Stable, Flag, "", "test", "Build a test harness", ""),
-        opt(Stable, Opt, "", "target", "Target triple for which the code is compiled", "TARGET"),
-        opt(Stable, Multi, "A", "allow", "Set lint allowed", "LINT"),
-        opt(Stable, Multi, "W", "warn", "Set lint warnings", "LINT"),
-        opt(Stable, Multi, "", "force-warn", "Set lint force-warn", "LINT"),
-        opt(Stable, Multi, "D", "deny", "Set lint denied", "LINT"),
-        opt(Stable, Multi, "F", "forbid", "Set lint forbidden", "LINT"),
+        opt(Stable, Opt, "", "target", "Target triple for which the code is compiled", "<TARGET>"),
+        opt(Stable, Multi, "A", "allow", "Set lint allowed", "<LINT>"),
+        opt(Stable, Multi, "W", "warn", "Set lint warnings", "<LINT>"),
+        opt(Stable, Multi, "", "force-warn", "Set lint force-warn", "<LINT>"),
+        opt(Stable, Multi, "D", "deny", "Set lint denied", "<LINT>"),
+        opt(Stable, Multi, "F", "forbid", "Set lint forbidden", "<LINT>"),
         opt(
             Stable,
             Multi,
             "",
             "cap-lints",
             "Set the most restrictive lint level. More restrictive lints are capped at this level",
-            "LEVEL",
+            "<LEVEL>",
         ),
-        opt(Stable, Multi, "C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
+        opt(Stable, Multi, "C", "codegen", "Set a codegen option", "<OPT>[=<VALUE>]"),
         opt(Stable, Flag, "V", "version", "Print version info and exit", ""),
         opt(Stable, Flag, "v", "verbose", "Use verbose output", ""),
     ];
@@ -1756,29 +1763,29 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "extern",
             "Specify where an external rust library is located",
-            "NAME[=PATH]",
+            "<NAME>[=<PATH>]",
         ),
-        opt(Stable, Opt, "", "sysroot", "Override the system root", "PATH"),
-        opt(Unstable, Multi, "Z", "", "Set unstable / perma-unstable options", "FLAG"),
+        opt(Stable, Opt, "", "sysroot", "Override the system root", "<PATH>"),
+        opt(Unstable, Multi, "Z", "", "Set unstable / perma-unstable options", "<FLAG>"),
         opt(
             Stable,
             Opt,
             "",
             "error-format",
             "How errors and other messages are produced",
-            "human|json|short",
+            "<human|json|short>",
         ),
-        opt(Stable, Multi, "", "json", "Configure the JSON output of the compiler", "CONFIG"),
+        opt(Stable, Multi, "", "json", "Configure the JSON output of the compiler", "<CONFIG>"),
         opt(
             Stable,
             Opt,
             "",
             "color",
             "Configure coloring of output:
-                auto   = colorize, if output goes to a tty (default);
-                always = always colorize output;
-                never  = never colorize output",
-            "auto|always|never",
+                * auto   = colorize, if output goes to a tty (default);
+                * always = always colorize output;
+                * never  = never colorize output",
+            "<auto|always|never>",
         ),
         opt(
             Stable,
@@ -1786,7 +1793,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "diagnostic-width",
             "Inform rustc of the width of the output so that diagnostics can be truncated to fit",
-            "WIDTH",
+            "<WIDTH>",
         ),
         opt(
             Stable,
@@ -1794,9 +1801,9 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "remap-path-prefix",
             "Remap source names in all output (compiler messages and output files)",
-            "FROM=TO",
+            "<FROM>=<TO>",
         ),
-        opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "VAR=VALUE"),
+        opt(Unstable, Multi, "", "env-set", "Inject an environment variable", "<VAR>=<VALUE>"),
     ];
     options.extend(verbose_only.into_iter().map(|mut opt| {
         opt.is_verbose_help_only = true;
@@ -2796,7 +2803,7 @@ pub fn make_crate_type_option() -> RustcOptGroup {
         "crate-type",
         "Comma separated list of types of crates
                                 for the compiler to emit",
-        "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
+        "<bin|lib|rlib|dylib|cdylib|staticlib|proc-macro>",
     )
 }
 
