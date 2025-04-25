@@ -730,7 +730,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     .is_ok()
                 {
                     check_impl_items_against_trait(tcx, def_id, impl_trait_header);
-                    check_on_unimplemented(tcx, def_id);
                 }
             }
         }
