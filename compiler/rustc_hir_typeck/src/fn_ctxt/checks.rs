@@ -8,7 +8,6 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirId, Node, QPath};
-use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_index::IndexVec;
@@ -33,6 +32,7 @@ use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
+use crate::inline_asm::InlineAsmCtxt;
 use crate::method::MethodCallee;
 use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
@@ -98,13 +98,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
-            InlineAsmCtxt::new(
-                enclosing_id,
-                &self.infcx,
-                self.typing_env(self.param_env),
-                &*self.typeck_results.borrow(),
-            )
-            .check_asm(asm);
+            InlineAsmCtxt::new(self, enclosing_id).check_asm(asm);
         }
     }
 
