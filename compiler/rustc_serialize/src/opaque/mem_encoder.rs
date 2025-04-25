@@ -35,8 +35,15 @@ impl MemEncoder {
         self.data.reserve(N);
 
         let old_len = self.data.len();
-        // SAFETY: fix
-        let buf = unsafe { &mut *(self.data.as_mut_ptr().add(old_len) as *mut [u8; N]) };
+
+        // SAFETY: The above `reserve` ensures that there is enough
+        // room to write the encoded value to the vector's internal buffer.
+        // The memory is also initialized as 0.
+        let buf = unsafe {
+            let buf = self.data.as_mut_ptr().add(old_len) as *mut [u8; N];
+            *buf = [0; N];
+            &mut *buf
+        };
         let written = visitor(buf);
         if written > N {
             Self::panic_invalid_write::<N>(written);
