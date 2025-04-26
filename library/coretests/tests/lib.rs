@@ -17,6 +17,7 @@
 #![feature(const_eval_select)]
 #![feature(const_swap_nonoverlapping)]
 #![feature(const_trait_impl)]
+#![feature(control_flow_ok)]
 #![feature(core_intrinsics)]
 #![feature(core_intrinsics_fallbacks)]
 #![feature(core_io_borrowed_buf)]
