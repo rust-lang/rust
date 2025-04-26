@@ -191,7 +191,7 @@ impl Name {
     // FIXME: Remove this in favor of `display`, see fixme on `as_str`
     #[doc(hidden)]
     pub fn display_no_db(&self, edition: Edition) -> impl fmt::Display + '_ {
-        Display { name: self, needs_escaping: is_raw_identifier(self.symbol.as_str(), edition) }
+        Display { name: self, edition }
     }
 
     pub fn symbol(&self) -> &Symbol {
@@ -201,15 +201,20 @@ impl Name {
 
 struct Display<'a> {
     name: &'a Name,
-    needs_escaping: bool,
+    edition: Edition,
 }
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.needs_escaping {
-            write!(f, "r#")?;
+        let mut symbol = self.name.symbol.as_str();
+        if let Some(s) = symbol.strip_prefix('\'') {
+            f.write_str("'")?;
+            symbol = s;
         }
-        fmt::Display::fmt(self.name.symbol.as_str(), f)
+        if is_raw_identifier(symbol, self.edition) {
+            f.write_str("r#")?;
+        }
+        f.write_str(symbol)
     }
 }
 
