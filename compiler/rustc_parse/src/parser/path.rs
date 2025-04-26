@@ -248,19 +248,13 @@ impl<'a> Parser<'a> {
             segments.push(segment);
 
             if self.is_import_coupler() || !self.eat_path_sep() {
-                let ok_for_recovery = self.may_recover()
-                    && match style {
-                        PathStyle::Expr => true,
-                        PathStyle::Type if let Some((ident, _)) = self.prev_token.ident() => {
-                            self.token == token::Colon
-                                && ident.as_str().chars().all(|c| c.is_lowercase())
-                                && self.token.span.lo() == self.prev_token.span.hi()
-                                && self
-                                    .look_ahead(1, |token| self.token.span.hi() == token.span.lo())
-                        }
-                        _ => false,
-                    };
-                if ok_for_recovery
+                // IMPORTANT: We can *only ever* treat single colons as typo'ed double colons in
+                // expression contexts (!) since only there paths cannot possibly be followed by
+                // a colon and still form a syntactically valid construct. In pattern contexts,
+                // a path may be followed by a type annotation. E.g., `let pat:ty`. In type
+                // contexts, a path may be followed by a list of bounds. E.g., `where ty:bound`.
+                if self.may_recover()
+                    && style == PathStyle::Expr // (!)
                     && self.token == token::Colon
                     && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
                 {
