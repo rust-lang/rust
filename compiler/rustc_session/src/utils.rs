@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use rustc_data_structures::profiling::VerboseTimingGuard;
@@ -104,8 +104,8 @@ pub struct CanonicalizedPath {
 }
 
 impl CanonicalizedPath {
-    pub fn new(path: &Path) -> Self {
-        Self { original: path.to_owned(), canonicalized: try_canonicalize(path).ok() }
+    pub fn new(path: PathBuf) -> Self {
+        Self { canonicalized: try_canonicalize(&path).ok(), original: path }
     }
 
     pub fn canonicalized(&self) -> &PathBuf {
