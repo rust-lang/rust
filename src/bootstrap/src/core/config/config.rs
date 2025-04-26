@@ -52,6 +52,21 @@ pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!triagebot.toml",
 ];
 
+/// Additional "allowed" paths for the `download-rustc="if-unchanged"` logic
+/// that apply to local dev builds, but not to CI builds.
+///
+/// When modifying this list, the corresponding tests in
+/// `builder::tests::ci_rustc_if_unchanged_logic` should also be updated.
+pub(crate) const RUSTC_IF_UNCHANGED_EXTRA_ALLOWED_PATHS_OUTSIDE_CI: &[&str] = &[
+    // tidy-alphabetical-start
+    // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, allow
+    // these changes to speed up the build process for library developers. This provides consistent
+    // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
+    // options.
+    ":!library",
+    // tidy-alphabetical-end
+];
+
 macro_rules! check_ci_llvm {
     ($name:expr) => {
         assert!(
@@ -3180,16 +3195,8 @@ impl Config {
 
         // RUSTC_IF_UNCHANGED_ALLOWED_PATHS
         let mut allowed_paths = RUSTC_IF_UNCHANGED_ALLOWED_PATHS.to_vec();
-
-        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, allow
-        // these changes to speed up the build process for library developers. This provides consistent
-        // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
-        // options.
-        //
-        // If you update "library" logic here, update `builder::tests::ci_rustc_if_unchanged_logic` test
-        // logic accordingly.
         if !self.is_running_on_ci {
-            allowed_paths.push(":!library");
+            allowed_paths.extend_from_slice(RUSTC_IF_UNCHANGED_EXTRA_ALLOWED_PATHS_OUTSIDE_CI);
         }
 
         let commit = if self.rust_info.is_managed_git_subrepository() {
