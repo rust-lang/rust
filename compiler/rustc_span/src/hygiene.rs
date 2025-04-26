@@ -98,14 +98,6 @@ impl SyntaxContextData {
         }
     }
 
-    fn decode_placeholder() -> SyntaxContextData {
-        SyntaxContextData { dollar_crate_name: kw::Empty, ..SyntaxContextData::root() }
-    }
-
-    fn is_decode_placeholder(&self) -> bool {
-        self.dollar_crate_name == kw::Empty
-    }
-
     fn key(&self) -> SyntaxContextKey {
         (self.parent, self.outer_expn, self.outer_transparency)
     }
@@ -460,28 +452,23 @@ impl HygieneData {
     }
 
     fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
-        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].opaque
     }
 
     fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
-        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].opaque_and_semiopaque
     }
 
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
-        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].outer_expn
     }
 
     fn outer_mark(&self, ctxt: SyntaxContext) -> (ExpnId, Transparency) {
-        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         let data = &self.syntax_context_data[ctxt.0 as usize];
         (data.outer_expn, data.outer_transparency)
     }
 
     fn parent_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
-        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].parent
     }
 
@@ -592,8 +579,6 @@ impl HygieneData {
         expn_id: ExpnId,
         transparency: Transparency,
     ) -> SyntaxContext {
-        debug_assert!(!self.syntax_context_data[parent.0 as usize].is_decode_placeholder());
-
         // Look into the cache first.
         let key = (parent, expn_id, transparency);
         if let Some(ctxt) = self.syntax_context_map.get(&key) {
@@ -601,16 +586,20 @@ impl HygieneData {
         }
 
         // Reserve a new syntax context.
+        // The inserted dummy data can only be potentially accessed by nested `alloc_ctxt` calls,
+        // the assert below ensures that it doesn't happen.
         let ctxt = SyntaxContext::from_usize(self.syntax_context_data.len());
-        self.syntax_context_data.push(SyntaxContextData::decode_placeholder());
+        self.syntax_context_data
+            .push(SyntaxContextData { dollar_crate_name: sym::dummy, ..SyntaxContextData::root() });
         self.syntax_context_map.insert(key, ctxt);
 
         // Opaque and semi-opaque versions of the parent. Note that they may be equal to the
         // parent itself. E.g. `parent_opaque` == `parent` if the expn chain contains only opaques,
         // and `parent_opaque_and_semiopaque` == `parent` if the expn contains only (semi-)opaques.
-        let parent_opaque = self.syntax_context_data[parent.0 as usize].opaque;
-        let parent_opaque_and_semiopaque =
-            self.syntax_context_data[parent.0 as usize].opaque_and_semiopaque;
+        let parent_data = &self.syntax_context_data[parent.0 as usize];
+        assert_ne!(parent_data.dollar_crate_name, sym::dummy);
+        let parent_opaque = parent_data.opaque;
+        let parent_opaque_and_semiopaque = parent_data.opaque_and_semiopaque;
 
         // Evaluate opaque and semi-opaque versions of the new syntax context.
         let (opaque, opaque_and_semiopaque) = match transparency {
@@ -650,13 +639,12 @@ pub fn walk_chain_collapsed(span: Span, to: Span) -> Span {
 
 pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {
     // The new contexts that need updating are at the end of the list and have `$crate` as a name.
-    // Also decoding placeholders can be encountered among both old and new contexts.
     let mut to_update = vec![];
     HygieneData::with(|data| {
         for (idx, scdata) in data.syntax_context_data.iter().enumerate().rev() {
             if scdata.dollar_crate_name == kw::DollarCrate {
                 to_update.push((idx, kw::DollarCrate));
-            } else if !scdata.is_decode_placeholder() {
+            } else {
                 break;
             }
         }
@@ -922,10 +910,7 @@ impl SyntaxContext {
     }
 
     pub(crate) fn dollar_crate_name(self) -> Symbol {
-        HygieneData::with(|data| {
-            debug_assert!(!data.syntax_context_data[self.0 as usize].is_decode_placeholder());
-            data.syntax_context_data[self.0 as usize].dollar_crate_name
-        })
+        HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
     }
 
     pub fn edition(self) -> Edition {
@@ -1447,15 +1432,7 @@ fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextKey)>(
     mut f: F,
 ) {
     let all_data: Vec<_> = HygieneData::with(|data| {
-        ctxts
-            .map(|ctxt| {
-                (ctxt, {
-                    let item = data.syntax_context_data[ctxt.0 as usize];
-                    debug_assert!(!item.is_decode_placeholder());
-                    item.key()
-                })
-            })
-            .collect()
+        ctxts.map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].key())).collect()
     });
     for (ctxt, data) in all_data.into_iter() {
         f(ctxt.0, ctxt, &data);
