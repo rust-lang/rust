@@ -1,7 +1,7 @@
 #![allow(rustc::bad_opt_access)]
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::num::NonZero;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 
 use rustc_abi::Align;
@@ -89,8 +89,8 @@ where
     S: Into<String>,
     I: IntoIterator<Item = S>,
 {
-    let locations: BTreeSet<CanonicalizedPath> =
-        locations.into_iter().map(|s| CanonicalizedPath::new(Path::new(&s.into()))).collect();
+    let locations =
+        locations.into_iter().map(|s| CanonicalizedPath::new(PathBuf::from(s.into()))).collect();
 
     ExternEntry {
         location: ExternLocation::ExactPaths(locations),
