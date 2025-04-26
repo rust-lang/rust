@@ -31,9 +31,9 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt,
-    TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv,
-    TypingMode, fold_regions,
+    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Term, TermKind,
+    Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
@@ -1398,6 +1398,16 @@ impl<'tcx> TyOrConstInferVar {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
             GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_term(term: Term<'tcx>) -> Option<Self> {
+        match term.unpack() {
+            TermKind::Ty(ty) => Self::maybe_from_ty(ty),
+            TermKind::Const(ct) => Self::maybe_from_const(ct),
         }
     }
 

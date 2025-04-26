@@ -863,7 +863,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         Resolver { fcx, span, body, nested_goals, should_normalize }
     }
 
-    fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
+    fn report_error(&self, p: impl Into<ty::Term<'tcx>>) -> ErrorGuaranteed {
         if let Some(guar) = self.fcx.tainted_by_errors() {
             guar
         } else {
@@ -887,7 +887,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         new_err: impl Fn(TyCtxt<'tcx>, ErrorGuaranteed) -> T,
     ) -> T
     where
-        T: Into<ty::GenericArg<'tcx>> + TypeSuperFoldable<TyCtxt<'tcx>> + Copy,
+        T: Into<ty::Term<'tcx>> + TypeSuperFoldable<TyCtxt<'tcx>> + Copy,
     {
         let tcx = self.fcx.tcx;
         // We must deeply normalize in the new solver, since later lints expect

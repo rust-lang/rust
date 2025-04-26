@@ -638,8 +638,8 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
                 const_.stable(tables),
                 ty.stable(tables),
             ),
-            ClauseKind::WellFormed(generic_arg) => {
-                stable_mir::ty::ClauseKind::WellFormed(generic_arg.unpack().stable(tables))
+            ClauseKind::WellFormed(term) => {
+                stable_mir::ty::ClauseKind::WellFormed(term.unpack().stable(tables))
             }
             ClauseKind::ConstEvaluatable(const_) => {
                 stable_mir::ty::ClauseKind::ConstEvaluatable(const_.stable(tables))

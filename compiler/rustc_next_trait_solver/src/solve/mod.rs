@@ -137,7 +137,7 @@ where
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::GenericArg>) -> QueryResult<I> {
+    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::Term>) -> QueryResult<I> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
                 self.add_goals(GoalSource::Misc, goals);

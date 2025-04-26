@@ -76,12 +76,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         )
     }
 
-    fn register_wf_obligation(
-        &self,
-        span: Span,
-        loc: Option<WellFormedLoc>,
-        arg: ty::GenericArg<'tcx>,
-    ) {
+    fn register_wf_obligation(&self, span: Span, loc: Option<WellFormedLoc>, term: ty::Term<'tcx>) {
         let cause = traits::ObligationCause::new(
             span,
             self.body_def_id,
@@ -91,7 +86,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.tcx(),
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg))),
+            ty::ClauseKind::WellFormed(term),
         ));
     }
 }
@@ -1486,7 +1481,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     tcx.def_span(param.def_id),
                     matches!(param.kind, GenericParamDefKind::Type { .. })
                         .then(|| WellFormedLoc::Ty(param.def_id.expect_local())),
-                    default,
+                    default.as_term().unwrap(),
                 );
             }
         }
