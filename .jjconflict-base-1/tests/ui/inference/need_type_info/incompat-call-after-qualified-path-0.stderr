@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/incompat-call-after-qualified-path-0.rs:21:6
+  --> $DIR/incompat-call-after-qualified-path-0.rs:19:6
    |
 LL |   f(|a, b| a.cmp(b));
    |      ^     - type must be known at this point
@@ -10,13 +10,13 @@ LL |   f(|a: /* Type */, b| a.cmp(b));
    |       ++++++++++++
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/incompat-call-after-qualified-path-0.rs:21:3
+  --> $DIR/incompat-call-after-qualified-path-0.rs:19:3
    |
 LL |   f(|a, b| a.cmp(b));
    |   ^ --------------- unexpected argument
    |
 note: function defined here
-  --> $DIR/incompat-call-after-qualified-path-0.rs:17:4
+  --> $DIR/incompat-call-after-qualified-path-0.rs:15:4
    |
 LL | fn f() {}
    |    ^

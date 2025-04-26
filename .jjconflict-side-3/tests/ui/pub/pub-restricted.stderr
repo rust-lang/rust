@@ -1,0 +1,85 @@
+error[E0704]: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:3:6
+   |
+LL | pub (a) fn afn() {}
+   |      ^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: make this visible only to module `a` with `in`
+   |
+LL | pub (in a) fn afn() {}
+   |      ++
+
+error[E0704]: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:4:6
+   |
+LL | pub (b) fn bfn() {}
+   |      ^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: make this visible only to module `b` with `in`
+   |
+LL | pub (in b) fn bfn() {}
+   |      ++
+
+error[E0704]: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:5:6
+   |
+LL | pub (crate::a) fn cfn() {}
+   |      ^^^^^^^^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: make this visible only to module `crate::a` with `in`
+   |
+LL | pub (in crate::a) fn cfn() {}
+   |      ++
+
+error[E0704]: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:22:14
+   |
+LL |         pub (a) invalid: usize,
+   |              ^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: make this visible only to module `a` with `in`
+   |
+LL |         pub (in a) invalid: usize,
+   |              ++
+
+error[E0704]: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:31:6
+   |
+LL | pub (xyz) fn xyz() {}
+   |      ^^^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: make this visible only to module `xyz` with `in`
+   |
+LL | pub (in xyz) fn xyz() {}
+   |      ++
+
+error[E0742]: visibilities can only be restricted to ancestor modules
+  --> $DIR/pub-restricted.rs:23:17
+   |
+LL |         pub (in crate::x) non_parent_invalid: usize,
+   |                 ^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0704, E0742.
+For more information about an error, try `rustc --explain E0704`.

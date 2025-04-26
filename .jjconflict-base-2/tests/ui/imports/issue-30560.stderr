@@ -1,0 +1,15 @@
+error[E0432]: unresolved import `Alias`
+  --> $DIR/issue-30560.rs:2:5
+   |
+LL | use Alias::*;
+   |     ^^^^^ `Alias` is a type alias, not a module
+
+error[E0432]: unresolved import `std::io::Result`
+  --> $DIR/issue-30560.rs:4:14
+   |
+LL | use std::io::Result::*;
+   |              ^^^^^^ `Result` is a type alias, not a module
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.

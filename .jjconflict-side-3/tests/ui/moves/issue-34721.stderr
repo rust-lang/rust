@@ -1,0 +1,28 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/issue-34721.rs:27:9
+   |
+LL |     pub fn baz<T: Foo>(x: T) -> T {
+   |                        - move occurs because `x` has type `T`, which does not implement the `Copy` trait
+LL |         if 0 == 1 {
+LL |             bar::bar(x.zero())
+   |                        ------ `x` moved due to this method call
+LL |         } else {
+LL |             x.zero()
+   |               ------ `x` moved due to this method call
+LL |         };
+LL |         x.zero()
+   |         ^ value used here after move
+   |
+note: `Foo::zero` takes ownership of the receiver `self`, which moves `x`
+  --> $DIR/issue-34721.rs:4:13
+   |
+LL |     fn zero(self) -> Self;
+   |             ^^^^
+help: consider further restricting type parameter `T` with trait `Copy`
+   |
+LL |     pub fn baz<T: Foo + Copy>(x: T) -> T {
+   |                       ++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

@@ -1,0 +1,44 @@
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:7:1
+   |
+LL | #[core::contracts::requires(true)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:11:1
+   |
+LL | #[core::contracts::ensures(|v| v == 100)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations is only supported in functions with bodies
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:16:1
+   |
+LL | #[core::contracts::ensures(|v| v == 100)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations is only supported in functions with bodies
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:20:1
+   |
+LL | #[core::contracts::ensures(|v| v == 100)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:24:1
+   |
+LL | #[core::contracts::requires(true)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:35:1
+   |
+LL | #[core::contracts::ensures(|dummy| dummy.0 > 0)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/disallow-contract-annotation-on-non-fn.rs:46:1
+   |
+LL | #[core::contracts::requires(true)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

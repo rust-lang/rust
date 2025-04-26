@@ -1,0 +1,144 @@
+#![warn(clippy::manual_unwrap_or_default)]
+#![allow(clippy::unnecessary_literal_unwrap)]
+
+fn main() {
+    let x: Option<Vec<String>> = None;
+    x.unwrap_or_default();
+
+    let x: Option<Vec<String>> = None;
+    x.unwrap_or_default();
+
+    let x: Option<String> = None;
+    x.unwrap_or_default();
+
+    let x: Option<Vec<String>> = None;
+    x.unwrap_or_default();
+
+    let x: Option<Vec<String>> = None;
+    x.unwrap_or_default();
+
+    // Issue #12564
+    // No error as &Vec<_> doesn't implement std::default::Default
+    let mut map = std::collections::HashMap::from([(0, vec![0; 3]), (1, vec![1; 3]), (2, vec![2])]);
+    let x: &[_] = if let Some(x) = map.get(&0) { x } else { &[] };
+    // Same code as above written using match.
+    let x: &[_] = match map.get(&0) {
+        Some(x) => x,
+        None => &[],
+    };
+
+    let x: Result<String, i64> = Ok(String::new());
+    x.unwrap_or_default();
+
+    let x: Result<String, i64> = Ok(String::new());
+    x.unwrap_or_default();
+
+    // edge case
+    // because the `Some(bizarro)` pattern is not actually reachable,
+    // changing this match to `unwrap_or_default` would have side effects
+    let bizarro = Some(String::new());
+    match bizarro {
+        _ => String::new(),
+        Some(bizarro) => bizarro,
+    };
+}
+
+// Issue #12531
+unsafe fn no_deref_ptr(a: Option<i32>, b: *const Option<i32>) -> i32 {
+    unsafe {
+        match a {
+            // `*b` being correct depends on `a == Some(_)`
+            Some(_) => (*b).unwrap_or_default(),
+            _ => 0,
+        }
+    }
+}
+
+const fn issue_12568(opt: Option<bool>) -> bool {
+    match opt {
+        Some(s) => s,
+        None => false,
+    }
+}
+
+fn issue_12569() {
+    let match_none_se = match 1u32.checked_div(0) {
+        Some(v) => v,
+        None => {
+            println!("important");
+            0
+        },
+    };
+    let match_some_se = match 1u32.checked_div(0) {
+        Some(v) => {
+            println!("important");
+            v
+        },
+        None => 0,
+    };
+    let iflet_else_se = if let Some(v) = 1u32.checked_div(0) {
+        v
+    } else {
+        println!("important");
+        0
+    };
+    let iflet_then_se = if let Some(v) = 1u32.checked_div(0) {
+        println!("important");
+        v
+    } else {
+        0
+    };
+}
+
+// Should not warn!
+fn issue_12928() {
+    let x = Some((1, 2));
+    let y = if let Some((a, _)) = x { a } else { 0 };
+    let y = if let Some((a, ..)) = x { a } else { 0 };
+    let x = Some([1, 2]);
+    let y = if let Some([a, _]) = x { a } else { 0 };
+    let y = if let Some([a, ..]) = x { a } else { 0 };
+
+    struct X {
+        a: u8,
+        b: u8,
+    }
+    let x = Some(X { a: 0, b: 0 });
+    let y = if let Some(X { a, .. }) = x { a } else { 0 };
+    struct Y(u8, u8);
+    let x = Some(Y(0, 0));
+    let y = if let Some(Y(a, _)) = x { a } else { 0 };
+    let y = if let Some(Y(a, ..)) = x { a } else { 0 };
+}
+
+// For symmetry with `manual_unwrap_or` test
+fn allowed_manual_unwrap_or_zero() -> u32 {
+    Some(42).unwrap_or_default()
+}
+
+mod issue14716 {
+    struct Foo {
+        name: Option<String>,
+    }
+
+    fn bar(project: &Foo) {
+        let _name = match project.name {
+            Some(ref x) => x,
+            None => "",
+        };
+    }
+}
+
+fn issue_15807() {
+    let uncopyable_res: Result<usize, String> = Ok(1);
+    let _ = if let Ok(v) = uncopyable_res { v } else { 0 };
+
+    let x = uncopyable_res;
+    let _ = x.unwrap_or_default();
+    //~^ manual_unwrap_or_default
+
+    let copyable_res: Result<usize, ()> = Ok(1);
+    let _ = copyable_res.unwrap_or_default();
+    //~^ manual_unwrap_or_default
+    let _ = copyable_res;
+}

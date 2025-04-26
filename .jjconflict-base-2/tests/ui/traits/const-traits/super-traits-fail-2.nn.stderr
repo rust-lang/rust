@@ -1,0 +1,69 @@
+error: `[const]` is not allowed here
+  --> $DIR/super-traits-fail-2.rs:14:32
+   |
+LL | #[cfg(any(yn, nn))] trait Bar: [const] Foo {}
+   |                                ^^^^^^^
+   |
+note: this trait is not `const`, so it cannot have `[const]` trait bounds
+  --> $DIR/super-traits-fail-2.rs:14:21
+   |
+LL | #[cfg(any(yn, nn))] trait Bar: [const] Foo {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-2.rs:14:32
+   |
+LL | #[cfg(any(yn, nn))] trait Bar: [const] Foo {}
+   |                                ^^^^^^^ can't be applied to `Foo`
+   |
+help: mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(ny, nn))] const trait Foo { fn a(&self); }
+   |                     +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-2.rs:14:32
+   |
+LL | #[cfg(any(yn, nn))] trait Bar: [const] Foo {}
+   |                                ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(ny, nn))] const trait Foo { fn a(&self); }
+   |                     +++++
+
+error: `[const]` can only be applied to `const` traits
+  --> $DIR/super-traits-fail-2.rs:14:32
+   |
+LL | #[cfg(any(yn, nn))] trait Bar: [const] Foo {}
+   |                                ^^^^^^^ can't be applied to `Foo`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: mark `Foo` as `const` to allow it to have `const` implementations
+   |
+LL | #[cfg(any(ny, nn))] const trait Foo { fn a(&self); }
+   |                     +++++
+
+error[E0015]: cannot call non-const method `<T as Foo>::a` in constant functions
+  --> $DIR/super-traits-fail-2.rs:21:7
+   |
+LL |     x.a();
+   |       ^^^
+   |
+note: method `a` is not const because trait `Foo` is not const
+  --> $DIR/super-traits-fail-2.rs:6:21
+   |
+LL | #[cfg(any(ny, nn))] trait Foo { fn a(&self); }
+   |                     ^^^^^^^^^   ------------ this method is not const
+   |                     |
+   |                     this trait is not const
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+help: consider making trait `Foo` const
+   |
+LL | #[cfg(any(ny, nn))] const trait Foo { fn a(&self); }
+   |                     +++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

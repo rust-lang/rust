@@ -1,0 +1,55 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          ARRAY_EXPR
+            L_BRACK "["
+            R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          ARRAY_EXPR
+            L_BRACK "["
+            LITERAL
+              INT_NUMBER "1"
+            R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          ARRAY_EXPR
+            L_BRACK "["
+            LITERAL
+              INT_NUMBER "1"
+            COMMA ","
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+            COMMA ","
+            R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          ARRAY_EXPR
+            L_BRACK "["
+            LITERAL
+              INT_NUMBER "1"
+            SEMICOLON ";"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+            R_BRACK "]"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

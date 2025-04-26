@@ -1,0 +1,12 @@
+error[E0277]: the size for values of type `impl ?Sized` cannot be known at compilation time
+  --> $DIR/rpit-not-sized.rs:1:13
+   |
+LL | fn foo() -> impl ?Sized {
+   |             ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `impl ?Sized`
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

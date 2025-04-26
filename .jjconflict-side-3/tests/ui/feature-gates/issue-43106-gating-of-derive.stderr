@@ -1,0 +1,63 @@
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43106-gating-of-derive.rs:4:1
+   |
+LL |   #[derive(Debug)]
+   |   ^^^^^^^^^^^^^^^^ not applicable here
+LL |
+LL | / mod derive {
+LL | |     mod inner { #![derive(Debug)] }
+...  |
+LL | |     impl S { }
+LL | | }
+   | |_- not a `struct`, `enum` or `union`
+
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/issue-43106-gating-of-derive.rs:7:20
+   |
+LL |     mod inner { #![derive(Debug)] }
+   |                    ^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43106-gating-of-derive.rs:7:17
+   |
+LL |     mod inner { #![derive(Debug)] }
+   |     ------------^^^^^^^^^^^^^^^^^--
+   |     |           |
+   |     |           not applicable here
+   |     not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43106-gating-of-derive.rs:11:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |
+LL |     fn derive() { }
+   |     --------------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43106-gating-of-derive.rs:24:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |
+LL |     type T = S;
+   |     ----------- not a `struct`, `enum` or `union`
+
+error[E0774]: `derive` may only be applied to `struct`s, `enum`s and `union`s
+  --> $DIR/issue-43106-gating-of-derive.rs:28:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^ not applicable here
+LL |
+LL |     impl S { }
+   |     ---------- not a `struct`, `enum` or `union`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0658, E0774.
+For more information about an error, try `rustc --explain E0658`.

@@ -1,0 +1,25 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106-trailing-comma-in-lifetime-suggestion.rs:12:13
+   |
+LL | type A = Foo<>;
+   |             ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type A<'a> = Foo<'a>;
+   |       ++++       ++
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/E0106-trailing-comma-in-lifetime-suggestion.rs:17:13
+   |
+LL | type B = Bar<u8>;
+   |             ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL | type B<'a> = Bar<'a, u8>;
+   |       ++++       +++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

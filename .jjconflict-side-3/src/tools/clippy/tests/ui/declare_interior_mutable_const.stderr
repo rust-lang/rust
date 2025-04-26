@@ -1,0 +1,197 @@
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:12:7
+   |
+LL | const UNSAFE_CELL: UnsafeCell<u32> = UnsafeCell::new(0);
+   |       ^^^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+note: the lint level is defined here
+  --> tests/ui/declare_interior_mutable_const.rs:1:9
+   |
+LL | #![deny(clippy::declare_interior_mutable_const)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:13:7
+   |
+LL | const REF_CELL: RefCell<u32> = RefCell::new(0);
+   |       ^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:14:7
+   |
+LL | const CELL: Cell<u32> = Cell::new(0);
+   |       ^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:28:7
+   |
+LL | const CELL_TUPLE: (bool, Cell<u32>) = (true, Cell::new(0));
+   |       ^^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:29:7
+   |
+LL | const CELL_ARRAY: [Cell<u32>; 2] = [Cell::new(0), Cell::new(0)];
+   |       ^^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:38:7
+   |
+LL | const CELL_STRUCT: CellStruct = CellStruct {
+   |       ^^^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:46:7
+   |
+LL | const CELL_ENUM: CellEnum = CellEnum::Cell(Cell::new(0));
+   |       ^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:49:7
+   |
+LL | const SOME_CELL: Option<Cell<u32>> = Some(Cell::new(0));
+   |       ^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:53:7
+   |
+LL | const SOME_NESTED_CELL: NestedCell = NestedCell([(Some(Cell::new(0)),)]);
+   |       ^^^^^^^^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:60:7
+   |
+LL | const UNION_CELL: UnionCell = UnionCell {
+   |       ^^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:64:7
+   |
+LL | const UNION_U32: UnionCell = UnionCell { x: 0 };
+   |       ^^^^^^^^^
+   |
+   = help: did you mean to make this a `thread_local!` item
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:69:11
+   |
+LL |     const CELL: Cell<u32> = Cell::new(0);
+   |           ^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:74:11
+   |
+LL |     const SELF: Self = Self(Cell::new(0));
+   |           ^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:76:11
+   |
+LL |     const SOME_SELF: Option<Self> = Some(Self(Cell::new(0)));
+   |           ^^^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:92:11
+   |
+LL |     const DEFAULT: Self = Some(Cell::new(T::DEFAULT));
+   |           ^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:100:11
+   |
+LL |     const DEFAULT: Self = Self::Cell(Cell::new(T::DEFAULT));
+   |           ^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:103:11
+   |
+LL |     const CELL: Self = Self::DEFAULT;
+   |           ^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:104:11
+   |
+LL |     const CELL_BY_DEFAULT: Self = Self::Cell(Cell::DEFAULT);
+   |           ^^^^^^^^^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:116:11
+   |
+LL |     const GENERIC_CELL: Self = Self::GenericEnumCell(GenericEnumCell::<T>::CELL);
+   |           ^^^^^^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:118:11
+   |
+LL |     const ENUM_CELL: Self = Self::EnumCell(GenericEnumCell::<u32>::CELL);
+   |           ^^^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:123:11
+   |
+LL |     const CELL: Cell<Self>;
+   |           ^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:127:11
+   |
+LL |     const SOME_CELL: Option<Cell<Self>> = Some(Cell::new(Self::DEFAULT));
+   |           ^^^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:136:11
+   |
+LL |     const CELL: Cell<Self::T>;
+   |           ^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:140:11
+   |
+LL |     const SOME_CELL: Option<Cell<Self::T>> = Some(Cell::new(Self::DEFAULT));
+   |           ^^^^^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:160:11
+   |
+LL |     const VALUE: Self::T = Cell::new(0);
+   |           ^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:171:11
+   |
+LL |     const VALUE: <Self::T as WithAssoc>::T = Cell::new(0);
+   |           ^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:181:11
+   |
+LL |     const VALUE: Self::T<u32> = Cell::new(0);
+   |           ^^^^^
+
+error: named constant with interior mutability
+  --> tests/ui/declare_interior_mutable_const.rs:196:11
+   |
+LL |     const VALUE: Self::T<Cell<u32>> = Some(Cell::new(0));
+   |           ^^^^^
+
+error: aborting due to 28 previous errors
+

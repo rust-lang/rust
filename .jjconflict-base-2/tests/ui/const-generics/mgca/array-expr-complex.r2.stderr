@@ -1,0 +1,8 @@
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/array-expr-complex.rs:15:26
+   |
+LL |     takes_array::<{ gca!([X; 3]) }>();
+   |                          ^^^^^^
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,31 @@
+// This test ensures that the icon of the settings button looks as expected on
+// all themes.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+show-text: true
+
+define-function: (
+    "check-image",
+    [theme, filter],
+    block {
+        call-function: ("switch-theme", {"theme": |theme|})
+        assert-css: ("rustdoc-toolbar .settings-menu > a::before", {
+            "filter": |filter|,
+            "width": "18px",
+            "height": "18px",
+        })
+    }
+)
+
+call-function: ("check-image", {
+    "theme": "ayu",
+    "filter": "invert(1)",
+})
+call-function: ("check-image", {
+    "theme": "dark",
+    "filter": "invert(0.65)",
+})
+call-function: ("check-image", {
+    "theme": "light",
+    "filter": "invert(0.35)",
+})

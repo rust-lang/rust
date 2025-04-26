@@ -1,0 +1,11 @@
+error: there is no argument named `x`
+  --> $DIR/unreachable-format-args.rs:12:5
+   |
+LL |     unreachable!("x is {x} and y is {y}", y = 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: did you intend to capture a variable `x` from the surrounding scope?
+   = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
+
+error: aborting due to 1 previous error
+

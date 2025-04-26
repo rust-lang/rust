@@ -1,0 +1,24 @@
+error[E0493]: destructor of `Foo` cannot be evaluated at compile-time
+  --> $DIR/const-promoted-opaque.rs:32:26
+   |
+LL |     let _: &'static _ = &FOO;
+   |                          ^^^ the destructor for this type cannot be evaluated in constants
+LL |
+LL | };
+   | - value is dropped here
+
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-promoted-opaque.rs:40:26
+   |
+LL |     let _: &'static _ = &FOO;
+   |            ----------    ^^^ creates a temporary value which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0493, E0716.
+For more information about an error, try `rustc --explain E0493`.
