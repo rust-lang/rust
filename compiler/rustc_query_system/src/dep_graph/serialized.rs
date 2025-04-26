@@ -272,6 +272,8 @@ impl SerializedDepGraph {
             }
         }
 
+        assert_eq!(decoded_nodes, node_count);
+
         // When we access the edge list data, we do a fixed-size read from the edge list data then
         // mask off the bytes that aren't for that edge index, so the last read may dangle off the
         // end of the array. This padding ensure it doesn't.
@@ -283,6 +285,8 @@ impl SerializedDepGraph {
             .collect();
 
         let session_count = d.read_u64();
+
+        assert_eq!(d.read_u64(), 0x8375672356237834);
 
         for (idx, node) in nodes.iter_enumerated() {
             if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
@@ -677,6 +681,8 @@ impl<D: Deps> EncoderState<D> {
         record_graph: &Option<Lock<DepGraphQuery>>,
         local: &mut LocalEncoderState,
     ) {
+        assert!(local.in_chunk);
+        assert_ne!(node.node.kind, D::DEP_KIND_NULL);
         node.encode::<D>(&mut local.encoder);
         self.flush_mem_encoder(&mut *local);
         self.record(
@@ -705,6 +711,8 @@ impl<D: Deps> EncoderState<D> {
         local: &mut LocalEncoderState,
     ) {
         let node = self.previous.index_to_node(prev_index);
+        assert!(local.in_chunk);
+        assert_ne!(node.kind, D::DEP_KIND_NULL);
         let fingerprint = self.previous.fingerprint_by_index(prev_index);
         let edge_count = NodeInfo::encode_promoted::<D>(
             &mut local.encoder,
@@ -776,6 +784,8 @@ impl<D: Deps> EncoderState<D> {
         }
 
         self.previous.session_count.checked_add(1).unwrap().encode(&mut encoder);
+
+        encoder.emit_u64(0x8375672356237834);
 
         debug!(?node_max, ?node_count, ?edge_count);
         debug!("position: {:?}", encoder.position());
