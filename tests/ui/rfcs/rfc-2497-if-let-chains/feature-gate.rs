@@ -30,13 +30,10 @@ fn _while() {
     while let 0 = 1 {} // Stable!
 
     while true && let 0 = 1 {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
 
     while let 0 = 1 && true {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
 
     while let Range { start: _, end: _ } = (true..true) && false {}
-    //~^ ERROR `let` expressions in this position are unstable [E0658]
 }
 
 fn _macros() {
