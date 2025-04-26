@@ -948,7 +948,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// #[no_mangle]
     /// const FOO: i32 = 5;
     /// ```

@@ -41,7 +41,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// # #![deny(impl_trait_overcaptures)]
     /// # use std::fmt::Display;
     /// let mut x = vec![];

@@ -449,7 +449,7 @@ impl<'a> LintExtractor<'a> {
             .filter_map(|opt| opt.strip_prefix("edition"))
             .next()
             // defaults to latest edition
-            .unwrap_or("2021");
+            .unwrap_or("2024");
         cmd.arg(format!("--edition={edition}"));
         // Just in case this is an unstable edition.
         cmd.arg("-Zunstable-options");
