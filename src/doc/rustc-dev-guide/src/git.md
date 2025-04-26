@@ -256,9 +256,12 @@ Changes not staged for commit:
 no changes added to commit (use "git add" and/or "git commit -a")
 ```
 
-These changes are not changes to files: they are changes to submodules (more on this
-[later](#git-submodules)). To get rid of those, run `./x --help`, which will automatically update
-the submodules.
+These changes are not changes to files: they are changes to submodules (more on this [later](#git-submodules)).
+To get rid of those:
+
+```console
+git submodule update
+```
 
 Some submodules are not actually needed; for example, `src/llvm-project` doesn't need to be checked
 out if you're using `download-ci-llvm`.  To avoid having to keep fetching its history, you can use
