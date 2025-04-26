@@ -4073,14 +4073,18 @@ impl MutVisitor for CondChecker<'_> {
         match e.kind {
             ExprKind::Let(_, _, _, ref mut recovered @ Recovered::No) => {
                 if let Some(reason) = self.forbid_let_reason {
-                    *recovered = Recovered::Yes(self.parser.dcx().emit_err(
-                        errors::ExpectedExpressionFoundLet {
+                    let error = match reason {
+                        NotSupportedOr(or_span) => {
+                            self.parser.dcx().emit_err(errors::OrInLetChain { span: or_span })
+                        }
+                        _ => self.parser.dcx().emit_err(errors::ExpectedExpressionFoundLet {
                             span,
                             reason,
                             missing_let: self.missing_let,
                             comparison: self.comparison,
-                        },
-                    ));
+                        }),
+                    };
+                    *recovered = Recovered::Yes(error);
                 } else if self.depth > 1 {
                     // Top level `let` is always allowed; only gate chains
                     match self.let_chains_policy {
