@@ -179,6 +179,9 @@ hir_typeck_ptr_cast_add_auto_to_object = cannot add {$traits_len ->
     .help = use `transmute` if you're sure this is sound
     .label = unsupported cast
 
+hir_typeck_register_type_unstable =
+    type `{$ty}` cannot be used with this register class in stable
+
 hir_typeck_remove_semi_for_coerce = you might have meant to return the `match` expression
 hir_typeck_remove_semi_for_coerce_expr = this could be implicitly returned but it is a statement, not a tail expression
 hir_typeck_remove_semi_for_coerce_ret = the `match` arms can conform to this return type

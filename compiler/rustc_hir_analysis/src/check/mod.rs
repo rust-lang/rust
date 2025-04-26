@@ -67,7 +67,6 @@ mod check;
 mod compare_impl_item;
 mod entry;
 pub mod intrinsic;
-pub mod intrinsicck;
 mod region;
 pub mod wfcheck;
 
