@@ -7,7 +7,7 @@ use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_braces
 //
-// Adds braces to lambda and match arm expressions.
+// Adds braces to closure bodies and match arm expressions.
 //
 // ```
 // fn foo(n: i32) -> i32 {
@@ -34,8 +34,8 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     acc.add(
         AssistId::refactor_rewrite("add_braces"),
         match expr_type {
-            ParentType::ClosureExpr => "Add braces to closure body",
-            ParentType::MatchArmExpr => "Add braces to arm expression",
+            ParentType::ClosureExpr => "Add braces to this closure body",
+            ParentType::MatchArmExpr => "Add braces to this match arm expression",
         },
         expr.syntax().text_range(),
         |builder| {
