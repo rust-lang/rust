@@ -177,9 +177,9 @@ mod bool {
 
     #[test]
     fn should_permit_validity_expansion_and_reject_contraction() {
-        let b0 = layout::Tree::<Def, !>::from_bits(0);
-        let b1 = layout::Tree::<Def, !>::from_bits(1);
-        let b2 = layout::Tree::<Def, !>::from_bits(2);
+        let b0 = layout::Tree::<Def, !>::byte(0);
+        let b1 = layout::Tree::<Def, !>::byte(1);
+        let b2 = layout::Tree::<Def, !>::byte(2);
 
         let alts = [b0, b1, b2];
 
@@ -279,8 +279,8 @@ mod alt {
     fn should_permit_identity_transmutation() {
         type Tree = layout::Tree<Def, !>;
 
-        let x = Tree::Seq(vec![Tree::from_bits(0), Tree::from_bits(0)]);
-        let y = Tree::Seq(vec![Tree::bool(), Tree::from_bits(1)]);
+        let x = Tree::Seq(vec![Tree::byte(0), Tree::byte(0)]);
+        let y = Tree::Seq(vec![Tree::bool(), Tree::byte(1)]);
         let layout = Tree::Alt(vec![x, y]);
 
         let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
@@ -323,6 +323,76 @@ mod union {
     }
 }
 
+mod char {
+    use super::*;
+    use crate::layout::tree::Endian;
+
+    #[test]
+    fn should_permit_valid_transmutation() {
+        for order in [Endian::Big, Endian::Little] {
+            use Answer::*;
+            let char_layout = layout::Tree::<Def, !>::char(order);
+
+            // `char`s can be in the following ranges:
+            // - [0, 0xD7FF]
+            // - [0xE000, 10FFFF]
+            //
+            // This loop synthesizes a singleton-validity type for the extremes
+            // of each range, and for one past the end of the extremes of each
+            // range.
+            let no = No(Reason::DstIsBitIncompatible);
+            for (src, answer) in [
+                (0u32, Yes),
+                (0xD7FF, Yes),
+                (0xD800, no.clone()),
+                (0xDFFF, no.clone()),
+                (0xE000, Yes),
+                (0x10FFFF, Yes),
+                (0x110000, no.clone()),
+                (0xFFFF0000, no.clone()),
+                (0xFFFFFFFF, no),
+            ] {
+                let src_layout =
+                    layout::tree::Tree::<Def, !>::from_big_endian(order, src.to_be_bytes());
+
+                let a = is_transmutable(&src_layout, &char_layout, Assume::default());
+                assert_eq!(a, answer, "endian:{order:?},\nsrc:{src:x}");
+            }
+        }
+    }
+}
+
+mod nonzero {
+    use super::*;
+    use crate::{Answer, Reason};
+
+    const NONZERO_BYTE_WIDTHS: [u64; 5] = [1, 2, 4, 8, 16];
+
+    #[test]
+    fn should_permit_identity_transmutation() {
+        for width in NONZERO_BYTE_WIDTHS {
+            let layout = layout::Tree::<Def, !>::nonzero(width);
+            assert_eq!(is_transmutable(&layout, &layout, Assume::default()), Answer::Yes);
+        }
+    }
+
+    #[test]
+    fn should_permit_valid_transmutation() {
+        for width in NONZERO_BYTE_WIDTHS {
+            use Answer::*;
+
+            let num = layout::Tree::<Def, !>::number(width);
+            let nz = layout::Tree::<Def, !>::nonzero(width);
+
+            let a = is_transmutable(&num, &nz, Assume::default());
+            assert_eq!(a, No(Reason::DstIsBitIncompatible), "width:{width}");
+
+            let a = is_transmutable(&nz, &num, Assume::default());
+            assert_eq!(a, Yes, "width:{width}");
+        }
+    }
+}
+
 mod r#ref {
     use super::*;
 
@@ -330,7 +400,7 @@ mod r#ref {
     fn should_permit_identity_transmutation() {
         type Tree = crate::layout::Tree<Def, [(); 1]>;
 
-        let layout = Tree::Seq(vec![Tree::from_bits(0), Tree::Ref([()])]);
+        let layout = Tree::Seq(vec![Tree::byte(0x00), Tree::Ref([()])]);
 
         let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
             layout.clone(),

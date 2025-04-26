@@ -529,8 +529,8 @@ where
                 ty::PredicateKind::DynCompatible(trait_def_id) => {
                     self.compute_dyn_compatible_goal(trait_def_id)
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
-                    self.compute_well_formed_goal(Goal { param_env, predicate: arg })
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    self.compute_well_formed_goal(Goal { param_env, predicate: term })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
                     self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
@@ -1008,9 +1008,9 @@ where
     pub(super) fn well_formed_goals(
         &self,
         param_env: I::ParamEnv,
-        arg: I::GenericArg,
+        term: I::Term,
     ) -> Option<Vec<Goal<I, I::Predicate>>> {
-        self.delegate.well_formed_goals(param_env, arg)
+        self.delegate.well_formed_goals(param_env, term)
     }
 
     pub(super) fn trait_ref_is_knowable(

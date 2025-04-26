@@ -1,5 +1,3 @@
-use std::slice;
-
 use crate::inherent::*;
 use crate::visit::Flags;
 use crate::{self as ty, Interner};
@@ -388,8 +386,8 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_alias_term(projection_term);
                 self.add_term(term);
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
-                self.add_args(slice::from_ref(&arg));
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                self.add_term(term);
             }
             ty::PredicateKind::DynCompatible(_def_id) => {}
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(uv)) => {

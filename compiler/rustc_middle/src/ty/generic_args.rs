@@ -250,17 +250,17 @@ impl<'tcx> GenericArg<'tcx> {
     }
 
     #[inline]
-    pub fn as_type(self) -> Option<Ty<'tcx>> {
+    pub fn as_region(self) -> Option<ty::Region<'tcx>> {
         match self.unpack() {
-            GenericArgKind::Type(ty) => Some(ty),
+            GenericArgKind::Lifetime(re) => Some(re),
             _ => None,
         }
     }
 
     #[inline]
-    pub fn as_region(self) -> Option<ty::Region<'tcx>> {
+    pub fn as_type(self) -> Option<Ty<'tcx>> {
         match self.unpack() {
-            GenericArgKind::Lifetime(re) => Some(re),
+            GenericArgKind::Type(ty) => Some(ty),
             _ => None,
         }
     }
@@ -270,6 +270,15 @@ impl<'tcx> GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Const(ct) => Some(ct),
             _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_term(self) -> Option<ty::Term<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Type(ty) => Some(ty.into()),
+            GenericArgKind::Const(ct) => Some(ct.into()),
         }
     }
 
