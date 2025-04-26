@@ -2319,9 +2319,9 @@ pub trait BufRead: Read {
     /// Checks if there is any data left to be `read`.
     ///
     /// This function may fill the buffer to check for data,
-    /// so this functions returns `Result<bool>`, not `bool`.
+    /// so this function returns `Result<bool>`, not `bool`.
     ///
-    /// Default implementation calls `fill_buf` and checks that
+    /// The default implementation calls `fill_buf` and checks that the
     /// returned slice is empty (which means that there is no data left,
     /// since EOF is reached).
     ///
