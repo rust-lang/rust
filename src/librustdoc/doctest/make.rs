@@ -424,7 +424,10 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                     // We assume that the macro calls will expand to item(s) even though they could
                     // expand to statements and expressions. And the simple fact that we're trying
                     // to retrieve a `main` function inside it is a terrible idea.
-                    StmtKind::MacCall(ref mac_call) if !info.has_main_fn => {
+                    StmtKind::MacCall(ref mac_call) => {
+                        if info.has_main_fn {
+                            continue;
+                        }
                         let mut iter = mac_call.mac.args.tokens.iter();
 
                         while let Some(token) = iter.next() {
