@@ -89,7 +89,7 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     // Use the coverage graph to prepare intermediate data that will eventually
     // be used to assign physical counters and counter expressions to points in
-    // the control-flow graph
+    // the control-flow graph.
     let BcbCountersData { node_flow_data, priority_list } =
         counters::prepare_bcb_counters_data(&graph);
 
