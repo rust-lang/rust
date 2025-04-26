@@ -1,0 +1,67 @@
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:8:36
+   |
+LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:8:9
+   |
+LL |     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:11:38
+   |
+LL |     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:11:9
+   |
+LL |     let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:14:42
+   |
+LL |     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:14:9
+   |
+LL |     let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:17:62
+   |
+LL |     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
+   |                                                              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error[E0575]: expected method or associated constant, found associated type `Trait::Assoc`
+  --> $DIR/tuple-struct-expr-pat.rs:17:9
+   |
+LL |     let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: can't use a type alias as a constructor
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0575`.
