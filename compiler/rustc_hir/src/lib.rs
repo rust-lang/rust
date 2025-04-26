@@ -4,12 +4,12 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(closure_track_caller)]
 #![feature(debug_closure_helpers)]
 #![feature(exhaustive_patterns)]
-#![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]

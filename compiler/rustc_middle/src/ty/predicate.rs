@@ -121,11 +121,10 @@ impl<'tcx> Predicate<'tcx> {
     /// unsoundly accept some programs. See #91068.
     #[inline]
     pub fn allow_normalization(self) -> bool {
-        // Keep this in sync with the one in `rustc_type_ir::inherent`!
         match self.kind().skip_binder() {
-            PredicateKind::Clause(ClauseKind::WellFormed(_))
-            | PredicateKind::AliasRelate(..)
-            | PredicateKind::NormalizesTo(..) => false,
+            PredicateKind::Clause(ClauseKind::WellFormed(_)) | PredicateKind::AliasRelate(..) => {
+                false
+            }
             PredicateKind::Clause(ClauseKind::Trait(_))
             | PredicateKind::Clause(ClauseKind::HostEffect(..))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
@@ -137,6 +136,7 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
             | PredicateKind::ConstEquate(_, _)
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::Ambiguous => true,
         }
     }

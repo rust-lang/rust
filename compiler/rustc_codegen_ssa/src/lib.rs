@@ -2,13 +2,13 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(rustdoc_internals)]
 #![feature(string_from_utf8_lossy_owned)]
@@ -233,6 +233,24 @@ pub struct CrateInfo {
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
     pub lint_levels: CodegenLintLevels,
+}
+
+/// Target-specific options that get set in `cfg(...)`.
+///
+/// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
+pub struct TargetConfig {
+    /// Options to be set in `cfg(target_features)`.
+    pub target_features: Vec<Symbol>,
+    /// Options to be set in `cfg(target_features)`, but including unstable features.
+    pub unstable_target_features: Vec<Symbol>,
+    /// Option for `cfg(target_has_reliable_f16)`, true if `f16` basic arithmetic works.
+    pub has_reliable_f16: bool,
+    /// Option for `cfg(target_has_reliable_f16_math)`, true if `f16` math calls work.
+    pub has_reliable_f16_math: bool,
+    /// Option for `cfg(target_has_reliable_f128)`, true if `f128` basic arithmetic works.
+    pub has_reliable_f128: bool,
+    /// Option for `cfg(target_has_reliable_f128_math)`, true if `f128` math calls work.
+    pub has_reliable_f128_math: bool,
 }
 
 #[derive(Encodable, Decodable)]

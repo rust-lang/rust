@@ -1138,6 +1138,10 @@ pub(crate) mod builtin {
         issue = "29599",
         reason = "`concat_idents` is not stable enough for use and is subject to change"
     )]
+    #[deprecated(
+        since = "1.88.0",
+        note = "use `${concat(...)}` with the `macro_metavar_expr_concat` feature instead"
+    )]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! concat_idents {

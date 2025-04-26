@@ -501,12 +501,25 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .must_apply_modulo_regions()
                         {
                             label = false;
-                            err.span_suggestion(
-                                self.span,
-                                "consider using the `From` trait instead",
-                                format!("{}::from({})", self.cast_ty, snippet),
-                                Applicability::MaybeIncorrect,
-                            );
+                            if let ty::Adt(def, args) = self.cast_ty.kind() {
+                                err.span_suggestion_verbose(
+                                    self.span,
+                                    "consider using the `From` trait instead",
+                                    format!(
+                                        "{}::from({})",
+                                        fcx.tcx.value_path_str_with_args(def.did(), args),
+                                        snippet
+                                    ),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                err.span_suggestion(
+                                    self.span,
+                                    "consider using the `From` trait instead",
+                                    format!("{}::from({})", self.cast_ty, snippet),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            };
                         }
                     }
 

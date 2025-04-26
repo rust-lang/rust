@@ -414,13 +414,10 @@ pub struct Config {
     /// ABI tests.
     pub minicore_path: Utf8PathBuf,
 
-    /// If true, disable the "new" executor, and use the older libtest-based
-    /// executor to run tests instead. This is a temporary fallback, to make
-    /// manual comparative testing easier if bugs are found in the new executor.
-    ///
-    /// FIXME(Zalathar): Eventually remove this flag and remove the libtest
-    /// dependency.
-    pub no_new_executor: bool,
+    /// If true, run tests with the "new" executor that was written to replace
+    /// compiletest's dependency on libtest. Eventually this will become the
+    /// default, and the libtest dependency will be removed.
+    pub new_executor: bool,
 }
 
 impl Config {

@@ -202,7 +202,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "COMMAND",
         )
         .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
-        .optflag("N", "no-new-executor", "disables the new test executor, and uses libtest instead")
+        .optflag("n", "new-executor", "enables the new test executor instead of using libtest")
         .optopt(
             "",
             "debugger",
@@ -448,7 +448,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         minicore_path: opt_path(matches, "minicore-path"),
 
-        no_new_executor: matches.opt_present("no-new-executor"),
+        new_executor: matches.opt_present("new-executor"),
     }
 }
 
@@ -575,10 +575,9 @@ pub fn run_tests(config: Arc<Config>) {
     // Delegate to the executor to filter and run the big list of test structures
     // created during test discovery. When the executor decides to run a test,
     // it will return control to the rest of compiletest by calling `runtest::run`.
-    let res = if !config.no_new_executor {
+    let res = if config.new_executor {
         Ok(executor::run_tests(&config, tests))
     } else {
-        // FIXME(Zalathar): Eventually remove the libtest executor entirely.
         crate::executor::libtest::execute_tests(&config, tests)
     };
 

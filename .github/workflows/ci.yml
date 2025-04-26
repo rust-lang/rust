@@ -91,6 +91,17 @@ jobs:
         # Check the `calculate_matrix` job to see how is the matrix defined.
         include: ${{ fromJSON(needs.calculate_matrix.outputs.jobs) }}
     steps:
+      - name: Install cargo in AWS CodeBuild
+        if: matrix.codebuild
+        run: |
+          # Check if cargo is installed
+          if ! command -v cargo &> /dev/null; then
+            echo "Cargo not found, installing Rust..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile=minimal
+            # Make cargo available in PATH
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          fi
+
       - name: disable git crlf conversion
         run: git config --global core.autocrlf false
 
@@ -165,6 +176,8 @@ jobs:
         run: src/ci/scripts/install-ninja.sh
 
       - name: enable ipv6 on Docker
+        # Don't run on codebuild because systemctl is not available
+        if: ${{ !matrix.codebuild }}
         run: src/ci/scripts/enable-docker-ipv6.sh
 
       # Disable automatic line ending conversion (again). On Windows, when we're

@@ -2086,6 +2086,7 @@ fn render_impl(
                     .split_summary_and_content()
                 })
                 .unwrap_or((None, None));
+
             write!(
                 w,
                 "{}",
@@ -2097,24 +2098,19 @@ fn render_impl(
                     use_absolute,
                     aliases,
                     before_dox.as_deref(),
+                    trait_.is_none() && impl_.items.is_empty(),
                 )
             )?;
             if toggled {
                 w.write_str("</summary>")?;
             }
 
-            if before_dox.is_some() {
-                if trait_.is_none() && impl_.items.is_empty() {
-                    w.write_str(
-                        "<div class=\"item-info\">\
-                         <div class=\"stab empty-impl\">This impl block contains no items.</div>\
-                     </div>",
-                    )?;
-                }
-                if let Some(after_dox) = after_dox {
-                    write!(w, "<div class=\"docblock\">{after_dox}</div>")?;
-                }
+            if before_dox.is_some()
+                && let Some(after_dox) = after_dox
+            {
+                write!(w, "<div class=\"docblock\">{after_dox}</div>")?;
             }
+
             if !default_impl_items.is_empty() || !impl_items.is_empty() {
                 w.write_str("<div class=\"impl-items\">")?;
                 close_tags.push("</div>");
@@ -2182,6 +2178,7 @@ fn render_impl_summary(
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
     aliases: &[String],
     doc: Option<&str>,
+    impl_is_empty: bool,
 ) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let inner_impl = i.inner_impl();
@@ -2237,6 +2234,13 @@ fn render_impl_summary(
         }
 
         if let Some(doc) = doc {
+            if impl_is_empty {
+                w.write_str(
+                    "<div class=\"item-info\">\
+                         <div class=\"stab empty-impl\">This impl block contains no items.</div>\
+                     </div>",
+                )?;
+            }
             write!(w, "<div class=\"docblock\">{doc}</div>")?;
         }
 
