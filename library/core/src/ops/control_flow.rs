@@ -197,8 +197,60 @@ impl<B, C> ControlFlow<B, C> {
     ///
     /// use std::ops::ControlFlow;
     ///
-    /// assert_eq!(ControlFlow::<&str, i32>::Break("Stop right there!").break_ok(), Ok("Stop right there!"));
-    /// assert_eq!(ControlFlow::<&str, i32>::Continue(3).break_ok(), Err(3));
+    /// struct TreeNode<T> {
+    ///     value: T,
+    ///     left: Option<Box<TreeNode<T>>>,
+    ///     right: Option<Box<TreeNode<T>>>,
+    /// }
+    ///
+    /// impl<T> TreeNode<T> {
+    ///     fn find<'a>(&'a self, mut predicate: impl FnMut(&T) -> bool) -> Result<&'a T, ()> {
+    ///         let mut f = |t: &'a T| -> ControlFlow<&'a T> {
+    ///             if predicate(t) {
+    ///                 ControlFlow::Break(t)
+    ///             } else {
+    ///                 ControlFlow::Continue(())
+    ///             }
+    ///         };
+    ///
+    ///         self.traverse_inorder(&mut f).break_ok()
+    ///     }
+    ///
+    ///     fn traverse_inorder<'a, B>(
+    ///         &'a self,
+    ///         f: &mut impl FnMut(&'a T) -> ControlFlow<B>,
+    ///     ) -> ControlFlow<B> {
+    ///         if let Some(left) = &self.left {
+    ///             left.traverse_inorder(f)?;
+    ///         }
+    ///         f(&self.value)?;
+    ///         if let Some(right) = &self.right {
+    ///             right.traverse_inorder(f)?;
+    ///         }
+    ///         ControlFlow::Continue(())
+    ///     }
+    ///
+    ///     fn leaf(value: T) -> Option<Box<TreeNode<T>>> {
+    ///         Some(Box::new(Self {
+    ///             value,
+    ///             left: None,
+    ///             right: None,
+    ///         }))
+    ///     }
+    /// }
+    ///
+    /// let node = TreeNode {
+    ///     value: 0,
+    ///     left: TreeNode::leaf(1),
+    ///     right: Some(Box::new(TreeNode {
+    ///         value: -1,
+    ///         left: TreeNode::leaf(5),
+    ///         right: TreeNode::leaf(2),
+    ///     })),
+    /// };
+    ///
+    /// let res = node.find(|val: &i32| *val > 3);
+    /// assert_eq!(res, Ok(&5));
     /// ```
     #[inline]
     #[unstable(feature = "control_flow_ok", issue = "140266")]
@@ -250,8 +302,59 @@ impl<B, C> ControlFlow<B, C> {
     ///
     /// use std::ops::ControlFlow;
     ///
-    /// assert_eq!(ControlFlow::<&str, i32>::Break("Stop right there!").continue_ok(), Err("Stop right there!"));
-    /// assert_eq!(ControlFlow::<&str, i32>::Continue(3).continue_ok(), Ok(3));
+    /// struct TreeNode<T> {
+    ///     value: T,
+    ///     left: Option<Box<TreeNode<T>>>,
+    ///     right: Option<Box<TreeNode<T>>>,
+    /// }
+    ///
+    /// impl<T> TreeNode<T> {
+    ///     fn validate<B>(&self, f: &mut impl FnMut(&T) -> ControlFlow<B>) -> Result<(), B> {
+    ///         self.traverse_inorder(f).continue_ok()
+    ///     }
+    ///
+    ///     fn traverse_inorder<B>(&self, f: &mut impl FnMut(&T) -> ControlFlow<B>) -> ControlFlow<B> {
+    ///         if let Some(left) = &self.left {
+    ///             left.traverse_inorder(f)?;
+    ///         }
+    ///         f(&self.value)?;
+    ///         if let Some(right) = &self.right {
+    ///             right.traverse_inorder(f)?;
+    ///         }
+    ///         ControlFlow::Continue(())
+    ///     }
+    ///
+    ///     fn leaf(value: T) -> Option<Box<TreeNode<T>>> {
+    ///         Some(Box::new(Self {
+    ///             value,
+    ///             left: None,
+    ///             right: None,
+    ///         }))
+    ///     }
+    /// }
+    ///
+    /// let node = TreeNode {
+    ///     value: 0,
+    ///     left: TreeNode::leaf(1),
+    ///     right: Some(Box::new(TreeNode {
+    ///         value: -1,
+    ///         left: TreeNode::leaf(5),
+    ///         right: TreeNode::leaf(2),
+    ///     })),
+    /// };
+    ///
+    /// let res = node.validate(&mut |val| {
+    ///     if *val < 0 {
+    ///         return ControlFlow::Break("negative value detected");
+    ///     }
+    ///
+    ///     if *val > 4 {
+    ///         return ControlFlow::Break("too big value detected");
+    ///     }
+    ///
+    ///     ControlFlow::Continue(())
+    /// });
+    /// assert_eq!(res, Err("too big value detected"));
     /// ```
     #[inline]
     #[unstable(feature = "control_flow_ok", issue = "140266")]
