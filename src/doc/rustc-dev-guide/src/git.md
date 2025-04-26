@@ -598,7 +598,7 @@ fatal: Fetched in submodule path 'src/llvm-project', but it did not contain 5a51
 If you see `(new commits, modified content)` you can run
 
 ```console
-$ git submodule foreach git reset --hard
+git submodule foreach git reset --hard
 ```
 
 and then try `git submodule update` again.
