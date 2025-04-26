@@ -207,6 +207,14 @@ struct Display<'a> {
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut symbol = self.name.symbol.as_str();
+
+        if symbol == "'static" {
+            // FIXME: '`static` can also be a label, and there it does need escaping.
+            // But knowing where it is will require adding a parameter to `display()`,
+            // and that is an infectious change.
+            return f.write_str(symbol);
+        }
+
         if let Some(s) = symbol.strip_prefix('\'') {
             f.write_str("'")?;
             symbol = s;
