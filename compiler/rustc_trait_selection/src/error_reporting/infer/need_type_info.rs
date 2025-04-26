@@ -14,8 +14,8 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
-    self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Ty, TyCtxt,
-    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
+    self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Term, TermKind,
+    Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
 use rustc_type_ir::TypeVisitableExt;
@@ -344,12 +344,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// which were stuck during inference.
     pub fn extract_inference_diagnostics_data(
         &self,
-        arg: GenericArg<'tcx>,
+        term: Term<'tcx>,
         highlight: ty::print::RegionHighlightMode<'tcx>,
     ) -> InferenceDiagnosticsData {
         let tcx = self.tcx;
-        match arg.unpack() {
-            GenericArgKind::Type(ty) => {
+        match term.unpack() {
+            TermKind::Ty(ty) => {
                 if let ty::Infer(ty::TyVar(ty_vid)) = *ty.kind() {
                     let var_origin = self.infcx.type_var_origin(ty_vid);
                     if let Some(def_id) = var_origin.param_def_id
@@ -375,7 +375,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     parent: None,
                 }
             }
-            GenericArgKind::Const(ct) => {
+            TermKind::Const(ct) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
                     let origin = self.const_var_origin(vid).expect("expected unresolved const var");
                     if let Some(def_id) = origin.param_def_id {
@@ -411,7 +411,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
             }
-            GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
         }
     }
 
@@ -472,13 +471,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         body_def_id: LocalDefId,
         failure_span: Span,
-        arg: GenericArg<'tcx>,
+        term: Term<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
     ) -> Diag<'a> {
-        let arg = self.resolve_vars_if_possible(arg);
-        let arg_data =
-            self.extract_inference_diagnostics_data(arg, ty::print::RegionHighlightMode::default());
+        let term = self.resolve_vars_if_possible(term);
+        let arg_data = self
+            .extract_inference_diagnostics_data(term, ty::print::RegionHighlightMode::default());
 
         let Some(typeck_results) = &self.typeck_results else {
             // If we don't have any typeck results we're outside
@@ -487,7 +486,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
-        let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
+        let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, term);
         if let Some(body) = self.tcx.hir_maybe_body_owned_by(
             self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
         ) {
@@ -542,7 +541,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 have_turbofish,
             } => {
                 let generics = self.tcx.generics_of(generics_def_id);
-                let is_type = matches!(arg.unpack(), GenericArgKind::Type(_));
+                let is_type = term.as_type().is_some();
 
                 let (parent_exists, parent_prefix, parent_name) =
                     InferenceDiagnosticsParentData::for_parent_def_id(self.tcx, generics_def_id)
@@ -811,7 +810,7 @@ struct FindInferSourceVisitor<'a, 'tcx> {
     tecx: &'a TypeErrCtxt<'a, 'tcx>,
     typeck_results: &'a TypeckResults<'tcx>,
 
-    target: GenericArg<'tcx>,
+    target: Term<'tcx>,
 
     attempt: usize,
     infer_source_cost: usize,
@@ -822,7 +821,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     fn new(
         tecx: &'a TypeErrCtxt<'a, 'tcx>,
         typeck_results: &'a TypeckResults<'tcx>,
-        target: GenericArg<'tcx>,
+        target: Term<'tcx>,
     ) -> Self {
         FindInferSourceVisitor {
             tecx,
@@ -938,12 +937,12 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
     // Check whether this generic argument is the inference variable we
     // are looking for.
     fn generic_arg_is_target(&self, arg: GenericArg<'tcx>) -> bool {
-        if arg == self.target {
+        if arg == self.target.into() {
             return true;
         }
 
         match (arg.unpack(), self.target.unpack()) {
-            (GenericArgKind::Type(inner_ty), GenericArgKind::Type(target_ty)) => {
+            (GenericArgKind::Type(inner_ty), TermKind::Ty(target_ty)) => {
                 use ty::{Infer, TyVar};
                 match (inner_ty.kind(), target_ty.kind()) {
                     (&Infer(TyVar(a_vid)), &Infer(TyVar(b_vid))) => {
@@ -952,7 +951,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                     _ => false,
                 }
             }
-            (GenericArgKind::Const(inner_ct), GenericArgKind::Const(target_ct)) => {
+            (GenericArgKind::Const(inner_ct), TermKind::Const(target_ct)) => {
                 use ty::InferConst::*;
                 match (inner_ct.kind(), target_ct.kind()) {
                     (ty::ConstKind::Infer(Var(a_vid)), ty::ConstKind::Infer(Var(b_vid))) => {

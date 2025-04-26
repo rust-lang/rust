@@ -22,8 +22,8 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferResult};
 use rustc_lint::builtin::SELF_CONSTRUCTOR_FROM_OUTER_ITEM;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, GenericArgKind, GenericArgsRef, GenericParamDefKind,
-    IsIdentity, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs, UserSelfTy,
+    self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity, Ty, TyCtxt,
+    TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs, UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -573,7 +573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Registers an obligation for checking later, during regionck, that `arg` is well-formed.
     pub(crate) fn register_wf_obligation(
         &self,
-        arg: ty::GenericArg<'tcx>,
+        term: ty::Term<'tcx>,
         span: Span,
         code: traits::ObligationCauseCode<'tcx>,
     ) {
@@ -583,16 +583,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx,
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg))),
+            ty::ClauseKind::WellFormed(term),
         ));
     }
 
     /// Registers obligations that all `args` are well-formed.
     pub(crate) fn add_wf_bounds(&self, args: GenericArgsRef<'tcx>, span: Span) {
-        for arg in args.iter().filter(|arg| {
-            matches!(arg.unpack(), GenericArgKind::Type(..) | GenericArgKind::Const(..))
-        }) {
-            self.register_wf_obligation(arg, span, ObligationCauseCode::WellFormed(None));
+        for term in args.iter().filter_map(ty::GenericArg::as_term) {
+            self.register_wf_obligation(term, span, ObligationCauseCode::WellFormed(None));
         }
     }
 

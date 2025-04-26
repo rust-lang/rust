@@ -241,13 +241,13 @@ impl<'tcx> BestObligation<'tcx> {
     fn visit_well_formed_goal(
         &mut self,
         candidate: &inspect::InspectCandidate<'_, 'tcx>,
-        arg: ty::GenericArg<'tcx>,
+        term: ty::Term<'tcx>,
     ) -> ControlFlow<PredicateObligation<'tcx>> {
         let infcx = candidate.goal().infcx();
         let param_env = candidate.goal().goal().param_env;
         let body_id = self.obligation.cause.body_id;
 
-        for obligation in wf::unnormalized_obligations(infcx, param_env, arg, self.span(), body_id)
+        for obligation in wf::unnormalized_obligations(infcx, param_env, term, self.span(), body_id)
             .into_iter()
             .flatten()
         {
@@ -443,8 +443,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
                     polarity: ty::PredicatePolarity::Positive,
                 }))
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
-                return self.visit_well_formed_goal(candidate, arg);
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                return self.visit_well_formed_goal(candidate, term);
             }
             _ => ChildMode::PassThrough,
         };

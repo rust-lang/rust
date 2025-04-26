@@ -113,8 +113,8 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 | ty::PredicateKind::AliasRelate(..) => {}
 
                 // We need to search through *all* WellFormed predicates
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
-                    wf_args.push(arg);
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    wf_args.push(term);
                 }
 
                 // We need to register region relationships
