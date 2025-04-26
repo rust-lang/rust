@@ -1318,27 +1318,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
                 let tcx = self.fcx.tcx();
-                match param.kind {
-                    GenericParamDefKind::Lifetime => self
-                        .fcx
-                        .re_infer(
-                            self.span,
-                            rustc_hir_analysis::hir_ty_lowering::RegionInferReason::Param(param),
-                        )
-                        .into(),
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        if !infer_args && let Some(default) = param.default_value(tcx) {
-                            // If we have a default, then it doesn't matter that we're not inferring
-                            // the type/const arguments: We provide the default where any is missing.
-                            return default.instantiate(tcx, preceding_args);
-                        }
-                        // If no type/const arguments were provided, we have to infer them.
-                        // This case also occurs as a result of some malformed input, e.g.,
-                        // a lifetime argument being given instead of a type/const parameter.
-                        // Using inference instead of `Error` gives better error messages.
-                        self.fcx.var_for_def(self.span, param)
-                    }
+                if !infer_args && let Some(default) = param.default_value(tcx) {
+                    // If we have a default, then it doesn't matter that we're not inferring
+                    // the type/const arguments: We provide the default where any is missing.
+                    return default.instantiate(tcx, preceding_args);
                 }
+                // If no type/const arguments were provided, we have to infer them.
+                // This case also occurs as a result of some malformed input, e.g.,
+                // a lifetime argument being given instead of a type/const parameter.
+                // Using inference instead of `Error` gives better error messages.
+                self.fcx.var_for_def(self.span, param)
             }
         }
 
