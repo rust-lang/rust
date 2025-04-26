@@ -675,6 +675,8 @@ parse_note_pattern_alternatives_use_single_vert = alternatives in or-patterns ar
 
 parse_nul_in_c_str = null characters in C string literals are not supported
 
+parse_or_in_let_chain = `||` operators are not supported in let chain conditions
+
 parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not allowed in function parameters
 parse_or_pattern_not_allowed_in_let_binding = top-level or-patterns are not allowed in `let` bindings
 parse_out_of_range_hex_escape = out of range hex escape

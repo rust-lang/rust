@@ -478,6 +478,13 @@ pub(crate) struct ExpectedExpressionFoundLet {
     pub comparison: Option<MaybeComparison>,
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_or_in_let_chain)]
+pub(crate) struct OrInLetChain {
+    #[primary_span]
+    pub span: Span,
+}
+
 #[derive(Subdiagnostic, Clone, Copy)]
 #[multipart_suggestion(
     parse_maybe_missing_let,
