@@ -1,0 +1,12 @@
+error[E0015]: cannot call non-const closure in constants
+  --> $DIR/issue-93647.rs:2:5
+   |
+LL |     (||1usize)()
+   |     ^^^^^^^^^^^^
+   |
+   = note: closures need an RFC before allowed to be called in constants
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0015`.

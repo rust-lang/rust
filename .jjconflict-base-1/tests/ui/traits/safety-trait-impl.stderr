@@ -1,0 +1,28 @@
+error[E0200]: the trait `UnsafeTrait` requires an `unsafe impl` declaration
+  --> $DIR/safety-trait-impl.rs:14:1
+   |
+LL | impl UnsafeTrait for u16 { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the trait `UnsafeTrait` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+help: add `unsafe` to this trait implementation
+   |
+LL | unsafe impl UnsafeTrait for u16 { }
+   | ++++++
+
+error[E0199]: implementing the trait `SafeTrait` is not unsafe
+  --> $DIR/safety-trait-impl.rs:16:1
+   |
+LL | unsafe impl SafeTrait for u32 { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove `unsafe` from this trait implementation
+   |
+LL - unsafe impl SafeTrait for u32 { }
+LL + impl SafeTrait for u32 { }
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0199, E0200.
+For more information about an error, try `rustc --explain E0199`.

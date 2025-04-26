@@ -1,0 +1,18 @@
+error: mismatched types
+  --> $DIR/never-pattern-as-closure-param-141592.rs:15:21
+   |
+LL | fn generic_never<T>(!: T) -> [i32; 1]
+   |                     ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `T`
+
+error: mismatched types
+  --> $DIR/never-pattern-as-closure-param-141592.rs:23:31
+   |
+LL |     let _ = "12".lines().map(|!| [1]);
+   |                               ^ a never pattern must be used on an uninhabited type
+   |
+   = note: the matched value is of type `str`
+
+error: aborting due to 2 previous errors
+

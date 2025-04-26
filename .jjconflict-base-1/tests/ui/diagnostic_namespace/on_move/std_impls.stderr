@@ -1,0 +1,49 @@
+error[E0382]: use of moved value: `file`
+  --> $DIR/std_impls.rs:9:12
+   |
+LL |     let file = File::open("foo.txt").unwrap();
+   |         ---- move occurs because `file` has type `File`, which does not implement the `Copy` trait
+LL |     (file, file);
+   |      ----  ^^^^ value used here after move
+   |      |
+   |      value moved here
+   |
+   = note: you can use `File::try_clone` to duplicate a `File` instance
+
+error[E0382]: the type `Arc` does not implement `Copy`
+  --> $DIR/std_impls.rs:15:11
+   |
+LL |     let arc = Arc::new(42);
+   |         --- this move could be avoided by cloning the original `Arc`, which is inexpensive
+LL |
+LL |     (arc, arc);
+   |      ---  ^^^ value used here after move
+   |      |
+   |      value moved here
+   |
+   = note: consider using `Arc::clone`
+help: clone the value to increment its reference count
+   |
+LL |     (arc.clone(), arc);
+   |         ++++++++
+
+error[E0382]: the type `Rc` does not implement `Copy`
+  --> $DIR/std_impls.rs:22:10
+   |
+LL |     let rc = Rc::new(12);
+   |         -- this move could be avoided by cloning the original `Rc`, which is inexpensive
+LL |
+LL |     (rc, rc);
+   |      --  ^^ value used here after move
+   |      |
+   |      value moved here
+   |
+   = note: consider using `Rc::clone`
+help: clone the value to increment its reference count
+   |
+LL |     (rc.clone(), rc);
+   |        ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

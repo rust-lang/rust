@@ -1,0 +1,8 @@
+error: `--crate-name` and `#[crate_name]` are required to match, but `foo` != `bar`
+  --> $DIR/crate-name-mismatch.rs:5:17
+   |
+LL | #![crate_name = "bar"]
+   |                 ^^^^^
+
+error: aborting due to 1 previous error
+

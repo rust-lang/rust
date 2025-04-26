@@ -1,7 +1,5 @@
 // issue#121613
 
-#![feature(more_qualified_paths)]
-
 struct S {}
 
 struct Foo;

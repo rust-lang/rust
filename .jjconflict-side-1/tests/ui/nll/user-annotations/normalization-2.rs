@@ -2,8 +2,6 @@
 
 //@ check-fail
 
-#![feature(more_qualified_paths)]
-
 trait Trait {
     type Assoc;
 }

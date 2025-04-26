@@ -1,0 +1,25 @@
+error[E0609]: no field `x` on type `*mut A`
+  --> $DIR/raw-pointer-field-access-error.rs:9:21
+   |
+LL |     let x : i32 = n.x;
+   |                     ^ unknown field
+   |
+help: `n` is a raw pointer; try dereferencing it
+   |
+LL |     let x : i32 = (*n).x;
+   |                   ++ +
+
+error[E0609]: no field `y` on type `*mut A`
+  --> $DIR/raw-pointer-field-access-error.rs:10:21
+   |
+LL |     let y : f64 = n.y;
+   |                     ^ unknown field
+   |
+help: `n` is a raw pointer; try dereferencing it
+   |
+LL |     let y : f64 = (*n).y;
+   |                   ++ +
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

@@ -1,0 +1,144 @@
+use std::collections::BTreeSet;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+use crate::diagnostics::{RunningCheck, TidyCtx};
+use crate::features::{CollectedFeatures, Features, Status};
+
+pub const PATH_STR: &str = "doc/unstable-book";
+
+pub const ENV_VARS_DIR: &str = "src/compiler-environment-variables";
+
+pub const COMPILER_FLAGS_DIR: &str = "src/compiler-flags";
+
+pub const LANG_FEATURES_DIR: &str = "src/language-features";
+
+pub const LIB_FEATURES_DIR: &str = "src/library-features";
+
+/// Builds the path to the Unstable Book source directory from the Rust 'src' directory.
+pub fn unstable_book_path(base_src_path: &Path) -> PathBuf {
+    base_src_path.join(PATH_STR)
+}
+
+/// Builds the path to the directory where the features are documented within the Unstable Book
+/// source directory.
+pub fn unstable_book_lang_features_path(base_src_path: &Path) -> PathBuf {
+    unstable_book_path(base_src_path).join(LANG_FEATURES_DIR)
+}
+
+/// Builds the path to the directory where the features are documented within the Unstable Book
+/// source directory.
+pub fn unstable_book_lib_features_path(base_src_path: &Path) -> PathBuf {
+    unstable_book_path(base_src_path).join(LIB_FEATURES_DIR)
+}
+
+/// Tests whether `DirEntry` is a file.
+fn dir_entry_is_file(dir_entry: &fs::DirEntry) -> bool {
+    dir_entry.file_type().expect("could not determine file type of directory entry").is_file()
+}
+
+/// Retrieves names of all unstable features.
+pub fn collect_unstable_feature_names(features: &Features) -> BTreeSet<String> {
+    features
+        .iter()
+        .filter(|&(_, f)| f.level == Status::Unstable)
+        .map(|(name, _)| name.replace('_', "-"))
+        .collect()
+}
+
+pub fn collect_unstable_book_section_file_names(dir: &Path) -> BTreeSet<String> {
+    fs::read_dir(dir)
+        .expect("could not read directory")
+        .map(|entry| entry.expect("could not read directory entry"))
+        .filter(dir_entry_is_file)
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().map(|e| e.to_str().unwrap()) == Some("md"))
+        .map(|path| path.file_stem().unwrap().to_str().unwrap().into())
+        .collect()
+}
+
+/// Retrieves file names of all library feature sections in the Unstable Book with:
+///
+/// * hyphens replaced by underscores,
+/// * the markdown suffix ('.md') removed.
+fn collect_unstable_book_lang_features_section_file_names(
+    base_src_path: &Path,
+) -> BTreeSet<String> {
+    collect_unstable_book_section_file_names(&unstable_book_lang_features_path(base_src_path))
+}
+
+/// Retrieves file names of all language feature sections in the Unstable Book with:
+///
+/// * hyphens replaced by underscores,
+/// * the markdown suffix ('.md') removed.
+fn collect_unstable_book_lib_features_section_file_names(base_src_path: &Path) -> BTreeSet<String> {
+    collect_unstable_book_section_file_names(&unstable_book_lib_features_path(base_src_path))
+}
+
+/// Would switching underscores for dashes work?
+fn maybe_suggest_dashes(names: &BTreeSet<String>, feature_name: &str, check: &mut RunningCheck) {
+    let with_dashes = feature_name.replace('_', "-");
+    if names.contains(&with_dashes) {
+        check.error(format!(
+            "the file `{feature_name}.md` contains underscores; use dashes instead: `{with_dashes}.md`",
+        ));
+    }
+}
+
+pub fn check(path: &Path, features: CollectedFeatures, tidy_ctx: TidyCtx) {
+    let mut check = tidy_ctx.start_check("unstable_book");
+
+    let lang_features = features.lang;
+    let lib_features = features
+        .lib
+        .into_iter()
+        .filter(|(name, _)| !lang_features.contains_key(name))
+        .collect::<Features>();
+
+    // Library features
+    let unstable_lib_feature_names = collect_unstable_feature_names(&lib_features);
+    let unstable_book_lib_features_section_file_names =
+        collect_unstable_book_lib_features_section_file_names(path);
+
+    // Language features
+    let unstable_lang_feature_names = collect_unstable_feature_names(&lang_features);
+    let unstable_book_lang_features_section_file_names =
+        collect_unstable_book_lang_features_section_file_names(path);
+
+    // Check for Unstable Book sections that don't have a corresponding unstable feature
+    for feature_name in &unstable_book_lib_features_section_file_names - &unstable_lib_feature_names
+    {
+        check.error(format!(
+            "The Unstable Book has a 'library feature' section '{feature_name}' which doesn't \
+                         correspond to an unstable library feature"
+        ));
+        maybe_suggest_dashes(&unstable_lib_feature_names, &feature_name, &mut check);
+    }
+
+    // Check for Unstable Book sections that don't have a corresponding unstable feature.
+    for feature_name in
+        &unstable_book_lang_features_section_file_names - &unstable_lang_feature_names
+    {
+        check.error(format!(
+            "The Unstable Book has a 'language feature' section '{feature_name}' which doesn't \
+                     correspond to an unstable language feature"
+        ));
+        maybe_suggest_dashes(&unstable_lang_feature_names, &feature_name, &mut check);
+    }
+
+    // List unstable features that don't have Unstable Book sections.
+    // Remove the comment marker if you want the list printed.
+    /*
+    println!("Lib features without unstable book sections:");
+    for feature_name in &unstable_lang_feature_names -
+                        &unstable_book_lang_features_section_file_names {
+        println!("    * {} {:?}", feature_name, lib_features[&feature_name].tracking_issue);
+    }
+
+    println!("Lang features without unstable book sections:");
+    for feature_name in &unstable_lib_feature_names-
+                        &unstable_book_lib_features_section_file_names {
+        println!("    * {} {:?}", feature_name, lang_features[&feature_name].tracking_issue);
+    }
+    // */
+}

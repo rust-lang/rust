@@ -1,0 +1,85 @@
+error: this `RefCell` reference is held across an await point
+  --> tests/ui/await_holding_refcell_ref.rs:6:9
+   |
+LL |     let b = x.borrow();
+   |         ^
+   |
+   = help: ensure the reference is dropped before calling `await`
+note: these are all the await points this reference is held through
+  --> tests/ui/await_holding_refcell_ref.rs:9:11
+   |
+LL |     baz().await
+   |           ^^^^^
+   = note: `-D clippy::await-holding-refcell-ref` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::await_holding_refcell_ref)]`
+
+error: this `RefCell` reference is held across an await point
+  --> tests/ui/await_holding_refcell_ref.rs:13:9
+   |
+LL |     let b = x.borrow_mut();
+   |         ^
+   |
+   = help: ensure the reference is dropped before calling `await`
+note: these are all the await points this reference is held through
+  --> tests/ui/await_holding_refcell_ref.rs:16:11
+   |
+LL |     baz().await
+   |           ^^^^^
+
+error: this `RefCell` reference is held across an await point
+  --> tests/ui/await_holding_refcell_ref.rs:36:9
+   |
+LL |     let b = x.borrow_mut();
+   |         ^
+   |
+   = help: ensure the reference is dropped before calling `await`
+note: these are all the await points this reference is held through
+  --> tests/ui/await_holding_refcell_ref.rs:39:24
+   |
+LL |     let second = baz().await;
+   |                        ^^^^^
+LL |
+LL |     let third = baz().await;
+   |                       ^^^^^
+
+error: this `RefCell` reference is held across an await point
+  --> tests/ui/await_holding_refcell_ref.rs:49:9
+   |
+LL |     let b = x.borrow_mut();
+   |         ^
+   |
+   = help: ensure the reference is dropped before calling `await`
+note: these are all the await points this reference is held through
+  --> tests/ui/await_holding_refcell_ref.rs:52:24
+   |
+LL |     let second = baz().await;
+   |                        ^^^^^
+
+error: this `RefCell` reference is held across an await point
+  --> tests/ui/await_holding_refcell_ref.rs:65:13
+   |
+LL |         let b = x.borrow_mut();
+   |             ^
+   |
+   = help: ensure the reference is dropped before calling `await`
+note: these are all the await points this reference is held through
+  --> tests/ui/await_holding_refcell_ref.rs:68:15
+   |
+LL |         baz().await
+   |               ^^^^^
+
+error: this `RefCell` reference is held across an await point
+  --> tests/ui/await_holding_refcell_ref.rs:79:13
+   |
+LL |         let b = x.borrow_mut();
+   |             ^
+   |
+   = help: ensure the reference is dropped before calling `await`
+note: these are all the await points this reference is held through
+  --> tests/ui/await_holding_refcell_ref.rs:82:15
+   |
+LL |         baz().await
+   |               ^^^^^
+
+error: aborting due to 6 previous errors
+

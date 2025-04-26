@@ -1,0 +1,72 @@
+error: Empty
+  --> $DIR/object-lifetime-default.rs:5:5
+   |
+LL |     T,
+   |     ^
+
+error: Empty
+  --> $DIR/object-lifetime-default.rs:11:5
+   |
+LL |     T,
+   |     ^
+
+error: 'a
+  --> $DIR/object-lifetime-default.rs:17:5
+   |
+LL |     T: 'a,
+   |     ^
+
+error: Ambiguous
+  --> $DIR/object-lifetime-default.rs:24:5
+   |
+LL |     T: 'a + 'b,
+   |     ^
+
+error: 'b
+  --> $DIR/object-lifetime-default.rs:31:5
+   |
+LL |     T: 'b,
+   |     ^
+
+error: 'a
+  --> $DIR/object-lifetime-default.rs:38:5
+   |
+LL |     T: 'a,
+   |     ^
+
+error: 'b
+  --> $DIR/object-lifetime-default.rs:39:5
+   |
+LL |     U: 'b,
+   |     ^
+
+error: 'a
+  --> $DIR/object-lifetime-default.rs:46:5
+   |
+LL |     T: 'a,
+   |     ^
+
+error: Ambiguous
+  --> $DIR/object-lifetime-default.rs:47:5
+   |
+LL |     U: 'a + 'b,
+   |     ^
+
+error: 'a
+  --> $DIR/object-lifetime-default.rs:52:1
+   |
+LL | / trait H<
+LL | |     'a,
+LL | |     'b,
+LL | |     T: 'b,
+LL | | >: 'a {}
+   | |_____^
+
+error: 'b
+  --> $DIR/object-lifetime-default.rs:55:5
+   |
+LL |     T: 'b,
+   |     ^
+
+error: aborting due to 11 previous errors
+

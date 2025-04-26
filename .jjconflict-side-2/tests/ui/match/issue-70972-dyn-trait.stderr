@@ -1,0 +1,11 @@
+error: trait object `dyn Send` cannot be used in patterns
+  --> $DIR/issue-70972-dyn-trait.rs:6:9
+   |
+LL | const F: &'static dyn Send = &7u32;
+   | -------------------------- constant defined here
+...
+LL |         F => panic!(),
+   |         ^ trait object can't be used in patterns
+
+error: aborting due to 1 previous error
+
