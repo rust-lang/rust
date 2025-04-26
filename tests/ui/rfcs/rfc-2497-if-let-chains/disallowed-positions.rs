@@ -119,7 +119,7 @@ fn nested_within_if_expr() {
     //~^ ERROR expected expression, found `let` statement
 
     if true || let 0 = 0 {}
-    //~^ ERROR expected expression, found `let` statement
+    //~^ ERROR `||` operators are not supported in let chain conditions
     if (true || let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
     if true && (true || let 0 = 0) {}
@@ -210,7 +210,7 @@ fn nested_within_while_expr() {
     //~^ ERROR expected expression, found `let` statement
 
     while true || let 0 = 0 {}
-    //~^ ERROR expected expression, found `let` statement
+    //~^ ERROR `||` operators are not supported in let chain conditions
     while (true || let 0 = 0) {}
     //~^ ERROR expected expression, found `let` statement
     while true && (true || let 0 = 0) {}

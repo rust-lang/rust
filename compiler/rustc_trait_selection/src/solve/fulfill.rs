@@ -163,15 +163,15 @@ where
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = Vec::new();
-        for i in 0.. {
-            if !infcx.tcx.recursion_limit().value_within_limit(i) {
-                self.obligations.on_fulfillment_overflow(infcx);
-                // Only return true errors that we have accumulated while processing.
-                return errors;
-            }
-
+        loop {
             let mut has_changed = false;
-            for obligation in self.obligations.drain_pending(|_| true) {
+            for mut obligation in self.obligations.drain_pending(|_| true) {
+                if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
+                    self.obligations.on_fulfillment_overflow(infcx);
+                    // Only return true errors that we have accumulated while processing.
+                    return errors;
+                }
+
                 let goal = obligation.as_goal();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
                     .evaluate_root_goal(goal, GenerateProofTree::No, obligation.cause.span)
@@ -189,6 +189,13 @@ where
                 };
 
                 if changed == HasChanged::Yes {
+                    // We increment the recursion depth here to track the number of times
+                    // this goal has resulted in inference progress. This doesn't precisely
+                    // model the way that we track recursion depth in the old solver due
+                    // to the fact that we only process root obligations, but it is a good
+                    // approximation and should only result in fulfillment overflow in
+                    // pathological cases.
+                    obligation.recursion_depth += 1;
                     has_changed = true;
                 }
 

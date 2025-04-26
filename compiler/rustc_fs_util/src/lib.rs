@@ -1,6 +1,8 @@
-use std::ffi::CString;
+use std::ffi::{CString, OsStr};
 use std::path::{Path, PathBuf, absolute};
-use std::{fs, io};
+use std::{env, fs, io};
+
+use tempfile::TempDir;
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating
 // verbatim paths under the hood to non-verbatim paths! This manifests itself as
@@ -101,4 +103,44 @@ pub fn path_to_c_string(p: &Path) -> CString {
 #[inline]
 pub fn try_canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs::canonicalize(&path).or_else(|_| absolute(&path))
+}
+
+pub struct TempDirBuilder<'a, 'b> {
+    builder: tempfile::Builder<'a, 'b>,
+}
+
+impl<'a, 'b> TempDirBuilder<'a, 'b> {
+    pub fn new() -> Self {
+        Self { builder: tempfile::Builder::new() }
+    }
+
+    pub fn prefix<S: AsRef<OsStr> + ?Sized>(&mut self, prefix: &'a S) -> &mut Self {
+        self.builder.prefix(prefix);
+        self
+    }
+
+    pub fn suffix<S: AsRef<OsStr> + ?Sized>(&mut self, suffix: &'b S) -> &mut Self {
+        self.builder.suffix(suffix);
+        self
+    }
+
+    pub fn tempdir_in<P: AsRef<Path>>(&self, dir: P) -> io::Result<TempDir> {
+        let dir = dir.as_ref();
+        // On Windows in CI, we had been getting fairly frequent "Access is denied"
+        // errors when creating temporary directories.
+        // So this implements a simple retry with backoff loop.
+        #[cfg(windows)]
+        for wait in 1..11 {
+            match self.builder.tempdir_in(dir) {
+                Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {}
+                t => return t,
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1 << wait));
+        }
+        self.builder.tempdir_in(dir)
+    }
+
+    pub fn tempdir(&self) -> io::Result<TempDir> {
+        self.tempdir_in(env::temp_dir())
+    }
 }
