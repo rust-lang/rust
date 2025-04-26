@@ -4,8 +4,6 @@
 //
 //@ run-rustfix
 
-#![feature(more_qualified_paths)]
-
 fn main() {
     let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
     //~^ error: expected method or associated constant, found associated type
