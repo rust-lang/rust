@@ -43,13 +43,13 @@ use crate::utils::helpers::{self, exe, output, t};
 /// is added here, it will cause bootstrap to skip necessary rebuilds, which may lead to risky results.
 /// For example, "src/bootstrap" should never be included in this list as it plays a crucial role in the
 /// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
-#[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
-    ":!src/tools",
+    // tidy-alphabetical-start
     ":!src/librustdoc",
     ":!src/rustdoc-json-types",
     ":!tests",
     ":!triagebot.toml",
+    // tidy-alphabetical-end
 ];
 
 /// Additional "allowed" paths for the `download-rustc="if-unchanged"` logic
@@ -64,6 +64,10 @@ pub(crate) const RUSTC_IF_UNCHANGED_EXTRA_ALLOWED_PATHS_OUTSIDE_CI: &[&str] = &[
     // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
     // options.
     ":!library",
+    // Tool changes should inhibit download-rustc in CI, to avoid situations like
+    // <https://github.com/rust-lang/rust/pull/139998#issuecomment-2824674661>
+    // where download-rustc interferes with test metrics for delicate compiletest changes.
+    ":!src/tools",
     // tidy-alphabetical-end
 ];
 
