@@ -1,7 +1,5 @@
 // Make sure we honor region constraints when normalizing type annotations.
 
-//@ check-fail
-
 trait Trait {
     type Assoc;
 }
