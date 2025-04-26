@@ -1309,7 +1309,7 @@ impl HygieneEncodeContext {
 pub struct HygieneDecodeContext {
     // A cache mapping raw serialized per-crate syntax context ids to corresponding decoded
     // `SyntaxContext`s in the current global `HygieneData`.
-    remapped_ctxts: Lock<Vec<Option<SyntaxContext>>>,
+    remapped_ctxts: Lock<IndexVec<u32, Option<SyntaxContext>>>,
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
@@ -1395,8 +1395,8 @@ pub fn decode_syntax_context<D: Decoder>(
     // Look into the cache first.
     // Reminder: `HygieneDecodeContext` is per-crate, so there are no collisions between
     // raw ids from different crate metadatas.
-    if let Some(ctxt) = context.remapped_ctxts.lock().get(raw_id as usize).copied().flatten() {
-        return ctxt;
+    if let Some(Some(ctxt)) = context.remapped_ctxts.lock().get(raw_id) {
+        return *ctxt;
     }
 
     // Don't try to decode data while holding the lock, since we need to
@@ -1405,12 +1405,7 @@ pub fn decode_syntax_context<D: Decoder>(
     let ctxt =
         HygieneData::with(|hygiene_data| hygiene_data.alloc_ctxt(parent, expn_id, transparency));
 
-    let mut remapped_ctxts = context.remapped_ctxts.lock();
-    let new_len = raw_id as usize + 1;
-    if remapped_ctxts.len() < new_len {
-        remapped_ctxts.resize(new_len, None);
-    }
-    remapped_ctxts[raw_id as usize] = Some(ctxt);
+    context.remapped_ctxts.lock().insert(raw_id, ctxt);
 
     ctxt
 }
