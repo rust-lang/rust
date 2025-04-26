@@ -737,6 +737,7 @@ dependencies = [
  "libc",
  "miow",
  "miropt-test-tools",
+ "rayon",
  "regex",
  "rustfix",
  "semver",

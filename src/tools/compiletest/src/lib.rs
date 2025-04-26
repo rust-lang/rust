@@ -33,6 +33,7 @@ use std::{env, fs, vec};
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use camino::{Utf8Path, Utf8PathBuf};
 use getopts::Options;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use tracing::*;
 use walkdir::WalkDir;
 
@@ -638,6 +639,18 @@ struct TestCollector {
     poisoned: bool,
 }
 
+impl TestCollector {
+    fn new() -> Self {
+        TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false }
+    }
+
+    fn merge(&mut self, mut other: Self) {
+        self.tests.append(&mut other.tests);
+        self.found_path_stems.extend(other.found_path_stems);
+        self.poisoned |= other.poisoned;
+    }
+}
+
 /// Creates test structures for every test/revision in the test suite directory.
 ///
 /// This always inspects _all_ test files in the suite (e.g. all 17k+ ui tests),
@@ -656,10 +669,7 @@ pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> 
     let cache = HeadersCache::load(&config);
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
-    let mut collector =
-        TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
-
-    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_test_suite_root, Utf8Path::new(""))
+    let collector = collect_tests_from_dir(&cx, &cx.config.src_test_suite_root, Utf8Path::new(""))
         .unwrap_or_else(|reason| {
             panic!("Could not read tests from {}: {reason}", cx.config.src_test_suite_root)
         });
@@ -765,25 +775,25 @@ fn modified_tests(config: &Config, dir: &Utf8Path) -> Result<Vec<Utf8PathBuf>, S
 /// that will be handed over to libtest.
 fn collect_tests_from_dir(
     cx: &TestCollectorCx,
-    collector: &mut TestCollector,
     dir: &Utf8Path,
     relative_dir_path: &Utf8Path,
-) -> io::Result<()> {
+) -> io::Result<TestCollector> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
-        return Ok(());
+        return Ok(TestCollector::new());
     }
 
     // For run-make tests, a "test file" is actually a directory that contains an `rmake.rs`.
     if cx.config.mode == Mode::RunMake {
+        let mut collector = TestCollector::new();
         if dir.join("rmake.rs").exists() {
             let paths = TestPaths {
                 file: dir.to_path_buf(),
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
-            make_test(cx, collector, &paths);
+            make_test(cx, &mut collector, &paths);
             // This directory is a test, so don't try to find other tests inside it.
-            return Ok(());
+            return Ok(collector);
         }
     }
 
@@ -800,36 +810,47 @@ fn collect_tests_from_dir(
     // subdirectories we find, except for `auxiliary` directories.
     // FIXME: this walks full tests tree, even if we have something to ignore
     // use walkdir/ignore like in tidy?
-    for file in fs::read_dir(dir.as_std_path())? {
-        let file = file?;
-        let file_path = Utf8PathBuf::try_from(file.path()).unwrap();
-        let file_name = file_path.file_name().unwrap();
+    fs::read_dir(dir.as_std_path())?
+        .par_bridge()
+        .map(|file| {
+            let mut collector = TestCollector::new();
+            let file = file?;
+            let file_path = Utf8PathBuf::try_from(file.path()).unwrap();
+            let file_name = file_path.file_name().unwrap();
 
-        if is_test(file_name)
-            && (!cx.config.only_modified || cx.modified_tests.contains(&file_path))
-        {
-            // We found a test file, so create the corresponding libtest structures.
-            debug!(%file_path, "found test file");
+            if is_test(file_name)
+                && (!cx.config.only_modified || cx.modified_tests.contains(&file_path))
+            {
+                // We found a test file, so create the corresponding libtest structures.
+                debug!(%file_path, "found test file");
 
-            // Record the stem of the test file, to check for overlaps later.
-            let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
-            collector.found_path_stems.insert(rel_test_path);
+                // Record the stem of the test file, to check for overlaps later.
+                let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
+                collector.found_path_stems.insert(rel_test_path);
 
-            let paths =
-                TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
-            make_test(cx, collector, &paths);
-        } else if file_path.is_dir() {
-            // Recurse to find more tests in a subdirectory.
-            let relative_file_path = relative_dir_path.join(file_name);
-            if file_name != "auxiliary" {
-                debug!(%file_path, "found directory");
-                collect_tests_from_dir(cx, collector, &file_path, &relative_file_path)?;
+                let paths =
+                    TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
+                make_test(cx, &mut collector, &paths);
+            } else if file_path.is_dir() {
+                // Recurse to find more tests in a subdirectory.
+                let relative_file_path = relative_dir_path.join(file_name);
+                if file_name != "auxiliary" {
+                    debug!(%file_path, "found directory");
+                    collector.merge(collect_tests_from_dir(cx, &file_path, &relative_file_path)?);
+                }
+            } else {
+                debug!(%file_path, "found other file/directory");
             }
-        } else {
-            debug!(%file_path, "found other file/directory");
-        }
-    }
-    Ok(())
+            Ok(collector)
+        })
+        .reduce(
+            || Ok(TestCollector::new()),
+            |a, b| {
+                let mut a = a?;
+                a.merge(b?);
+                Ok(a)
+            },
+        )
 }
 
 /// Returns true if `file_name` looks like a proper test file name.
