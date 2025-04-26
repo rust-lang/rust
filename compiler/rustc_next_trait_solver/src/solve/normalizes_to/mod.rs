@@ -213,9 +213,6 @@ where
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
-            // In case the associated item is hidden due to specialization, we have to
-            // return ambiguity this would otherwise be incomplete, resulting in
-            // unsoundness during coherence (#105782).
             let target_item_def_id = match ecx.fetch_eligible_assoc_item(
                 goal_trait_ref,
                 goal.predicate.def_id(),
@@ -223,8 +220,28 @@ where
             ) {
                 Ok(Some(target_item_def_id)) => target_item_def_id,
                 Ok(None) => {
-                    return ecx
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                    match ecx.typing_mode() {
+                        // In case the associated item is hidden due to specialization, we have to
+                        // return ambiguity this would otherwise be incomplete, resulting in
+                        // unsoundness during coherence (#105782).
+                        ty::TypingMode::Coherence => {
+                            return ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
+                        }
+                        // Outside of coherence, we treat the associated item as rigid instead.
+                        ty::TypingMode::Analysis { .. }
+                        | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::PostBorrowckAnalysis { .. }
+                        | ty::TypingMode::PostAnalysis => {
+                            ecx.structurally_instantiate_normalizes_to_term(
+                                goal,
+                                goal.predicate.alias,
+                            );
+                            return ecx
+                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                        }
+                    };
                 }
                 Err(guar) => return error_response(ecx, guar),
             };

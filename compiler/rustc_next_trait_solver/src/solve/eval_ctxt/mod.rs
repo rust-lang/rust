@@ -16,6 +16,7 @@ use rustc_type_ir::{
 };
 use tracing::{instrument, trace};
 
+use super::has_only_region_constraints;
 use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
@@ -476,13 +477,8 @@ where
             Ok(response) => response,
         };
 
-        let has_changed = if !response.value.var_values.is_identity_modulo_regions()
-            || !response.value.external_constraints.opaque_types.is_empty()
-        {
-            HasChanged::Yes
-        } else {
-            HasChanged::No
-        };
+        let has_changed =
+            if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
         let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
