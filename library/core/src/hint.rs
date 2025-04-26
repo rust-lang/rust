@@ -320,6 +320,10 @@ pub fn spin_loop() {
 /// This also means that this function does not offer any guarantees for cryptographic or security
 /// purposes.
 ///
+/// This limitation is not specific to `black_box`; there is no mechanism in the entire Rust
+/// language that can provide the guarantees required for constant-time cryptography.
+/// (There is also no such mechanism in LLVM, so the same is true for every other LLVM-based compiler.)
+///
 /// </div>
 ///
 /// [`std::convert::identity`]: crate::convert::identity
