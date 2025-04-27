@@ -15,11 +15,19 @@ fn unbox_2<T>(b: Box<(T,)>) -> T {
     x
 }
 
+fn unbox_separately<T>(b: Box<(T, T)>) -> (T, T) {
+    let (x, _) = b else { unreachable!() };
+    let (_, y) = b else { unreachable!() };
+    (x, y)
+}
+
 fn main() {
     // test that deref patterns can move out of boxes
     let b1 = Box::new(0);
     let b2 = Box::new((0,));
     assert_eq!(unbox_1(b1), unbox_2(b2));
+    let b3 = Box::new((1, 2));
+    assert_eq!(unbox_separately(b3), (1, 2));
 
     // test that borrowing from a box also works
     let mut b = "hi".to_owned().into_boxed_str();
