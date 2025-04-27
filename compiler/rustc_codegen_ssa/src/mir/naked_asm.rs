@@ -86,7 +86,9 @@ fn inline_to_global_operand<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             );
 
             let instance = match mono_type.kind() {
-                &ty::FnDef(def_id, args) => Instance::new(def_id, args),
+                &ty::FnDef(def_id, args) => {
+                    Instance::expect_resolve(cx.tcx(), cx.typing_env(), def_id, args, value.span)
+                }
                 _ => bug!("asm sym is not a function"),
             };
 
