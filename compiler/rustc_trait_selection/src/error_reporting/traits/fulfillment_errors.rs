@@ -1523,19 +1523,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return None;
                 };
 
-                let trait_assoc_item = self.tcx.opt_associated_item(proj.projection_term.def_id)?;
-                let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
-
                 let mut associated_items = vec![];
                 self.tcx.for_each_relevant_impl(
                     self.tcx.trait_of_item(proj.projection_term.def_id)?,
                     proj.projection_term.self_ty(),
                     |impl_def_id| {
                         associated_items.extend(
-                            self.tcx
-                                .associated_items(impl_def_id)
-                                .in_definition_order()
-                                .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident),
+                            self.tcx.associated_items(impl_def_id).in_definition_order().find(
+                                |assoc| {
+                                    assoc.trait_item_def_id == Some(proj.projection_term.def_id)
+                                },
+                            ),
                         );
                     },
                 );

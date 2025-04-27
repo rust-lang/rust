@@ -67,7 +67,7 @@ impl Command {
             let c_envp = envp
                 .as_ref()
                 .map(|c| c.as_ptr())
-                .unwrap_or_else(|| *sys::os::environ() as *const _);
+                .unwrap_or_else(|| *sys::env::environ() as *const _);
             let stack_size = crate::cmp::max(
                 crate::env::var_os("RUST_MIN_STACK")
                     .and_then(|s| s.to_str().and_then(|s| s.parse().ok()))
@@ -76,7 +76,7 @@ impl Command {
             );
 
             // ensure that access to the environment is synchronized
-            let _lock = sys::os::env_read_lock();
+            let _lock = sys::env::env_read_lock();
 
             let ret = libc::rtpSpawn(
                 self.get_program_cstr().as_ptr(),

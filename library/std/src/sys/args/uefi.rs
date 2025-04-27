@@ -1,13 +1,10 @@
 use r_efi::protocols::loaded_image;
 
+pub use super::common::Args;
 use crate::env::current_exe;
 use crate::ffi::OsString;
 use crate::iter::Iterator;
 use crate::sys::pal::helpers;
-
-#[path = "common.rs"]
-mod common;
-pub use common::Args;
 
 pub fn args() -> Args {
     let lazy_current_exe = || Vec::from([current_exe().map(Into::into).unwrap_or_default()]);

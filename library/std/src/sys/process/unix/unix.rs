@@ -88,7 +88,7 @@ impl Command {
         // in its own process. Thus the parent drops the lock guard immediately.
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
-        let env_lock = sys::os::env_read_lock();
+        let env_lock = sys::env::env_read_lock();
         let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
@@ -237,7 +237,7 @@ impl Command {
                     // Similar to when forking, we want to ensure that access to
                     // the environment is synchronized, so make sure to grab the
                     // environment lock before we try to exec.
-                    let _lock = sys::os::env_read_lock();
+                    let _lock = sys::env::env_read_lock();
 
                     let Err(e) = self.do_exec(theirs, envp.as_ref());
                     e
@@ -386,13 +386,13 @@ impl Command {
             impl Drop for Reset {
                 fn drop(&mut self) {
                     unsafe {
-                        *sys::os::environ() = self.0;
+                        *sys::env::environ() = self.0;
                     }
                 }
             }
 
-            _reset = Some(Reset(*sys::os::environ()));
-            *sys::os::environ() = envp.as_ptr();
+            _reset = Some(Reset(*sys::env::environ()));
+            *sys::env::environ() = envp.as_ptr();
         }
 
         libc::execvp(self.get_program_cstr().as_ptr(), self.get_argv().as_ptr());
@@ -739,8 +739,8 @@ impl Command {
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
-            let _env_lock = sys::os::env_read_lock();
-            let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::os::environ() as *const _);
+            let _env_lock = sys::env::env_read_lock();
+            let envp = envp.map(|c| c.as_ptr()).unwrap_or_else(|| *sys::env::environ() as *const _);
 
             #[cfg(not(target_os = "nto"))]
             let spawn_fn = libc::posix_spawnp;

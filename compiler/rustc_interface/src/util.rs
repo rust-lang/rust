@@ -38,14 +38,25 @@ pub(crate) fn add_configuration(
     codegen_backend: &dyn CodegenBackend,
 ) {
     let tf = sym::target_feature;
+    let tf_cfg = codegen_backend.target_config(sess);
 
-    let (target_features, unstable_target_features) = codegen_backend.target_features_cfg(sess);
+    sess.unstable_target_features.extend(tf_cfg.unstable_target_features.iter().copied());
+    sess.target_features.extend(tf_cfg.target_features.iter().copied());
 
-    sess.unstable_target_features.extend(unstable_target_features.iter().copied());
+    cfg.extend(tf_cfg.target_features.into_iter().map(|feat| (tf, Some(feat))));
 
-    sess.target_features.extend(target_features.iter().copied());
-
-    cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
+    if tf_cfg.has_reliable_f16 {
+        cfg.insert((sym::target_has_reliable_f16, None));
+    }
+    if tf_cfg.has_reliable_f16_math {
+        cfg.insert((sym::target_has_reliable_f16_math, None));
+    }
+    if tf_cfg.has_reliable_f128 {
+        cfg.insert((sym::target_has_reliable_f128, None));
+    }
+    if tf_cfg.has_reliable_f128_math {
+        cfg.insert((sym::target_has_reliable_f128_math, None));
+    }
 
     if sess.crt_static(None) {
         cfg.insert((tf, Some(sym::crt_dash_static)));

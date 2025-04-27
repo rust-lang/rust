@@ -288,7 +288,7 @@ args="$args --privileged"
 # `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
 # read/written as the same user as the bare-metal user.
 if [ -f /.dockerenv ]; then
-  docker create -v /checkout --name checkout alpine:3.4 /bin/true
+  docker create -v /checkout --name checkout ghcr.io/rust-lang/alpine:3.4 /bin/true
   docker cp . checkout:/checkout
   args="$args --volumes-from checkout"
 else

@@ -740,3 +740,29 @@ pub mod SidebarSort {
     impl Sort for Cell<u8> {}
     impl<'a> Sort for &'a str {}
 }
+
+pub mod impls_indent {
+    pub struct Context;
+
+    /// Working with objects.
+    ///
+    /// # Safety
+    ///
+    /// Functions that take indices of locals do not check bounds on these indices;
+    /// the caller must ensure that the indices are less than the number of locals
+    /// in the current stack frame.
+    impl Context {
+    }
+
+    /// Working with objects.
+    ///
+    /// # Safety
+    ///
+    /// Functions that take indices of locals do not check bounds on these indices;
+    /// the caller must ensure that the indices are less than the number of locals
+    /// in the current stack frame.
+    impl Context {
+        /// bla
+        pub fn bar() {}
+    }
+}

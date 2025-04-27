@@ -1,8 +1,8 @@
+use std::mem;
 use std::ops::ControlFlow;
 
-use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::HashStable_NoContext;
 use rustc_type_ir::data_structures::{HashMap, HashSet, ensure_sufficient_stack};
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -14,7 +14,6 @@ use rustc_type_ir::{
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,
 };
-use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
 use crate::coherence;
@@ -114,7 +113,7 @@ where
 
     pub(super) search_graph: &'a mut SearchGraph<D>,
 
-    nested_goals: NestedGoals<I>,
+    nested_goals: Vec<(GoalSource, Goal<I, I::Predicate>)>,
 
     pub(super) origin_span: I::Span,
 
@@ -127,38 +126,6 @@ where
     tainted: Result<(), NoSolution>,
 
     pub(super) inspect: ProofTreeBuilder<D>,
-}
-
-#[derive_where(Clone, Debug, Default; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
-struct NestedGoals<I: Interner> {
-    /// These normalizes-to goals are treated specially during the evaluation
-    /// loop. In each iteration we take the RHS of the projection, replace it with
-    /// a fresh inference variable, and only after evaluating that goal do we
-    /// equate the fresh inference variable with the actual RHS of the predicate.
-    ///
-    /// This is both to improve caching, and to avoid using the RHS of the
-    /// projection predicate to influence the normalizes-to candidate we select.
-    ///
-    /// Forgetting to replace the RHS with a fresh inference variable when we evaluate
-    /// this goal results in an ICE..
-    pub normalizes_to_goals: Vec<Goal<I, ty::NormalizesTo<I>>>,
-    /// The rest of the goals which have not yet processed or remain ambiguous.
-    pub goals: Vec<(GoalSource, Goal<I, I::Predicate>)>,
-}
-
-impl<I: Interner> NestedGoals<I> {
-    fn new() -> Self {
-        Self { normalizes_to_goals: Vec::new(), goals: Vec::new() }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.normalizes_to_goals.is_empty() && self.goals.is_empty()
-    }
 }
 
 #[derive(PartialEq, Eq, Debug, Hash, Clone, Copy)]
@@ -332,7 +299,7 @@ where
         let mut ecx = EvalCtxt {
             delegate,
             search_graph: &mut search_graph,
-            nested_goals: NestedGoals::new(),
+            nested_goals: Default::default(),
             inspect: ProofTreeBuilder::new_maybe_root(generate_proof_tree),
 
             // Only relevant when canonicalizing the response,
@@ -385,7 +352,7 @@ where
             predefined_opaques_in_body: input.predefined_opaques_in_body,
             max_input_universe: canonical_input.canonical.max_universe,
             search_graph,
-            nested_goals: NestedGoals::new(),
+            nested_goals: Default::default(),
             origin_span: I::Span::dummy(),
             tainted: Ok(()),
             inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
@@ -629,78 +596,83 @@ where
     /// Goals for the next step get directly added to the nested goals of the `EvalCtxt`.
     fn evaluate_added_goals_step(&mut self) -> Result<Option<Certainty>, NoSolution> {
         let cx = self.cx();
-        let mut goals = core::mem::take(&mut self.nested_goals);
-
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
-        for goal in goals.normalizes_to_goals {
-            // Replace the goal with an unconstrained infer var, so the
-            // RHS does not affect projection candidate assembly.
-            let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
-            let unconstrained_goal = goal.with(
-                cx,
-                ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
-            );
-
-            let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
-                GoalEvaluationKind::Nested,
-                GoalSource::TypeRelating,
-                unconstrained_goal,
-            )?;
-            // Add the nested goals from normalization to our own nested goals.
-            trace!(?nested_goals);
-            goals.goals.extend(nested_goals);
-
-            // Finally, equate the goal's RHS with the unconstrained var.
+        for (source, goal) in mem::take(&mut self.nested_goals) {
+            // We treat normalizes-to goals specially here. In each iteration we take the
+            // RHS of the projection, replace it with a fresh inference variable, and only
+            // after evaluating that goal do we equate the fresh inference variable with the
+            // actual RHS of the predicate.
             //
-            // SUBTLE:
-            // We structurally relate aliases here. This is necessary
-            // as we otherwise emit a nested `AliasRelate` goal in case the
-            // returned term is a rigid alias, resulting in overflow.
+            // This is both to improve caching, and to avoid using the RHS of the
+            // projection predicate to influence the normalizes-to candidate we select.
             //
-            // It is correct as both `goal.predicate.term` and `unconstrained_rhs`
-            // start out as an unconstrained inference variable so any aliases get
-            // fully normalized when instantiating it.
-            //
-            // FIXME: Strictly speaking this may be incomplete if the normalized-to
-            // type contains an ambiguous alias referencing bound regions. We should
-            // consider changing this to only use "shallow structural equality".
-            self.eq_structurally_relating_aliases(
-                goal.param_env,
-                goal.predicate.term,
-                unconstrained_rhs,
-            )?;
+            // Forgetting to replace the RHS with a fresh inference variable when we evaluate
+            // this goal results in an ICE.
+            if let Some(pred) = goal.predicate.as_normalizes_to() {
+                // We should never encounter higher-ranked normalizes-to goals.
+                let pred = pred.no_bound_vars().unwrap();
+                // Replace the goal with an unconstrained infer var, so the
+                // RHS does not affect projection candidate assembly.
+                let unconstrained_rhs = self.next_term_infer_of_kind(pred.term);
+                let unconstrained_goal =
+                    goal.with(cx, ty::NormalizesTo { alias: pred.alias, term: unconstrained_rhs });
 
-            // We only look at the `projection_ty` part here rather than
-            // looking at the "has changed" return from evaluate_goal,
-            // because we expect the `unconstrained_rhs` part of the predicate
-            // to have changed -- that means we actually normalized successfully!
-            let with_resolved_vars = self.resolve_vars_if_possible(goal);
-            if goal.predicate.alias != with_resolved_vars.predicate.alias {
-                unchanged_certainty = None;
-            }
+                let (NestedNormalizationGoals(nested_goals), _, certainty) =
+                    self.evaluate_goal_raw(GoalEvaluationKind::Nested, source, unconstrained_goal)?;
+                // Add the nested goals from normalization to our own nested goals.
+                trace!(?nested_goals);
+                self.nested_goals.extend(nested_goals);
 
-            match certainty {
-                Certainty::Yes => {}
-                Certainty::Maybe(_) => {
-                    self.nested_goals.normalizes_to_goals.push(with_resolved_vars);
-                    unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                // Finally, equate the goal's RHS with the unconstrained var.
+                //
+                // SUBTLE:
+                // We structurally relate aliases here. This is necessary
+                // as we otherwise emit a nested `AliasRelate` goal in case the
+                // returned term is a rigid alias, resulting in overflow.
+                //
+                // It is correct as both `goal.predicate.term` and `unconstrained_rhs`
+                // start out as an unconstrained inference variable so any aliases get
+                // fully normalized when instantiating it.
+                //
+                // FIXME: Strictly speaking this may be incomplete if the normalized-to
+                // type contains an ambiguous alias referencing bound regions. We should
+                // consider changing this to only use "shallow structural equality".
+                self.eq_structurally_relating_aliases(
+                    goal.param_env,
+                    pred.term,
+                    unconstrained_rhs,
+                )?;
+
+                // We only look at the `projection_ty` part here rather than
+                // looking at the "has changed" return from evaluate_goal,
+                // because we expect the `unconstrained_rhs` part of the predicate
+                // to have changed -- that means we actually normalized successfully!
+                let with_resolved_vars = self.resolve_vars_if_possible(goal);
+                if pred.alias != goal.predicate.as_normalizes_to().unwrap().skip_binder().alias {
+                    unchanged_certainty = None;
                 }
-            }
-        }
 
-        for (source, goal) in goals.goals {
-            let (has_changed, certainty) =
-                self.evaluate_goal(GoalEvaluationKind::Nested, source, goal)?;
-            if has_changed == HasChanged::Yes {
-                unchanged_certainty = None;
-            }
+                match certainty {
+                    Certainty::Yes => {}
+                    Certainty::Maybe(_) => {
+                        self.nested_goals.push((source, with_resolved_vars));
+                        unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                    }
+                }
+            } else {
+                let (has_changed, certainty) =
+                    self.evaluate_goal(GoalEvaluationKind::Nested, source, goal)?;
+                if has_changed == HasChanged::Yes {
+                    unchanged_certainty = None;
+                }
 
-            match certainty {
-                Certainty::Yes => {}
-                Certainty::Maybe(_) => {
-                    self.nested_goals.goals.push((source, goal));
-                    unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                match certainty {
+                    Certainty::Yes => {}
+                    Certainty::Maybe(_) => {
+                        self.nested_goals.push((source, goal));
+                        unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                    }
                 }
             }
         }
@@ -717,23 +689,12 @@ where
         self.delegate.cx()
     }
 
-    #[instrument(level = "trace", skip(self))]
-    pub(super) fn add_normalizes_to_goal(&mut self, mut goal: Goal<I, ty::NormalizesTo<I>>) {
-        goal.predicate = goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(
-            self,
-            GoalSource::TypeRelating,
-            goal.param_env,
-        ));
-        self.inspect.add_normalizes_to_goal(self.delegate, self.max_input_universe, goal);
-        self.nested_goals.normalizes_to_goals.push(goal);
-    }
-
     #[instrument(level = "debug", skip(self))]
     pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
         goal.predicate =
             goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, source, goal.param_env));
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
-        self.nested_goals.goals.push((source, goal));
+        self.nested_goals.push((source, goal));
     }
 
     #[instrument(level = "trace", skip(self, goals))]

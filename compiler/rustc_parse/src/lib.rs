@@ -4,13 +4,13 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(string_from_utf8_lossy_owned)]
 // tidy-alphabetical-end
 

@@ -55,7 +55,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
             )
         } else if let Some(feature) = feature.strip_prefix('-') {
             // FIXME: Why do we not remove implied features on "-" here?
-            // We do the equivalent above in `target_features_cfg`.
+            // We do the equivalent above in `target_config`.
             // See <https://github.com/rust-lang/rust/issues/134792>.
             all_rust_features.push((false, feature));
         } else if !feature.is_empty() && diagnostics {
@@ -136,14 +136,12 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
         });
     features.extend(feats);
 
-    if diagnostics {
-        if let Some(f) = check_tied_features(sess, &featsmap) {
-            sess.dcx().emit_err(TargetFeatureDisableOrEnable {
-                features: f,
-                span: None,
-                missing_features: None,
-            });
-        }
+    if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
+        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
+            features: f,
+            span: None,
+            missing_features: None,
+        });
     }
 
     features
