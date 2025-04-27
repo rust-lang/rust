@@ -18,7 +18,7 @@ pub struct Snapshot<'tcx> {
 #[derive(Clone)]
 pub(crate) enum UndoLog<'tcx> {
     OpaqueTypes(OpaqueTypeKey<'tcx>, Option<OpaqueHiddenType<'tcx>>),
-    TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
+    TypeVariables(type_variable::UndoLog<'tcx>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
@@ -44,7 +44,9 @@ macro_rules! impl_from {
 impl_from! {
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
 
+    TypeVariables(type_variable::UndoLog<'tcx>),
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
+    TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
 
