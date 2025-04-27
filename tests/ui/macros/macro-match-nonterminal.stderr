@@ -3,16 +3,13 @@ error: missing fragment specifier
    |
 LL |     ($a, $b) => {
    |      ^^
-
-error: missing fragment specifier
-  --> $DIR/macro-match-nonterminal.rs:2:6
    |
-LL |     ($a, $b) => {
-   |      ^^
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
+LL |     ($a:spec, $b) => {
+   |        +++++
 
 error: missing fragment specifier
   --> $DIR/macro-match-nonterminal.rs:2:10
@@ -20,30 +17,18 @@ error: missing fragment specifier
 LL |     ($a, $b) => {
    |          ^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
+   = note: fragment specifiers must be provided
+   = help: valid fragment specifiers are `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, `literal`, `path`, `meta`, `tt`, `item` and `vis`, along with `expr_2021` and `pat_param` for edition compatibility
+help: try adding a specifier here
+   |
+LL |     ($a, $b:spec) => {
+   |            +++++
+
+error: missing fragment specifier
+  --> $DIR/macro-match-nonterminal.rs:2:6
+   |
+LL |     ($a, $b) => {
+   |      ^^
 
 error: aborting due to 3 previous errors
-
-Future incompatibility report: Future breakage diagnostic:
-error: missing fragment specifier
-  --> $DIR/macro-match-nonterminal.rs:2:6
-   |
-LL |     ($a, $b) => {
-   |      ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
-
-Future breakage diagnostic:
-error: missing fragment specifier
-  --> $DIR/macro-match-nonterminal.rs:2:10
-   |
-LL |     ($a, $b) => {
-   |          ^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #40107 <https://github.com/rust-lang/rust/issues/40107>
-   = note: `#[deny(missing_fragment_specifier)]` on by default
 
