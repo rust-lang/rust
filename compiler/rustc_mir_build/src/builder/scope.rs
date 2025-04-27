@@ -1530,7 +1530,7 @@ fn build_scope_drops<'tcx>(
                 // path, then don't generate the drop. (We only take this into
                 // account for non-unwind paths so as not to disturb the
                 // caching mechanism.)
-                if scope.moved_locals.iter().any(|&o| o == local) {
+                if scope.moved_locals.contains(&local) {
                     continue;
                 }
 

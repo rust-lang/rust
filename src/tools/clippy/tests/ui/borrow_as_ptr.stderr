@@ -25,5 +25,38 @@ error: borrow as raw pointer
 LL |     let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
    |                 ^^^^^^^^^^^^^^^^^^^^^ help: try: `&raw mut x[1]`
 
-error: aborting due to 4 previous errors
+error: implicit borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:35:25
+   |
+LL |     let p: *const i32 = &val;
+   |                         ^^^^
+   |
+help: use a raw pointer instead
+   |
+LL |     let p: *const i32 = &raw const val;
+   |                          +++++++++
+
+error: implicit borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:39:23
+   |
+LL |     let p: *mut i32 = &mut val;
+   |                       ^^^^^^^^
+   |
+help: use a raw pointer instead
+   |
+LL |     let p: *mut i32 = &raw mut val;
+   |                        +++
+
+error: implicit borrow as raw pointer
+  --> tests/ui/borrow_as_ptr.rs:44:19
+   |
+LL |     core::ptr::eq(&val, &1);
+   |                   ^^^^
+   |
+help: use a raw pointer instead
+   |
+LL |     core::ptr::eq(&raw const val, &1);
+   |                    +++++++++
+
+error: aborting due to 7 previous errors
 

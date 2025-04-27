@@ -123,7 +123,7 @@ fn print_manual_instant_elapsed_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, sugg
         expr.span,
         "manual implementation of `Instant::elapsed`",
         "try",
-        format!("{}.elapsed()", sugg.maybe_par()),
+        format!("{}.elapsed()", sugg.maybe_paren()),
         Applicability::MachineApplicable,
     );
 }

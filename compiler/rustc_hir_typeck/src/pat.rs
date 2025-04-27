@@ -759,20 +759,52 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Byte string patterns behave the same way as array patterns
         // They can denote both statically and dynamically-sized byte arrays.
+        // Additionally, when `deref_patterns` is enabled, byte string literal patterns may have
+        // types `[u8]` or `[u8; N]`, in order to type, e.g., `deref!(b"..."): Vec<u8>`.
         let mut pat_ty = ty;
         if let hir::PatExprKind::Lit {
             lit: Spanned { node: ast::LitKind::ByteStr(..), .. }, ..
         } = lt.kind
         {
+            let tcx = self.tcx;
             let expected = self.structurally_resolve_type(span, expected);
-            if let ty::Ref(_, inner_ty, _) = *expected.kind()
-                && self.try_structurally_resolve_type(span, inner_ty).is_slice()
-            {
-                let tcx = self.tcx;
-                trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
-                pat_ty =
-                    Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_slice(tcx, tcx.types.u8));
+            match *expected.kind() {
+                // Allow `b"...": &[u8]`
+                ty::Ref(_, inner_ty, _)
+                    if self.try_structurally_resolve_type(span, inner_ty).is_slice() =>
+                {
+                    trace!(?lt.hir_id.local_id, "polymorphic byte string lit");
+                    pat_ty = Ty::new_imm_ref(
+                        tcx,
+                        tcx.lifetimes.re_static,
+                        Ty::new_slice(tcx, tcx.types.u8),
+                    );
+                }
+                // Allow `b"...": [u8; 3]` for `deref_patterns`
+                ty::Array(..) if tcx.features().deref_patterns() => {
+                    pat_ty = match *ty.kind() {
+                        ty::Ref(_, inner_ty, _) => inner_ty,
+                        _ => span_bug!(span, "found byte string literal with non-ref type {ty:?}"),
+                    }
+                }
+                // Allow `b"...": [u8]` for `deref_patterns`
+                ty::Slice(..) if tcx.features().deref_patterns() => {
+                    pat_ty = Ty::new_slice(tcx, tcx.types.u8);
+                }
+                // Otherwise, `b"...": &[u8; 3]`
+                _ => {}
             }
+        }
+
+        // When `deref_patterns` is enabled, in order to allow `deref!("..."): String`, we allow
+        // string literal patterns to have type `str`. This is accounted for when lowering to MIR.
+        if self.tcx.features().deref_patterns()
+            && let hir::PatExprKind::Lit {
+                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
+            } = lt.kind
+            && self.try_structurally_resolve_type(span, expected).is_str()
+        {
+            pat_ty = self.tcx.types.str_;
         }
 
         if self.tcx.features().string_deref_patterns()
@@ -1457,15 +1489,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             _ => (None, None),
                         };
 
-                        let ranges = &[
-                            self.tcx.lang_items().range_struct(),
-                            self.tcx.lang_items().range_from_struct(),
-                            self.tcx.lang_items().range_to_struct(),
-                            self.tcx.lang_items().range_full_struct(),
-                            self.tcx.lang_items().range_inclusive_struct(),
-                            self.tcx.lang_items().range_to_inclusive_struct(),
-                        ];
-                        if type_def_id != None && ranges.contains(&type_def_id) {
+                        let is_range = match type_def_id.and_then(|id| self.tcx.as_lang_item(id)) {
+                            Some(
+                                LangItem::Range
+                                | LangItem::RangeFrom
+                                | LangItem::RangeTo
+                                | LangItem::RangeFull
+                                | LangItem::RangeInclusiveStruct
+                                | LangItem::RangeToInclusive,
+                            ) => true,
+                            _ => false,
+                        };
+                        if is_range {
                             if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
                                 let msg = "constants only support matching by type, \
                                     if you meant to match against a range of values, \

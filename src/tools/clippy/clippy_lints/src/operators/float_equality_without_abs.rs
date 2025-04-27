@@ -50,7 +50,7 @@ pub(crate) fn check<'tcx>(
         // format the suggestion
         let suggestion = format!(
             "{}.abs()",
-            sugg::make_assoc(AssocOp::Binary(BinOpKind::Sub), &sug_l, &sug_r).maybe_par()
+            sugg::make_assoc(AssocOp::Binary(BinOpKind::Sub), &sug_l, &sug_r).maybe_paren()
         );
         // spans the lint
         span_lint_and_then(

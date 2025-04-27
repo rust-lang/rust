@@ -54,22 +54,22 @@ where
 
     /// A `Tree` containing a single, uninitialized byte.
     pub(crate) fn uninit() -> Self {
-        Self::Byte(Byte::Uninit)
+        Self::Byte(Byte::uninit())
     }
 
     /// A `Tree` representing the layout of `bool`.
     pub(crate) fn bool() -> Self {
-        Self::from_bits(0x00).or(Self::from_bits(0x01))
+        Self::Byte(Byte::new(0x00..=0x01))
     }
 
     /// A `Tree` whose layout matches that of a `u8`.
     pub(crate) fn u8() -> Self {
-        Self::Alt((0u8..=255).map(Self::from_bits).collect())
+        Self::Byte(Byte::new(0x00..=0xFF))
     }
 
     /// A `Tree` whose layout accepts exactly the given bit pattern.
     pub(crate) fn from_bits(bits: u8) -> Self {
-        Self::Byte(Byte::Init(bits))
+        Self::Byte(Byte::from_val(bits))
     }
 
     /// A `Tree` whose layout is a number of the given width.
@@ -514,7 +514,7 @@ pub(crate) mod rustc {
                 }
             }
             ty::Tuple(fields) => fields[i.as_usize()],
-            kind @ _ => unimplemented!(
+            kind => unimplemented!(
                 "only a subset of `Ty::ty_and_layout_field`'s functionality is implemented. implementation needed for {:?}",
                 kind
             ),

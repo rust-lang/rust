@@ -41,20 +41,23 @@ Update the file with some examples to get started:
 struct A;
 impl A {
     pub fn fo(&self) {}
-    pub fn foo(&self) {} //~ ERROR: function called "foo"
+    pub fn foo(&self) {}
+    //~^ foo_functions
     pub fn food(&self) {}
 }
 
 // Default trait methods
 trait B {
     fn fo(&self) {}
-    fn foo(&self) {} //~ ERROR: function called "foo"
+    fn foo(&self) {}
+    //~^ foo_functions
     fn food(&self) {}
 }
 
 // Plain functions
 fn fo() {}
-fn foo() {} //~ ERROR: function called "foo"
+fn foo() {}
+//~^ foo_functions
 fn food() {}
 
 fn main() {
@@ -66,19 +69,38 @@ fn main() {
 ```
 
 Without actual lint logic to emit the lint when we see a `foo` function name,
-this test will just pass, because no lint will be emitted. However, we can now
-run the test with the following command:
+this test will fail, because we expect errors at lines marked with
+`//~^ foo_functions`. However, we can now run the test with the following command:
 
 ```sh
 $ TESTNAME=foo_functions cargo uitest
 ```
 
-Clippy will compile and it will conclude with an `ok` for the tests:
+Clippy will compile and it will fail complaining it didn't receive any errors:
 
 ```
 ...Clippy warnings and test outputs...
-test compile_test ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.48s
+error: diagnostic code `clippy::foo_functions` not found on line 8
+ --> tests/ui/foo_functions.rs:9:10
+  |
+9 |     //~^ foo_functions
+  |          ^^^^^^^^^^^^^ expected because of this pattern
+  |
+
+error: diagnostic code `clippy::foo_functions` not found on line 16
+  --> tests/ui/foo_functions.rs:17:10
+   |
+17 |     //~^ foo_functions
+   |          ^^^^^^^^^^^^^ expected because of this pattern
+   |
+
+error: diagnostic code `clippy::foo_functions` not found on line 23
+  --> tests/ui/foo_functions.rs:24:6
+   |
+24 | //~^ foo_functions
+   |      ^^^^^^^^^^^^^ expected because of this pattern
+   |
+
 ```
 
 This is normal. After all, we wrote a bunch of Rust code but we haven't really

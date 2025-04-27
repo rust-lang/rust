@@ -106,7 +106,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::PredefinedOpaques {
         self.mk_predefined_opaques_in_body(data)
     }
-    type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
+    type LocalDefIds = &'tcx ty::List<LocalDefId>;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -674,8 +674,23 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.anonymize_bound_vars(binder)
     }
 
-    fn opaque_types_defined_by(self, defining_anchor: LocalDefId) -> Self::DefiningOpaqueTypes {
+    fn opaque_types_defined_by(self, defining_anchor: LocalDefId) -> Self::LocalDefIds {
         self.opaque_types_defined_by(defining_anchor)
+    }
+
+    fn opaque_types_and_generators_defined_by(
+        self,
+        defining_anchor: Self::LocalDefId,
+    ) -> Self::LocalDefIds {
+        if self.next_trait_solver_globally() {
+            self.mk_local_def_ids_from_iter(
+                self.opaque_types_defined_by(defining_anchor)
+                    .iter()
+                    .chain(self.stalled_generators_within(defining_anchor)),
+            )
+        } else {
+            self.opaque_types_defined_by(defining_anchor)
+        }
     }
 }
 
@@ -2906,11 +2921,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.interners.intern_clauses(clauses)
     }
 
-    pub fn mk_local_def_ids(self, clauses: &[LocalDefId]) -> &'tcx List<LocalDefId> {
+    pub fn mk_local_def_ids(self, def_ids: &[LocalDefId]) -> &'tcx List<LocalDefId> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
-        self.intern_local_def_ids(clauses)
+        self.intern_local_def_ids(def_ids)
     }
 
     pub fn mk_local_def_ids_from_iter<I, T>(self, iter: I) -> T::Output

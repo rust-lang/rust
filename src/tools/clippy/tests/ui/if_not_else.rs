@@ -1,4 +1,3 @@
-#![warn(clippy::all)]
 #![warn(clippy::if_not_else)]
 
 fn foo() -> bool {

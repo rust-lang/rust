@@ -280,6 +280,16 @@ impl<'tcx> ConstToPat<'tcx> {
                 slice: None,
                 suffix: Box::new([]),
             },
+            ty::Str => {
+                // String literal patterns may have type `str` if `deref_patterns` is enabled, in
+                // order to allow `deref!("..."): String`. Since we need a `&str` for the comparison
+                // when lowering to MIR in `Builder::perform_test`, treat the constant as a `&str`.
+                // This works because `str` and `&str` have the same valtree representation.
+                let ref_str_ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty);
+                PatKind::Constant {
+                    value: mir::Const::Ty(ref_str_ty, ty::Const::new_value(tcx, cv, ref_str_ty)),
+                }
+            }
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // `&str` is represented as a valtree, let's keep using this
                 // optimization for now.

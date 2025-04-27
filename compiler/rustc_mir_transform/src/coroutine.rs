@@ -875,14 +875,14 @@ struct StorageConflictVisitor<'a, 'tcx> {
     eligible_storage_live: DenseBitSet<Local>,
 }
 
-impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
+impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
     for StorageConflictVisitor<'a, 'tcx>
 {
     fn visit_after_early_statement_effect(
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
         state: &DenseBitSet<Local>,
-        _statement: &'a Statement<'tcx>,
+        _statement: &Statement<'tcx>,
         loc: Location,
     ) {
         self.apply_state(state, loc);
@@ -892,7 +892,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, MaybeRequiresStorage<'a, 'tcx>>
         &mut self,
         _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
         state: &DenseBitSet<Local>,
-        _terminator: &'a Terminator<'tcx>,
+        _terminator: &Terminator<'tcx>,
         loc: Location,
     ) {
         self.apply_state(state, loc);

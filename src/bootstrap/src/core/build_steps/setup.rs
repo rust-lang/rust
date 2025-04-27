@@ -683,7 +683,7 @@ impl Step for Editor {
         match EditorKind::prompt_user() {
             Ok(editor_kind) => {
                 if let Some(editor_kind) = editor_kind {
-                    while !t!(create_editor_settings_maybe(config, editor_kind.clone())) {}
+                    while !t!(create_editor_settings_maybe(config, &editor_kind)) {}
                 } else {
                     println!("Ok, skipping editor setup!");
                 }
@@ -695,7 +695,7 @@ impl Step for Editor {
 
 /// Create the recommended editor LSP config file for rustc development, or just print it
 /// If this method should be re-called, it returns `false`.
-fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Result<bool> {
+fn create_editor_settings_maybe(config: &Config, editor: &EditorKind) -> io::Result<bool> {
     let hashes = editor.hashes();
     let (current_hash, historical_hashes) = hashes.split_last().unwrap();
     let settings_path = editor.settings_path(config);
@@ -752,7 +752,7 @@ fn create_editor_settings_maybe(config: &Config, editor: EditorKind) -> io::Resu
             // exists but user modified, back it up
             Some(false) => {
                 // exists and is not current version or outdated, so back it up
-                let backup = settings_path.clone().with_extension(editor.backup_extension());
+                let backup = settings_path.with_extension(editor.backup_extension());
                 eprintln!(
                     "WARNING: copying `{}` to `{}`",
                     settings_path.file_name().unwrap().to_str().unwrap(),

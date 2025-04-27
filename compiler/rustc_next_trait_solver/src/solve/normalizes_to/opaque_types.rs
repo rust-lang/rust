@@ -33,11 +33,11 @@ where
                 );
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
-            TypingMode::Analysis { defining_opaque_types } => {
+            TypingMode::Analysis { defining_opaque_types_and_generators } => {
                 let Some(def_id) = opaque_ty
                     .def_id
                     .as_local()
-                    .filter(|&def_id| defining_opaque_types.contains(&def_id))
+                    .filter(|&def_id| defining_opaque_types_and_generators.contains(&def_id))
                 else {
                     self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
                     return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);

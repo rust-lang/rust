@@ -1,5 +1,5 @@
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_os_str_debug_formatting.rs:14:22
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:15:22
    |
 LL |     println!("{:?}", os_str);
    |                      ^^^^^^
@@ -10,7 +10,7 @@ LL |     println!("{:?}", os_str);
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_debug_formatting)]`
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_os_str_debug_formatting.rs:15:22
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:16:22
    |
 LL |     println!("{:?}", os_string);
    |                      ^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     println!("{:?}", os_string);
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_os_str_debug_formatting.rs:17:16
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:18:16
    |
 LL |     println!("{os_str:?}");
    |                ^^^^^^
@@ -28,7 +28,7 @@ LL |     println!("{os_str:?}");
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `println!` args
-  --> tests/ui/unnecessary_os_str_debug_formatting.rs:18:16
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:19:16
    |
 LL |     println!("{os_string:?}");
    |                ^^^^^^^^^
@@ -37,7 +37,7 @@ LL |     println!("{os_string:?}");
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `format!` args
-  --> tests/ui/unnecessary_os_str_debug_formatting.rs:20:37
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:21:37
    |
 LL |     let _: String = format!("{:?}", os_str);
    |                                     ^^^^^^
@@ -46,7 +46,7 @@ LL |     let _: String = format!("{:?}", os_str);
    = note: switching to `Display` formatting will change how the value is shown; escaped characters will no longer be escaped and surrounding quotes will be removed
 
 error: unnecessary `Debug` formatting in `format!` args
-  --> tests/ui/unnecessary_os_str_debug_formatting.rs:21:37
+  --> tests/ui/unnecessary_os_str_debug_formatting.rs:22:37
    |
 LL |     let _: String = format!("{:?}", os_string);
    |                                     ^^^^^^^^^

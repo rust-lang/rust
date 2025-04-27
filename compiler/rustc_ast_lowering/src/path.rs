@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use rustc_ast::{self as ast, *};
-use rustc_hir as hir;
-use rustc_hir::GenericArg;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
-use rustc_middle::span_bug;
+use rustc_hir::{self as hir, GenericArg};
+use rustc_middle::{span_bug, ty};
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
@@ -433,23 +432,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Note: these spans are used for diagnostics when they can't be inferred.
         // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
-        let elided_lifetime_span = if generic_args.span.is_empty() {
+        let (elided_lifetime_span, with_angle_brackets) = if generic_args.span.is_empty() {
             // If there are no brackets, use the identifier span.
             // HACK: we use find_ancestor_inside to properly suggest elided spans in paths
             // originating from macros, since the segment's span might be from a macro arg.
-            segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span)
+            (segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span), false)
         } else if generic_args.is_empty() {
             // If there are brackets, but not generic arguments, then use the opening bracket
-            generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
+            (generic_args.span.with_hi(generic_args.span.lo() + BytePos(1)), true)
         } else {
             // Else use an empty span right after the opening bracket.
-            generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo()
+            (generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo(), true)
         };
 
         generic_args.args.insert_many(
             0,
             (start..end).map(|id| {
-                let l = self.lower_lifetime_anon_in_path(id, elided_lifetime_span);
+                let l = self.lower_lifetime_hidden_in_path(
+                    id,
+                    elided_lifetime_span,
+                    with_angle_brackets,
+                );
                 GenericArg::Lifetime(l)
             }),
         );
@@ -590,14 +593,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// lowering of `async Fn()` bounds to desugar to another trait like `LendingFn`.
     fn map_trait_to_async_trait(&self, def_id: DefId) -> Option<DefId> {
         let lang_items = self.tcx.lang_items();
-        if Some(def_id) == lang_items.fn_trait() {
-            lang_items.async_fn_trait()
-        } else if Some(def_id) == lang_items.fn_mut_trait() {
-            lang_items.async_fn_mut_trait()
-        } else if Some(def_id) == lang_items.fn_once_trait() {
-            lang_items.async_fn_once_trait()
-        } else {
-            None
+        match self.tcx.fn_trait_kind_from_def_id(def_id)? {
+            ty::ClosureKind::Fn => lang_items.async_fn_trait(),
+            ty::ClosureKind::FnMut => lang_items.async_fn_mut_trait(),
+            ty::ClosureKind::FnOnce => lang_items.async_fn_once_trait(),
         }
     }
 }

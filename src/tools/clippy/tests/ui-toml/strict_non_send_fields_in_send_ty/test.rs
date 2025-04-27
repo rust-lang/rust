@@ -29,7 +29,7 @@ unsafe impl<T> Send for MyOption<T> {}
 //~^ non_send_fields_in_send_ty
 
 // All fields are disallowed when raw pointer heuristic is off
-extern "C" {
+unsafe extern "C" {
     type NonSend;
 }
 

@@ -321,5 +321,23 @@ LL +         println!("{u}");
 LL +     }
    |
 
-error: aborting due to 29 previous errors
+error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+  --> tests/ui/single_match.rs:478:5
+   |
+LL | /     match mac!(some) {
+LL | |         Some(u) => println!("{u}"),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if let Some(u) = mac!(some) { println!("{u}") }`
+
+error: you seem to be trying to use `match` for an equality check. Consider using `if`
+  --> tests/ui/single_match.rs:486:5
+   |
+LL | /     match mac!(str) {
+LL | |         "foo" => println!("eq"),
+LL | |         _ => (),
+LL | |     }
+   | |_____^ help: try: `if mac!(str) == "foo" { println!("eq") }`
+
+error: aborting due to 31 previous errors
 

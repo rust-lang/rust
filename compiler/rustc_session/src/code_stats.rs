@@ -72,6 +72,8 @@ pub struct TypeSizeInfo {
 
 #[derive(Default)]
 pub struct CodeStats {
+    /// The hash set that actually holds all the type size information.
+    /// The field is public for use in external tools. See #139876.
     pub type_sizes: Lock<FxHashSet<TypeSizeInfo>>,
 }
 

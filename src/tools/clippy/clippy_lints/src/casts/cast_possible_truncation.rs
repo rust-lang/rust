@@ -64,11 +64,11 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             apply_reductions(cx, nbits, left, signed).min(max_bits.unwrap_or(u64::MAX))
         },
         ExprKind::MethodCall(method, _, [lo, hi], _) => {
-            if method.ident.as_str() == "clamp" {
+            if method.ident.as_str() == "clamp"
                 //FIXME: make this a diagnostic item
-                if let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi)) {
-                    return lo_bits.max(hi_bits);
-                }
+                && let (Some(lo_bits), Some(hi_bits)) = (get_constant_bits(cx, lo), get_constant_bits(cx, hi))
+            {
+                return lo_bits.max(hi_bits);
             }
             nbits
         },
@@ -185,7 +185,7 @@ fn offer_suggestion(
 ) {
     let cast_to_snip = snippet(cx, cast_to_span, "..");
     let suggestion = if cast_to_snip == "_" {
-        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_par())
+        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_paren())
     } else {
         format!("{cast_to_snip}::try_from({})", Sugg::hir(cx, cast_expr, ".."))
     };

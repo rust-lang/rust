@@ -6,13 +6,13 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_type_diagnostic_item};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks,
+    contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks, sym,
 };
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::Span;
-use rustc_span::symbol::{self, Symbol, sym};
+use rustc_span::symbol::{self, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
@@ -66,8 +66,8 @@ pub(super) fn check<'tcx>(
         };
 
         let sugg = match (name, call_expr.is_some()) {
-            ("unwrap_or", true) | ("unwrap_or_else", false) => sym!(unwrap_or_default),
-            ("or_insert", true) | ("or_insert_with", false) => sym!(or_default),
+            ("unwrap_or", true) | ("unwrap_or_else", false) => sym::unwrap_or_default,
+            ("or_insert", true) | ("or_insert_with", false) => sym::or_default,
             _ => return false,
         };
 
@@ -78,8 +78,7 @@ pub(super) fn check<'tcx>(
                 .iter()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
                 .find_map(|assoc| {
-                    if assoc.is_method()
-                        && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
+                    if assoc.is_method() && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
                     {
                         Some(assoc.def_id)
                     } else {

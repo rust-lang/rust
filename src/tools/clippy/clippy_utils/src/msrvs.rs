@@ -1,10 +1,10 @@
+use crate::sym;
 use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
-
 use rustc_attr_parsing::{RustcVersion, parse_version};
 use rustc_lint::LateContext;
 use rustc_session::Session;
-use rustc_span::{Symbol, sym};
+use rustc_span::Symbol;
 use serde::Deserialize;
 use smallvec::SmallVec;
 use std::iter::once;
@@ -24,10 +24,10 @@ macro_rules! msrv_aliases {
 msrv_aliases! {
     1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT }
     1,85,0 { UINT_FLOAT_MIDPOINT }
-    1,84,0 { CONST_OPTION_AS_SLICE }
+    1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP }
-    1,81,0 { LINT_REASONS_STABILIZATION, ERROR_IN_CORE, EXPLICIT_SELF_TYPE_ELISION }
+    1,81,0 { LINT_REASONS_STABILIZATION, ERROR_IN_CORE, EXPLICIT_SELF_TYPE_ELISION, DURATION_ABS_DIFF }
     1,80,0 { BOX_INTO_ITER, LAZY_CELL }
     1,77,0 { C_STR_LITERALS }
     1,76,0 { PTR_FROM_REF, OPTION_RESULT_INSPECT }
@@ -40,6 +40,7 @@ msrv_aliases! {
     1,65,0 { LET_ELSE, POINTER_CAST_CONSTNESS }
     1,63,0 { CLONE_INTO }
     1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE, CONST_EXTERN_C_FN }
+    1,60,0 { ABS_DIFF }
     1,59,0 { THREAD_LOCAL_CONST_INIT }
     1,58,0 { FORMAT_ARGS_CAPTURE, PATTERN_TRAIT_CHAR_ARRAY, CONST_RAW_PTR_DEREF }
     1,57,0 { MAP_WHILE }
@@ -63,6 +64,7 @@ msrv_aliases! {
     1,35,0 { OPTION_COPIED, RANGE_CONTAINS }
     1,34,0 { TRY_FROM }
     1,33,0 { UNDERSCORE_IMPORTS }
+    1,32,0 { CONST_IS_POWER_OF_TWO }
     1,31,0 { OPTION_REPLACE }
     1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES }
     1,29,0 { ITER_FLATTEN }
@@ -182,8 +184,7 @@ impl MsrvStack {
 }
 
 fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
-    let sym_msrv = Symbol::intern("msrv");
-    let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym_msrv]));
+    let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym::msrv]));
 
     if let Some(msrv_attr) = msrv_attrs.next() {
         if let Some(duplicate) = msrv_attrs.next_back() {

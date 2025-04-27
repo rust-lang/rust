@@ -65,7 +65,7 @@ pub enum TypingMode<I: Interner> {
     ///     let x: <() as Assoc>::Output = true;
     /// }
     /// ```
-    Analysis { defining_opaque_types: I::DefiningOpaqueTypes },
+    Analysis { defining_opaque_types_and_generators: I::LocalDefIds },
     /// The behavior during MIR borrowck is identical to `TypingMode::Analysis`
     /// except that the initial value for opaque types is the type computed during
     /// HIR typeck with unique unconstrained region inference variables.
@@ -73,13 +73,13 @@ pub enum TypingMode<I: Interner> {
     /// This is currently only used with by the new solver as it results in new
     /// non-universal defining uses of opaque types, which is a breaking change.
     /// See tests/ui/impl-trait/non-defining-use/as-projection-term.rs.
-    Borrowck { defining_opaque_types: I::DefiningOpaqueTypes },
+    Borrowck { defining_opaque_types: I::LocalDefIds },
     /// Any analysis after borrowck for a given body should be able to use all the
     /// hidden types defined by borrowck, without being able to define any new ones.
     ///
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
-    PostBorrowckAnalysis { defined_opaque_types: I::DefiningOpaqueTypes },
+    PostBorrowckAnalysis { defined_opaque_types: I::LocalDefIds },
     /// After analysis, mostly during codegen and MIR optimizations, we're able to
     /// reveal all opaque types. As the concrete type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
@@ -94,13 +94,25 @@ pub enum TypingMode<I: Interner> {
 impl<I: Interner> TypingMode<I> {
     /// Analysis outside of a body does not define any opaque types.
     pub fn non_body_analysis() -> TypingMode<I> {
-        TypingMode::Analysis { defining_opaque_types: Default::default() }
+        TypingMode::Analysis { defining_opaque_types_and_generators: Default::default() }
+    }
+
+    pub fn typeck_for_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
+        TypingMode::Analysis {
+            defining_opaque_types_and_generators: cx
+                .opaque_types_and_generators_defined_by(body_def_id),
+        }
     }
 
     /// While typechecking a body, we need to be able to define the opaque
     /// types defined by that body.
+    ///
+    /// FIXME: This will be removed because it's generally not correct to define
+    /// opaques outside of HIR typeck.
     pub fn analysis_in_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
-        TypingMode::Analysis { defining_opaque_types: cx.opaque_types_defined_by(body_def_id) }
+        TypingMode::Analysis {
+            defining_opaque_types_and_generators: cx.opaque_types_defined_by(body_def_id),
+        }
     }
 
     pub fn borrowck(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {

@@ -6,7 +6,7 @@ use std::{mem, slice};
 use ast::token::IdentIsRaw;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
-use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
+use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
@@ -784,7 +784,7 @@ impl<'tt> FirstSets<'tt> {
                     TokenTree::Delimited(span, _, delimited) => {
                         build_recur(sets, &delimited.tts);
                         first.replace_with(TtHandle::from_token_kind(
-                            token::OpenDelim(delimited.delim),
+                            delimited.delim.as_open_token_kind(),
                             span.open,
                         ));
                     }
@@ -852,7 +852,7 @@ impl<'tt> FirstSets<'tt> {
                 }
                 TokenTree::Delimited(span, _, delimited) => {
                     first.add_one(TtHandle::from_token_kind(
-                        token::OpenDelim(delimited.delim),
+                        delimited.delim.as_open_token_kind(),
                         span.open,
                     ));
                     return first;
@@ -1099,7 +1099,7 @@ fn check_matcher_core<'tt>(
             }
             TokenTree::Delimited(span, _, d) => {
                 let my_suffix = TokenSet::singleton(TtHandle::from_token_kind(
-                    token::CloseDelim(d.delim),
+                    d.delim.as_close_token_kind(),
                     span.close,
                 ));
                 check_matcher_core(sess, node_id, first_sets, &d.tts, &my_suffix)?;
@@ -1299,7 +1299,9 @@ enum IsInFollow {
 fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
     use mbe::TokenTree;
 
-    if let TokenTree::Token(Token { kind: token::CloseDelim(_), .. }) = *tok {
+    if let TokenTree::Token(Token { kind, .. }) = tok
+        && kind.close_delim().is_some()
+    {
         // closing a token tree can never be matched by any fragment;
         // iow, we always require that `(` and `)` match, etc.
         IsInFollow::Yes
@@ -1358,16 +1360,8 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 ];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
-                        OpenDelim(Delimiter::Brace)
-                        | OpenDelim(Delimiter::Bracket)
-                        | Comma
-                        | FatArrow
-                        | Colon
-                        | Eq
-                        | Gt
-                        | Shr
-                        | Semi
-                        | Or => IsInFollow::Yes,
+                        OpenBrace | OpenBracket | Comma | FatArrow | Colon | Eq | Gt | Shr
+                        | Semi | Or => IsInFollow::Yes,
                         Ident(name, IdentIsRaw::No) if name == kw::As || name == kw::Where => {
                             IsInFollow::Yes
                         }

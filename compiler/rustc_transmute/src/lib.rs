@@ -1,8 +1,9 @@
 // tidy-alphabetical-start
+#![cfg_attr(test, feature(test))]
 #![feature(never_type)]
 // tidy-alphabetical-end
 
-pub(crate) use rustc_data_structures::fx::FxIndexMap as Map;
+pub(crate) use rustc_data_structures::fx::{FxIndexMap as Map, FxIndexSet as Set};
 
 pub mod layout;
 mod maybe_transmutable;

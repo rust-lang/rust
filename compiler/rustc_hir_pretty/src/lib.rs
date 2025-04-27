@@ -1064,18 +1064,18 @@ impl<'a> State<'a> {
         if let Some(els_inner) = els {
             match els_inner.kind {
                 // Another `else if` block.
-                hir::ExprKind::If(i, then, e) => {
-                    self.cbox(INDENT_UNIT - 1);
+                hir::ExprKind::If(i, hir::Expr { kind: hir::ExprKind::Block(t, None), .. }, e) => {
+                    self.cbox(0);
                     self.ibox(0);
                     self.word(" else if ");
                     self.print_expr_as_cond(i);
                     self.space();
-                    self.print_expr(then);
+                    self.print_block(t);
                     self.print_else(e);
                 }
                 // Final `else` block.
-                hir::ExprKind::Block(b, _) => {
-                    self.cbox(INDENT_UNIT - 1);
+                hir::ExprKind::Block(b, None) => {
+                    self.cbox(0);
                     self.ibox(0);
                     self.word(" else ");
                     self.print_block(b);
@@ -1094,11 +1094,18 @@ impl<'a> State<'a> {
         blk: &hir::Expr<'_>,
         elseopt: Option<&hir::Expr<'_>>,
     ) {
-        self.head("if");
+        self.cbox(0);
+        self.ibox(0);
+        self.word_nbsp("if");
         self.print_expr_as_cond(test);
         self.space();
-        self.print_expr(blk);
-        self.print_else(elseopt)
+        match blk.kind {
+            hir::ExprKind::Block(blk, None) => {
+                self.print_block(blk);
+                self.print_else(elseopt)
+            }
+            _ => panic!("non-block then expr"),
+        }
     }
 
     fn print_anon_const(&mut self, constant: &hir::AnonConst) {

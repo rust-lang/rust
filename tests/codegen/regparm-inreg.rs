@@ -3,7 +3,7 @@
 // x86 only.
 
 //@ add-core-stubs
-//@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3
+//@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3 -Ctarget-feature=+avx
 //@ needs-llvm-components: x86
 
 //@ revisions:regparm0 regparm1 regparm2 regparm3

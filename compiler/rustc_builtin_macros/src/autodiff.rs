@@ -217,14 +217,12 @@ mod llvm_enzyme {
                 ast::StmtKind::Item(iitem) => extract_item_info(iitem),
                 _ => None,
             },
-            Annotatable::AssocItem(assoc_item, Impl { of_trait: false }) => {
-                match &assoc_item.kind {
-                    ast::AssocItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
-                        Some((assoc_item.vis.clone(), sig.clone(), ident.clone()))
-                    }
-                    _ => None,
+            Annotatable::AssocItem(assoc_item, Impl { .. }) => match &assoc_item.kind {
+                ast::AssocItemKind::Fn(box ast::Fn { sig, ident, .. }) => {
+                    Some((assoc_item.vis.clone(), sig.clone(), ident.clone()))
                 }
-            }
+                _ => None,
+            },
             _ => None,
         }) else {
             dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
@@ -365,7 +363,7 @@ mod llvm_enzyme {
                 }
                 Annotatable::Item(iitem.clone())
             }
-            Annotatable::AssocItem(ref mut assoc_item, i @ Impl { of_trait: false }) => {
+            Annotatable::AssocItem(ref mut assoc_item, i @ Impl { .. }) => {
                 if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     assoc_item.attrs.push(attr);
                 }
@@ -596,15 +594,14 @@ mod llvm_enzyme {
                 }
             };
             let arg = ty.kind.is_simple_path().unwrap();
-            let sl: Vec<Symbol> = vec![arg, kw::Default];
-            let tmp = ecx.def_site_path(&sl);
+            let tmp = ecx.def_site_path(&[arg, kw::Default]);
             let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
             let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
             body.stmts.push(ecx.stmt_expr(default_call_expr));
             return body;
         }
 
-        let mut exprs: P<ast::Expr> = primal_call.clone();
+        let mut exprs: P<ast::Expr> = primal_call;
         let d_ret_ty = match d_sig.decl.output {
             FnRetTy::Ty(ref ty) => ty.clone(),
             FnRetTy::Default(span) => {
@@ -622,7 +619,7 @@ mod llvm_enzyme {
                 // type due to the Const return activity.
                 exprs = ecx.expr_call(new_decl_span, bb_call_expr, thin_vec![exprs]);
             } else {
-                let q = QSelf { ty: d_ret_ty.clone(), path_span: span, position: 0 };
+                let q = QSelf { ty: d_ret_ty, path_span: span, position: 0 };
                 let y =
                     ExprKind::Path(Some(P(q)), ecx.path_ident(span, Ident::from_str("default")));
                 let default_call_expr = ecx.expr(span, y);
@@ -640,8 +637,7 @@ mod llvm_enzyme {
                         let mut exprs2 = thin_vec![exprs];
                         for arg in args.iter().skip(1) {
                             let arg = arg.kind.is_simple_path().unwrap();
-                            let sl: Vec<Symbol> = vec![arg, kw::Default];
-                            let tmp = ecx.def_site_path(&sl);
+                            let tmp = ecx.def_site_path(&[arg, kw::Default]);
                             let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
                             let default_call_expr =
                                 ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);

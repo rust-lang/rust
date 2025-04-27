@@ -1,5 +1,5 @@
+#![allow(clippy::no_effect, clippy::op_ref, clippy::uninlined_format_args)]
 #![warn(clippy::manual_inspect)]
-#![allow(clippy::no_effect, clippy::op_ref)]
 
 fn main() {
     let _ = Some(0).map(|x| {
@@ -195,5 +195,14 @@ fn main() {
             println!("{}", x);
             x
         });
+    }
+}
+
+#[rustfmt::skip]
+fn layout_check() {
+    if let Some(x) = Some(1).map(|x| { println!("{x}"); //~ manual_inspect
+        // Do not collapse code into this comment
+        x }) {
+        println!("{x}");
     }
 }

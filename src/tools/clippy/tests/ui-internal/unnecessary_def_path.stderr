@@ -7,9 +7,8 @@ LL |     let _ = match_type(cx, ty, &OPTION);
 note: the lint level is defined here
   --> tests/ui-internal/unnecessary_def_path.rs:2:9
    |
-LL | #![deny(clippy::internal)]
-   |         ^^^^^^^^^^^^^^^^
-   = note: `#[deny(clippy::unnecessary_def_path)]` implied by `#[deny(clippy::internal)]`
+LL | #![deny(clippy::unnecessary_def_path)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of a def path to a diagnostic item
   --> tests/ui-internal/unnecessary_def_path.rs:39:13

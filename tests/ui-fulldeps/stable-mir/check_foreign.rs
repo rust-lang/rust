@@ -58,7 +58,7 @@ fn test_foreign() -> ControlFlow<()> {
 fn main() {
     let path = "foreign_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-type=lib".to_string(),

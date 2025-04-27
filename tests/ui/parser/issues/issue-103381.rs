@@ -1,6 +1,6 @@
+//@ edition: 2024
 //@ run-rustfix
 
-#![feature(let_chains)]
 #![allow(unused_variables)]
 #![allow(dead_code)]
 #![allow(irrefutable_let_patterns)]

@@ -1,48 +1,60 @@
 error: incorrect ordering of items (must be alphabetically ordered)
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:24:8
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:25:8
    |
 LL | struct OrderedChecked {
    |        ^^^^^^^^^^^^^^
    |
 note: should be placed before `Unordered`
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:18:8
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:19:8
    |
 LL | struct Unordered {
    |        ^^^^^^^^^
 note: the lint level is defined here
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:9:9
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:10:9
    |
 LL | #![deny(clippy::arbitrary_source_item_ordering)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: incorrect ordering of items (must be alphabetically ordered)
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:45:4
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:46:4
    |
 LL | fn before_main() {}
    |    ^^^^^^^^^^^
    |
 note: should be placed before `main`
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:41:4
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:42:4
    |
 LL | fn main() {
    |    ^^^^
 
 error: incorrect ordering of items (must be alphabetically ordered)
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:35:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:36:5
    |
 LL |     a: bool,
    |     ^
    |
 note: should be placed before `b`
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:34:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:35:5
    |
 LL |     b: bool,
    |     ^
 note: the lint level is defined here
-  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:32:8
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:33:8
    |
 LL | #[deny(clippy::arbitrary_source_item_ordering)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: incorrect ordering of items (must be alphabetically ordered)
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:52:11
+   |
+LL |     const A: i8 = 0;
+   |           ^
+   |
+note: should be placed before `B`
+  --> tests/ui-toml/arbitrary_source_item_ordering/selective_ordering.rs:51:11
+   |
+LL |     const B: i8 = 1;
+   |           ^
+
+error: aborting due to 4 previous errors
 

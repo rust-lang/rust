@@ -47,7 +47,7 @@ where
         &mut self,
         body: &'mir Body<'tcx>,
         blocks: impl IntoIterator<Item = BasicBlock>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, A>,
+        vis: &mut impl ResultsVisitor<'tcx, A>,
     ) {
         visit_results(body, blocks, self, vis)
     }
@@ -55,7 +55,7 @@ where
     pub fn visit_reachable_with<'mir>(
         &mut self,
         body: &'mir Body<'tcx>,
-        vis: &mut impl ResultsVisitor<'mir, 'tcx, A>,
+        vis: &mut impl ResultsVisitor<'tcx, A>,
     ) {
         let blocks = traversal::reachable(body);
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)

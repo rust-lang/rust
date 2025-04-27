@@ -144,7 +144,7 @@ mod msrv {
 
     #[clippy::msrv = "1.62"]
     mod with_extern {
-        const extern "C" fn c() {}
+        const unsafe extern "C" fn c() {}
         //~^ missing_const_for_fn
 
         #[rustfmt::skip]
@@ -153,7 +153,7 @@ mod msrv {
         //~^ missing_const_for_fn
 
         // any item functions in extern block won't trigger this lint
-        extern "C" {
+        unsafe extern "C" {
             fn c_in_block();
         }
     }

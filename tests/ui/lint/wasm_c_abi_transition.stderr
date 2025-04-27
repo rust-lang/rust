@@ -1,3 +1,32 @@
+warning: `extern` fn uses type `v128`, which is not FFI-safe
+  --> $DIR/wasm_c_abi_transition.rs:55:35
+   |
+LL | pub extern "C" fn my_safe_simd(x: v128) -> v128 { x }
+   |                                   ^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/wasm_c_abi_transition.rs:53:1
+   |
+LL | pub struct v128([i32; 4]);
+   | ^^^^^^^^^^^^^^^
+   = note: `#[warn(improper_ctypes_definitions)]` on by default
+
+warning: `extern` fn uses type `v128`, which is not FFI-safe
+  --> $DIR/wasm_c_abi_transition.rs:55:44
+   |
+LL | pub extern "C" fn my_safe_simd(x: v128) -> v128 { x }
+   |                                            ^^^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/wasm_c_abi_transition.rs:53:1
+   |
+LL | pub struct v128([i32; 4]);
+   | ^^^^^^^^^^^^^^^
+
 error: this function definition involves an argument of type `MyType` which is affected by the wasm ABI transition
   --> $DIR/wasm_c_abi_transition.rs:18:1
    |
@@ -33,7 +62,7 @@ LL |     unsafe { other_fun(x) }
    = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
    = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
 
-error: aborting due to 3 previous errors
+error: aborting due to 3 previous errors; 2 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
 error: this function definition involves an argument of type `MyType` which is affected by the wasm ABI transition

@@ -8,8 +8,6 @@ pub(super) fn type_visitable_derive(
         panic!("cannot derive on union")
     }
 
-    s.underscore_const(true);
-
     // ignore fields with #[type_visitable(ignore)]
     s.filter(|bi| {
         let mut ignored = false;
