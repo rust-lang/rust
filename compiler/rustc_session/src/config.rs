@@ -2323,14 +2323,13 @@ pub fn parse_externs(
         let ExternOpt { crate_name: name, path, options } =
             split_extern_opt(early_dcx, unstable_opts, &arg).unwrap_or_else(|e| e.emit());
 
-        let path = path.map(|p| CanonicalizedPath::new(p.as_path()));
-
         let entry = externs.entry(name.to_owned());
 
         use std::collections::btree_map::Entry;
 
         let entry = if let Some(path) = path {
             // --extern prelude_name=some_file.rlib
+            let path = CanonicalizedPath::new(path);
             match entry {
                 Entry::Vacant(vacant) => {
                     let files = BTreeSet::from_iter(iter::once(path));
