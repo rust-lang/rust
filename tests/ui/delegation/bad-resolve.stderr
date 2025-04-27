@@ -44,9 +44,7 @@ error[E0575]: expected method or associated constant, found associated type `Tra
   --> $DIR/bad-resolve.rs:27:11
    |
 LL |     reuse <F as Trait>::Type;
-   |           ^^^^^^^^^^^^^^^^^^
-   |
-   = note: can't use a type alias as a constructor
+   |           ^^^^^^^^^^^^^^^^^^ not a method or associated constant
 
 error[E0576]: cannot find method or associated constant `baz` in trait `Trait`
   --> $DIR/bad-resolve.rs:30:25
