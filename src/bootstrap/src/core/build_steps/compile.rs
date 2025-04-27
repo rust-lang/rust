@@ -1409,7 +1409,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         cargo.env("LLVM_LINKER_FLAGS", llvm_linker_flags);
     }
 
-    // Building with a static libstdc++ is only supported on linux right now,
+    // Building with a static libstdc++ is only supported on Linux and windows-gnu* right now,
     // not for MSVC or macOS
     if builder.config.llvm_static_stdcpp
         && !target.contains("freebsd")
