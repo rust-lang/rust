@@ -93,7 +93,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// //! <code>[first](x)second</code>
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub DOC_LINK_CODE,
     nursery,
     "link with code back-to-back with other code"

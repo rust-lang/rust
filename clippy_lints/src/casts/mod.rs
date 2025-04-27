@@ -780,7 +780,7 @@ declare_clippy_lint! {
     /// let aligned = std::ptr::dangling::<u32>();
     /// let mut_ptr: *mut i64 = std::ptr::dangling_mut();
     /// ```
-    #[clippy::version = "1.87.0"]
+    #[clippy::version = "1.88.0"]
     pub MANUAL_DANGLING_PTR,
     style,
     "casting small constant literals to pointers to create dangling pointers"

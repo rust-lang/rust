@@ -778,7 +778,7 @@ declare_clippy_lint! {
     ///     let _ = s[idx..];
     /// }
     /// ```
-    #[clippy::version = "1.83.0"]
+    #[clippy::version = "1.88.0"]
     pub CHAR_INDICES_AS_BYTE_INDICES,
     correctness,
     "using the character position yielded by `.chars().enumerate()` in a context where a byte index is expected"

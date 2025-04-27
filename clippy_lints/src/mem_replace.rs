@@ -62,7 +62,7 @@ declare_clippy_lint! {
     /// let mut an_option = Some(0);
     /// let taken = an_option.replace(1);
     /// ```
-    #[clippy::version = "1.86.0"]
+    #[clippy::version = "1.87.0"]
     pub MEM_REPLACE_OPTION_WITH_SOME,
     style,
     "replacing an `Option` with `Some` instead of `replace()`"
