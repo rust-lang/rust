@@ -870,33 +870,23 @@ impl<'a> State<'a> {
             }
             hir::VariantData::Struct { .. } => {
                 self.print_where_clause(generics);
-                self.print_variant_struct(span, struct_def.fields(), ib, cb)
+                self.nbsp();
+                self.bopen(ib);
+                self.hardbreak_if_not_bol();
+
+                for field in struct_def.fields() {
+                    self.hardbreak_if_not_bol();
+                    self.maybe_print_comment(field.span.lo());
+                    self.print_attrs_as_outer(self.attrs(field.hir_id));
+                    self.print_ident(field.ident);
+                    self.word_nbsp(":");
+                    self.print_type(field.ty);
+                    self.word(",");
+                }
+
+                self.bclose(span, cb)
             }
         }
-    }
-
-    fn print_variant_struct(
-        &mut self,
-        span: rustc_span::Span,
-        fields: &[hir::FieldDef<'_>],
-        cb: BoxMarker,
-        ib: BoxMarker,
-    ) {
-        self.nbsp();
-        self.bopen(ib);
-        self.hardbreak_if_not_bol();
-
-        for field in fields {
-            self.hardbreak_if_not_bol();
-            self.maybe_print_comment(field.span.lo());
-            self.print_attrs_as_outer(self.attrs(field.hir_id));
-            self.print_ident(field.ident);
-            self.word_nbsp(":");
-            self.print_type(field.ty);
-            self.word(",");
-        }
-
-        self.bclose(span, cb)
     }
 
     pub fn print_variant(&mut self, v: &hir::Variant<'_>) {

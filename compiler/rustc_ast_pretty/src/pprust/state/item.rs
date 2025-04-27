@@ -439,18 +439,8 @@ impl<'a> State<'a> {
         self.print_generic_params(&generics.params);
         self.print_where_clause(&generics.where_clause);
         self.space();
-        self.print_variants(&enum_definition.variants, span, cb, ib)
-    }
-
-    fn print_variants(
-        &mut self,
-        variants: &[ast::Variant],
-        span: rustc_span::Span,
-        cb: BoxMarker,
-        ib: BoxMarker,
-    ) {
         self.bopen(ib);
-        for v in variants {
+        for v in enum_definition.variants.iter() {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
             self.print_outer_attributes(&v.attrs);
@@ -460,7 +450,7 @@ impl<'a> State<'a> {
             self.end(ib);
             self.maybe_print_trailing_comment(v.span, None);
         }
-        let empty = variants.is_empty();
+        let empty = enum_definition.variants.is_empty();
         self.bclose(span, empty, cb)
     }
 
@@ -483,35 +473,6 @@ impl<'a> State<'a> {
         if let ast::Defaultness::Default(_) = defaultness {
             self.word_nbsp("default");
         }
-    }
-
-    pub(crate) fn print_record_struct_body(
-        &mut self,
-        fields: &[ast::FieldDef],
-        span: rustc_span::Span,
-        cb: BoxMarker,
-        ib: BoxMarker,
-    ) {
-        self.nbsp();
-        self.bopen(ib);
-
-        let empty = fields.is_empty();
-        if !empty {
-            self.hardbreak_if_not_bol();
-
-            for field in fields {
-                self.hardbreak_if_not_bol();
-                self.maybe_print_comment(field.span.lo());
-                self.print_outer_attributes(&field.attrs);
-                self.print_visibility(&field.vis);
-                self.print_ident(field.ident.unwrap());
-                self.word_nbsp(":");
-                self.print_type(&field.ty);
-                self.word(",");
-            }
-        }
-
-        self.bclose(span, empty, cb);
     }
 
     fn print_struct(
@@ -547,7 +508,26 @@ impl<'a> State<'a> {
             }
             ast::VariantData::Struct { fields, .. } => {
                 self.print_where_clause(&generics.where_clause);
-                self.print_record_struct_body(fields, span, cb, ib);
+                self.nbsp();
+                self.bopen(ib);
+
+                let empty = fields.is_empty();
+                if !empty {
+                    self.hardbreak_if_not_bol();
+
+                    for field in fields {
+                        self.hardbreak_if_not_bol();
+                        self.maybe_print_comment(field.span.lo());
+                        self.print_outer_attributes(&field.attrs);
+                        self.print_visibility(&field.vis);
+                        self.print_ident(field.ident.unwrap());
+                        self.word_nbsp(":");
+                        self.print_type(&field.ty);
+                        self.word(",");
+                    }
+                }
+
+                self.bclose(span, empty, cb);
             }
         }
     }
