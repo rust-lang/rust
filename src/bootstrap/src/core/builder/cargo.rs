@@ -114,7 +114,7 @@ impl Cargo {
         match cmd_kind {
             // No need to configure the target linker for these command types,
             // as they don't invoke rustc at all.
-            Kind::Clean | Kind::Suggest | Kind::Format | Kind::Setup => {}
+            Kind::Clean | Kind::Check | Kind::Suggest | Kind::Format | Kind::Setup => {}
             _ => {
                 cargo.configure_linker(builder);
             }
