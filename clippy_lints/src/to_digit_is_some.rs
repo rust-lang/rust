@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::match_def_path;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{match_def_path, sym};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -38,11 +38,11 @@ declare_lint_pass!(ToDigitIsSome => [TO_DIGIT_IS_SOME]);
 impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::MethodCall(is_some_path, to_digit_expr, [], _) = &expr.kind
-            && is_some_path.ident.name.as_str() == "is_some"
+            && is_some_path.ident.name == sym::is_some
         {
             let match_result = match &to_digit_expr.kind {
                 hir::ExprKind::MethodCall(to_digits_path, char_arg, [radix_arg], _) => {
-                    if to_digits_path.ident.name.as_str() == "to_digit"
+                    if to_digits_path.ident.name == sym::to_digit
                         && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(char_arg)
                         && *char_arg_ty.kind() == ty::Char
                     {

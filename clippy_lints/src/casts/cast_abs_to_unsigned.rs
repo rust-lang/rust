@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -19,7 +20,7 @@ pub(super) fn check(
     if let ty::Int(from) = cast_from.kind()
         && let ty::Uint(to) = cast_to.kind()
         && let ExprKind::MethodCall(method_path, receiver, [], _) = cast_expr.kind
-        && method_path.ident.name.as_str() == "abs"
+        && method_path.ident.name == sym::abs
         && msrv.meets(cx, msrvs::UNSIGNED_ABS)
     {
         let span = if from.bit_width() == to.bit_width() {
