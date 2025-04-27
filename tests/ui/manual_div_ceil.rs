@@ -1,5 +1,21 @@
 #![warn(clippy::manual_div_ceil)]
 
+macro_rules! y {
+    () => {
+        let x = 33u32;
+        let _ = (x + 7) / 8;
+        //~^ manual_div_ceil
+        let _ = (7 + x) / 8;
+        //~^ manual_div_ceil
+    };
+}
+
+macro_rules! eight {
+    () => {
+        8
+    };
+}
+
 fn main() {
     let x = 7_u32;
     let y = 4_u32;
@@ -32,6 +48,13 @@ fn main() {
     let _ = (z as i32 + (y_i - 1)) / y_i;
     let _ = (7_u32 as i32 + (y_i - 1)) / y_i;
     let _ = (7_u32 as i32 + (4 - 1)) / 4;
+
+    // Test lint with macro
+    y!();
+
+    // Also test if RHS should be result of macro expansion
+    let _ = (33u32 + 7) / eight!();
+    //~^ manual_div_ceil
 }
 
 fn issue_13843() {
