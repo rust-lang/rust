@@ -353,7 +353,7 @@ pub fn abort_internal() -> ! {
 
 #[cfg(miri)]
 pub fn abort_internal() -> ! {
-    crate::intrinsics::abort();
+    crate::intrinsics::abort()
 }
 
 /// Align the inner value to 8 bytes.
