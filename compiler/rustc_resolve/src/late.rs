@@ -402,7 +402,7 @@ pub(crate) enum AliasPossibility {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum PathSource<'a> {
+pub(crate) enum PathSource<'a, 'c> {
     /// Type paths `Path`.
     Type,
     /// Trait paths in bounds or impls.
@@ -416,7 +416,10 @@ pub(crate) enum PathSource<'a> {
     /// Paths in tuple struct patterns `Path(..)`.
     TupleStruct(Span, &'a [Span]),
     /// `m::A::B` in `<T as m::A>::B::C`.
-    TraitItem(Namespace),
+    ///
+    /// Second field holds the "cause" of this one, i.e. the context within
+    /// which the trait item is resolved. Used for diagnostics.
+    TraitItem(Namespace, &'c PathSource<'a, 'c>),
     /// Paths in delegation item
     Delegation,
     /// An arg in a `use<'a, N>` precise-capturing bound.
@@ -427,7 +430,7 @@ pub(crate) enum PathSource<'a> {
     DefineOpaques,
 }
 
-impl<'a> PathSource<'a> {
+impl<'a> PathSource<'a, '_> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type
@@ -439,7 +442,7 @@ impl<'a> PathSource<'a> {
             | PathSource::TupleStruct(..)
             | PathSource::Delegation
             | PathSource::ReturnTypeNotation => ValueNS,
-            PathSource::TraitItem(ns) => ns,
+            PathSource::TraitItem(ns, _) => ns,
             PathSource::PreciseCapturingArg(ns) => ns,
         }
     }
@@ -467,8 +470,9 @@ impl<'a> PathSource<'a> {
             PathSource::Trait(_) => "trait",
             PathSource::Pat => "unit struct, unit variant or constant",
             PathSource::Struct => "struct, variant or union type",
-            PathSource::TupleStruct(..) => "tuple struct or tuple variant",
-            PathSource::TraitItem(ns) => match ns {
+            PathSource::TraitItem(ValueNS, PathSource::TupleStruct(..))
+            | PathSource::TupleStruct(..) => "tuple struct or tuple variant",
+            PathSource::TraitItem(ns, _) => match ns {
                 TypeNS => "associated type",
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
@@ -572,7 +576,7 @@ impl<'a> PathSource<'a> {
                 ) | Res::SelfTyParam { .. }
                     | Res::SelfTyAlias { .. }
             ),
-            PathSource::TraitItem(ns) => match res {
+            PathSource::TraitItem(ns, _) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
@@ -1983,7 +1987,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         partial_res: PartialRes,
         path: &[Segment],
-        source: PathSource<'_>,
+        source: PathSource<'_, '_>,
         path_span: Span,
     ) {
         let proj_start = path.len() - partial_res.unresolved_segments();
@@ -4135,7 +4139,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         id: NodeId,
         qself: &Option<P<QSelf>>,
         path: &Path,
-        source: PathSource<'ast>,
+        source: PathSource<'ast, '_>,
     ) {
         self.smart_resolve_path_fragment(
             qself,
@@ -4152,7 +4156,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         qself: &Option<P<QSelf>>,
         path: &[Segment],
-        source: PathSource<'ast>,
+        source: PathSource<'ast, '_>,
         finalize: Finalize,
         record_partial_res: RecordPartialRes,
         parent_qself: Option<&QSelf>,
@@ -4333,6 +4337,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             path_span,
             source.defer_to_typeck(),
             finalize,
+            source,
         ) {
             Ok(Some(partial_res)) if let Some(res) = partial_res.full_res() => {
                 // if we also have an associated type that matches the ident, stash a suggestion
@@ -4455,12 +4460,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         span: Span,
         defer_to_typeck: bool,
         finalize: Finalize,
+        source: PathSource<'ast, '_>,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         let mut fin_res = None;
 
         for (i, &ns) in [primary_ns, TypeNS, ValueNS].iter().enumerate() {
             if i == 0 || ns != primary_ns {
-                match self.resolve_qpath(qself, path, ns, finalize)? {
+                match self.resolve_qpath(qself, path, ns, finalize, source)? {
                     Some(partial_res)
                         if partial_res.unresolved_segments() == 0 || defer_to_typeck =>
                     {
@@ -4497,6 +4503,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         ns: Namespace,
         finalize: Finalize,
+        source: PathSource<'ast, '_>,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'ra>>> {
         debug!(
             "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
@@ -4544,7 +4551,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let partial_res = self.smart_resolve_path_fragment(
                 &None,
                 &path[..=qself.position],
-                PathSource::TraitItem(ns),
+                PathSource::TraitItem(ns, &source),
                 Finalize::with_root_span(finalize.node_id, finalize.path_span, qself.path_span),
                 RecordPartialRes::No,
                 Some(&qself),

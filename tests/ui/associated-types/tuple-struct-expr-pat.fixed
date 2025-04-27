@@ -7,16 +7,16 @@
 #![feature(more_qualified_paths)]
 
 fn main() {
-    let <T<0> as Trait>::Assoc() = <T<0> as Trait>::Assoc();
+    let <T<0> as Trait>::Assoc {} = <T<0> as Trait>::Assoc {};
     //~^ error: expected method or associated constant, found associated type
     //~| error: expected tuple struct or tuple variant, found associated type
-    let <T<1> as Trait>::Assoc(_a) = <T<1> as Trait>::Assoc(0);
+    let <T<1> as Trait>::Assoc { 0: _a } = <T<1> as Trait>::Assoc { 0: 0 };
     //~^ error: expected method or associated constant, found associated type
     //~| error: expected tuple struct or tuple variant, found associated type
-    let <T<2> as Trait>::Assoc(_a, _b) = <T<2> as Trait>::Assoc(0, 1);
+    let <T<2> as Trait>::Assoc { 0: _a, 1: _b } = <T<2> as Trait>::Assoc { 0: 0, 1: 1 };
     //~^ error: expected method or associated constant, found associated type
     //~| error: expected tuple struct or tuple variant, found associated type
-    let <T<3> as Trait>::Assoc(ref _a, ref mut _b, mut _c) = <T<3> as Trait>::Assoc(0, 1, 2);
+    let <T<3> as Trait>::Assoc { 0: ref _a, 1: ref mut _b, 2: mut _c } = <T<3> as Trait>::Assoc { 0: 0, 1: 1, 2: 2 };
     //~^ error: expected method or associated constant, found associated type
     //~| error: expected tuple struct or tuple variant, found associated type
 }
