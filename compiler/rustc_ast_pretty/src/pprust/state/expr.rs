@@ -21,7 +21,7 @@ impl<'a> State<'a> {
             match &_else.kind {
                 // Another `else if` block.
                 ast::ExprKind::If(i, then, e) => {
-                    self.cbox(INDENT_UNIT - 1);
+                    self.cbox(0);
                     self.ibox(0);
                     self.word(" else if ");
                     self.print_expr_as_cond(i);
@@ -30,8 +30,8 @@ impl<'a> State<'a> {
                     self.print_else(e.as_deref())
                 }
                 // Final `else` block.
-                ast::ExprKind::Block(b, _) => {
-                    self.cbox(INDENT_UNIT - 1);
+                ast::ExprKind::Block(b, None) => {
+                    self.cbox(0);
                     self.ibox(0);
                     self.word(" else ");
                     self.print_block(b)
@@ -45,7 +45,9 @@ impl<'a> State<'a> {
     }
 
     fn print_if(&mut self, test: &ast::Expr, blk: &ast::Block, elseopt: Option<&ast::Expr>) {
-        self.head("if");
+        self.cbox(0);
+        self.ibox(0);
+        self.word_nbsp("if");
         self.print_expr_as_cond(test);
         self.space();
         self.print_block(blk);
@@ -876,6 +878,7 @@ impl<'a> State<'a> {
                 }
             }
         } else {
+            self.end(); // Close the ibox for the pattern.
             self.word(",");
         }
         self.end(); // Close enclosing cbox.

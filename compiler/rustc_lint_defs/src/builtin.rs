@@ -1424,7 +1424,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// macro_rules! foo {
     ///    () => {};
     ///    ($name) => { };
@@ -4128,7 +4128,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// #![deny(dependency_on_unit_never_type_fallback)]
     /// fn main() {
     ///     if true {
