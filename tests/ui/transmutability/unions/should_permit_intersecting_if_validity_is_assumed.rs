@@ -34,4 +34,19 @@ fn test() {
 
     assert::is_maybe_transmutable::<A, B>();
     assert::is_maybe_transmutable::<B, A>();
+
+    #[repr(C)]
+    struct C {
+        a: Ox00,
+        b: Ox00,
+    }
+
+    #[repr(C, align(2))]
+    struct D {
+        a: Ox00,
+    }
+
+    assert::is_maybe_transmutable::<C, D>();
+    // With Assume::VALIDITY a padding byte can hold any value.
+    assert::is_maybe_transmutable::<D, C>();
 }

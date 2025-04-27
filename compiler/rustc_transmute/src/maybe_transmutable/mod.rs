@@ -1,14 +1,10 @@
-use std::rc::Rc;
-use std::{cmp, iter};
-
-use itertools::Either;
 use tracing::{debug, instrument, trace};
 
 pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, Byte, Def, Dfa, Ref, Tree, dfa};
+use crate::layout::{self, Def, Dfa, Ref, Tree, dfa, union};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 
@@ -197,122 +193,20 @@ where
                     Quantifier::ForAll
                 };
 
-                let c = &core::cell::RefCell::new(&mut *cache);
                 let bytes_answer = src_quantifier.apply(
-                    // for each of the byte set transitions out of the `src_state`...
-                    self.src.bytes_from(src_state).flat_map(
-                        move |(src_validity, src_state_prime)| {
-                            // ...find all matching transitions out of `dst_state`.
-
-                            let Some(src_validity) = src_validity.range() else {
-                                // NOTE: We construct an iterator here rather
-                                // than just computing the value directly (via
-                                // `self.answer_memo`) so that, if the iterator
-                                // we produce from this branch is
-                                // short-circuited, we don't waste time
-                                // computing `self.answer_memo` unnecessarily.
-                                // That will specifically happen if
-                                // `src_quantifier == Quantifier::ThereExists`,
-                                // since we emit `Answer::Yes` first (before
-                                // chaining `answer_iter`).
-                                let answer_iter = if let Some(dst_state_prime) =
-                                    self.dst.get_uninit_edge_dst(dst_state)
-                                {
-                                    Either::Left(iter::once_with(move || {
-                                        let mut c = c.borrow_mut();
-                                        self.answer_memo(&mut *c, src_state_prime, dst_state_prime)
-                                    }))
-                                } else {
-                                    Either::Right(iter::once(Answer::No(
-                                        Reason::DstIsBitIncompatible,
-                                    )))
-                                };
-
-                                // When `answer == Answer::No(...)`, there are
-                                // two cases to consider:
-                                // - If `assume.validity`, then we should
-                                //   succeed because the user is responsible for
-                                //   ensuring that the *specific* byte value
-                                //   appearing at runtime is valid for the
-                                //   destination type. When `assume.validity`,
-                                //   `src_quantifier ==
-                                //   Quantifier::ThereExists`, so adding an
-                                //   `Answer::Yes` has the effect of ensuring
-                                //   that the "there exists" is always
-                                //   satisfied.
-                                // - If `!assume.validity`, then we should fail.
-                                //   In this case, `src_quantifier ==
-                                //   Quantifier::ForAll`, so adding an
-                                //   `Answer::Yes` has no effect.
-                                return Either::Left(iter::once(Answer::Yes).chain(answer_iter));
-                            };
-
-                            #[derive(Copy, Clone, Debug)]
-                            struct Accum {
-                                // The number of matching byte edges that we
-                                // have found in the destination so far.
-                                sum: usize,
-                                found_uninit: bool,
-                            }
-
-                            let accum1 = Rc::new(std::cell::Cell::new(Accum {
-                                sum: 0,
-                                found_uninit: false,
-                            }));
-                            let accum2 = Rc::clone(&accum1);
-                            let sv = src_validity.clone();
-                            let update_accum = move |mut accum: Accum, dst_validity: Byte| {
-                                if let Some(dst_validity) = dst_validity.range() {
-                                    // Only add the part of `dst_validity` that
-                                    // overlaps with `src_validity`.
-                                    let start = cmp::max(*sv.start(), *dst_validity.start());
-                                    let end = cmp::min(*sv.end(), *dst_validity.end());
-
-                                    // We add 1 here to account for the fact
-                                    // that `end` is an inclusive bound.
-                                    accum.sum += 1 + usize::from(end.saturating_sub(start));
-                                } else {
-                                    accum.found_uninit = true;
+                    union(self.src.bytes_from(src_state), self.dst.bytes_from(dst_state))
+                        .filter_map(|(_range, (src_state_prime, dst_state_prime))| {
+                            match (src_state_prime, dst_state_prime) {
+                                // No matching transitions in `src`. Skip.
+                                (None, _) => None,
+                                // No matching transitions in `dst`. Fail.
+                                (Some(_), None) => Some(Answer::No(Reason::DstIsBitIncompatible)),
+                                // Matching transitions. Continue with successor states.
+                                (Some(src_state_prime), Some(dst_state_prime)) => {
+                                    Some(self.answer_memo(cache, src_state_prime, dst_state_prime))
                                 }
-                                accum
-                            };
-
-                            let answers = self
-                                .dst
-                                .states_from(dst_state, src_validity.clone())
-                                .map(move |(dst_validity, dst_state_prime)| {
-                                    let mut c = c.borrow_mut();
-                                    accum1.set(update_accum(accum1.get(), dst_validity));
-                                    let answer =
-                                        self.answer_memo(&mut *c, src_state_prime, dst_state_prime);
-                                    answer
-                                })
-                                .chain(
-                                    iter::once_with(move || {
-                                        let src_validity_len = usize::from(*src_validity.end())
-                                            - usize::from(*src_validity.start())
-                                            + 1;
-                                        let accum = accum2.get();
-
-                                        // If this condition is false, then
-                                        // there are some byte values in the
-                                        // source which have no corresponding
-                                        // transition in the destination DFA. In
-                                        // that case, we add a `No` to our list
-                                        // of answers. When
-                                        // `!self.assume.validity`, this will
-                                        // cause the query to fail.
-                                        if accum.found_uninit || accum.sum == src_validity_len {
-                                            None
-                                        } else {
-                                            Some(Answer::No(Reason::DstIsBitIncompatible))
-                                        }
-                                    })
-                                    .flatten(),
-                                );
-                            Either::Right(answers)
-                        },
-                    ),
+                            }
+                        }),
                 );
 
                 // The below early returns reflect how this code would behave:
