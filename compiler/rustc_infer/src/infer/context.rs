@@ -125,6 +125,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().type_variables().equate(a, b);
     }
 
+    fn sub_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+        self.inner.borrow_mut().type_variables().sub(a, b);
+    }
+
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid) {
         self.inner.borrow_mut().int_unification_table().union(a, b);
     }
