@@ -1013,10 +1013,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn block_to_string(&self, blk: &ast::Block) -> String {
         Self::to_string(|s| {
-            // Containing cbox, will be closed by `print_block` at `}`.
-            let cb = s.cbox(INDENT_UNIT);
-            // Head-ibox, will be closed by `print_block` after `{`.
-            let ib = s.ibox(0);
+            let (cb, ib) = s.head("");
             s.print_block(blk, cb, ib)
         })
     }
