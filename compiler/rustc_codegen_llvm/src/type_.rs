@@ -128,6 +128,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         (**self).borrow().llcx
     }
 
+    pub(crate) fn llmod(&self) -> &'ll llvm::Module {
+        (**self).borrow().llmod
+    }
+
     pub(crate) fn isize_ty(&self) -> &'ll Type {
         (**self).borrow().isize_ty
     }
