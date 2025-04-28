@@ -40,7 +40,7 @@ mod inline {
     #[inline = "2100"] fn f() { }
     //~^ ERROR valid forms for the attribute are
     //~| WARN this was previously accepted
-    //~| NOTE #[deny(ill_formed_attribute_input)]` on by default
+    //~| NOTE `#[deny(ill_formed_attribute_input)]` (part of `#[deny(future_incompatible)]`) on by default
     //~| NOTE for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
     #[inline] struct S;

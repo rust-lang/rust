@@ -8,7 +8,7 @@ macro_rules! foo {
         //~| NOTE macro invocations at the end of a block
         //~| NOTE to ignore the value produced by the macro
         //~| NOTE for more information
-        //~| NOTE `#[deny(semicolon_in_expressions_from_macros)]` on by default
+        //~| NOTE `#[deny(semicolon_in_expressions_from_macros)]` (part of `#[deny(future_incompatible)]`) on by default
         assert_eq!("B", "B");
     }
     //~^^ ERROR macro expansion ignores `assert_eq` and any tokens following
