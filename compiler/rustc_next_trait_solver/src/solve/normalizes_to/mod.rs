@@ -194,6 +194,7 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, NormalizesTo<I>>,
         impl_def_id: I::ImplId,
+        then: impl FnOnce(&mut EvalCtxt<'_, D>, Certainty) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
@@ -314,8 +315,7 @@ where
                         // nested goal for consistency.
                         ty::TypingMode::Coherence => {
                             ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous));
-                            return ecx
-                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                            return then(ecx, Certainty::Yes);
                         }
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
@@ -325,8 +325,7 @@ where
                                 goal,
                                 goal.predicate.alias,
                             );
-                            return ecx
-                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                            return then(ecx, Certainty::Yes);
                         }
                     }
                 } else {

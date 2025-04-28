@@ -1060,6 +1060,10 @@ where
         self.delegate.resolve_vars_if_possible(value)
     }
 
+    pub(super) fn shallow_resolve(&self, ty: I::Ty) -> I::Ty {
+        self.delegate.shallow_resolve(ty)
+    }
+
     pub(super) fn eager_resolve_region(&self, r: I::Region) -> I::Region {
         if let ty::ReVar(vid) = r.kind() {
             self.delegate.opportunistic_resolve_lt_var(vid)
@@ -1175,6 +1179,33 @@ where
         symbol: I::Symbol,
     ) -> bool {
         may_use_unstable_feature(&**self.delegate, param_env, symbol)
+    }
+
+    pub(crate) fn opaques_with_sub_unified_hidden_type(
+        &self,
+        self_ty: I::Ty,
+    ) -> impl Iterator<Item = ty::AliasTy<I>> + use<'a, D, I> {
+        let delegate = self.delegate;
+        delegate
+            .clone_opaque_types_lookup_table()
+            .into_iter()
+            .chain(delegate.clone_duplicate_opaque_types())
+            .filter_map(move |(key, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(self_vid)) = self_ty.kind() {
+                    if let ty::Infer(ty::TyVar(hidden_vid)) = hidden_ty.kind() {
+                        if delegate.sub_unification_table_root_var(self_vid)
+                            == delegate.sub_unification_table_root_var(hidden_vid)
+                        {
+                            return Some(ty::AliasTy::new_from_args(
+                                delegate.cx(),
+                                key.def_id.into(),
+                                key.args,
+                            ));
+                        }
+                    }
+                }
+                None
+            })
     }
 }
 
