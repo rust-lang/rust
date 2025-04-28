@@ -1,0 +1,14 @@
+error: cannot find attribute `allow_unstable_feature` in this scope
+  --> $DIR/unstable-feature.rs:3:3
+   |
+LL | #[allow_unstable_feature]
+   |   ^^^^^^^^^^^^^^^^^^^^^^
+
+error: `allow_unstable_feature` expects a list of feature names
+  --> $DIR/unstable-feature.rs:3:1
+   |
+LL | #[allow_unstable_feature]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
