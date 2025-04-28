@@ -227,7 +227,7 @@ fn resolve_associated_item<'tcx>(
                 tcx.ensure_ok().compare_impl_item(leaf_def_item)?;
             }
 
-            Some(ty::Instance::new(leaf_def.item.def_id, args))
+            Some(ty::Instance::new_raw(leaf_def.item.def_id, args))
         }
         traits::ImplSource::Builtin(BuiltinImplSource::Object(_), _) => {
             let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_args);
@@ -272,7 +272,7 @@ fn resolve_associated_item<'tcx>(
 
                     // Use the default `fn clone_from` from `trait Clone`.
                     let args = tcx.erase_regions(rcvr_args);
-                    Some(ty::Instance::new(trait_item_id, args))
+                    Some(ty::Instance::new_raw(trait_item_id, args))
                 }
             } else if tcx.is_lang_item(trait_ref.def_id, LangItem::FnPtrTrait) {
                 if tcx.is_lang_item(trait_item_id, LangItem::FnPtrAddr) {
@@ -321,7 +321,7 @@ fn resolve_associated_item<'tcx>(
                         // sync with the built-in trait implementations (since all of the
                         // implementations return `FnOnce::Output`).
                         if ty::ClosureKind::FnOnce == args.as_coroutine_closure().kind() {
-                            Some(Instance::new(coroutine_closure_def_id, args))
+                            Some(Instance::new_raw(coroutine_closure_def_id, args))
                         } else {
                             Some(Instance {
                                 def: ty::InstanceKind::ConstructCoroutineInClosureShim {
@@ -354,7 +354,7 @@ fn resolve_associated_item<'tcx>(
                                 args,
                             })
                         } else {
-                            Some(Instance::new(coroutine_closure_def_id, args))
+                            Some(Instance::new_raw(coroutine_closure_def_id, args))
                         }
                     }
                     ty::Closure(closure_def_id, args) => {
@@ -373,7 +373,7 @@ fn resolve_associated_item<'tcx>(
                 let name = tcx.item_name(trait_item_id);
                 assert_eq!(name, sym::transmute);
                 let args = tcx.erase_regions(rcvr_args);
-                Some(ty::Instance::new(trait_item_id, args))
+                Some(ty::Instance::new_raw(trait_item_id, args))
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)
             }

@@ -263,7 +263,7 @@ impl<'tcx> NonCopyConst<'tcx> {
     fn is_value_unfrozen_poly(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<'tcx>) -> bool {
         let def_id = body_id.hir_id.owner.to_def_id();
         let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
-        let instance = ty::Instance::new(def_id, args);
+        let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId {
             instance,
             promoted: None,
