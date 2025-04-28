@@ -7,7 +7,7 @@ use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{self as hir, Body, Constness, FnDecl, GenericParamKind};
+use rustc_hir::{self as hir, Body, Constness, FnDecl, GenericParamKind, OwnerId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
@@ -125,7 +125,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                 }
             },
             FnKind::Method(_, sig, ..) => {
-                if already_const(sig.header) || trait_ref_of_method(cx, def_id).is_some() {
+                if already_const(sig.header) || trait_ref_of_method(cx, OwnerId { def_id }).is_some() {
                     return;
                 }
             },
