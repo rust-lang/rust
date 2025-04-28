@@ -7,26 +7,26 @@
 //@ only-x86_64
 //@ build-pass
 
-trait T {
+trait Tr {
     extern "C" fn t();
 }
 
 enum E<const C: usize> {}
 
-impl<const C: usize> T for E<C> {
+impl<const C: usize> Tr for E<C> {
     extern "C" fn t() {
         println!("Const generic: {}", C);
     }
 }
 
 #[unsafe(naked)]
-extern "C" fn foo<U: T>() {
+extern "C" fn foo<U: Tr>() {
     core::arch::naked_asm!(
         "push rax",
         "call {fn}",
         "pop rax",
         "ret",
-        fn = sym <U as T>::t,
+        fn = sym <U as Tr>::t,
     );
 }
 
