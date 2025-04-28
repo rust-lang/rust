@@ -2471,7 +2471,7 @@ rustc_queries! {
     query resolve_instance_raw(
         key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
-        desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
+        desc { "resolving instance `{}`", ty::Instance::new_raw(key.value.0, key.value.1) }
     }
 
     query reveal_opaque_types_in_bounds(key: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {

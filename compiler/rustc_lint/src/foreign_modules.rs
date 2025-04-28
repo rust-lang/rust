@@ -104,7 +104,7 @@ impl ClashingExternDeclarations {
     /// for the item, return its HirId without updating the set.
     fn insert(&mut self, tcx: TyCtxt<'_>, fi: hir::ForeignItemId) -> Option<hir::OwnerId> {
         let did = fi.owner_id.to_def_id();
-        let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
+        let instance = Instance::new_raw(did, ty::List::identity_for_item(tcx, did));
         let name = Symbol::intern(tcx.symbol_name(instance).name);
         if let Some(&existing_id) = self.seen_decls.get(&name) {
             // Avoid updating the map with the new entry when we do find a collision. We want to
