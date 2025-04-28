@@ -1359,7 +1359,11 @@ rustc_queries! {
     /// Generates a MIR body for the shim.
     query mir_shims(key: ty::InstanceKind<'tcx>) -> &'tcx mir::Body<'tcx> {
         arena_cache
-        desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
+        desc {
+            |tcx| "generating MIR shim for `{}`, instance={:?}",
+            tcx.def_path_str(key.def_id()),
+            key
+        }
     }
 
     /// The `symbol_name` query provides the symbol name for calling a
@@ -1590,6 +1594,10 @@ rustc_queries! {
     query is_unpin_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
     }
+    /// Query backing `Ty::is_async_drop`.
+    query is_async_drop_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is `AsyncDrop`", env.value }
+    }
     /// Query backing `Ty::needs_drop`.
     query needs_drop_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
@@ -1619,6 +1627,14 @@ rustc_queries! {
     /// then `Err(AlwaysRequiresDrop)` is returned.
     query adt_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
         desc { |tcx| "computing when `{}` needs drop", tcx.def_path_str(def_id) }
+        cache_on_disk_if { true }
+    }
+
+    /// A list of types where the ADT requires async drop if and only if any of
+    /// those types require async drop. If the ADT is known to always need async drop
+    /// then `Err(AlwaysRequiresDrop)` is returned.
+    query adt_async_drop_tys(def_id: DefId) -> Result<&'tcx ty::List<Ty<'tcx>>, AlwaysRequiresDrop> {
+        desc { |tcx| "computing when `{}` needs async drop", tcx.def_path_str(def_id) }
         cache_on_disk_if { true }
     }
 

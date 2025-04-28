@@ -34,11 +34,9 @@ pub(crate) fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
-    body_id: DefId,
+    _body_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.is_lang_item(trait_id, LangItem::Drop)
-        && !tcx.is_lang_item(body_id, LangItem::FallbackSurfaceDrop)
-    {
+    if tcx.is_lang_item(trait_id, LangItem::Drop) {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
                 lo: expr_span.shrink_to_lo(),

@@ -176,7 +176,6 @@ pub use self::deref::Receiver;
 pub use self::deref::{Deref, DerefMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
-pub(crate) use self::drop::fallback_surface_drop;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -551,8 +551,10 @@ fn fn_abi_new_uncached<'tcx>(
         extra_args
     };
 
-    let is_drop_in_place =
-        determined_fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
+    let is_drop_in_place = determined_fn_def_id.is_some_and(|def_id| {
+        tcx.is_lang_item(def_id, LangItem::DropInPlace)
+            || tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace)
+    });
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
