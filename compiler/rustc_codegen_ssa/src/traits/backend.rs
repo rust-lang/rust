@@ -18,7 +18,7 @@ use super::write::WriteBackendMethods;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
 use crate::back::write::TargetMachineFactoryFn;
-use crate::{CodegenResults, ModuleCodegen};
+use crate::{CodegenResults, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
     type Value: CodegenObject;
@@ -50,8 +50,15 @@ pub trait CodegenBackend {
     /// - The second is like the first, but also includes unstable features.
     ///
     /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
-    fn target_features_cfg(&self, _sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
-        (vec![], vec![])
+    fn target_config(&self, _sess: &Session) -> TargetConfig {
+        TargetConfig {
+            target_features: vec![],
+            unstable_target_features: vec![],
+            has_reliable_f16: true,
+            has_reliable_f16_math: true,
+            has_reliable_f128: true,
+            has_reliable_f128_math: true,
+        }
     }
 
     fn print_passes(&self) {}

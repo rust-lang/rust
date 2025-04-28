@@ -22,7 +22,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 3.7_f128;
     /// let g = 3.0_f128;
@@ -49,7 +53,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 3.01_f128;
     /// let g = 4.0_f128;
@@ -76,7 +84,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 3.3_f128;
     /// let g = -3.3_f128;
@@ -108,7 +120,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 3.3_f128;
     /// let g = -3.3_f128;
@@ -138,7 +154,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 3.7_f128;
     /// let g = 3.0_f128;
@@ -166,7 +186,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 3.6_f128;
     /// let y = -3.6_f128;
@@ -203,7 +227,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let m = 10.0_f128;
     /// let x = 4.0_f128;
@@ -247,7 +275,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let a: f128 = 7.0;
     /// let b = 4.0;
@@ -289,7 +321,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let a: f128 = 7.0;
     /// let b = 4.0;
@@ -326,7 +362,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0_f128;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
@@ -354,7 +394,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0_f128;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
@@ -386,7 +430,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let positive = 4.0_f128;
     /// let negative = -4.0_f128;
@@ -417,7 +465,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let one = 1.0f128;
     /// // e^1
@@ -448,7 +500,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 2.0f128;
     ///
@@ -479,7 +535,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let one = 1.0f128;
     /// // e^1
@@ -495,7 +555,11 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.ln(), f128::NEG_INFINITY);
     /// assert!((-42_f128).ln().is_nan());
@@ -526,7 +590,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let five = 5.0f128;
     ///
@@ -540,7 +608,11 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.log(10.0), f128::NEG_INFINITY);
     /// assert!((-42_f128).log(10.0).is_nan());
@@ -567,7 +639,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let two = 2.0f128;
     ///
@@ -581,7 +657,11 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.log2(), f128::NEG_INFINITY);
     /// assert!((-42_f128).log2().is_nan());
@@ -608,7 +688,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let ten = 10.0f128;
     ///
@@ -622,7 +706,11 @@ impl f128 {
     /// Non-positive values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!(0_f128.log10(), f128::NEG_INFINITY);
     /// assert!((-42_f128).log10().is_nan());
@@ -651,7 +739,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 8.0f128;
     ///
@@ -687,7 +779,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0f128;
     /// let y = 3.0f128;
@@ -717,7 +813,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = std::f128::consts::FRAC_PI_2;
     ///
@@ -745,7 +845,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0 * std::f128::consts::PI;
     ///
@@ -776,7 +880,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = std::f128::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
@@ -808,7 +916,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = std::f128::consts::FRAC_PI_2;
     ///
@@ -843,7 +955,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = std::f128::consts::FRAC_PI_4;
     ///
@@ -877,7 +993,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let f = 1.0f128;
     ///
@@ -915,7 +1035,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// // Positive angles measured counter-clockwise
     /// // from positive x axis
@@ -957,7 +1081,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = std::f128::consts::FRAC_PI_4;
     /// let f = x.sin_cos();
@@ -992,7 +1120,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1e-8_f128;
     ///
@@ -1028,7 +1160,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1e-8_f128;
     ///
@@ -1043,7 +1179,11 @@ impl f128 {
     /// Out-of-range values:
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// assert_eq!((-1.0_f128).ln_1p(), f128::NEG_INFINITY);
     /// assert!((-2.0_f128).ln_1p().is_nan());
@@ -1072,7 +1212,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let e = std::f128::consts::E;
     /// let x = 1.0f128;
@@ -1107,7 +1251,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let e = std::f128::consts::E;
     /// let x = 1.0f128;
@@ -1142,7 +1290,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let e = std::f128::consts::E;
     /// let x = 1.0f128;
@@ -1174,7 +1326,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
     /// let f = x.sinh().asinh();
@@ -1206,7 +1362,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 1.0f128;
     /// let f = x.cosh().acosh();
@@ -1240,7 +1400,11 @@ impl f128 {
     ///
     /// ```
     /// #![feature(f128)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let e = std::f128::consts::E;
     /// let f = e.tanh().atanh();
@@ -1274,7 +1438,11 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_gamma)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 5.0f128;
     ///
@@ -1309,7 +1477,11 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_gamma)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     ///
     /// let x = 2.0f128;
     ///
@@ -1344,7 +1516,11 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_erf)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     /// /// The error function relates what percent of a normal distribution lies
     /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
     /// fn within_standard_deviations(x: f128) -> f128 {
@@ -1383,7 +1559,11 @@ impl f128 {
     /// ```
     /// #![feature(f128)]
     /// #![feature(float_erf)]
-    /// # #[cfg(reliable_f128_math)] {
+    /// # #![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+    /// # #![cfg_attr(not(bootstrap), expect(internal_features))]
+    /// # #[cfg(not(miri))]
+    /// # #[cfg(not(bootstrap))]
+    /// # #[cfg(target_has_reliable_f128_math)] {
     /// let x: f128 = 0.123;
     ///
     /// let one = x.erf() + x.erfc();
