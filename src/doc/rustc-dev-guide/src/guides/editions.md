@@ -351,3 +351,21 @@ In general it is recommended to avoid these special cases except for very high v
 [into-iter]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html
 [panic-macro]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html
 [`non_fmt_panics`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#non-fmt-panics
+
+### Migrating the standard library edition
+
+Updating the edition of the standard library itself roughly involves the following process:
+
+- Wait until the newly stabilized edition has reached beta and the bootstrap compiler has been updated.
+- Apply migration lints. This can be an involved process since some code is in external submodules[^std-submodules], and the standard library makes heavy use of conditional compilation. Also, running `cargo fix --edition` can be impractical on the standard library itself. One approach is to individually add `#![warn(...)]` at the top of each crate for each lint, run `./x check library`, apply the migrations, remove the `#![warn(...)]` and commit each migration separately. You'll likely need to run `./x check` with `--target` for many different targets to get full coverage (otherwise you'll likely spend days or weeks getting CI to pass)[^ed-docker]. See also the [advanced migration guide] for more tips.
+    - Apply migrations to [`backtrace-rs`]. [Example for 2024](https://github.com/rust-lang/backtrace-rs/pull/700). Note that this doesn't update the edition of the crate itself because that is published independently on crates.io, and that would otherwise restrict the minimum Rust version. Consider adding some `#![deny()]` attributes to avoid regressions until its edition gets updated.
+    - Apply migrations to [`stdarch`], and update its edition, and formatting. [Example for 2024](https://github.com/rust-lang/stdarch/pull/1710).
+    - Post PRs to update the backtrace and stdarch submodules, and wait for those to land.
+    - Apply migration lints to the standard library crates, and update their edition. I recommend working one crate at a time starting with `core`. [Example for 2024](https://github.com/rust-lang/rust/pull/138162).
+
+[^std-submodules]: This will hopefully change in the future to pull these submodules into `rust-lang/rust`.
+[^ed-docker]: You'll also likely need to do a lot of testing for different targets, and this is where [docker testing](../tests/docker.md) comes in handy.
+
+[advanced migration guide]: https://doc.rust-lang.org/nightly/edition-guide/editions/advanced-migrations.html
+[`backtrace-rs`]: https://github.com/rust-lang/backtrace-rs/
+[`stdarch`]: https://github.com/rust-lang/stdarch/
