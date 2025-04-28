@@ -1,9 +1,9 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(associated_type_defaults)]
-#![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -157,7 +157,7 @@ where
                 ty.visit_with(self)
             }
             ty::ClauseKind::ConstEvaluatable(ct) => ct.visit_with(self),
-            ty::ClauseKind::WellFormed(arg) => arg.visit_with(self),
+            ty::ClauseKind::WellFormed(term) => term.visit_with(self),
         }
     }
 

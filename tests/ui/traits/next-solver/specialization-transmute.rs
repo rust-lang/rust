@@ -10,11 +10,8 @@ trait Default {
 
 impl<T> Default for T {
     default type Id = T;
-    // This will be fixed by #111994
     fn intu(&self) -> &Self::Id {
-        //~^ ERROR type annotations needed
-        //~| ERROR cannot normalize `<T as Default>::Id: '_`
-        self //~ ERROR cannot satisfy
+        self //~ ERROR mismatched types
     }
 }
 
@@ -25,6 +22,7 @@ fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
 use std::num::NonZero;
 
 fn main() {
-    let s = transmute::<u8, Option<NonZero<u8>>>(0); //~ ERROR cannot satisfy
+    let s = transmute::<u8, Option<NonZero<u8>>>(0);
+    //~^ ERROR type mismatch resolving `<u8 as Default>::Id == Option<NonZero<u8>>`
     assert_eq!(s, None);
 }

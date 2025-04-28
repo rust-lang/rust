@@ -2058,6 +2058,17 @@ impl<'a> Parser<'a> {
         }
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
+        if self.token == token::Colon && self.look_ahead(1, |&t| t != token::Colon) {
+            self.dcx()
+                .struct_span_err(self.token.span, "found single colon in a struct field type path")
+                .with_span_suggestion_verbose(
+                    self.token.span,
+                    "write a path separator here",
+                    "::",
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+        }
         let default = if self.token == token::Eq {
             self.bump();
             let const_expr = self.parse_expr_anon_const()?;

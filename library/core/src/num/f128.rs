@@ -197,16 +197,22 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     pub const MAX: f128 = 1.18973149535723176508575932662800702e+4932_f128;
 
-    /// One greater than the minimum possible normal power of 2 exponent.
+    /// One greater than the minimum possible *normal* power of 2 exponent
+    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
-    /// If <i>x</i>&nbsp;=&nbsp;`MIN_EXP`, then normal numbers
-    /// ≥&nbsp;0.5&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    /// This corresponds to the exact minimum possible *normal* power of 2 exponent
+    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
+    /// In other words, all normal numbers representable by this type are
+    /// greater than or equal to 0.5&nbsp;×&nbsp;2<sup><i>MIN_EXP</i></sup>.
     #[unstable(feature = "f128", issue = "116909")]
     pub const MIN_EXP: i32 = -16_381;
-    /// Maximum possible power of 2 exponent.
+    /// One greater than the maximum possible power of 2 exponent
+    /// for a significand bounded by 1 ≤ x < 2 (i.e. the IEEE definition).
     ///
-    /// If <i>x</i>&nbsp;=&nbsp;`MAX_EXP`, then normal numbers
-    /// &lt;&nbsp;1&nbsp;×&nbsp;2<sup><i>x</i></sup>.
+    /// This corresponds to the exact maximum possible power of 2 exponent
+    /// for a significand bounded by 0.5 ≤ x < 1 (i.e. the C definition).
+    /// In other words, all numbers representable by this type are
+    /// strictly less than 2<sup><i>MAX_EXP</i></sup>.
     #[unstable(feature = "f128", issue = "116909")]
     pub const MAX_EXP: i32 = 16_384;
 
@@ -804,7 +810,7 @@ impl f128 {
         }
     }
 
-    /// Calculates the middle point of `self` and `rhs`.
+    /// Calculates the midpoint (average) between `self` and `rhs`.
     ///
     /// This returns NaN when *either* argument is NaN or if a combination of
     /// +inf and -inf is provided as arguments.
@@ -821,6 +827,7 @@ impl f128 {
     /// # }
     /// ```
     #[inline]
+    #[doc(alias = "average")]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     pub const fn midpoint(self, other: f128) -> f128 {
@@ -903,6 +910,7 @@ impl f128 {
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the operation, without modifying the original"]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
     pub const fn to_bits(self) -> u128 {
         // SAFETY: `u128` is a plain old datatype so we can always transmute to it.
         unsafe { mem::transmute(self) }
@@ -950,6 +958,7 @@ impl f128 {
     #[inline]
     #[must_use]
     #[unstable(feature = "f128", issue = "116909")]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
     pub const fn from_bits(v: u128) -> Self {
         // It turns out the safety issues with sNaN were overblown! Hooray!
         // SAFETY: `u128` is a plain old datatype so we can always transmute from it.
@@ -1373,8 +1382,9 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_add(self, rhs: f128) -> f128 {
+    pub const fn algebraic_add(self, rhs: f128) -> f128 {
         intrinsics::fadd_algebraic(self, rhs)
     }
 
@@ -1383,8 +1393,9 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_sub(self, rhs: f128) -> f128 {
+    pub const fn algebraic_sub(self, rhs: f128) -> f128 {
         intrinsics::fsub_algebraic(self, rhs)
     }
 
@@ -1393,8 +1404,9 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_mul(self, rhs: f128) -> f128 {
+    pub const fn algebraic_mul(self, rhs: f128) -> f128 {
         intrinsics::fmul_algebraic(self, rhs)
     }
 
@@ -1403,8 +1415,9 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_div(self, rhs: f128) -> f128 {
+    pub const fn algebraic_div(self, rhs: f128) -> f128 {
         intrinsics::fdiv_algebraic(self, rhs)
     }
 
@@ -1413,8 +1426,9 @@ impl f128 {
     /// See [algebraic operators](primitive@f32#algebraic-operators) for more info.
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "float_algebraic", issue = "136469")]
+    #[rustc_const_unstable(feature = "float_algebraic", issue = "136469")]
     #[inline]
-    pub fn algebraic_rem(self, rhs: f128) -> f128 {
+    pub const fn algebraic_rem(self, rhs: f128) -> f128 {
         intrinsics::frem_algebraic(self, rhs)
     }
 }

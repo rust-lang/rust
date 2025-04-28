@@ -3247,7 +3247,7 @@ define_print! {
             ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 p!("the constant `", print(ct), "` has type `", print(ty), "`")
             },
-            ty::ClauseKind::WellFormed(arg) => p!(print(arg), " well-formed"),
+            ty::ClauseKind::WellFormed(term) => p!(print(term), " well-formed"),
             ty::ClauseKind::ConstEvaluatable(ct) => {
                 p!("the constant `", print(ct), "` can be evaluated")
             }

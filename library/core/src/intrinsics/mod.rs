@@ -1497,6 +1497,7 @@ pub const fn forget<T: ?Sized>(_: T);
 /// Turning raw bytes (`[u8; SZ]`) into `u32`, `f64`, etc.:
 ///
 /// ```
+/// # #![cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
 /// let raw_bytes = [0x78, 0x56, 0x34, 0x12];
 ///
 /// let num = unsafe {
@@ -2429,35 +2430,35 @@ pub unsafe fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> In
 /// Stabilized as [`f16::algebraic_add`], [`f32::algebraic_add`], [`f64::algebraic_add`] and [`f128::algebraic_add`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub fn fadd_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fadd_algebraic<T: Copy>(a: T, b: T) -> T;
 
 /// Float subtraction that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_sub`], [`f32::algebraic_sub`], [`f64::algebraic_sub`] and [`f128::algebraic_sub`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub fn fsub_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fsub_algebraic<T: Copy>(a: T, b: T) -> T;
 
 /// Float multiplication that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_mul`], [`f32::algebraic_mul`], [`f64::algebraic_mul`] and [`f128::algebraic_mul`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub fn fmul_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fmul_algebraic<T: Copy>(a: T, b: T) -> T;
 
 /// Float division that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_div`], [`f32::algebraic_div`], [`f64::algebraic_div`] and [`f128::algebraic_div`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub fn fdiv_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn fdiv_algebraic<T: Copy>(a: T, b: T) -> T;
 
 /// Float remainder that allows optimizations based on algebraic rules.
 ///
 /// Stabilized as [`f16::algebraic_rem`], [`f32::algebraic_rem`], [`f64::algebraic_rem`] and [`f128::algebraic_rem`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
+pub const fn frem_algebraic<T: Copy>(a: T, b: T) -> T;
 
 /// Returns the number of bits set in an integer type `T`
 ///

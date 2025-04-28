@@ -92,12 +92,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn well_formed_goals(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        arg: ty::GenericArg<'tcx>,
+        term: ty::Term<'tcx>,
     ) -> Option<Vec<Goal<'tcx, ty::Predicate<'tcx>>>> {
-        crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
-            .map(|obligations| {
-                obligations.into_iter().map(|obligation| obligation.as_goal()).collect()
-            })
+        crate::traits::wf::unnormalized_obligations(
+            &self.0,
+            param_env,
+            term,
+            DUMMY_SP,
+            CRATE_DEF_ID,
+        )
+        .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
     fn clone_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {

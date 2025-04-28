@@ -110,6 +110,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
+use crate::ty::walk::TypeWalker;
 
 pub mod abstract_const;
 pub mod adjustment;
@@ -630,6 +631,20 @@ impl<'tcx> Term<'tcx> {
             TermKind::Ty(ty) => ty.is_ty_var(),
             TermKind::Const(ct) => ct.is_ct_infer(),
         }
+    }
+
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
+        TypeWalker::new(self.into())
     }
 }
 

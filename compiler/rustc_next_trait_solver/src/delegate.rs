@@ -36,7 +36,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     fn well_formed_goals(
         &self,
         param_env: <Self::Interner as Interner>::ParamEnv,
-        arg: <Self::Interner as Interner>::GenericArg,
+        term: <Self::Interner as Interner>::Term,
     ) -> Option<Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>>;
 
     fn clone_opaque_types_for_query_response(

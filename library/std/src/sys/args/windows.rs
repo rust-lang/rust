@@ -6,6 +6,7 @@
 #[cfg(test)]
 mod tests;
 
+pub use super::common::Args;
 use crate::ffi::{OsStr, OsString};
 use crate::num::NonZero;
 use crate::os::windows::prelude::*;
@@ -17,10 +18,6 @@ use crate::sys::{c, to_u16s};
 use crate::sys_common::AsInner;
 use crate::sys_common::wstr::WStrUnits;
 use crate::{io, iter, ptr};
-
-#[path = "common.rs"]
-mod common;
-pub use common::Args;
 
 pub fn args() -> Args {
     // SAFETY: `GetCommandLineW` returns a pointer to a null terminated UTF-16

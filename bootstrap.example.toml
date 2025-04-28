@@ -500,7 +500,7 @@
 # building without optimizations takes much longer than optimizing. Further, some platforms
 # fail to build without this optimization (c.f. #65352).
 # The valid options are:
-# true - Enable optimizations.
+# true - Enable optimizations (same as 3).
 # false - Disable optimizations.
 # 0 - Disable optimizations.
 # 1 - Basic optimizations.

@@ -22,7 +22,7 @@ impl<In, Out> Trait<Bar, In> for Out {
     type Out = Out;
     #[define_opaque(Bar)]
     fn convert(_i: In) -> Self::Out {
-        //[next]~^  ERROR: cannot satisfy `Bar == _`
+        //[next]~^  ERROR: type annotations needed: cannot satisfy `Bar == _`
         //[current]~^^ ERROR: item does not constrain `Bar::{opaque#0}`
         unreachable!();
     }

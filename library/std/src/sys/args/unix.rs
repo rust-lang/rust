@@ -5,15 +5,12 @@
 
 #![allow(dead_code)] // runtime init functions not used during testing
 
+pub use super::common::Args;
 use crate::ffi::CStr;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::ffi::OsStringExt;
 #[cfg(not(target_os = "hermit"))]
 use crate::os::unix::ffi::OsStringExt;
-
-#[path = "common.rs"]
-mod common;
-pub use common::Args;
 
 /// One-time global initialization.
 pub unsafe fn init(argc: isize, argv: *const *const u8) {

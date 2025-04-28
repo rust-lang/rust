@@ -540,18 +540,18 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     self.selcx.infcx.err_ctxt().report_overflow_obligation(&obligation, false);
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
                     match wf::obligations(
                         self.selcx.infcx,
                         obligation.param_env,
                         obligation.cause.body_id,
                         obligation.recursion_depth + 1,
-                        arg,
+                        term,
                         obligation.cause.span,
                     ) {
                         None => {
                             pending_obligation.stalled_on =
-                                vec![TyOrConstInferVar::maybe_from_generic_arg(arg).unwrap()];
+                                vec![TyOrConstInferVar::maybe_from_term(term).unwrap()];
                             ProcessResult::Unchanged
                         }
                         Some(os) => ProcessResult::Changed(mk_pending(obligation, os)),

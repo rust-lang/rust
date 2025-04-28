@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -7,7 +8,6 @@
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
-#![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
@@ -125,6 +125,7 @@ declare_passes! {
     mod check_null : CheckNull;
     mod check_packed_ref : CheckPackedRef;
     mod check_undefined_transmutes : CheckUndefinedTransmutes;
+    mod check_unnecessary_transmutes: CheckUnnecessaryTransmutes;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
@@ -391,6 +392,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(check_const_item_mutation::CheckConstItemMutation),
             &Lint(function_item_references::FunctionItemReferences),
             &Lint(check_undefined_transmutes::CheckUndefinedTransmutes),
+            &Lint(check_unnecessary_transmutes::CheckUnnecessaryTransmutes),
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::Initial,
             &Lint(sanity_check::SanityCheck),

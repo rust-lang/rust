@@ -175,7 +175,6 @@ impl ConfigBuilder {
             self.host.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
             "--target",
             self.target.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
-            "--git-repository=",
             "--nightly-branch=",
             "--git-merge-commit-email=",
             "--minicore-path=",

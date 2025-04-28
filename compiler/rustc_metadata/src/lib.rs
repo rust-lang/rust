@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(coroutines)]
@@ -8,7 +9,6 @@
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(iter_from_coroutine)]
-#![feature(let_chains)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
 #![feature(never_type)]

@@ -1,11 +1,8 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
+pub use super::common::Args;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::os::wasi::ffi::OsStrExt;
-
-#[path = "common.rs"]
-mod common;
-pub use common::Args;
 
 /// Returns the command line arguments
 pub fn args() -> Args {

@@ -13,7 +13,7 @@ use tracing::{instrument, trace};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
-use crate::solve::assembly::{self, AssembleCandidatesFrom, Candidate};
+use crate::solve::assembly::{self, AllowInferenceConstraints, AssembleCandidatesFrom, Candidate};
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, MaybeCause,
@@ -1308,18 +1308,6 @@ where
                     return true;
                 }
 
-                // We don't consider a trait-bound global if it has a projection bound.
-                //
-                // See ui/traits/next-solver/normalization-shadowing/global-trait-with-project.rs
-                // for an example where this is necessary.
-                for p in goal.param_env.caller_bounds().iter() {
-                    if let ty::ClauseKind::Projection(proj) = p.kind().skip_binder() {
-                        if proj.projection_term.trait_ref(self.cx()) == trait_pred.trait_ref {
-                            return true;
-                        }
-                    }
-                }
-
                 false
             }
             _ => false,
@@ -1349,6 +1337,8 @@ where
                 Ok((self.bail_with_ambiguity(&alias_bounds), None))
             };
         }
+
+        self.filter_specialized_impls(AllowInferenceConstraints::No, &mut candidates);
 
         // If there are *only* global where bounds, then make sure to return that this
         // is still reported as being proven-via the param-env so that rigid projections

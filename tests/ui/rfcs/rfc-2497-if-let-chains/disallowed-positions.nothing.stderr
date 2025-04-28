@@ -272,14 +272,7 @@ LL |     if (let 0 = 0)? {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
-error: expected expression, found `let` statement
-  --> $DIR/disallowed-positions.rs:121:16
-   |
-LL |     if true || let 0 = 0 {}
-   |                ^^^^^^^^^
-   |
-   = note: only supported directly in conditions of `if` and `while` expressions
-note: `||` operators are not supported in let chain expressions
+error: `||` operators are not supported in let chain conditions
   --> $DIR/disallowed-positions.rs:121:13
    |
 LL |     if true || let 0 = 0 {}
@@ -485,14 +478,7 @@ LL |     while (let 0 = 0)? {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
-error: expected expression, found `let` statement
-  --> $DIR/disallowed-positions.rs:212:19
-   |
-LL |     while true || let 0 = 0 {}
-   |                   ^^^^^^^^^
-   |
-   = note: only supported directly in conditions of `if` and `while` expressions
-note: `||` operators are not supported in let chain expressions
+error: `||` operators are not supported in let chain conditions
   --> $DIR/disallowed-positions.rs:212:16
    |
 LL |     while true || let 0 = 0 {}
