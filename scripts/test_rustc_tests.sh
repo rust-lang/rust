@@ -83,6 +83,7 @@ rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm tests/ui/codegen/init-large-type.rs # same
 rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 rm tests/ui/statics/const_generics.rs # same
+rm tests/ui/linking/executable-no-mangle-strip.rs # requires --gc-sections to work for statics
 
 # backend specific tests
 # ======================
@@ -119,7 +120,6 @@ rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/consts/const-mut-refs-crate.rs # same
 rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
-rm tests/ui/abi/simd-abi-checks-avx.rs # attempts to declare function with two different signatures
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
