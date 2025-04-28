@@ -1,0 +1,28 @@
+[33mcommit a7fb3a515f8cc41dc8092bb7fca485f836df5744[m[33m ([m[1;36mHEAD -> [m[1;32mnormalization_confusings[m[33m)[m
+Author: BoxyUwU <rust@boxyuwu.dev>
+Date:   Tue Apr 29 15:43:14 2025 +0100
+
+    a
+
+[33mcommit f423f3682d78b790237634bc7cae29a580ec4b79[m[33m ([m[1;31mBoxyUwU/normalization_confusings[m[33m)[m
+Author: BoxyUwU <rust@boxyuwu.dev>
+Date:   Mon Apr 28 03:53:41 2025 +0100
+
+    confusings
+
+[33mcommit e3e432d4d65a55e6db167598e96db2bcb163e316[m[33m ([m[1;32mmaster[m[33m)[m
+Merge: 8f43b85954d c8e7c6261ea
+Author: bors <bors@rust-lang.org>
+Date:   Fri Apr 25 15:38:58 2025 +0000
+
+    Auto merge of #139756 - Zoxc:out-of-order-dep-graph, r=oli-obk
+    
+    Allow out of order dep graph node encoding
+    
+    This allows out of order dep graph node encoding by also encoding the index instead of using the file node order as the index.
+    
+    `MemEncoder` is also brought back to life and used for encoding.
+    
+    Both of these are done to enable thread-local encoding of dep graph nodes.
+    
+    This is based on https://github.com/rust-lang/rust/pull/139636.
