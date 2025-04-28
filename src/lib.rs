@@ -41,8 +41,8 @@ use std::sync::Arc;
 
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
-use rustc_codegen_ssa::CodegenResults;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::{CodegenResults, TargetConfig};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::Session;
@@ -178,7 +178,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
+    fn target_config(&self, sess: &Session) -> TargetConfig {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
         let target_features = if sess.target.arch == "x86_64" && sess.target.os != "none" {
             // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
@@ -197,7 +197,16 @@ impl CodegenBackend for CraneliftCodegenBackend {
         };
         // FIXME do `unstable_target_features` properly
         let unstable_target_features = target_features.clone();
-        (target_features, unstable_target_features)
+
+        TargetConfig {
+            target_features,
+            unstable_target_features,
+            // Cranelift does not yet support f16 or f128
+            has_reliable_f16: false,
+            has_reliable_f16_math: false,
+            has_reliable_f128: false,
+            has_reliable_f128_math: false,
+        }
     }
 
     fn print_version(&self) {
