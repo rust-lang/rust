@@ -517,17 +517,26 @@ mod test;
 pub use self::test::*;
 
 macro_rules! as_transmute {
-    ($from:ty => $($name:ident -> $to:ident),* $(,)?) => {
+    ($from:ty => $as_from:ident, $($as_to:ident -> $to:ident),* $(,)?) => {
         impl $from {$(
             #[inline]
-            pub(crate) fn $name(self) -> crate::core_arch::simd::$to {
+            pub(crate) fn $as_to(self) -> crate::core_arch::simd::$to {
                 unsafe { transmute(self) }
             }
         )*}
+        $(
+            impl crate::core_arch::simd::$to {
+                #[inline]
+                pub(crate) fn $as_from(self) -> $from {
+                    unsafe { transmute(self) }
+                }
+            }
+        )*
     };
 }
 
 as_transmute!(__m128i =>
+    as_m128i,
     as_u8x16 -> u8x16,
     as_u16x8 -> u16x8,
     as_u32x4 -> u32x4,
@@ -538,6 +547,7 @@ as_transmute!(__m128i =>
     as_i64x2 -> i64x2,
 );
 as_transmute!(__m256i =>
+    as_m256i,
     as_u8x32 -> u8x32,
     as_u16x16 -> u16x16,
     as_u32x8 -> u32x8,
@@ -548,6 +558,7 @@ as_transmute!(__m256i =>
     as_i64x4 -> i64x4,
 );
 as_transmute!(__m512i =>
+    as_m512i,
     as_u8x64 -> u8x64,
     as_u16x32 -> u16x32,
     as_u32x16 -> u32x16,
@@ -558,35 +569,38 @@ as_transmute!(__m512i =>
     as_i64x8 -> i64x8,
 );
 
-as_transmute!(__m128 => as_f32x4 -> f32x4);
-as_transmute!(__m128d => as_f64x2 -> f64x2);
-as_transmute!(__m256 => as_f32x8 -> f32x8);
-as_transmute!(__m256d => as_f64x4 -> f64x4);
-as_transmute!(__m512 => as_f32x16 -> f32x16);
-as_transmute!(__m512d => as_f64x8 -> f64x8);
+as_transmute!(__m128 => as_m128, as_f32x4 -> f32x4);
+as_transmute!(__m128d => as_m128d, as_f64x2 -> f64x2);
+as_transmute!(__m256 => as_m256, as_f32x8 -> f32x8);
+as_transmute!(__m256d => as_m256d, as_f64x4 -> f64x4);
+as_transmute!(__m512 => as_m512, as_f32x16 -> f32x16);
+as_transmute!(__m512d => as_m512d, as_f64x8 -> f64x8);
 
 as_transmute!(__m128bh =>
+    as_m128bh,
     as_u16x8 -> u16x8,
     as_u32x4 -> u32x4,
     as_i16x8 -> i16x8,
     as_i32x4 -> i32x4,
 );
 as_transmute!(__m256bh =>
+    as_m256bh,
     as_u16x16 -> u16x16,
     as_u32x8 -> u32x8,
     as_i16x16 -> i16x16,
     as_i32x8 -> i32x8,
 );
 as_transmute!(__m512bh =>
+    as_m512bh,
     as_u16x32 -> u16x32,
     as_u32x16 -> u32x16,
     as_i16x32 -> i16x32,
     as_i32x16 -> i32x16,
 );
 
-as_transmute!(__m128h => as_f16x8 -> f16x8);
-as_transmute!(__m256h => as_f16x16 -> f16x16);
-as_transmute!(__m512h => as_f16x32 -> f16x32);
+as_transmute!(__m128h => as_m128h, as_f16x8 -> f16x8);
+as_transmute!(__m256h => as_m256h, as_f16x16 -> f16x16);
+as_transmute!(__m512h => as_m512h, as_f16x32 -> f16x32);
 
 mod eflags;
 #[stable(feature = "simd_x86", since = "1.27.0")]

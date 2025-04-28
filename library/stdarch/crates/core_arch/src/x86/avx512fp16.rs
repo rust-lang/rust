@@ -249,7 +249,7 @@ pub fn _mm_setzero_ph() -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm256_setzero_ph() -> __m256h {
-    unsafe { transmute(f16x16::ZERO) }
+    f16x16::ZERO.as_m256h()
 }
 
 /// Return vector of type __m512h with all elements set to zero.
@@ -259,7 +259,7 @@ pub fn _mm256_setzero_ph() -> __m256h {
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_setzero_ph() -> __m512h {
-    unsafe { transmute(f16x32::ZERO) }
+    f16x32::ZERO.as_m512h()
 }
 
 /// Return vector of type `__m128h` with indetermination elements.
@@ -272,7 +272,7 @@ pub fn _mm512_setzero_ph() -> __m512h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_undefined_ph() -> __m128h {
-    unsafe { transmute(f16x8::ZERO) }
+    f16x8::ZERO.as_m128h()
 }
 
 /// Return vector of type `__m256h` with indetermination elements.
@@ -285,7 +285,7 @@ pub fn _mm_undefined_ph() -> __m128h {
 #[target_feature(enable = "avx512fp16,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm256_undefined_ph() -> __m256h {
-    unsafe { transmute(f16x16::ZERO) }
+    f16x16::ZERO.as_m256h()
 }
 
 /// Return vector of type `__m512h` with indetermination elements.
@@ -298,7 +298,7 @@ pub fn _mm256_undefined_ph() -> __m256h {
 #[target_feature(enable = "avx512fp16")]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_undefined_ph() -> __m512h {
-    unsafe { transmute(f16x32::ZERO) }
+    f16x32::ZERO.as_m512h()
 }
 
 /// Cast vector of type `__m128d` to type `__m128h`. This intrinsic is only used for compilation and
@@ -1552,7 +1552,7 @@ pub fn _mm512_maskz_add_round_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_add_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_add_round_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_add_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Add the lower half-precision (16-bit) floating-point elements in a and b, store the result in the
@@ -1603,7 +1603,7 @@ pub fn _mm_mask_add_round_sh<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_add_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_add_round_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_add_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Add the lower half-precision (16-bit) floating-point elements in a and b, store the result in the
@@ -1864,7 +1864,7 @@ pub fn _mm512_maskz_sub_round_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_sub_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_sub_round_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_sub_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Subtract the lower half-precision (16-bit) floating-point elements in b from a, store the result in the
@@ -1915,7 +1915,7 @@ pub fn _mm_mask_sub_round_sh<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_sub_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_sub_round_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_sub_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Subtract the lower half-precision (16-bit) floating-point elements in b from a, store the result in the
@@ -2176,7 +2176,7 @@ pub fn _mm512_maskz_mul_round_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_mul_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_mul_round_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_mul_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Multiply the lower half-precision (16-bit) floating-point elements in a and b, store the result in the
@@ -2227,7 +2227,7 @@ pub fn _mm_mask_mul_round_sh<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_mul_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_mul_round_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_mul_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Multiply the lower half-precision (16-bit) floating-point elements in a and b, store the result in the
@@ -2488,7 +2488,7 @@ pub fn _mm512_maskz_div_round_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_div_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_div_round_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_div_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Divide the lower half-precision (16-bit) floating-point elements in a by b, store the result in the
@@ -2539,7 +2539,7 @@ pub fn _mm_mask_div_round_sh<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_div_round_sh<const ROUNDING: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_div_round_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_div_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Divide the lower half-precision (16-bit) floating-point elements in a by b, store the result in the
@@ -2794,7 +2794,7 @@ pub fn _mm512_maskz_mul_round_pch<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vfmulcsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_mul_sch(a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_mul_sch(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_mul_sch(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Multiply the lower complex numbers in a and b, and store the result in the lower elements of dst using
@@ -2822,7 +2822,7 @@ pub fn _mm_mask_mul_sch(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __
 #[cfg_attr(test, assert_instr(vfmulcsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_mul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_mul_sch(_mm_setzero_ph(), k, a, b)
+    _mm_mask_mul_sch(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Multiply the lower complex numbers in a and b, and store the result in the lower elements of dst,
@@ -2846,7 +2846,7 @@ pub fn _mm_maskz_mul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_mul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_mul_round_sch::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_mul_round_sch::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Multiply the lower complex numbers in a and b, and store the result in the lower elements of dst using
@@ -2911,7 +2911,7 @@ pub fn _mm_maskz_mul_round_sch<const ROUNDING: i32>(
     b: __m128h,
 ) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_mul_round_sch::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_mul_round_sch::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Multiply packed complex numbers in a and b, and store the results in dst. Each complex number is
@@ -3445,7 +3445,7 @@ pub fn _mm512_maskz_cmul_round_pch<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vfcmulcsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cmul_sch(a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_cmul_sch(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_cmul_sch(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Multiply the lower complex numbers in a by the complex conjugates of the lower complex numbers in b,
@@ -3473,7 +3473,7 @@ pub fn _mm_mask_cmul_sch(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> _
 #[cfg_attr(test, assert_instr(vfcmulcsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_cmul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_cmul_sch(_mm_setzero_ph(), k, a, b)
+    _mm_mask_cmul_sch(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Multiply the lower complex numbers in a by the complex conjugates of the lower complex numbers in b,
@@ -3496,7 +3496,7 @@ pub fn _mm_maskz_cmul_sch(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cmul_round_sch<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_cmul_round_sch::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_cmul_round_sch::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Multiply the lower complex numbers in a by the complex conjugates of the lower complex numbers in b,
@@ -3561,7 +3561,7 @@ pub fn _mm_maskz_cmul_round_sch<const ROUNDING: i32>(
     b: __m128h,
 ) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_cmul_round_sch::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_cmul_round_sch::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Multiply packed complex numbers in a by the complex conjugates of packed complex numbers in b, and
@@ -7782,7 +7782,7 @@ pub fn _mm512_maskz_rcp_ph(k: __mmask32, a: __m512h) -> __m512h {
 #[cfg_attr(test, assert_instr(vrcpsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_rcp_sh(a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_rcp_sh(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_rcp_sh(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Compute the approximate reciprocal of the lower half-precision (16-bit) floating-point element in b,
@@ -7810,7 +7810,7 @@ pub fn _mm_mask_rcp_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m
 #[cfg_attr(test, assert_instr(vrcpsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_rcp_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_rcp_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_rcp_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Compute the approximate reciprocal square root of packed half-precision (16-bit) floating-point
@@ -7947,7 +7947,7 @@ pub fn _mm512_maskz_rsqrt_ph(k: __mmask32, a: __m512h) -> __m512h {
 #[cfg_attr(test, assert_instr(vrsqrtsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_rsqrt_sh(a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_rsqrt_sh(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_rsqrt_sh(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Compute the approximate reciprocal square root of the lower half-precision (16-bit) floating-point
@@ -7975,7 +7975,7 @@ pub fn _mm_mask_rsqrt_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> _
 #[cfg_attr(test, assert_instr(vrsqrtsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_rsqrt_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_rsqrt_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_rsqrt_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Compute the square root of packed half-precision (16-bit) floating-point elements in a, and store the
@@ -8169,7 +8169,7 @@ pub fn _mm512_maskz_sqrt_round_ph<const ROUNDING: i32>(k: __mmask32, a: __m512h)
 #[cfg_attr(test, assert_instr(vsqrtsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_sqrt_sh(a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_sqrt_sh(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_sqrt_sh(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
@@ -8195,7 +8195,7 @@ pub fn _mm_mask_sqrt_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __
 #[cfg_attr(test, assert_instr(vsqrtsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_sqrt_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_sqrt_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_sqrt_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
@@ -8217,7 +8217,7 @@ pub fn _mm_maskz_sqrt_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_sqrt_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_sqrt_round_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_sqrt_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Compute the square root of the lower half-precision (16-bit) floating-point element in b, store
@@ -8272,7 +8272,7 @@ pub fn _mm_maskz_sqrt_round_sh<const ROUNDING: i32>(
     b: __m128h,
 ) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_sqrt_round_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_sqrt_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed maximum
@@ -8496,7 +8496,7 @@ pub fn _mm_mask_max_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m
 #[cfg_attr(test, assert_instr(vmaxsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_max_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_max_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_max_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the maximum value
@@ -8553,7 +8553,7 @@ pub fn _mm_mask_max_round_sh<const SAE: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_max_round_sh<const SAE: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
-    _mm_mask_max_round_sh::<SAE>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_max_round_sh::<SAE>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Compare packed half-precision (16-bit) floating-point elements in a and b, and store packed minimum
@@ -8776,7 +8776,7 @@ pub fn _mm_mask_min_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> __m
 #[cfg_attr(test, assert_instr(vminsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_min_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_min_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_min_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Compare the lower half-precision (16-bit) floating-point elements in a and b, store the minimum value
@@ -8833,7 +8833,7 @@ pub fn _mm_mask_min_round_sh<const SAE: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_min_round_sh<const SAE: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
-    _mm_mask_min_round_sh::<SAE>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_min_round_sh::<SAE>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Convert the exponent of each packed half-precision (16-bit) floating-point element in a to a half-precision
@@ -9024,7 +9024,7 @@ pub fn _mm512_maskz_getexp_round_ph<const SAE: i32>(k: __mmask32, a: __m512h) ->
 #[cfg_attr(test, assert_instr(vgetexpsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_getexp_sh(a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_getexp_sh(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_getexp_sh(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Convert the exponent of the lower half-precision (16-bit) floating-point element in b to a half-precision
@@ -9054,7 +9054,7 @@ pub fn _mm_mask_getexp_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> 
 #[cfg_attr(test, assert_instr(vgetexpsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_getexp_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_getexp_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_getexp_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Convert the exponent of the lower half-precision (16-bit) floating-point element in b to a half-precision
@@ -9071,7 +9071,7 @@ pub fn _mm_maskz_getexp_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_getexp_round_sh<const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
-    _mm_mask_getexp_round_sh::<SAE>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_getexp_round_sh::<SAE>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Convert the exponent of the lower half-precision (16-bit) floating-point element in b to a half-precision
@@ -9112,7 +9112,7 @@ pub fn _mm_mask_getexp_round_sh<const SAE: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_getexp_round_sh<const SAE: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_sae!(SAE);
-    _mm_mask_getexp_round_sh::<SAE>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_getexp_round_sh::<SAE>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Normalize the mantissas of packed half-precision (16-bit) floating-point elements in a, and store
@@ -9585,7 +9585,7 @@ pub fn _mm_getmant_sh<const NORM: _MM_MANTISSA_NORM_ENUM, const SIGN: _MM_MANTIS
 ) -> __m128h {
     static_assert_uimm_bits!(NORM, 4);
     static_assert_uimm_bits!(SIGN, 2);
-    _mm_mask_getmant_sh::<NORM, SIGN>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_getmant_sh::<NORM, SIGN>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Normalize the mantissas of the lower half-precision (16-bit) floating-point element in b, store
@@ -9662,7 +9662,7 @@ pub fn _mm_maskz_getmant_sh<
 ) -> __m128h {
     static_assert_uimm_bits!(NORM, 4);
     static_assert_uimm_bits!(SIGN, 2);
-    _mm_mask_getmant_sh::<NORM, SIGN>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_getmant_sh::<NORM, SIGN>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Normalize the mantissas of the lower half-precision (16-bit) floating-point element in b, store
@@ -9703,7 +9703,7 @@ pub fn _mm_getmant_round_sh<
     static_assert_uimm_bits!(NORM, 4);
     static_assert_uimm_bits!(SIGN, 2);
     static_assert_sae!(SAE);
-    _mm_mask_getmant_round_sh::<NORM, SIGN, SAE>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_getmant_round_sh::<NORM, SIGN, SAE>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Normalize the mantissas of the lower half-precision (16-bit) floating-point element in b, store
@@ -9790,7 +9790,7 @@ pub fn _mm_maskz_getmant_round_sh<
     static_assert_uimm_bits!(NORM, 4);
     static_assert_uimm_bits!(SIGN, 2);
     static_assert_sae!(SAE);
-    _mm_mask_getmant_round_sh::<NORM, SIGN, SAE>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_getmant_round_sh::<NORM, SIGN, SAE>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Round packed half-precision (16-bit) floating-point elements in a to the number of fraction bits
@@ -10111,7 +10111,7 @@ pub fn _mm512_maskz_roundscale_round_ph<const IMM8: i32, const SAE: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_roundscale_sh<const IMM8: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
-    _mm_mask_roundscale_sh::<IMM8>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_roundscale_sh::<IMM8>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Round the lower half-precision (16-bit) floating-point element in b to the number of fraction bits
@@ -10162,7 +10162,7 @@ pub fn _mm_mask_roundscale_sh<const IMM8: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_roundscale_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
-    _mm_mask_roundscale_sh::<IMM8>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_roundscale_sh::<IMM8>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Round the lower half-precision (16-bit) floating-point element in b to the number of fraction bits
@@ -10188,7 +10188,7 @@ pub fn _mm_maskz_roundscale_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m1
 pub fn _mm_roundscale_round_sh<const IMM8: i32, const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
     static_assert_sae!(SAE);
-    _mm_mask_roundscale_round_sh::<IMM8, SAE>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_roundscale_round_sh::<IMM8, SAE>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Round the lower half-precision (16-bit) floating-point element in b to the number of fraction bits
@@ -10251,7 +10251,7 @@ pub fn _mm_maskz_roundscale_round_sh<const IMM8: i32, const SAE: i32>(
 ) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
     static_assert_sae!(SAE);
-    _mm_mask_roundscale_round_sh::<IMM8, SAE>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_roundscale_round_sh::<IMM8, SAE>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Scale the packed half-precision (16-bit) floating-point elements in a using values from b, and store
@@ -10449,7 +10449,7 @@ pub fn _mm512_maskz_scalef_round_ph<const ROUNDING: i32>(
 #[cfg_attr(test, assert_instr(vscalefsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_scalef_sh(a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_scalef_sh(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_scalef_sh(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store
@@ -10475,7 +10475,7 @@ pub fn _mm_mask_scalef_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128h) -> 
 #[cfg_attr(test, assert_instr(vscalefsh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_scalef_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
-    _mm_mask_scalef_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_scalef_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store
@@ -10498,7 +10498,7 @@ pub fn _mm_maskz_scalef_sh(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_scalef_round_sh<const ROUNDING: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_scalef_round_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_scalef_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Scale the packed single-precision (32-bit) floating-point elements in a using values from b, store
@@ -10555,7 +10555,7 @@ pub fn _mm_maskz_scalef_round_sh<const ROUNDING: i32>(
     b: __m128h,
 ) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_scalef_round_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_scalef_round_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Extract the reduced argument of packed half-precision (16-bit) floating-point elements in a by the
@@ -10872,7 +10872,7 @@ pub fn _mm512_maskz_reduce_round_ph<const IMM8: i32, const SAE: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_reduce_sh<const IMM8: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
-    _mm_mask_reduce_sh::<IMM8>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_reduce_sh::<IMM8>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Extract the reduced argument of the lower half-precision (16-bit) floating-point element in b by
@@ -10925,7 +10925,7 @@ pub fn _mm_mask_reduce_sh<const IMM8: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_reduce_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
-    _mm_mask_reduce_sh::<IMM8>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_reduce_sh::<IMM8>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Extract the reduced argument of the lower half-precision (16-bit) floating-point element in b by
@@ -10951,7 +10951,7 @@ pub fn _mm_maskz_reduce_sh<const IMM8: i32>(k: __mmask8, a: __m128h, b: __m128h)
 pub fn _mm_reduce_round_sh<const IMM8: i32, const SAE: i32>(a: __m128h, b: __m128h) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
     static_assert_sae!(SAE);
-    _mm_mask_reduce_round_sh::<IMM8, SAE>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_reduce_round_sh::<IMM8, SAE>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Extract the reduced argument of the lower half-precision (16-bit) floating-point element in b by
@@ -11016,7 +11016,7 @@ pub fn _mm_maskz_reduce_round_sh<const IMM8: i32, const SAE: i32>(
 ) -> __m128h {
     static_assert_uimm_bits!(IMM8, 8);
     static_assert_sae!(SAE);
-    _mm_mask_reduce_round_sh::<IMM8, SAE>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_reduce_round_sh::<IMM8, SAE>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Reduce the packed half-precision (16-bit) floating-point elements in a by addition. Returns the
@@ -12060,7 +12060,7 @@ pub fn _mm512_mask_cvtepi32_ph(src: __m256h, k: __mmask16, a: __m512i) -> __m256
 #[cfg_attr(test, assert_instr(vcvtdq2ph))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvtepi32_ph(k: __mmask16, a: __m512i) -> __m256h {
-    _mm512_mask_cvtepi32_ph(_mm256_setzero_ph(), k, a)
+    _mm512_mask_cvtepi32_ph(f16x16::ZERO.as_m256h(), k, a)
 }
 
 /// Convert packed signed 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
@@ -12135,7 +12135,7 @@ pub fn _mm512_mask_cvt_roundepi32_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvt_roundepi32_ph<const ROUNDING: i32>(k: __mmask16, a: __m512i) -> __m256h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundepi32_ph::<ROUNDING>(_mm256_setzero_ph(), k, a)
+    _mm512_mask_cvt_roundepi32_ph::<ROUNDING>(f16x16::ZERO.as_m256h(), k, a)
 }
 
 /// Convert the signed 32-bit integer b to a half-precision (16-bit) floating-point element, store the
@@ -12285,7 +12285,7 @@ pub fn _mm512_mask_cvtepu32_ph(src: __m256h, k: __mmask16, a: __m512i) -> __m256
 #[cfg_attr(test, assert_instr(vcvtudq2ph))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvtepu32_ph(k: __mmask16, a: __m512i) -> __m256h {
-    _mm512_mask_cvtepu32_ph(_mm256_setzero_ph(), k, a)
+    _mm512_mask_cvtepu32_ph(f16x16::ZERO.as_m256h(), k, a)
 }
 
 /// Convert packed unsigned 32-bit integers in a to packed half-precision (16-bit) floating-point elements,
@@ -12360,7 +12360,7 @@ pub fn _mm512_mask_cvt_roundepu32_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvt_roundepu32_ph<const ROUNDING: i32>(k: __mmask16, a: __m512i) -> __m256h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundepu32_ph::<ROUNDING>(_mm256_setzero_ph(), k, a)
+    _mm512_mask_cvt_roundepu32_ph::<ROUNDING>(f16x16::ZERO.as_m256h(), k, a)
 }
 
 /// Convert the unsigned 32-bit integer b to a half-precision (16-bit) floating-point element, store the
@@ -12511,7 +12511,7 @@ pub fn _mm512_mask_cvtepi64_ph(src: __m128h, k: __mmask8, a: __m512i) -> __m128h
 #[cfg_attr(test, assert_instr(vcvtqq2ph))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvtepi64_ph(k: __mmask8, a: __m512i) -> __m128h {
-    _mm512_mask_cvtepi64_ph(_mm_setzero_ph(), k, a)
+    _mm512_mask_cvtepi64_ph(f16x8::ZERO.as_m128h(), k, a)
 }
 
 /// Convert packed signed 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
@@ -12586,7 +12586,7 @@ pub fn _mm512_mask_cvt_roundepi64_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvt_roundepi64_ph<const ROUNDING: i32>(k: __mmask8, a: __m512i) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundepi64_ph::<ROUNDING>(_mm_setzero_ph(), k, a)
+    _mm512_mask_cvt_roundepi64_ph::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a)
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
@@ -12699,7 +12699,7 @@ pub fn _mm512_mask_cvtepu64_ph(src: __m128h, k: __mmask8, a: __m512i) -> __m128h
 #[cfg_attr(test, assert_instr(vcvtuqq2ph))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvtepu64_ph(k: __mmask8, a: __m512i) -> __m128h {
-    _mm512_mask_cvtepu64_ph(_mm_setzero_ph(), k, a)
+    _mm512_mask_cvtepu64_ph(f16x8::ZERO.as_m128h(), k, a)
 }
 
 /// Convert packed unsigned 64-bit integers in a to packed half-precision (16-bit) floating-point elements,
@@ -12774,7 +12774,7 @@ pub fn _mm512_mask_cvt_roundepu64_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvt_roundepu64_ph<const ROUNDING: i32>(k: __mmask8, a: __m512i) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundepu64_ph::<ROUNDING>(_mm_setzero_ph(), k, a)
+    _mm512_mask_cvt_roundepu64_ph::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -12862,7 +12862,7 @@ pub fn _mm256_maskz_cvtxps_ph(k: __mmask8, a: __m256) -> __m128h {
 #[cfg_attr(test, assert_instr(vcvtps2phx))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_cvtxps_ph(a: __m512) -> __m256h {
-    _mm512_mask_cvtxps_ph(_mm256_setzero_ph(), 0xffff, a)
+    _mm512_mask_cvtxps_ph(f16x16::ZERO.as_m256h(), 0xffff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -12888,7 +12888,7 @@ pub fn _mm512_mask_cvtxps_ph(src: __m256h, k: __mmask16, a: __m512) -> __m256h {
 #[cfg_attr(test, assert_instr(vcvtps2phx))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvtxps_ph(k: __mmask16, a: __m512) -> __m256h {
-    _mm512_mask_cvtxps_ph(_mm256_setzero_ph(), k, a)
+    _mm512_mask_cvtxps_ph(f16x16::ZERO.as_m256h(), k, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -12910,7 +12910,7 @@ pub fn _mm512_maskz_cvtxps_ph(k: __mmask16, a: __m512) -> __m256h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_cvtx_roundps_ph<const ROUNDING: i32>(a: __m512) -> __m256h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvtx_roundps_ph::<ROUNDING>(_mm256_setzero_ph(), 0xffff, a)
+    _mm512_mask_cvtx_roundps_ph::<ROUNDING>(f16x16::ZERO.as_m256h(), 0xffff, a)
 }
 
 /// Convert packed single-precision (32-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -12962,7 +12962,7 @@ pub fn _mm512_mask_cvtx_roundps_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvtx_roundps_ph<const ROUNDING: i32>(k: __mmask16, a: __m512) -> __m256h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvtx_roundps_ph::<ROUNDING>(_mm256_setzero_ph(), k, a)
+    _mm512_mask_cvtx_roundps_ph::<ROUNDING>(f16x16::ZERO.as_m256h(), k, a)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
@@ -12975,7 +12975,7 @@ pub fn _mm512_maskz_cvtx_roundps_ph<const ROUNDING: i32>(k: __mmask16, a: __m512
 #[cfg_attr(test, assert_instr(vcvtss2sh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvtss_sh(a: __m128h, b: __m128) -> __m128h {
-    _mm_mask_cvtss_sh(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_cvtss_sh(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
@@ -13003,7 +13003,7 @@ pub fn _mm_mask_cvtss_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128) -> __
 #[cfg_attr(test, assert_instr(vcvtss2sh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_cvtss_sh(k: __mmask8, a: __m128h, b: __m128) -> __m128h {
-    _mm_mask_cvtss_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_cvtss_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
@@ -13026,7 +13026,7 @@ pub fn _mm_maskz_cvtss_sh(k: __mmask8, a: __m128h, b: __m128) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvt_roundss_sh<const ROUNDING: i32>(a: __m128h, b: __m128) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_cvt_roundss_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_cvt_roundss_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Convert the lower single-precision (32-bit) floating-point element in b to a half-precision (16-bit)
@@ -13085,7 +13085,7 @@ pub fn _mm_maskz_cvt_roundss_sh<const ROUNDING: i32>(
     b: __m128,
 ) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_cvt_roundss_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_cvt_roundss_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -13173,7 +13173,7 @@ pub fn _mm256_maskz_cvtpd_ph(k: __mmask8, a: __m256d) -> __m128h {
 #[cfg_attr(test, assert_instr(vcvtpd2ph))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_cvtpd_ph(a: __m512d) -> __m128h {
-    _mm512_mask_cvtpd_ph(_mm_setzero_ph(), 0xff, a)
+    _mm512_mask_cvtpd_ph(f16x8::ZERO.as_m128h(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -13199,7 +13199,7 @@ pub fn _mm512_mask_cvtpd_ph(src: __m128h, k: __mmask8, a: __m512d) -> __m128h {
 #[cfg_attr(test, assert_instr(vcvtpd2ph))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvtpd_ph(k: __mmask8, a: __m512d) -> __m128h {
-    _mm512_mask_cvtpd_ph(_mm_setzero_ph(), k, a)
+    _mm512_mask_cvtpd_ph(f16x8::ZERO.as_m128h(), k, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -13221,7 +13221,7 @@ pub fn _mm512_maskz_cvtpd_ph(k: __mmask8, a: __m512d) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_cvt_roundpd_ph<const ROUNDING: i32>(a: __m512d) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundpd_ph::<ROUNDING>(_mm_setzero_ph(), 0xff, a)
+    _mm512_mask_cvt_roundpd_ph::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a)
 }
 
 /// Convert packed double-precision (64-bit) floating-point elements in a to packed half-precision (16-bit)
@@ -13273,7 +13273,7 @@ pub fn _mm512_mask_cvt_roundpd_ph<const ROUNDING: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm512_maskz_cvt_roundpd_ph<const ROUNDING: i32>(k: __mmask8, a: __m512d) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundpd_ph::<ROUNDING>(_mm_setzero_ph(), k, a)
+    _mm512_mask_cvt_roundpd_ph::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
@@ -13286,7 +13286,7 @@ pub fn _mm512_maskz_cvt_roundpd_ph<const ROUNDING: i32>(k: __mmask8, a: __m512d)
 #[cfg_attr(test, assert_instr(vcvtsd2sh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvtsd_sh(a: __m128h, b: __m128d) -> __m128h {
-    _mm_mask_cvtsd_sh(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_cvtsd_sh(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
@@ -13314,7 +13314,7 @@ pub fn _mm_mask_cvtsd_sh(src: __m128h, k: __mmask8, a: __m128h, b: __m128d) -> _
 #[cfg_attr(test, assert_instr(vcvtsd2sh))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_cvtsd_sh(k: __mmask8, a: __m128h, b: __m128d) -> __m128h {
-    _mm_mask_cvtsd_sh(_mm_setzero_ph(), k, a, b)
+    _mm_mask_cvtsd_sh(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
@@ -13337,7 +13337,7 @@ pub fn _mm_maskz_cvtsd_sh(k: __mmask8, a: __m128h, b: __m128d) -> __m128h {
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_cvt_roundsd_sh<const ROUNDING: i32>(a: __m128h, b: __m128d) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_cvt_roundsd_sh::<ROUNDING>(_mm_undefined_ph(), 0xff, a, b)
+    _mm_mask_cvt_roundsd_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), 0xff, a, b)
 }
 
 /// Convert the lower double-precision (64-bit) floating-point element in b to a half-precision (16-bit)
@@ -13396,7 +13396,7 @@ pub fn _mm_maskz_cvt_roundsd_sh<const ROUNDING: i32>(
     b: __m128d,
 ) -> __m128h {
     static_assert_rounding!(ROUNDING);
-    _mm_mask_cvt_roundsd_sh::<ROUNDING>(_mm_setzero_ph(), k, a, b)
+    _mm_mask_cvt_roundsd_sh::<ROUNDING>(f16x8::ZERO.as_m128h(), k, a, b)
 }
 
 /// Convert packed half-precision (16-bit) floating-point elements in a to packed 16-bit integers, and
@@ -15899,7 +15899,7 @@ pub fn _mm_mask_cvtsh_ss(src: __m128, k: __mmask8, a: __m128, b: __m128h) -> __m
 #[cfg_attr(test, assert_instr(vcvtsh2ss))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_cvtsh_ss(k: __mmask8, a: __m128, b: __m128h) -> __m128 {
-    _mm_mask_cvtsh_ss(_mm_setzero_ps(), k, a, b)
+    _mm_mask_cvtsh_ss(_mm_set_ss(0.0), k, a, b)
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in b to a single-precision (32-bit)
@@ -15959,7 +15959,7 @@ pub fn _mm_mask_cvt_roundsh_ss<const SAE: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_cvt_roundsh_ss<const SAE: i32>(k: __mmask8, a: __m128, b: __m128h) -> __m128 {
     static_assert_sae!(SAE);
-    _mm_mask_cvt_roundsh_ss::<SAE>(_mm_setzero_ps(), k, a, b)
+    _mm_mask_cvt_roundsh_ss::<SAE>(_mm_set_ss(0.0), k, a, b)
 }
 
 /// Convert packed half-precision (16-bit) floating-point elements in a to packed double-precision (64-bit)
@@ -16169,7 +16169,7 @@ pub fn _mm_mask_cvtsh_sd(src: __m128d, k: __mmask8, a: __m128d, b: __m128h) -> _
 #[cfg_attr(test, assert_instr(vcvtsh2sd))]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_cvtsh_sd(k: __mmask8, a: __m128d, b: __m128h) -> __m128d {
-    _mm_mask_cvtsh_sd(_mm_setzero_pd(), k, a, b)
+    _mm_mask_cvtsh_sd(_mm_set_sd(0.0), k, a, b)
 }
 
 /// Convert the lower half-precision (16-bit) floating-point element in b to a double-precision (64-bit)
@@ -16228,7 +16228,7 @@ pub fn _mm_mask_cvt_roundsh_sd<const SAE: i32>(
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
 pub fn _mm_maskz_cvt_roundsh_sd<const SAE: i32>(k: __mmask8, a: __m128d, b: __m128h) -> __m128d {
     static_assert_sae!(SAE);
-    _mm_mask_cvt_roundsh_sd::<SAE>(_mm_setzero_pd(), k, a, b)
+    _mm_mask_cvt_roundsh_sd::<SAE>(_mm_set_sd(0.0), k, a, b)
 }
 
 /// Copy the lower half-precision (16-bit) floating-point element from `a` to `dst`.
