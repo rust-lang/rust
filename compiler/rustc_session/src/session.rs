@@ -42,6 +42,7 @@ use crate::config::{
     SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
+use crate::lint::LintId;
 use crate::parse::{ParseSess, add_feature_diagnostics};
 use crate::search_paths::SearchPath;
 use crate::{errors, filesearch, lint};
@@ -137,7 +138,9 @@ pub struct CompilerIO {
     pub temps_dir: Option<PathBuf>,
 }
 
-pub trait LintStoreMarker: Any + DynSync + DynSend {}
+pub trait LintStoreMarker: Any + DynSync + DynSend {
+    fn lint_groups(&self) -> Box<dyn Iterator<Item = (&'static str, Vec<LintId>, bool)> + '_>;
+}
 
 /// Represents the data associated with a compilation
 /// session for a single crate.
@@ -606,6 +609,13 @@ impl Session {
             ("", "")
         } else {
             (&*self.target.staticlib_prefix, &*self.target.staticlib_suffix)
+        }
+    }
+
+    pub fn lint_groups(&self) -> Box<dyn Iterator<Item = (&'static str, Vec<LintId>, bool)> + '_> {
+        match self.lint_store {
+            Some(ref lint_store) => lint_store.lint_groups(),
+            None => Box::new(std::iter::empty()),
         }
     }
 }
