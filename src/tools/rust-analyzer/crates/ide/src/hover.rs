@@ -634,9 +634,7 @@ fn walk_and_push_ty(
         } else if let Some(trait_) = t.as_associated_type_parent_trait(db) {
             push_new_def(trait_.into());
         } else if let Some(tp) = t.as_type_param(db) {
-            let sized_trait = db
-                .lang_item(t.krate(db).into(), LangItem::Sized)
-                .and_then(|lang_item| lang_item.as_trait());
+            let sized_trait = LangItem::Sized.resolve_trait(db, t.krate(db).into());
             tp.trait_bounds(db)
                 .into_iter()
                 .filter(|&it| Some(it.into()) != sized_trait)

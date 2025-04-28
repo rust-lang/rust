@@ -22,7 +22,7 @@ use crate::{
     hir::generics::GenericParams,
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree},
-    lang_item::{self, LangItem, LangItemTarget, LangItems},
+    lang_item::{self, LangItem},
     nameres::{
         DefMap, LocalDefMap,
         assoc::{ImplItems, TraitItems},
@@ -325,9 +325,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
 
     // endregion:attrs
 
-    #[salsa::invoke(LangItems::lang_item_query)]
-    fn lang_item(&self, start_crate: Crate, item: LangItem) -> Option<LangItemTarget>;
-
     #[salsa::invoke(ImportMap::import_map_query)]
     fn import_map(&self, krate: Crate) -> Arc<ImportMap>;
 
@@ -348,9 +345,6 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + SourceDatabase {
     fn type_alias_visibility(&self, def: TypeAliasId) -> Visibility;
 
     // endregion:visibilities
-
-    #[salsa::invoke(LangItems::crate_lang_items_query)]
-    fn crate_lang_items(&self, krate: Crate) -> Option<Arc<LangItems>>;
 
     #[salsa::invoke(crate::lang_item::notable_traits_in_deps)]
     fn notable_traits_in_deps(&self, krate: Crate) -> Arc<[Arc<[TraitId]>]>;

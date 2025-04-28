@@ -19,7 +19,7 @@ use hir_def::{
     hir::generics::{TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_scope::ItemInNs,
     item_tree::FieldsShape,
-    lang_item::{LangItem, LangItemTarget},
+    lang_item::LangItem,
     nameres::DefMap,
     signatures::VariantFields,
     type_ref::{
@@ -1348,9 +1348,8 @@ impl HirDisplay for Ty {
                         )?;
                     }
                     ImplTraitId::AsyncBlockTypeImplTrait(body, ..) => {
-                        let future_trait = db
-                            .lang_item(body.module(db).krate(), LangItem::Future)
-                            .and_then(LangItemTarget::as_trait);
+                        let future_trait =
+                            LangItem::Future.resolve_trait(db, body.module(db).krate());
                         let output = future_trait.and_then(|t| {
                             db.trait_items(t)
                                 .associated_type_by_name(&Name::new_symbol_root(sym::Output))
@@ -1728,9 +1727,7 @@ impl SizedByDefault {
         match self {
             Self::NotSized => false,
             Self::Sized { anchor } => {
-                let sized_trait = db
-                    .lang_item(anchor, LangItem::Sized)
-                    .and_then(|lang_item| lang_item.as_trait());
+                let sized_trait = LangItem::Sized.resolve_trait(db, anchor);
                 Some(trait_) == sized_trait
             }
         }
@@ -1895,8 +1892,7 @@ fn write_bounds_like_dyn_trait(
         write!(f, ">")?;
     }
     if let SizedByDefault::Sized { anchor } = default_sized {
-        let sized_trait =
-            f.db.lang_item(anchor, LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
+        let sized_trait = LangItem::Sized.resolve_trait(f.db, anchor);
         if !is_sized {
             if !first {
                 write!(f, " + ")?;

@@ -126,10 +126,8 @@ impl InferenceContext<'_> {
             &Expr::Index { base, index } => {
                 if mutability == Mutability::Mut {
                     if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
-                        if let Some(index_trait) = self
-                            .db
-                            .lang_item(self.table.trait_env.krate, LangItem::IndexMut)
-                            .and_then(|l| l.as_trait())
+                        if let Some(index_trait) =
+                            LangItem::IndexMut.resolve_trait(self.db, self.table.trait_env.krate)
                         {
                             if let Some(index_fn) = self
                                 .db
@@ -183,10 +181,8 @@ impl InferenceContext<'_> {
                 let mut mutability = mutability;
                 if let Some((f, _)) = self.result.method_resolutions.get_mut(&tgt_expr) {
                     if mutability == Mutability::Mut {
-                        if let Some(deref_trait) = self
-                            .db
-                            .lang_item(self.table.trait_env.krate, LangItem::DerefMut)
-                            .and_then(|l| l.as_trait())
+                        if let Some(deref_trait) =
+                            LangItem::DerefMut.resolve_trait(self.db, self.table.trait_env.krate)
                         {
                             let ty = self.result.type_of_expr.get(*expr);
                             let is_mut_ptr = ty.is_some_and(|ty| {

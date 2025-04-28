@@ -8,10 +8,7 @@ use chalk_recursive::Cache;
 use chalk_solve::{Solver, logging_db::LoggingRustIrDatabase, rust_ir};
 
 use base_db::Crate;
-use hir_def::{
-    BlockId, TraitId,
-    lang_item::{LangItem, LangItemTarget},
-};
+use hir_def::{BlockId, TraitId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 use span::Edition;
@@ -292,10 +289,6 @@ impl FnTrait {
     }
 
     pub fn get_id(self, db: &dyn HirDatabase, krate: Crate) -> Option<TraitId> {
-        let target = db.lang_item(krate, self.lang_item())?;
-        match target {
-            LangItemTarget::Trait(t) => Some(t),
-            _ => None,
-        }
+        self.lang_item().resolve_trait(db, krate)
     }
 }

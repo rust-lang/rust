@@ -1024,11 +1024,7 @@ impl<'a> InferenceTable<'a> {
             }
         }
 
-        let Some(sized) = self
-            .db
-            .lang_item(self.trait_env.krate, LangItem::Sized)
-            .and_then(|sized| sized.as_trait())
-        else {
+        let Some(sized) = LangItem::Sized.resolve_trait(self.db, self.trait_env.krate) else {
             return false;
         };
         let sized_pred = WhereClause::Implemented(TraitRef {

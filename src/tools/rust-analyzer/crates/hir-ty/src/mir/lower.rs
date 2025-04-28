@@ -13,7 +13,7 @@ use hir_def::{
         Pat, PatId, RecordFieldPat, RecordLitField,
     },
     item_tree::FieldsShape,
-    lang_item::{LangItem, LangItemTarget},
+    lang_item::{LangItem, LangItemTarget, lang_item},
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
 };
 use hir_expand::name::Name;
@@ -1727,7 +1727,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
 
     fn resolve_lang_item(&self, item: LangItem) -> Result<LangItemTarget> {
         let crate_id = self.owner.module(self.db).krate();
-        self.db.lang_item(crate_id, item).ok_or(MirLowerError::LangItemNotFound(item))
+        lang_item(self.db, crate_id, item).ok_or(MirLowerError::LangItemNotFound(item))
     }
 
     fn lower_block_to_place(
