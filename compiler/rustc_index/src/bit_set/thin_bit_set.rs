@@ -342,6 +342,39 @@ impl<T> ThinBitSet<T> {
         }
     }
 
+    /// Sets `self = self | !other` for all elements less than `domain_size`.
+    #[inline(always)]
+    pub fn union_not(&mut self, other: &Self, domain_size: usize) {
+        if self.is_inline() {
+            assert!(other.is_inline());
+
+            let self_word = unsafe { &mut self.inline };
+            let other_word = unsafe { other.inline };
+
+            debug_assert!(domain_size <= Self::INLINE_CAPACITY);
+
+            *self_word |= !other_word & !(Word::MAX >> domain_size);
+        } else if other.is_empty_unallocated() {
+            self.insert_all(domain_size);
+        } else {
+            let self_words = self.on_heap_get_or_alloc().as_mut_slice();
+            let other_words = other.on_heap().unwrap().as_slice();
+
+            // Set all but the last word if domain_size is not divisible by `WORD_BITS`.
+            for (self_word, other_word) in
+                self_words.iter_mut().zip(other_words).take(domain_size / WORD_BITS)
+            {
+                *self_word |= !other_word;
+            }
+
+            let remaining_bits = domain_size % WORD_BITS;
+            if remaining_bits > 0 {
+                let last_idx = domain_size / WORD_BITS;
+                self_words[last_idx] |= !other_words[last_idx] & !(Word::MAX << remaining_bits);
+            }
+        }
+    }
+
     /// Common function for union/intersection-like operations.
     ///
     /// This function takes two bit sets—one mutably, one immutably. Neither must be the
@@ -424,11 +457,6 @@ impl<T> ThinBitSet<T> {
             }
             has_changed
         }
-    }
-
-    #[inline(always)]
-    pub fn union_not(&mut self, _other: &Self) {
-        todo!()
     }
 
     super::bit_relations_inherent_impls! {}
@@ -1483,22 +1511,27 @@ mod tests {
                         assert_eq!(set_2.remove(elem), set_2_reference.remove(elem));
                     }
                 }
-                70..79 => {
+                70..76 => {
                     // Union
                     assert_eq!(set_1.union(&set_2), set_1_reference.union(&set_2_reference));
                 }
-                79..88 => {
+                76..82 => {
                     // Intersection
                     assert_eq!(
                         set_1.intersect(&set_2),
                         set_1_reference.intersect(&set_2_reference)
                     );
                 }
-                88..97 => {
+                82..88 => {
                     // Subtraction
                     assert_eq!(set_1.subtract(&set_2), set_1_reference.subtract(&set_2_reference));
                 }
-                97..99 => {
+                88..94 => {
+                    // Union_not
+                    set_1.union_not(&set_2, domain_size);
+                    set_1_reference.union_not(&set_2_reference, domain_size);
+                }
+                94..97 => {
                     // Clear
                     if rng.next_bool() {
                         set_1.clear();
@@ -1508,7 +1541,7 @@ mod tests {
                         set_2_reference.clear();
                     }
                 }
-                99..100 => {
+                97..100 => {
                     // Test new_filled().
                     if rng.next_bool() {
                         set_1 = ThinBitSet::new_filled(domain_size);

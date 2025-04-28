@@ -92,6 +92,15 @@ fn union_not() {
     b.insert(63);
     b.insert(81); // Already in `a`.
     b.insert(90);
+
+    a.union_not(&b, 100);
+
+    // After union-not, `a` should contain all values in the domain, except for
+    // the ones that are in `b` and were _not_ already in `a`.
+    assert_eq!(
+        a.iter().collect::<Vec<_>>(),
+        (0usize..100).filter(|&x| !matches!(x, 7 | 63 | 90)).collect::<Vec<_>>(),
+    );
 }
 
 #[test]

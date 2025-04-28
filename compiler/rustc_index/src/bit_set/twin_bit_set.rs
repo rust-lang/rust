@@ -49,10 +49,10 @@ macro_rules! compare_results_clone_arg(
 );
 
 macro_rules! compare_results_with_self(
-    ($self:ident, $method:tt, $other:expr) => {
+    ($self:ident, $method:tt, $other:expr $(, $extra_arg:expr)?) => {
         {
-            let thin_res = $self.thin.$method(&$other.thin);
-            let old_res = $self.old.$method(&$other.old);
+            let thin_res = $self.thin.$method(&$other.thin $(, $extra_arg)?);
+            let old_res = $self.old.$method(&$other.old $(, $extra_arg)?);
             $self.assert_valid();
             assert_eq!(thin_res, old_res, "TwinBitSet give different results in {}", stringify!($method));
             thin_res
@@ -154,8 +154,8 @@ impl<T: Idx> DenseBitSet<T> {
     bit_relations_inherent_impls! {}
 
     /// Sets `self = self | !other`.
-    pub fn union_not(&mut self, other: &DenseBitSet<T>) {
-        compare_results_with_self!(self, union_not, other)
+    pub fn union_not(&mut self, other: &DenseBitSet<T>, domain_size: usize) {
+        compare_results_with_self!(self, union_not, other, domain_size)
     }
 
     #[inline]

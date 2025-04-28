@@ -206,7 +206,7 @@ impl<T: Idx> DenseBitSet<T> {
     ///
     /// FIXME: Incorporate this into [`BitRelations`] and fill out
     /// implementations for other bitset types, if needed.
-    pub fn union_not(&mut self, other: &DenseBitSet<T>) {
+    pub fn union_not(&mut self, other: &DenseBitSet<T>, _domain_size: usize) {
         assert_eq!(self.domain_size, other.domain_size);
 
         // FIXME(Zalathar): If we were to forcibly _set_ all excess bits before
