@@ -193,6 +193,23 @@ When a user runs `cargo fix --edition`, cargo will pass the `--force-warn rust-2
 flag to force all of these lints to appear during the edition migration.
 Cargo also passes `--cap-lints=allow` so that no other lints interfere with the edition migration.
 
+Make sure that the example code sets the correct edition. The example should illustrate the previous edition, and show what the migration warning would look like. For example, this lint for a 2024 migration shows an example in 2021:
+
+```rust,ignore
+declare_lint! {
+    /// The `keyword_idents_2024` lint detects ...
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021
+    /// #![warn(keyword_idents_2024)]
+    /// fn gen() {}
+    /// ```
+    ///
+    /// {{produces}}
+}
+```
+
 Migration lints can be either `Allow` or `Warn` by default.
 If it is `Allow`, users usually won't see this warning unless they are doing an edition migration
 manually or there is a problem during the migration.
