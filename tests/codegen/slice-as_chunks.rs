@@ -2,7 +2,6 @@
 //@ only-64bit (because the LLVM type of i64 for usize shows up)
 
 #![crate_type = "lib"]
-#![feature(slice_as_chunks)]
 
 // CHECK-LABEL: @chunks4
 #[no_mangle]
