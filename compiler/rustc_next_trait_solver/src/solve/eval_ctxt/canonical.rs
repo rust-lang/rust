@@ -371,13 +371,14 @@ where
                 if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
                     if let CanonicalVarKind::Ty { universe: _, sub_root } = info.kind {
                         if let Some(prev) = var_values.get(sub_root.as_usize()) {
-                            let ty::Infer(ty::TyVar(vid)) = v.expect_ty().kind() else {
-                                unreachable!("expected `sub_root` to be an inference variable");
-                            };
-                            let ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind() else {
-                                unreachable!("expected `sub_root` to be an inference variable");
-                            };
-                            delegate.sub_ty_vids_raw(vid, sub_root);
+                            let v = delegate.shallow_resolve(v.expect_ty());
+                            let prev = delegate.shallow_resolve(prev.expect_ty());
+                            match (v.kind(), prev.kind()) {
+                                (ty::Infer(ty::TyVar(vid)), ty::Infer(ty::TyVar(sub_root))) => {
+                                    delegate.sub_ty_vids_raw(vid, sub_root)
+                                }
+                                _ => {}
+                            }
                         }
                     }
                     v
