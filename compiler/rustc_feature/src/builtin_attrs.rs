@@ -919,6 +919,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
     ),
     rustc_attr!(
+        rustc_no_implicit_autorefs, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument."
+    ),
+    rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),
