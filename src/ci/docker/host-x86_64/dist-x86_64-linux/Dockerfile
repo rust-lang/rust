@@ -2,7 +2,7 @@
 # CentOS 7 has headers for kernel 3.10, but that's fine as long as we don't
 # actually use newer APIs in rustc or std without a fallback. It's more
 # important that we match glibc for ELF symbol versioning.
-FROM centos:7
+FROM ghcr.io/rust-lang/centos:7
 
 WORKDIR /build
 
