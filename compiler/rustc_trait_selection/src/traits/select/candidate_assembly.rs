@@ -139,12 +139,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 &mut candidates,
                             );
                         }
-                        _ => {
-                            // FIXME: Put these into match arms above, since they're built-in.
-                            self.assemble_closure_candidates(obligation, &mut candidates);
+                        Some(LangItem::AsyncFn | LangItem::AsyncFnMut | LangItem::AsyncFnOnce) => {
                             self.assemble_async_closure_candidates(obligation, &mut candidates);
+                        }
+                        Some(LangItem::Fn | LangItem::FnMut | LangItem::FnOnce) => {
+                            self.assemble_closure_candidates(obligation, &mut candidates);
                             self.assemble_fn_pointer_candidates(obligation, &mut candidates);
                         }
+                        _ => {}
                     }
 
                     self.assemble_candidates_from_impls(obligation, &mut candidates);
@@ -380,9 +382,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let Some(kind) = self.tcx().fn_trait_kind_from_def_id(obligation.predicate.def_id()) else {
-            return;
-        };
+        let kind = self.tcx().fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
         // Okay to skip binder because the args on closure types never
         // touch bound regions, they just capture the in-scope
@@ -444,11 +444,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let Some(goal_kind) =
-            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id())
-        else {
-            return;
-        };
+        let goal_kind =
+            self.tcx().async_fn_trait_kind_from_def_id(obligation.predicate.def_id()).unwrap();
 
         match *obligation.self_ty().skip_binder().kind() {
             ty::CoroutineClosure(_, args) => {
@@ -521,11 +518,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // We provide impl of all fn traits for fn pointers.
-        if !self.tcx().is_fn_trait(obligation.predicate.def_id()) {
-            return;
-        }
-
         // Keep this function in sync with extract_tupled_inputs_and_output_from_callable
         // until the old solver (and thus this function) is removed.
 
