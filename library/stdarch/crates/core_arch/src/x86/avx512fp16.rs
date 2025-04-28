@@ -16670,14 +16670,14 @@ mod tests {
         )
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm_set_ph() {
         let r = _mm_set_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let e = _mm_setr_ph(8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_set_ph() {
         let r = _mm256_set_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
@@ -16703,21 +16703,21 @@ mod tests {
         assert_eq_m512h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm_set_sh() {
         let r = _mm_set_sh(1.0);
         let e = _mm_set_ph(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm_set1_ph() {
         let r = _mm_set1_ph(1.0);
         let e = _mm_set_ph(1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0);
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_set1_ph() {
         let r = _mm256_set1_ph(1.0);
         let e = _mm256_set_ph(
@@ -16736,14 +16736,14 @@ mod tests {
         assert_eq_m512h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm_setr_ph() {
         let r = _mm_setr_ph(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0);
         let e = _mm_set_ph(8.0, 7.0, 6.0, 5.0, 4.0, 3.0, 2.0, 1.0);
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_setr_ph() {
         let r = _mm256_setr_ph(
             1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
@@ -16790,7 +16790,7 @@ mod tests {
         assert_eq_m512h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm_castsi128_ph() {
         let a = _mm_set1_epi16(0x3c00);
         let r = _mm_castsi128_ph(a);
@@ -16798,7 +16798,7 @@ mod tests {
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_castsi256_ph() {
         let a = _mm256_set1_epi16(0x3c00);
         let r = _mm256_castsi256_ph(a);
@@ -16838,7 +16838,7 @@ mod tests {
         assert_eq_m512i(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm_castps_ph() {
         let a = _mm_castsi128_ps(_mm_set1_epi16(0x3c00));
         let r = _mm_castps_ph(a);
@@ -16846,7 +16846,7 @@ mod tests {
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_castps_ph() {
         let a = _mm256_castsi256_ps(_mm256_set1_epi16(0x3c00));
         let r = _mm256_castps_ph(a);
@@ -16886,7 +16886,7 @@ mod tests {
         assert_eq_m512(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm_castpd_ph() {
         let a = _mm_castsi128_pd(_mm_set1_epi16(0x3c00));
         let r = _mm_castpd_ph(a);
@@ -16894,7 +16894,7 @@ mod tests {
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_castpd_ph() {
         let a = _mm256_castsi256_pd(_mm256_set1_epi16(0x3c00));
         let r = _mm256_castpd_ph(a);
@@ -16934,7 +16934,7 @@ mod tests {
         assert_eq_m512d(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_castph256_ph128() {
         let a = _mm256_setr_ph(
             1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.,
@@ -16944,7 +16944,7 @@ mod tests {
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm512_castph512_ph128() {
         let a = _mm512_setr_ph(
             1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19.,
@@ -16955,7 +16955,7 @@ mod tests {
         assert_eq_m128h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm512_castph512_ph256() {
         let a = _mm512_setr_ph(
             1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17., 18., 19.,
@@ -16968,21 +16968,21 @@ mod tests {
         assert_eq_m256h(r, e);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_castph128_ph256() {
         let a = _mm_setr_ph(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_castph128_ph256(a);
         assert_eq_m128h(_mm256_castph256_ph128(r), a);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm512_castph128_ph512() {
         let a = _mm_setr_ph(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm512_castph128_ph512(a);
         assert_eq_m128h(_mm512_castph512_ph128(r), a);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm512_castph256_ph512() {
         let a = _mm256_setr_ph(
             1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.,
@@ -16991,7 +16991,7 @@ mod tests {
         assert_eq_m256h(_mm512_castph512_ph256(r), a);
     }
 
-    #[simd_test(enable = "avx512fp16")]
+    #[simd_test(enable = "avx512fp16,avx512vl")]
     unsafe fn test_mm256_zextph128_ph256() {
         let a = _mm_setr_ph(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_zextph128_ph256(a);

@@ -37,7 +37,7 @@ pub unsafe fn get_m128(a: __m128, idx: usize) -> f32 {
 }
 
 #[track_caller]
-#[target_feature(enable = "avx512fp16")]
+#[target_feature(enable = "avx512fp16,avx512vl")]
 pub unsafe fn assert_eq_m128h(a: __m128h, b: __m128h) {
     let r = _mm_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
     if r != 0b1111_1111 {
@@ -87,7 +87,7 @@ pub unsafe fn get_m256(a: __m256, idx: usize) -> f32 {
 }
 
 #[track_caller]
-#[target_feature(enable = "avx512fp16")]
+#[target_feature(enable = "avx512fp16,avx512vl")]
 pub unsafe fn assert_eq_m256h(a: __m256h, b: __m256h) {
     let r = _mm256_cmp_ph_mask::<_CMP_EQ_OQ>(a, b);
     if r != 0b11111111_11111111 {
