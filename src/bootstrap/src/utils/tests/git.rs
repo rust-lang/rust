@@ -129,6 +129,9 @@ impl GitCtx {
 
     fn git_cmd(&self) -> Command {
         let mut cmd = Command::new("git");
+        cmd.env("GIT_CONFIG_NOSYSTEM", "1");
+        cmd.env("GIT_CONFIG_SYSTEM", "/tmp/nonexistent");
+        cmd.env("GIT_CONFIG_GLOBAL", "/tmp/nonexistent");
         cmd.current_dir(&self.dir);
         cmd
     }
