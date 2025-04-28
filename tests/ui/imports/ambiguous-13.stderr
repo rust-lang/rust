@@ -19,7 +19,7 @@ note: `Rect` could also refer to the struct imported here
 LL | use crate::content::*;
    |     ^^^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `Rect` to disambiguate
-   = note: `#[warn(ambiguous_glob_imports)]` on by default
+   = note: `#[warn(ambiguous_glob_imports)]` (part of `#[warn(future_incompatible)]`) on by default
 
 warning: 1 warning emitted
 
