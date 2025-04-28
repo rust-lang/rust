@@ -40,7 +40,11 @@ impl JsonRenderer<'_> {
             })
             .collect();
         let docs = item.opt_doc_value();
-        let attrs = item.attributes(self.tcx, self.cache(), true);
+        let attrs = item
+            .attributes(self.tcx, self.cache(), true)
+            .into_iter()
+            .map(|(is_inner, content)| Attribute { is_inner, content })
+            .collect::<Vec<_>>();
         let span = item.span(self.tcx);
         let visibility = item.visibility(self.tcx);
         let clean::ItemInner { name, item_id, .. } = *item.inner;
@@ -767,7 +771,11 @@ impl FromClean<clean::ProcMacro> for ProcMacro {
     fn from_clean(mac: clean::ProcMacro, _renderer: &JsonRenderer<'_>) -> Self {
         ProcMacro {
             kind: from_macro_kind(mac.kind),
-            helpers: mac.helpers.iter().map(|x| x.to_string()).collect(),
+            helpers: mac
+                .helpers
+                .iter()
+                .map(|x| Attribute { is_inner: false, content: x.to_string() })
+                .collect(),
         }
     }
 }

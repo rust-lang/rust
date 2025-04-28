@@ -1,5 +1,5 @@
 #[repr(i32)]
-//@ is "$.index[?(@.name=='Foo')].attrs" '["#[repr(i32)]"]'
+//@ is "$.index[?(@.name=='Foo')].attrs" '[{"content": "#[repr(i32)]", "is_inner": false}]'
 pub enum Foo {
     //@ is    "$.index[?(@.name=='Struct')].inner.variant.discriminant" null
     //@ count "$.index[?(@.name=='Struct')].inner.variant.kind.struct.fields[*]" 0

@@ -1,5 +1,5 @@
 #[repr(u32)]
-//@ is "$.index[?(@.name=='Foo')].attrs" '["#[repr(u32)]"]'
+//@ is "$.index[?(@.name=='Foo')].attrs" '[{"content": "#[repr(u32)]", "is_inner": false}]'
 pub enum Foo {
     //@ is    "$.index[?(@.name=='Tuple')].inner.variant.discriminant" null
     //@ count "$.index[?(@.name=='Tuple')].inner.variant.kind.tuple[*]" 0

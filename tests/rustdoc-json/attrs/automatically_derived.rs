@@ -9,5 +9,5 @@ impl Default for Manual {
     }
 }
 
-//@ is '$.index[?(@.inner.impl.for.resolved_path.path == "Derive" && @.inner.impl.trait.path == "Default")].attrs' '["#[automatically_derived]"]'
+//@ is '$.index[?(@.inner.impl.for.resolved_path.path == "Derive" && @.inner.impl.trait.path == "Default")].attrs' '[{"content": "#[automatically_derived]", "is_inner": false}]'
 //@ is '$.index[?(@.inner.impl.for.resolved_path.path == "Manual" && @.inner.impl.trait.path == "Default")].attrs' '[]'

@@ -5,6 +5,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
+use rustc_ast::AttrStyle;
 use rustc_attr_parsing::{AttributeKind, ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -759,13 +760,20 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Vec<String> {
+    /// Returns a Vec of stringified attributes with a boolean set to `true` if it's an inner
+    /// attribute.
+    pub(crate) fn attributes(
+        &self,
+        tcx: TyCtxt<'_>,
+        cache: &Cache,
+        is_json: bool,
+    ) -> Vec<(bool, String)> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
 
         use rustc_abi::IntegerType;
 
-        let mut attrs: Vec<String> = self
+        let mut attrs: Vec<(bool, String)> = self
             .attrs
             .other_attrs
             .iter()
@@ -786,15 +794,19 @@ impl Item {
                             // because it isn't public API.
                             None
                         }
-                        _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
+                        _ => Some((
+                            attr.opt_style() == Some(AttrStyle::Inner),
+                            rustc_hir_pretty::attribute_to_string(&tcx, attr),
+                        )),
                     }
                 } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
-                    Some(
+                    Some((
+                        attr.opt_style() == Some(AttrStyle::Inner),
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
                             .replace("\\\n", "")
                             .replace('\n', "")
                             .replace("  ", " "),
-                    )
+                    ))
                 } else {
                     None
                 }
@@ -860,7 +872,7 @@ impl Item {
                 out.push(&int_s);
             }
             if !out.is_empty() {
-                attrs.push(format!("#[repr({})]", out.join(", ")));
+                attrs.push((false, format!("#[repr({})]", out.join(", "))));
             }
         }
         attrs

@@ -1,16 +1,16 @@
 #![no_std]
 
-//@ is "$.index[?(@.name=='ReprCStruct')].attrs" '["#[repr(C)]"]'
+//@ is "$.index[?(@.name=='ReprCStruct')].attrs" '[{"content": "#[repr(C)]", "is_inner": false}]'
 #[repr(C)]
 pub struct ReprCStruct(pub i64);
 
-//@ is "$.index[?(@.name=='ReprCEnum')].attrs" '["#[repr(C)]"]'
+//@ is "$.index[?(@.name=='ReprCEnum')].attrs" '[{"content": "#[repr(C)]", "is_inner": false}]'
 #[repr(C)]
 pub enum ReprCEnum {
     First,
 }
 
-//@ is "$.index[?(@.name=='ReprCUnion')].attrs" '["#[repr(C)]"]'
+//@ is "$.index[?(@.name=='ReprCUnion')].attrs" '[{"content": "#[repr(C)]", "is_inner": false}]'
 #[repr(C)]
 pub union ReprCUnion {
     pub left: i64,

@@ -152,6 +152,15 @@ pub struct ItemSummary {
     pub kind: ItemKind,
 }
 
+/// An attribute (like `#[inline]`).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
+pub struct Attribute {
+    /// Whether it is an inner (`#![]`) or an outer attribute (`#[]`).
+    pub is_inner: bool,
+    /// The content of the attribute.
+    pub content: String,
+}
+
 /// Anything that can hold documentation - modules, structs, enums, functions, traits, etc.
 ///
 /// The `Item` data type holds fields that can apply to any of these,
@@ -193,7 +202,7 @@ pub struct Item {
     ///
     /// As an internal implementation detail subject to change, this debug-printing format
     /// is currently equivalent to the HIR pretty-printing of parsed attributes.
-    pub attrs: Vec<String>,
+    pub attrs: Vec<Attribute>,
     /// Information about the item’s deprecation, if present.
     pub deprecation: Option<Deprecation>,
     /// The type-specific fields describing this item.
@@ -1301,7 +1310,7 @@ pub struct ProcMacro {
     ///     Some(T),
     /// }
     /// ```
-    pub helpers: Vec<String>,
+    pub helpers: Vec<Attribute>,
 }
 
 /// The way a [`ProcMacro`] is declared to be used.

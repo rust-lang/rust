@@ -10,7 +10,7 @@
 // Here, the non-1-ZST field is public.
 // We expect `#[repr(transparent)]` in the attributes.
 //
-//@ is "$.index[?(@.name=='Transparent')].attrs" '["#[repr(transparent)]"]'
+//@ is "$.index[?(@.name=='Transparent')].attrs" '[{"content": "#[repr(transparent)]", "is_inner": false}]'
 #[repr(transparent)]
 pub struct Transparent(pub i64);
 
@@ -24,7 +24,7 @@ pub struct TransparentNonPub(i64);
 // Only 1-ZST fields here, and one of them is public.
 // We expect `#[repr(transparent)]` in the attributes.
 //
-//@ is "$.index[?(@.name=='AllZst')].attrs" '["#[repr(transparent)]"]'
+//@ is "$.index[?(@.name=='AllZst')].attrs" '[{"content": "#[repr(transparent)]", "is_inner": false}]'
 #[repr(transparent)]
 pub struct AllZst<'a>(pub core::marker::PhantomData<&'a ()>, ());
 
