@@ -198,15 +198,13 @@ pub(crate) fn deref_by_trait(
         // blanked impl on `Deref`.
         #[expect(clippy::overly_complex_bool_expr)]
         if use_receiver_trait && false {
-            if let Some(receiver) =
-                db.lang_item(table.trait_env.krate, LangItem::Receiver).and_then(|l| l.as_trait())
-            {
+            if let Some(receiver) = LangItem::Receiver.resolve_trait(db, table.trait_env.krate) {
                 return Some(receiver);
             }
         }
         // Old rustc versions might not have `Receiver` trait.
         // Fallback to `Deref` if they don't
-        db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())
+        LangItem::Deref.resolve_trait(db, table.trait_env.krate)
     };
     let trait_id = trait_id()?;
     let target =

@@ -8,10 +8,7 @@
 use std::iter;
 
 use chalk_ir::{BoundVar, Goal, Mutability, TyKind, TyVariableKind, cast::Cast};
-use hir_def::{
-    hir::ExprId,
-    lang_item::{LangItem, LangItemTarget},
-};
+use hir_def::{hir::ExprId, lang_item::LangItem};
 use stdx::always;
 use triomphe::Arc;
 
@@ -701,8 +698,8 @@ impl InferenceTable<'_> {
             reborrow.as_ref().map_or_else(|| from_ty.clone(), |(_, adj)| adj.target.clone());
 
         let krate = self.trait_env.krate;
-        let coerce_unsized_trait = match self.db.lang_item(krate, LangItem::CoerceUnsized) {
-            Some(LangItemTarget::Trait(trait_)) => trait_,
+        let coerce_unsized_trait = match LangItem::CoerceUnsized.resolve_trait(self.db, krate) {
+            Some(trait_) => trait_,
             _ => return Err(TypeError),
         };
 

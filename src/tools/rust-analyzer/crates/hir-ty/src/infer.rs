@@ -39,7 +39,7 @@ use hir_def::{
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
-    lang_item::{LangItem, LangItemTarget},
+    lang_item::{LangItem, LangItemTarget, lang_item},
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     signatures::{ConstSignature, StaticSignature},
@@ -1801,7 +1801,7 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_lang_item(&self, item: LangItem) -> Option<LangItemTarget> {
         let krate = self.resolver.krate();
-        self.db.lang_item(krate, item)
+        lang_item(self.db, krate, item)
     }
 
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {

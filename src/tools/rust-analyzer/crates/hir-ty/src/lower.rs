@@ -590,10 +590,7 @@ impl<'a> TyLoweringContext<'a> {
                 }
             }
             &TypeBound::Path(path, TraitBoundModifier::Maybe) => {
-                let sized_trait = self
-                    .db
-                    .lang_item(self.resolver.krate(), LangItem::Sized)
-                    .and_then(|lang_item| lang_item.as_trait());
+                let sized_trait = LangItem::Sized.resolve_trait(self.db, self.resolver.krate());
                 // Don't lower associated type bindings as the only possible relaxed trait bound
                 // `?Sized` has no of them.
                 // If we got another trait here ignore the bound completely.
@@ -736,10 +733,8 @@ impl<'a> TyLoweringContext<'a> {
             }
 
             if !ctx.unsized_types.contains(&self_ty) {
-                let sized_trait = ctx
-                    .db
-                    .lang_item(krate, LangItem::Sized)
-                    .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+                let sized_trait =
+                    LangItem::Sized.resolve_trait(ctx.db, krate).map(to_chalk_trait_id);
                 let sized_clause = sized_trait.map(|trait_id| {
                     let clause = WhereClause::Implemented(TraitRef {
                         trait_id,
@@ -1188,9 +1183,7 @@ fn implicitly_sized_clauses<'a, 'subst: 'a>(
     substitution: &'subst Substitution,
     resolver: &Resolver,
 ) -> Option<impl Iterator<Item = WhereClause> + Captures<'a> + Captures<'subst>> {
-    let sized_trait = db
-        .lang_item(resolver.krate(), LangItem::Sized)
-        .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id))?;
+    let sized_trait = LangItem::Sized.resolve_trait(db, resolver.krate()).map(to_chalk_trait_id)?;
 
     let trait_self_idx = trait_self_param_idx(db, def);
 

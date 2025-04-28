@@ -516,8 +516,7 @@ impl HirDisplay for TypeParam {
             return Ok(());
         }
 
-        let sized_trait =
-            f.db.lang_item(krate, LangItem::Sized).and_then(|lang_item| lang_item.as_trait());
+        let sized_trait = LangItem::Sized.resolve_trait(f.db, krate);
         let has_only_sized_bound = predicates.iter().all(move |pred| match pred.skip_binders() {
             WhereClause::Implemented(it) => Some(it.hir_trait_id()) == sized_trait,
             _ => false,

@@ -16,7 +16,7 @@ use hir_def::{
     AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
     TypeAliasId, VariantId,
     hir::Movability,
-    lang_item::{LangItem, LangItemTarget},
+    lang_item::LangItem,
     signatures::{ImplFlags, StructFlags, TraitFlags},
 };
 
@@ -262,10 +262,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         well_known_trait: rust_ir::WellKnownTrait,
     ) -> Option<chalk_ir::TraitId<Interner>> {
         let lang_attr = lang_item_from_well_known_trait(well_known_trait);
-        let trait_ = match self.db.lang_item(self.krate, lang_attr) {
-            Some(LangItemTarget::Trait(trait_)) => trait_,
-            _ => return None,
-        };
+        let trait_ = lang_attr.resolve_trait(self.db, self.krate)?;
         Some(to_chalk_trait_id(trait_))
     }
 
@@ -306,11 +303,8 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                 chalk_ir::Binders::new(binders, bound)
             }
             crate::ImplTraitId::AsyncBlockTypeImplTrait(..) => {
-                if let Some((future_trait, future_output)) = self
-                    .db
-                    .lang_item(self.krate, LangItem::Future)
-                    .and_then(|item| item.as_trait())
-                    .and_then(|trait_| {
+                if let Some((future_trait, future_output)) =
+                    LangItem::Future.resolve_trait(self.db, self.krate).and_then(|trait_| {
                         let alias = self
                             .db
                             .trait_items(trait_)
@@ -338,10 +332,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
                     });
                     let mut binder = vec![];
                     binder.push(crate::wrap_empty_binders(impl_bound));
-                    let sized_trait = self
-                        .db
-                        .lang_item(self.krate, LangItem::Sized)
-                        .and_then(|item| item.as_trait());
+                    let sized_trait = LangItem::Sized.resolve_trait(self.db, self.krate);
                     if let Some(sized_trait_) = sized_trait {
                         let sized_bound = WhereClause::Implemented(TraitRef {
                             trait_id: to_chalk_trait_id(sized_trait_),
@@ -660,9 +651,8 @@ pub(crate) fn associated_ty_data_query(
     }
 
     if !ctx.unsized_types.contains(&self_ty) {
-        let sized_trait = db
-            .lang_item(resolver.krate(), LangItem::Sized)
-            .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
+        let sized_trait =
+            LangItem::Sized.resolve_trait(db, resolver.krate()).map(to_chalk_trait_id);
         let sized_bound = sized_trait.into_iter().map(|sized_trait| {
             let trait_bound =
                 rust_ir::TraitBound { trait_id: sized_trait, args_no_self: Default::default() };

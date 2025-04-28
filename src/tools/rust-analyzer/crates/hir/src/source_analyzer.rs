@@ -556,8 +556,8 @@ impl SourceAnalyzer {
             }
         }
 
-        let future_trait = db.lang_item(self.resolver.krate(), LangItem::Future)?.as_trait()?;
-        let poll_fn = db.lang_item(self.resolver.krate(), LangItem::FuturePoll)?.as_function()?;
+        let future_trait = LangItem::Future.resolve_trait(db, self.resolver.krate())?;
+        let poll_fn = LangItem::FuturePoll.resolve_function(db, self.resolver.krate())?;
         // HACK: subst for `poll()` coincides with that for `Future` because `poll()` itself
         // doesn't have any generic parameters, so we skip building another subst for `poll()`.
         let substs = hir_ty::TyBuilder::subst_for_def(db, future_trait, None).push(ty).build();
@@ -666,7 +666,7 @@ impl SourceAnalyzer {
     ) -> Option<FunctionId> {
         let ty = self.ty_of_expr(try_expr.expr()?)?;
 
-        let op_fn = db.lang_item(self.resolver.krate(), LangItem::TryTraitBranch)?.as_function()?;
+        let op_fn = LangItem::TryTraitBranch.resolve_function(db, self.resolver.krate())?;
         let op_trait = match op_fn.lookup(db).container {
             ItemContainerId::TraitId(id) => id,
             _ => return None,
@@ -1425,7 +1425,7 @@ impl SourceAnalyzer {
         lang_trait: LangItem,
         method_name: &Name,
     ) -> Option<(TraitId, FunctionId)> {
-        let trait_id = db.lang_item(self.resolver.krate(), lang_trait)?.as_trait()?;
+        let trait_id = lang_trait.resolve_trait(db, self.resolver.krate())?;
         let fn_id = db.trait_items(trait_id).method_by_name(method_name)?;
         Some((trait_id, fn_id))
     }
