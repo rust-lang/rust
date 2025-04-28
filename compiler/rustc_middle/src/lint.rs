@@ -211,11 +211,22 @@ impl LintExpectation {
 }
 
 fn explain_lint_level_source(
+    sess: &Session,
     lint: &'static Lint,
     level: Level,
     src: LintLevelSource,
     err: &mut Diag<'_, ()>,
 ) {
+    fn lint_group_name(lint: &'static Lint, sess: &Session) -> Option<&'static str> {
+        let mut lint_groups_iter = sess.lint_groups();
+        let lint_id = LintId::of(lint);
+        lint_groups_iter
+            .find(|lint_group| {
+                let lints = &lint_group.1;
+                lints.iter().find(|lint_group_lint| **lint_group_lint == lint_id).is_some()
+            })
+            .map(|lint_group| lint_group.0)
+    }
     let name = lint.name_lower();
     if let Level::Allow = level {
         // Do not point at `#[allow(compat_lint)]` as the reason for a compatibility lint
@@ -224,7 +235,13 @@ fn explain_lint_level_source(
     }
     match src {
         LintLevelSource::Default => {
-            err.note_once(format!("`#[{}({})]` on by default", level.as_str(), name));
+            let level_str = level.as_str();
+            err.note_once(format!("`#[{level_str}({name})]` on by default"));
+            if let Some(group_name) = lint_group_name(lint, sess) {
+                err.note_once(format!(
+                    "`#[{level_str}({name})]` implied by `#[{level_str}({group_name})]`"
+                ));
+            }
         }
         LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
             let flag = orig_level.to_cmd_flag();
@@ -427,7 +444,7 @@ pub fn lint_level(
             decorate(&mut err);
         }
 
-        explain_lint_level_source(lint, level, src, &mut err);
+        explain_lint_level_source(sess, lint, level, src, &mut err);
         err.emit()
     }
     lint_level_impl(sess, lint, level, span, Box::new(decorate))
