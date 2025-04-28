@@ -379,13 +379,13 @@ fn compare_method_predicate_entailment<'tcx>(
         // Annoyingly, asking for the WF predicates of an array (with an unevaluated const (only?))
         // will give back the well-formed predicate of the same array.
         let mut wf_args_seen: FxHashSet<_> = wf_args.iter().copied().collect();
-        while let Some(arg) = wf_args.pop() {
+        while let Some(term) = wf_args.pop() {
             let Some(obligations) = rustc_trait_selection::traits::wf::obligations(
                 infcx,
                 param_env,
                 impl_m_def_id,
                 0,
-                arg,
+                term,
                 impl_m_span,
             ) else {
                 continue;
@@ -402,9 +402,9 @@ fn compare_method_predicate_entailment<'tcx>(
                         | ty::ClauseKind::TypeOutlives(..)
                         | ty::ClauseKind::Projection(..),
                     ) => ocx.register_obligation(obligation),
-                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
-                        if wf_args_seen.insert(arg) {
-                            wf_args.push(arg)
+                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                        if wf_args_seen.insert(term) {
+                            wf_args.push(term)
                         }
                     }
                     _ => {}

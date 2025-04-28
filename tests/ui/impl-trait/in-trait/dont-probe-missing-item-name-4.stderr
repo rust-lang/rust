@@ -1,0 +1,26 @@
+error[E0271]: type mismatch resolving `<MyServerFn as ServerFn>::Output == i64`
+  --> $DIR/dont-probe-missing-item-name-4.rs:21:13
+   |
+LL |     problem(MyServerFn {});
+   |     ------- ^^^^^^^^^^^^^ type mismatch resolving `<MyServerFn as ServerFn>::Output == i64`
+   |     |
+   |     required by a bound introduced by this call
+   |
+note: expected this to be `i64`
+  --> $DIR/dont-probe-missing-item-name-4.rs:10:27
+   |
+LL |             type Output = ();
+   |                           ^^
+...
+LL | f! {}
+   | ----- in this macro invocation
+note: required by a bound in `problem`
+  --> $DIR/dont-probe-missing-item-name-4.rs:18:24
+   |
+LL | fn problem<T: ServerFn<Output = i64>>(_: T) {}
+   |                        ^^^^^^^^^^^^ required by this bound in `problem`
+   = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

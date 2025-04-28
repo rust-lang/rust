@@ -10,6 +10,7 @@ use rustc_type_ir::{
 };
 use tracing::{debug, instrument};
 
+use super::has_only_region_constraints;
 use super::trait_goals::TraitGoalProvenVia;
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
@@ -771,6 +772,69 @@ where
             }
         })
     }
+}
+
+pub(super) enum AllowInferenceConstraints {
+    Yes,
+    No,
+}
+
+impl<D, I> EvalCtxt<'_, D>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    /// Check whether we can ignore impl candidates due to specialization.
+    ///
+    /// This is only necessary for `feature(specialization)` and seems quite ugly.
+    pub(super) fn filter_specialized_impls(
+        &mut self,
+        allow_inference_constraints: AllowInferenceConstraints,
+        candidates: &mut Vec<Candidate<I>>,
+    ) {
+        match self.typing_mode() {
+            TypingMode::Coherence => return,
+            TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => {}
+        }
+
+        let mut i = 0;
+        'outer: while i < candidates.len() {
+            let CandidateSource::Impl(victim_def_id) = candidates[i].source else {
+                i += 1;
+                continue;
+            };
+
+            for (j, c) in candidates.iter().enumerate() {
+                if i == j {
+                    continue;
+                }
+
+                let CandidateSource::Impl(other_def_id) = c.source else {
+                    continue;
+                };
+
+                // See if we can toss out `victim` based on specialization.
+                //
+                // While this requires us to know *for sure* that the `lhs` impl applies
+                // we still use modulo regions here. This is fine as specialization currently
+                // assumes that specializing impls have to be always applicable, meaning that
+                // the only allowed region constraints may be constraints also present on the default impl.
+                if matches!(allow_inference_constraints, AllowInferenceConstraints::Yes)
+                    || has_only_region_constraints(c.result)
+                {
+                    if self.cx().impl_specializes(other_def_id, victim_def_id) {
+                        candidates.remove(i);
+                        continue 'outer;
+                    }
+                }
+            }
+
+            i += 1;
+        }
+    }
 
     /// Assemble and merge candidates for goals which are related to an underlying trait
     /// goal. Right now, this is normalizes-to and host effect goals.
@@ -857,7 +921,7 @@ where
                 }
             }
             TraitGoalProvenVia::Misc => {
-                let candidates =
+                let mut candidates =
                     self.assemble_and_evaluate_candidates(goal, AssembleCandidatesFrom::All);
 
                 // Prefer "orphaned" param-env normalization predicates, which are used
@@ -870,6 +934,13 @@ where
                 if let Some(response) = self.try_merge_responses(&candidates_from_env) {
                     return Ok(response);
                 }
+
+                // We drop specialized impls to allow normalization via a final impl here. In case
+                // the specializing impl has different inference constraints from the specialized
+                // impl, proving the trait goal is already ambiguous, so we never get here. This
+                // means we can just ignore inference constraints and don't have to special-case
+                // constraining the normalized-to `term`.
+                self.filter_specialized_impls(AllowInferenceConstraints::Yes, &mut candidates);
 
                 let responses: Vec<_> = candidates.iter().map(|c| c.result).collect();
                 if let Some(response) = self.try_merge_responses(&responses) {

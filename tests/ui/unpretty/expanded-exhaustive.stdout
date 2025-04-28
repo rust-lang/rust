@@ -359,6 +359,7 @@ mod expressions {
 
 
 
+        // concat_idents is deprecated
 
 
 
@@ -674,6 +675,7 @@ mod types {
         /*! there is no syntax for this */
     }
     /// TyKind::MacCall
+    #[expect(deprecated)]
     fn ty_mac_call() { let _: T; let _: T; let _: T; }
     /// TyKind::CVarArgs
     fn ty_c_var_args() {

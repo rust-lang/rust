@@ -13,7 +13,6 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
     let git_config = builder.config.git_config();
     let suggestions = builder
         .tool_cmd(Tool::SuggestTests)
-        .env("SUGGEST_TESTS_GIT_REPOSITORY", git_config.git_repository)
         .env("SUGGEST_TESTS_NIGHTLY_BRANCH", git_config.nightly_branch)
         .env("SUGGEST_TESTS_MERGE_COMMIT_EMAIL", git_config.git_merge_commit_email)
         .run_capture_stdout(builder)

@@ -1,4 +1,4 @@
-// Tests behavior of rustdoc `--runtool`.
+// Tests behavior of rustdoc `--test-runtool`.
 
 use std::path::PathBuf;
 
@@ -11,7 +11,7 @@ fn mkdir(name: &str) -> PathBuf {
     dir
 }
 
-// Behavior with --runtool with relative paths and --test-run-directory.
+// Behavior with --test-runtool with relative paths and --test-run-directory.
 fn main() {
     let run_dir_name = "rundir";
     let run_dir = mkdir(run_dir_name);
@@ -27,7 +27,7 @@ fn main() {
         .arg("--test")
         .arg("--test-run-directory")
         .arg(run_dir_name)
-        .arg("--runtool")
+        .arg("--test-runtool")
         .arg(&run_tool_binary)
         .extern_("t", "libt.rlib")
         .run();

@@ -405,7 +405,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     let universe = placeholder.universe;
                     let universe_info = self.regioncx.universe_info(universe);
 
-                    universe_info.report_error(self, placeholder, error_element, cause);
+                    universe_info.report_erroneous_element(self, placeholder, error_element, cause);
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {

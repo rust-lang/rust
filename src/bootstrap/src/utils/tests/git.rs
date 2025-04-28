@@ -135,7 +135,6 @@ impl GitCtx {
 
     fn git_config(&self) -> GitConfig<'_> {
         GitConfig {
-            git_repository: &self.git_repo,
             nightly_branch: &self.nightly_branch,
             git_merge_commit_email: &self.merge_bot_email,
         }

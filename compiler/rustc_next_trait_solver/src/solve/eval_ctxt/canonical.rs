@@ -22,7 +22,7 @@ use tracing::{debug, instrument, trace};
 use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
-use crate::solve::eval_ctxt::{CurrentGoalKind, NestedGoals};
+use crate::solve::eval_ctxt::CurrentGoalKind;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
     MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
@@ -112,13 +112,9 @@ where
         // by `try_evaluate_added_goals()`.
         let (certainty, normalization_nested_goals) = match self.current_goal_kind {
             CurrentGoalKind::NormalizesTo => {
-                let NestedGoals { normalizes_to_goals, goals } =
-                    std::mem::take(&mut self.nested_goals);
-                if cfg!(debug_assertions) {
-                    assert!(normalizes_to_goals.is_empty());
-                    if goals.is_empty() {
-                        assert!(matches!(goals_certainty, Certainty::Yes));
-                    }
+                let goals = std::mem::take(&mut self.nested_goals);
+                if goals.is_empty() {
+                    assert!(matches!(goals_certainty, Certainty::Yes));
                 }
                 (certainty, NestedNormalizationGoals(goals))
             }

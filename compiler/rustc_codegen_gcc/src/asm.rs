@@ -165,10 +165,10 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         let mut input_registers = vec![];
 
         for op in rust_operands {
-            if let InlineAsmOperandRef::In { reg, .. } = *op {
-                if let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg) {
-                    input_registers.push(reg_name);
-                }
+            if let InlineAsmOperandRef::In { reg, .. } = *op
+                && let ConstraintOrRegister::Register(reg_name) = reg_to_gcc(reg)
+            {
+                input_registers.push(reg_name);
             }
         }
 

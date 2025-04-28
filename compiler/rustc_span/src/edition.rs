@@ -45,7 +45,7 @@ pub const ALL_EDITIONS: &[Edition] = &[
     Edition::EditionFuture,
 ];
 
-pub const EDITION_NAME_LIST: &str = "2015|2018|2021|2024";
+pub const EDITION_NAME_LIST: &str = "<2015|2018|2021|2024|future>";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 

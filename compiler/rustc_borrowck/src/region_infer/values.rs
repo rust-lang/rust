@@ -21,7 +21,7 @@ rustc_index::newtype_index! {
 
 /// An individual element in a region value -- the value of a
 /// particular region variable consists of a set of these elements.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum RegionElement {
     /// A point in the control-flow graph.
     Location(Location),

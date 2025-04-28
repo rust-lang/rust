@@ -351,9 +351,14 @@ impl CString {
     /// # Safety
     ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling [`CString::into_raw`]. Other usage (e.g., trying to take
-    /// ownership of a string that was allocated by foreign code) is likely to lead
-    /// to undefined behavior or allocator corruption.
+    /// obtained by calling [`CString::into_raw`], and the memory it points to must not be accessed
+    /// through any other pointer during the lifetime of reconstructed `CString`.
+    /// Other usage (e.g., trying to take ownership of a string that was allocated by foreign code)
+    /// is likely to lead to undefined behavior or allocator corruption.
+    ///
+    /// This function does not validate ownership of the raw pointer's memory.
+    /// A double-free may occur if the function is called twice on the same raw pointer.
+    /// Additionally, the caller must ensure the pointer is not dangling.
     ///
     /// It should be noted that the length isn't just "recomputed," but that
     /// the recomputed length must match the original length from the
@@ -818,6 +823,7 @@ impl From<Vec<NonZero<u8>>> for CString {
     }
 }
 
+#[stable(feature = "c_string_from_str", since = "1.85.0")]
 impl FromStr for CString {
     type Err = NulError;
 
@@ -830,6 +836,7 @@ impl FromStr for CString {
     }
 }
 
+#[stable(feature = "c_string_from_str", since = "1.85.0")]
 impl TryFrom<CString> for String {
     type Error = IntoStringError;
 

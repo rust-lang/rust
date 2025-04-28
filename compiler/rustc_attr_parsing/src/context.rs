@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::LazyLock;
 
-use rustc_ast::{self as ast, DelimArgs};
+use rustc_ast as ast;
 use rustc_attr_data_structures::AttributeKind;
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::Features;
@@ -315,11 +315,7 @@ impl<'sess> AttributeParser<'sess> {
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {
         match args {
             ast::AttrArgs::Empty => AttrArgs::Empty,
-            ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(DelimArgs {
-                dspan: args.dspan,
-                delim: args.delim,
-                tokens: args.tokens.clone(),
-            }),
+            ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(args.clone()),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).

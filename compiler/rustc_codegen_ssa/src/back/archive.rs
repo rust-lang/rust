@@ -13,9 +13,9 @@ use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
+use rustc_fs_util::TempDirBuilder;
 use rustc_session::Session;
 use rustc_span::Symbol;
-use tempfile::Builder as TempFileBuilder;
 use tracing::trace;
 
 use super::metadata::search_for_section;
@@ -501,7 +501,7 @@ impl<'a> ArArchiveBuilder<'a> {
         // it creates. We need it to be the default mode for back compat reasons however. (See
         // #107495) To handle this we are telling tempfile to create a temporary directory instead
         // and then inside this directory create a file using File::create.
-        let archive_tmpdir = TempFileBuilder::new()
+        let archive_tmpdir = TempDirBuilder::new()
             .suffix(".temp-archive")
             .tempdir_in(output.parent().unwrap_or_else(|| Path::new("")))
             .map_err(|err| {

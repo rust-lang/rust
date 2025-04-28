@@ -138,18 +138,26 @@ impl<'tcx> Value<TyCtxt<'tcx>> for &[ty::Variance] {
         cycle_error: &CycleError,
         _guar: ErrorGuaranteed,
     ) -> Self {
-        if let Some(frame) = cycle_error.cycle.get(0)
-            && frame.query.dep_kind == dep_kinds::variances_of
-            && let Some(def_id) = frame.query.def_id
-        {
-            let n = tcx.generics_of(def_id).own_params.len();
-            vec![ty::Bivariant; n].leak()
-        } else {
-            span_bug!(
-                cycle_error.usage.as_ref().unwrap().0,
-                "only `variances_of` returns `&[ty::Variance]`"
-            );
-        }
+        search_for_cycle_permutation(
+            &cycle_error.cycle,
+            |cycle| {
+                if let Some(frame) = cycle.get(0)
+                    && frame.query.dep_kind == dep_kinds::variances_of
+                    && let Some(def_id) = frame.query.def_id
+                {
+                    let n = tcx.generics_of(def_id).own_params.len();
+                    ControlFlow::Break(vec![ty::Bivariant; n].leak())
+                } else {
+                    ControlFlow::Continue(())
+                }
+            },
+            || {
+                span_bug!(
+                    cycle_error.usage.as_ref().unwrap().0,
+                    "only `variances_of` returns `&[ty::Variance]`"
+                )
+            },
+        )
     }
 }
 

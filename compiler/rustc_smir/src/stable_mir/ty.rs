@@ -1462,7 +1462,7 @@ pub enum ClauseKind {
     TypeOutlives(TypeOutlivesPredicate),
     Projection(ProjectionPredicate),
     ConstArgHasType(TyConst, Ty),
-    WellFormed(GenericArgKind),
+    WellFormed(TermKind),
     ConstEvaluatable(TyConst),
 }
 

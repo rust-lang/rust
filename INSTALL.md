@@ -75,8 +75,31 @@ See [the rustc-dev-guide for more info][sysllvm].
 
 2. Configure the build settings:
 
+   If you're unsure which build configurations to use and need a good default, you
+   can run the interactive `x.py setup` command. This will guide you through selecting
+   a config profile, setting up the LSP, configuring a Git hook, etc.
+
+   With `configure` script, you can handle multiple configurations in a single
+   command which is useful to create complex/advanced config files. For example:
+
    ```sh
-   ./configure
+   ./configure --build=aarch64-unknown-linux-gnu \
+      --enable-full-tools \
+      --enable-profiler \
+      --enable-sanitizers \
+      --enable-compiler-docs \
+      --set target.aarch64-unknown-linux-gnu.linker=clang \
+      --set target.aarch64-unknown-linux-gnu.ar=/rustroot/bin/llvm-ar \
+      --set target.aarch64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
+      --set llvm.link-shared=true \
+      --set llvm.thin-lto=true \
+      --set llvm.libzstd=true \
+      --set llvm.ninja=false \
+      --set rust.debug-assertions=false \
+      --set rust.jemalloc \
+      --set rust.use-lld=true \
+      --set rust.lto=thin \
+      --set rust.codegen-units=1
    ```
 
    If you plan to use `x.py install` to create an installation, you can either
