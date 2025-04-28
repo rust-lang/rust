@@ -53,8 +53,14 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         |edit| {
             let pats_after = pipe_token
                 .siblings_with_tokens(Direction::Next)
-                .filter_map(|it| ast::Pat::cast(it.into_node()?));
-            let new_pat = make::or_pat(pats_after, or_pat.leading_pipe().is_some());
+                .filter_map(|it| ast::Pat::cast(it.into_node()?))
+                .collect::<Vec<_>>();
+            // It is guaranteed that `pats_after` has at least one element
+            let new_pat = if pats_after.len() == 1 {
+                pats_after[0].clone()
+            } else {
+                make::or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
+            };
             let new_match_arm =
                 make::match_arm(new_pat, match_arm.guard(), match_arm_body).clone_for_update();
 

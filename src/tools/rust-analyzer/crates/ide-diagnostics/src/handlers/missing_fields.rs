@@ -163,9 +163,14 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             let old_field_list = field_list_parent.record_pat_field_list()?;
             let new_field_list = old_field_list.clone_for_update();
             for (f, _) in missing_fields.iter() {
-                let field = make::record_pat_field_shorthand(make::name_ref(
-                    &f.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr(),
-                ));
+                let field = make::record_pat_field_shorthand(
+                    make::ident_pat(
+                        false,
+                        false,
+                        make::name(&f.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr()),
+                    )
+                    .into(),
+                );
                 new_field_list.add_field(field.clone_for_update());
             }
             build_text_edit(new_field_list.syntax(), old_field_list.syntax())
