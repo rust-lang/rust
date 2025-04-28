@@ -1,4 +1,4 @@
-/* global addClass, hasClass, removeClass, onEachLazy, nonnull */
+ /* global addClass, hasClass, removeClass, onEachLazy, nonnull */
 
 "use strict";
 
@@ -127,7 +127,7 @@
      * @param {boolean} isHidden
      */
     function setupLoc(example, isHidden) {
-        const locs_str = example.attributes.getNamedItem("data-locs")).textContent;
+        const locs_str = example.attributes.getNamedItem("data-locs").textContent;
         const locs = example.locs =
               JSON.parse(nonnull(nonnull(locs_str));
         // Start with the first example in view
