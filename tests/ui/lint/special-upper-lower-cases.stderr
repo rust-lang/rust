@@ -4,7 +4,7 @@ warning: type `𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝` should have an upper camel 
 LL | struct 𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝;
    |        ^^^^^^^^^ should have an UpperCamelCase name
    |
-   = note: `#[warn(non_camel_case_types)]` on by default
+   = note: `#[warn(non_camel_case_types)]` (part of `#[warn(nonstandard_style)]`) on by default
 
 warning: type `𝕟𝕠𝕥_𝕒_𝕔𝕒𝕞𝕖𝕝` should have an upper camel case name
   --> $DIR/special-upper-lower-cases.rs:14:8
@@ -18,7 +18,7 @@ warning: static variable `𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲` shou
 LL | static 𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲: i32 = 1;
    |        ^^^^^^^^^^^^ should have an UPPER_CASE name
    |
-   = note: `#[warn(non_upper_case_globals)]` on by default
+   = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default
 
 warning: variable `𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢` should have a snake case name
   --> $DIR/special-upper-lower-cases.rs:21:9
@@ -26,7 +26,7 @@ warning: variable `𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢` should have a snake cas
 LL |     let 𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢 = 1;
    |         ^^^^^^^^^ should have a snake_case name
    |
-   = note: `#[warn(non_snake_case)]` on by default
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
 
 warning: 4 warnings emitted
 

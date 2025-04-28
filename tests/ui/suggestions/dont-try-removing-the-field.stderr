@@ -4,7 +4,7 @@ warning: unused variable: `baz`
 LL |     let Foo { foo, bar, baz } = x;
    |                         ^^^ help: try ignoring the field: `baz: _`
    |
-   = note: `#[warn(unused_variables)]` on by default
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 

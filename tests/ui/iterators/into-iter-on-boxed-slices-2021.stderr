@@ -6,7 +6,7 @@ LL |     let _: Iter<'_, i32> = boxed_slice.into_iter();
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/edition-guide/rust-2024/intoiterator-box-slice.html>
-   = note: `#[warn(boxed_slice_into_iter)]` on by default
+   = note: `#[warn(boxed_slice_into_iter)]` (part of `#[warn(rust_2024_compatibility)]`) on by default
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
 LL -     let _: Iter<'_, i32> = boxed_slice.into_iter();

@@ -33,7 +33,7 @@ warning: constant `µ` should have an upper case name
 LL | const µ: f64 = 0.000001;
    |       ^ help: convert the identifier to upper case: `Μ`
    |
-   = note: `#[warn(non_upper_case_globals)]` on by default
+   = note: `#[warn(non_upper_case_globals)]` (part of `#[warn(nonstandard_style)]`) on by default
 
 error: aborting due to 3 previous errors; 1 warning emitted
 
