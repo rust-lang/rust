@@ -110,7 +110,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
 
     pub fn is_existential(&self) -> bool {
         match self.kind {
-            CanonicalVarKind::Ty(_) | CanonicalVarKind::Int | CanonicalVarKind::Float => true,
+            CanonicalVarKind::Ty { .. } | CanonicalVarKind::Int | CanonicalVarKind::Float => true,
             CanonicalVarKind::PlaceholderTy(_) => false,
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
@@ -122,7 +122,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
     pub fn is_region(&self) -> bool {
         match self.kind {
             CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => true,
-            CanonicalVarKind::Ty(_)
+            CanonicalVarKind::Ty { .. }
             | CanonicalVarKind::Int
             | CanonicalVarKind::Float
             | CanonicalVarKind::PlaceholderTy(_)
@@ -133,7 +133,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
 
     pub fn expect_placeholder_index(self) -> usize {
         match self.kind {
-            CanonicalVarKind::Ty(_)
+            CanonicalVarKind::Ty { .. }
             | CanonicalVarKind::Int
             | CanonicalVarKind::Float
             | CanonicalVarKind::Region(_)
@@ -158,7 +158,11 @@ impl<I: Interner> CanonicalVarInfo<I> {
 )]
 pub enum CanonicalVarKind<I: Interner> {
     /// A general type variable `?T` that can be unified with arbitrary types.
-    Ty(UniverseIndex),
+    ///
+    /// We also store the index of the first type variable which is sub-unified
+    /// with this one. If there is no inference variable related to this one,
+    /// its `sub_root` just points to itself.
+    Ty { universe: UniverseIndex, sub_root: ty::BoundVar },
 
     /// Integral type variable `?I` (that can only be unified with integral types).
     Int,
@@ -187,7 +191,7 @@ pub enum CanonicalVarKind<I: Interner> {
 impl<I: Interner> CanonicalVarKind<I> {
     pub fn universe(self) -> UniverseIndex {
         match self {
-            CanonicalVarKind::Ty(ui) => ui,
+            CanonicalVarKind::Ty { universe, sub_root: _ } => universe,
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::Const(ui) => ui,
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe(),
@@ -203,7 +207,9 @@ impl<I: Interner> CanonicalVarKind<I> {
     /// the updated universe is not the root.
     pub fn with_updated_universe(self, ui: UniverseIndex) -> CanonicalVarKind<I> {
         match self {
-            CanonicalVarKind::Ty(_) => CanonicalVarKind::Ty(ui),
+            CanonicalVarKind::Ty { universe: _, sub_root } => {
+                CanonicalVarKind::Ty { universe: ui, sub_root }
+            }
             CanonicalVarKind::Region(_) => CanonicalVarKind::Region(ui),
             CanonicalVarKind::Const(_) => CanonicalVarKind::Const(ui),
 
@@ -297,7 +303,7 @@ impl<I: Interner> CanonicalVarValues<I> {
             var_values: cx.mk_args_from_iter(infos.iter().enumerate().map(
                 |(i, info)| -> I::GenericArg {
                     match info.kind {
-                        CanonicalVarKind::Ty(_)
+                        CanonicalVarKind::Ty { .. }
                         | CanonicalVarKind::Int
                         | CanonicalVarKind::Float
                         | CanonicalVarKind::PlaceholderTy(_) => {
