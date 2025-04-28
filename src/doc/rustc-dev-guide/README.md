@@ -77,7 +77,7 @@ This repository is linked to `rust-lang/rust` as a [josh](https://josh-project.g
 You'll need to install `josh-proxy` locally via
 
 ```
-cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
+cargo install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
 ```
 Older versions of `josh-proxy` may not round trip commits losslessly so it is important to install this exact version.
 
@@ -106,5 +106,5 @@ You may observe "Nothing to pull" even if you *know* rustc-pull has something to
 To minimize the likelihood of this happening, you may wish to keep a separate *minimal* git config that *only* has `[user]` entries from global git config, then repoint system git to use the minimal git config instead. E.g.
 
 ```
-GIT_CONFIG_GLOBAL=/path/to/minimal/gitconfig GIT_CONFIG_SYSTEM='' cargo +stable run --manifest-path josh-sync/Cargo.toml -- rustc-pull
+GIT_CONFIG_GLOBAL=/path/to/minimal/gitconfig GIT_CONFIG_SYSTEM='' cargo run --manifest-path josh-sync/Cargo.toml -- rustc-pull
 ```
