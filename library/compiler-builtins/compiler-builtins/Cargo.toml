@@ -35,7 +35,7 @@ default = ["compiler-builtins"]
 c = ["dep:cc"]
 
 # Workaround for the Cranelift codegen backend. Disables any implementations
-# which use inline assembly and fall back to pure Rust versions (if avalible).
+# which use inline assembly and fall back to pure Rust versions (if available).
 no-asm = []
 
 # Workaround for codegen backends which haven't yet implemented `f16` and
