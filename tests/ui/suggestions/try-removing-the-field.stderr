@@ -6,7 +6,7 @@ LL |     let Foo { foo, bar, .. } = x;
    |                    |
    |                    help: try removing the field
    |
-   = note: `#[warn(unused_variables)]` on by default
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused variable: `unused`
   --> $DIR/try-removing-the-field.rs:20:20

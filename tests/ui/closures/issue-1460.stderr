@@ -5,7 +5,7 @@ LL |     {|i: u32| if 1 == i { }};
    |      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: closures are lazy and do nothing unless called
-   = note: `#[warn(unused_must_use)]` on by default
+   = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
 
 warning: 1 warning emitted
 
