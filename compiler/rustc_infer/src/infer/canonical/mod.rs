@@ -108,18 +108,9 @@ impl<'tcx> InferCtxt<'tcx> {
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> GenericArg<'tcx> {
         match cv_info.kind {
-            CanonicalVarKind::Ty(ty_kind) => {
-                let ty = match ty_kind {
-                    CanonicalTyVarKind::General(ui) => {
-                        self.next_ty_var_in_universe(span, universe_map(ui))
-                    }
-
-                    CanonicalTyVarKind::Int => self.next_int_var(),
-
-                    CanonicalTyVarKind::Float => self.next_float_var(),
-                };
-                ty.into()
-            }
+            CanonicalVarKind::Ty(ui) => self.next_ty_var_in_universe(span, universe_map(ui)).into(),
+            CanonicalVarKind::Int => self.next_int_var().into(),
+            CanonicalVarKind::Float => self.next_float_var().into(),
 
             CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, bound }) => {
                 let universe_mapped = universe_map(universe);
