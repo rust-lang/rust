@@ -62,7 +62,11 @@ pub struct LintStore {
     lint_groups: FxIndexMap<&'static str, LintGroup>,
 }
 
-impl LintStoreMarker for LintStore {}
+impl LintStoreMarker for LintStore {
+    fn lint_groups(&self) -> Box<dyn Iterator<Item = (&'static str, Vec<LintId>, bool)> + '_> {
+        Box::new(self.get_lint_groups())
+    }
+}
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
 #[derive(Debug)]
