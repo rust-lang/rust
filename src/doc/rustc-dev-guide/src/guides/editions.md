@@ -369,3 +369,22 @@ Updating the edition of the standard library itself roughly involves the followi
 [advanced migration guide]: https://doc.rust-lang.org/nightly/edition-guide/editions/advanced-migrations.html
 [`backtrace-rs`]: https://github.com/rust-lang/backtrace-rs/
 [`stdarch`]: https://github.com/rust-lang/stdarch/
+
+## Stabilizing an edition
+
+After the edition team has given the go-ahead, the process for stabilizing an edition is roughly:
+
+- Update [`LATEST_STABLE_EDITION`].
+- Update [`Edition::is_stable`].
+- Hunt and find any document that refers to edition by number, and update it:
+    - [`--edition` flag](https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/command-line-arguments.md#--edition-specify-the-edition-to-use)
+    - [Rustdoc attributes](https://github.com/rust-lang/rust/blob/master/src/doc/rustdoc/src/write-documentation/documentation-tests.md#attributes)
+- Clean up any tests that use the `//@ edition` header to remove the `-Zunstable-options` flag to ensure they are indeed stable. Note: Ideally this should be automated, see [#133582].
+- Bless any tests that change.
+- Update `lint-docs` to default to the new edition.
+
+See [example for 2024](https://github.com/rust-lang/rust/pull/133349).
+
+[`LATEST_STABLE_EDITION`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/edition/constant.LATEST_STABLE_EDITION.html
+[`Edition::is_stable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/edition/enum.Edition.html#method.is_stable
+[#133582]: https://github.com/rust-lang/rust/issues/133582
