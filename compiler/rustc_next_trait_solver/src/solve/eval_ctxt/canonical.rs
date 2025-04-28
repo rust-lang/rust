@@ -110,19 +110,19 @@ where
         //
         // As we return all ambiguous nested goals, we can ignore the certainty returned
         // by `try_evaluate_added_goals()`.
-        let (certainty, normalization_nested_goals) = match self.current_goal_kind {
-            CurrentGoalKind::NormalizesTo => {
+        let (certainty, normalization_nested_goals) =
+            if matches!(self.current_goal_kind, CurrentGoalKind::NormalizesTo)
+                && matches!(certainty, Certainty::Yes)
+            {
                 let goals = std::mem::take(&mut self.nested_goals);
                 if goals.is_empty() {
                     assert!(matches!(goals_certainty, Certainty::Yes));
                 }
-                (certainty, NestedNormalizationGoals(goals))
-            }
-            CurrentGoalKind::Misc | CurrentGoalKind::CoinductiveTrait => {
+                (Certainty::Yes, NestedNormalizationGoals(goals))
+            } else {
                 let certainty = certainty.unify_with(goals_certainty);
                 (certainty, NestedNormalizationGoals::empty())
-            }
-        };
+            };
 
         if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
             // If we have overflow, it's probable that we're substituting a type
