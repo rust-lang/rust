@@ -8,11 +8,11 @@
 use crate::mem::replace;
 use crate::pin::Pin;
 use crate::ptr::null_mut;
-use crate::sync::atomic::AtomicPtr;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{Atomic, AtomicPtr};
 
 pub(crate) struct OnceBox<T> {
-    ptr: AtomicPtr<T>,
+    ptr: Atomic<*mut T>,
 }
 
 impl<T> OnceBox<T> {

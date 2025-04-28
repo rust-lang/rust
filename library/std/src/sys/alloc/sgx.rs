@@ -1,6 +1,6 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sys::pal::abi::mem as sgx_mem;
 use crate::sys::pal::waitqueue::SpinMutex;
 
@@ -22,7 +22,7 @@ struct Sgx;
 unsafe impl dlmalloc::Allocator for Sgx {
     /// Allocs system resources
     fn alloc(&self, _size: usize) -> (*mut u8, usize, u32) {
-        static INIT: AtomicBool = AtomicBool::new(false);
+        static INIT: Atomic<bool> = AtomicBool::new(false);
 
         // No ordering requirement since this function is protected by the global lock.
         if !INIT.swap(true, Ordering::Relaxed) {
