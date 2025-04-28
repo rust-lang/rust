@@ -1,6 +1,5 @@
+use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::match_type;
-use clippy_utils::{def_path_def_ids, match_def_path, paths};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
@@ -69,12 +68,12 @@ impl_lint_pass!(Symbols => [INTERNING_LITERALS, SYMBOL_AS_STR]);
 impl<'tcx> LateLintPass<'tcx> for Symbols {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         let modules = [
-            ("kw", &paths::KW_MODULE[..]),
-            ("sym", &paths::SYM_MODULE),
-            ("sym", &paths::CLIPPY_SYM_MODULE),
+            ("kw", &internal_paths::KW_MODULE),
+            ("sym", &internal_paths::SYM_MODULE),
+            ("sym", &internal_paths::CLIPPY_SYM_MODULE),
         ];
         for (prefix, module) in modules {
-            for def_id in def_path_def_ids(cx.tcx, module) {
+            for def_id in module.get(cx) {
                 // When linting `clippy_utils` itself we can't use `module_children` as it's a local def id. It will
                 // still lint but the suggestion will say to add it to `sym.rs` even if it's already there
                 if def_id.is_local() {
@@ -84,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
                 for item in cx.tcx.module_children(def_id) {
                     if let Res::Def(DefKind::Const, item_def_id) = item.res
                         && let ty = cx.tcx.type_of(item_def_id).instantiate_identity()
-                        && match_type(cx, ty, &paths::SYMBOL)
+                        && internal_paths::SYMBOL.matches_ty(cx, ty)
                         && let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id)
                         && let Some(value) = value.to_u32().discard_err()
                     {
@@ -160,7 +159,7 @@ fn suggestion(symbols: &mut FxHashMap<u32, (&'static str, Symbol)>, name: Symbol
 fn as_str_span(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Span> {
     if let ExprKind::MethodCall(_, recv, [], _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-        && match_def_path(cx, method_def_id, &paths::SYMBOL_AS_STR)
+        && internal_paths::SYMBOL_AS_STR.matches(cx, method_def_id)
     {
         Some(recv.span.shrink_to_hi().to(expr.span.shrink_to_hi()))
     } else {

@@ -1,6 +1,6 @@
+use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::ty::match_type;
-use clippy_utils::{is_lint_allowed, method_calls, paths};
+use clippy_utils::{is_lint_allowed, method_calls};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -45,7 +45,7 @@ impl<'tcx> LateLintPass<'tcx> for OuterExpnDataPass {
             && let (self_arg, args) = arg_lists[1]
             && args.is_empty()
             && let self_ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
-            && match_type(cx, self_ty, &paths::SYNTAX_CONTEXT)
+            && internal_paths::SYNTAX_CONTEXT.matches_ty(cx, self_ty)
         {
             span_lint_and_sugg(
                 cx,

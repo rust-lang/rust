@@ -32,7 +32,7 @@ extern crate rustc_span;
 
 mod almost_standard_lint_formulation;
 mod collapsible_calls;
-mod invalid_paths;
+mod internal_paths;
 mod lint_without_lint_pass;
 mod msrv_attr_impl;
 mod outer_expn_data_pass;
@@ -46,7 +46,6 @@ use rustc_lint::{Lint, LintStore};
 static LINTS: &[&Lint] = &[
     almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION,
     collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS,
-    invalid_paths::INVALID_PATHS,
     lint_without_lint_pass::DEFAULT_LINT,
     lint_without_lint_pass::INVALID_CLIPPY_VERSION_ATTRIBUTE,
     lint_without_lint_pass::LINT_WITHOUT_LINT_PASS,
@@ -66,10 +65,9 @@ pub fn register_lints(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(unsorted_clippy_utils_paths::UnsortedClippyUtilsPaths));
     store.register_early_pass(|| Box::new(produce_ice::ProduceIce));
     store.register_late_pass(|_| Box::new(collapsible_calls::CollapsibleCalls));
-    store.register_late_pass(|_| Box::new(invalid_paths::InvalidPaths));
     store.register_late_pass(|_| Box::<symbols::Symbols>::default());
     store.register_late_pass(|_| Box::<lint_without_lint_pass::LintWithoutLintPass>::default());
-    store.register_late_pass(|_| Box::<unnecessary_def_path::UnnecessaryDefPath>::default());
+    store.register_late_pass(|_| Box::new(unnecessary_def_path::UnnecessaryDefPath));
     store.register_late_pass(|_| Box::new(outer_expn_data_pass::OuterExpnDataPass));
     store.register_late_pass(|_| Box::new(msrv_attr_impl::MsrvAttrImpl));
     store.register_late_pass(|_| Box::new(almost_standard_lint_formulation::AlmostStandardFormulation::new()));
