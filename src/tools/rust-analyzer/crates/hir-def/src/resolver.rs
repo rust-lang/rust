@@ -493,7 +493,7 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
         expected_macro_kind: Option<MacroSubNs>,
-    ) -> Option<(MacroId, Option<ImportOrGlob>)> {
+    ) -> Option<(MacroId, Option<ImportOrExternCrate>)> {
         let (item_map, item_local_map, module) = self.item_scope_();
         item_map
             .resolve_path(

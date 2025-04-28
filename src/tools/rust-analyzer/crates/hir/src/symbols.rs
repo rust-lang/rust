@@ -263,8 +263,9 @@ impl<'a> SymbolCollector<'a> {
         for (name, Item { def, vis, import }) in scope.macros() {
             if let Some(i) = import {
                 match i {
-                    ImportOrGlob::Import(i) => push_import(self, i, name, def.into(), vis),
-                    ImportOrGlob::Glob(_) => (),
+                    ImportOrExternCrate::Import(i) => push_import(self, i, name, def.into(), vis),
+                    ImportOrExternCrate::Glob(_) => (),
+                    ImportOrExternCrate::ExternCrate(_) => (),
                 }
                 continue;
             }
