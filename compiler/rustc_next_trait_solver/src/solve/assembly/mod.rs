@@ -6,9 +6,10 @@ use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::{
-    self as ty, Interner, TypeFoldable, TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
+    self as ty, Interner, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt as _,
+    TypingMode, Upcast as _, elaborate,
 };
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 use super::has_only_region_constraints;
 use super::trait_goals::TraitGoalProvenVia;
@@ -316,8 +317,7 @@ where
         };
 
         if normalized_self_ty.is_ty_var() {
-            debug!("self type has been normalized to infer");
-            return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
+            return self.try_assemble_bounds_via_registered_opaque(goal, normalized_self_ty);
         }
 
         let goal: Goal<I, G> =
@@ -826,6 +826,60 @@ where
 
             i += 1;
         }
+    }
+
+    fn try_assemble_bounds_via_registered_opaque<G: GoalKind<D>>(
+        &mut self,
+        goal: Goal<I, G>,
+        self_ty: I::Ty,
+    ) -> Vec<Candidate<I>> {
+        //println!("for goal {goal:#?} and {self_ty:?}, we found an alias: {:#?}", self.find_sup_as_registered_opaque(self_ty));
+
+        let Some(alias_ty) = self.find_sup_as_registered_opaque(self_ty) else {
+            return self.forced_ambiguity(MaybeCause::Ambiguity).into_iter().collect();
+        };
+
+        let mut candidates = vec![];
+        for item_bound in
+            self.cx().item_self_bounds(alias_ty.def_id).iter_instantiated(self.cx(), alias_ty.args)
+        {
+            // TODO: comment
+            let assumption =
+                item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });
+            candidates.extend(G::probe_and_match_goal_against_assumption(
+                self,
+                CandidateSource::AliasBound,
+                goal,
+                assumption,
+                |ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
+            ));
+        }
+
+        struct ReplaceOpaque<I: Interner> {
+            cx: I,
+            alias_ty: ty::AliasTy<I>,
+            self_ty: I::Ty,
+        }
+        impl<I: Interner> TypeFolder<I> for ReplaceOpaque<I> {
+            fn cx(&self) -> I {
+                self.cx
+            }
+            fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+                if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
+                    if alias_ty == self.alias_ty {
+                        return self.self_ty;
+                    }
+                }
+                ty.super_fold_with(self)
+            }
+        }
+
+        // TODO:
+        if candidates.is_empty() {
+            candidates.extend(self.forced_ambiguity(MaybeCause::Ambiguity));
+        }
+
+        candidates
     }
 
     /// Assemble and merge candidates for goals which are related to an underlying trait
