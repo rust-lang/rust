@@ -22,7 +22,7 @@ impl<'tcx> BodyBuilder<'tcx> {
     pub(crate) fn new(tcx: TyCtxt<'tcx>, instance: ty::Instance<'tcx>) -> Self {
         let instance = match instance.def {
             // To get the fallback body of an intrinsic, we need to convert it to an item.
-            ty::InstanceKind::Intrinsic(def_id) => ty::Instance::new(def_id, instance.args),
+            ty::InstanceKind::Intrinsic(def_id) => ty::Instance::new_raw(def_id, instance.args),
             _ => instance,
         };
         BodyBuilder { tcx, instance }
