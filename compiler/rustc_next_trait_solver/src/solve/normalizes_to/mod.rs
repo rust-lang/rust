@@ -194,6 +194,12 @@ where
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
+            // Bail if the nested goals don't hold here. This is to avoid unnecessarily
+            // computing the `type_of` query for associated types that never apply, as
+            // this may result in query cycles in the case of RPITITs.
+            // See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/185>.
+            ecx.try_evaluate_added_goals()?;
+
             // Add GAT where clauses from the trait's definition.
             // FIXME: We don't need these, since these are the type's own WF obligations.
             ecx.add_goals(
