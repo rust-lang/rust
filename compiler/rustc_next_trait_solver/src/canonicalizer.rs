@@ -4,8 +4,8 @@ use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, InferCtxtLike,
-    Interner, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self as ty, Canonical, CanonicalVarInfo, CanonicalVarKind, InferCtxtLike, Interner,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
 use crate::delegate::SolverDelegate;
@@ -323,11 +323,11 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         "ty vid should have been resolved fully before canonicalization"
                     );
 
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::General(
+                    CanonicalVarKind::Ty(
                         self.delegate
                             .universe_of_ty(vid)
                             .unwrap_or_else(|| panic!("ty var should have been resolved: {t:?}")),
-                    ))
+                    )
                 }
                 ty::IntVar(vid) => {
                     assert_eq!(
@@ -335,7 +335,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         t,
                         "ty vid should have been resolved fully before canonicalization"
                     );
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
+                    CanonicalVarKind::Int
                 }
                 ty::FloatVar(vid) => {
                     assert_eq!(
@@ -343,7 +343,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         t,
                         "ty vid should have been resolved fully before canonicalization"
                     );
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
+                    CanonicalVarKind::Float
                 }
                 ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
                     panic!("fresh vars not expected in canonicalization")

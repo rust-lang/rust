@@ -111,7 +111,7 @@ impl<I: Interner> CanonicalVarInfo<I> {
 
     pub fn is_existential(&self) -> bool {
         match self.kind {
-            CanonicalVarKind::Ty(_) => true,
+            CanonicalVarKind::Ty(_) | CanonicalVarKind::Int | CanonicalVarKind::Float => true,
             CanonicalVarKind::PlaceholderTy(_) => false,
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
@@ -124,6 +124,8 @@ impl<I: Interner> CanonicalVarInfo<I> {
         match self.kind {
             CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => true,
             CanonicalVarKind::Ty(_)
+            | CanonicalVarKind::Int
+            | CanonicalVarKind::Float
             | CanonicalVarKind::PlaceholderTy(_)
             | CanonicalVarKind::Const(_)
             | CanonicalVarKind::PlaceholderConst(_) => false,
@@ -132,7 +134,11 @@ impl<I: Interner> CanonicalVarInfo<I> {
 
     pub fn expect_placeholder_index(self) -> usize {
         match self.kind {
-            CanonicalVarKind::Ty(_) | CanonicalVarKind::Region(_) | CanonicalVarKind::Const(_) => {
+            CanonicalVarKind::Ty(_)
+            | CanonicalVarKind::Int
+            | CanonicalVarKind::Float
+            | CanonicalVarKind::Region(_)
+            | CanonicalVarKind::Const(_) => {
                 panic!("expected placeholder: {self:?}")
             }
 
@@ -153,8 +159,14 @@ impl<I: Interner> CanonicalVarInfo<I> {
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
 )]
 pub enum CanonicalVarKind<I: Interner> {
-    /// Some kind of type inference variable.
-    Ty(CanonicalTyVarKind),
+    /// A general type variable `?T` that can be unified with arbitrary types.
+    Ty(UniverseIndex),
+
+    /// Integral type variable `?I` (that can only be unified with integral types).
+    Int,
+
+    /// Floating-point type variable `?F` (that can only be unified with float types).
+    Float,
 
     /// A "placeholder" that represents "any type".
     PlaceholderTy(I::PlaceholderTy),
@@ -177,15 +189,13 @@ pub enum CanonicalVarKind<I: Interner> {
 impl<I: Interner> CanonicalVarKind<I> {
     pub fn universe(self) -> UniverseIndex {
         match self {
-            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)) => ui,
+            CanonicalVarKind::Ty(ui) => ui,
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::Const(ui) => ui,
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe(),
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe(),
             CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.universe(),
-            CanonicalVarKind::Ty(CanonicalTyVarKind::Float | CanonicalTyVarKind::Int) => {
-                UniverseIndex::ROOT
-            }
+            CanonicalVarKind::Int | CanonicalVarKind::Float => UniverseIndex::ROOT,
         }
     }
 
@@ -195,9 +205,7 @@ impl<I: Interner> CanonicalVarKind<I> {
     /// the updated universe is not the root.
     pub fn with_updated_universe(self, ui: UniverseIndex) -> CanonicalVarKind<I> {
         match self {
-            CanonicalVarKind::Ty(CanonicalTyVarKind::General(_)) => {
-                CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
-            }
+            CanonicalVarKind::Ty(_) => CanonicalVarKind::Ty(ui),
             CanonicalVarKind::Region(_) => CanonicalVarKind::Region(ui),
             CanonicalVarKind::Const(_) => CanonicalVarKind::Const(ui),
 
@@ -210,34 +218,12 @@ impl<I: Interner> CanonicalVarKind<I> {
             CanonicalVarKind::PlaceholderConst(placeholder) => {
                 CanonicalVarKind::PlaceholderConst(placeholder.with_updated_universe(ui))
             }
-            CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float) => {
+            CanonicalVarKind::Int | CanonicalVarKind::Float => {
                 assert_eq!(ui, UniverseIndex::ROOT);
                 self
             }
         }
     }
-}
-
-/// Rust actually has more than one category of type variables;
-/// notably, the type variables we create for literals (e.g., 22 or
-/// 22.) can only be instantiated with integral/float types (e.g.,
-/// usize or f32). In order to faithfully reproduce a type, we need to
-/// know what set of types a given type variable can be unified with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
-)]
-pub enum CanonicalTyVarKind {
-    /// General type variable `?T` that can be unified with arbitrary types.
-    General(UniverseIndex),
-
-    /// Integral type variable `?I` (that can only be unified with integral types).
-    Int,
-
-    /// Floating-point type variable `?F` (that can only be unified with float types).
-    Float,
 }
 
 /// A set of values corresponding to the canonical variables from some
@@ -313,7 +299,10 @@ impl<I: Interner> CanonicalVarValues<I> {
             var_values: cx.mk_args_from_iter(infos.iter().enumerate().map(
                 |(i, info)| -> I::GenericArg {
                     match info.kind {
-                        CanonicalVarKind::Ty(_) | CanonicalVarKind::PlaceholderTy(_) => {
+                        CanonicalVarKind::Ty(_)
+                        | CanonicalVarKind::Int
+                        | CanonicalVarKind::Float
+                        | CanonicalVarKind::PlaceholderTy(_) => {
                             Ty::new_anon_bound(cx, ty::INNERMOST, ty::BoundVar::from_usize(i))
                                 .into()
                         }

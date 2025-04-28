@@ -17,8 +17,7 @@ use tracing::debug;
 
 use crate::infer::InferCtxt;
 use crate::infer::canonical::{
-    Canonical, CanonicalQueryInput, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind,
-    OriginalQueryValues,
+    Canonical, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
 
 impl<'tcx> InferCtxt<'tcx> {
@@ -368,9 +367,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                             ui = ty::UniverseIndex::ROOT;
                         }
                         self.canonicalize_ty_var(
-                            CanonicalVarInfo {
-                                kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)),
-                            },
+                            CanonicalVarInfo { kind: CanonicalVarKind::Ty(ui) },
                             t,
                         )
                     }
@@ -382,10 +379,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
-                    self.canonicalize_ty_var(
-                        CanonicalVarInfo { kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Int) },
-                        t,
-                    )
+                    self.canonicalize_ty_var(CanonicalVarInfo { kind: CanonicalVarKind::Int }, t)
                 }
             }
             ty::Infer(ty::FloatVar(vid)) => {
@@ -393,10 +387,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 if nt != t {
                     return self.fold_ty(nt);
                 } else {
-                    self.canonicalize_ty_var(
-                        CanonicalVarInfo { kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Float) },
-                        t,
-                    )
+                    self.canonicalize_ty_var(CanonicalVarInfo { kind: CanonicalVarKind::Float }, t)
                 }
             }
 
@@ -690,12 +681,10 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             .iter()
             .map(|v| CanonicalVarInfo {
                 kind: match v.kind {
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float) => {
+                    CanonicalVarKind::Int | CanonicalVarKind::Float => {
                         return *v;
                     }
-                    CanonicalVarKind::Ty(CanonicalTyVarKind::General(u)) => {
-                        CanonicalVarKind::Ty(CanonicalTyVarKind::General(reverse_universe_map[&u]))
-                    }
+                    CanonicalVarKind::Ty(u) => CanonicalVarKind::Ty(reverse_universe_map[&u]),
                     CanonicalVarKind::Region(u) => {
                         CanonicalVarKind::Region(reverse_universe_map[&u])
                     }
