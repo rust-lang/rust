@@ -159,7 +159,7 @@ impl Parse for Cycle {
         }
 
         impl Parse for Option {
-            fn parse(input: ParseStream) -> syn::Result<Self> {
+            fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
                 let name = input.parse()?;
                 input.parse::<Token![=]>()?;
                 let value = input.parse()?;
