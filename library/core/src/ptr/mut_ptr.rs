@@ -937,6 +937,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// // This would be incorrect, as the pointers are not correctly ordered:
     /// // ptr1.offset_from(ptr2)
+    /// ```
     #[stable(feature = "ptr_sub_ptr", since = "1.87.0")]
     #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "1.87.0")]
     #[inline]
@@ -945,7 +946,7 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
+        // SAFETY: the caller must uphold the safety contract for `offset_from_unsigned`.
         unsafe { (self as *const T).offset_from_unsigned(origin) }
     }
 
@@ -954,8 +955,8 @@ impl<T: ?Sized> *mut T {
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`sub_ptr`][pointer::offset_from_unsigned] on it. See that method for
-    /// documentation and safety requirements.
+    /// using [`offset_from_unsigned`][pointer::offset_from_unsigned] on it.
+    /// See that method for documentation and safety requirements.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
@@ -964,7 +965,7 @@ impl<T: ?Sized> *mut T {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *mut U) -> usize {
-        // SAFETY: the caller must uphold the safety contract for `byte_sub_ptr`.
+        // SAFETY: the caller must uphold the safety contract for `byte_offset_from_unsigned`.
         unsafe { (self as *const T).byte_offset_from_unsigned(origin) }
     }
 

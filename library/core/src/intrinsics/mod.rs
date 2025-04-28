@@ -2996,7 +2996,7 @@ pub unsafe fn nontemporal_store<T>(ptr: *mut T, val: T);
 #[rustc_intrinsic]
 pub const unsafe fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
-/// See documentation of `<*const T>::sub_ptr` for details.
+/// See documentation of `<*const T>::offset_from_unsigned` for details.
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_const_stable_indirect]
