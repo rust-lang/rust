@@ -3,40 +3,30 @@ error: argument to `panic!()` in a const context must have type `&str`
    |
 LL | const _: () = panic!(1);
    |               ^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: argument to `panic!()` in a const context must have type `&str`
   --> $DIR/issue-66693.rs:7:19
    |
 LL | static _FOO: () = panic!(true);
    |                   ^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/issue-66693.rs:16:15
    |
 LL | const _: () = panic!();
    |               ^^^^^^^^ evaluation panicked: explicit panic
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/issue-66693.rs:18:19
    |
 LL | static _BAR: () = panic!("panic in static");
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: panic in static
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: argument to `panic!()` in a const context must have type `&str`
   --> $DIR/issue-66693.rs:11:5
    |
 LL |     panic!(&1);
    |     ^^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

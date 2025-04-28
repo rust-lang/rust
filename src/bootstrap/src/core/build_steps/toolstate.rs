@@ -128,7 +128,7 @@ impl Step for ToolStateCheck {
     /// Checks tool state status.
     ///
     /// This is intended to be used in the `checktools.sh` script. To use
-    /// this, set `save-toolstates` in `config.toml` so that tool status will
+    /// this, set `save-toolstates` in `bootstrap.toml` so that tool status will
     /// be saved to a JSON file. Then, run `x.py test --no-fail-fast` for all
     /// of the tools to populate the JSON file. After that is done, this
     /// command can be run to check for any status failures, and exits with an
@@ -254,7 +254,7 @@ impl Builder<'_> {
     /// Updates the actual toolstate of a tool.
     ///
     /// The toolstates are saved to the file specified by the key
-    /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
+    /// `rust.save-toolstates` in `bootstrap.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
         use std::io::Write;

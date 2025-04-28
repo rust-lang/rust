@@ -1,5 +1,5 @@
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
-  --> tests/ui/ref_option/ref_option_traits.rs:10:5
+  --> tests/ui/ref_option/ref_option_traits.rs:9:5
    |
 LL |     fn pub_trait_opt(&self, a: &Option<Vec<u8>>);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------^^
@@ -10,7 +10,7 @@ LL |     fn pub_trait_opt(&self, a: &Option<Vec<u8>>);
    = help: to override `-D warnings` add `#[allow(clippy::ref_option)]`
 
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
-  --> tests/ui/ref_option/ref_option_traits.rs:12:5
+  --> tests/ui/ref_option/ref_option_traits.rs:11:5
    |
 LL |     fn pub_trait_ret(&self) -> &Option<Vec<u8>>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------^
@@ -18,7 +18,7 @@ LL |     fn pub_trait_ret(&self) -> &Option<Vec<u8>>;
    |                                help: change this to: `Option<&Vec<u8>>`
 
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
-  --> tests/ui/ref_option/ref_option_traits.rs:17:5
+  --> tests/ui/ref_option/ref_option_traits.rs:16:5
    |
 LL |     fn trait_opt(&self, a: &Option<String>);
    |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^^
@@ -26,7 +26,7 @@ LL |     fn trait_opt(&self, a: &Option<String>);
    |                            help: change this to: `Option<&String>`
 
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
-  --> tests/ui/ref_option/ref_option_traits.rs:19:5
+  --> tests/ui/ref_option/ref_option_traits.rs:18:5
    |
 LL |     fn trait_ret(&self) -> &Option<String>;
    |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^

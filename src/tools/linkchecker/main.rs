@@ -16,7 +16,7 @@
 //! A few exceptions are allowed as there's known bugs in rustdoc, but this
 //! should catch the majority of "broken link" cases.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -544,7 +544,7 @@ fn parse_html<Sink: TokenSink>(source: &str, sink: Sink) -> Sink {
     let mut input = BufferQueue::default();
     input.push_back(tendril.try_reinterpret().unwrap());
 
-    let mut tok = Tokenizer::new(sink, TokenizerOpts::default());
+    let tok = Tokenizer::new(sink, TokenizerOpts::default());
     let _ = tok.feed(&mut input);
     assert!(input.is_empty());
     tok.end();
@@ -554,8 +554,8 @@ fn parse_html<Sink: TokenSink>(source: &str, sink: Sink) -> Sink {
 #[derive(Default)]
 struct AttrCollector {
     attr_name: &'static [u8],
-    base: Option<String>,
-    found_attrs: Vec<(u64, String)>,
+    base: Cell<Option<String>>,
+    found_attrs: RefCell<Vec<(u64, String)>>,
     /// Tracks whether or not it is inside a <script> tag.
     ///
     /// A lot of our sources have JSON script tags which have HTML embedded
@@ -564,13 +564,13 @@ struct AttrCollector {
     /// `TokenSinkResult::Script(…)` (and then maybe switch parser?), but I
     /// don't fully understand the best way to use that, and this seems good
     /// enough for now.
-    in_script: bool,
+    in_script: Cell<bool>,
 }
 
 impl TokenSink for AttrCollector {
     type Handle = ();
 
-    fn process_token(&mut self, token: Token, line_number: u64) -> TokenSinkResult<()> {
+    fn process_token(&self, token: Token, line_number: u64) -> TokenSinkResult<()> {
         match token {
             TagToken(tag) => {
                 let tag_name = tag.name.as_bytes();
@@ -578,20 +578,20 @@ impl TokenSink for AttrCollector {
                     if let Some(href) =
                         tag.attrs.iter().find(|attr| attr.name.local.as_bytes() == b"href")
                     {
-                        self.base = Some(href.value.to_string());
+                        self.base.set(Some(href.value.to_string()));
                     }
                     return TokenSinkResult::Continue;
                 } else if tag_name == b"script" {
-                    self.in_script = !self.in_script;
+                    self.in_script.set(!self.in_script.get());
                 }
-                if self.in_script {
+                if self.in_script.get() {
                     return TokenSinkResult::Continue;
                 }
                 for attr in tag.attrs.iter() {
                     let name = attr.name.local.as_bytes();
                     if name == self.attr_name {
                         let url = attr.value.to_string();
-                        self.found_attrs.push((line_number, url));
+                        self.found_attrs.borrow_mut().push((line_number, url));
                     }
                 }
             }
@@ -607,7 +607,7 @@ impl TokenSink for AttrCollector {
 fn get_urls(source: &str) -> (Option<String>, Vec<(u64, String)>) {
     let collector = AttrCollector { attr_name: b"href", ..AttrCollector::default() };
     let sink = parse_html(source, collector);
-    (sink.base, sink.found_attrs)
+    (sink.base.into_inner(), sink.found_attrs.into_inner())
 }
 
 /// Retrieves id="..." attributes from HTML elements.
@@ -619,7 +619,7 @@ fn parse_ids(ids: &mut HashSet<String>, file: &str, source: &str, report: &mut R
 
     let collector = AttrCollector { attr_name: b"id", ..AttrCollector::default() };
     let sink = parse_html(source, collector);
-    for (line_number, id) in sink.found_attrs {
+    for (line_number, id) in sink.found_attrs.into_inner() {
         let encoded = small_url_encode(&id);
         if let Some(id) = ids.replace(id) {
             report.errors += 1;

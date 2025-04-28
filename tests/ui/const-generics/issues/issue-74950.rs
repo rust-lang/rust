@@ -17,9 +17,9 @@ struct Inner;
 // - impl StructuralPartialEq
 #[derive(PartialEq, Eq)]
 struct Outer<const I: Inner>;
-//[min]~^ `Inner` is forbidden
-//[min]~| `Inner` is forbidden
-//[min]~| `Inner` is forbidden
-//[min]~| `Inner` is forbidden
+//[min]~^ ERROR `Inner` is forbidden
+//[min]~| ERROR `Inner` is forbidden
+//[min]~| ERROR `Inner` is forbidden
+//[min]~| ERROR `Inner` is forbidden
 
 fn main() {}

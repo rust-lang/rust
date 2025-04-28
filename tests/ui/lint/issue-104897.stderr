@@ -1,5 +1,5 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-104897.rs:5:18
+  --> $DIR/issue-104897.rs:2:18
    |
 LL | fn f(){(print!(á
    |       --      - ^

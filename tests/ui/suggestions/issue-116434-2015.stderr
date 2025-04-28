@@ -13,19 +13,6 @@ LL |     fn foo() -> dyn Clone;
    |                 +++
 
 warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/issue-116434-2015.rs:18:20
-   |
-LL |     fn handle() -> DbHandle;
-   |                    ^^^^^^^^
-   |
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-help: if this is a dyn-compatible trait, use `dyn`
-   |
-LL |     fn handle() -> dyn DbHandle;
-   |                    +++
-
-warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-116434-2015.rs:3:17
    |
 LL |     fn foo() -> Clone;
@@ -52,6 +39,19 @@ help: there is an associated type with the same name
    |
 LL |     fn foo() -> Self::Clone;
    |                 ++++++
+
+warning: trait objects without an explicit `dyn` are deprecated
+  --> $DIR/issue-116434-2015.rs:18:20
+   |
+LL |     fn handle() -> DbHandle;
+   |                    ^^^^^^^^
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+help: if this is a dyn-compatible trait, use `dyn`
+   |
+LL |     fn handle() -> dyn DbHandle;
+   |                    +++
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-116434-2015.rs:18:20

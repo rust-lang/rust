@@ -220,6 +220,34 @@ fn layout_of_uncached<'tcx>(
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
+                        // FIXME(pattern_types): create implied bounds from pattern types in signatures
+                        // that require that the range end is >= the range start so that we can't hit
+                        // this error anymore without first having hit a trait solver error.
+                        // Very fuzzy on the details here, but pattern types are an internal impl detail,
+                        // so we can just go with this for now
+                        if scalar.is_signed() {
+                            let range = scalar.valid_range_mut();
+                            let start = layout.size.sign_extend(range.start);
+                            let end = layout.size.sign_extend(range.end);
+                            if end < start {
+                                let guar = tcx.dcx().err(format!(
+                                    "pattern type ranges cannot wrap: {start}..={end}"
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+                        } else {
+                            let range = scalar.valid_range_mut();
+                            if range.end < range.start {
+                                let guar = tcx.dcx().err(format!(
+                                    "pattern type ranges cannot wrap: {}..={}",
+                                    range.start, range.end
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+                        };
+
                         let niche = Niche {
                             offset: Size::ZERO,
                             value: scalar.primitive(),
@@ -486,6 +514,9 @@ fn layout_of_uncached<'tcx>(
                 return map_layout(cx.calc.layout_of_union(&def.repr(), &variants));
             }
 
+            // UnsafeCell and UnsafePinned both disable niche optimizations
+            let is_special_no_niche = def.is_unsafe_cell() || def.is_unsafe_pinned();
+
             let get_discriminant_type =
                 |min, max| abi::Integer::repr_discr(tcx, ty, &def.repr(), min, max);
 
@@ -514,7 +545,7 @@ fn layout_of_uncached<'tcx>(
                     &def.repr(),
                     &variants,
                     def.is_enum(),
-                    def.is_unsafe_cell(),
+                    is_special_no_niche,
                     tcx.layout_scalar_valid_range(def.did()),
                     get_discriminant_type,
                     discriminants_iter(),
@@ -540,7 +571,7 @@ fn layout_of_uncached<'tcx>(
                     &def.repr(),
                     &variants,
                     def.is_enum(),
-                    def.is_unsafe_cell(),
+                    is_special_no_niche,
                     tcx.layout_scalar_valid_range(def.did()),
                     get_discriminant_type,
                     discriminants_iter(),
@@ -583,7 +614,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
-        ty::Param(_) => {
+        ty::Param(_) | ty::Placeholder(..) => {
             return Err(error(cx, LayoutError::TooGeneric(ty)));
         }
 
@@ -600,11 +631,7 @@ fn layout_of_uncached<'tcx>(
             return Err(error(cx, err));
         }
 
-        ty::Placeholder(..)
-        | ty::Bound(..)
-        | ty::CoroutineWitness(..)
-        | ty::Infer(_)
-        | ty::Error(_) => {
+        ty::Bound(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }

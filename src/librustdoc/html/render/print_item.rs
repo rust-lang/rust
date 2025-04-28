@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::fmt::{self, Display, Write as _};
 use std::iter;
 
-use rinja::Template;
+use askama::Template;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
@@ -11,7 +11,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::symbol::{Symbol, sym};
 use tracing::{debug, info};
 
 use super::type_layout::document_type_layout;
@@ -37,7 +37,7 @@ use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
 
-/// Generates a Rinja template struct for rendering items with common methods.
+/// Generates an Askama template struct for rendering items with common methods.
 ///
 /// Usage:
 /// ```ignore (illustrative)
@@ -301,7 +301,7 @@ fn toggle_close(mut w: impl fmt::Write) {
     w.write_str("</details>").unwrap();
 }
 
-trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + Display {
+trait ItemTemplate<'a, 'cx: 'a>: askama::Template + Display {
     fn item_and_cx(&self) -> (&'a clean::Item, &'a Context<'cx>);
 }
 
@@ -347,9 +347,12 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                 // but we actually want stable items to come first
                 return is_stable2.cmp(&is_stable1);
             }
-            let lhs = i1.name.unwrap_or(kw::Empty);
-            let rhs = i2.name.unwrap_or(kw::Empty);
-            compare_names(lhs.as_str(), rhs.as_str())
+            match (i1.name, i2.name) {
+                (Some(name1), Some(name2)) => compare_names(name1.as_str(), name2.as_str()),
+                (Some(_), None) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+                (None, None) => Ordering::Equal,
+            }
         }
 
         let tcx = cx.tcx();
@@ -1229,12 +1232,13 @@ fn item_trait_alias(
         wrap_item(w, |w| {
             write!(
                 w,
-                "{attrs}trait {name}{generics}{where_b} = {bounds};",
+                "{attrs}trait {name}{generics} = {bounds}{where_clause};",
                 attrs = render_attributes_in_pre(it, "", cx),
                 name = it.name.unwrap(),
                 generics = t.generics.print(cx),
-                where_b = print_where_clause(&t.generics, cx, 0, Ending::Newline).maybe_display(),
                 bounds = bounds(&t.bounds, true, cx),
+                where_clause =
+                    print_where_clause(&t.generics, cx, 0, Ending::NoNewline).maybe_display(),
             )
         })?;
 
@@ -1867,7 +1871,7 @@ fn item_proc_macro(cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) -> 
                     }
                 }
             }
-            Ok(())
+            fmt::Result::Ok(())
         })?;
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
     })
@@ -1944,7 +1948,7 @@ fn item_constant(
                     }
                 }
             }
-            Ok(())
+            Ok::<(), fmt::Error>(())
         })?;
 
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))

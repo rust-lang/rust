@@ -564,6 +564,8 @@ where
     }
 }
 
+impl_stable_traits_for_trivial_type!(::std::ffi::OsStr);
+
 impl_stable_traits_for_trivial_type!(::std::path::Path);
 impl_stable_traits_for_trivial_type!(::std::path::PathBuf);
 

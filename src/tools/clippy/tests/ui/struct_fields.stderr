@@ -281,5 +281,24 @@ error: field name starts with the struct's name
 LL |     use_baz: bool,
    |     ^^^^^^^^^^^^^
 
-error: aborting due to 24 previous errors
+error: field name starts with the struct's name
+  --> tests/ui/struct_fields.rs:349:5
+   |
+LL |     pub_struct_field_named_after_struct: bool,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: all fields have the same prefix: `field`
+  --> tests/ui/struct_fields.rs:354:1
+   |
+LL | / pub struct PubStructFieldPrefix {
+LL | |
+LL | |     field_foo: u8,
+LL | |     field_bar: u8,
+LL | |     field_baz: u8,
+LL | | }
+   | |_^
+   |
+   = help: remove the prefixes
+
+error: aborting due to 26 previous errors
 

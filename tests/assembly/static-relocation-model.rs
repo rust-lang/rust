@@ -25,7 +25,7 @@ extern "C" {
 }
 
 // CHECK-LABEL: banana:
-// On the next line LLVM 14 produces a `movb`, whereas LLVM 15+ produces a `movzbl`.
+// LLVM may produce either kind of `mov` here, depending on version and optimization level.
 // x64: {{movb|movzbl}}   chaenomeles{{(\(%[a-z0-9]+\))?}}, %{{[a-z0-9]+}}
 // A64:      adrp    [[REG:[a-z0-9]+]], chaenomeles
 // A64-NEXT: ldrb    {{[a-z0-9]+}}, {{\[}}[[REG]], :lo12:chaenomeles]

@@ -6,7 +6,7 @@ fn main() {
     let mut x = Foo { x: None };
     let y = 0;
     x.x = Some(&y);
-    //~^ `y` does not live long enough [E0597]
+    //~^ ERROR `y` does not live long enough [E0597]
 }
 
 impl<'a> Drop for Foo<'a> { fn drop(&mut self) { } }

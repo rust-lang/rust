@@ -774,6 +774,15 @@ impl BorrowKind {
     }
 }
 
+impl<'tcx> NullOp<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
+        match self {
+            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) => tcx.types.usize,
+            NullOp::UbChecks | NullOp::ContractChecks => tcx.types.bool,
+        }
+    }
+}
+
 impl<'tcx> UnOp {
     pub fn ty(&self, tcx: TyCtxt<'tcx>, arg_ty: Ty<'tcx>) -> Ty<'tcx> {
         match self {

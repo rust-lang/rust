@@ -7,7 +7,6 @@ use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::kw;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
@@ -89,20 +88,6 @@ pub fn eval_condition(
     let cfg = match cfg {
         MetaItemInner::MetaItem(meta_item) => meta_item,
         MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
-            if let Some(features) = features {
-                // we can't use `try_gate_cfg` as symbols don't differentiate between `r#true`
-                // and `true`, and we want to keep the former working without feature gate
-                gate_cfg(
-                    &(
-                        if *b { kw::True } else { kw::False },
-                        sym::cfg_boolean_literals,
-                        |features: &Features| features.cfg_boolean_literals(),
-                    ),
-                    cfg.span(),
-                    sess,
-                    features,
-                );
-            }
             return *b;
         }
         _ => {
@@ -117,7 +102,7 @@ pub fn eval_condition(
     };
 
     match &cfg.kind {
-        MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
+        MetaItemKind::List(mis) if cfg.has_name(sym::version) => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
                 [MetaItemInner::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
@@ -164,18 +149,18 @@ pub fn eval_condition(
 
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
-            match cfg.name_or_empty() {
-                sym::any => mis
+            match cfg.name() {
+                Some(sym::any) => mis
                     .iter()
                     // We don't use any() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
                     .fold(false, |res, mi| res | eval_condition(mi, sess, features, eval)),
-                sym::all => mis
+                Some(sym::all) => mis
                     .iter()
                     // We don't use all() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
                     .fold(true, |res, mi| res & eval_condition(mi, sess, features, eval)),
-                sym::not => {
+                Some(sym::not) => {
                     let [mi] = mis.as_slice() else {
                         dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
@@ -183,7 +168,7 @@ pub fn eval_condition(
 
                     !eval_condition(mi, sess, features, eval)
                 }
-                sym::target => {
+                Some(sym::target) => {
                     if let Some(features) = features
                         && !features.cfg_target_compact()
                     {

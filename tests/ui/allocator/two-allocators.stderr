@@ -7,8 +7,6 @@ LL | #[global_allocator]
    | ------------------- in this procedural macro expansion
 LL | static B: System = System;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot define a new global allocator
-   |
-   = note: this error originates in the attribute macro `global_allocator` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

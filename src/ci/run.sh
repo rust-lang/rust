@@ -6,6 +6,10 @@ if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
+if [ -n "$CI_JOB_DOC_URL" ]; then
+  echo "[CI_JOB_DOC_URL=$CI_JOB_DOC_URL]"
+fi
+
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
     id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
@@ -54,13 +58,8 @@ if [ "$FORCE_CI_RUSTC" == "" ]; then
     DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
 fi
 
-if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
-  isCiBranch automation/bors/try; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
-    HAS_METRICS=1
-fi
-
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-verbose-configure"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
@@ -113,7 +112,11 @@ export RUST_RELEASE_CHANNEL=$(releaseChannel)
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
 
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
+  if [[ "$CI_JOB_NAME" == *ohos* ]]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-static-stdcpp"
+  else
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
+  fi
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo"
 
   if [ "$DEPLOY_ALT" != "" ] && isLinux; then
@@ -180,6 +183,9 @@ else
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
 
+  # Download GCC from CI on test builders
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
+
   if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
   fi
@@ -226,8 +232,8 @@ trap datecheck EXIT
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
-# Our build may overwrite config.toml, so we remove it here
-rm -f config.toml
+# Our build may overwrite bootstrap.toml, so we remove it here
+rm -f bootstrap.toml
 
 $SRC/configure $RUST_CONFIGURE_ARGS
 
@@ -261,23 +267,6 @@ else
   do_make "$RUST_CHECK_TARGET"
 fi
 
-if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  rm -f config.toml
-  $SRC/configure --set change-id=99999999
-
-  # Save the build metrics before we wipe the directory
-  if [ "$HAS_METRICS" = 1 ]; then
-    mv build/metrics.json .
-  fi
-  rm -rf build
-  if [ "$HAS_METRICS" = 1 ]; then
-    mkdir build
-    mv metrics.json build
-  fi
-
-  CARGO_INCREMENTAL=0 ../x check
-fi
-
 echo "::group::sccache stats"
-sccache --show-stats || true
+sccache --show-adv-stats || true
 echo "::endgroup::"

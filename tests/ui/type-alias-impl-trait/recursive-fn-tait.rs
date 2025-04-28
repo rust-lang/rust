@@ -3,15 +3,18 @@
 
 pub type Diff = impl Fn(usize) -> usize;
 
+#[define_opaque(Diff)]
 pub fn lift() -> Diff {
     |_: usize |loop {}
 }
 
+#[define_opaque(Diff)]
 pub fn add(
     n: Diff,
     m: Diff,
 ) -> Diff {
-    move |x: usize| m(n(x)) //~ ERROR: concrete type differs
+    //~^ ERROR concrete type differs
+    move |x: usize| m(n(x))
 }
 
 fn main() {}

@@ -43,6 +43,3 @@ tracing = "0.1"
 # tidy-alphabetical-start
 rustc_randomized_layouts = []
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

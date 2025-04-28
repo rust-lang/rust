@@ -4,7 +4,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
-    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -12,7 +12,7 @@ use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
-use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, Region, Ty, TyCtxt};
+use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, GenericArg, Region, Ty, TyCtxt};
 use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
@@ -107,11 +107,7 @@ pub enum AdjustSignatureBorrow {
 }
 
 impl Subdiagnostic for AdjustSignatureBorrow {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             AdjustSignatureBorrow::Borrow { to_borrow } => {
                 diag.arg("len", to_borrow.len());
@@ -381,11 +377,7 @@ pub enum RegionOriginNote<'a> {
 }
 
 impl Subdiagnostic for RegionOriginNote<'_> {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut label_or_note = |span, msg: DiagMessage| {
             let sub_count = diag.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = diag.children.iter().filter(|d| !d.span.is_dummy()).count();
@@ -415,7 +407,7 @@ impl Subdiagnostic for RegionOriginNote<'_> {
                 label_or_note(span, fluent::trait_selection_subtype);
                 diag.arg("requirement", requirement);
 
-                diag.note_expected_found(&"", expected, &"", found);
+                diag.note_expected_found("", expected, "", found);
             }
             RegionOriginNote::WithRequirement { span, requirement, expected_found: None } => {
                 // FIXME: this really should be handled at some earlier stage. Our
@@ -446,11 +438,7 @@ pub enum LifetimeMismatchLabels {
 }
 
 impl Subdiagnostic for LifetimeMismatchLabels {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             LifetimeMismatchLabels::InRet { param_span, ret_span, span, label_var1 } => {
                 diag.span_label(param_span, fluent::trait_selection_declared_different);
@@ -495,11 +483,7 @@ pub struct AddLifetimeParamsSuggestion<'a> {
 }
 
 impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut mk_suggestion = || {
             let Some(anon_reg) = self.tcx.is_suitable_region(self.generic_param_scope, self.sub)
             else {
@@ -516,7 +500,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                     match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, generics, ..),
+                            kind: hir::ItemKind::Trait(_, _, _, generics, ..),
                             ..
                         })
                         | hir::Node::Item(hir::Item {
@@ -567,15 +551,6 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
             impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
                 fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
-                    let make_suggestion = |ident: Ident| {
-                        if ident.name == kw::Empty && ident.span.is_empty() {
-                            format!("{}, ", self.suggestion_param_name)
-                        } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
-                            format!("{} ", self.suggestion_param_name)
-                        } else {
-                            self.suggestion_param_name.clone()
-                        }
-                    };
                     match ty.kind {
                         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
                             for segment in path.segments {
@@ -584,7 +559,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                         matches!(
                                             arg,
                                             hir::GenericArg::Lifetime(lifetime)
-                                            if lifetime.ident.name == kw::Empty
+                                                if lifetime.is_syntactically_hidden()
                                         )
                                     }) {
                                         self.suggestions.push((
@@ -603,10 +578,10 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                             if let hir::GenericArg::Lifetime(lifetime) = arg
                                                 && lifetime.is_anonymous()
                                             {
-                                                self.suggestions.push((
-                                                    lifetime.ident.span,
-                                                    make_suggestion(lifetime.ident),
-                                                ));
+                                                self.suggestions.push(
+                                                    lifetime
+                                                        .suggestion(&self.suggestion_param_name),
+                                                );
                                             }
                                         }
                                     }
@@ -614,8 +589,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                             }
                         }
                         hir::TyKind::Ref(lifetime, ..) if lifetime.is_anonymous() => {
-                            self.suggestions
-                                .push((lifetime.ident.span, make_suggestion(lifetime.ident)));
+                            self.suggestions.push(lifetime.suggestion(&self.suggestion_param_name));
                         }
                         _ => {}
                     }
@@ -686,11 +660,7 @@ pub struct IntroducesStaticBecauseUnmetLifetimeReq {
 }
 
 impl Subdiagnostic for IntroducesStaticBecauseUnmetLifetimeReq {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        mut self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(mut self, diag: &mut Diag<'_, G>) {
         self.unmet_requirements
             .push_span_label(self.binding_span, fluent::trait_selection_msl_introduces_static);
         diag.span_note(self.unmet_requirements, fluent::trait_selection_msl_unmet_req);
@@ -1005,17 +975,13 @@ pub struct ConsiderBorrowingParamHelp {
 }
 
 impl Subdiagnostic for ConsiderBorrowingParamHelp {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut type_param_span: MultiSpan = self.spans.clone().into();
         for &span in &self.spans {
             // Seems like we can't call f() here as Into<DiagMessage> is required
             type_param_span.push_span_label(span, fluent::trait_selection_tid_consider_borrowing);
         }
-        let msg = f(diag, fluent::trait_selection_tid_param_help.into());
+        let msg = diag.eagerly_translate(fluent::trait_selection_tid_param_help);
         diag.span_help(type_param_span, msg);
     }
 }
@@ -1050,18 +1016,14 @@ pub struct DynTraitConstraintSuggestion {
 }
 
 impl Subdiagnostic for DynTraitConstraintSuggestion {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut multi_span: MultiSpan = vec![self.span].into();
         multi_span.push_span_label(self.span, fluent::trait_selection_dtcs_has_lifetime_req_label);
         multi_span
             .push_span_label(self.ident.span, fluent::trait_selection_dtcs_introduces_requirement);
-        let msg = f(diag, fluent::trait_selection_dtcs_has_req_note.into());
+        let msg = diag.eagerly_translate(fluent::trait_selection_dtcs_has_req_note);
         diag.span_note(multi_span, msg);
-        let msg = f(diag, fluent::trait_selection_dtcs_suggestion.into());
+        let msg = diag.eagerly_translate(fluent::trait_selection_dtcs_suggestion);
         diag.span_suggestion_verbose(
             self.span.shrink_to_hi(),
             msg,
@@ -1098,11 +1060,7 @@ pub struct ReqIntroducedLocations {
 }
 
 impl Subdiagnostic for ReqIntroducedLocations {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        mut self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(mut self, diag: &mut Diag<'_, G>) {
         for sp in self.spans {
             self.span.push_span_label(sp, fluent::trait_selection_ril_introduced_here);
         }
@@ -1111,7 +1069,7 @@ impl Subdiagnostic for ReqIntroducedLocations {
             self.span.push_span_label(self.fn_decl_span, fluent::trait_selection_ril_introduced_by);
         }
         self.span.push_span_label(self.cause_span, fluent::trait_selection_ril_because_of);
-        let msg = f(diag, fluent::trait_selection_ril_static_introduced_by.into());
+        let msg = diag.eagerly_translate(fluent::trait_selection_ril_static_introduced_by);
         diag.span_note(self.span, msg);
     }
 }
@@ -1510,13 +1468,9 @@ pub struct SuggestTuplePatternMany {
 }
 
 impl Subdiagnostic for SuggestTuplePatternMany {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("path", self.path);
-        let message = f(diag, crate::fluent_generated::trait_selection_stp_wrap_many.into());
+        let message = diag.eagerly_translate(fluent::trait_selection_stp_wrap_many);
         diag.multipart_suggestions(
             message,
             self.compatible_variants.into_iter().map(|variant| {
@@ -1749,11 +1703,7 @@ pub struct AddPreciseCapturingAndParams {
 }
 
 impl Subdiagnostic for AddPreciseCapturingAndParams {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("new_lifetime", self.new_lifetime);
         diag.multipart_suggestion_verbose(
             fluent::trait_selection_precise_capturing_new_but_apit,
@@ -1893,11 +1843,7 @@ pub struct AddPreciseCapturingForOvercapture {
 }
 
 impl Subdiagnostic for AddPreciseCapturingForOvercapture {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let applicability = if self.apit_spans.is_empty() {
             Applicability::MachineApplicable
         } else {
@@ -1918,4 +1864,15 @@ impl Subdiagnostic for AddPreciseCapturingForOvercapture {
             );
         }
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(trait_selection_opaque_type_non_generic_param, code = E0792)]
+pub(crate) struct NonGenericOpaqueTypeParam<'a, 'tcx> {
+    pub arg: GenericArg<'tcx>,
+    pub kind: &'a str,
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub param_span: Span,
 }

@@ -1,5 +1,5 @@
 error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
-  --> $DIR/constrain_inputs.rs:6:31
+  --> $DIR/constrain_inputs.rs:8:31
    |
 LL |     fn execute(ty: Ty<'_>) -> &str { todo!() }
    |                               ^^^^
@@ -8,7 +8,7 @@ LL |     fn execute(ty: Ty<'_>) -> &str { todo!() }
    = note: consider introducing a named lifetime parameter
 
 error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
-  --> $DIR/constrain_inputs.rs:10:35
+  --> $DIR/constrain_inputs.rs:12:35
    |
 LL |     type BadFnSig = fn(Ty<'_>) -> &str;
    |                                   ^^^^
@@ -17,7 +17,7 @@ LL |     type BadFnSig = fn(Ty<'_>) -> &str;
    = note: consider introducing a named lifetime parameter
 
 error[E0582]: binding for associated type `Output` references an anonymous lifetime, which does not appear in the trait input types
-  --> $DIR/constrain_inputs.rs:12:42
+  --> $DIR/constrain_inputs.rs:14:42
    |
 LL |     type BadTraitRef = dyn Fn(Ty<'_>) -> &str;
    |                                          ^^^^
@@ -25,21 +25,21 @@ LL |     type BadTraitRef = dyn Fn(Ty<'_>) -> &str;
    = note: lifetimes appearing in an associated or opaque type are not considered constrained
    = note: consider introducing a named lifetime parameter
 
-error: item does not constrain `lifetime_params::Ty::{opaque#0}`, but has it in its signature
-  --> $DIR/constrain_inputs.rs:6:8
+error: item does not constrain `lifetime_params::Ty::{opaque#0}`
+  --> $DIR/constrain_inputs.rs:8:8
    |
 LL |     fn execute(ty: Ty<'_>) -> &str { todo!() }
    |        ^^^^^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
   --> $DIR/constrain_inputs.rs:4:19
    |
 LL |     type Ty<'a> = impl Sized;
    |                   ^^^^^^^^^^
 
 error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
-  --> $DIR/constrain_inputs.rs:19:31
+  --> $DIR/constrain_inputs.rs:23:31
    |
 LL |     fn execute(ty: Ty<'_>) -> &str { ty() }
    |                               ^^^^
@@ -47,21 +47,21 @@ LL |     fn execute(ty: Ty<'_>) -> &str { ty() }
    = note: lifetimes appearing in an associated or opaque type are not considered constrained
    = note: consider introducing a named lifetime parameter
 
-error: item does not constrain `lifetime_params_2::Ty::{opaque#0}`, but has it in its signature
-  --> $DIR/constrain_inputs.rs:19:8
+error: item does not constrain `lifetime_params_2::Ty::{opaque#0}`
+  --> $DIR/constrain_inputs.rs:23:8
    |
 LL |     fn execute(ty: Ty<'_>) -> &str { ty() }
    |        ^^^^^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/constrain_inputs.rs:17:19
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/constrain_inputs.rs:19:19
    |
 LL |     type Ty<'a> = impl FnOnce() -> &'a str;
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0581]: return type references an anonymous lifetime, which is not constrained by the fn input types
-  --> $DIR/constrain_inputs.rs:29:37
+  --> $DIR/constrain_inputs.rs:34:37
    |
 LL |     type BadFnSig = fn(Ty<&str>) -> &str;
    |                                     ^^^^
@@ -70,7 +70,7 @@ LL |     type BadFnSig = fn(Ty<&str>) -> &str;
    = note: consider introducing a named lifetime parameter
 
 error[E0582]: binding for associated type `Output` references an anonymous lifetime, which does not appear in the trait input types
-  --> $DIR/constrain_inputs.rs:31:44
+  --> $DIR/constrain_inputs.rs:36:44
    |
 LL |     type BadTraitRef = dyn Fn(Ty<&str>) -> &str;
    |                                            ^^^^

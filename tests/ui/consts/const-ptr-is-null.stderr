@@ -8,7 +8,6 @@ note: inside `std::ptr::const_ptr::<impl *const i32>::is_null`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `std::ptr::const_ptr::<impl *const T>::is_null::compiletime`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   = note: this error originates in the macro `$crate::intrinsics::const_eval_select` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

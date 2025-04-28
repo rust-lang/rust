@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/under-binder.rs:6:5
+  --> $DIR/under-binder.rs:7:5
    |
 LL | type Opaque<'a> = impl Sized + 'a;
    |             -- this generic parameter must be used with a generic lifetime parameter

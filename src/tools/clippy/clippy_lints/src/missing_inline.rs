@@ -37,7 +37,7 @@ declare_clippy_lint! {
     ///
     /// struct Baz;
     /// impl Baz {
-    ///    fn private() {} // ok
+    ///     fn private() {} // ok
     /// }
     ///
     /// impl Bar for Baz {
@@ -46,13 +46,13 @@ declare_clippy_lint! {
     ///
     /// pub struct PubBaz;
     /// impl PubBaz {
-    ///    fn private() {} // ok
-    ///    pub fn not_private() {} // missing #[inline]
+    ///     fn private() {} // ok
+    ///     pub fn not_private() {} // missing #[inline]
     /// }
     ///
     /// impl Bar for PubBaz {
-    ///    fn bar() {} // missing #[inline]
-    ///    fn def_bar() {} // missing #[inline]
+    ///     fn bar() {} // missing #[inline]
+    ///     fn def_bar() {} // missing #[inline]
     /// }
     /// ```
     ///
@@ -98,10 +98,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         match it.kind {
             hir::ItemKind::Fn { .. } => {
                 let desc = "a function";
-                let attrs = cx.tcx.hir().attrs(it.hir_id());
+                let attrs = cx.tcx.hir_attrs(it.hir_id());
                 check_missing_inline_attrs(cx, attrs, it.span, desc);
             },
-            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, _generics, _bounds, trait_items) => {
+            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, _ident, _generics, _bounds, trait_items) => {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                                 // an impl is not provided
                                 let desc = "a default trait method";
                                 let item = cx.tcx.hir_trait_item(tit.id);
-                                let attrs = cx.tcx.hir().attrs(item.hir_id());
+                                let attrs = cx.tcx.hir_attrs(item.hir_id());
                                 check_missing_inline_attrs(cx, attrs, item.span, desc);
                             }
                         },
@@ -160,15 +160,16 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             AssocItemContainer::Impl => cx.tcx.impl_trait_ref(container_id).map(|t| t.skip_binder().def_id),
         };
 
-        if let Some(trait_def_id) = trait_def_id {
-            if trait_def_id.is_local() && !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
-                // If a trait is being implemented for an item, and the
-                // trait is not exported, we don't need #[inline]
-                return;
-            }
+        if let Some(trait_def_id) = trait_def_id
+            && trait_def_id.is_local()
+            && !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id)
+        {
+            // If a trait is being implemented for an item, and the
+            // trait is not exported, we don't need #[inline]
+            return;
         }
 
-        let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
+        let attrs = cx.tcx.hir_attrs(impl_item.hir_id());
         check_missing_inline_attrs(cx, attrs, impl_item.span, desc);
     }
 }

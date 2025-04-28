@@ -2,7 +2,7 @@
 
 use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
 
@@ -394,11 +394,7 @@ pub(crate) struct EmptyLabelManySpans(pub Vec<Span>);
 
 // The derive for `Vec<Span>` does multiple calls to `span_label`, adding commas between each
 impl Subdiagnostic for EmptyLabelManySpans {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_labels(self.0, "");
     }
 }
@@ -749,11 +745,7 @@ pub(crate) struct StableFeature {
 }
 
 impl Subdiagnostic for StableFeature {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("name", self.name);
         diag.arg("since", self.since);
         diag.help(fluent::ast_passes_stable_since);
@@ -822,4 +814,13 @@ pub(crate) struct DuplicatePreciseCapturing {
     pub bound1: Span,
     #[label]
     pub bound2: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_extern_without_abi)]
+#[help]
+pub(crate) struct MissingAbi {
+    #[primary_span]
+    #[suggestion(code = "extern \"<abi>\"", applicability = "has-placeholders")]
+    pub span: Span,
 }

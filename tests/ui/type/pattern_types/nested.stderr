@@ -43,14 +43,11 @@ LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = tod
              u128
            and 5 others
 
-error[E0308]: mismatched types
+error[E0600]: cannot apply unary operator `-` to type `(i32) is 1..`
   --> $DIR/nested.rs:15:67
    |
 LL | const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
-   |                                                                   ^^ expected `(i32) is 1..`, found integer
-   |
-   = note: expected pattern type `(i32) is 1..`
-                      found type `{integer}`
+   |                                                                   ^^ cannot apply unary operator `-`
 
 error[E0277]: `(i32) is 1..` is not a valid base type for range patterns
   --> $DIR/nested.rs:19:35
@@ -180,5 +177,5 @@ LL | const BAD_NESTING5: pattern_type!(f32 is 1.0 .. 2.0) = todo!();
 
 error: aborting due to 11 previous errors
 
-Some errors have detailed explanations: E0277, E0308.
+Some errors have detailed explanations: E0277, E0308, E0600.
 For more information about an error, try `rustc --explain E0277`.

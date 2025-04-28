@@ -6,7 +6,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
 
-use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
@@ -19,7 +18,7 @@ static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
 /// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     config.try_run(cmd)
 }
 
@@ -124,7 +123,7 @@ impl Config {
                 if let Ok(in_nix_shell) = in_nix_shell {
                     eprintln!(
                         "The IN_NIX_SHELL environment variable is `{in_nix_shell}`; \
-                         you may need to set `patch-binaries-for-nix=true` in config.toml"
+                         you may need to set `patch-binaries-for-nix=true` in bootstrap.toml"
                     );
                 }
             }
@@ -262,7 +261,7 @@ impl Config {
             "--fail",
         ]);
         // Don't print progress in CI; the \r wrapping looks bad and downloads don't take long enough for progress to be useful.
-        if CiEnv::is_ci() {
+        if self.is_running_on_ci {
             curl.arg("--silent");
         } else {
             curl.arg("--progress-bar");
@@ -418,7 +417,7 @@ enum DownloadSource {
     Dist,
 }
 
-/// Functions that are only ever called once, but named for clarify and to avoid thousand-line functions.
+/// Functions that are only ever called once, but named for clarity and to avoid thousand-line functions.
 impl Config {
     pub(crate) fn download_clippy(&self) -> PathBuf {
         self.verbose(|| println!("downloading stage0 clippy artifacts"));
@@ -699,7 +698,7 @@ impl Config {
             help_on_error = "ERROR: failed to download pre-built rustc from CI
 
 NOTE: old builds get deleted after a certain time
-HELP: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
+HELP: if trying to compile an old commit of rustc, disable `download-rustc` in bootstrap.toml:
 
 [rust]
 download-rustc = false
@@ -721,8 +720,9 @@ download-rustc = false
     #[cfg(not(test))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
         use build_helper::exit;
+        use build_helper::git::PathFreshness;
 
-        use crate::core::build_steps::llvm::detect_llvm_sha;
+        use crate::core::build_steps::llvm::detect_llvm_freshness;
         use crate::core::config::check_incompatible_options_for_ci_llvm;
 
         if !self.llvm_from_ci {
@@ -730,7 +730,22 @@ download-rustc = false
         }
 
         let llvm_root = self.ci_llvm_root();
-        let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
+        let llvm_freshness =
+            detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository());
+        self.verbose(|| {
+            eprintln!("LLVM freshness: {llvm_freshness:?}");
+        });
+        let llvm_sha = match llvm_freshness {
+            PathFreshness::LastModifiedUpstream { upstream } => upstream,
+            PathFreshness::HasLocalModifications { upstream } => upstream,
+            PathFreshness::MissingUpstream => {
+                eprintln!("error: could not find commit hash for downloading LLVM");
+                eprintln!("HELP: maybe your repository history is too shallow?");
+                eprintln!("HELP: consider disabling `download-ci-llvm`");
+                eprintln!("HELP: or fetch enough history to include one upstream commit");
+                crate::exit!(1);
+            }
+        };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
@@ -783,7 +798,7 @@ download-rustc = false
                     println!("HELP: Consider rebasing to a newer commit if available.");
                 }
                 Err(e) => {
-                    eprintln!("ERROR: Failed to parse CI LLVM config.toml: {e}");
+                    eprintln!("ERROR: Failed to parse CI LLVM bootstrap.toml: {e}");
                     exit!(2);
                 }
             };
@@ -816,7 +831,7 @@ download-rustc = false
     HELP: There could be two reasons behind this:
         1) The host triple is not supported for `download-ci-llvm`.
         2) Old builds get deleted after a certain time.
-    HELP: In either case, disable `download-ci-llvm` in your config.toml:
+    HELP: In either case, disable `download-ci-llvm` in your bootstrap.toml:
 
     [llvm]
     download-ci-llvm = false
@@ -825,6 +840,34 @@ download-rustc = false
         }
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
+    }
+
+    pub fn download_ci_gcc(&self, gcc_sha: &str, root_dir: &Path) {
+        let cache_prefix = format!("gcc-{gcc_sha}");
+        let cache_dst =
+            self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
+
+        let gcc_cache = cache_dst.join(cache_prefix);
+        if !gcc_cache.exists() {
+            t!(fs::create_dir_all(&gcc_cache));
+        }
+        let base = &self.stage0_metadata.config.artifacts_server;
+        let filename = format!("gcc-nightly-{}.tar.xz", self.build.triple);
+        let tarball = gcc_cache.join(&filename);
+        if !tarball.exists() {
+            let help_on_error = "ERROR: failed to download gcc from ci
+
+    HELP: There could be two reasons behind this:
+        1) The host triple is not supported for `download-ci-gcc`.
+        2) Old builds get deleted after a certain time.
+    HELP: In either case, disable `download-ci-gcc` in your bootstrap.toml:
+
+    [gcc]
+    download-ci-gcc = false
+    ";
+            self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
+        }
+        self.unpack(&tarball, root_dir, "gcc");
     }
 }
 

@@ -9,8 +9,8 @@ use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Raw
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
+use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::{copy, exists};
-use crate::sys::pal::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -396,7 +396,7 @@ impl File {
     }
 
     pub fn read_buf(&self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|buf| self.read(buf), cursor)
+        self.0.read_buf(cursor)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -417,12 +417,12 @@ impl File {
         Ok(())
     }
 
-    pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
-        Err(Error::from_raw_os_error(22))
+    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+        self.0.seek(pos)
     }
 
     pub fn tell(&self) -> io::Result<u64> {
-        self.seek(SeekFrom::Current(0))
+        self.0.tell()
     }
 
     pub fn duplicate(&self) -> io::Result<File> {

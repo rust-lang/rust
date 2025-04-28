@@ -242,14 +242,14 @@ fn fn_header_search_pat(header: FnHeader) -> Pat {
 
 fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
     let (start_pat, end_pat) = match &item.kind {
-        ItemKind::ExternCrate(_) => (Pat::Str("extern"), Pat::Str(";")),
+        ItemKind::ExternCrate(..) => (Pat::Str("extern"), Pat::Str(";")),
         ItemKind::Static(..) => (Pat::Str("static"), Pat::Str(";")),
         ItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
         ItemKind::Fn { sig, .. } => (fn_header_search_pat(sig.header), Pat::Str("")),
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
         ItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
-        ItemKind::Struct(VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
+        ItemKind::Struct(_, VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
         ItemKind::Trait(_, Safety::Unsafe, ..)

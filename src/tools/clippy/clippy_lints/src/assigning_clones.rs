@@ -111,8 +111,8 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             // Only suggest if `clone_from`/`clone_into` is explicitly implemented
             && resolved_assoc_items.in_definition_order().any(|assoc|
                 match which_trait {
-                    CloneTrait::Clone => assoc.name == sym::clone_from,
-                    CloneTrait::ToOwned => assoc.name.as_str() == "clone_into",
+                    CloneTrait::Clone => assoc.name() == sym::clone_from,
+                    CloneTrait::ToOwned => assoc.name().as_str() == "clone_into",
                 }
             )
             && !clone_source_borrows_from_dest(cx, lhs, rhs.span)
@@ -243,7 +243,7 @@ fn build_sugg<'tcx>(
                         // `lhs = self_expr.clone();` -> `lhs.clone_from(self_expr)`
                         Sugg::hir_with_applicability(cx, lhs, "_", app)
                     }
-                    .maybe_par();
+                    .maybe_paren();
 
                     // Determine whether we need to reference the argument to clone_from().
                     let clone_receiver_type = cx.typeck_results().expr_ty(fn_arg);
@@ -284,7 +284,7 @@ fn build_sugg<'tcx>(
             let rhs_sugg = if let ExprKind::Unary(hir::UnOp::Deref, ref_expr) = lhs.kind {
                 // `*lhs = rhs.to_owned()` -> `rhs.clone_into(lhs)`
                 // `*lhs = ToOwned::to_owned(rhs)` -> `ToOwned::clone_into(rhs, lhs)`
-                let sugg = Sugg::hir_with_applicability(cx, ref_expr, "_", app).maybe_par();
+                let sugg = Sugg::hir_with_applicability(cx, ref_expr, "_", app).maybe_paren();
                 let inner_type = cx.typeck_results().expr_ty(ref_expr);
                 // If after unwrapping the dereference, the type is not a mutable reference, we add &mut to make it
                 // deref to a mutable reference.
@@ -296,7 +296,7 @@ fn build_sugg<'tcx>(
             } else {
                 // `lhs = rhs.to_owned()` -> `rhs.clone_into(&mut lhs)`
                 // `lhs = ToOwned::to_owned(rhs)` -> `ToOwned::clone_into(rhs, &mut lhs)`
-                Sugg::hir_with_applicability(cx, lhs, "_", app).maybe_par().mut_addr()
+                Sugg::hir_with_applicability(cx, lhs, "_", app).maybe_paren().mut_addr()
             };
 
             match call_kind {

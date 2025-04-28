@@ -357,5 +357,120 @@ error: layout_of(NonZeroU32New) = Layout {
 LL | struct NonZeroU32New(pattern_type!(u32 is 1..));
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: pattern type ranges cannot wrap: 1..=0
 
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:22:1
+   |
+LL | type EMPTY = pattern_type!(u32 is 1..1);
+   | ^^^^^^^^^^
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/range_patterns.rs:25:37
+   |
+LL | type WRAP = pattern_type!(u32 is 1..0);
+   |                                     ^ evaluation panicked: exclusive range end at minimum value of type
+
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:25:1
+   |
+LL | type WRAP = pattern_type!(u32 is 1..0);
+   | ^^^^^^^^^
+
+error: pattern type ranges cannot wrap: 5..=1
+
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:29:1
+   |
+LL | type WRAP2 = pattern_type!(u32 is 5..2);
+   | ^^^^^^^^^^
+
+error: layout_of((i8) is -10..=10) = Layout {
+           size: Size(1 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $SOME_ALIGN,
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=10) | (246..),
+               },
+           ),
+           fields: Primitive,
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=10) | (246..),
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:32:1
+   |
+LL | type SIGN = pattern_type!(i8 is -10..=10);
+   | ^^^^^^^^^
+
+error: layout_of((i8) is i8::MIN..=0) = Layout {
+           size: Size(1 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(1 bytes),
+               pref: $SOME_ALIGN,
+           },
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=0) | (128..),
+               },
+           ),
+           fields: Primitive,
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Int(
+                       I8,
+                       true,
+                   ),
+                   valid_range: (..=0) | (128..),
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
+       }
+  --> $DIR/range_patterns.rs:35:1
+   |
+LL | type MIN = pattern_type!(i8 is -128..=0);
+   | ^^^^^^^^
+
+error: pattern type ranges cannot wrap: 120..=-120
+
+error: the type has an unknown layout
+  --> $DIR/range_patterns.rs:38:1
+   |
+LL | type SignedWrap = pattern_type!(i8 is 120..=-120);
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

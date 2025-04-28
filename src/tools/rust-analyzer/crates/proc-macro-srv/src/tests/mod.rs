@@ -97,6 +97,7 @@ fn test_fn_like_macro_clone_raw_ident() {
 }
 
 #[test]
+#[cfg(not(bootstrap))]
 fn test_fn_like_fn_like_span_join() {
     assert_expand(
         "fn_like_span_join",
@@ -111,6 +112,7 @@ fn test_fn_like_fn_like_span_join() {
 }
 
 #[test]
+#[cfg(not(bootstrap))]
 fn test_fn_like_fn_like_span_ops() {
     assert_expand(
         "fn_like_span_ops",

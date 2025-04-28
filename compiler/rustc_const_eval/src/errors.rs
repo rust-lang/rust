@@ -6,7 +6,7 @@ use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    MultiSpan, Subdiagnostic,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -290,11 +290,7 @@ pub struct FrameNote {
 }
 
 impl Subdiagnostic for FrameNote {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("times", self.times);
         diag.arg("where_", self.where_);
         diag.arg("instance", self.instance);
@@ -302,7 +298,7 @@ impl Subdiagnostic for FrameNote {
         if self.has_label && !self.span.is_dummy() {
             span.push_span_label(self.span, fluent::const_eval_frame_note_last);
         }
-        let msg = f(diag, fluent::const_eval_frame_note.into());
+        let msg = diag.eagerly_translate(fluent::const_eval_frame_note);
         diag.span_note(span, msg);
     }
 }
@@ -898,6 +894,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
         }
     }
+
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use UnsupportedOpInfo::*;
 
@@ -917,9 +914,9 @@ impl ReportErrorExt for UnsupportedOpInfo {
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 diag.arg("ptr", ptr);
             }
-            ThreadLocalStatic(did) | ExternStatic(did) => {
-                diag.arg("did", format!("{did:?}"));
-            }
+            ThreadLocalStatic(did) | ExternStatic(did) => rustc_middle::ty::tls::with(|tcx| {
+                diag.arg("did", tcx.def_path_str(did));
+            }),
         }
     }
 }

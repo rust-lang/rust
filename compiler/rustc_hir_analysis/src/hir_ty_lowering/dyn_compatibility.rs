@@ -4,19 +4,19 @@ use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
-use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
-    self, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
+    self, BottomUpFolder, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, Upcast,
 };
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
-use rustc_type_ir::elaborate::ClauseWithSupertraitSpan;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
+use crate::errors::SelfInTypeAlias;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
 };
@@ -57,6 +57,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 potential_assoc_types.extend(cur_potential_assoc_types);
             }
         }
+
+        let ast_bounds: Vec<_> =
+            hir_bounds.iter().map(|&trait_ref| hir::GenericBound::Trait(trait_ref)).collect();
+
+        self.add_default_traits_with_filter(
+            &mut user_written_bounds,
+            dummy_self,
+            &ast_bounds,
+            None,
+            span,
+            |tr| tr != hir::LangItem::Sized,
+        );
 
         let (elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
@@ -114,6 +126,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // ```
         let mut projection_bounds = FxIndexMap::default();
         for (proj, proj_span) in elaborated_projection_bounds {
+            let proj = proj.map_bound(|mut b| {
+                if let Some(term_ty) = &b.term.as_type() {
+                    let references_self = term_ty.walk().any(|arg| arg == dummy_self.into());
+                    if references_self {
+                        // With trait alias and type alias combined, type resolver
+                        // may not be able to catch all illegal `Self` usages (issue 139082)
+                        let guar = tcx.dcx().emit_err(SelfInTypeAlias { span });
+                        b.term = replace_dummy_self_with_error(tcx, b.term, guar);
+                    }
+                }
+                b
+            });
+
             let key = (
                 proj.skip_binder().projection_term.def_id,
                 tcx.anonymize_bound_vars(
@@ -176,8 +201,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
                                 // We only care about associated types.
-                                .filter(|item| item.kind == ty::AssocKind::Type)
-                                // No RPITITs -- even with `async_fn_in_dyn_trait`, they are implicit.
+                                .filter(|item| item.is_type())
+                                // No RPITITs -- they're not dyn-compatible for now.
                                 .filter(|item| !item.is_impl_trait_in_trait())
                                 // If the associated type has a `where Self: Sized` bound,
                                 // we do not need to constrain the associated type.
@@ -390,7 +415,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     self.lower_lifetime(lifetime, RegionInferReason::ExplicitObjectLifetime)
                 } else {
                     let reason =
-                        if let hir::LifetimeName::ImplicitObjectLifetimeDefault = lifetime.res {
+                        if let hir::LifetimeKind::ImplicitObjectLifetimeDefault = lifetime.kind {
                             if let hir::Node::Ty(hir::Ty {
                                 kind: hir::TyKind::Ref(parent_lifetime, _),
                                 ..

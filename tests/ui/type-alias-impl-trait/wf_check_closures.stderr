@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `B: Bar` is not satisfied
-  --> $DIR/wf_check_closures.rs:10:5
+  --> $DIR/wf_check_closures.rs:11:5
    |
-LL |     move || { bar.bar() }
-   |     ^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `B`
+LL |     move || bar.bar()
+   |     ^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `B`
    |
 note: required by a bound in `foo`
-  --> $DIR/wf_check_closures.rs:9:11
+  --> $DIR/wf_check_closures.rs:10:11
    |
 LL | fn foo<B: Bar>(bar: B) -> FooFn<B> {
    |           ^^^ required by this bound in `foo`

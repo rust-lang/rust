@@ -150,14 +150,6 @@ impl Condition {
     fn matches(&self, value: ScalarInt) -> bool {
         (self.value == value) == (self.polarity == Polarity::Eq)
     }
-
-    fn inv(mut self) -> Self {
-        self.polarity = match self.polarity {
-            Polarity::Eq => Polarity::Ne,
-            Polarity::Ne => Polarity::Eq,
-        };
-        self
-    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -180,8 +172,21 @@ impl<'a> ConditionSet<'a> {
         self.iter().filter(move |c| c.matches(value))
     }
 
-    fn map(self, arena: &'a DroplessArena, f: impl Fn(Condition) -> Condition) -> ConditionSet<'a> {
-        ConditionSet(arena.alloc_from_iter(self.iter().map(f)))
+    fn map(
+        self,
+        arena: &'a DroplessArena,
+        f: impl Fn(Condition) -> Option<Condition>,
+    ) -> Option<ConditionSet<'a>> {
+        let mut all_ok = true;
+        let set = arena.alloc_from_iter(self.iter().map_while(|c| {
+            if let Some(c) = f(c) {
+                Some(c)
+            } else {
+                all_ok = false;
+                None
+            }
+        }));
+        all_ok.then_some(ConditionSet(set))
     }
 }
 
@@ -202,9 +207,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         debug!(?discr, ?bb);
 
         let discr_ty = discr.ty(self.body, self.tcx).ty;
-        let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else {
-            return;
-        };
+        let Ok(discr_layout) = self.ecx.layout_of(discr_ty) else { return };
 
         let Some(discr) = self.map.find(discr.as_ref()) else { return };
         debug!(?discr);
@@ -227,7 +230,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         let conds = ConditionSet(conds);
         state.insert_value_idx(discr, conds, &self.map);
 
-        self.find_opportunity(bb, state, cost, 0);
+        self.find_opportunity(bb, state, cost, 0)
     }
 
     /// Recursively walk statements backwards from this bb's terminator to find threading
@@ -495,19 +498,22 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                     }
                 }
             }
-            // Transfer the conditions on the copy rhs, after inversing polarity.
+            // Transfer the conditions on the copy rhs, after inverting the value of the condition.
             Rvalue::UnaryOp(UnOp::Not, Operand::Move(place) | Operand::Copy(place)) => {
-                if !place.ty(self.body, self.tcx).ty.is_bool() {
-                    // Constructing the conditions by inverting the polarity
-                    // of equality is only correct for bools. That is to say,
-                    // `!a == b` is not `a != b` for integers greater than 1 bit.
-                    return;
-                }
+                let layout = self.ecx.layout_of(place.ty(self.body, self.tcx).ty).unwrap();
                 let Some(conditions) = state.try_get_idx(lhs, &self.map) else { return };
                 let Some(place) = self.map.find(place.as_ref()) else { return };
-                // FIXME: I think This could be generalized to not bool if we
-                // actually perform a logical not on the condition's value.
-                let conds = conditions.map(self.arena, Condition::inv);
+                let Some(conds) = conditions.map(self.arena, |mut cond| {
+                    cond.value = self
+                        .ecx
+                        .unary_op(UnOp::Not, &ImmTy::from_scalar_int(cond.value, layout))
+                        .discard_err()?
+                        .to_scalar_int()
+                        .discard_err()?;
+                    Some(cond)
+                }) else {
+                    return;
+                };
                 state.insert_value_idx(place, conds, &self.map);
             }
             // We expect `lhs ?= A`. We found `lhs = Eq(rhs, B)`.
@@ -535,11 +541,15 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 else {
                     return;
                 };
-                let conds = conditions.map(self.arena, |c| Condition {
-                    value,
-                    polarity: if c.matches(equals) { Polarity::Eq } else { Polarity::Ne },
-                    ..c
-                });
+                let Some(conds) = conditions.map(self.arena, |c| {
+                    Some(Condition {
+                        value,
+                        polarity: if c.matches(equals) { Polarity::Eq } else { Polarity::Ne },
+                        ..c
+                    })
+                }) else {
+                    return;
+                };
                 state.insert_value_idx(place, conds, &self.map);
             }
 
@@ -576,17 +586,17 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 else {
                     return;
                 };
-                self.process_immediate(bb, discr_target, discr, state);
+                self.process_immediate(bb, discr_target, discr, state)
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(
                 Operand::Copy(place) | Operand::Move(place),
             )) => {
                 let Some(conditions) = state.try_get(place.as_ref(), &self.map) else { return };
-                conditions.iter_matches(ScalarInt::TRUE).for_each(register_opportunity);
+                conditions.iter_matches(ScalarInt::TRUE).for_each(register_opportunity)
             }
             StatementKind::Assign(box (lhs_place, rhs)) => {
-                self.process_assign(bb, lhs_place, rhs, state);
+                self.process_assign(bb, lhs_place, rhs, state)
             }
             _ => {}
         }
@@ -632,7 +642,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
         if let Some(place_to_flood) = place_to_flood {
             state.flood_with(place_to_flood.as_ref(), &self.map, ConditionSet::BOTTOM);
         }
-        self.find_opportunity(bb, state, cost.clone(), depth + 1);
+        self.find_opportunity(bb, state, cost.clone(), depth + 1)
     }
 
     #[instrument(level = "trace", skip(self))]

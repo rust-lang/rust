@@ -1,4 +1,4 @@
-error: internal compiler error: delayed bug triggered by #[rustc_error(delayed_bug_from_inside_query)]
+error: internal compiler error: delayed bug triggered by #[rustc_delayed_bug_from_inside_query]
   --> $DIR/span_delayed_bug.rs:12:1
    |
 LL | fn main() {}

@@ -21,10 +21,11 @@ use stable_mir::{CtorKind, ItemKind};
 use tracing::debug;
 
 use crate::rustc_internal::IndexMap;
+use crate::stable_mir;
 
 mod alloc;
 mod builder;
-pub(crate) mod context;
+pub mod context;
 mod convert;
 
 pub struct Tables<'tcx> {

@@ -33,6 +33,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -47,7 +48,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
@@ -68,7 +69,7 @@ pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
     TyCtxtFeed, tls,
 };
-pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
@@ -98,16 +99,18 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+pub use self::visit::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
 use crate::query::{IntoQueryParam, Providers};
 use crate::ty;
+use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
+use crate::ty::walk::TypeWalker;
 
 pub mod abstract_const;
 pub mod adjustment;
@@ -115,8 +118,6 @@ pub mod cast;
 pub mod codec;
 pub mod error;
 pub mod fast_reject;
-pub mod flags;
-pub mod fold;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
@@ -126,9 +127,7 @@ pub mod relate;
 pub mod significant_drop_order;
 pub mod trait_def;
 pub mod util;
-pub mod visit;
 pub mod vtable;
-pub mod walk;
 
 mod adt;
 mod assoc;
@@ -138,6 +137,7 @@ mod context;
 mod diagnostics;
 mod elaborate_impl;
 mod erase_regions;
+mod fold;
 mod generic_args;
 mod generics;
 mod impls_ty;
@@ -148,12 +148,12 @@ mod opaque_types;
 mod parameterized;
 mod predicate;
 mod region;
-mod return_position_impl_trait_in_trait;
 mod rvalue_scopes;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
+mod visit;
 
 // Data types
 
@@ -168,7 +168,7 @@ pub struct ResolverGlobalCtxt {
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
-    pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
@@ -442,7 +442,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Ty<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }
@@ -456,7 +456,7 @@ impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime && self.name != kw::Empty
+        self.name != kw::UnderscoreLifetime
     }
 }
 
@@ -538,6 +538,13 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for Term<'tcx> {
             ty::TermKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        match self.unpack() {
+            ty::TermKind::Ty(ty) => ty.fold_with(folder).into(),
+            ty::TermKind::Const(ct) => ct.fold_with(folder).into(),
+        }
+    }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
@@ -549,13 +556,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for Term<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Term<'tcx> {
     fn encode(&self, e: &mut E) {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Term<'tcx> {
     fn decode(d: &mut D) -> Self {
         let res: TermKind<'tcx> = Decodable::decode(d);
         res.pack()
@@ -624,6 +631,20 @@ impl<'tcx> Term<'tcx> {
             TermKind::Ty(ty) => ty.is_ty_var(),
             TermKind::Const(ct) => ct.is_ct_infer(),
         }
+    }
+
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
+        TypeWalker::new(self.into())
     }
 }
 
@@ -781,7 +802,22 @@ pub struct OpaqueHiddenType<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+/// Whether we're currently in HIR typeck or MIR borrowck.
+#[derive(Debug, Clone, Copy)]
+pub enum DefiningScopeKind {
+    /// During writeback in typeck, we don't care about regions and simply
+    /// erase them. This means we also don't check whether regions are
+    /// universal in the opaque type key. This will only be checked in
+    /// MIR borrowck.
+    HirTypeck,
+    MirBorrowck,
+}
+
 impl<'tcx> OpaqueHiddenType<'tcx> {
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> OpaqueHiddenType<'tcx> {
+        OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(tcx, guar) }
+    }
+
     pub fn build_mismatch_error(
         &self,
         other: &Self,
@@ -807,8 +843,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         tcx: TyCtxt<'tcx>,
-        // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
-        ignore_errors: bool,
+        defining_scope_kind: DefiningScopeKind,
     ) -> Self {
         let OpaqueTypeKey { def_id, args } = opaque_type_key;
 
@@ -827,10 +862,19 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         let map = args.iter().zip(id_args).collect();
         debug!("map = {:#?}", map);
 
-        // Convert the type from the function into a type valid outside
-        // the function, by replacing invalid regions with 'static,
-        // after producing an error for each of them.
-        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span, ignore_errors))
+        // Convert the type from the function into a type valid outside by mapping generic
+        // parameters to into the context of the opaque.
+        //
+        // We erase regions when doing this during HIR typeck.
+        let this = match defining_scope_kind {
+            DefiningScopeKind::HirTypeck => tcx.erase_regions(self),
+            DefiningScopeKind::MirBorrowck => self,
+        };
+        let result = this.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span));
+        if cfg!(debug_assertions) && matches!(defining_scope_kind, DefiningScopeKind::HirTypeck) {
+            assert_eq!(result.ty, tcx.erase_regions(result.ty));
+        }
+        result
     }
 }
 
@@ -938,7 +982,7 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
 
 pub type Clauses<'tcx> = &'tcx ListWithCachedTypeInfo<Clause<'tcx>>;
 
-impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     fn flags(&self) -> TypeFlags {
         (**self).flags()
     }
@@ -952,7 +996,7 @@ impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
 /// environment. `ParamEnv` is the type that represents this information. See the
 /// [dev guide chapter][param_env_guide] for more information.
 ///
-/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
+/// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 #[derive(HashStable, TypeVisitable, TypeFoldable)]
 pub struct ParamEnv<'tcx> {
@@ -976,7 +1020,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// to use an empty environment. See the [dev guide section][param_env_guide]
     /// for information on what a `ParamEnv` is and how to acquire one.
     ///
-    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/param_env/param_env_summary.html
+    /// [param_env_guide]: https://rustc-dev-guide.rust-lang.org/typing_parameter_envs.html
     #[inline]
     pub fn empty() -> Self {
         Self::new(ListWithCachedTypeInfo::empty())
@@ -1118,17 +1162,13 @@ pub struct PseudoCanonicalInput<'tcx, T> {
 pub struct Destructor {
     /// The `DefId` of the destructor method
     pub did: DefId,
-    /// The constness of the destructor method
-    pub constness: hir::Constness,
 }
 
 // FIXME: consider combining this definition with regular `Destructor`
 #[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
 pub struct AsyncDestructor {
-    /// The `DefId` of the async destructor future constructor
-    pub ctor: DefId,
-    /// The `DefId` of the async destructor future type
-    pub future: DefId,
+    /// The `DefId` of the `impl AsyncDrop`
+    pub impl_did: LocalDefId,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
@@ -1151,7 +1191,7 @@ pub struct VariantDef {
     /// `DefId` that identifies the variant's constructor.
     /// If this variant is a struct variant, then this is `None`.
     pub ctor: Option<(CtorKind, DefId)>,
-    /// Variant or struct name, maybe empty for anonymous adt (struct or union).
+    /// Variant or struct name.
     pub name: Symbol,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
@@ -1207,10 +1247,21 @@ impl VariantDef {
         }
     }
 
-    /// Is this field list non-exhaustive?
+    /// Returns `true` if the field list of this variant is `#[non_exhaustive]`.
+    ///
+    /// Note that this function will return `true` even if the type has been
+    /// defined in the crate currently being compiled. If that's not what you
+    /// want, see [`Self::field_list_has_applicable_non_exhaustive`].
     #[inline]
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Returns `true` if the field list of this variant is `#[non_exhaustive]`
+    /// and the type has been defined in another crate.
+    #[inline]
+    pub fn field_list_has_applicable_non_exhaustive(&self) -> bool {
+        self.is_field_list_non_exhaustive() && !self.def_id.is_local()
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1433,7 +1484,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
+            .filter(move |item| item.is_fn() && item.defaultness(self).has_value())
     }
 
     pub fn repr_options_of_def(self, did: LocalDefId) -> ReprOptions {
@@ -1579,8 +1630,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// return-position `impl Trait` from a trait, then provide the source info
     /// about where that RPITIT came from.
     pub fn opt_rpitit_info(self, def_id: DefId) -> Option<ImplTraitInTraitData> {
-        if let DefKind::AssocTy = self.def_kind(def_id) {
-            self.associated_item(def_id).opt_rpitit_info
+        if let DefKind::AssocTy = self.def_kind(def_id)
+            && let AssocKind::Type { data: AssocTypeData::Rpitit(rpitit_info) } =
+                self.associated_item(def_id).kind
+        {
+            Some(rpitit_info)
         } else {
             None
         }
@@ -1696,7 +1750,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // FIXME(@lcnr): Remove this function.
     pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [hir::Attribute] {
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did))
+            self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.attrs_for_def(did)
         }
@@ -1720,7 +1774,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let did: DefId = did.into();
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter()
+            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter()
         } else {
             self.attrs_for_def(did).iter()
         }
@@ -1764,7 +1818,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             self.attrs_for_def(did).iter().filter(filter_fn)
         }
@@ -1908,15 +1962,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Hygienically compares a use-site name (`use_name`) for a field or an associated item with
     /// its supposed definition name (`def_name`). The method also needs `DefId` of the supposed
     /// definition's parent/scope to perform comparison.
-    pub fn hygienic_eq(self, use_name: Ident, def_name: Ident, def_parent_def_id: DefId) -> bool {
-        // We could use `Ident::eq` here, but we deliberately don't. The name
+    pub fn hygienic_eq(self, use_ident: Ident, def_ident: Ident, def_parent_def_id: DefId) -> bool {
+        // We could use `Ident::eq` here, but we deliberately don't. The identifier
         // comparison fails frequently, and we want to avoid the expensive
         // `normalize_to_macros_2_0()` calls required for the span comparison whenever possible.
-        use_name.name == def_name.name
-            && use_name
+        use_ident.name == def_ident.name
+            && use_ident
                 .span
                 .ctxt()
-                .hygienic_eq(def_name.span.ctxt(), self.expn_that_defined(def_parent_def_id))
+                .hygienic_eq(def_ident.span.ctxt(), self.expn_that_defined(def_parent_def_id))
     }
 
     pub fn adjust_ident(self, mut ident: Ident, scope: DefId) -> Ident {

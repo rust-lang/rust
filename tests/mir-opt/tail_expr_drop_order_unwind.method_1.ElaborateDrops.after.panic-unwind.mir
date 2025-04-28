@@ -73,9 +73,6 @@ fn method_1(_1: Guard) -> () {
     }
 
     bb7: {
-        backward incompatible drop(_2);
-        backward incompatible drop(_4);
-        backward incompatible drop(_5);
         goto -> bb21;
     }
 

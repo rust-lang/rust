@@ -4,7 +4,7 @@
 use libc::{c_char, c_uint};
 
 use super::MetadataKindId;
-use super::ffi::{BasicBlock, Metadata, Module, Type, Value};
+use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::Bool;
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -17,6 +17,8 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustEraseInstFromParent(V: &Value);
     pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
     pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
+    pub(crate) fn LLVMRustHasAttributeAtIndex(V: &Value, i: c_uint, Kind: AttributeKind) -> bool;
+    pub(crate) fn LLVMRustGetArrayNumElements(Ty: &Type) -> u64;
 }
 
 unsafe extern "C" {
@@ -31,20 +33,20 @@ unsafe extern "C" {
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq)]
-pub enum LLVMRustVerifierFailureAction {
+pub(crate) enum LLVMRustVerifierFailureAction {
     LLVMAbortProcessAction = 0,
     LLVMPrintMessageAction = 1,
     LLVMReturnStatusAction = 2,
 }
 
 #[cfg(llvm_enzyme)]
-pub use self::Enzyme_AD::*;
+pub(crate) use self::Enzyme_AD::*;
 
 #[cfg(llvm_enzyme)]
-pub mod Enzyme_AD {
+pub(crate) mod Enzyme_AD {
     use libc::c_void;
     unsafe extern "C" {
-        pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
+        pub(crate) fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
     }
     unsafe extern "C" {
         static mut EnzymePrintPerf: c_void;
@@ -56,42 +58,42 @@ pub mod Enzyme_AD {
         static mut EnzymeInline: c_void;
         static mut RustTypeRules: c_void;
     }
-    pub fn set_print_perf(print: bool) {
+    pub(crate) fn set_print_perf(print: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintPerf), print as u8);
         }
     }
-    pub fn set_print_activity(print: bool) {
+    pub(crate) fn set_print_activity(print: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintActivity), print as u8);
         }
     }
-    pub fn set_print_type(print: bool) {
+    pub(crate) fn set_print_type(print: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintType), print as u8);
         }
     }
-    pub fn set_print(print: bool) {
+    pub(crate) fn set_print(print: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrint), print as u8);
         }
     }
-    pub fn set_strict_aliasing(strict: bool) {
+    pub(crate) fn set_strict_aliasing(strict: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymeStrictAliasing), strict as u8);
         }
     }
-    pub fn set_loose_types(loose: bool) {
+    pub(crate) fn set_loose_types(loose: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(looseTypeAnalysis), loose as u8);
         }
     }
-    pub fn set_inline(val: bool) {
+    pub(crate) fn set_inline(val: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymeInline), val as u8);
         }
     }
-    pub fn set_rust_rules(val: bool) {
+    pub(crate) fn set_rust_rules(val: bool) {
         unsafe {
             EnzymeSetCLBool(std::ptr::addr_of_mut!(RustTypeRules), val as u8);
         }
@@ -99,34 +101,34 @@ pub mod Enzyme_AD {
 }
 
 #[cfg(not(llvm_enzyme))]
-pub use self::Fallback_AD::*;
+pub(crate) use self::Fallback_AD::*;
 
 #[cfg(not(llvm_enzyme))]
-pub mod Fallback_AD {
+pub(crate) mod Fallback_AD {
     #![allow(unused_variables)]
 
-    pub fn set_inline(val: bool) {
+    pub(crate) fn set_inline(val: bool) {
         unimplemented!()
     }
-    pub fn set_print_perf(print: bool) {
+    pub(crate) fn set_print_perf(print: bool) {
         unimplemented!()
     }
-    pub fn set_print_activity(print: bool) {
+    pub(crate) fn set_print_activity(print: bool) {
         unimplemented!()
     }
-    pub fn set_print_type(print: bool) {
+    pub(crate) fn set_print_type(print: bool) {
         unimplemented!()
     }
-    pub fn set_print(print: bool) {
+    pub(crate) fn set_print(print: bool) {
         unimplemented!()
     }
-    pub fn set_strict_aliasing(strict: bool) {
+    pub(crate) fn set_strict_aliasing(strict: bool) {
         unimplemented!()
     }
-    pub fn set_loose_types(loose: bool) {
+    pub(crate) fn set_loose_types(loose: bool) {
         unimplemented!()
     }
-    pub fn set_rust_rules(val: bool) {
+    pub(crate) fn set_rust_rules(val: bool) {
         unimplemented!()
     }
 }

@@ -9,18 +9,18 @@ use libc::c_uint;
 use rustc_abi::{Align, Size, WrappingRange};
 use rustc_llvm::RustString;
 
-pub use self::CallConv::*;
-pub use self::CodeGenOptSize::*;
-pub use self::MetadataType::*;
-pub use self::ffi::*;
+pub(crate) use self::CallConv::*;
+pub(crate) use self::CodeGenOptSize::*;
+pub(crate) use self::MetadataType::*;
+pub(crate) use self::ffi::*;
 use crate::common::AsCCharPtr;
 
-pub mod archive_ro;
-pub mod diagnostic;
-pub mod enzyme_ffi;
+pub(crate) mod archive_ro;
+pub(crate) mod diagnostic;
+pub(crate) mod enzyme_ffi;
 mod ffi;
 
-pub use self::enzyme_ffi::*;
+pub(crate) use self::enzyme_ffi::*;
 
 impl LLVMRustResult {
     pub(crate) fn into_result(self) -> Result<(), ()> {
@@ -127,7 +127,7 @@ pub(crate) fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) 
 }
 
 #[derive(Copy, Clone)]
-pub enum AttributePlace {
+pub(crate) enum AttributePlace {
     ReturnValue,
     Argument(u32),
     Function,
@@ -145,7 +145,7 @@ impl AttributePlace {
 
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
-pub enum CodeGenOptSize {
+pub(crate) enum CodeGenOptSize {
     CodeGenOptSizeNone = 0,
     CodeGenOptSizeDefault = 1,
     CodeGenOptSizeAggressive = 2,

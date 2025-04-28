@@ -42,6 +42,8 @@ declare_with_version! { DEPRECATED(DEPRECATED_VERSION): &[(&str, &str)] = &[
     ("clippy::wrong_pub_self_convention", "`clippy::wrong_self_convention` now covers this case via the `avoid-breaking-exported-api` config"),
     #[clippy::version = "1.86.0"]
     ("clippy::option_map_or_err_ok", "`clippy::manual_ok_or` covers this case"),
+    #[clippy::version = "1.86.0"]
+    ("clippy::match_on_vec_items", "`clippy::indexing_slicing` covers indexing and slicing on `Vec<_>`"),
     // end deprecated lints. used by `cargo dev deprecate_lint`
 ]}
 
@@ -131,6 +133,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
     ("clippy::clone_double_ref", "suspicious_double_ref_op"),
     #[clippy::version = ""]
     ("clippy::cmp_nan", "invalid_nan_comparisons"),
+    #[clippy::version = "CURRENT_RUSTC_VERSION"]
+    ("clippy::invalid_null_ptr_usage", "invalid_null_arguments"),
     #[clippy::version = "1.86.0"]
     ("clippy::double_neg", "double_negations"),
     #[clippy::version = ""]

@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed: cannot satisfy `_ == A`
-  --> $DIR/two_tait_defining_each_other2.rs:11:8
+  --> $DIR/two_tait_defining_each_other2.rs:12:8
    |
 LL | fn muh(x: A) -> B {
    |        ^ cannot satisfy `_ == A`

@@ -37,10 +37,9 @@ mod minicore {
         #[inline]
         #[rustc_diagnostic_item = "ptr_write_volatile"]
         pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
-            extern "rust-intrinsic" {
-                #[rustc_nounwind]
-                pub fn volatile_store<T>(dst: *mut T, val: T);
-            }
+            #[rustc_intrinsic]
+            pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+
             unsafe { volatile_store(dst, src) };
         }
     }

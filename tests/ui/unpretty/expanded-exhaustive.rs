@@ -12,7 +12,6 @@
 #![feature(dyn_star)]
 #![feature(explicit_tail_calls)]
 #![feature(gen_blocks)]
-#![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(never_type)]
@@ -574,6 +573,11 @@ mod items {
 }
 
 mod patterns {
+    /// PatKind::Missing
+    fn pat_missing() {
+        let _: fn(u32, T, &str);
+    }
+
     /// PatKind::Wild
     fn pat_wild() {
         let _;
@@ -835,6 +839,7 @@ mod types {
     }
 
     /// TyKind::MacCall
+    #[expect(deprecated)] // concat_idents is deprecated
     fn ty_mac_call() {
         let _: concat_idents!(T);
         let _: concat_idents![T];

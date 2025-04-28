@@ -3,10 +3,8 @@
 
 // Local js definitions:
 /* global addClass, onEachLazy, removeClass, browserSupportsHistoryApi */
-/* global updateLocalStorage, getVar */
+/* global updateLocalStorage, getVar, nonnull */
 
-// Eventually fix this.
-// @ts-nocheck
 
 "use strict";
 
@@ -29,6 +27,14 @@ function closeSidebarIfMobile() {
     }
 }
 
+/**
+ * @param {rustdoc.Dir} elem
+ * @param {HTMLElement} parent
+ * @param {string} fullPath
+ * @param {boolean} hasFoundFile
+ *
+ * @returns {boolean} - new value for hasFoundFile
+ */
 function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     const dirEntry = document.createElement("details");
     const summary = document.createElement("summary");
@@ -95,7 +101,7 @@ window.rustdocToggleSrcSidebar = () => {
 // This function is called from "src-files.js", generated in `html/render/write_shared.rs`.
 // eslint-disable-next-line no-unused-vars
 function createSrcSidebar() {
-    const container = document.querySelector("nav.sidebar");
+    const container = nonnull(document.querySelector("nav.sidebar"));
 
     const sidebar = document.createElement("div");
     sidebar.id = "src-sidebar";
@@ -111,6 +117,7 @@ function createSrcSidebar() {
     // Focus on the current file in the source files sidebar.
     const selected_elem = sidebar.getElementsByClassName("selected")[0];
     if (typeof selected_elem !== "undefined") {
+        // @ts-expect-error
         selected_elem.focus();
     }
 }
@@ -130,11 +137,12 @@ function highlightSrcLines() {
         to = from;
         from = tmp;
     }
-    let elem = document.getElementById(from);
+    const from_s = "" + from;
+    let elem = document.getElementById(from_s);
     if (!elem) {
         return;
     }
-    const x = document.getElementById(from);
+    const x = document.getElementById(from_s);
     if (x) {
         x.scrollIntoView();
     }
@@ -142,7 +150,7 @@ function highlightSrcLines() {
         removeClass(e, "line-highlighted");
     });
     for (let i = from; i <= to; ++i) {
-        elem = document.getElementById(i);
+        elem = document.getElementById("" + i);
         if (!elem) {
             break;
         }
@@ -153,11 +161,12 @@ function highlightSrcLines() {
 const handleSrcHighlight = (function() {
     let prev_line_id = 0;
 
+    /** @type {function(string): void} */
     const set_fragment = name => {
         const x = window.scrollX,
             y = window.scrollY;
         if (browserSupportsHistoryApi()) {
-            history.replaceState(null, null, "#" + name);
+            history.replaceState(null, "", "#" + name);
             highlightSrcLines();
         } else {
             location.replace("#" + name);
@@ -166,6 +175,7 @@ const handleSrcHighlight = (function() {
         window.scrollTo(x, y);
     };
 
+    // @ts-expect-error
     return ev => {
         let cur_line_id = parseInt(ev.target.id, 10);
         // This event handler is attached to the entire line number column, but it should only
@@ -191,7 +201,7 @@ const handleSrcHighlight = (function() {
         } else {
             prev_line_id = cur_line_id;
 
-            set_fragment(cur_line_id);
+            set_fragment("" + cur_line_id);
         }
     };
 }());

@@ -5,7 +5,8 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-#![cfg_attr(feature = "rustc", feature(let_chains))]
+#![allow(unused_crate_dependencies)]
+#![cfg_attr(all(feature = "rustc", bootstrap), feature(let_chains))]
 // tidy-alphabetical-end
 
 pub mod constructor;

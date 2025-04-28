@@ -16,7 +16,6 @@ declare_lint_pass! {
     /// that are used by other parts of the compiler.
     HardwiredLints => [
         // tidy-alphabetical-start
-        ABI_UNSUPPORTED_VECTOR_TYPES,
         ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         AMBIGUOUS_GLOB_IMPORTS,
@@ -110,7 +109,6 @@ declare_lint_pass! {
         UNCONDITIONAL_PANIC,
         UNCONDITIONAL_RECURSION,
         UNCOVERED_PARAM_IN_PROJECTION,
-        UNDEFINED_NAKED_FUNCTION_ABI,
         UNEXPECTED_CFGS,
         UNFULFILLED_LINT_EXPECTATIONS,
         UNINHABITED_STATIC,
@@ -119,6 +117,7 @@ declare_lint_pass! {
         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
+        UNNECESSARY_TRANSMUTES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -143,6 +142,7 @@ declare_lint_pass! {
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
         WARNINGS,
+        WASM_C_ABI,
         // tidy-alphabetical-end
     ]
 }
@@ -1424,7 +1424,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// macro_rules! foo {
     ///    () => {};
     ///    ($name) => { };
@@ -2830,39 +2830,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `undefined_naked_function_abi` lint detects naked function definitions that
-    /// either do not specify an ABI or specify the Rust ABI.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(asm_experimental_arch, naked_functions)]
-    ///
-    /// use std::arch::naked_asm;
-    ///
-    /// #[naked]
-    /// pub fn default_abi() -> u32 {
-    ///     unsafe { naked_asm!(""); }
-    /// }
-    ///
-    /// #[naked]
-    /// pub extern "Rust" fn rust_abi() -> u32 {
-    ///     unsafe { naked_asm!(""); }
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The Rust ABI is currently undefined. Therefore, naked functions should
-    /// specify a non-Rust ABI.
-    pub UNDEFINED_NAKED_FUNCTION_ABI,
-    Warn,
-    "undefined naked function ABI"
-}
-
-declare_lint! {
     /// The `ineffective_unstable_trait_impl` lint detects `#[unstable]` attributes which are not used.
     ///
     /// ### Example
@@ -4161,7 +4128,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
+    /// ```rust,compile_fail,edition2021
     /// #![deny(dependency_on_unit_never_type_fallback)]
     /// fn main() {
     ///     if true {
@@ -4944,6 +4911,30 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `unnecessary_transmutes` lint detects transmutations that have safer alternatives.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn bytes_at_home(x: [u8; 4]) -> u32 {
+    ///   unsafe { std::mem::transmute(x) }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Using an explicit method is preferable over calls to
+    /// [`transmute`](https://doc.rust-lang.org/std/mem/fn.transmute.html) as
+    /// they more clearly communicate the intent, are easier to review, and
+    /// are less likely to accidentally result in unsoundness.
+    pub UNNECESSARY_TRANSMUTES,
+    Warn,
+    "detects transmutes that are shadowed by std methods"
+}
+
+declare_lint! {
     /// The `tail_expr_drop_order` lint looks for those values generated at the tail expression location,
     /// that runs a custom `Drop` destructor.
     /// Some of them may be dropped earlier in Edition 2024 that they used to in Edition 2021 and prior.
@@ -5061,67 +5052,44 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `abi_unsupported_vector_types` lint detects function definitions and calls
-    /// whose ABI depends on enabling certain target features, but those features are not enabled.
+    /// The `wasm_c_abi` lint detects usage of the `extern "C"` ABI of wasm that is affected
+    /// by a planned ABI change that has the goal of aligning Rust with the standard C ABI
+    /// of this target.
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (fails on non-x86_64)
-    /// extern "C" fn missing_target_feature(_: std::arch::x86_64::__m256) {
-    ///   todo!()
-    /// }
+    /// ```rust,ignore (needs wasm32-unknown-unknown)
+    /// #[repr(C)]
+    /// struct MyType(i32, i32);
     ///
-    /// #[target_feature(enable = "avx")]
-    /// unsafe extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
-    ///   todo!()
-    /// }
-    ///
-    /// fn main() {
-    ///   let v = unsafe { std::mem::zeroed() };
-    ///   unsafe { with_target_feature(v); }
-    /// }
+    /// extern "C" my_fun(x: MyType) {}
     /// ```
+    ///
+    /// This will produce:
     ///
     /// ```text
-    /// warning: ABI error: this function call uses a avx vector type, which is not enabled in the caller
-    ///  --> lint_example.rs:18:12
-    ///   |
-    ///   |   unsafe { with_target_feature(v); }
-    ///   |            ^^^^^^^^^^^^^^^^^^^^^^ function called here
-    ///   |
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
-    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
-    ///   = note: `#[warn(abi_unsupported_vector_types)]` on by default
-    ///
-    ///
-    /// warning: ABI error: this function definition uses a avx vector type, which is not enabled
-    ///  --> lint_example.rs:3:1
-    ///   |
-    ///   | pub extern "C" fn with_target_feature(_: std::arch::x86_64::__m256) {
-    ///   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
-    ///   |
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
-    ///   = help: consider enabling it globally (-C target-feature=+avx) or locally (#[target_feature(enable="avx")])
+    /// error: this function function definition is affected by the wasm ABI transition: it passes an argument of non-scalar type `MyType`
+    /// --> $DIR/wasm_c_abi_transition.rs:17:1
+    ///  |
+    ///  | pub extern "C" fn my_fun(_x: MyType) {}
+    ///  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///  |
+    ///  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///  = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+    ///  = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
     /// ```
-    ///
-    ///
     ///
     /// ### Explanation
     ///
-    /// The C ABI for `__m256` requires the value to be passed in an AVX register,
-    /// which is only possible when the `avx` target feature is enabled.
-    /// Therefore, `missing_target_feature` cannot be compiled without that target feature.
-    /// A similar (but complementary) message is triggered when `with_target_feature` is called
-    /// by a function that does not enable the `avx` target feature.
-    ///
-    /// Note that this lint is very similar to the `-Wpsabi` warning in `gcc`/`clang`.
-    pub ABI_UNSUPPORTED_VECTOR_TYPES,
+    /// Rust has historically implemented a non-spec-compliant C ABI on wasm32-unknown-unknown. This
+    /// has caused incompatibilities with other compilers and Wasm targets. In a future version
+    /// of Rust, this will be fixed, and therefore code relying on the non-spec-compliant C ABI will
+    /// stop functioning.
+    pub WASM_C_ABI,
     Warn,
-    "this function call or definition uses a vector type which is not enabled",
+    "detects code relying on rustc's non-spec-compliant wasm C ABI",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
+        reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
     };
 }

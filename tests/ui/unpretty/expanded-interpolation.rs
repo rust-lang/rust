@@ -1,4 +1,5 @@
 //@ compile-flags: -Zunpretty=expanded
+//@ edition:2024
 //@ check-pass
 
 // This test covers the AST pretty-printer's insertion of parentheses in some
@@ -7,7 +8,6 @@
 // Rust syntax. We also test negative cases: the pretty-printer should not be
 // synthesizing parentheses indiscriminately; only where necessary.
 
-#![feature(let_chains)]
 #![feature(if_let_guard)]
 
 macro_rules! expr {

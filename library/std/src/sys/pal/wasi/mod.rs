@@ -13,9 +13,6 @@
 //! compiling for wasm. That way it's a compile time error for something that's
 //! guaranteed to be a runtime error!
 
-pub mod args;
-pub mod env;
-pub mod fd;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
@@ -23,8 +20,6 @@ pub mod futex;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
 pub mod thread;
 pub mod time;
 

@@ -31,3 +31,5 @@ const REF_IMMUT: &u8 = &MY_STATIC;
 const READ_IMMUT: u8 = *REF_IMMUT;
 
 fn main() {}
+
+//~? WARN skipping const checks

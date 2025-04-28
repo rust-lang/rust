@@ -37,5 +37,17 @@ help: an attribute with a similar name exists
 LL | #[diagnostic::on_unimplemented]
    |                  ++
 
-error: aborting due to 3 previous errors
+error: unknown diagnostic attribute
+  --> $DIR/suggest_typos.rs:19:15
+   |
+LL | #[diagnostic::dont_recommend]
+   |               ^^^^^^^^^^^^^^
+   |
+help: an attribute with a similar name exists
+   |
+LL - #[diagnostic::dont_recommend]
+LL + #[diagnostic::do_not_recommend]
+   |
+
+error: aborting due to 4 previous errors
 

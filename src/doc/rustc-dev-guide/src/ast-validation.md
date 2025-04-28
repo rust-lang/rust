@@ -1,4 +1,4 @@
-# AST Validation
+# AST validation
 
 _AST validation_ is a separate AST pass that visits each
 item in the tree and performs simple checks. This pass

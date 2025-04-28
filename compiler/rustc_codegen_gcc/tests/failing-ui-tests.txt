@@ -1,11 +1,9 @@
 tests/ui/allocator/no_std-alloc-error-handler-custom.rs
 tests/ui/allocator/no_std-alloc-error-handler-default.rs
 tests/ui/asm/may_unwind.rs
-tests/ui/asm/x86_64/multiple-clobber-abi.rs
 tests/ui/functions-closures/parallel-codegen-closures.rs
 tests/ui/linkage-attr/linkage1.rs
 tests/ui/lto/dylib-works.rs
-tests/ui/numbers-arithmetic/saturating-float-casts.rs
 tests/ui/sepcomp/sepcomp-cci.rs
 tests/ui/sepcomp/sepcomp-extern.rs
 tests/ui/sepcomp/sepcomp-fns-backwards.rs
@@ -33,7 +31,6 @@ tests/ui/unwind-no-uwtable.rs
 tests/ui/parser/unclosed-delimiter-in-dep.rs
 tests/ui/consts/missing_span_in_backtrace.rs
 tests/ui/drop/dynamic-drop.rs
-tests/ui/issues/issue-40883.rs
 tests/ui/issues/issue-43853.rs
 tests/ui/issues/issue-47364.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/assert-without-captures-does-not-create-unnecessary-code.rs
@@ -102,14 +99,12 @@ tests/ui/codegen/equal-pointers-unequal/as-cast/basic.rs
 tests/ui/codegen/equal-pointers-unequal/as-cast/inline1.rs
 tests/ui/codegen/equal-pointers-unequal/as-cast/print.rs
 tests/ui/codegen/equal-pointers-unequal/as-cast/inline2.rs
-tests/ui/codegen/equal-pointers-unequal/as-cast/print3.rs
 tests/ui/codegen/equal-pointers-unequal/as-cast/segfault.rs
 tests/ui/codegen/equal-pointers-unequal/exposed-provenance/function.rs
 tests/ui/codegen/equal-pointers-unequal/exposed-provenance/basic.rs
 tests/ui/codegen/equal-pointers-unequal/as-cast/zero.rs
 tests/ui/codegen/equal-pointers-unequal/exposed-provenance/inline1.rs
 tests/ui/codegen/equal-pointers-unequal/exposed-provenance/print.rs
-tests/ui/codegen/equal-pointers-unequal/exposed-provenance/print3.rs
 tests/ui/codegen/equal-pointers-unequal/exposed-provenance/inline2.rs
 tests/ui/codegen/equal-pointers-unequal/exposed-provenance/segfault.rs
 tests/ui/codegen/equal-pointers-unequal/exposed-provenance/zero.rs
@@ -117,8 +112,9 @@ tests/ui/codegen/equal-pointers-unequal/strict-provenance/basic.rs
 tests/ui/codegen/equal-pointers-unequal/strict-provenance/function.rs
 tests/ui/codegen/equal-pointers-unequal/strict-provenance/print.rs
 tests/ui/codegen/equal-pointers-unequal/strict-provenance/inline1.rs
-tests/ui/codegen/equal-pointers-unequal/strict-provenance/print3.rs
 tests/ui/codegen/equal-pointers-unequal/strict-provenance/inline2.rs
 tests/ui/codegen/equal-pointers-unequal/strict-provenance/segfault.rs
 tests/ui/codegen/equal-pointers-unequal/strict-provenance/zero.rs
 tests/ui/simd/simd-bitmask-notpow2.rs
+tests/ui/codegen/StackColoring-not-blowup-stack-issue-40883.rs
+tests/ui/uninhabited/uninhabited-transparent-return-abi.rs

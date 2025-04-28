@@ -48,9 +48,8 @@ pub struct f64x8([f64; 8]);
 #[repr(simd)]
 pub struct m64x8([i64; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
-}
+#[rustc_intrinsic]
+unsafe fn simd_select<M, V>(mask: M, a: V, b: V) -> V;
 
 // CHECK-LABEL: select_i8x16
 #[no_mangle]
@@ -100,8 +99,10 @@ pub unsafe extern "C" fn select_f64x2(mask: m64x2, a: f64x2, b: f64x2) -> f64x2 
     simd_select(mask, a, b)
 }
 
-// CHECK-LABEL: select_f64x4
+// x86-avx2-LABEL: select_f64x4
+// x86-avx512-LABEL: select_f64x4
 #[no_mangle]
+#[cfg(any(x86_avx2, x86_avx512))]
 pub unsafe extern "C" fn select_f64x4(mask: m64x4, a: f64x4, b: f64x4) -> f64x4 {
     // The parameter is a 256 bit vector which in the C abi is only valid for avx targets.
     //
@@ -114,8 +115,9 @@ pub unsafe extern "C" fn select_f64x4(mask: m64x4, a: f64x4, b: f64x4) -> f64x4 
     simd_select(mask, a, b)
 }
 
-// CHECK-LABEL: select_f64x8
+// x86-avx512-LABEL: select_f64x8
 #[no_mangle]
+#[cfg(x86_avx512)]
 pub unsafe extern "C" fn select_f64x8(mask: m64x8, a: f64x8, b: f64x8) -> f64x8 {
     // The parameter is a 256 bit vector which in the C abi is only valid for avx512 targets.
     //

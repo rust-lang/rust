@@ -177,7 +177,7 @@ fn to_selection<'tcx>(
         },
         ProbeKind::NormalizedSelfTyAssembly
         | ProbeKind::UnsizeAssembly
-        | ProbeKind::UpcastProjectionCompatibility
+        | ProbeKind::ProjectionCompatibility
         | ProbeKind::OpaqueTypeStorageLookup { result: _ }
         | ProbeKind::Root { result: _ }
         | ProbeKind::ShadowedEnvProbing

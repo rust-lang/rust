@@ -7,8 +7,8 @@ platform.
 
 ## Target maintainers
 
-- Riccardo D'Ambrosio, https://github.com/RDambrosio016
-- Kjetil Kjeka, https://github.com/kjetilkjeka
+[@RDambrosio016](https://github.com/RDambrosio016)
+[@kjetilkjeka](https://github.com/kjetilkjeka)
 
 <!-- FIXME: fill this out
 
@@ -32,7 +32,7 @@ What format do binaries use by default? ELF, PE, something else?
 ## Building the target
 
 If Rust doesn't build the target by default, how can users build it? Can users
-just add it to the `target` list in `config.toml`?
+just add it to the `target` list in `bootstrap.toml`?
 
 ## Building Rust programs
 

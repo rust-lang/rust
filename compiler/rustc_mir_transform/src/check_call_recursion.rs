@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::{self, BasicBlock, BasicBlocks, Body, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, GenericArg, GenericArgs, Instance, Ty, TyCtxt};
@@ -44,8 +45,7 @@ impl<'tcx> MirLint<'tcx> for CheckDropRecursion {
         if let DefKind::AssocFn = tcx.def_kind(def_id)
         && let Some(trait_ref) =
             tcx.impl_of_method(def_id.to_def_id()).and_then(|def_id| tcx.impl_trait_ref(def_id))
-        && let Some(drop_trait) = tcx.lang_items().drop_trait()
-        && drop_trait == trait_ref.instantiate_identity().def_id
+        && tcx.is_lang_item(trait_ref.instantiate_identity().def_id, LangItem::Drop)
         // avoid erroneous `Drop` impls from causing ICEs below
         && let sig = tcx.fn_sig(def_id).instantiate_identity()
         && sig.inputs().skip_binder().len() == 1

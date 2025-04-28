@@ -31,9 +31,9 @@ mod cargo;
 mod tests;
 
 /// Builds and performs different [`Self::kind`]s of stuff and actions, taking
-/// into account build configuration from e.g. config.toml.
+/// into account build configuration from e.g. bootstrap.toml.
 pub struct Builder<'a> {
-    /// Build configuration from e.g. config.toml.
+    /// Build configuration from e.g. bootstrap.toml.
     pub build: &'a Build,
 
     /// The stage to use. Either implicitly determined based on subcommand, or
@@ -101,13 +101,13 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Primary function to implement `Step` logic.
     ///
     /// This function can be triggered in two ways:
-    ///     1. Directly from [`Builder::execute_cli`].
-    ///     2. Indirectly by being called from other `Step`s using [`Builder::ensure`].
+    /// 1. Directly from [`Builder::execute_cli`].
+    /// 2. Indirectly by being called from other `Step`s using [`Builder::ensure`].
     ///
-    /// When called with [`Builder::execute_cli`] (as done by `Build::build`), this function executed twice:
-    ///     - First in "dry-run" mode to validate certain things (like cyclic Step invocations,
-    ///         directory creation, etc) super quickly.
-    ///     - Then it's called again to run the actual, very expensive process.
+    /// When called with [`Builder::execute_cli`] (as done by `Build::build`), this function is executed twice:
+    /// - First in "dry-run" mode to validate certain things (like cyclic Step invocations,
+    ///   directory creation, etc) super quickly.
+    /// - Then it's called again to run the actual, very expensive process.
     ///
     /// When triggered indirectly from other `Step`s, it may still run twice (as dry-run and real mode)
     /// depending on the `Step::run` implementation of the caller.
@@ -332,7 +332,7 @@ impl PathSet {
 }
 
 const PATH_REMAP: &[(&str, &[&str])] = &[
-    // config.toml uses `rust-analyzer-proc-macro-srv`, but the
+    // bootstrap.toml uses `rust-analyzer-proc-macro-srv`, but the
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
@@ -895,7 +895,6 @@ impl<'a> Builder<'a> {
                 tool::RemoteTestClient,
                 tool::RustInstaller,
                 tool::Cargo,
-                tool::Rls,
                 tool::RustAnalyzer,
                 tool::RustAnalyzerProcMacroSrv,
                 tool::Rustdoc,
@@ -938,7 +937,6 @@ impl<'a> Builder<'a> {
                 clippy::OptDist,
                 clippy::RemoteTestClient,
                 clippy::RemoteTestServer,
-                clippy::Rls,
                 clippy::RustAnalyzer,
                 clippy::Rustdoc,
                 clippy::Rustfmt,
@@ -956,7 +954,6 @@ impl<'a> Builder<'a> {
                 check::Miri,
                 check::CargoMiri,
                 check::MiroptTestTools,
-                check::Rls,
                 check::Rustfmt,
                 check::RustAnalyzer,
                 check::TestFloatParse,
@@ -1071,7 +1068,6 @@ impl<'a> Builder<'a> {
                 dist::Analysis,
                 dist::Src,
                 dist::Cargo,
-                dist::Rls,
                 dist::RustAnalyzer,
                 dist::Rustfmt,
                 dist::Clippy,
@@ -1280,7 +1276,6 @@ impl<'a> Builder<'a> {
             ),
         ),
     )]
-
     /// FIXME: This function is unnecessary (and dangerous, see <https://github.com/rust-lang/rust/issues/137469>).
     /// We already have uplifting logic for the compiler, so remove this.
     pub fn compiler_for(
@@ -1289,7 +1284,6 @@ impl<'a> Builder<'a> {
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        #![allow(clippy::let_and_return)]
         let mut resolved_compiler = if self.build.force_use_stage2(stage) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
             self.compiler(2, self.config.build)
@@ -1485,7 +1479,7 @@ impl<'a> Builder<'a> {
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
         cmd
     }
 

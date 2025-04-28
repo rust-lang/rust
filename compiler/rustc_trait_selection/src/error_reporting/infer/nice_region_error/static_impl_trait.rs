@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
-    LifetimeName, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
+    LifetimeKind, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
@@ -165,7 +165,7 @@ pub fn suggest_new_region_bound(
 
                 if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
                     GenericBound::Outlives(Lifetime {
-                        res: LifetimeName::Static, ident, ..
+                        kind: LifetimeKind::Static, ident, ..
                     }) => Some(ident.span),
                     _ => None,
                 }) {
@@ -253,7 +253,7 @@ pub fn suggest_new_region_bound(
                 }
             }
             TyKind::TraitObject(_, lt) => {
-                if let LifetimeName::ImplicitObjectLifetimeDefault = lt.res {
+                if let LifetimeKind::ImplicitObjectLifetimeDefault = lt.kind {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
                         format!("{declare} the trait object {captures}, {explicit}",),
@@ -365,7 +365,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 // obligation comes from the `impl`. Find that `impl` so that we can point
                 // at it in the suggestion.
                 let trait_did = trait_id.to_def_id();
-                tcx.hir_trait_impls(trait_did).iter().find_map(|&impl_did| {
+                tcx.local_trait_impls(trait_did).iter().find_map(|&impl_did| {
                     if let Node::Item(Item {
                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }), ..
                     }) = tcx.hir_node_by_def_id(impl_did)
@@ -414,7 +414,7 @@ pub struct HirTraitObjectVisitor<'a>(pub &'a mut Vec<Span>, pub DefId);
 impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) {
         if let TyKind::TraitObject(poly_trait_refs, lifetime_ptr) = t.kind
-            && let Lifetime { res: LifetimeName::ImplicitObjectLifetimeDefault, .. } =
+            && let Lifetime { kind: LifetimeKind::ImplicitObjectLifetimeDefault, .. } =
                 lifetime_ptr.pointer()
         {
             for ptr in poly_trait_refs {

@@ -1,34 +1,34 @@
-error[E0736]: attribute incompatible with `#[naked]`
-  --> $DIR/naked-functions-inline.rs:13:1
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/naked-functions-inline.rs:12:1
    |
-LL | #[naked]
-   | -------- function marked with `#[naked]` here
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
 LL | #[inline]
-   | ^^^^^^^^^ the `inline` attribute is incompatible with `#[naked]`
+   | ^^^^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
-error[E0736]: attribute incompatible with `#[naked]`
-  --> $DIR/naked-functions-inline.rs:20:1
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/naked-functions-inline.rs:19:1
    |
-LL | #[naked]
-   | -------- function marked with `#[naked]` here
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
 LL | #[inline(always)]
-   | ^^^^^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[naked]`
+   | ^^^^^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
-error[E0736]: attribute incompatible with `#[naked]`
-  --> $DIR/naked-functions-inline.rs:27:1
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/naked-functions-inline.rs:26:1
    |
-LL | #[naked]
-   | -------- function marked with `#[naked]` here
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
 LL | #[inline(never)]
-   | ^^^^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[naked]`
+   | ^^^^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
-error[E0736]: attribute incompatible with `#[naked]`
-  --> $DIR/naked-functions-inline.rs:34:19
+error[E0736]: attribute incompatible with `#[unsafe(naked)]`
+  --> $DIR/naked-functions-inline.rs:33:19
    |
-LL | #[naked]
-   | -------- function marked with `#[naked]` here
+LL | #[unsafe(naked)]
+   | ---------------- function marked with `#[unsafe(naked)]` here
 LL | #[cfg_attr(all(), inline(never))]
-   |                   ^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[naked]`
+   |                   ^^^^^^^^^^^^^ the `inline` attribute is incompatible with `#[unsafe(naked)]`
 
 error: aborting due to 4 previous errors
 

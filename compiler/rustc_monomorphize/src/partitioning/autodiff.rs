@@ -2,7 +2,7 @@ use rustc_ast::expand::autodiff_attrs::{AutoDiffItem, DiffActivity};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 use rustc_symbol_mangling::symbol_name_for_instance_in_crate;
 use tracing::{debug, trace};
 
@@ -12,39 +12,61 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
     if !matches!(fn_ty.kind(), ty::FnDef(..)) {
         bug!("expected fn def for autodiff, got {:?}", fn_ty);
     }
-    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
 
-    // If rustc compiles the unmodified primal, we know that this copy of the function
-    // also has correct lifetimes. We know that Enzyme won't free the shadow too early
-    // (or actually at all), so let's strip lifetimes when computing the layout.
-    let x = tcx.instantiate_bound_regions_with_erased(fnc_binder);
+    // We don't actually pass the types back into the type system.
+    // All we do is decide how to handle the arguments.
+    let sig = fn_ty.fn_sig(tcx).skip_binder();
+
     let mut new_activities = vec![];
     let mut new_positions = vec![];
-    for (i, ty) in x.inputs().iter().enumerate() {
+    for (i, ty) in sig.inputs().iter().enumerate() {
         if let Some(inner_ty) = ty.builtin_deref(true) {
-            if ty.is_fn_ptr() {
-                // FIXME(ZuseZ4): add a nicer error, or just figure out how to support them,
-                // since Enzyme itself can handle them.
-                tcx.dcx().err("function pointers are currently not supported in autodiff");
-            }
             if inner_ty.is_slice() {
+                // Now we need to figure out the size of each slice element in memory to allow
+                // safety checks and usability improvements in the backend.
+                let sty = match inner_ty.builtin_index() {
+                    Some(sty) => sty,
+                    None => {
+                        panic!("slice element type unknown");
+                    }
+                };
+                let pci = PseudoCanonicalInput {
+                    typing_env: TypingEnv::fully_monomorphized(),
+                    value: sty,
+                };
+
+                let layout = tcx.layout_of(pci);
+                let elem_size = match layout {
+                    Ok(layout) => layout.size,
+                    Err(_) => {
+                        bug!("autodiff failed to compute slice element size");
+                    }
+                };
+                let elem_size: u32 = elem_size.bytes() as u32;
+
                 // We know that the length will be passed as extra arg.
                 if !da.is_empty() {
                     // We are looking at a slice. The length of that slice will become an
                     // extra integer on llvm level. Integers are always const.
                     // However, if the slice get's duplicated, we want to know to later check the
                     // size. So we mark the new size argument as FakeActivitySize.
+                    // There is one FakeActivitySize per slice, so for convenience we store the
+                    // slice element size in bytes in it. We will use the size in the backend.
                     let activity = match da[i] {
                         DiffActivity::DualOnly
                         | DiffActivity::Dual
+                        | DiffActivity::Dualv
                         | DiffActivity::DuplicatedOnly
-                        | DiffActivity::Duplicated => DiffActivity::FakeActivitySize,
+                        | DiffActivity::Duplicated => {
+                            DiffActivity::FakeActivitySize(Some(elem_size))
+                        }
                         DiffActivity::Const => DiffActivity::Const,
                         _ => bug!("unexpected activity for ptr/ref"),
                     };
                     new_activities.push(activity);
                     new_positions.push(i + 1);
                 }
+
                 continue;
             }
         }

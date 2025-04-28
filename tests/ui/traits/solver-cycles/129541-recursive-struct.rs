@@ -4,7 +4,6 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[unique_next] compile-flags: -Znext-solver
 //@[multiple_next] compile-flags: -Znext-solver
-//@ error-pattern: reached the recursion limit finding the struct tail for `<[Hello] as Normalize>::Assoc`
 
 trait Bound {}
 trait Normalize {
@@ -25,3 +24,5 @@ struct Hello {
 }
 
 fn main() {}
+
+//~? ERROR reached the recursion limit finding the struct tail for `<[Hello] as Normalize>::Assoc`

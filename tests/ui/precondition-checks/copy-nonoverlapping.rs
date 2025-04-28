@@ -3,6 +3,8 @@
 //@ error-pattern: unsafe precondition(s) violated: ptr::copy_nonoverlapping requires
 //@ revisions: null_src null_dst misaligned_src misaligned_dst overlapping
 
+#![allow(invalid_null_arguments)]
+
 use std::ptr;
 
 fn main() {

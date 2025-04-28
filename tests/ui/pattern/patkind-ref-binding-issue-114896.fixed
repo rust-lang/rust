@@ -5,6 +5,6 @@ fn main() {
     fn x(a: &char) {
         let &(mut b) = a;
         b.make_ascii_uppercase();
-//~^ cannot borrow `b` as mutable, as it is not declared as mutable
+        //~^ ERROR cannot borrow `b` as mutable, as it is not declared as mutable
     }
 }

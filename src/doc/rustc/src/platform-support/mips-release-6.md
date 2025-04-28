@@ -16,10 +16,10 @@ The target name follow this format: `<machine>-<vendor>-<os><abi_suffix>`, where
 
 ## Target Maintainers
 
-- [Xuan Chen](https://github.com/chenx97) <henry.chen@oss.cipunited.com>
-- [Walter Ji](https://github.com/709924470) <walter.ji@oss.cipunited.com>
-- [Xinhui Yang](https://github.com/Cyanoxygen) <cyan@oss.cipunited.com>
-- [Lain Yang](https://github.com/Fearyncess) <lain.yang@oss.cipunited.com>
+[@chenx97](https://github.com/chenx97)
+[@709924470](https://github.com/709924470)
+[@Cyanoxygen](https://github.com/Cyanoxygen)
+[@Fearyncess](https://github.com/Fearyncess)
 
 ## Requirements
 
@@ -67,7 +67,7 @@ The following procedure outlines the build process for the MIPS64 R6 target with
 
 ### Prerequisite: Disable debuginfo
 
-An LLVM bug makes rustc crash if debug or debug info generation is enabled. You need to edit `config.toml` to disable this:
+An LLVM bug makes rustc crash if debug or debug info generation is enabled. You need to edit `bootstrap.toml` to disable this:
 
 ```toml
 [rust]
@@ -83,7 +83,7 @@ The crate `rustix` may try to link itself against MIPS R2 assembly, resulting in
 export RUSTFLAGS="--cfg rustix_use_libc"
 ```
 
-This will trigger warnings during build, as `-D warnings` is enabled by default. Disable `-D warnings` by editing `config.toml` to append the following:
+This will trigger warnings during build, as `-D warnings` is enabled by default. Disable `-D warnings` by editing `bootstrap.toml` to append the following:
 
 ```toml
 [rust]
@@ -116,7 +116,7 @@ target = ["mipsisa64r6el-unknown-linux-gnuabi64"]
 
 Make sure that `mipsisa64r6el-unknown-linux-gnuabi64-gcc` is available from your executable search path (`$PATH`).
 
-Alternatively, you can specify the directories to all necessary toolchain executables in `config.toml`:
+Alternatively, you can specify the directories to all necessary toolchain executables in `bootstrap.toml`:
 
 ```toml
 [target.mipsisa64r6el-unknown-linux-gnuabi64]

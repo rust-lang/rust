@@ -1,6 +1,6 @@
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, ExternAbi, HasDataLayout, Primitive, Reg, RegKind,
-    TyAbiInterface, TyAndLayout,
+    AddressSpace, Align, BackendRepr, HasDataLayout, Primitive, Reg, RegKind, TyAbiInterface,
+    TyAndLayout,
 };
 
 use crate::callconv::{ArgAttribute, FnAbi, PassMode};
@@ -104,7 +104,7 @@ where
             let byval_align = if arg.layout.align.abi < align_4 {
                 // (1.)
                 align_4
-            } else if t.is_like_osx && contains_vector(cx, arg.layout) {
+            } else if t.is_like_darwin && contains_vector(cx, arg.layout) {
                 // (3.)
                 align_16
             } else {
@@ -193,7 +193,7 @@ pub(crate) fn fill_inregs<'a, Ty, C>(
     }
 }
 
-pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, abi: ExternAbi)
+pub(crate) fn compute_rust_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
@@ -201,10 +201,7 @@ where
     // Avoid returning floats in x87 registers on x86 as loading and storing from x87
     // registers will quiet signalling NaNs. Also avoid using SSE registers since they
     // are not always available (depending on target features).
-    if !fn_abi.ret.is_ignore()
-        // Intrinsics themselves are not "real" functions, so theres no need to change their ABIs.
-        && abi != ExternAbi::RustIntrinsic
-    {
+    if !fn_abi.ret.is_ignore() {
         let has_float = match fn_abi.ret.layout.backend_repr {
             BackendRepr::Scalar(s) => matches!(s.primitive(), Primitive::Float(_)),
             BackendRepr::ScalarPair(s1, s2) => {

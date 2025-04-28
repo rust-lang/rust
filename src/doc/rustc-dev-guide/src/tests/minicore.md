@@ -6,24 +6,36 @@
 ui/codegen/assembly test suites. It provides `core` stubs for tests that need to
 build for cross-compiled targets but do not need/want to run.
 
-A test can use [`minicore`] by specifying the `//@ add-core-stubs` directive.
-Then, mark the test with `#![feature(no_core)]` + `#![no_std]` + `#![no_core]`.
-Due to Edition 2015 extern prelude rules, you will probably need to declare
-`minicore` as an extern crate.
-
-Due to the `no_std` + `no_core` nature of these tests, `//@ add-core-stubs`
-implies and requires that the test will be built with `-C panic=abort`.
-Unwinding panics are not supported.
-
-If you find a `core` item to be missing from the [`minicore`] stub, consider
-adding it to the test auxiliary if it's likely to be used or is already needed
-by more than one test.
-
 <div class="warning">
 Please note that [`minicore`] is only intended for `core` items, and explicitly
 **not** `std` or `alloc` items because `core` items are applicable to a wider
 range of tests.
 </div>
+
+A test can use [`minicore`] by specifying the `//@ add-core-stubs` directive.
+Then, mark the test with `#![feature(no_core)]` + `#![no_std]` + `#![no_core]`.
+Due to Edition 2015 extern prelude rules, you will probably need to declare
+`minicore` as an extern crate.
+
+## Implied compiler flags
+
+Due to the `no_std` + `no_core` nature of these tests, `//@ add-core-stubs`
+implies and requires that the test will be built with `-C panic=abort`.
+**Unwinding panics are not supported.**
+
+Tests will also be built with `-C force-unwind-tables=yes` to preserve CFI
+directives in assembly tests.
+
+TL;DR: `//@ add-core-stubs` implies two compiler flags:
+
+1. `-C panic=abort`
+2. `-C force-unwind-tables=yes`
+
+## Adding more `core` stubs
+
+If you find a `core` item to be missing from the [`minicore`] stub, consider
+adding it to the test auxiliary if it's likely to be used or is already needed
+by more than one test.
 
 ## Example codegen test that uses `minicore`
 

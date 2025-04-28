@@ -7,6 +7,7 @@ auto trait Trait {}
 impl Trait for Alias {}
 //~^ ERROR traits with a default impl, like `Trait`, cannot be implemented for type alias `Alias`
 
+#[define_opaque(Alias)]
 fn _def() -> Alias {
     (42, 42)
 }

@@ -8,7 +8,8 @@ impl<T: Fn(i32)> SuperExpectation for T {}
 
 type Foo = impl SuperExpectation;
 
-fn bop(_: Foo) {
+#[define_opaque(Foo)]
+fn bop() {
     let _: Foo = |x| {
         let _ = x.to_string();
     };

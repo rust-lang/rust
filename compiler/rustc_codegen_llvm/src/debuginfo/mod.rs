@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::{iter, ptr};
 
 use libc::c_uint;
+use metadata::create_subroutine_type;
 use rustc_abi::Size;
 use rustc_codegen_ssa::debuginfo::type_names;
 use rustc_codegen_ssa::mir::debuginfo::VariableKind::*;
@@ -34,8 +35,8 @@ use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope, DIType,
-    DIVariable,
+    DIArray, DIBuilderBox, DIFile, DIFlags, DILexicalBlock, DILocation, DISPFlags, DIScope,
+    DITemplateTypeParameter, DIType, DIVariable,
 };
 use crate::value::Value;
 
@@ -65,6 +66,7 @@ pub(crate) struct CodegenUnitDebugContext<'ll, 'tcx> {
     created_files: RefCell<UnordMap<Option<(StableSourceFileId, SourceFileHash)>, &'ll DIFile>>,
 
     type_map: metadata::TypeMap<'ll, 'tcx>,
+    adt_stack: RefCell<Vec<(DefId, GenericArgsRef<'tcx>)>>,
     namespace_map: RefCell<DefIdMap<&'ll DIScope>>,
     recursion_marker_type: OnceCell<&'ll DIType>,
 }
@@ -79,6 +81,7 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
             builder,
             created_files: Default::default(),
             type_map: Default::default(),
+            adt_stack: Default::default(),
             namespace_map: RefCell::new(Default::default()),
             recursion_marker_type: OnceCell::new(),
         }
@@ -251,7 +254,7 @@ struct DebugLoc {
     col: u32,
 }
 
-impl CodegenCx<'_, '_> {
+impl<'ll> CodegenCx<'ll, '_> {
     /// Looks up debug source information about a `BytePos`.
     // FIXME(eddyb) rename this to better indicate it's a duplicate of
     // `lookup_char_pos` rather than `dbg_loc`, perhaps by making
@@ -277,6 +280,22 @@ impl CodegenCx<'_, '_> {
             DebugLoc { file, line, col: UNKNOWN_COLUMN_NUMBER }
         } else {
             DebugLoc { file, line, col }
+        }
+    }
+
+    fn create_template_type_parameter(
+        &self,
+        name: &str,
+        actual_type_metadata: &'ll DIType,
+    ) -> &'ll DITemplateTypeParameter {
+        unsafe {
+            llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                DIB(self),
+                None,
+                name.as_c_char_ptr(),
+                name.len(),
+                actual_type_metadata,
+            )
         }
     }
 }
@@ -325,10 +344,8 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
-        let function_type_metadata = unsafe {
-            let fn_signature = get_function_signature(self, fn_abi);
-            llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), fn_signature)
-        };
+        let function_type_metadata =
+            create_subroutine_type(self, get_function_signature(self, fn_abi));
 
         let mut name = String::with_capacity(64);
         type_names::push_item_name(tcx, def_id, false, &mut name);
@@ -483,16 +500,10 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         kind.as_type().map(|ty| {
                             let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                             let actual_type_metadata = type_di_node(cx, actual_type);
-                            let name = name.as_str();
-                            unsafe {
-                                Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                                    DIB(cx),
-                                    None,
-                                    name.as_c_char_ptr(),
-                                    name.len(),
-                                    actual_type_metadata,
-                                ))
-                            }
+                            Some(cx.create_template_type_parameter(
+                                name.as_str(),
+                                actual_type_metadata,
+                            ))
                         })
                     })
                     .collect()

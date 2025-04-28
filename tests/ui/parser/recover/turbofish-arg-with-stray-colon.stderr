@@ -4,7 +4,6 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, fo
 LL |     let x = Tr<A, A:>;
    |                 ^ expected one of 8 possible tokens
    |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 help: maybe write a path separator here
    |
 LL |     let x = Tr<A, A::>;

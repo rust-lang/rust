@@ -3,13 +3,12 @@ use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::LazyLock;
 
-use rustc_ast::{self as ast, DelimArgs};
+use rustc_ast as ast;
 use rustc_attr_data_structures::AttributeKind;
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::Features;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId};
 use rustc_session::Session;
-use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
@@ -221,7 +220,7 @@ impl<'sess> AttributeParser<'sess> {
             // if we're only looking for a single attribute,
             // skip all the ones we don't care about
             if let Some(expected) = self.parse_only {
-                if attr.name_or_empty() != expected {
+                if !attr.has_name(expected) {
                     continue;
                 }
             }
@@ -231,7 +230,7 @@ impl<'sess> AttributeParser<'sess> {
             // that's expanded right? But no, sometimes, when parsing attributes on macros,
             // we already use the lowering logic and these are still there. So, when `omit_doc`
             // is set we *also* want to ignore these
-            if omit_doc == OmitDoc::Skip && attr.name_or_empty() == sym::doc {
+            if omit_doc == OmitDoc::Skip && attr.has_name(sym::doc) {
                 continue;
             }
 
@@ -249,7 +248,7 @@ impl<'sess> AttributeParser<'sess> {
                     }))
                 }
                 // // FIXME: make doc attributes go through a proper attribute parser
-                // ast::AttrKind::Normal(n) if n.name_or_empty() == sym::doc => {
+                // ast::AttrKind::Normal(n) if n.has_name(sym::doc) => {
                 //     let p = GenericMetaItemParser::from_attr(&n, self.dcx());
                 //
                 //     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
@@ -316,11 +315,7 @@ impl<'sess> AttributeParser<'sess> {
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {
         match args {
             ast::AttrArgs::Empty => AttrArgs::Empty,
-            ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(DelimArgs {
-                dspan: args.dspan,
-                delim: args.delim,
-                tokens: args.tokens.flattened(),
-            }),
+            ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(args.clone()),
             // This is an inert key-value attribute - it will never be visible to macros
             // after it gets lowered to HIR. Therefore, we can extract literals to handle
             // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
@@ -338,7 +333,7 @@ impl<'sess> AttributeParser<'sess> {
                         "expr in place where literal is expected (builtin attr parsing)",
                     );
                     ast::MetaItemLit {
-                        symbol: kw::Empty,
+                        symbol: sym::dummy,
                         suffix: None,
                         kind: ast::LitKind::Err(guar),
                         span: DUMMY_SP,

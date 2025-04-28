@@ -40,6 +40,8 @@ pub enum ProjectionKind {
 
     /// A conversion from an opaque type to its hidden type so we can
     /// do further projections on it.
+    ///
+    /// This is unused if `-Znext-solver` is enabled.
     OpaqueCast,
 }
 
@@ -53,7 +55,10 @@ pub struct Projection<'tcx> {
     pub kind: ProjectionKind,
 }
 
-/// A `Place` represents how a value is located in memory.
+/// A `Place` represents how a value is located in memory. This does not
+/// always correspond to a syntactic place expression. For example, when
+/// processing a pattern, a `Place` can be used to refer to the sub-value
+/// currently being inspected.
 ///
 /// This is an HIR version of [`rustc_middle::mir::Place`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
@@ -67,7 +72,10 @@ pub struct Place<'tcx> {
     pub projections: Vec<Projection<'tcx>>,
 }
 
-/// A `PlaceWithHirId` represents how a value is located in memory.
+/// A `PlaceWithHirId` represents how a value is located in memory. This does not
+/// always correspond to a syntactic place expression. For example, when
+/// processing a pattern, a `Place` can be used to refer to the sub-value
+/// currently being inspected.
 ///
 /// This is an HIR version of [`rustc_middle::mir::Place`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]

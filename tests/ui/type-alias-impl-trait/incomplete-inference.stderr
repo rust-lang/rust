@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/incomplete-inference.rs:6:5
+  --> $DIR/incomplete-inference.rs:7:5
    |
 LL |     None
    |     ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`

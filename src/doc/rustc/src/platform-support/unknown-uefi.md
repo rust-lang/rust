@@ -13,8 +13,8 @@ Available targets:
 
 ## Target maintainers
 
-- David Rheinsberg ([@dvdhrm](https://github.com/dvdhrm))
-- Nicholas Bishop ([@nicholasbishop](https://github.com/nicholasbishop))
+[@dvdhrm](https://github.com/dvdhrm)
+[@nicholasbishop](https://github.com/nicholasbishop)
 
 ## Requirements
 
@@ -252,7 +252,7 @@ This section contains information on how to use std on UEFI.
 
 ### Build std
 The building std part is pretty much the same as the official [docs](https://rustc-dev-guide.rust-lang.org/getting-started.html).
-The linker that should be used is `rust-lld`. Here is a sample `config.toml`:
+The linker that should be used is `rust-lld`. Here is a sample `bootstrap.toml`:
 ```toml
 [rust]
 lld = true

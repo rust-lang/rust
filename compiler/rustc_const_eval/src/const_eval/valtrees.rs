@@ -256,7 +256,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
         Err(err) => {
             let did = cid.instance.def_id();
             let global_const_id = cid.display(tcx);
-            let span = tcx.hir().span_if_local(did);
+            let span = tcx.hir_span_if_local(did);
             match err {
                 ValTreeCreationError::NodesOverflow => {
                     let handled =

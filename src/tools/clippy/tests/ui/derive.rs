@@ -6,6 +6,8 @@
     dead_code
 )]
 #![warn(clippy::expl_impl_clone_on_copy)]
+#![expect(incomplete_features)] // `unsafe_fields` is incomplete for the time being
+#![feature(unsafe_fields)] // `clone()` cannot be derived automatically on unsafe fields
 
 
 #[derive(Copy)]
@@ -110,6 +112,21 @@ struct Packed<T>(T);
 impl<T: Copy> Clone for Packed<T> {
     fn clone(&self) -> Self {
         *self
+    }
+}
+
+fn issue14558() {
+    pub struct Valid {
+        pub unsafe actual: (),
+    }
+
+    unsafe impl Copy for Valid {}
+
+    impl Clone for Valid {
+        #[inline]
+        fn clone(&self) -> Self {
+            *self
+        }
     }
 }
 

@@ -13,7 +13,7 @@ Target triplets available so far:
 
 ## Target maintainers
 
-- Jeremy Soller ([@jackpot51](https://github.com/jackpot51))
+[@jackpot51](https://github.com/jackpot51)
 
 ## Requirements
 
@@ -27,7 +27,7 @@ Redox OS binaries use ELF as file format.
 
 ## Building the target
 
-You can build Rust with support for the targets by adding it to the `target` list in `config.toml`. In addition a copy of [relibc] needs to be present in the linker search path.
+You can build Rust with support for the targets by adding it to the `target` list in `bootstrap.toml`. In addition a copy of [relibc] needs to be present in the linker search path.
 
 ```toml
 [build]

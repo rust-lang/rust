@@ -1,5 +1,3 @@
-#![feature(precise_capturing_in_traits)]
-
 trait LifetimeParam<'a> {
     fn test() -> impl Sized;
 }

@@ -21,7 +21,6 @@ use std::ops::ControlFlow;
 
 use mir::mono::Instance;
 use mir::TerminatorKind::*;
-use rustc_smir::rustc_internal;
 use stable_mir::ty::{RigidTy, TyKind};
 use stable_mir::*;
 
@@ -88,7 +87,7 @@ fn test_body(body: mir::Body) {
 fn main() {
     let path = "instance_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-type=lib".to_string(),

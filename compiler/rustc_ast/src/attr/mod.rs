@@ -305,8 +305,8 @@ impl MetaItem {
         if let [PathSegment { ident, .. }] = self.path.segments[..] { Some(ident) } else { None }
     }
 
-    pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or_else(Ident::empty).name
+    pub fn name(&self) -> Option<Symbol> {
+        self.ident().map(|ident| ident.name)
     }
 
     pub fn has_name(&self, name: Symbol) -> bool {
@@ -416,10 +416,7 @@ impl MetaItem {
                 // This path is currently unreachable in the test suite.
                 unreachable!()
             }
-            Some(TokenTree::Token(
-                Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. },
-                _,
-            )) => {
+            Some(TokenTree::Token(Token { kind, .. }, _)) if kind.is_delim() => {
                 panic!("Should be `AttrTokenTree::Delimited`, not delim tokens: {:?}", tt);
             }
             _ => return None,
@@ -511,13 +508,14 @@ impl MetaItemInner {
         }
     }
 
-    /// For a single-segment meta item, returns its name; otherwise, returns `None`.
+    /// For a single-segment meta item, returns its identifier; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
         self.meta_item().and_then(|meta_item| meta_item.ident())
     }
 
-    pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or_else(Ident::empty).name
+    /// For a single-segment meta item, returns its name; otherwise, returns `None`.
+    pub fn name(&self) -> Option<Symbol> {
+        self.ident().map(|ident| ident.name)
     }
 
     /// Returns `true` if this list item is a MetaItem with a name of `name`.
@@ -566,6 +564,14 @@ impl MetaItemInner {
     pub fn lit(&self) -> Option<&MetaItemLit> {
         match self {
             MetaItemInner::Lit(lit) => Some(lit),
+            _ => None,
+        }
+    }
+
+    /// Returns the bool if `self` is a boolean `MetaItemInner::Literal`.
+    pub fn boolean_literal(&self) -> Option<bool> {
+        match self {
+            MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => Some(*b),
             _ => None,
         }
     }
@@ -619,7 +625,7 @@ pub fn mk_doc_comment(
     Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
 }
 
-pub fn mk_attr(
+fn mk_attr(
     g: &AttrIdGenerator,
     style: AttrStyle,
     unsafety: Safety,
@@ -730,9 +736,9 @@ pub trait AttributeExt: Debug {
     fn id(&self) -> AttrId;
 
     /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
-    /// return the name of the attribute, else return the empty identifier.
-    fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or_else(Ident::empty).name
+    /// return the name of the attribute; otherwise, returns `None`.
+    fn name(&self) -> Option<Symbol> {
+        self.ident().map(|ident| ident.name)
     }
 
     /// Get the meta item list, `#[attr(meta item list)]`
@@ -744,7 +750,7 @@ pub trait AttributeExt: Debug {
     /// Gets the span of the value literal, as string, when using `#[attr = value]`
     fn value_span(&self) -> Option<Span>;
 
-    /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    /// For a single-segment attribute, returns its ident; otherwise, returns `None`.
     fn ident(&self) -> Option<Ident>;
 
     /// Checks whether the path of this attribute matches the name.
@@ -760,6 +766,11 @@ pub trait AttributeExt: Debug {
     #[inline]
     fn has_name(&self, name: Symbol) -> bool {
         self.ident().map(|x| x.name == name).unwrap_or(false)
+    }
+
+    #[inline]
+    fn has_any_name(&self, names: &[Symbol]) -> bool {
+        names.iter().any(|&name| self.has_name(name))
     }
 
     /// get the span of the entire attribute
@@ -805,8 +816,8 @@ impl Attribute {
         AttributeExt::id(self)
     }
 
-    pub fn name_or_empty(&self) -> Symbol {
-        AttributeExt::name_or_empty(self)
+    pub fn name(&self) -> Option<Symbol> {
+        AttributeExt::name(self)
     }
 
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
@@ -836,6 +847,11 @@ impl Attribute {
     #[inline]
     pub fn has_name(&self, name: Symbol) -> bool {
         AttributeExt::has_name(self, name)
+    }
+
+    #[inline]
+    pub fn has_any_name(&self, names: &[Symbol]) -> bool {
+        AttributeExt::has_any_name(self, names)
     }
 
     pub fn span(&self) -> Span {

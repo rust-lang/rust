@@ -4,8 +4,8 @@
 use std::marker::PhantomData;
 
 struct UsesConst<const N: [u8; M], const M: usize>;
-//~^ ERROR: the type of const parameters must not depend on other generic parameters
+//~^ ERROR: const parameter types cannot reference parameters before they are declared
 struct UsesType<const N: [T; 2], T>(PhantomData<T>);
-//~^ ERROR: the type of const parameters must not depend on other generic parameters
+//~^ ERROR: const parameter types cannot reference parameters before they are declared
 
 fn main() {}

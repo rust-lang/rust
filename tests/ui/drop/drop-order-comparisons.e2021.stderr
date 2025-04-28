@@ -31,39 +31,23 @@ LL | |     }, e.mark(3), e.ok(4));
 note: `#3` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `#1` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `_v` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 note: the lint level is defined here
   --> $DIR/drop-order-comparisons.rs:28:25
@@ -95,21 +79,13 @@ LL | |     }, e.mark(1), e.ok(4));
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `#1` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 warning: relative drop order changing in Rust 2024
@@ -135,21 +111,13 @@ LL | |     }, e.mark(1), e.ok(4));
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `#1` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 warning: relative drop order changing in Rust 2024
@@ -175,21 +143,13 @@ LL | |     }, e.mark(2), e.ok(3));
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `#1` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 warning: relative drop order changing in Rust 2024
@@ -215,21 +175,13 @@ LL | |     }, e.mark(2), e.ok(3));
 note: `#2` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: `#1` invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: most of the time, changing drop order is harmless; inspect the `impl Drop`s for side effects like releasing locks or sending messages
 
 warning: `if let` assigns a shorter lifetime since Edition 2024
@@ -245,12 +197,8 @@ LL |     _ = (if let Ok(_) = e.ok(4).as_ref() {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:127:5
    |
@@ -279,12 +227,8 @@ LL |     _ = (if let Ok(_) = e.err(4).as_ref() {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:145:44
    |
@@ -312,12 +256,8 @@ LL |         if let Ok(_) = e.err(4).as_ref() {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:247:43
    |
@@ -345,12 +285,8 @@ LL |         if let true = e.err(9).is_ok() {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:352:41
    |
@@ -378,12 +314,8 @@ LL |         if let Ok(_v) = e.err(8) {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:355:35
    |
@@ -411,12 +343,8 @@ LL |         if let Ok(_) = e.err(7) {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:358:34
    |
@@ -444,12 +372,8 @@ LL |         if let Ok(_) = e.err(6).as_ref() {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:361:43
    |
@@ -477,12 +401,8 @@ LL |         if let Ok(_v) = e.err(5) {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:365:35
    |
@@ -510,12 +430,8 @@ LL |         if let Ok(_) = e.err(4) {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:368:34
    |
@@ -543,12 +459,8 @@ LL |         if let Ok(_) = e.err(4).as_ref() {} else {
 note: value invokes this custom destructor
   --> $DIR/drop-order-comparisons.rs:571:1
    |
-LL | / impl<'b> Drop for LogDrop<'b> {
-LL | |     fn drop(&mut self) {
-LL | |         self.0.mark(self.1);
-LL | |     }
-LL | | }
-   | |_^
+LL | impl<'b> Drop for LogDrop<'b> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: the value is now dropped here in Edition 2024
   --> $DIR/drop-order-comparisons.rs:404:43
    |

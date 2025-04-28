@@ -21,6 +21,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -28,7 +29,6 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
-#![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
@@ -79,6 +79,7 @@ mod types;
 mod unit_bindings;
 mod unqualified_local_imports;
 mod unused;
+mod utils;
 
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
@@ -123,11 +124,10 @@ use unused::*;
 
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
-pub use context::{
-    CheckLintNameResult, EarlyContext, FindLintError, LateContext, LintContext, LintStore,
-};
+pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
+pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{
@@ -603,6 +603,16 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see issue #127323 \
          <https://github.com/rust-lang/rust/issues/127323> for more information",
     );
+    store.register_removed(
+        "undefined_naked_function_abi",
+        "converted into hard error, see PR #139001 \
+         <https://github.com/rust-lang/rust/issues/139001> for more information",
+    );
+    store.register_removed(
+        "abi_unsupported_vector_types",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/116558> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -644,6 +654,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
             LintId::of(USAGE_OF_TYPE_IR_INHERENT),
+            LintId::of(USAGE_OF_TYPE_IR_TRAITS),
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
         ],

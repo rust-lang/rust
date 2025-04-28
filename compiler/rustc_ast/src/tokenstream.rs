@@ -23,9 +23,9 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 
-use crate::ast::{AttrStyle, StmtKind};
+use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasTokens};
-use crate::token::{self, Delimiter, InvisibleOrigin, Nonterminal, Token, TokenKind};
+use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
 
 /// Part of a `TokenStream`.
@@ -233,35 +233,52 @@ fn attrs_and_tokens_to_token_trees(
 
     // Insert inner attribute tokens.
     if !inner_attrs.is_empty() {
-        let mut found = false;
-        // Check the last two trees (to account for a trailing semi)
-        for tree in res.iter_mut().rev().take(2) {
-            if let TokenTree::Delimited(span, spacing, delim, delim_tokens) = tree {
-                // Inner attributes are only supported on extern blocks, functions,
-                // impls, and modules. All of these have their inner attributes
-                // placed at the beginning of the rightmost outermost braced group:
-                // e.g. fn foo() { #![my_attr] }
-                //
-                // Therefore, we can insert them back into the right location
-                // without needing to do any extra position tracking.
-                //
-                // Note: Outline modules are an exception - they can
-                // have attributes like `#![my_attr]` at the start of a file.
-                // Support for custom attributes in this position is not
-                // properly implemented - we always synthesize fake tokens,
-                // so we never reach this code.
+        let found = insert_inner_attrs(inner_attrs, res);
+        assert!(found, "Failed to find trailing delimited group in: {res:?}");
+    }
+
+    // Inner attributes are only supported on blocks, functions, impls, and
+    // modules. All of these have their inner attributes placed at the
+    // beginning of the rightmost outermost braced group:
+    // e.g. `fn foo() { #![my_attr] }`. (Note: the braces may be within
+    // invisible delimiters.)
+    //
+    // Therefore, we can insert them back into the right location without
+    // needing to do any extra position tracking.
+    //
+    // Note: Outline modules are an exception - they can have attributes like
+    // `#![my_attr]` at the start of a file. Support for custom attributes in
+    // this position is not properly implemented - we always synthesize fake
+    // tokens, so we never reach this code.
+    fn insert_inner_attrs(inner_attrs: &[Attribute], tts: &mut Vec<TokenTree>) -> bool {
+        for tree in tts.iter_mut().rev() {
+            if let TokenTree::Delimited(span, spacing, Delimiter::Brace, stream) = tree {
+                // Found it: the rightmost, outermost braced group.
                 let mut tts = vec![];
                 for inner_attr in inner_attrs {
                     tts.extend(inner_attr.token_trees());
                 }
-                tts.extend(delim_tokens.0.iter().cloned());
+                tts.extend(stream.0.iter().cloned());
                 let stream = TokenStream::new(tts);
-                *tree = TokenTree::Delimited(*span, *spacing, *delim, stream);
-                found = true;
-                break;
+                *tree = TokenTree::Delimited(*span, *spacing, Delimiter::Brace, stream);
+                return true;
+            } else if let TokenTree::Delimited(span, spacing, Delimiter::Invisible(src), stream) =
+                tree
+            {
+                // Recurse inside invisible delimiters.
+                let mut vec: Vec<_> = stream.iter().cloned().collect();
+                if insert_inner_attrs(inner_attrs, &mut vec) {
+                    *tree = TokenTree::Delimited(
+                        *span,
+                        *spacing,
+                        Delimiter::Invisible(*src),
+                        TokenStream::new(vec),
+                    );
+                    return true;
+                }
             }
         }
-        assert!(found, "Failed to find trailing delimited group in: {res:?}");
+        false
     }
 }
 
@@ -288,11 +305,6 @@ pub struct AttrsTarget {
 }
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
-///
-/// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
-/// instead of a representation of the abstract syntax tree.
-/// Today's `TokenTree`s can still contain AST via `token::Interpolated` for
-/// backwards compatibility.
 #[derive(Clone, Debug, Default, Encodable, Decodable)]
 pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
 
@@ -457,68 +469,6 @@ impl TokenStream {
         let mut tts = vec![];
         attrs_and_tokens_to_token_trees(node.attrs(), tokens, &mut tts);
         TokenStream::new(tts)
-    }
-
-    pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
-        match nt {
-            Nonterminal::NtItem(item) => TokenStream::from_ast(item),
-            Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
-            Nonterminal::NtStmt(stmt) if let StmtKind::Empty = stmt.kind => {
-                // FIXME: Properly collect tokens for empty statements.
-                TokenStream::token_alone(token::Semi, stmt.span)
-            }
-            Nonterminal::NtStmt(stmt) => TokenStream::from_ast(stmt),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
-        }
-    }
-
-    fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
-        match token.kind {
-            token::NtIdent(ident, is_raw) => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
-            }
-            token::NtLifetime(ident, is_raw) => TokenTree::Delimited(
-                DelimSpan::from_single(token.span),
-                DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
-                TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span),
-            ),
-            token::Interpolated(ref nt) => TokenTree::Delimited(
-                DelimSpan::from_single(token.span),
-                DelimSpacing::new(Spacing::JointHidden, spacing),
-                Delimiter::Invisible(InvisibleOrigin::FlattenToken),
-                TokenStream::from_nonterminal_ast(&nt).flattened(),
-            ),
-            _ => TokenTree::Token(token.clone(), spacing),
-        }
-    }
-
-    fn flatten_token_tree(tree: &TokenTree) -> TokenTree {
-        match tree {
-            TokenTree::Token(token, spacing) => TokenStream::flatten_token(token, *spacing),
-            TokenTree::Delimited(span, spacing, delim, tts) => {
-                TokenTree::Delimited(*span, *spacing, *delim, tts.flattened())
-            }
-        }
-    }
-
-    #[must_use]
-    pub fn flattened(&self) -> TokenStream {
-        fn can_skip(stream: &TokenStream) -> bool {
-            stream.iter().all(|tree| match tree {
-                TokenTree::Token(token, _) => !matches!(
-                    token.kind,
-                    token::NtIdent(..) | token::NtLifetime(..) | token::Interpolated(..)
-                ),
-                TokenTree::Delimited(.., inner) => can_skip(inner),
-            })
-        }
-
-        if can_skip(self) {
-            return self.clone();
-        }
-
-        self.iter().map(|tree| TokenStream::flatten_token_tree(tree)).collect()
     }
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return

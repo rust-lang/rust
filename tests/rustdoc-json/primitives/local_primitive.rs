@@ -11,11 +11,11 @@
 #[rustc_doc_primitive = "i32"]
 mod prim_i32 {}
 
-//@ set local_i32 = "$.index[*][?(@.name=='i32')].id"
+//@ set local_i32 = "$.index[?(@.name=='i32')].id"
 
-//@ has "$.index[*][?(@.name=='local_primitive')]"
-//@ ismany "$.index[*][?(@.name=='local_primitive')].inner.module.items[*]" $local_i32
-//@ is "$.index[*][?(@.name=='local_primitive')].links['prim@i32']" $local_i32
+//@ has "$.index[?(@.name=='local_primitive')]"
+//@ ismany "$.index[?(@.name=='local_primitive')].inner.module.items[*]" $local_i32
+//@ is "$.index[?(@.name=='local_primitive')].links['prim@i32']" $local_i32
 
 // Let's ensure the `prim_i32` module isn't present in the output JSON:
-//@ !has "$.index[*][?(@.name=='prim_i32')]"
+//@ !has "$.index[?(@.name=='prim_i32')]"

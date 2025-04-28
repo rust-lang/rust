@@ -53,3 +53,8 @@ mod paths {
 fn under_msrv() {
     let _err = std::io::Error::new(std::io::ErrorKind::Other, E);
 }
+
+pub fn issue14346(x: i32) -> std::io::Error {
+    std::io::Error::other(format!("{x}"))
+    //~^ ERROR: this can be `std::io::Error::other(_)`
+}

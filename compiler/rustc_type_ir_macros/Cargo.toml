@@ -13,6 +13,3 @@ quote = "1"
 syn = { version = "2.0.9", features = ["full"] }
 synstructure = "0.13.0"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

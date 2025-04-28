@@ -1,5 +1,5 @@
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:15:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:13:12
    |
 LL |     if let Pending = Pending::<()> {}
    |     -------^^^^^^^---------------- help: try: `if Pending::<()>.is_pending()`
@@ -8,49 +8,49 @@ LL |     if let Pending = Pending::<()> {}
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:18:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:16:12
    |
 LL |     if let Ready(_) = Ready(42) {}
    |     -------^^^^^^^^------------ help: try: `if Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:21:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:19:12
    |
 LL |     if let Ready(_) = Ready(42) {
    |     -------^^^^^^^^------------ help: try: `if Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:29:8
+  --> tests/ui/redundant_pattern_matching_poll.rs:27:8
    |
 LL |     if matches!(Ready(42), Ready(_)) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:33:8
+  --> tests/ui/redundant_pattern_matching_poll.rs:31:8
    |
 LL |     if matches!(Pending::<()>, Pending) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:36:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:34:15
    |
 LL |     while let Ready(_) = Ready(42) {}
    |     ----------^^^^^^^^------------ help: try: `while Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:39:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:37:15
    |
 LL |     while let Pending = Ready(42) {}
    |     ----------^^^^^^^------------ help: try: `while Ready(42).is_pending()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:42:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:40:15
    |
 LL |     while let Pending = Pending::<()> {}
    |     ----------^^^^^^^---------------- help: try: `while Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:49:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:47:5
    |
 LL | /     match Ready(42) {
 LL | |
@@ -60,7 +60,7 @@ LL | |     };
    | |_____^ help: try: `Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:55:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:53:5
    |
 LL | /     match Pending::<()> {
 LL | |
@@ -70,7 +70,7 @@ LL | |     };
    | |_____^ help: try: `Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:61:13
+  --> tests/ui/redundant_pattern_matching_poll.rs:59:13
    |
 LL |       let _ = match Pending::<()> {
    |  _____________^
@@ -81,49 +81,49 @@ LL | |     };
    | |_____^ help: try: `Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:68:20
+  --> tests/ui/redundant_pattern_matching_poll.rs:66:20
    |
 LL |     let _ = if let Ready(_) = poll { true } else { false };
    |             -------^^^^^^^^------- help: try: `if poll.is_ready()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:73:20
+  --> tests/ui/redundant_pattern_matching_poll.rs:71:20
    |
 LL |     let _ = if let Ready(_) = gen_poll() {
    |             -------^^^^^^^^------------- help: try: `if gen_poll().is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:76:19
+  --> tests/ui/redundant_pattern_matching_poll.rs:74:19
    |
 LL |     } else if let Pending = gen_poll() {
    |            -------^^^^^^^------------- help: try: `if gen_poll().is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:93:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:91:12
    |
 LL |     if let Ready(_) = Ready(42) {}
    |     -------^^^^^^^^------------ help: try: `if Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:96:12
+  --> tests/ui/redundant_pattern_matching_poll.rs:94:12
    |
 LL |     if let Pending = Pending::<()> {}
    |     -------^^^^^^^---------------- help: try: `if Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:99:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:97:15
    |
 LL |     while let Ready(_) = Ready(42) {}
    |     ----------^^^^^^^^------------ help: try: `while Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:102:15
+  --> tests/ui/redundant_pattern_matching_poll.rs:100:15
    |
 LL |     while let Pending = Pending::<()> {}
    |     ----------^^^^^^^---------------- help: try: `while Pending::<()>.is_pending()`
 
 error: redundant pattern matching, consider using `is_ready()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:105:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:103:5
    |
 LL | /     match Ready(42) {
 LL | |
@@ -133,7 +133,7 @@ LL | |     };
    | |_____^ help: try: `Ready(42).is_ready()`
 
 error: redundant pattern matching, consider using `is_pending()`
-  --> tests/ui/redundant_pattern_matching_poll.rs:111:5
+  --> tests/ui/redundant_pattern_matching_poll.rs:109:5
    |
 LL | /     match Pending::<()> {
 LL | |

@@ -3,9 +3,9 @@ use rustc_macros::HashStable;
 use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
 
-use crate::ty::visit::try_visit;
 use crate::ty::{
     self, FallibleTypeFolder, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
+    try_visit,
 };
 
 pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;

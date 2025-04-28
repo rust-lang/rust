@@ -102,7 +102,7 @@ fn elided(_: &i32) -> impl Future<Output = i32> + '_ {
 }
 
 // should be ignored
-fn elided_not_bound(_: &i32) -> impl Future<Output = i32> {
+fn elided_not_bound(_: &i32) -> impl Future<Output = i32> + use<> {
     async { 42 }
 }
 
@@ -114,7 +114,7 @@ fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 
 
 // should be ignored
 #[allow(clippy::needless_lifetimes)]
-fn explicit_not_bound<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> {
+fn explicit_not_bound<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + use<> {
     async { 42 }
 }
 
@@ -124,7 +124,7 @@ mod issue_5765 {
 
     struct A;
     impl A {
-        fn f(&self) -> impl Future<Output = ()> {
+        fn f(&self) -> impl Future<Output = ()> + use<> {
             async {}
         }
     }

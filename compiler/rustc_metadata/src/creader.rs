@@ -340,7 +340,7 @@ impl CStore {
         }
         let level = tcx
             .lint_level_at_node(lint::builtin::UNUSED_CRATE_DEPENDENCIES, rustc_hir::CRATE_HIR_ID)
-            .0;
+            .level;
         if level != lint::Level::Allow {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
@@ -358,30 +358,58 @@ impl CStore {
     ) {
         let span = krate.spans.inner_span.shrink_to_lo();
         let allowed_flag_mismatches = &tcx.sess.opts.cg.unsafe_allow_abi_mismatch;
-        let name = tcx.crate_name(LOCAL_CRATE);
+        let local_crate = tcx.crate_name(LOCAL_CRATE);
         let tmod_extender = |tmod: &TargetModifier| (tmod.extend(), tmod.clone());
         let report_diff = |prefix: &String,
                            opt_name: &String,
-                           flag_local_value: &String,
-                           flag_extern_value: &String| {
+                           flag_local_value: Option<&String>,
+                           flag_extern_value: Option<&String>| {
             if allowed_flag_mismatches.contains(&opt_name) {
                 return;
             }
-            tcx.dcx().emit_err(errors::IncompatibleTargetModifiers {
-                span,
-                extern_crate: data.name(),
-                local_crate: name,
-                flag_name: opt_name.clone(),
-                flag_name_prefixed: format!("-{}{}", prefix, opt_name),
-                flag_local_value: flag_local_value.to_string(),
-                flag_extern_value: flag_extern_value.to_string(),
-            });
+            let extern_crate = data.name();
+            let flag_name = opt_name.clone();
+            let flag_name_prefixed = format!("-{}{}", prefix, opt_name);
+
+            match (flag_local_value, flag_extern_value) {
+                (Some(local_value), Some(extern_value)) => {
+                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiers {
+                        span,
+                        extern_crate,
+                        local_crate,
+                        flag_name,
+                        flag_name_prefixed,
+                        local_value: local_value.to_string(),
+                        extern_value: extern_value.to_string(),
+                    })
+                }
+                (None, Some(extern_value)) => {
+                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiersLMissed {
+                        span,
+                        extern_crate,
+                        local_crate,
+                        flag_name,
+                        flag_name_prefixed,
+                        extern_value: extern_value.to_string(),
+                    })
+                }
+                (Some(local_value), None) => {
+                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiersRMissed {
+                        span,
+                        extern_crate,
+                        local_crate,
+                        flag_name,
+                        flag_name_prefixed,
+                        local_value: local_value.to_string(),
+                    })
+                }
+                (None, None) => panic!("Incorrect target modifiers report_diff(None, None)"),
+            };
         };
         let mut it1 = mods.iter().map(tmod_extender);
         let mut it2 = dep_mods.iter().map(tmod_extender);
         let mut left_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
         let mut right_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
-        let no_val = "*".to_string();
         loop {
             left_name_val = left_name_val.or_else(|| it1.next());
             right_name_val = right_name_val.or_else(|| it2.next());
@@ -389,26 +417,31 @@ impl CStore {
                 (Some(l), Some(r)) => match l.1.opt.cmp(&r.1.opt) {
                     cmp::Ordering::Equal => {
                         if l.0.tech_value != r.0.tech_value {
-                            report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &r.1.value_name);
+                            report_diff(
+                                &l.0.prefix,
+                                &l.0.name,
+                                Some(&l.1.value_name),
+                                Some(&r.1.value_name),
+                            );
                         }
                         left_name_val = None;
                         right_name_val = None;
                     }
                     cmp::Ordering::Greater => {
-                        report_diff(&r.0.prefix, &r.0.name, &no_val, &r.1.value_name);
+                        report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
                         right_name_val = None;
                     }
                     cmp::Ordering::Less => {
-                        report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &no_val);
+                        report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
                         left_name_val = None;
                     }
                 },
                 (Some(l), None) => {
-                    report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &no_val);
+                    report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
                     left_name_val = None;
                 }
                 (None, Some(r)) => {
-                    report_diff(&r.0.prefix, &r.0.name, &no_val, &r.1.value_name);
+                    report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
                     right_name_val = None;
                 }
                 (None, None) => break,
@@ -999,14 +1032,19 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
-        self.cstore.has_global_allocator = match &*global_allocator_spans(krate) {
-            [span1, span2, ..] => {
-                self.dcx().emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
-                true
-            }
-            spans => !spans.is_empty(),
-        };
-        self.cstore.has_alloc_error_handler = match &*alloc_error_handler_spans(krate) {
+        self.cstore.has_global_allocator =
+            match &*fn_spans(krate, Symbol::intern(&global_fn_name(sym::alloc))) {
+                [span1, span2, ..] => {
+                    self.dcx()
+                        .emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
+                    true
+                }
+                spans => !spans.is_empty(),
+            };
+        self.cstore.has_alloc_error_handler = match &*fn_spans(
+            krate,
+            Symbol::intern(alloc_error_handler_name(AllocatorKind::Global)),
+        ) {
             [span1, span2, ..] => {
                 self.dcx()
                     .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
@@ -1277,17 +1315,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         definitions: &Definitions,
     ) -> Option<CrateNum> {
         match item.kind {
-            ast::ItemKind::ExternCrate(orig_name) => {
-                debug!(
-                    "resolving extern crate stmt. ident: {} orig_name: {:?}",
-                    item.ident, orig_name
-                );
+            ast::ItemKind::ExternCrate(orig_name, ident) => {
+                debug!("resolving extern crate stmt. ident: {} orig_name: {:?}", ident, orig_name);
                 let name = match orig_name {
                     Some(orig_name) => {
                         validate_crate_name(self.sess, orig_name, Some(item.span));
                         orig_name
                     }
-                    None => item.ident.name,
+                    None => ident.name,
                 };
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
@@ -1335,14 +1370,15 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     }
 }
 
-fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
+fn fn_spans(krate: &ast::Crate, name: Symbol) -> Vec<Span> {
     struct Finder {
         name: Symbol,
         spans: Vec<Span>,
     }
     impl<'ast> visit::Visitor<'ast> for Finder {
         fn visit_item(&mut self, item: &'ast ast::Item) {
-            if item.ident.name == self.name
+            if let Some(ident) = item.kind.ident()
+                && ident.name == self.name
                 && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
             {
                 self.spans.push(item.span);
@@ -1351,29 +1387,6 @@ fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
         }
     }
 
-    let name = Symbol::intern(&global_fn_name(sym::alloc));
-    let mut f = Finder { name, spans: Vec::new() };
-    visit::walk_crate(&mut f, krate);
-    f.spans
-}
-
-fn alloc_error_handler_spans(krate: &ast::Crate) -> Vec<Span> {
-    struct Finder {
-        name: Symbol,
-        spans: Vec<Span>,
-    }
-    impl<'ast> visit::Visitor<'ast> for Finder {
-        fn visit_item(&mut self, item: &'ast ast::Item) {
-            if item.ident.name == self.name
-                && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
-            {
-                self.spans.push(item.span);
-            }
-            visit::walk_item(self, item)
-        }
-    }
-
-    let name = Symbol::intern(alloc_error_handler_name(AllocatorKind::Global));
     let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans

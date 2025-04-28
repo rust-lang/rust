@@ -1,6 +1,8 @@
 //@aux-build:../../ui/auxiliary/proc_macros.rs
-//@revisions: default
+//@revisions: default default_exp ord_within
 //@[default] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default
+//@[default_exp] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/default_exp
+//@[ord_within] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/ord_within
 
 #![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]
@@ -10,14 +12,16 @@ mod i_am_just_right {
     const BEFORE: i8 = 0;
 
     const AFTER: i8 = 0;
-    //~^ arbitrary_source_item_ordering
+    //~[ord_within]^ arbitrary_source_item_ordering
 }
 
 // Use statements should not be linted internally - this is normally auto-sorted using rustfmt.
 use std::rc::Rc;
 use std::sync::{Arc, Barrier, RwLock};
 
+const ZNAKE_CASE: &str = "123";
 const SNAKE_CASE: &str = "zzzzzzzz";
+//~[ord_within]^ arbitrary_source_item_ordering
 
 use std::rc::Weak;
 //~^ arbitrary_source_item_ordering
@@ -65,7 +69,7 @@ impl Default for StructOrdered {
 }
 
 impl CloneSelf for StructOrdered {
-    //~^ arbitrary_source_item_ordering
+    //~[ord_within]^ arbitrary_source_item_ordering
     fn clone_self(&self) -> Self {
         Self {
             a: true,
@@ -161,7 +165,7 @@ impl TraitUnordered for StructUnordered {
 
 // Trait impls should be located just after the type they implement it for.
 impl BasicEmptyTrait for StructOrdered {}
-//~^ arbitrary_source_item_ordering
+//~[ord_within]^ arbitrary_source_item_ordering
 
 impl TraitUnorderedItemKinds for StructUnordered {
     type SomeType = ();
@@ -185,7 +189,7 @@ mod this_is_in_the_wrong_position {
     //~^ arbitrary_source_item_ordering
     const C: i8 = 0;
     const A: i8 = 1;
-    //~^ arbitrary_source_item_ordering
+    //~[ord_within]^ arbitrary_source_item_ordering
 }
 
 #[derive(Default, std::clone::Clone)]

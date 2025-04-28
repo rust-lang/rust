@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:14:5
+  --> $DIR/implied_lifetime_wf_check3.rs:15:5
    |
 LL | fn test_lifetime_param_test<'a>()
    |                             -- lifetime `'a` defined here
@@ -8,7 +8,7 @@ LL |     test_lifetime_param::assert_static::<'a>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:29:5
+  --> $DIR/implied_lifetime_wf_check3.rs:31:5
    |
 LL | fn test_higher_kinded_lifetime_param_test<'a>()
    |                                           -- lifetime `'a` defined here
@@ -17,7 +17,7 @@ LL |     test_higher_kinded_lifetime_param::assert_static::<'a>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:36:9
+  --> $DIR/implied_lifetime_wf_check3.rs:38:9
    |
 LL |     fn test<'a>() {
    |             -- lifetime `'a` defined here
@@ -25,7 +25,7 @@ LL |         assert_static::<'a>()
    |         ^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'static`
 
 error[E0310]: the parameter type `A` may not live long enough
-  --> $DIR/implied_lifetime_wf_check3.rs:52:5
+  --> $DIR/implied_lifetime_wf_check3.rs:55:5
    |
 LL |     test_type_param::assert_static::<A>()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

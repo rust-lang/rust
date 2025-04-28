@@ -10,7 +10,7 @@ Rust for baremetal Hexagon DSPs.
 
 ## Target maintainers
 
-- [Brian Cain](https://github.com/androm3da), `bcain@quicinc.com`
+[@androm3da](https://github.com/androm3da)
 
 ## Requirements
 
@@ -28,7 +28,7 @@ This target generates PIC ELF binaries.
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml`:
+list in `bootstrap.toml`:
 
 ```toml
 [build]

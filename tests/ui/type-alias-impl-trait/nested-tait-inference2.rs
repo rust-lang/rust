@@ -14,6 +14,7 @@ trait Foo<A> {}
 impl Foo<()> for () {}
 impl Foo<u32> for () {}
 
+#[define_opaque(FooX)]
 fn foo() -> impl Foo<FooX> {
     //[current]~^ ERROR: the trait bound `(): Foo<FooX>` is not satisfied
     ()

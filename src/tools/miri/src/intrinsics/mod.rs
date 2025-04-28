@@ -392,32 +392,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             #[rustfmt::skip]
-            | "fadd_algebraic"
-            | "fsub_algebraic"
-            | "fmul_algebraic"
-            | "fdiv_algebraic"
-            | "frem_algebraic"
-            => {
-                let [a, b] = check_intrinsic_arg_count(args)?;
-                let a = this.read_immediate(a)?;
-                let b = this.read_immediate(b)?;
-                let op = match intrinsic_name {
-                    "fadd_algebraic" => mir::BinOp::Add,
-                    "fsub_algebraic" => mir::BinOp::Sub,
-                    "fmul_algebraic" => mir::BinOp::Mul,
-                    "fdiv_algebraic" => mir::BinOp::Div,
-                    "frem_algebraic" => mir::BinOp::Rem,
-                    _ => bug!(),
-                };
-                let res = this.binary_op(op, &a, &b)?;
-                // `binary_op` already called `generate_nan` if needed.
-                // Apply a relative error of 16ULP to simulate non-deterministic precision loss
-                // due to optimizations.
-                let res = apply_random_float_error_to_imm(this, res, 4 /* log2(16) */)?;
-                this.write_immediate(*res, dest)?;
-            }
-
-            #[rustfmt::skip]
             | "fadd_fast"
             | "fsub_fast"
             | "fmul_fast"
@@ -464,9 +438,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 if !float_finite(&res)? {
                     throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
                 }
-                // Apply a relative error of 16ULP to simulate non-deterministic precision loss
+                // Apply a relative error of 4ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = apply_random_float_error_to_imm(this, res, 4 /* log2(16) */)?;
+                let res = apply_random_float_error_to_imm(this, res, 2 /* log2(4) */)?;
                 this.write_immediate(*res, dest)?;
             }
 

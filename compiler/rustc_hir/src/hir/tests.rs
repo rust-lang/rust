@@ -57,7 +57,9 @@ fn trait_object_roundtrips_impl(syntax: TraitObjectSyntax) {
                 Lifetime {
                     hir_id: HirId::INVALID,
                     ident: Ident::new(sym::name, DUMMY_SP),
-                    res: LifetimeName::Static,
+                    kind: LifetimeKind::Static,
+                    source: LifetimeSource::Other,
+                    syntax: LifetimeSyntax::Hidden,
                 }
             },
             syntax,

@@ -1,5 +1,5 @@
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.10.0`
-  --> tests/ui/incompatible_msrv.rs:13:39
+  --> tests/ui/incompatible_msrv.rs:14:39
    |
 LL |     assert_eq!(map.entry("poneyland").key(), &"poneyland");
    |                                       ^^^^^
@@ -8,16 +8,45 @@ LL |     assert_eq!(map.entry("poneyland").key(), &"poneyland");
    = help: to override `-D warnings` add `#[allow(clippy::incompatible_msrv)]`
 
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.12.0`
-  --> tests/ui/incompatible_msrv.rs:17:11
+  --> tests/ui/incompatible_msrv.rs:18:11
    |
 LL |         v.into_key();
    |           ^^^^^^^^^^
 
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.4.0`
-  --> tests/ui/incompatible_msrv.rs:21:5
+  --> tests/ui/incompatible_msrv.rs:22:5
    |
 LL |     sleep(Duration::new(1, 0));
    |     ^^^^^
 
-error: aborting due to 3 previous errors
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.6.0`
+  --> tests/ui/incompatible_msrv.rs:46:9
+   |
+LL |         core::panicking::panic("foo");
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.6.0`
+  --> tests/ui/incompatible_msrv.rs:53:13
+   |
+LL |             core::panicking::panic($msg)
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     my_panic!("foo");
+   |     ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `my_panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.6.0`
+  --> tests/ui/incompatible_msrv.rs:59:13
+   |
+LL |     assert!(core::panicking::panic("out of luck"));
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+
+error: current MSRV (Minimum Supported Rust Version) is `1.80.0` but this item is stable since `1.82.0`
+  --> tests/ui/incompatible_msrv.rs:72:13
+   |
+LL |     let _ = std::iter::repeat_n((), 5);
+   |             ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 

@@ -15,14 +15,14 @@ error: missing type for `const` item
 LL |     const K<T> = ();
    |               ^ help: provide a type for the associated constant: `()`
 
-error[E0195]: lifetime parameters or bounds on const `Q` do not match the trait declaration
+error[E0195]: lifetime parameters or bounds on associated const `Q` do not match the trait declaration
   --> $DIR/assoc-const-missing-type.rs:15:12
    |
 LL |     const Q<'a>: &'a str;
-   |            ---- lifetimes in impl do not match this const in trait
+   |            ---- lifetimes in impl do not match this associated const in trait
 ...
 LL |     const Q = "";
-   |            ^ lifetimes do not match const in trait
+   |            ^ lifetimes do not match associated const in trait
 
 error: missing type for `const` item
   --> $DIR/assoc-const-missing-type.rs:15:12

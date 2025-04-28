@@ -221,7 +221,7 @@ pub(crate) fn format_expr(
                 Ok(format!("break{id_str}"))
             }
         }
-        ast::ExprKind::Yield(ref opt_expr) => {
+        ast::ExprKind::Yield(ast::YieldKind::Prefix(ref opt_expr)) => {
             if let Some(ref expr) = *opt_expr {
                 rewrite_unary_prefix(context, "yield ", &**expr, shape)
             } else {
@@ -243,9 +243,10 @@ pub(crate) fn format_expr(
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
         | ast::ExprKind::MethodCall(..)
-        | ast::ExprKind::Await(_, _) => rewrite_chain(expr, context, shape),
+        | ast::ExprKind::Await(_, _)
+        | ast::ExprKind::Yield(ast::YieldKind::Postfix(_)) => rewrite_chain(expr, context, shape),
         ast::ExprKind::MacCall(ref mac) => {
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|_| {
+            rewrite_macro(mac, context, shape, MacroPosition::Expression).or_else(|_| {
                 wrap_str(
                     context.snippet(expr.span).to_owned(),
                     context.config.max_width(),
@@ -2057,7 +2058,7 @@ fn rewrite_assignment(
     context: &RewriteContext<'_>,
     lhs: &ast::Expr,
     rhs: &ast::Expr,
-    op: Option<&ast::BinOp>,
+    op: Option<&ast::AssignOp>,
     shape: Shape,
 ) -> RewriteResult {
     let operator_str = match op {

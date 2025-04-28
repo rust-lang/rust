@@ -82,7 +82,7 @@ fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         _ => {}
     }
 
-    let impl_ = tcx.hir().expect_item(impl_did).expect_impl();
+    let impl_ = tcx.hir_expect_item(impl_did).expect_impl();
 
     Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span }))
 }
@@ -109,7 +109,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause, impl_header.safety) {
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(
                 tcx,
                 fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
@@ -119,15 +119,15 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
             ))
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnNonAdt { span }))
         }
         Err(CopyImplementationError::HasDestructor) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span }))
         }
         Err(CopyImplementationError::HasUnsafeFields) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx
                 .dcx()
                 .span_delayed_bug(span, format!("cannot implement `Copy` for `{}`", self_type)))
@@ -157,7 +157,7 @@ fn visit_implementation_of_const_param_ty(
     match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, kind, cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(
                 tcx,
                 fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
@@ -167,11 +167,11 @@ fn visit_implementation_of_const_param_ty(
             ))
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
         }
         Err(ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(infringing_tys)) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(
                 tcx,
                 infringing_tys.into_iter().map(|(ty, reason)| (span, ty, reason)),
@@ -181,7 +181,7 @@ fn visit_implementation_of_const_param_ty(
             ))
         }
         Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnUnsized { span }))
         }
     }
@@ -250,13 +250,16 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // trait, they *do* satisfy the repr(transparent) rules, and then we assume that everything else
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
     // even if they do not carry that attribute.
-    use rustc_type_ir::TyKind::*;
     match (source.kind(), target.kind()) {
-        (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b)) if r_a == *r_b && mutbl_a == *mutbl_b => {
+        (&ty::Ref(r_a, _, mutbl_a), ty::Ref(r_b, _, mutbl_b))
+            if r_a == *r_b && mutbl_a == *mutbl_b =>
+        {
             Ok(())
         }
-        (&RawPtr(_, a_mutbl), &RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
-        (&Adt(def_a, args_a), &Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
+        (&ty::RawPtr(_, a_mutbl), &ty::RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
+        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+            if def_a.is_struct() && def_b.is_struct() =>
+        {
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
@@ -526,7 +529,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                     note: true,
                 }));
             } else if diff_fields.len() > 1 {
-                let item = tcx.hir().expect_item(impl_did);
+                let item = tcx.hir_expect_item(impl_did);
                 let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
                     t.path.span
                 } else {
@@ -653,7 +656,7 @@ fn infringing_fields_error<'tcx>(
                                 .entry((ty.clone(), predicate.clone()))
                                 .or_default()
                                 .push(origin.span());
-                            if let ty::RegionKind::ReEarlyParam(ebr) = *b
+                            if let ty::RegionKind::ReEarlyParam(ebr) = b.kind()
                                 && ebr.has_name()
                             {
                                 bounds.push((b.to_string(), a.to_string(), None));
@@ -747,7 +750,7 @@ fn visit_implementation_of_pointer_like(checker: &Checker<'_>) -> Result<(), Err
                         ObligationCause::misc(impl_span, checker.impl_def_id),
                         param_env,
                         nontrivial_field_ty,
-                        tcx.lang_items().pointer_like().unwrap(),
+                        tcx.require_lang_item(LangItem::PointerLike, Some(impl_span)),
                     );
                     // FIXME(dyn-star): We should regionck this implementation.
                     if ocx.select_all_or_error().is_empty() {

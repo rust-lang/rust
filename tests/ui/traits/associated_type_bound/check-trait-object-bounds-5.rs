@@ -21,7 +21,7 @@ fn is_obj<T: ?Sized + Obj>(_: &T) {}
 
 fn f(x: &dyn Obj<U = i32, V = i64>) {
     is_obj(x)
-    //~^ type mismatch resolving `<i32 as Is>::T == i64`
+    //~^ ERROR type mismatch resolving `<i32 as Is>::T == i64`
 }
 
 fn main() {}

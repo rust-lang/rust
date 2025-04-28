@@ -12,16 +12,17 @@
 use std::iter;
 
 use rustc_index::IndexVec;
-use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
-use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
+use rustc_type_ir::{
+    self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable,
+};
 use tracing::{debug, instrument, trace};
 
 use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
-use crate::solve::eval_ctxt::{CurrentGoalKind, NestedGoals};
+use crate::solve::eval_ctxt::CurrentGoalKind;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
     MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
@@ -111,13 +112,9 @@ where
         // by `try_evaluate_added_goals()`.
         let (certainty, normalization_nested_goals) = match self.current_goal_kind {
             CurrentGoalKind::NormalizesTo => {
-                let NestedGoals { normalizes_to_goals, goals } =
-                    std::mem::take(&mut self.nested_goals);
-                if cfg!(debug_assertions) {
-                    assert!(normalizes_to_goals.is_empty());
-                    if goals.is_empty() {
-                        assert!(matches!(goals_certainty, Certainty::Yes));
-                    }
+                let goals = std::mem::take(&mut self.nested_goals);
+                if goals.is_empty() {
+                    assert!(matches!(goals_certainty, Certainty::Yes));
                 }
                 (certainty, NestedNormalizationGoals(goals))
             }
@@ -354,7 +351,7 @@ where
                     // exist at all (see the FIXME at the start of this method), we have to deal with
                     // them for now.
                     delegate.instantiate_canonical_var_with_infer(info, span, |idx| {
-                        ty::UniverseIndex::from(prev_universe.index() + idx.index())
+                        prev_universe + idx.index()
                     })
                 } else if info.is_existential() {
                     // As an optimization we sometimes avoid creating a new inference variable here.
@@ -424,7 +421,8 @@ where
 
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
-            self.delegate.inject_new_hidden_type_unchecked(key, ty, self.origin_span);
+            let prev = self.delegate.register_hidden_type_in_storage(key, ty, self.origin_span);
+            assert_eq!(prev, None);
         }
     }
 }

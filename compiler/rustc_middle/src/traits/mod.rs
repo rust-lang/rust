@@ -980,12 +980,9 @@ pub enum CodegenObligationError {
     /// overflow bug, since I believe this is the only case
     /// where ambiguity can result.
     Ambiguity,
-    /// This can trigger when we probe for the source of a `'static` lifetime requirement
-    /// on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
-    /// This can also trigger when we have a global bound that is not actually satisfied,
-    /// but was included during typeck due to the trivial_bounds feature.
+    /// This can trigger when we have a global bound that is not actually satisfied
+    /// due to trivial bounds.
     Unimplemented,
-    FulfillmentError,
     /// The selected impl has unconstrained generic parameters. This will emit an error
     /// during impl WF checking.
     UnconstrainedParam(ErrorGuaranteed),

@@ -16,10 +16,6 @@ LL +     const VAL: /* Type */ = "hi".to_owned();
 LL ~     match foo {
 LL ~         Foo(VAL) => true,
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         Foo(const { "hi".to_owned() }) => true,
-   |             +++++++                 +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-issues.rs:14:20
@@ -39,10 +35,6 @@ LL +     const BAZ: /* Type */ = "hi".to_owned();
 LL ~     match bar {
 LL ~         Bar { baz: BAZ } => true,
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         Bar { baz: const { "hi".to_owned() } } => true,
-   |                    +++++++                 +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-issues.rs:25:11
@@ -62,10 +54,6 @@ LL +     const VAL: /* Type */ = "foo".to_string();
 LL ~     match foo.as_slice() {
 LL ~         &[VAL] => {}
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         &[const { "foo".to_string() }] => {}
-   |           +++++++                   +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-issues.rs:36:17
@@ -79,10 +67,6 @@ help: consider extracting the expression into a `const`
 LL +     const VAL: /* Type */ = MAGIC.0 as usize;
 LL ~     if let Some(VAL) = None::<usize> {}
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |     if let Some(const { MAGIC.0 as usize }) = None::<usize> {}
-   |                 +++++++                  +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-issues.rs:41:13
@@ -96,10 +80,6 @@ help: consider extracting the expression into a `const`
 LL +     const VAL: /* Type */ = -1.some(4);
 LL ~     if let (VAL) = (0, Some(4)) {}
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |     if let (const { -1.some(4) }) = (0, Some(4)) {}
-   |             +++++++            +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-issues.rs:44:13
@@ -113,10 +93,6 @@ help: consider extracting the expression into a `const`
 LL +     const VAL: /* Type */ = -1.Some(4);
 LL ~     if let (VAL) = (0, Some(4)) {}
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |     if let (const { -1.Some(4) }) = (0, Some(4)) {}
-   |             +++++++            +
 
 error: aborting due to 6 previous errors
 

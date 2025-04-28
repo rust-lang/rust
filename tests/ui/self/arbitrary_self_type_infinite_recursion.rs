@@ -10,15 +10,15 @@ struct Content;
 
 impl Content {
   fn method(self: MySmartPtr<Self>) { // note self type
-     //~^ reached the recursion limit
-     //~| reached the recursion limit
-     //~| invalid `self` parameter type
+     //~^ ERROR reached the recursion limit
+     //~| ERROR reached the recursion limit
+     //~| ERROR invalid `self` parameter type
   }
 }
 
 fn main() {
   let p = MySmartPtr(Content);
   p.method();
-  //~^ reached the recursion limit
-  //~| no method named `method`
+  //~^ ERROR reached the recursion limit
+  //~| ERROR no method named `method`
 }

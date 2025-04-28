@@ -8,16 +8,17 @@ use std::ptr::NonNull;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable, extension};
+use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_type_ir::WithCachedTypeInfo;
+use rustc_type_ir::walk::TypeWalker;
 use smallvec::SmallVec;
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::visit::{TypeVisitable, TypeVisitor, VisitorResult, walk_visitable_list};
 use crate::ty::{
-    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs, Lift, List, Ty, TyCtxt,
+    self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, FallibleTypeFolder, InlineConstArgs,
+    Lift, List, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, VisitorResult,
+    walk_visitable_list,
 };
 
 pub type GenericArgKind<'tcx> = rustc_type_ir::GenericArgKind<TyCtxt<'tcx>>;
@@ -249,17 +250,17 @@ impl<'tcx> GenericArg<'tcx> {
     }
 
     #[inline]
-    pub fn as_type(self) -> Option<Ty<'tcx>> {
+    pub fn as_region(self) -> Option<ty::Region<'tcx>> {
         match self.unpack() {
-            GenericArgKind::Type(ty) => Some(ty),
+            GenericArgKind::Lifetime(re) => Some(re),
             _ => None,
         }
     }
 
     #[inline]
-    pub fn as_region(self) -> Option<ty::Region<'tcx>> {
+    pub fn as_type(self) -> Option<Ty<'tcx>> {
         match self.unpack() {
-            GenericArgKind::Lifetime(re) => Some(re),
+            GenericArgKind::Type(ty) => Some(ty),
             _ => None,
         }
     }
@@ -269,6 +270,15 @@ impl<'tcx> GenericArg<'tcx> {
         match self.unpack() {
             GenericArgKind::Const(ct) => Some(ct),
             _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_term(self) -> Option<ty::Term<'tcx>> {
+        match self.unpack() {
+            GenericArgKind::Lifetime(_) => None,
+            GenericArgKind::Type(ty) => Some(ty.into()),
+            GenericArgKind::Const(ct) => Some(ct.into()),
         }
     }
 
@@ -297,6 +307,20 @@ impl<'tcx> GenericArg<'tcx> {
             GenericArgKind::Const(ct) => ct.is_ct_infer(),
         }
     }
+
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
+        TypeWalker::new(self)
+    }
 }
 
 impl<'a, 'tcx> Lift<TyCtxt<'tcx>> for GenericArg<'a> {
@@ -322,6 +346,14 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArg<'tcx> {
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
         }
     }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        match self.unpack() {
+            GenericArgKind::Lifetime(lt) => lt.fold_with(folder).into(),
+            GenericArgKind::Type(ty) => ty.fold_with(folder).into(),
+            GenericArgKind::Const(ct) => ct.fold_with(folder).into(),
+        }
+    }
 }
 
 impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
@@ -334,13 +366,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for GenericArg<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for GenericArg<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for GenericArg<'tcx> {
     fn encode(&self, e: &mut E) {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for GenericArg<'tcx> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for GenericArg<'tcx> {
     fn decode(d: &mut D) -> GenericArg<'tcx> {
         GenericArgKind::decode(d).pack()
     }
@@ -396,14 +428,14 @@ impl<'tcx> GenericArgs<'tcx> {
         InlineConstArgs { args: self }
     }
 
-    /// Creates an `GenericArgs` that maps each generic parameter to itself.
+    /// Creates a [`GenericArgs`] that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'tcx>, def_id: impl Into<DefId>) -> GenericArgsRef<'tcx> {
         Self::for_item(tcx, def_id.into(), |param, _| tcx.mk_param_from_def(param))
     }
 
-    /// Creates an `GenericArgs` for generic parameter definitions,
+    /// Creates a [`GenericArgs`] for generic parameter definitions,
     /// by calling closures to obtain each kind.
-    /// The closures get to observe the `GenericArgs` as they're
+    /// The closures get to observe the [`GenericArgs`] as they're
     /// being built, which can be used to correctly
     /// replace defaults of generic parameters.
     pub fn for_item<F>(tcx: TyCtxt<'tcx>, def_id: DefId, mut mk_kind: F) -> GenericArgsRef<'tcx>
@@ -591,6 +623,27 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for GenericArgsRef<'tcx> {
                 }
             }
             0 => Ok(self),
+            _ => ty::util::try_fold_list(self, folder, |tcx, v| tcx.mk_args(v)),
+        }
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        // See justification for this behavior in `try_fold_with`.
+        match self.len() {
+            1 => {
+                let param0 = self[0].fold_with(folder);
+                if param0 == self[0] { self } else { folder.cx().mk_args(&[param0]) }
+            }
+            2 => {
+                let param0 = self[0].fold_with(folder);
+                let param1 = self[1].fold_with(folder);
+                if param0 == self[0] && param1 == self[1] {
+                    self
+                } else {
+                    folder.cx().mk_args(&[param0, param1])
+                }
+            }
+            0 => self,
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_args(v)),
         }
     }
@@ -624,6 +677,22 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {
                     Ok(self)
                 } else {
                     Ok(folder.cx().mk_type_list(&[param0, param1]))
+                }
+            }
+            _ => ty::util::try_fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),
+        }
+    }
+
+    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
+        // See comment justifying behavior in `try_fold_with`.
+        match self.len() {
+            2 => {
+                let param0 = self[0].fold_with(folder);
+                let param1 = self[1].fold_with(folder);
+                if param0 == self[0] && param1 == self[1] {
+                    self
+                } else {
+                    folder.cx().mk_type_list(&[param0, param1])
                 }
             }
             _ => ty::util::fold_list(self, folder, |tcx, v| tcx.mk_type_list(v)),

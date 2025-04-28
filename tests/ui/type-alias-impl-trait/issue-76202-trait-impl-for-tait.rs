@@ -7,19 +7,17 @@
 //@ check-pass
 #![feature(type_alias_impl_trait)]
 
-mod g {
-    pub trait Dummy {}
-    impl Dummy for () {}
-    pub type F = impl Dummy;
-    pub fn f() -> F {}
-}
-use g::*;
+pub trait Dummy {}
+impl Dummy for () {}
+pub type F = impl Dummy;
+#[define_opaque(F)]
+pub fn f() -> F {}
 
 trait Test {
     fn test(self);
 }
 
-impl Test for define::F {
+impl Test for F {
     fn test(self) {}
 }
 
@@ -29,17 +27,14 @@ impl Test for i32 {
     fn test(self) {}
 }
 
-mod define {
-    use super::*;
+pub trait Dummy2 {}
+impl Dummy2 for () {}
 
-    pub trait Dummy {}
-    impl Dummy for () {}
-
-    pub type F = impl Dummy;
-    pub fn f() -> F {}
-}
+pub type F2 = impl Dummy2;
+#[define_opaque(F2)]
+pub fn f2() -> F2 {}
 
 fn main() {
-    let x = define::f();
+    let x = f();
     x.test();
 }

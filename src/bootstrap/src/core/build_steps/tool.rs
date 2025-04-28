@@ -26,7 +26,7 @@ use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::channel::GitInfo;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
-use crate::{Compiler, Kind, Mode, gha};
+use crate::{Compiler, FileType, Kind, Mode, gha};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum SourceType {
@@ -148,10 +148,9 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
-        if path.ends_with("/rustdoc") &&
-            // rustdoc is performance sensitive, so apply LTO to it.
-            is_lto_stage(&self.compiler)
-        {
+        // Rustc tools (miri, clippy, cargo, rustfmt, rust-analyzer)
+        // could use the additional optimizations.
+        if self.mode == Mode::ToolRustc && is_lto_stage(&self.compiler) {
             let lto = match builder.config.rust_lto {
                 RustcLto::Off => Some("off"),
                 RustcLto::Thin => Some("thin"),
@@ -209,7 +208,7 @@ impl Step for ToolBuild {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
+#[expect(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -228,7 +227,6 @@ pub fn prepare_tool_cargo(
     let mut features = extra_features.to_vec();
     if builder.build.config.cargo_native_static {
         if path.ends_with("cargo")
-            || path.ends_with("rls")
             || path.ends_with("clippy")
             || path.ends_with("miri")
             || path.ends_with("rustfmt")
@@ -354,7 +352,7 @@ fn copy_link_tool_bin(
 ) -> PathBuf {
     let cargo_out = builder.cargo_out(compiler, mode, target).join(exe(name, target));
     let bin = builder.tools_dir(compiler).join(exe(name, target));
-    builder.copy_link(&cargo_out, &bin);
+    builder.copy_link(&cargo_out, &bin, FileType::Executable);
     bin
 }
 
@@ -426,11 +424,14 @@ macro_rules! bootstrap_tool {
                     }
                 )*
 
+                let is_unstable = false $(|| $unstable)*;
+                let compiletest_wants_stage0 = $tool_name == "compiletest" && builder.config.compiletest_use_stage0_libtest;
+
                 builder.ensure(ToolBuild {
                     compiler: self.compiler,
                     target: self.target,
                     tool: $tool_name,
-                    mode: if false $(|| $unstable)* {
+                    mode: if is_unstable && !compiletest_wants_stage0 {
                         // use in-tree libraries for unstable features
                         Mode::ToolStd
                     } else {
@@ -443,7 +444,11 @@ macro_rules! bootstrap_tool {
                         SourceType::InTree
                     },
                     extra_features: vec![],
-                    allow_features: concat!($($allow_features)*),
+                    allow_features: {
+                        let mut _value = "";
+                        $( _value = $allow_features; )?
+                        _value
+                    },
                     cargo_args: vec![],
                     artifact_kind: if false $(|| $artifact_kind == ToolArtifactKind::Library)* {
                         ToolArtifactKind::Library
@@ -457,6 +462,8 @@ macro_rules! bootstrap_tool {
     }
 }
 
+pub(crate) const COMPILETEST_ALLOW_FEATURES: &str = "test,internal_output_capture";
+
 bootstrap_tool!(
     // This is marked as an external tool because it includes dependencies
     // from submodules. Trying to keep the lints in sync between all the repos
@@ -467,7 +474,7 @@ bootstrap_tool!(
     Tidy, "src/tools/tidy", "tidy";
     Linkchecker, "src/tools/linkchecker", "linkchecker";
     CargoTest, "src/tools/cargotest", "cargotest";
-    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = "test";
+    Compiletest, "src/tools/compiletest", "compiletest", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client";
     RustInstaller, "src/tools/rust-installer", "rust-installer";
@@ -482,7 +489,8 @@ bootstrap_tool!(
     GenerateCopyright, "src/tools/generate-copyright", "generate-copyright";
     SuggestTests, "src/tools/suggest-tests", "suggest-tests";
     GenerateWindowsSys, "src/tools/generate-windows-sys", "generate-windows-sys";
-    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = "test";
+    // rustdoc-gui-test has a crate dependency on compiletest, so it needs the same unstable features.
+    RustdocGUITest, "src/tools/rustdoc-gui-test", "rustdoc-gui-test", is_unstable_tool = true, allow_features = COMPILETEST_ALLOW_FEATURES;
     CoverageDump, "src/tools/coverage-dump", "coverage-dump";
     WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
@@ -688,8 +696,7 @@ impl Step for Rustdoc {
             let files_to_track = &["src/librustdoc", "src/tools/rustdoc"];
 
             // Check if unchanged
-            if builder.config.last_modified_commit(files_to_track, "download-rustc", true).is_some()
-            {
+            if !builder.config.has_changes_from_upstream(files_to_track) {
                 let precompiled_rustdoc = builder
                     .config
                     .ci_rustc_dir()
@@ -697,7 +704,7 @@ impl Step for Rustdoc {
                     .join(exe("rustdoc", target_compiler.host));
 
                 let bin_rustdoc = bin_rustdoc();
-                builder.copy_link(&precompiled_rustdoc, &bin_rustdoc);
+                builder.copy_link(&precompiled_rustdoc, &bin_rustdoc, FileType::Executable);
 
                 return ToolBuildResult {
                     tool_path: bin_rustdoc,
@@ -744,7 +751,7 @@ impl Step for Rustdoc {
                 compile::strip_debug(builder, target, &tool_path);
             }
             let bin_rustdoc = bin_rustdoc();
-            builder.copy_link(&tool_path, &bin_rustdoc);
+            builder.copy_link(&tool_path, &bin_rustdoc, FileType::Executable);
             ToolBuildResult { tool_path: bin_rustdoc, build_compiler, target_compiler }
         } else {
             ToolBuildResult { tool_path, build_compiler, target_compiler }
@@ -815,7 +822,6 @@ impl Step for LldWrapper {
             fields(build_compiler = ?self.build_compiler, target_compiler = ?self.target_compiler),
         ),
     )]
-
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         if builder.config.dry_run() {
             return ToolBuildResult {
@@ -847,13 +853,20 @@ impl Step for LldWrapper {
         let src_exe = exe("lld", target);
         let dst_exe = exe("rust-lld", target);
 
-        builder.copy_link(&lld_install.join("bin").join(src_exe), &libdir_bin.join(dst_exe));
+        builder.copy_link(
+            &lld_install.join("bin").join(src_exe),
+            &libdir_bin.join(dst_exe),
+            FileType::Executable,
+        );
         let self_contained_lld_dir = libdir_bin.join("gcc-ld");
         t!(fs::create_dir_all(&self_contained_lld_dir));
 
         for name in crate::LLD_FILE_NAMES {
-            builder
-                .copy_link(&tool_result.tool_path, &self_contained_lld_dir.join(exe(name, target)));
+            builder.copy_link(
+                &tool_result.tool_path,
+                &self_contained_lld_dir.join(exe(name, target)),
+                FileType::Executable,
+            );
         }
 
         tool_result
@@ -950,8 +963,11 @@ impl Step for RustAnalyzerProcMacroSrv {
         // so that r-a can use it.
         let libexec_path = builder.sysroot(self.compiler).join("libexec");
         t!(fs::create_dir_all(&libexec_path));
-        builder
-            .copy_link(&tool_result.tool_path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
+        builder.copy_link(
+            &tool_result.tool_path,
+            &libexec_path.join("rust-analyzer-proc-macro-srv"),
+            FileType::Executable,
+        );
 
         Some(tool_result)
     }
@@ -1008,7 +1024,7 @@ impl Step for LlvmBitcodeLinker {
             t!(fs::create_dir_all(&bindir_self_contained));
             let bin_destination = bindir_self_contained
                 .join(exe("llvm-bitcode-linker", tool_result.target_compiler.host));
-            builder.copy_link(&tool_result.tool_path, &bin_destination);
+            builder.copy_link(&tool_result.tool_path, &bin_destination, FileType::Executable);
             ToolBuildResult {
                 tool_path: bin_destination,
                 build_compiler: tool_result.build_compiler,
@@ -1025,7 +1041,7 @@ pub struct LibcxxVersionTool {
     pub target: TargetSelection,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug, Clone)]
 pub enum LibcxxVersion {
     Gnu(usize),
@@ -1190,7 +1206,7 @@ fn run_tool_build_step(
 
         for add_bin in add_bins_to_sysroot {
             let bin_destination = bindir.join(exe(add_bin, target_compiler.host));
-            builder.copy_link(&tool_path, &bin_destination);
+            builder.copy_link(&tool_path, &bin_destination, FileType::Executable);
         }
 
         // Return a path into the bin dir.
@@ -1231,7 +1247,6 @@ tool_extended!(CargoMiri {
     stable: false,
     add_bins_to_sysroot: ["cargo-miri"]
 });
-tool_extended!(Rls { path: "src/tools/rls", tool_name: "rls", stable: true });
 tool_extended!(Rustfmt {
     path: "src/tools/rustfmt",
     tool_name: "rustfmt",

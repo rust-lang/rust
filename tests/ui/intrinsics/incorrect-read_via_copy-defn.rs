@@ -1,7 +1,8 @@
 fn main() {
     read_via_copy();
+    //~^ ERROR call to unsafe function `read_via_copy` is unsafe and requires unsafe function or block
 }
 
-extern "rust-intrinsic" fn read_via_copy() {}
-//~^ ERROR "rust-intrinsic" ABI is an implementation detail
-//~| ERROR intrinsic must be in `extern "rust-intrinsic" { ... }` block
+#[rustc_intrinsic]
+//~^ ERROR the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items
+unsafe fn read_via_copy() {}

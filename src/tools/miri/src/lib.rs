@@ -1,6 +1,5 @@
 #![feature(rustc_private)]
 #![feature(cfg_match)]
-#![feature(cell_update)]
 #![feature(float_gamma)]
 #![feature(float_erf)]
 #![feature(map_try_insert)]
@@ -71,6 +70,7 @@ extern crate rustc_index;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 // Linking `rustc_driver` pulls in the required  object code as the rest of the rustc crates are
 // shipped only as rmeta files.
@@ -120,7 +120,7 @@ pub use crate::borrow_tracker::stacked_borrows::{
 };
 pub use crate::borrow_tracker::tree_borrows::{EvalContextExt as _, Tree};
 pub use crate::borrow_tracker::{BorTag, BorrowTrackerMethod, EvalContextExt as _, RetagFields};
-pub use crate::clock::{Clock, Instant};
+pub use crate::clock::{Instant, MonotonicClock};
 pub use crate::concurrency::cpu_affinity::MAX_CPUS;
 pub use crate::concurrency::data_race::{
     AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, EvalContextExt as _,
@@ -168,7 +168,7 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     "-Zalways-encode-mir",
     "-Zextra-const-ub-checks",
     "-Zmir-emit-retag",
-    "-Zmir-keep-place-mention",
+    "-Zmir-preserve-ub",
     "-Zmir-opt-level=0",
     "-Zmir-enable-passes=-CheckAlignment,-CheckNull",
     // Deduplicating diagnostics means we miss events when tracking what happens during an

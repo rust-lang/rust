@@ -12,11 +12,6 @@ fn main() {
         .expect("CARGO_CFG_TARGET_POINTER_WIDTH was not set")
         .parse()
         .unwrap();
-    let target_features: Vec<_> = env::var("CARGO_CFG_TARGET_FEATURE")
-        .unwrap_or_default()
-        .split(",")
-        .map(ToOwned::to_owned)
-        .collect();
     let is_miri = env::var_os("CARGO_CFG_MIRI").is_some();
 
     println!("cargo:rustc-check-cfg=cfg(netbsd10)");
@@ -42,6 +37,7 @@ fn main() {
         || target_os == "fuchsia"
         || (target_vendor == "fortanix" && target_env == "sgx")
         || target_os == "hermit"
+        || target_os == "trusty"
         || target_os == "l4re"
         || target_os == "redox"
         || target_os == "haiku"
@@ -61,6 +57,7 @@ fn main() {
         || target_os == "zkvm"
         || target_os == "rtems"
         || target_os == "nuttx"
+        || target_os == "cygwin"
 
         // See src/bootstrap/src/core/build_steps/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
@@ -106,8 +103,6 @@ fn main() {
         ("s390x", _) => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
-        // LLVM crash <https://github.com/llvm/llvm-project/issues/129394>
-        ("aarch64", _) if !target_features.iter().any(|f| f == "neon") => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
         ("x86_64", "windows") if target_env == "gnu" && target_abi != "llvm" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>

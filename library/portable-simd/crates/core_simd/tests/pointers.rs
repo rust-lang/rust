@@ -1,8 +1,8 @@
 #![feature(portable_simd)]
 
 use core_simd::simd::{
-    ptr::{SimdConstPtr, SimdMutPtr},
     Simd,
+    ptr::{SimdConstPtr, SimdMutPtr},
 };
 
 macro_rules! common_tests {

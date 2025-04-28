@@ -22,9 +22,8 @@ pub struct m64x4([i64; 4]);
 #[repr(simd)]
 pub struct pf64x4([*mut f64; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_scatter<V, P, M>(values: V, pointer: P, mask: M);
-}
+#[rustc_intrinsic]
+unsafe fn simd_scatter<V, P, M>(values: V, pointer: P, mask: M);
 
 // CHECK-LABEL: scatter_f64x4
 #[no_mangle]

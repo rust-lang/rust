@@ -1,11 +1,11 @@
 error: crate `NonSnakeCase` should have a snake case name
-  --> $DIR/lint-non-snake-case-crate.rs:36:18
+  --> $DIR/lint-non-snake-case-crate.rs:35:18
    |
 LL | #![crate_name = "NonSnakeCase"]
    |                  ^^^^^^^^^^^^ help: convert the identifier to snake case: `non_snake_case`
    |
 note: the lint level is defined here
-  --> $DIR/lint-non-snake-case-crate.rs:38:9
+  --> $DIR/lint-non-snake-case-crate.rs:37:9
    |
 LL | #![deny(non_snake_case)]
    |         ^^^^^^^^^^^^^^

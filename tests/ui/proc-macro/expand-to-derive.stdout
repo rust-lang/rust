@@ -44,52 +44,58 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                     Group {
                         delimiter: Brace,
                         stream: TokenStream [
-                            Punct {
-                                ch: '#',
-                                spacing: Alone,
-                                span: $DIR/expand-to-derive.rs:27:5: 27:6 (#0),
-                            },
                             Group {
-                                delimiter: Bracket,
+                                delimiter: None,
                                 stream: TokenStream [
+                                    Punct {
+                                        ch: '#',
+                                        spacing: Alone,
+                                        span: $DIR/expand-to-derive.rs:27:5: 27:6 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Bracket,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "rustc_dummy",
+                                                span: $DIR/expand-to-derive.rs:27:28: 27:39 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/expand-to-derive.rs:27:6: 27:41 (#0),
+                                    },
                                     Ident {
-                                        ident: "rustc_dummy",
-                                        span: $DIR/expand-to-derive.rs:27:28: 27:39 (#0),
+                                        ident: "struct",
+                                        span: $DIR/expand-to-derive.rs:28:5: 28:11 (#0),
+                                    },
+                                    Ident {
+                                        ident: "Inner",
+                                        span: $DIR/expand-to-derive.rs:28:12: 28:17 (#0),
+                                    },
+                                    Group {
+                                        delimiter: Brace,
+                                        stream: TokenStream [
+                                            Ident {
+                                                ident: "other_inner_field",
+                                                span: $DIR/expand-to-derive.rs:30:9: 30:26 (#0),
+                                            },
+                                            Punct {
+                                                ch: ':',
+                                                spacing: Alone,
+                                                span: $DIR/expand-to-derive.rs:30:26: 30:27 (#0),
+                                            },
+                                            Ident {
+                                                ident: "u8",
+                                                span: $DIR/expand-to-derive.rs:30:28: 30:30 (#0),
+                                            },
+                                            Punct {
+                                                ch: ',',
+                                                spacing: Alone,
+                                                span: $DIR/expand-to-derive.rs:30:30: 30:31 (#0),
+                                            },
+                                        ],
+                                        span: $DIR/expand-to-derive.rs:28:18: 31:6 (#0),
                                     },
                                 ],
-                                span: $DIR/expand-to-derive.rs:27:6: 27:41 (#0),
-                            },
-                            Ident {
-                                ident: "struct",
-                                span: $DIR/expand-to-derive.rs:28:5: 28:11 (#0),
-                            },
-                            Ident {
-                                ident: "Inner",
-                                span: $DIR/expand-to-derive.rs:28:12: 28:17 (#0),
-                            },
-                            Group {
-                                delimiter: Brace,
-                                stream: TokenStream [
-                                    Ident {
-                                        ident: "other_inner_field",
-                                        span: $DIR/expand-to-derive.rs:30:9: 30:26 (#0),
-                                    },
-                                    Punct {
-                                        ch: ':',
-                                        spacing: Alone,
-                                        span: $DIR/expand-to-derive.rs:30:26: 30:27 (#0),
-                                    },
-                                    Ident {
-                                        ident: "u8",
-                                        span: $DIR/expand-to-derive.rs:30:28: 30:30 (#0),
-                                    },
-                                    Punct {
-                                        ch: ',',
-                                        spacing: Alone,
-                                        span: $DIR/expand-to-derive.rs:30:30: 30:31 (#0),
-                                    },
-                                ],
-                                span: $DIR/expand-to-derive.rs:28:18: 31:6 (#0),
+                                span: $DIR/expand-to-derive.rs:19:17: 19:22 (#3),
                             },
                             Literal {
                                 kind: Integer,

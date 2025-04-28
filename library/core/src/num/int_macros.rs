@@ -244,8 +244,8 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("assert_eq!(n.cast_unsigned(), ", stringify!($UnsignedT), "::MAX);")]
         /// ```
-        #[stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "integer_sign_cast", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "integer_sign_cast", since = "1.87.0")]
+        #[rustc_const_stable(feature = "integer_sign_cast", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -1355,8 +1355,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(4), 0x10);")]
         #[doc = concat!("assert_eq!(0x1", stringify!($SelfT), ".unbounded_shl(129), 0);")]
         /// ```
-        #[stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unbounded_shifts", since = "1.87.0")]
+        #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1478,8 +1478,8 @@ macro_rules! int_impl {
         #[doc = concat!("assert_eq!(0x10", stringify!($SelfT), ".unbounded_shr(129), 0);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.unbounded_shr(129), -1);")]
         /// ```
-        #[stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
-        #[rustc_const_stable(feature = "unbounded_shifts", since = "CURRENT_RUSTC_VERSION")]
+        #[stable(feature = "unbounded_shifts", since = "1.87.0")]
+        #[rustc_const_stable(feature = "unbounded_shifts", since = "1.87.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -3571,10 +3571,7 @@ macro_rules! int_impl {
             // so delegate it to `Ord` which is already producing -1/0/+1
             // exactly like we need and can be the place to deal with the complexity.
 
-            // FIXME(const-hack): replace with cmp
-            if self < 0 { -1 }
-            else if self == 0 { 0 }
-            else { 1 }
+            crate::intrinsics::three_way_compare(self, 0) as Self
         }
 
         /// Returns `true` if `self` is positive and `false` if the number is zero or
@@ -3678,6 +3675,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
         // SAFETY: const sound because integers are plain old datatypes so we can always
         // transmute them to arrays of bytes
         #[must_use = "this returns the result of the operation, \
@@ -3781,6 +3779,7 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
+        #[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
         #[must_use]
         // SAFETY: const sound because integers are plain old datatypes so we can always
         // transmute to them

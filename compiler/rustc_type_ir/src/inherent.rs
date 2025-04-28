@@ -146,36 +146,19 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn has_unsafe_fields(self) -> bool;
 
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
-        match self.kind() {
-            ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
-            ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, args),
-            ty::Error(_) => {
-                // ignore errors (#54954)
-                ty::Binder::dummy(ty::FnSig {
-                    inputs_and_output: Default::default(),
-                    c_variadic: false,
-                    safety: I::Safety::safe(),
-                    abi: I::Abi::rust(),
-                })
-            }
-            ty::Closure(..) => panic!(
-                "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",
-            ),
-            _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self),
-        }
+        self.kind().fn_sig(interner)
     }
 
     fn discriminant_ty(self, interner: I) -> I::Ty;
 
     fn async_destructor_ty(self, interner: I) -> I::Ty;
-
-    /// Returns `true` when the outermost type cannot be further normalized,
-    /// resolved, or instantiated. This includes all primitive types, but also
-    /// things like ADTs and trait objects, since even if their arguments or
-    /// nested types may be further simplified, the outermost [`ty::TyKind`] or
-    /// type constructor remains the same.
     fn is_known_rigid(self) -> bool {
+        self.kind().is_known_rigid()
+    }
+
+    fn is_guaranteed_unsized_raw(self) -> bool {
         match self.kind() {
+            ty::Dynamic(_, _, ty::Dyn) | ty::Slice(_) | ty::Str => true,
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -183,29 +166,26 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Float(_)
             | ty::Adt(_, _)
             | ty::Foreign(_)
-            | ty::Str
             | ty::Array(_, _)
             | ty::Pat(_, _)
-            | ty::Slice(_)
             | ty::RawPtr(_, _)
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
-            | ty::FnPtr(..)
+            | ty::FnPtr(_, _)
             | ty::UnsafeBinder(_)
-            | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
             | ty::Coroutine(_, _)
-            | ty::CoroutineWitness(..)
+            | ty::CoroutineWitness(_, _)
             | ty::Never
-            | ty::Tuple(_) => true,
-
-            ty::Error(_)
-            | ty::Infer(_)
+            | ty::Tuple(_)
             | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Bound(_, _)
-            | ty::Placeholder(_) => false,
+            | ty::Placeholder(_)
+            | ty::Infer(_)
+            | ty::Error(_)
+            | ty::Dynamic(_, _, ty::DynStar) => false,
         }
     }
 }
@@ -462,6 +442,14 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
 {
     fn as_clause(self) -> Option<I::Clause>;
 
+    fn as_normalizes_to(self) -> Option<ty::Binder<I, ty::NormalizesTo<I>>> {
+        let kind = self.kind();
+        match kind.skip_binder() {
+            ty::PredicateKind::NormalizesTo(pred) => Some(kind.rebind(pred)),
+            _ => None,
+        }
+    }
+
     // FIXME: Eventually uplift the impl out of rustc and make this defaulted.
     fn allow_normalization(self) -> bool;
 }
@@ -603,7 +591,7 @@ pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 
 pub trait SliceLike: Sized + Copy {
     type Item: Copy;
-    type IntoIter: Iterator<Item = Self::Item>;
+    type IntoIter: Iterator<Item = Self::Item> + DoubleEndedIterator;
 
     fn iter(self) -> Self::IntoIter;
 

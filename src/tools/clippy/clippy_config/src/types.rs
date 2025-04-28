@@ -1,5 +1,7 @@
-use clippy_utils::def_path_def_ids;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag};
+use rustc_hir::PrimTy;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -21,6 +23,17 @@ pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
     path: String,
     reason: Option<String>,
     replacement: Option<String>,
+    /// Setting `allow_invalid` to true suppresses a warning if `path` does not refer to an existing
+    /// definition.
+    ///
+    /// This could be useful when conditional compilation is used, or when a clippy.toml file is
+    /// shared among multiple projects.
+    allow_invalid: bool,
+    /// The span of the `DisallowedPath`.
+    ///
+    /// Used for diagnostics.
+    #[serde(skip_serializing)]
+    span: Span,
 }
 
 impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<REPLACEMENT_ALLOWED> {
@@ -36,6 +49,8 @@ impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<R
             path: enum_.path().to_owned(),
             reason: enum_.reason().map(ToOwned::to_owned),
             replacement: enum_.replacement().map(ToOwned::to_owned),
+            allow_invalid: enum_.allow_invalid(),
+            span: Span::default(),
         })
     }
 }
@@ -50,6 +65,8 @@ enum DisallowedPathEnum {
         path: String,
         reason: Option<String>,
         replacement: Option<String>,
+        #[serde(rename = "allow-invalid")]
+        allow_invalid: Option<bool>,
     },
 }
 
@@ -58,7 +75,7 @@ impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
         &self.path
     }
 
-    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_, REPLACEMENT_ALLOWED> {
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) {
         move |diag| {
             if let Some(replacement) = &self.replacement {
                 diag.span_suggestion(
@@ -71,6 +88,14 @@ impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
                 diag.note(reason.clone());
             }
         }
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn set_span(&mut self, span: Span) {
+        self.span = span;
     }
 }
 
@@ -94,20 +119,87 @@ impl DisallowedPathEnum {
             Self::Simple(_) => None,
         }
     }
+
+    fn allow_invalid(&self) -> bool {
+        match &self {
+            Self::WithReason { allow_invalid, .. } => allow_invalid.unwrap_or_default(),
+            Self::Simple(_) => false,
+        }
+    }
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
+#[allow(clippy::type_complexity)]
 pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
-    disallowed: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
-) -> DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> {
-    disallowed
-        .iter()
-        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x))
-        .flat_map(|(name, path, disallowed_path)| {
-            def_path_def_ids(tcx, &path).map(move |id| (id, (name, disallowed_path)))
-        })
-        .collect()
+    disallowed_paths: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
+    def_kind_predicate: impl Fn(DefKind) -> bool,
+    predicate_description: &str,
+    allow_prim_tys: bool,
+) -> (
+    DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)>,
+    FxHashMap<PrimTy, (&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)>,
+) {
+    let mut def_ids: DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> = DefIdMap::default();
+    let mut prim_tys: FxHashMap<PrimTy, (&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> =
+        FxHashMap::default();
+    for disallowed_path in disallowed_paths {
+        let path = disallowed_path.path();
+        let mut resolutions = clippy_utils::def_path_res(tcx, &path.split("::").collect::<Vec<_>>());
+
+        let mut found_def_id = None;
+        let mut found_prim_ty = false;
+        resolutions.retain(|res| match res {
+            Res::Def(def_kind, def_id) => {
+                found_def_id = Some(*def_id);
+                def_kind_predicate(*def_kind)
+            },
+            Res::PrimTy(_) => {
+                found_prim_ty = true;
+                allow_prim_tys
+            },
+            _ => false,
+        });
+
+        if resolutions.is_empty() {
+            let span = disallowed_path.span();
+
+            if let Some(def_id) = found_def_id {
+                tcx.sess.dcx().span_warn(
+                    span,
+                    format!(
+                        "expected a {predicate_description}, found {} {}",
+                        tcx.def_descr_article(def_id),
+                        tcx.def_descr(def_id)
+                    ),
+                );
+            } else if found_prim_ty {
+                tcx.sess.dcx().span_warn(
+                    span,
+                    format!("expected a {predicate_description}, found a primitive type",),
+                );
+            } else if !disallowed_path.allow_invalid {
+                tcx.sess.dcx().span_warn(
+                    span,
+                    format!("`{path}` does not refer to an existing {predicate_description}"),
+                );
+            }
+        }
+
+        for res in resolutions {
+            match res {
+                Res::Def(_, def_id) => {
+                    def_ids.insert(def_id, (path, disallowed_path));
+                },
+                Res::PrimTy(ty) => {
+                    prim_tys.insert(ty, (path, disallowed_path));
+                },
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    (def_ids, prim_tys)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -305,6 +397,7 @@ impl SourceItemOrderingModuleItemKind {
 pub struct SourceItemOrderingModuleItemGroupings {
     groups: Vec<(String, Vec<SourceItemOrderingModuleItemKind>)>,
     lut: HashMap<SourceItemOrderingModuleItemKind, usize>,
+    back_lut: HashMap<SourceItemOrderingModuleItemKind, String>,
 }
 
 impl SourceItemOrderingModuleItemGroupings {
@@ -320,6 +413,30 @@ impl SourceItemOrderingModuleItemGroupings {
         lut
     }
 
+    fn build_back_lut(
+        groups: &[(String, Vec<SourceItemOrderingModuleItemKind>)],
+    ) -> HashMap<SourceItemOrderingModuleItemKind, String> {
+        let mut lut = HashMap::new();
+        for (group_name, items) in groups {
+            for item in items {
+                lut.insert(item.clone(), group_name.clone());
+            }
+        }
+        lut
+    }
+
+    pub fn grouping_name_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<&String> {
+        self.back_lut.get(item)
+    }
+
+    pub fn grouping_names(&self) -> Vec<String> {
+        self.groups.iter().map(|(name, _)| name.clone()).collect()
+    }
+
+    pub fn is_grouping(&self, grouping: &str) -> bool {
+        self.groups.iter().any(|(g, _)| g == grouping)
+    }
+
     pub fn module_level_order_of(&self, item: &SourceItemOrderingModuleItemKind) -> Option<usize> {
         self.lut.get(item).copied()
     }
@@ -330,7 +447,8 @@ impl From<&[(&str, &[SourceItemOrderingModuleItemKind])]> for SourceItemOrdering
         let groups: Vec<(String, Vec<SourceItemOrderingModuleItemKind>)> =
             value.iter().map(|item| (item.0.to_string(), item.1.to_vec())).collect();
         let lut = Self::build_lut(&groups);
-        Self { groups, lut }
+        let back_lut = Self::build_back_lut(&groups);
+        Self { groups, lut, back_lut }
     }
 }
 
@@ -348,6 +466,7 @@ impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
         let groups = Vec::<(String, Vec<SourceItemOrderingModuleItemKind>)>::deserialize(deserializer)?;
         let items_total: usize = groups.iter().map(|(_, v)| v.len()).sum();
         let lut = Self::build_lut(&groups);
+        let back_lut = Self::build_back_lut(&groups);
 
         let mut expected_items = SourceItemOrderingModuleItemKind::all_variants();
         for item in lut.keys() {
@@ -370,7 +489,7 @@ impl<'de> Deserialize<'de> for SourceItemOrderingModuleItemGroupings {
                 ));
             }
 
-            Ok(Self { groups, lut })
+            Ok(Self { groups, lut, back_lut })
         } else if items_total != all_items.len() {
             Err(de::Error::custom(format!(
                 "Some module item kinds were configured more than once, or were missing, in the source ordering configuration. \
@@ -479,6 +598,83 @@ impl Serialize for SourceItemOrderingTraitAssocItemKinds {
         S: ser::Serializer,
     {
         self.0.serialize(serializer)
+    }
+}
+
+/// Describes which specific groupings should have their items ordered
+/// alphabetically.
+///
+/// This is separate from defining and enforcing groupings. For example,
+/// defining enums are grouped before structs still allows for an enum B to be
+/// placed before an enum A. Only when enforcing ordering within the grouping,
+/// will it be checked if A is placed before B.
+#[derive(Clone, Debug)]
+pub enum SourceItemOrderingWithinModuleItemGroupings {
+    /// All groupings should have their items ordered.
+    All,
+
+    /// None of the groupings should have their order checked.
+    None,
+
+    /// Only the specified groupings should have their order checked.
+    Custom(Vec<String>),
+}
+
+impl SourceItemOrderingWithinModuleItemGroupings {
+    pub fn ordered_within(&self, grouping_name: &String) -> bool {
+        match self {
+            SourceItemOrderingWithinModuleItemGroupings::All => true,
+            SourceItemOrderingWithinModuleItemGroupings::None => false,
+            SourceItemOrderingWithinModuleItemGroupings::Custom(groups) => groups.contains(grouping_name),
+        }
+    }
+}
+
+/// Helper struct for deserializing the [`SourceItemOrderingWithinModuleItemGroupings`].
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum StringOrVecOfString {
+    String(String),
+    Vec(Vec<String>),
+}
+
+impl<'de> Deserialize<'de> for SourceItemOrderingWithinModuleItemGroupings {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let description = "The available options for configuring an ordering within module item groups are: \
+                    \"all\", \"none\", or a list of module item group names \
+                    (as configured with the `module-item-order-groupings` configuration option).";
+
+        match StringOrVecOfString::deserialize(deserializer) {
+            Ok(StringOrVecOfString::String(preset)) if preset == "all" => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::All)
+            },
+            Ok(StringOrVecOfString::String(preset)) if preset == "none" => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::None)
+            },
+            Ok(StringOrVecOfString::String(preset)) => Err(de::Error::custom(format!(
+                "Unknown configuration option: {preset}.\n{description}"
+            ))),
+            Ok(StringOrVecOfString::Vec(groupings)) => {
+                Ok(SourceItemOrderingWithinModuleItemGroupings::Custom(groupings))
+            },
+            Err(e) => Err(de::Error::custom(format!("{e}\n{description}"))),
+        }
+    }
+}
+
+impl Serialize for SourceItemOrderingWithinModuleItemGroupings {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ser::Serializer,
+    {
+        match self {
+            SourceItemOrderingWithinModuleItemGroupings::All => serializer.serialize_str("all"),
+            SourceItemOrderingWithinModuleItemGroupings::None => serializer.serialize_str("none"),
+            SourceItemOrderingWithinModuleItemGroupings::Custom(vec) => vec.serialize(serializer),
+        }
     }
 }
 

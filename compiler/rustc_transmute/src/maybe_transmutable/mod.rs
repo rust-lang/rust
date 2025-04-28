@@ -1,10 +1,14 @@
+use std::rc::Rc;
+use std::{cmp, iter};
+
+use itertools::Either;
 use tracing::{debug, instrument, trace};
 
 pub(crate) mod query_context;
 #[cfg(test)]
 mod tests;
 
-use crate::layout::{self, Byte, Def, Dfa, Nfa, Ref, Tree, Uninhabited, dfa};
+use crate::layout::{self, Byte, Def, Dfa, Ref, Tree, dfa};
 use crate::maybe_transmutable::query_context::QueryContext;
 use crate::{Answer, Condition, Map, Reason};
 
@@ -73,7 +77,7 @@ where
     /// Answers whether a `Tree` is transmutable into another `Tree`.
     ///
     /// This method begins by de-def'ing `src` and `dst`, and prunes private paths from `dst`,
-    /// then converts `src` and `dst` to `Nfa`s, and computes an answer using those NFAs.
+    /// then converts `src` and `dst` to `Dfa`s, and computes an answer using those DFAs.
     #[inline(always)]
     #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
@@ -105,43 +109,26 @@ where
 
         trace!(?dst, "pruned dst");
 
-        // Convert `src` from a tree-based representation to an NFA-based
+        // Convert `src` from a tree-based representation to an DFA-based
         // representation. If the conversion fails because `src` is uninhabited,
         // conclude that the transmutation is acceptable, because instances of
         // the `src` type do not exist.
-        let src = match Nfa::from_tree(src) {
+        let src = match Dfa::from_tree(src) {
             Ok(src) => src,
-            Err(Uninhabited) => return Answer::Yes,
+            Err(layout::Uninhabited) => return Answer::Yes,
         };
 
-        // Convert `dst` from a tree-based representation to an NFA-based
+        // Convert `dst` from a tree-based representation to an DFA-based
         // representation. If the conversion fails because `src` is uninhabited,
         // conclude that the transmutation is unacceptable. Valid instances of
         // the `dst` type do not exist, either because it's genuinely
         // uninhabited, or because there are no branches of the tree that are
         // free of safety invariants.
-        let dst = match Nfa::from_tree(dst) {
+        let dst = match Dfa::from_tree(dst) {
             Ok(dst) => dst,
-            Err(Uninhabited) => return Answer::No(Reason::DstMayHaveSafetyInvariants),
+            Err(layout::Uninhabited) => return Answer::No(Reason::DstMayHaveSafetyInvariants),
         };
 
-        MaybeTransmutableQuery { src, dst, assume, context }.answer()
-    }
-}
-
-impl<C> MaybeTransmutableQuery<Nfa<<C as QueryContext>::Ref>, C>
-where
-    C: QueryContext,
-{
-    /// Answers whether a `Nfa` is transmutable into another `Nfa`.
-    ///
-    /// This method converts `src` and `dst` to DFAs, then computes an answer using those DFAs.
-    #[inline(always)]
-    #[instrument(level = "debug", skip(self), fields(src = ?self.src, dst = ?self.dst))]
-    pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
-        let Self { src, dst, assume, context } = self;
-        let src = Dfa::from_nfa(src);
-        let dst = Dfa::from_nfa(dst);
         MaybeTransmutableQuery { src, dst, assume, context }.answer()
     }
 }
@@ -173,7 +160,7 @@ where
                 src_transitions_len = self.src.transitions.len(),
                 dst_transitions_len = self.dst.transitions.len()
             );
-            let answer = if dst_state == self.dst.accepting {
+            let answer = if dst_state == self.dst.accept {
                 // truncation: `size_of(Src) >= size_of(Dst)`
                 //
                 // Why is truncation OK to do? Because even though the Src is bigger, all we care about
@@ -190,9 +177,9 @@ where
                 // that none of the actually-used data can introduce an invalid state for Dst's type, we
                 // are able to safely transmute, even with truncation.
                 Answer::Yes
-            } else if src_state == self.src.accepting {
-                // extension: `size_of(Src) >= size_of(Dst)`
-                if let Some(dst_state_prime) = self.dst.byte_from(dst_state, Byte::Uninit) {
+            } else if src_state == self.src.accept {
+                // extension: `size_of(Src) <= size_of(Dst)`
+                if let Some(dst_state_prime) = self.dst.get_uninit_edge_dst(dst_state) {
                     self.answer_memo(cache, src_state, dst_state_prime)
                 } else {
                     Answer::No(Reason::DstIsTooBig)
@@ -210,26 +197,120 @@ where
                     Quantifier::ForAll
                 };
 
+                let c = &core::cell::RefCell::new(&mut *cache);
                 let bytes_answer = src_quantifier.apply(
-                    // for each of the byte transitions out of the `src_state`...
-                    self.src.bytes_from(src_state).unwrap_or(&Map::default()).into_iter().map(
-                        |(&src_validity, &src_state_prime)| {
-                            // ...try to find a matching transition out of `dst_state`.
-                            if let Some(dst_state_prime) =
-                                self.dst.byte_from(dst_state, src_validity)
-                            {
-                                self.answer_memo(cache, src_state_prime, dst_state_prime)
-                            } else if let Some(dst_state_prime) =
-                                // otherwise, see if `dst_state` has any outgoing `Uninit` transitions
-                                // (any init byte is a valid uninit byte)
-                                self.dst.byte_from(dst_state, Byte::Uninit)
-                            {
-                                self.answer_memo(cache, src_state_prime, dst_state_prime)
-                            } else {
-                                // otherwise, we've exhausted our options.
-                                // the DFAs, from this point onwards, are bit-incompatible.
-                                Answer::No(Reason::DstIsBitIncompatible)
+                    // for each of the byte set transitions out of the `src_state`...
+                    self.src.bytes_from(src_state).flat_map(
+                        move |(src_validity, src_state_prime)| {
+                            // ...find all matching transitions out of `dst_state`.
+
+                            let Some(src_validity) = src_validity.range() else {
+                                // NOTE: We construct an iterator here rather
+                                // than just computing the value directly (via
+                                // `self.answer_memo`) so that, if the iterator
+                                // we produce from this branch is
+                                // short-circuited, we don't waste time
+                                // computing `self.answer_memo` unnecessarily.
+                                // That will specifically happen if
+                                // `src_quantifier == Quantifier::ThereExists`,
+                                // since we emit `Answer::Yes` first (before
+                                // chaining `answer_iter`).
+                                let answer_iter = if let Some(dst_state_prime) =
+                                    self.dst.get_uninit_edge_dst(dst_state)
+                                {
+                                    Either::Left(iter::once_with(move || {
+                                        let mut c = c.borrow_mut();
+                                        self.answer_memo(&mut *c, src_state_prime, dst_state_prime)
+                                    }))
+                                } else {
+                                    Either::Right(iter::once(Answer::No(
+                                        Reason::DstIsBitIncompatible,
+                                    )))
+                                };
+
+                                // When `answer == Answer::No(...)`, there are
+                                // two cases to consider:
+                                // - If `assume.validity`, then we should
+                                //   succeed because the user is responsible for
+                                //   ensuring that the *specific* byte value
+                                //   appearing at runtime is valid for the
+                                //   destination type. When `assume.validity`,
+                                //   `src_quantifier ==
+                                //   Quantifier::ThereExists`, so adding an
+                                //   `Answer::Yes` has the effect of ensuring
+                                //   that the "there exists" is always
+                                //   satisfied.
+                                // - If `!assume.validity`, then we should fail.
+                                //   In this case, `src_quantifier ==
+                                //   Quantifier::ForAll`, so adding an
+                                //   `Answer::Yes` has no effect.
+                                return Either::Left(iter::once(Answer::Yes).chain(answer_iter));
+                            };
+
+                            #[derive(Copy, Clone, Debug)]
+                            struct Accum {
+                                // The number of matching byte edges that we
+                                // have found in the destination so far.
+                                sum: usize,
+                                found_uninit: bool,
                             }
+
+                            let accum1 = Rc::new(std::cell::Cell::new(Accum {
+                                sum: 0,
+                                found_uninit: false,
+                            }));
+                            let accum2 = Rc::clone(&accum1);
+                            let sv = src_validity.clone();
+                            let update_accum = move |mut accum: Accum, dst_validity: Byte| {
+                                if let Some(dst_validity) = dst_validity.range() {
+                                    // Only add the part of `dst_validity` that
+                                    // overlaps with `src_validity`.
+                                    let start = cmp::max(*sv.start(), *dst_validity.start());
+                                    let end = cmp::min(*sv.end(), *dst_validity.end());
+
+                                    // We add 1 here to account for the fact
+                                    // that `end` is an inclusive bound.
+                                    accum.sum += 1 + usize::from(end.saturating_sub(start));
+                                } else {
+                                    accum.found_uninit = true;
+                                }
+                                accum
+                            };
+
+                            let answers = self
+                                .dst
+                                .states_from(dst_state, src_validity.clone())
+                                .map(move |(dst_validity, dst_state_prime)| {
+                                    let mut c = c.borrow_mut();
+                                    accum1.set(update_accum(accum1.get(), dst_validity));
+                                    let answer =
+                                        self.answer_memo(&mut *c, src_state_prime, dst_state_prime);
+                                    answer
+                                })
+                                .chain(
+                                    iter::once_with(move || {
+                                        let src_validity_len = usize::from(*src_validity.end())
+                                            - usize::from(*src_validity.start())
+                                            + 1;
+                                        let accum = accum2.get();
+
+                                        // If this condition is false, then
+                                        // there are some byte values in the
+                                        // source which have no corresponding
+                                        // transition in the destination DFA. In
+                                        // that case, we add a `No` to our list
+                                        // of answers. When
+                                        // `!self.assume.validity`, this will
+                                        // cause the query to fail.
+                                        if accum.found_uninit || accum.sum == src_validity_len {
+                                            None
+                                        } else {
+                                            Some(Answer::No(Reason::DstIsBitIncompatible))
+                                        }
+                                    })
+                                    .flatten(),
+                                );
+                            Either::Right(answers)
                         },
                     ),
                 );
@@ -252,48 +333,38 @@ where
 
                 let refs_answer = src_quantifier.apply(
                     // for each reference transition out of `src_state`...
-                    self.src.refs_from(src_state).unwrap_or(&Map::default()).into_iter().map(
-                        |(&src_ref, &src_state_prime)| {
-                            // ...there exists a reference transition out of `dst_state`...
-                            Quantifier::ThereExists.apply(
-                                self.dst
-                                    .refs_from(dst_state)
-                                    .unwrap_or(&Map::default())
-                                    .into_iter()
-                                    .map(|(&dst_ref, &dst_state_prime)| {
-                                        if !src_ref.is_mutable() && dst_ref.is_mutable() {
-                                            Answer::No(Reason::DstIsMoreUnique)
-                                        } else if !self.assume.alignment
-                                            && src_ref.min_align() < dst_ref.min_align()
-                                        {
-                                            Answer::No(Reason::DstHasStricterAlignment {
-                                                src_min_align: src_ref.min_align(),
-                                                dst_min_align: dst_ref.min_align(),
-                                            })
-                                        } else if dst_ref.size() > src_ref.size() {
-                                            Answer::No(Reason::DstRefIsTooBig {
-                                                src: src_ref,
-                                                dst: dst_ref,
-                                            })
-                                        } else {
-                                            // ...such that `src` is transmutable into `dst`, if
-                                            // `src_ref` is transmutability into `dst_ref`.
-                                            and(
-                                                Answer::If(Condition::IfTransmutable {
-                                                    src: src_ref,
-                                                    dst: dst_ref,
-                                                }),
-                                                self.answer_memo(
-                                                    cache,
-                                                    src_state_prime,
-                                                    dst_state_prime,
-                                                ),
-                                            )
-                                        }
-                                    }),
-                            )
-                        },
-                    ),
+                    self.src.refs_from(src_state).map(|(src_ref, src_state_prime)| {
+                        // ...there exists a reference transition out of `dst_state`...
+                        Quantifier::ThereExists.apply(self.dst.refs_from(dst_state).map(
+                            |(dst_ref, dst_state_prime)| {
+                                if !src_ref.is_mutable() && dst_ref.is_mutable() {
+                                    Answer::No(Reason::DstIsMoreUnique)
+                                } else if !self.assume.alignment
+                                    && src_ref.min_align() < dst_ref.min_align()
+                                {
+                                    Answer::No(Reason::DstHasStricterAlignment {
+                                        src_min_align: src_ref.min_align(),
+                                        dst_min_align: dst_ref.min_align(),
+                                    })
+                                } else if dst_ref.size() > src_ref.size() {
+                                    Answer::No(Reason::DstRefIsTooBig {
+                                        src: src_ref,
+                                        dst: dst_ref,
+                                    })
+                                } else {
+                                    // ...such that `src` is transmutable into `dst`, if
+                                    // `src_ref` is transmutability into `dst_ref`.
+                                    and(
+                                        Answer::If(Condition::IfTransmutable {
+                                            src: src_ref,
+                                            dst: dst_ref,
+                                        }),
+                                        self.answer_memo(cache, src_state_prime, dst_state_prime),
+                                    )
+                                }
+                            },
+                        ))
+                    }),
                 );
 
                 if self.assume.validity {

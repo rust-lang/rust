@@ -9,10 +9,9 @@ use std::iter;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{
     self, ExistentialPredicateStableCmpExt as _, Instance, InstanceKind, IntTy, List, TraitRef, Ty,
-    TyCtxt, TypeFoldable, TypeVisitableExt, UintTy,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
@@ -241,7 +240,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()
-                .filter(|item| item.kind == ty::AssocKind::Type)
+                .filter(|item| item.is_type())
                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                 .map(move |assoc_ty| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
@@ -447,7 +446,7 @@ pub(crate) fn transform_instance<'tcx>(
             let call = tcx
                 .associated_items(trait_id)
                 .in_definition_order()
-                .find(|it| it.kind == ty::AssocKind::Fn)
+                .find(|it| it.is_fn())
                 .expect("No call-family function on closure-like Fn trait?")
                 .def_id;
 

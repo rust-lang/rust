@@ -1,5 +1,6 @@
 use std::fmt;
 use std::iter::once;
+use std::ops::ControlFlow;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
@@ -11,11 +12,12 @@ use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
+    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, VariantDef,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{
@@ -135,8 +137,22 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Returns the hidden type corresponding to this key if the body under analysis is allowed to
     /// know it.
     fn reveal_opaque_key(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
-        self.typeck_results.concrete_opaque_types.get(&key).map(|x| x.ty)
+        if let Some(hidden_ty) = self.typeck_results.concrete_opaque_types.get(&key.def_id) {
+            let ty = ty::EarlyBinder::bind(hidden_ty.ty).instantiate(self.tcx, key.args);
+            if ty.visit_with(&mut RecursiveOpaque { def_id: key.def_id.into() }).is_continue() {
+                Some(ty)
+            } else {
+                // HACK: We skip revealing opaque types which recursively expand
+                // to themselves. This is because we may infer hidden types like
+                // `Opaque<T> = Opaque<Opaque<T>>` or `Opaque<T> = Opaque<(T,)>`
+                // in hir typeck.
+                None
+            }
+        } else {
+            None
+        }
     }
+
     // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.inhabited_predicate(self.tcx).apply_revealing_opaque(
@@ -150,9 +166,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
     pub fn is_foreign_non_exhaustive_enum(&self, ty: RevealedTy<'tcx>) -> bool {
         match ty.kind() {
-            ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
-            }
+            ty::Adt(def, ..) => def.variant_list_has_applicable_non_exhaustive(),
             _ => false,
         }
     }
@@ -232,7 +246,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             let is_visible =
                                 adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
                             let is_uninhabited = cx.is_uninhabited(*ty);
-                            let skip = is_uninhabited && !is_visible;
+                            let is_unstable =
+                                cx.tcx.lookup_stability(field.did).is_some_and(|stab| {
+                                    stab.is_unstable() && stab.feature != sym::rustc_private
+                                });
+                            let skip = is_uninhabited && (!is_visible || is_unstable);
                             (ty, PrivateUninhabitedField(skip))
                         });
                         cx.dropless_arena.alloc_from_iter(tys)
@@ -455,7 +473,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::AscribeUserType { subpattern, .. }
             | PatKind::ExpandedConstant { subpattern, .. } => return self.lower_pat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
-            PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
+            PatKind::Missing | PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
                 fields = vec![];
                 arity = 0;
@@ -1099,4 +1117,21 @@ pub fn analyze_match<'p, 'tcx>(
     }
 
     Ok(report)
+}
+
+struct RecursiveOpaque {
+    def_id: DefId,
+}
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for RecursiveOpaque {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        if let ty::Alias(ty::Opaque, alias_ty) = t.kind() {
+            if alias_ty.def_id == self.def_id {
+                return ControlFlow::Break(());
+            }
+        }
+
+        if t.has_opaque_types() { t.super_visit_with(self) } else { ControlFlow::Continue(()) }
+    }
 }

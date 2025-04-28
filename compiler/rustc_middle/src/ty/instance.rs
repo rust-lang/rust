@@ -71,7 +71,7 @@ pub enum InstanceKind<'tcx> {
     /// - coroutines
     Item(DefId),
 
-    /// An intrinsic `fn` item (with `"rust-intrinsic"` ABI).
+    /// An intrinsic `fn` item (with`#[rustc_instrinsic]`).
     ///
     /// Alongside `Virtual`, this is the only `InstanceKind` that does not have its own callable MIR.
     /// Instead, codegen and const eval "magically" evaluate calls to intrinsics purely in the
@@ -300,50 +300,6 @@ impl<'tcx> InstanceKind<'tcx> {
             tcx.def_key(def_id).disambiguated_data.data,
             DefPathData::Ctor | DefPathData::Closure
         )
-    }
-
-    /// Returns `true` if the machine code for this instance is instantiated in
-    /// each codegen unit that references it.
-    /// Note that this is only a hint! The compiler can globally decide to *not*
-    /// do this in order to speed up compilation. CGU-internal copies are
-    /// only exist to enable inlining. If inlining is not performed (e.g. at
-    /// `-Copt-level=0`) then the time for generating them is wasted and it's
-    /// better to create a single copy with external linkage.
-    pub fn generates_cgu_internal_copy(&self, tcx: TyCtxt<'tcx>) -> bool {
-        if self.requires_inline(tcx) {
-            return true;
-        }
-        if let ty::InstanceKind::DropGlue(.., Some(ty))
-        | ty::InstanceKind::AsyncDropGlueCtorShim(.., Some(ty)) = *self
-        {
-            // Drop glue generally wants to be instantiated at every codegen
-            // unit, but without an #[inline] hint. We should make this
-            // available to normal end-users.
-            if tcx.sess.opts.incremental.is_none() {
-                return true;
-            }
-            // When compiling with incremental, we can generate a *lot* of
-            // codegen units. Including drop glue into all of them has a
-            // considerable compile time cost.
-            //
-            // We include enums without destructors to allow, say, optimizing
-            // drops of `Option::None` before LTO. We also respect the intent of
-            // `#[inline]` on `Drop::drop` implementations.
-            return ty.ty_adt_def().is_none_or(|adt_def| {
-                match *self {
-                    ty::InstanceKind::DropGlue(..) => adt_def.destructor(tcx).map(|dtor| dtor.did),
-                    ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
-                        adt_def.async_destructor(tcx).map(|dtor| dtor.ctor)
-                    }
-                    _ => unreachable!(),
-                }
-                .map_or_else(|| adt_def.is_enum(), |did| tcx.cross_crate_inlinable(did))
-            });
-        }
-        if let ty::InstanceKind::ThreadLocalShim(..) = *self {
-            return false;
-        }
-        tcx.cross_crate_inlinable(self.def_id())
     }
 
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
@@ -712,10 +668,7 @@ impl<'tcx> Instance<'tcx> {
                             ..
                         })
                     );
-                // We also need to generate a shim if this is an AFIT.
-                let needs_rpitit_shim =
-                    tcx.return_position_impl_trait_in_trait_shim_data(def).is_some();
-                if needs_track_caller_shim || needs_rpitit_shim {
+                if needs_track_caller_shim {
                     if tcx.is_closure_like(def) {
                         debug!(
                             " => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
@@ -767,7 +720,7 @@ impl<'tcx> Instance<'tcx> {
             ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
-            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+            ty.ty_adt_def().and_then(|adt| tcx.hir_span_if_local(adt.did())).unwrap_or(DUMMY_SP),
         )
     }
 
@@ -779,7 +732,7 @@ impl<'tcx> Instance<'tcx> {
             ty::TypingEnv::fully_monomorphized(),
             def_id,
             args,
-            ty.ty_adt_def().and_then(|adt| tcx.hir().span_if_local(adt.did())).unwrap_or(DUMMY_SP),
+            ty.ty_adt_def().and_then(|adt| tcx.hir_span_if_local(adt.did())).unwrap_or(DUMMY_SP),
         )
     }
 
@@ -793,7 +746,7 @@ impl<'tcx> Instance<'tcx> {
         let call_once = tcx
             .associated_items(fn_once)
             .in_definition_order()
-            .find(|it| it.kind == ty::AssocKind::Fn)
+            .find(|it| it.is_fn())
             .unwrap()
             .def_id;
         let track_caller =

@@ -44,8 +44,8 @@ impl UNICODE_STRING {
     }
 }
 
-impl Default for OBJECT_ATTRIBUTES {
-    fn default() -> Self {
+impl OBJECT_ATTRIBUTES {
+    pub fn with_length() -> Self {
         Self {
             Length: size_of::<Self>() as _,
             RootDirectory: ptr::null_mut(),

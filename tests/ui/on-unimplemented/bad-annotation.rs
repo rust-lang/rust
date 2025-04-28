@@ -20,44 +20,44 @@ trait BadAnnotation1
 {}
 
 #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{C}>`"]
-//~^ ERROR there is no parameter `C` on trait `BadAnnotation2`
+//~^ ERROR cannot find parameter C on this trait
 trait BadAnnotation2<A,B>
 {}
 
 #[rustc_on_unimplemented = "Unimplemented trait error on `{Self}` with params `<{A},{B},{}>`"]
-//~^ only named generic parameters are allowed
+//~^ ERROR positional format arguments are not allowed here
 trait BadAnnotation3<A,B>
 {}
 
 #[rustc_on_unimplemented(lorem="")]
-//~^ this attribute must have a valid
+//~^ ERROR this attribute must have a valid
 trait BadAnnotation4 {}
 
 #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
-//~^ this attribute must have a valid
+//~^ ERROR this attribute must have a valid
 trait BadAnnotation5 {}
 
 #[rustc_on_unimplemented(message="x", message="y")]
-//~^ this attribute must have a valid
+//~^ ERROR this attribute must have a valid
 trait BadAnnotation6 {}
 
 #[rustc_on_unimplemented(message="x", on(desugared, message="y"))]
-//~^ this attribute must have a valid
+//~^ ERROR this attribute must have a valid
 trait BadAnnotation7 {}
 
 #[rustc_on_unimplemented(on(), message="y")]
-//~^ empty `on`-clause
+//~^ ERROR empty `on`-clause
 trait BadAnnotation8 {}
 
 #[rustc_on_unimplemented(on="x", message="y")]
-//~^ this attribute must have a valid
+//~^ ERROR this attribute must have a valid
 trait BadAnnotation9 {}
 
 #[rustc_on_unimplemented(on(x="y"), message="y")]
 trait BadAnnotation10 {}
 
 #[rustc_on_unimplemented(on(desugared, on(desugared, message="x")), message="y")]
-//~^ this attribute must have a valid
+//~^ ERROR this attribute must have a valid
 trait BadAnnotation11 {}
 
 pub fn main() {

@@ -1,11 +1,11 @@
 error[E0308]: mismatched types
-  --> $DIR/opaque_types2.rs:13:11
+  --> $DIR/opaque_types2.rs:14:13
    |
 LL | type Foo = impl Sized;
    |            ---------- the found opaque type
 ...
-LL |     foo::<C>();
-   |           ^ expected `u32`, found opaque type
+LL |     foo::<{ baz() }>();
+   |             ^^^^^ expected `u32`, found opaque type
    |
    = note:     expected type `u32`
            found opaque type `Foo`

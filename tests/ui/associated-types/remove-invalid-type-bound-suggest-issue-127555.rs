@@ -13,7 +13,7 @@ impl Foo for Baz {
     async fn bar<F>(&mut self, _func: F) -> ()
     where
         F: FnMut() + Send,
-        //~^ impl has stricter requirements than trait
+        //~^ ERROR impl has stricter requirements than trait
     {
         ()
     }

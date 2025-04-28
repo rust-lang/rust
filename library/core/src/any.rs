@@ -109,7 +109,7 @@ use crate::{fmt, hash, intrinsics};
 // unsafe traits and unsafe methods (i.e., `type_id` would still be safe to call,
 // but we would likely want to indicate as such in documentation).
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Any")]
+#[rustc_diagnostic_item = "Any"]
 pub trait Any: 'static {
     /// Gets the `TypeId` of `self`.
     ///
@@ -772,8 +772,8 @@ impl hash::Hash for TypeId {
         //   (especially given the previous point about the lower 64 bits being
         //   high quality on their own).
         // - It is correct to do so -- only hashing a subset of `self` is still
-        //   with an `Eq` implementation that considers the entire value, as
-        //   ours does.
+        //   compatible with an `Eq` implementation that considers the entire
+        //   value, as ours does.
         self.t.1.hash(state);
     }
 }

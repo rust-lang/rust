@@ -11,12 +11,12 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, Stab
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable};
-use rustc_query_system::query::QuerySideEffects;
+use rustc_query_system::query::QuerySideEffect;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
-    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
+    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
@@ -45,7 +45,7 @@ const TAG_EXPN_DATA: u8 = 1;
 // Tags for encoding Symbol's
 const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
-const SYMBOL_PREINTERNED: u8 = 2;
+const SYMBOL_PREDEFINED: u8 = 2;
 
 /// Provides an interface to incremental compilation data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -55,9 +55,9 @@ pub struct OnDiskCache {
     // The complete cache data in serialized form.
     serialized_data: RwLock<Option<Mmap>>,
 
-    // Collects all `QuerySideEffects` created during the current compilation
+    // Collects all `QuerySideEffect` created during the current compilation
     // session.
-    current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffects>>,
+    current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffect>>,
 
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
 
@@ -68,7 +68,7 @@ pub struct OnDiskCache {
     // `serialized_data`.
     query_result_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
-    // A map from dep-node to the position of any associated `QuerySideEffects` in
+    // A map from dep-node to the position of any associated `QuerySideEffect` in
     // `serialized_data`.
     prev_side_effects_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
@@ -270,10 +270,10 @@ impl OnDiskCache {
                 .current_side_effects
                 .borrow()
                 .iter()
-                .map(|(dep_node_index, side_effects)| {
+                .map(|(dep_node_index, side_effect)| {
                     let pos = AbsoluteBytePos::new(encoder.position());
                     let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
-                    encoder.encode_tagged(dep_node_index, side_effects);
+                    encoder.encode_tagged(dep_node_index, side_effect);
 
                     (dep_node_index, pos)
                 })
@@ -352,24 +352,23 @@ impl OnDiskCache {
         })
     }
 
-    /// Loads a `QuerySideEffects` created during the previous compilation session.
-    pub fn load_side_effects(
+    /// Loads a `QuerySideEffect` created during the previous compilation session.
+    pub fn load_side_effect(
         &self,
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
-    ) -> QuerySideEffects {
-        let side_effects: Option<QuerySideEffects> =
+    ) -> Option<QuerySideEffect> {
+        let side_effect: Option<QuerySideEffect> =
             self.load_indexed(tcx, dep_node_index, &self.prev_side_effects_index);
-
-        side_effects.unwrap_or_default()
+        side_effect
     }
 
-    /// Stores a `QuerySideEffects` emitted during the current compilation session.
-    /// Anything stored like this will be available via `load_side_effects` in
+    /// Stores a `QuerySideEffect` emitted during the current compilation session.
+    /// Anything stored like this will be available via `load_side_effect` in
     /// the next compilation session.
-    pub fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
+    pub fn store_side_effect(&self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
         let mut current_side_effects = self.current_side_effects.borrow_mut();
-        let prev = current_side_effects.insert(dep_node_index, side_effects);
+        let prev = current_side_effects.insert(dep_node_index, side_effect);
         debug_assert!(prev.is_none());
     }
 
@@ -393,21 +392,6 @@ impl OnDiskCache {
         let opt_value = self.load_indexed(tcx, dep_node_index, &self.query_result_index);
         debug_assert_eq!(opt_value.is_some(), self.loadable_from_disk(dep_node_index));
         opt_value
-    }
-
-    /// Stores side effect emitted during computation of an anonymous query.
-    /// Since many anonymous queries can share the same `DepNode`, we aggregate
-    /// them -- as opposed to regular queries where we assume that there is a
-    /// 1:1 relationship between query-key and `DepNode`.
-    pub fn store_side_effects_for_anon_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        side_effects: QuerySideEffects,
-    ) {
-        let mut current_side_effects = self.current_side_effects.borrow_mut();
-
-        let x = current_side_effects.entry(dep_node_index).or_default();
-        x.append(side_effects);
     }
 
     fn load_indexed<'tcx, T>(
@@ -518,8 +502,7 @@ where
     value
 }
 
-impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
-    type I = TyCtxt<'tcx>;
+impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]
@@ -583,7 +566,7 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
             // We look up the position of the associated `SyntaxData` and decode it.
             let pos = syntax_contexts.get(&id).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
                 data
             })
         })
@@ -690,9 +673,9 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
                     Symbol::intern(s)
                 })
             }
-            SYMBOL_PREINTERNED => {
+            SYMBOL_PREDEFINED => {
                 let symbol_index = self.read_u32();
-                Symbol::new_from_decoded(symbol_index)
+                Symbol::new(symbol_index)
             }
             _ => unreachable!(),
         }
@@ -908,9 +891,9 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
 
     // copy&paste impl from rustc_metadata
     fn encode_symbol(&mut self, symbol: Symbol) {
-        // if symbol preinterned, emit tag and symbol index
-        if symbol.is_preinterned() {
-            self.encoder.emit_u8(SYMBOL_PREINTERNED);
+        // if symbol predefined, emit tag and symbol index
+        if symbol.is_predefined() {
+            self.encoder.emit_u8(SYMBOL_PREDEFINED);
             self.encoder.emit_u32(symbol.as_u32());
         } else {
             // otherwise write it as string or as offset to it
@@ -943,8 +926,7 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
-    type I = TyCtxt<'tcx>;
+impl<'a, 'tcx> TyEncoder<'tcx> for CacheEncoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]

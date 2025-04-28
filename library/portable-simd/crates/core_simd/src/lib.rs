@@ -35,7 +35,11 @@
     feature(stdarch_x86_avx512)
 )]
 #![warn(missing_docs, clippy::missing_inline_in_public_items)] // basically all items, really
-#![deny(unsafe_op_in_unsafe_fn, clippy::undocumented_unsafe_blocks)]
+#![deny(
+    unsafe_op_in_unsafe_fn,
+    unreachable_pub,
+    clippy::undocumented_unsafe_blocks
+)]
 #![doc(test(attr(deny(warnings))))]
 #![allow(internal_features)]
 #![unstable(feature = "portable_simd", issue = "86656")]

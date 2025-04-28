@@ -49,7 +49,7 @@ impl<'tcx> UniverseInfo<'tcx> {
         UniverseInfo::RelateTys { expected, found }
     }
 
-    pub(crate) fn report_error(
+    pub(crate) fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -68,7 +68,7 @@ impl<'tcx> UniverseInfo<'tcx> {
                 mbcx.buffer_error(err);
             }
             UniverseInfo::TypeOp(ref type_op_info) => {
-                type_op_info.report_error(mbcx, placeholder, error_element, cause);
+                type_op_info.report_erroneous_element(mbcx, placeholder, error_element, cause);
             }
             UniverseInfo::Other => {
                 // FIXME: This error message isn't great, but it doesn't show
@@ -145,8 +145,11 @@ pub(crate) trait TypeOpInfo<'tcx> {
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<Diag<'infcx>>;
 
+    /// Constraints require that `error_element` appear in the
+    ///  values of `placeholder`, but this cannot be proven to
+    /// hold. Report an error.
     #[instrument(level = "debug", skip(self, mbcx))]
-    fn report_error(
+    fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
@@ -190,12 +193,7 @@ pub(crate) trait TypeOpInfo<'tcx> {
         let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
 
         debug!(?nice_error);
-
-        if let Some(nice_error) = nice_error {
-            mbcx.buffer_error(nice_error);
-        } else {
-            mbcx.buffer_error(self.fallback_error(tcx, span));
-        }
+        mbcx.buffer_error(nice_error.unwrap_or_else(|| self.fallback_error(tcx, span)));
     }
 }
 
@@ -406,8 +404,8 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
             // started MIR borrowchecking with, so the region
             // constraints have already been taken. Use the data from
             // our `mbcx` instead.
-            |vid| mbcx.regioncx.var_infos[vid].origin,
-            |vid| mbcx.regioncx.var_infos[vid].universe,
+            |vid| RegionVariableOrigin::Nll(mbcx.regioncx.definitions[vid].origin),
+            |vid| mbcx.regioncx.definitions[vid].universe,
         )
     }
 }
@@ -450,7 +448,8 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         ty::ReVar(vid) => universe_of_region(vid),
         _ => ty::UniverseIndex::ROOT,
     };
-    let matches =
+    // Are the two regions the same?
+    let regions_the_same =
         |a_region: Region<'tcx>, b_region: Region<'tcx>| match (a_region.kind(), b_region.kind()) {
             (RePlaceholder(a_p), RePlaceholder(b_p)) => a_p.bound == b_p.bound,
             _ => a_region == b_region,
@@ -459,7 +458,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         |constraint: &Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| match *constraint {
             Constraint::RegSubReg(sub, sup)
                 if ((exact && sup == placeholder_region)
-                    || (!exact && matches(sup, placeholder_region)))
+                    || (!exact && regions_the_same(sup, placeholder_region)))
                     && sup != sub =>
             {
                 Some((sub, cause.clone()))
@@ -468,26 +467,24 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
                 if (exact
                     && sup == placeholder_region
                     && !universe_of_region(vid).can_name(placeholder_universe))
-                    || (!exact && matches(sup, placeholder_region)) =>
+                    || (!exact && regions_the_same(sup, placeholder_region)) =>
             {
                 Some((ty::Region::new_var(infcx.tcx, vid), cause.clone()))
             }
             _ => None,
         };
-    let mut info = region_constraints
-        .constraints
-        .iter()
-        .find_map(|(constraint, cause)| check(constraint, cause, true));
-    if info.is_none() {
-        info = region_constraints
+
+    let mut find_culprit = |exact_match: bool| {
+        region_constraints
             .constraints
             .iter()
-            .find_map(|(constraint, cause)| check(constraint, cause, false));
-    }
-    let (sub_region, cause) = info?;
+            .find_map(|(constraint, cause)| check(constraint, cause, exact_match))
+    };
+
+    let (sub_region, cause) = find_culprit(true).or_else(|| find_culprit(false))?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
-    let error = match (error_region, *sub_region) {
+    let error = match (error_region, sub_region.kind()) {
         (Some(error_region), ty::ReVar(vid)) => RegionResolutionError::SubSupConflict(
             vid,
             region_var_origin(vid),

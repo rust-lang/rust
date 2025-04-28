@@ -1,26 +1,31 @@
+use std::ops::ControlFlow;
+
 use super::NEEDLESS_COLLECT;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{get_type_diagnostic_name, make_normalized_projection, make_projection};
+use clippy_utils::ty::{
+    get_type_diagnostic_name, has_non_owning_mutable_access, make_normalized_projection, make_projection,
+};
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
     path_to_local_id,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::intravisit::{Visitor, walk_block, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_stmt};
 use rustc_hir::{
-    BindingMode, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Mutability, Node, PatKind, Stmt, StmtKind,
+    BindingMode, Block, Expr, ExprKind, HirId, HirIdSet, LetStmt, Mutability, Node, Pat, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, AssocKind, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
+use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, sym};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
+#[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     name_span: Span,
@@ -28,6 +33,11 @@ pub(super) fn check<'tcx>(
     iter_expr: &'tcx Expr<'tcx>,
     call_span: Span,
 ) {
+    let iter_ty = cx.typeck_results().expr_ty(iter_expr);
+    if has_non_owning_mutable_access(cx, iter_ty) {
+        return; // don't lint if the iterator has side effects
+    }
+
     match cx.tcx.parent_hir_node(collect_expr.hir_id) {
         Node::Expr(parent) => {
             check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
@@ -100,6 +110,12 @@ pub(super) fn check<'tcx>(
                 let mut used_count_visitor = UsedCountVisitor { cx, id, count: 0 };
                 walk_block(&mut used_count_visitor, block);
                 if used_count_visitor.count > 1 {
+                    return;
+                }
+
+                if let IterFunctionKind::IntoIter(hir_id) = iter_call.func
+                    && !check_iter_expr_used_only_as_iterator(cx, hir_id, block)
+                {
                     return;
                 }
 
@@ -230,10 +246,10 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
             .instantiate_bound_regions_with_erased(sig.rebind(search_ty))
             .kind()
         && let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && let Some(iter_item) = cx.tcx.associated_items(iter_trait).find_by_name_and_kind(
+        && let Some(iter_item) = cx.tcx.associated_items(iter_trait).find_by_ident_and_kind(
             cx.tcx,
             Ident::with_dummy_span(sym::Item),
-            AssocKind::Type,
+            AssocTag::Type,
             iter_trait,
         )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
@@ -253,7 +269,7 @@ struct IterFunction {
 impl IterFunction {
     fn get_iter_method(&self, cx: &LateContext<'_>) -> String {
         match &self.func {
-            IterFunctionKind::IntoIter => String::new(),
+            IterFunctionKind::IntoIter(_) => String::new(),
             IterFunctionKind::Len => String::from(".count()"),
             IterFunctionKind::IsEmpty => String::from(".next().is_none()"),
             IterFunctionKind::Contains(span) => {
@@ -268,7 +284,7 @@ impl IterFunction {
     }
     fn get_suggestion_text(&self) -> &'static str {
         match &self.func {
-            IterFunctionKind::IntoIter => {
+            IterFunctionKind::IntoIter(_) => {
                 "use the original Iterator instead of collecting it and then producing a new one"
             },
             IterFunctionKind::Len => {
@@ -284,7 +300,7 @@ impl IterFunction {
     }
 }
 enum IterFunctionKind {
-    IntoIter,
+    IntoIter(HirId),
     Len,
     IsEmpty,
     Contains(Span),
@@ -343,7 +359,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                     }
                     match method_name.ident.name.as_str() {
                         "into_iter" => self.uses.push(Some(IterFunction {
-                            func: IterFunctionKind::IntoIter,
+                            func: IterFunctionKind::IntoIter(expr.hir_id),
                             span: expr.span,
                         })),
                         "len" => self.uses.push(Some(IterFunction {
@@ -369,20 +385,20 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                 return;
             }
 
-            if let Some(hir_id) = path_to_local(recv) {
-                if let Some(index) = self.hir_id_uses_map.remove(&hir_id) {
-                    if self
-                        .illegal_mutable_capture_ids
-                        .intersection(&self.current_mutably_captured_ids)
-                        .next()
-                        .is_none()
-                    {
-                        if let Some(hir_id) = self.current_statement_hir_id {
-                            self.hir_id_uses_map.insert(hir_id, index);
-                        }
-                    } else {
-                        self.uses[index] = None;
+            if let Some(hir_id) = path_to_local(recv)
+                && let Some(index) = self.hir_id_uses_map.remove(&hir_id)
+            {
+                if self
+                    .illegal_mutable_capture_ids
+                    .intersection(&self.current_mutably_captured_ids)
+                    .next()
+                    .is_none()
+                {
+                    if let Some(hir_id) = self.current_statement_hir_id {
+                        self.hir_id_uses_map.insert(hir_id, index);
                     }
+                } else {
+                    self.uses[index] = None;
                 }
             }
         }
@@ -519,4 +535,62 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
     get_captured_ids_recursive(cx, ty, &mut set);
 
     set
+}
+
+struct IteratorMethodCheckVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    hir_id_of_expr: HirId,
+    hir_id_of_let_binding: Option<HirId>,
+}
+
+impl<'tcx> Visitor<'tcx> for IteratorMethodCheckVisitor<'_, 'tcx> {
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) -> ControlFlow<()> {
+        if let ExprKind::MethodCall(_method_name, recv, _args, _) = &expr.kind
+            && (recv.hir_id == self.hir_id_of_expr
+                || self
+                    .hir_id_of_let_binding
+                    .is_some_and(|hid| path_to_local_id(recv, hid)))
+            && !is_trait_method(self.cx, expr, sym::Iterator)
+        {
+            return ControlFlow::Break(());
+        } else if let ExprKind::Assign(place, value, _span) = &expr.kind
+            && value.hir_id == self.hir_id_of_expr
+            && let Some(id) = path_to_local(place)
+        {
+            // our iterator was directly assigned to a variable
+            self.hir_id_of_let_binding = Some(id);
+        }
+        walk_expr(self, expr)
+    }
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt<'tcx>) -> ControlFlow<()> {
+        if let StmtKind::Let(LetStmt {
+            init: Some(expr),
+            pat:
+                Pat {
+                    kind: PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None),
+                    ..
+                },
+            ..
+        }) = &stmt.kind
+            && expr.hir_id == self.hir_id_of_expr
+        {
+            // our iterator was directly assigned to a variable
+            self.hir_id_of_let_binding = Some(*id);
+        }
+        walk_stmt(self, stmt)
+    }
+}
+
+fn check_iter_expr_used_only_as_iterator<'tcx>(
+    cx: &LateContext<'tcx>,
+    hir_id_of_expr: HirId,
+    block: &'tcx Block<'tcx>,
+) -> bool {
+    let mut visitor = IteratorMethodCheckVisitor {
+        cx,
+        hir_id_of_expr,
+        hir_id_of_let_binding: None,
+    };
+    visitor.visit_block(block).is_continue()
 }

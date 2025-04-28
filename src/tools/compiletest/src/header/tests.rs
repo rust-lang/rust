@@ -1,6 +1,6 @@
 use std::io::Read;
-use std::path::Path;
 
+use camino::Utf8Path;
 use semver::Version;
 
 use super::{
@@ -8,14 +8,15 @@ use super::{
     parse_normalize_rule,
 };
 use crate::common::{Config, Debugger, Mode};
+use crate::executor::{CollectedTestDesc, ShouldPanic};
 
 fn make_test_description<R: Read>(
     config: &Config,
-    name: test::TestName,
-    path: &Path,
+    name: String,
+    path: &Utf8Path,
     src: R,
     revision: Option<&str>,
-) -> test::TestDesc {
+) -> CollectedTestDesc {
     let cache = HeadersCache::load(config);
     let mut poisoned = false;
     let test = crate::header::make_test_description(
@@ -174,7 +175,6 @@ impl ConfigBuilder {
             self.host.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
             "--target",
             self.target.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
-            "--git-repository=",
             "--nightly-branch=",
             "--git-merge-commit-email=",
             "--minicore-path=",
@@ -229,12 +229,12 @@ fn cfg() -> ConfigBuilder {
 
 fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
     let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Path::new("a.rs"), bytes)
+    EarlyProps::from_reader(config, Utf8Path::new("a.rs"), bytes)
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
-    let tn = test::DynTestName(String::new());
-    let p = Path::new("a.rs");
+    let tn = String::new();
+    let p = Utf8Path::new("a.rs");
     let d = make_test_description(&config, tn, p, std::io::Cursor::new(contents), None);
     d.ignore
 }
@@ -242,13 +242,13 @@ fn check_ignore(config: &Config, contents: &str) -> bool {
 #[test]
 fn should_fail() {
     let config: Config = cfg().build();
-    let tn = test::DynTestName(String::new());
-    let p = Path::new("a.rs");
+    let tn = String::new();
+    let p = Utf8Path::new("a.rs");
 
     let d = make_test_description(&config, tn.clone(), p, std::io::Cursor::new(""), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::No);
+    assert_eq!(d.should_panic, ShouldPanic::No);
     let d = make_test_description(&config, tn, p, std::io::Cursor::new("//@ should-fail"), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::Yes);
+    assert_eq!(d.should_panic, ShouldPanic::Yes);
 }
 
 #[test]
@@ -458,9 +458,6 @@ fn profiler_runtime() {
 #[test]
 fn asm_support() {
     let asms = [
-        #[cfg(bootstrap)]
-        ("avr-unknown-gnu-atmega328", false),
-        #[cfg(not(bootstrap))]
         ("avr-none", false),
         ("i686-unknown-netbsd", true),
         ("riscv32gc-unknown-linux-gnu", true),
@@ -565,6 +562,13 @@ fn test_duplicate_revisions() {
 fn test_assembly_mode_forbidden_revisions() {
     let config = cfg().mode("assembly").build();
     parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(expected = "revision name `true` is not permitted")]
+fn test_forbidden_revisions() {
+    let config = cfg().mode("ui").build();
+    parse_rs(&config, "//@ revisions: true");
 }
 
 #[test]
@@ -779,7 +783,7 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Path, buf: &[u8]) {
+fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
     let rdr = std::io::Cursor::new(&buf);
     iter_header(Mode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
 }
@@ -789,7 +793,7 @@ fn test_unknown_directive_check() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/unknown_directive.rs"),
     );
     assert!(poisoned);
@@ -800,7 +804,7 @@ fn test_known_directive_check_no_error() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/known_directive.rs"),
     );
     assert!(!poisoned);
@@ -811,7 +815,7 @@ fn test_error_annotation_no_error() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/error_annotation.rs"),
     );
     assert!(!poisoned);
@@ -822,7 +826,7 @@ fn test_non_rs_unknown_directive_not_checked() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.Makefile"),
+        Utf8Path::new("a.Makefile"),
         include_bytes!("./test-auxillary/not_rs.Makefile"),
     );
     assert!(!poisoned);
@@ -831,21 +835,21 @@ fn test_non_rs_unknown_directive_not_checked() {
 #[test]
 fn test_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86 only-arm");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86 only-arm");
     assert!(poisoned);
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
     assert!(poisoned);
 }
 
 #[test]
 fn test_not_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ revisions: incremental");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ revisions: incremental");
     assert!(!poisoned);
 }
 
@@ -896,4 +900,48 @@ fn test_rustc_abi() {
     assert_eq!(config.target_cfg().rustc_abi, None);
     assert!(!check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
     assert!(check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
+}
+
+#[test]
+fn test_supported_crate_types() {
+    // Basic assumptions check on under-test compiler's `--print=supported-crate-types` output based
+    // on knowledge about the cherry-picked `x86_64-unknown-linux-gnu` and `wasm32-unknown-unknown`
+    // targets. Also smoke tests the `needs-crate-type` directive itself.
+
+    use std::collections::HashSet;
+
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    assert_eq!(
+        config.supported_crate_types().iter().map(String::as_str).collect::<HashSet<_>>(),
+        HashSet::from(["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"]),
+    );
+    assert!(!check_ignore(&config, "//@ needs-crate-type: rlib"));
+    assert!(!check_ignore(&config, "//@ needs-crate-type: dylib"));
+    assert!(!check_ignore(
+        &config,
+        "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
+    ));
+
+    let config = cfg().target("wasm32-unknown-unknown").build();
+    assert_eq!(
+        config.supported_crate_types().iter().map(String::as_str).collect::<HashSet<_>>(),
+        HashSet::from(["bin", "cdylib", "lib", "rlib", "staticlib"]),
+    );
+
+    // rlib is supported
+    assert!(!check_ignore(&config, "//@ needs-crate-type: rlib"));
+    // dylib is not
+    assert!(check_ignore(&config, "//@ needs-crate-type: dylib"));
+    // If multiple crate types are specified, then all specified crate types need to be supported.
+    assert!(check_ignore(&config, "//@ needs-crate-type: cdylib, dylib"));
+    assert!(check_ignore(
+        &config,
+        "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
+    ));
+}
+
+#[test]
+fn test_ignore_auxiliary() {
+    let config = cfg().build();
+    assert!(check_ignore(&config, "//@ ignore-auxiliary"));
 }

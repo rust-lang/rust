@@ -23,7 +23,7 @@ where
     fn try_into(&self) -> Result<&U, i32> {
         U::try_from(self)
         //~^ WARNING trait-associated function `try_from` will become ambiguous in Rust 2021
-        //~| this is accepted in the current edition (Rust 2018)
+        //~| WARN this is accepted in the current edition (Rust 2018)
     }
 }
 

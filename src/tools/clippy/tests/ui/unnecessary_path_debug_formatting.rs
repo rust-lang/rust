@@ -1,4 +1,5 @@
 #![warn(clippy::unnecessary_debug_formatting)]
+#![allow(clippy::uninlined_format_args)]
 
 use std::ffi::{OsStr, OsString};
 use std::ops::Deref;
@@ -40,4 +41,10 @@ fn main() {
 
     let deref_path = DerefPath { path };
     println!("{:?}", &*deref_path); //~ unnecessary_debug_formatting
+}
+
+#[test]
+fn issue_14345() {
+    let input = std::path::Path::new("/foo/bar");
+    assert!(input.ends_with("baz"), "{input:?}");
 }

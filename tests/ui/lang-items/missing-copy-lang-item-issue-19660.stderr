@@ -1,5 +1,5 @@
 error: requires `copy` lang_item
-  --> $DIR/missing-copy-lang-item-issue-19660.rs:14:5
+  --> $DIR/missing-copy-lang-item-issue-19660.rs:12:5
    |
 LL |     argc
    |     ^^^^

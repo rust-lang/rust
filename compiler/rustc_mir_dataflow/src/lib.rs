@@ -1,10 +1,10 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(exact_size_is_empty)]
 #![feature(file_buffered)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end

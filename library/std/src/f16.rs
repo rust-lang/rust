@@ -468,6 +468,8 @@ impl f16 {
 
     /// Returns the natural logarithm of the number.
     ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
@@ -489,6 +491,16 @@ impl f16 {
     /// assert!(abs_difference <= f16::EPSILON);
     /// # }
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(reliable_f16_math)] {
+    ///
+    /// assert_eq!(0_f16.ln(), f16::NEG_INFINITY);
+    /// assert!((-42_f16).ln().is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
@@ -498,6 +510,8 @@ impl f16 {
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// The result might not be correctly rounded owing to implementation details;
     /// `self.log2()` can produce more accurate results for base 2, and
@@ -522,6 +536,16 @@ impl f16 {
     /// assert!(abs_difference <= f16::EPSILON);
     /// # }
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(reliable_f16_math)] {
+    ///
+    /// assert_eq!(0_f16.log(10.0), f16::NEG_INFINITY);
+    /// assert!((-42_f16).log(10.0).is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
@@ -531,6 +555,8 @@ impl f16 {
     }
 
     /// Returns the base 2 logarithm of the number.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// # Unspecified precision
     ///
@@ -551,6 +577,16 @@ impl f16 {
     /// assert!(abs_difference <= f16::EPSILON);
     /// # }
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(reliable_f16_math)] {
+    ///
+    /// assert_eq!(0_f16.log2(), f16::NEG_INFINITY);
+    /// assert!((-42_f16).log2().is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
@@ -560,6 +596,8 @@ impl f16 {
     }
 
     /// Returns the base 10 logarithm of the number.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// # Unspecified precision
     ///
@@ -578,6 +616,16 @@ impl f16 {
     /// let abs_difference = (ten.log10() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f16::EPSILON);
+    /// # }
+    /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(reliable_f16_math)] {
+    ///
+    /// assert_eq!(0_f16.log10(), f16::NEG_INFINITY);
+    /// assert!((-42_f16).log10().is_nan());
     /// # }
     /// ```
     #[inline]
@@ -617,7 +665,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cbrt(self) -> f16 {
-        (unsafe { cmath::cbrtf(self as f32) }) as f16
+        cmath::cbrtf(self as f32) as f16
     }
 
     /// Compute the distance between the origin and a point (`x`, `y`) on the
@@ -653,7 +701,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn hypot(self, other: f16) -> f16 {
-        (unsafe { cmath::hypotf(self as f32, other as f32) }) as f16
+        cmath::hypotf(self as f32, other as f32) as f16
     }
 
     /// Computes the sine of a number (in radians).
@@ -739,7 +787,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn tan(self) -> f16 {
-        (unsafe { cmath::tanf(self as f32) }) as f16
+        cmath::tanf(self as f32) as f16
     }
 
     /// Computes the arcsine of a number. Return value is in radians in
@@ -774,7 +822,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn asin(self) -> f16 {
-        (unsafe { cmath::asinf(self as f32) }) as f16
+        cmath::asinf(self as f32) as f16
     }
 
     /// Computes the arccosine of a number. Return value is in radians in
@@ -809,7 +857,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn acos(self) -> f16 {
-        (unsafe { cmath::acosf(self as f32) }) as f16
+        cmath::acosf(self as f32) as f16
     }
 
     /// Computes the arctangent of a number. Return value is in radians in the
@@ -843,7 +891,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn atan(self) -> f16 {
-        (unsafe { cmath::atanf(self as f32) }) as f16
+        cmath::atanf(self as f32) as f16
     }
 
     /// Computes the four quadrant arctangent of `self` (`y`) and `other` (`x`) in radians.
@@ -889,7 +937,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn atan2(self, other: f16) -> f16 {
-        (unsafe { cmath::atan2f(self as f32, other as f32) }) as f16
+        cmath::atan2f(self as f32, other as f32) as f16
     }
 
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
@@ -958,11 +1006,13 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn exp_m1(self) -> f16 {
-        (unsafe { cmath::expm1f(self as f32) }) as f16
+        cmath::expm1f(self as f32) as f16
     }
 
     /// Returns `ln(1+n)` (natural logarithm) more accurately than if
     /// the operations were performed separately.
+    ///
+    /// This returns NaN when `n < -1.0`, and negative infinity when `n == -1.0`.
     ///
     /// # Unspecified precision
     ///
@@ -987,13 +1037,23 @@ impl f16 {
     /// assert!(abs_difference < 1e-4);
     /// # }
     /// ```
+    ///
+    /// Out-of-range values:
+    /// ```
+    /// #![feature(f16)]
+    /// # #[cfg(reliable_f16_math)] {
+    ///
+    /// assert_eq!((-1.0_f16).ln_1p(), f16::NEG_INFINITY);
+    /// assert!((-2.0_f16).ln_1p().is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[doc(alias = "log1p")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln_1p(self) -> f16 {
-        (unsafe { cmath::log1pf(self as f32) }) as f16
+        cmath::log1pf(self as f32) as f16
     }
 
     /// Hyperbolic sine function.
@@ -1028,7 +1088,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn sinh(self) -> f16 {
-        (unsafe { cmath::sinhf(self as f32) }) as f16
+        cmath::sinhf(self as f32) as f16
     }
 
     /// Hyperbolic cosine function.
@@ -1063,7 +1123,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn cosh(self) -> f16 {
-        (unsafe { cmath::coshf(self as f32) }) as f16
+        cmath::coshf(self as f32) as f16
     }
 
     /// Hyperbolic tangent function.
@@ -1098,7 +1158,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn tanh(self) -> f16 {
-        (unsafe { cmath::tanhf(self as f32) }) as f16
+        cmath::tanhf(self as f32) as f16
     }
 
     /// Inverse hyperbolic sine function.
@@ -1227,7 +1287,7 @@ impl f16 {
     // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn gamma(self) -> f16 {
-        (unsafe { cmath::tgammaf(self as f32) }) as f16
+        cmath::tgammaf(self as f32) as f16
     }
 
     /// Natural logarithm of the absolute value of the gamma function
@@ -1263,7 +1323,7 @@ impl f16 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln_gamma(self) -> (f16, i32) {
         let mut signgamp: i32 = 0;
-        let x = (unsafe { cmath::lgammaf_r(self as f32, &mut signgamp) }) as f16;
+        let x = cmath::lgammaf_r(self as f32, &mut signgamp) as f16;
         (x, signgamp)
     }
 
@@ -1303,7 +1363,7 @@ impl f16 {
     // #[unstable(feature = "float_erf", issue = "136321")]
     #[inline]
     pub fn erf(self) -> f16 {
-        (unsafe { cmath::erff(self as f32) }) as f16
+        cmath::erff(self as f32) as f16
     }
 
     /// Complementary error function.
@@ -1336,6 +1396,6 @@ impl f16 {
     // #[unstable(feature = "float_erf", issue = "136321")]
     #[inline]
     pub fn erfc(self) -> f16 {
-        (unsafe { cmath::erfcf(self as f32) }) as f16
+        cmath::erfcf(self as f32) as f16
     }
 }

@@ -11,3 +11,5 @@ static TEST_BAD: () = {
     //~^ ERROR could not evaluate static initializer
     //~| NOTE inline assembly is not supported
 };
+
+//~? WARN skipping const checks

@@ -26,14 +26,7 @@ extern "C" fn main(argc: core::ffi::c_int, argv: *const *const u8) -> core::ffi:
     let actual = unsafe {
         let mut actual: libc::sigaction = core::mem::zeroed();
         libc::sigaction(libc::SIGPIPE, core::ptr::null(), &mut actual);
-        #[cfg(not(target_os = "aix"))]
-        {
-            actual.sa_sigaction
-        }
-        #[cfg(target_os = "aix")]
-        {
-            actual.sa_union.__su_sigaction as libc::sighandler_t
-        }
+        actual.sa_sigaction
     };
 
     assert_eq!(actual, expected, "actual and expected SIGPIPE disposition in child differs");

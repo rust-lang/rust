@@ -1,0 +1,43 @@
+error[E0382]: use of moved value: `pointee`
+  --> $DIR/pin_move.rs:11:18
+   |
+LL |     let mut pointee = NotCopy(PhantomPinned);
+   |         ----------- move occurs because `pointee` has type `a::NotCopy<PhantomPinned>`, which does not implement the `Copy` trait
+LL |     pin!(pointee);
+   |          ------- value moved here
+LL |     let _moved = pointee;
+   |                  ^^^^^^^ value used here after move
+   |
+note: if `a::NotCopy<PhantomPinned>` implemented `Clone`, you could clone the value
+  --> $DIR/pin_move.rs:7:5
+   |
+LL |     struct NotCopy<T>(T);
+   |     ^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+...
+LL |     pin!(pointee);
+   |          ------- you could clone this value
+
+error[E0507]: cannot move out of a mutable reference
+  --> $DIR/pin_move.rs:18:10
+   |
+LL |     pin!(*&mut pointee);
+   |          ^^^^^^^^^^^^^ move occurs because value has type `b::NotCopy<PhantomPinned>`, which does not implement the `Copy` trait
+   |
+note: if `b::NotCopy<PhantomPinned>` implemented `Clone`, you could clone the value
+  --> $DIR/pin_move.rs:16:5
+   |
+LL |     struct NotCopy<T>(T);
+   |     ^^^^^^^^^^^^^^^^^ consider implementing `Clone` for this type
+LL |     let mut pointee = NotCopy(PhantomPinned);
+LL |     pin!(*&mut pointee);
+   |          ------------- you could clone this value
+help: consider removing the dereference here
+   |
+LL -     pin!(*&mut pointee);
+LL +     pin!(&mut pointee);
+   |
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0382, E0507.
+For more information about an error, try `rustc --explain E0382`.

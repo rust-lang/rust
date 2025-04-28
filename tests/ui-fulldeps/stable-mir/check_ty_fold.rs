@@ -17,7 +17,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::mir::{
     Body, FieldIdx, MirVisitor, Place, ProjectionElem,
     visit::{Location, PlaceContext},
@@ -79,7 +78,7 @@ impl<'a> MirVisitor for PlaceVisitor<'a> {
 fn main() {
     let path = "ty_fold_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-name".to_string(),

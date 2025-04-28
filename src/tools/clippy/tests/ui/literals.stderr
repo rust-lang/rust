@@ -25,6 +25,7 @@ error: inconsistent casing in hexadecimal literal
 LL |     let fail1 = 0xabCD;
    |                 ^^^^^^
    |
+   = help: consider using `0xabcd` or `0xABCD`
    = note: `-D clippy::mixed-case-hex-literals` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::mixed_case_hex_literals)]`
 
@@ -39,6 +40,8 @@ error: inconsistent casing in hexadecimal literal
    |
 LL |     let fail2 = 0xabCD_u32;
    |                 ^^^^^^^^^^
+   |
+   = help: consider using `0xabcd_u32` or `0xABCD_u32`
 
 error: integer type suffix should not be separated by an underscore
   --> tests/ui/literals.rs:29:17
@@ -51,9 +54,25 @@ error: inconsistent casing in hexadecimal literal
    |
 LL |     let fail2 = 0xabCD_isize;
    |                 ^^^^^^^^^^^^
+   |
+   = help: consider using `0xabcd_isize` or `0xABCD_isize`
+
+error: integer type suffix should not be separated by an underscore
+  --> tests/ui/literals.rs:33:17
+   |
+LL |     let fail2 = 0xab_CD_isize;
+   |                 ^^^^^^^^^^^^^ help: remove the underscore: `0xab_CDisize`
+
+error: inconsistent casing in hexadecimal literal
+  --> tests/ui/literals.rs:33:17
+   |
+LL |     let fail2 = 0xab_CD_isize;
+   |                 ^^^^^^^^^^^^^
+   |
+   = help: consider using `0xab_cd_isize` or `0xAB_CD_isize`
 
 error: integer type suffix should be separated by an underscore
-  --> tests/ui/literals.rs:33:27
+  --> tests/ui/literals.rs:37:27
    |
 LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^ help: add an underscore: `000_123_usize`
@@ -62,7 +81,7 @@ LL |     let fail_multi_zero = 000_123usize;
    = help: to override `-D warnings` add `#[allow(clippy::unseparated_literal_suffix)]`
 
 error: this is a decimal constant
-  --> tests/ui/literals.rs:33:27
+  --> tests/ui/literals.rs:37:27
    |
 LL |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^
@@ -81,13 +100,13 @@ LL +     let fail_multi_zero = 0o123usize;
    |
 
 error: integer type suffix should not be separated by an underscore
-  --> tests/ui/literals.rs:38:16
+  --> tests/ui/literals.rs:42:16
    |
 LL |     let ok10 = 0_i64;
    |                ^^^^^ help: remove the underscore: `0i64`
 
 error: this is a decimal constant
-  --> tests/ui/literals.rs:41:17
+  --> tests/ui/literals.rs:45:17
    |
 LL |     let fail8 = 0123;
    |                 ^^^^
@@ -103,13 +122,13 @@ LL |     let fail8 = 0o123;
    |                  +
 
 error: integer type suffix should not be separated by an underscore
-  --> tests/ui/literals.rs:51:16
+  --> tests/ui/literals.rs:55:16
    |
 LL |     let ok17 = 0x123_4567_8901_usize;
    |                ^^^^^^^^^^^^^^^^^^^^^ help: remove the underscore: `0x123_4567_8901usize`
 
 error: digits grouped inconsistently by underscores
-  --> tests/ui/literals.rs:56:18
+  --> tests/ui/literals.rs:60:18
    |
 LL |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
@@ -118,19 +137,19 @@ LL |     let fail19 = 12_3456_21;
    = help: to override `-D warnings` add `#[allow(clippy::inconsistent_digit_grouping)]`
 
 error: digits grouped inconsistently by underscores
-  --> tests/ui/literals.rs:59:18
+  --> tests/ui/literals.rs:63:18
    |
 LL |     let fail22 = 3__4___23;
    |                  ^^^^^^^^^ help: consider: `3_423`
 
 error: digits grouped inconsistently by underscores
-  --> tests/ui/literals.rs:62:18
+  --> tests/ui/literals.rs:66:18
    |
 LL |     let fail23 = 3__16___23;
    |                  ^^^^^^^^^^ help: consider: `31_623`
 
 error: digits of hex, binary or octal literal not in groups of equal size
-  --> tests/ui/literals.rs:65:18
+  --> tests/ui/literals.rs:69:18
    |
 LL |     let fail24 = 0xAB_ABC_AB;
    |                  ^^^^^^^^^^^ help: consider: `0x0ABA_BCAB`
@@ -139,7 +158,7 @@ LL |     let fail24 = 0xAB_ABC_AB;
    = help: to override `-D warnings` add `#[allow(clippy::unusual_byte_groupings)]`
 
 error: this is a decimal constant
-  --> tests/ui/literals.rs:75:13
+  --> tests/ui/literals.rs:79:13
    |
 LL |     let _ = 08;
    |             ^^
@@ -151,7 +170,7 @@ LL +     let _ = 8;
    |
 
 error: this is a decimal constant
-  --> tests/ui/literals.rs:78:13
+  --> tests/ui/literals.rs:82:13
    |
 LL |     let _ = 09;
    |             ^^
@@ -163,7 +182,7 @@ LL +     let _ = 9;
    |
 
 error: this is a decimal constant
-  --> tests/ui/literals.rs:81:13
+  --> tests/ui/literals.rs:85:13
    |
 LL |     let _ = 089;
    |             ^^^
@@ -174,5 +193,5 @@ LL -     let _ = 089;
 LL +     let _ = 89;
    |
 
-error: aborting due to 20 previous errors
+error: aborting due to 22 previous errors
 

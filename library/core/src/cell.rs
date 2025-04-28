@@ -304,7 +304,7 @@ pub use once::OnceCell;
 /// ```
 ///
 /// See the [module-level documentation](self) for more.
-#[cfg_attr(not(test), rustc_diagnostic_item = "Cell")]
+#[rustc_diagnostic_item = "Cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(transparent)]
 #[rustc_pub_transparent]
@@ -495,7 +495,7 @@ impl<T> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_confusables("swap")]
     pub const fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
@@ -537,38 +537,29 @@ impl<T: Copy> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
     pub const fn get(&self) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.
         unsafe { *self.value.get() }
     }
 
-    /// Updates the contained value using a function and returns the new value.
+    /// Updates the contained value using a function.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(cell_update)]
-    ///
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
-    /// let new = c.update(|x| x + 1);
-    ///
-    /// assert_eq!(new, 6);
+    /// c.update(|x| x + 1);
     /// assert_eq!(c.get(), 6);
     /// ```
     #[inline]
-    #[unstable(feature = "cell_update", issue = "50186")]
-    pub fn update<F>(&self, f: F) -> T
-    where
-        F: FnOnce(T) -> T,
-    {
+    #[stable(feature = "cell_update", since = "CURRENT_RUSTC_VERSION")]
+    pub fn update(&self, f: impl FnOnce(T) -> T) {
         let old = self.get();
-        let new = f(old);
-        self.set(new);
-        new
+        self.set(f(old));
     }
 }
 
@@ -617,7 +608,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
     pub const fn get_mut(&mut self) -> &mut T {
         self.value.get_mut()
     }
@@ -637,7 +628,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "as_cell", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
     pub const fn from_mut(t: &mut T) -> &Cell<T> {
         // SAFETY: `&mut` ensures unique access.
         unsafe { &*(t as *mut T as *const Cell<T>) }
@@ -695,7 +686,7 @@ impl<T> Cell<[T]> {
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
     #[stable(feature = "as_cell", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_cell", issue = "131283")]
+    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_slice_of_cells(&self) -> &[Cell<T>] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T]> as *const [Cell<T>]) }
@@ -725,7 +716,7 @@ impl<T, const N: usize> Cell<[T; N]> {
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](self) for more.
-#[cfg_attr(not(test), rustc_diagnostic_item = "RefCell")]
+#[rustc_diagnostic_item = "RefCell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T: ?Sized> {
     borrow: Cell<BorrowFlag>,
@@ -1163,7 +1154,9 @@ impl<T: ?Sized> RefCell<T> {
     /// Since this method borrows `RefCell` mutably, it is statically guaranteed
     /// that no borrows to the underlying data exist. The dynamic checks inherent
     /// in [`borrow_mut`] and most other methods of `RefCell` are therefore
-    /// unnecessary.
+    /// unnecessary. Note that this method does not reset the borrowing state if borrows were previously leaked
+    /// (e.g., via [`forget()`] on a [`Ref`] or [`RefMut`]). For that purpose,
+    /// consider using the unstable [`undo_leak`] method.
     ///
     /// This method can only be called if `RefCell` can be mutably borrowed,
     /// which in general is only the case directly after the `RefCell` has
@@ -1174,6 +1167,8 @@ impl<T: ?Sized> RefCell<T> {
     /// Use [`borrow_mut`] to get mutable access to the underlying data then.
     ///
     /// [`borrow_mut`]: RefCell::borrow_mut()
+    /// [`forget()`]: mem::forget
+    /// [`undo_leak`]: RefCell::undo_leak()
     ///
     /// # Examples
     ///

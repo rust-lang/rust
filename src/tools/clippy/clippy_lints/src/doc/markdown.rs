@@ -113,20 +113,20 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span, code_level: isize, b
         s != "-" && s.contains('-')
     }
 
-    if let Ok(url) = Url::parse(word) {
+    if let Ok(url) = Url::parse(word)
         // try to get around the fact that `foo::bar` parses as a valid URL
-        if !url.cannot_be_a_base() {
-            span_lint_and_sugg(
-                cx,
-                DOC_MARKDOWN,
-                span,
-                "you should put bare URLs between `<`/`>` or make a proper Markdown link",
-                "try",
-                format!("<{word}>"),
-                Applicability::MachineApplicable,
-            );
-            return;
-        }
+        && !url.cannot_be_a_base()
+    {
+        span_lint_and_sugg(
+            cx,
+            DOC_MARKDOWN,
+            span,
+            "you should put bare URLs between `<`/`>` or make a proper Markdown link",
+            "try",
+            format!("<{word}>"),
+            Applicability::MachineApplicable,
+        );
+        return;
     }
 
     // We assume that mixed-case words are not meant to be put inside backticks. (Issue #2343)

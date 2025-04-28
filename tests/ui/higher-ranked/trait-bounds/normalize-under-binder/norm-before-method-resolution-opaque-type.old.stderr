@@ -1,16 +1,3 @@
-error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:16:4
-   |
-LL | fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
-   |    ^^^^^^^^^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:14:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-
 error[E0507]: cannot move out of `*x` which is behind a shared reference
   --> $DIR/norm-before-method-resolution-opaque-type.rs:22:13
    |
@@ -23,6 +10,6 @@ LL -     let x = *x;
 LL +     let x = x;
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0507`.

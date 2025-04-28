@@ -94,18 +94,18 @@ fn check_struct<'tcx>(
     ty_args: GenericArgsRef<'_>,
     typeck_results: &'tcx TypeckResults<'tcx>,
 ) {
-    if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind {
-        if let Some(PathSegment { args, .. }) = p.segments.last() {
-            let args = args.map(|a| a.args).unwrap_or(&[]);
+    if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind
+        && let Some(PathSegment { args, .. }) = p.segments.last()
+    {
+        let args = args.map(|a| a.args).unwrap_or(&[]);
 
-            // ty_args contains the generic parameters of the type declaration, while args contains the
-            // arguments used at instantiation time. If both len are not equal, it means that some
-            // parameters were not provided (which means that the default values were used); in this
-            // case we will not risk suggesting too broad a rewrite. We won't either if any argument
-            // is a type or a const.
-            if ty_args.len() != args.len() || args.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_))) {
-                return;
-            }
+        // ty_args contains the generic parameters of the type declaration, while args contains the
+        // arguments used at instantiation time. If both len are not equal, it means that some
+        // parameters were not provided (which means that the default values were used); in this
+        // case we will not risk suggesting too broad a rewrite. We won't either if any argument
+        // is a type or a const.
+        if ty_args.len() != args.len() || args.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_))) {
+            return;
         }
     }
 
@@ -188,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             self_ty,
             ..
         }) = item.kind
-            && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
+            && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
             && !item.span.from_expansion()
             && let Some(def_id) = trait_ref.trait_def_id()
             && cx.tcx.is_diagnostic_item(sym::Default, def_id)
@@ -197,9 +197,9 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             && let ImplItemKind::Fn(_, b) = &impl_item.kind
             && let Body { value: func_expr, .. } = cx.tcx.hir_body(*b)
             && let &ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
-            && let attrs = cx.tcx.hir().attrs(item.hir_id())
+            && let attrs = cx.tcx.hir_attrs(item.hir_id())
             && !attrs.iter().any(|attr| attr.doc_str().is_some())
-            && cx.tcx.hir().attrs(impl_item_hir).is_empty()
+            && cx.tcx.hir_attrs(impl_item_hir).is_empty()
         {
             if adt_def.is_struct() {
                 check_struct(cx, item, self_ty, func_expr, adt_def, args, cx.tcx.typeck_body(*b));

@@ -157,19 +157,19 @@ LL +     let _: Option<Opcode> = (..=3).contains(&op).then(|| unsafe { std::mem:
    |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
-  --> tests/ui/eager_transmute.rs:74:24
+  --> tests/ui/eager_transmute.rs:75:28
    |
-LL |     (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL -     (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
-LL +     (op < 4).then(|| std::mem::transmute::<_, Opcode>(op));
+LL -         (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
+LL +         (op < 4).then(|| std::mem::transmute::<_, Opcode>(op));
    |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
-  --> tests/ui/eager_transmute.rs:104:62
+  --> tests/ui/eager_transmute.rs:106:62
    |
 LL |     let _: Option<NonZero<u8>> = (v1 > 0).then_some(unsafe { std::mem::transmute(v1) });
    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^
@@ -181,7 +181,7 @@ LL +     let _: Option<NonZero<u8>> = (v1 > 0).then(|| unsafe { std::mem::transm
    |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
-  --> tests/ui/eager_transmute.rs:111:86
+  --> tests/ui/eager_transmute.rs:113:86
    |
 LL |     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
    |                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^
@@ -193,7 +193,7 @@ LL +     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| u
    |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
-  --> tests/ui/eager_transmute.rs:118:93
+  --> tests/ui/eager_transmute.rs:120:93
    |
 LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
    |                                                                                             ^^^^^^^^^^^^^^^^^^^^^^^

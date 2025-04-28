@@ -1,8 +1,9 @@
-use clippy_utils::SpanlessEq;
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
+use clippy_utils::{SpanlessEq, sym};
 use rustc_ast::{BinOpKind, LitIntType, LitKind, UnOp};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -11,9 +12,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-
-use clippy_config::Conf;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualDivCeil {
             && check_int_ty_and_feature(cx, div_lhs)
             && check_int_ty_and_feature(cx, div_rhs)
             && let ExprKind::Binary(inner_op, inner_lhs, inner_rhs) = div_lhs.kind
-            && self.msrv.meets(cx, msrvs::MANUAL_DIV_CEIL)
+            && self.msrv.meets(cx, msrvs::DIV_CEIL)
         {
             // (x + (y - 1)) / y
             if let ExprKind::Binary(sub_op, sub_lhs, sub_rhs) = inner_rhs.kind
@@ -141,8 +139,7 @@ fn check_int_ty_and_feature(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let expr_ty = cx.typeck_results().expr_ty(expr);
     match expr_ty.peel_refs().kind() {
         ty::Uint(_) => true,
-        ty::Int(_) => cx.tcx.features().enabled(Symbol::intern("int_roundings")),
-
+        ty::Int(_) => cx.tcx.features().enabled(sym::int_roundings),
         _ => false,
     }
 }
@@ -167,7 +164,7 @@ fn build_suggestion(
     rhs: &Expr<'_>,
     applicability: &mut Applicability,
 ) {
-    let dividend_sugg = Sugg::hir_with_applicability(cx, lhs, "..", applicability).maybe_par();
+    let dividend_sugg = Sugg::hir_with_applicability(cx, lhs, "..", applicability).maybe_paren();
     let type_suffix = if cx.typeck_results().expr_ty(lhs).is_numeric()
         && matches!(
             lhs.kind,

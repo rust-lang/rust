@@ -100,7 +100,7 @@ impl FileDescription for EventFd {
         eventfd_write(buf_place, self, ecx, finish)
     }
 
-    fn as_unix(&self) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
         self
     }
 }

@@ -75,6 +75,7 @@ pub mod features;
 pub mod fluent_alphabetical;
 pub mod fluent_period;
 mod fluent_used;
+pub mod gcc_submodule;
 pub(crate) mod iter_header;
 pub mod known_bug;
 pub mod mir_opt_tests;

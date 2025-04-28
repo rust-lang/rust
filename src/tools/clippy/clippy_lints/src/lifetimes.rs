@@ -14,7 +14,7 @@ use rustc_hir::intravisit::{
 };
 use rustc_hir::{
     AmbigArg, BareFnTy, BodyId, FnDecl, FnSig, GenericArg, GenericArgs, GenericBound, GenericParam, GenericParamKind,
-    Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeName, LifetimeParamKind, Node,
+    Generics, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Lifetime, LifetimeKind, LifetimeParamKind, Node,
     PolyTraitRef, PredicateOrigin, TraitFn, TraitItem, TraitItemKind, Ty, TyKind, WhereBoundPredicate, WherePredicate,
     WherePredicateKind, lang_items,
 };
@@ -150,10 +150,10 @@ impl<'tcx> LateLintPass<'tcx> for Lifetimes {
         } = item.kind
         {
             check_fn_inner(cx, sig, Some(id), None, generics, item.span, true, self.msrv);
-        } else if let ItemKind::Impl(impl_) = item.kind {
-            if !item.span.from_expansion() {
-                report_extra_impl_lifetimes(cx, impl_);
-            }
+        } else if let ItemKind::Impl(impl_) = item.kind
+            && !item.span.from_expansion()
+        {
+            report_extra_impl_lifetimes(cx, impl_);
         }
     }
 
@@ -189,7 +189,7 @@ fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     sig: &'tcx FnSig<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Ident]>,
+    trait_sig: Option<&[Option<Ident>]>,
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
@@ -218,7 +218,7 @@ fn check_fn_inner<'tcx>(
             for bound in pred.bounds {
                 let mut visitor = RefVisitor::new(cx);
                 walk_param_bound(&mut visitor, bound);
-                if visitor.lts.iter().any(|lt| matches!(lt.res, LifetimeName::Param(_))) {
+                if visitor.lts.iter().any(|lt| matches!(lt.kind, LifetimeKind::Param(_))) {
                     return;
                 }
                 if let GenericBound::Trait(ref trait_ref) = *bound {
@@ -235,7 +235,7 @@ fn check_fn_inner<'tcx>(
                             _ => None,
                         });
                         for bound in lifetimes {
-                            if bound.res != LifetimeName::Static && !bound.is_elided() {
+                            if bound.kind != LifetimeKind::Static && !bound.is_elided() {
                                 return;
                             }
                         }
@@ -264,7 +264,7 @@ fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Ident]>,
+    trait_sig: Option<&[Option<Ident>]>,
     named_generics: &'tcx [GenericParam<'_>],
     msrv: Msrv,
 ) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
@@ -300,8 +300,8 @@ fn could_use_elision<'tcx>(
     let input_lts = input_visitor.lts;
     let output_lts = output_visitor.lts;
 
-    if let Some(trait_sig) = trait_sig
-        && non_elidable_self_type(cx, func, trait_sig.first().copied(), msrv)
+    if let Some(&[trait_sig]) = trait_sig
+        && non_elidable_self_type(cx, func, trait_sig, msrv)
     {
         return None;
     }
@@ -314,7 +314,7 @@ fn could_use_elision<'tcx>(
             return None;
         }
 
-        let mut checker = BodyLifetimeChecker;
+        let mut checker = BodyLifetimeChecker::new(cx);
         if checker.visit_expr(body.value).is_break() {
             return None;
         }
@@ -421,8 +421,8 @@ fn named_lifetime_occurrences(lts: &[Lifetime]) -> Vec<(LocalDefId, usize)> {
 }
 
 fn named_lifetime(lt: &Lifetime) -> Option<LocalDefId> {
-    match lt.res {
-        LifetimeName::Param(id) if !lt.is_anonymous() => Some(id),
+    match lt.kind {
+        LifetimeKind::Param(id) if !lt.is_anonymous() => Some(id),
         _ => None,
     }
 }
@@ -614,7 +614,7 @@ where
 
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if let LifetimeName::Param(def_id) = lifetime.res
+        if let LifetimeKind::Param(def_id) = lifetime.kind
             && let Some(usages) = self.map.get_mut(&def_id)
         {
             usages.push(Usage {
@@ -826,7 +826,7 @@ fn report_elidable_lifetimes(
             .iter()
             .map(|&lt| cx.tcx.def_span(lt))
             .chain(usages.iter().filter_map(|usage| {
-                if let LifetimeName::Param(def_id) = usage.res
+                if let LifetimeKind::Param(def_id) = usage.kind
                     && elidable_lts.contains(&def_id)
                 {
                     return Some(usage.ident.span);
@@ -911,10 +911,23 @@ fn elision_suggestions(
     Some(suggestions)
 }
 
-struct BodyLifetimeChecker;
+struct BodyLifetimeChecker<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
 
-impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
+impl<'tcx> BodyLifetimeChecker<'tcx> {
+    fn new(cx: &LateContext<'tcx>) -> Self {
+        Self { tcx: cx.tcx }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker<'tcx> {
     type Result = ControlFlow<()>;
+    type NestedFilter = middle_nested_filter::OnlyBodies;
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
+    }
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) -> ControlFlow<()> {
         if !lifetime.is_anonymous() && lifetime.ident.name != kw::StaticLifetime {

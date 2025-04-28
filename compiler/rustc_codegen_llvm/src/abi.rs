@@ -17,14 +17,13 @@ use rustc_target::callconv::{
 use rustc_target::spec::SanitizerSet;
 use smallvec::SmallVec;
 
-use crate::attributes::llfn_attrs_from_instance;
+use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Attribute, AttributePlace};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use crate::{attributes, llvm_util};
 
 trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -437,7 +436,6 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
         let apply_range_attr = |idx: AttributePlace, scalar: rustc_abi::Scalar| {
             if cx.sess().opts.optimize != config::OptLevel::No
-                && llvm_util::get_version() >= (19, 0, 0)
                 && matches!(scalar.primitive(), Primitive::Int(..))
                 // If the value is a boolean, the range is 0..2 and that ultimately
                 // become 0..0 when the type becomes i1, which would be rejected
@@ -570,19 +568,6 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 );
             }
             _ => {}
-        }
-        if bx.cx.sess().opts.optimize != config::OptLevel::No
-                && llvm_util::get_version() < (19, 0, 0)
-                && let BackendRepr::Scalar(scalar) = self.ret.layout.backend_repr
-                && matches!(scalar.primitive(), Primitive::Int(..))
-                // If the value is a boolean, the range is 0..2 and that ultimately
-                // become 0..0 when the type becomes i1, which would be rejected
-                // by the LLVM verifier.
-                && !scalar.is_bool()
-                // LLVM also rejects full range.
-                && !scalar.is_always_valid(bx)
-        {
-            bx.range_metadata(callsite, scalar.valid_range(bx));
         }
         for arg in self.args.iter() {
             match &arg.mode {

@@ -16,7 +16,7 @@ warning: unused attribute
 LL | #![allow(linker_messages)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
-   = note: the `linker_warnings` lint can only be controlled at the root of a crate that needs to be linked
+   = note: the `linker_messages` lint can only be controlled at the root of a crate that needs to be linked
 
 warning: 2 warnings emitted
 

@@ -21,7 +21,7 @@ pub fn f(a: bool) {
             Goto(bb3)
         }
         bb3 = {
-            b = ();
+            b = (); //~ ERROR broken MIR
             RET = b;
             StorageDead(b);
             Return()

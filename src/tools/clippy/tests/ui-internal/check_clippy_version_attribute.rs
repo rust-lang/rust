@@ -1,5 +1,5 @@
-#![deny(clippy::internal)]
 #![feature(rustc_private)]
+#![deny(clippy::invalid_clippy_version_attribute, clippy::missing_clippy_version_attribute)]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -38,6 +38,7 @@ declare_tool_lint! {
 // Invalid attributes
 ///////////////////////
 declare_tool_lint! {
+//~^ invalid_clippy_version_attribute
     #[clippy::version = "1.2.3.4.5.6"]
     pub clippy::INVALID_ONE,
     Warn,
@@ -46,6 +47,7 @@ declare_tool_lint! {
 }
 
 declare_tool_lint! {
+//~^ invalid_clippy_version_attribute
     #[clippy::version = "I'm a string"]
     pub clippy::INVALID_TWO,
     Warn,
@@ -57,6 +59,7 @@ declare_tool_lint! {
 // Missing attribute test
 ///////////////////////
 declare_tool_lint! {
+//~^ missing_clippy_version_attribute
     #[clippy::version]
     pub clippy::MISSING_ATTRIBUTE_ONE,
     Warn,
@@ -65,6 +68,7 @@ declare_tool_lint! {
 }
 
 declare_tool_lint! {
+//~^ missing_clippy_version_attribute
     pub clippy::MISSING_ATTRIBUTE_TWO,
     Warn,
     "Two",
@@ -82,6 +86,15 @@ mod internal_clippy_lints {
 }
 
 use crate::internal_clippy_lints::ALLOW_MISSING_ATTRIBUTE_ONE;
-declare_lint_pass!(Pass2 => [VALID_ONE, VALID_TWO, VALID_THREE, INVALID_ONE, INVALID_TWO, MISSING_ATTRIBUTE_ONE, MISSING_ATTRIBUTE_TWO, ALLOW_MISSING_ATTRIBUTE_ONE]);
+declare_lint_pass!(Pass2 => [
+    VALID_ONE,
+    VALID_TWO,
+    VALID_THREE,
+    INVALID_ONE,
+    INVALID_TWO,
+    MISSING_ATTRIBUTE_ONE,
+    MISSING_ATTRIBUTE_TWO,
+    ALLOW_MISSING_ATTRIBUTE_ONE,
+]);
 
 fn main() {}

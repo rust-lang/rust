@@ -47,12 +47,11 @@ pub(crate) fn check<'tcx>(
                 let rty = cx.typeck_results().expr_ty(r);
                 let lcpy = is_copy(cx, lty);
                 let rcpy = is_copy(cx, rty);
-                if let Some((self_ty, other_ty)) = in_impl(cx, e, trait_id) {
-                    if (are_equal(cx, rty, self_ty) && are_equal(cx, lty, other_ty))
-                        || (are_equal(cx, rty, other_ty) && are_equal(cx, lty, self_ty))
-                    {
-                        return; // Don't lint
-                    }
+                if let Some((self_ty, other_ty)) = in_impl(cx, e, trait_id)
+                    && ((are_equal(cx, rty, self_ty) && are_equal(cx, lty, other_ty))
+                        || (are_equal(cx, rty, other_ty) && are_equal(cx, lty, self_ty)))
+                {
+                    return; // Don't lint
                 }
                 // either operator autorefs or both args are copyable
                 if (requires_ref || (lcpy && rcpy)) && implements_trait(cx, lty, trait_id, &[rty.into()]) {
@@ -86,7 +85,7 @@ pub(crate) fn check<'tcx>(
                                 left.span,
                                 "use the left value directly",
                                 lsnip,
-                                Applicability::MaybeIncorrect, // FIXME #2597
+                                Applicability::MachineApplicable,
                             );
                         },
                     );
@@ -105,7 +104,7 @@ pub(crate) fn check<'tcx>(
                                 right.span,
                                 "use the right value directly",
                                 rsnip,
-                                Applicability::MaybeIncorrect, // FIXME #2597
+                                Applicability::MachineApplicable,
                             );
                         },
                     );
@@ -137,7 +136,7 @@ pub(crate) fn check<'tcx>(
                                 left.span,
                                 "use the left value directly",
                                 lsnip,
-                                Applicability::MaybeIncorrect, // FIXME #2597
+                                Applicability::MachineApplicable,
                             );
                         },
                     );
@@ -164,7 +163,7 @@ pub(crate) fn check<'tcx>(
                             right.span,
                             "use the right value directly",
                             rsnip,
-                            Applicability::MaybeIncorrect, // FIXME #2597
+                            Applicability::MachineApplicable,
                         );
                     });
                 }
@@ -181,7 +180,7 @@ fn in_impl<'tcx>(
 ) -> Option<(&'tcx rustc_hir::Ty<'tcx>, &'tcx rustc_hir::Ty<'tcx>)> {
     if let Some(block) = get_enclosing_block(cx, e.hir_id)
         && let Some(impl_def_id) = cx.tcx.impl_of_method(block.hir_id.owner.to_def_id())
-        && let item = cx.tcx.hir().expect_item(impl_def_id.expect_local())
+        && let item = cx.tcx.hir_expect_item(impl_def_id.expect_local())
         && let ItemKind::Impl(item) = &item.kind
         && let Some(of_trait) = &item.of_trait
         && let Some(seg) = of_trait.path.segments.last()
@@ -200,7 +199,7 @@ fn in_impl<'tcx>(
 fn are_equal(cx: &LateContext<'_>, middle_ty: Ty<'_>, hir_ty: &rustc_hir::Ty<'_>) -> bool {
     if let ty::Adt(adt_def, _) = middle_ty.kind()
         && let Some(local_did) = adt_def.did().as_local()
-        && let item = cx.tcx.hir().expect_item(local_did)
+        && let item = cx.tcx.hir_expect_item(local_did)
         && let middle_ty_id = item.owner_id.to_def_id()
         && let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind
         && let Res::Def(_, hir_ty_id) = path.res

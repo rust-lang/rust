@@ -1,0 +1,31 @@
+error[E0277]: the trait bound `Foo: Bound` is not satisfied
+  --> $DIR/normalizes-to-is-not-productive.rs:42:31
+   |
+LL |     <Foo as Trait<T>>::Assoc: Bound,
+   |                               ^^^^^ the trait `Bound` is not implemented for `Foo`
+   |
+   = help: the trait `Bound` is implemented for `u32`
+note: required for `Foo` to implement `Trait<T>`
+  --> $DIR/normalizes-to-is-not-productive.rs:23:19
+   |
+LL | impl<T: Bound, U> Trait<U> for T {
+   |         -----     ^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error[E0277]: the trait bound `Foo: Bound` is not satisfied
+  --> $DIR/normalizes-to-is-not-productive.rs:47:19
+   |
+LL |     impls_bound::<Foo>();
+   |                   ^^^ the trait `Bound` is not implemented for `Foo`
+   |
+   = help: the trait `Bound` is implemented for `u32`
+note: required by a bound in `impls_bound`
+  --> $DIR/normalizes-to-is-not-productive.rs:27:19
+   |
+LL | fn impls_bound<T: Bound>() {
+   |                   ^^^^^ required by this bound in `impls_bound`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

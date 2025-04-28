@@ -1,7 +1,5 @@
+//~ ERROR reached the recursion limit while instantiating `<VirtualWrapper<VirtualWrapper<VirtualWrapper
 //@ build-fail
-
-//@ error-pattern: reached the recursion limit while instantiating
-//@ error-pattern: reached the recursion limit finding the struct tail
 
 // Regression test for #114484: This used to ICE during monomorphization, because we treated
 // `<VirtualWrapper<...> as Pointee>::Metadata` as a rigid projection after reaching the recursion
@@ -73,3 +71,16 @@ fn main() {
     let test = SomeData([0; 256]);
     test.virtualize();
 }
+
+//~? ERROR reached the recursion limit finding the struct tail for `[u8; 256]`
+//~? ERROR reached the recursion limit finding the struct tail for `[u8; 256]`
+//~? ERROR reached the recursion limit finding the struct tail for `[u8; 256]`
+//~? ERROR reached the recursion limit finding the struct tail for `[u8; 256]`
+//~? ERROR reached the recursion limit finding the struct tail for `SomeData<256>`
+//~? ERROR reached the recursion limit finding the struct tail for `SomeData<256>`
+//~? ERROR reached the recursion limit finding the struct tail for `SomeData<256>`
+//~? ERROR reached the recursion limit finding the struct tail for `SomeData<256>`
+//~? ERROR reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
+//~? ERROR reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
+//~? ERROR reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
+//~? ERROR reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`

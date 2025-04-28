@@ -1,0 +1,35 @@
+error: this loop never actually loops
+  --> tests/ui/never_loop_fixable.rs:4:5
+   |
+LL | /     for i in [1, 2, 3].iter() {
+LL | |
+LL | |         return;
+LL | |     }
+   | |_____^
+   |
+   = note: `#[deny(clippy::never_loop)]` on by default
+help: if you need the first element of the iterator, try writing
+   |
+LL -     for i in [1, 2, 3].iter() {
+LL +     if let Some(i) = [1, 2, 3].iter().next() {
+   |
+
+error: this loop never actually loops
+  --> tests/ui/never_loop_fixable.rs:11:5
+   |
+LL | /     for i in [1, 2, 3].iter() {
+LL | |
+LL | |         return;
+LL | |         loop {
+...  |
+LL | |     }
+   | |_____^
+   |
+help: if you need the first element of the iterator, try writing
+   |
+LL -     for i in [1, 2, 3].iter() {
+LL +     if let Some(i) = [1, 2, 3].iter().next() {
+   |
+
+error: aborting due to 2 previous errors
+

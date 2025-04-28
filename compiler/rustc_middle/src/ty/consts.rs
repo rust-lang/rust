@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
 use rustc_macros::HashStable;
+use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
 use crate::ty::{self, Ty, TyCtxt};
@@ -34,7 +35,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Const<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Const<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Const<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }
@@ -242,5 +243,19 @@ impl<'tcx> Const<'tcx> {
 
     pub fn is_ct_infer(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(_))
+    }
+
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<TyCtxt<'tcx>> {
+        TypeWalker::new(self.into())
     }
 }

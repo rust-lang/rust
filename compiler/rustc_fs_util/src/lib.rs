@@ -1,6 +1,8 @@
-use std::ffi::CString;
+use std::ffi::{CString, OsStr};
 use std::path::{Path, PathBuf, absolute};
-use std::{fs, io};
+use std::{env, fs, io};
+
+use tempfile::TempDir;
 
 // Unfortunately, on windows, it looks like msvcrt.dll is silently translating
 // verbatim paths under the hood to non-verbatim paths! This manifests itself as
@@ -55,25 +57,31 @@ pub enum LinkOrCopy {
     Copy,
 }
 
-/// Copies `p` into `q`, preferring to use hard-linking if possible. If
-/// `q` already exists, it is removed first.
+/// Copies `p` into `q`, preferring to use hard-linking if possible.
 /// The result indicates which of the two operations has been performed.
 pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<LinkOrCopy> {
+    // Creating a hard-link will fail if the destination path already exists. We could defensively
+    // call remove_file in this function, but that pessimizes callers who can avoid such calls.
+    // Incremental compilation calls this function a lot, and is able to avoid calls that
+    // would fail the first hard_link attempt.
+
     let p = p.as_ref();
     let q = q.as_ref();
-    match fs::remove_file(q) {
-        Ok(()) => (),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => (),
-        Err(err) => return Err(err),
+
+    let err = match fs::hard_link(p, q) {
+        Ok(()) => return Ok(LinkOrCopy::Link),
+        Err(err) => err,
+    };
+
+    if err.kind() == io::ErrorKind::AlreadyExists {
+        fs::remove_file(q)?;
+        if fs::hard_link(p, q).is_ok() {
+            return Ok(LinkOrCopy::Link);
+        }
     }
 
-    match fs::hard_link(p, q) {
-        Ok(()) => Ok(LinkOrCopy::Link),
-        Err(_) => match fs::copy(p, q) {
-            Ok(_) => Ok(LinkOrCopy::Copy),
-            Err(e) => Err(e),
-        },
-    }
+    // Hard linking failed, fall back to copying.
+    fs::copy(p, q).map(|_| LinkOrCopy::Copy)
 }
 
 #[cfg(any(unix, all(target_os = "wasi", target_env = "p1")))]
@@ -95,4 +103,44 @@ pub fn path_to_c_string(p: &Path) -> CString {
 #[inline]
 pub fn try_canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs::canonicalize(&path).or_else(|_| absolute(&path))
+}
+
+pub struct TempDirBuilder<'a, 'b> {
+    builder: tempfile::Builder<'a, 'b>,
+}
+
+impl<'a, 'b> TempDirBuilder<'a, 'b> {
+    pub fn new() -> Self {
+        Self { builder: tempfile::Builder::new() }
+    }
+
+    pub fn prefix<S: AsRef<OsStr> + ?Sized>(&mut self, prefix: &'a S) -> &mut Self {
+        self.builder.prefix(prefix);
+        self
+    }
+
+    pub fn suffix<S: AsRef<OsStr> + ?Sized>(&mut self, suffix: &'b S) -> &mut Self {
+        self.builder.suffix(suffix);
+        self
+    }
+
+    pub fn tempdir_in<P: AsRef<Path>>(&self, dir: P) -> io::Result<TempDir> {
+        let dir = dir.as_ref();
+        // On Windows in CI, we had been getting fairly frequent "Access is denied"
+        // errors when creating temporary directories.
+        // So this implements a simple retry with backoff loop.
+        #[cfg(windows)]
+        for wait in 1..11 {
+            match self.builder.tempdir_in(dir) {
+                Err(e) if e.kind() == io::ErrorKind::PermissionDenied => {}
+                t => return t,
+            }
+            std::thread::sleep(std::time::Duration::from_millis(1 << wait));
+        }
+        self.builder.tempdir_in(dir)
+    }
+
+    pub fn tempdir(&self) -> io::Result<TempDir> {
+        self.tempdir_in(env::temp_dir())
+    }
 }

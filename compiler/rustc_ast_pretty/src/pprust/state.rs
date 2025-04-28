@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -24,7 +24,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::IdentPrinter;
 use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
-use thin_vec::ThinVec;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
@@ -579,11 +578,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         let mut printed = false;
         for attr in attrs {
             if attr.style == kind {
-                self.print_attribute_inline(attr, is_inline);
-                if is_inline {
-                    self.nbsp();
+                if self.print_attribute_inline(attr, is_inline) {
+                    if is_inline {
+                        self.nbsp();
+                    }
+                    printed = true;
                 }
-                printed = true;
             }
         }
         if printed && trailing_hardbreak && !is_inline {
@@ -592,7 +592,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         printed
     }
 
-    fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) {
+    fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) -> bool {
+        if attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace) {
+            // It's not a valid identifier, so avoid printing it
+            // to keep the printed code reasonably parse-able.
+            return false;
+        }
         if !is_inline {
             self.hardbreak_if_not_bol();
         }
@@ -611,6 +616,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.hardbreak()
             }
         }
+        true
     }
 
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
@@ -764,12 +770,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.bclose(span, empty);
             }
             delim => {
-                let token_str = self.token_kind_to_string(&token::OpenDelim(delim));
+                let token_str = self.token_kind_to_string(&delim.as_open_token_kind());
                 self.word(token_str);
                 self.ibox(0);
                 self.print_tts(tts, convert_dollar_crate);
                 self.end();
-                let token_str = self.token_kind_to_string(&token::CloseDelim(delim));
+                let token_str = self.token_kind_to_string(&delim.as_close_token_kind());
                 self.word(token_str);
             }
         }
@@ -793,7 +799,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             has_bang,
             Some(*ident),
             macro_def.body.delim,
-            &macro_def.body.tokens.clone(),
+            &macro_def.body.tokens,
             true,
             sp,
         );
@@ -870,14 +876,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn nonterminal_to_string(&self, nt: &Nonterminal) -> String {
-        // We extract the token stream from the AST fragment and pretty print
-        // it, rather than using AST pretty printing, because `Nonterminal` is
-        // slated for removal in #124141. (This method will also then be
-        // removed.)
-        self.tts_to_string(&TokenStream::from_nonterminal_ast(nt))
-    }
-
     /// Print the token kind precisely, without converting `$crate` into its respective crate name.
     fn token_kind_to_string(&self, tok: &TokenKind) -> Cow<'static, str> {
         self.token_kind_to_string_ext(tok, None)
@@ -934,14 +932,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::RArrow => "->".into(),
             token::LArrow => "<-".into(),
             token::FatArrow => "=>".into(),
-            token::OpenDelim(Delimiter::Parenthesis) => "(".into(),
-            token::CloseDelim(Delimiter::Parenthesis) => ")".into(),
-            token::OpenDelim(Delimiter::Bracket) => "[".into(),
-            token::CloseDelim(Delimiter::Bracket) => "]".into(),
-            token::OpenDelim(Delimiter::Brace) => "{".into(),
-            token::CloseDelim(Delimiter::Brace) => "}".into(),
-            token::OpenDelim(Delimiter::Invisible(_))
-            | token::CloseDelim(Delimiter::Invisible(_)) => "".into(),
+            token::OpenParen => "(".into(),
+            token::CloseParen => ")".into(),
+            token::OpenBracket => "[".into(),
+            token::CloseBracket => "]".into(),
+            token::OpenBrace => "{".into(),
+            token::CloseBrace => "}".into(),
+            token::OpenInvisible(_) | token::CloseInvisible(_) => "".into(),
             token::Pound => "#".into(),
             token::Dollar => "$".into(),
             token::Question => "?".into(),
@@ -970,8 +967,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 doc_comment_to_string(comment_kind, attr_style, data).into()
             }
             token::Eof => "<eof>".into(),
-
-            token::Interpolated(ref nt) => self.nonterminal_to_string(&nt).into(),
         }
     }
 
@@ -1330,6 +1325,9 @@ impl<'a> State<'a> {
                 self.print_outer_attributes(&loc.attrs);
                 self.space_if_not_bol();
                 self.ibox(INDENT_UNIT);
+                if loc.super_.is_some() {
+                    self.word_nbsp("super");
+                }
                 self.word_nbsp("let");
 
                 self.ibox(INDENT_UNIT);
@@ -1470,7 +1468,7 @@ impl<'a> State<'a> {
             true,
             None,
             m.args.delim,
-            &m.args.tokens.clone(),
+            &m.args.tokens,
             true,
             m.span(),
         );
@@ -1616,9 +1614,9 @@ impl<'a> State<'a> {
     fn print_pat(&mut self, pat: &ast::Pat) {
         self.maybe_print_comment(pat.span.lo());
         self.ann.pre(self, AnnNode::Pat(pat));
-        /* Pat isn't normalized, but the beauty of it
-        is that it doesn't matter */
+        /* Pat isn't normalized, but the beauty of it is that it doesn't matter */
         match &pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Wild => self.word("_"),
             PatKind::Never => self.word("!"),
             PatKind::Ident(BindingMode(by_ref, mutbl), ident, sub) => {
@@ -1940,12 +1938,7 @@ impl<'a> State<'a> {
                 if let Some(eself) = input.to_self() {
                     self.print_explicit_self(&eself);
                 } else {
-                    let invalid = if let PatKind::Ident(_, ident, _) = input.pat.kind {
-                        ident.name == kw::Empty
-                    } else {
-                        false
-                    };
-                    if !invalid {
+                    if !matches!(input.pat.kind, PatKind::Missing) {
                         self.print_pat(&input.pat);
                         self.word(":");
                         self.space();
@@ -1978,15 +1971,7 @@ impl<'a> State<'a> {
     ) {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
-        let generics = ast::Generics {
-            params: ThinVec::new(),
-            where_clause: ast::WhereClause {
-                has_where_token: false,
-                predicates: ThinVec::new(),
-                span: DUMMY_SP,
-            },
-            span: DUMMY_SP,
-        };
+        let generics = ast::Generics::default();
         let header = ast::FnHeader { safety, ext, ..ast::FnHeader::default() };
         self.print_fn(decl, header, name, &generics);
         self.end();
@@ -2056,7 +2041,7 @@ impl<'a> State<'a> {
     }
 
     fn print_attribute(&mut self, attr: &ast::Attribute) {
-        self.print_attribute_inline(attr, false)
+        self.print_attribute_inline(attr, false);
     }
 
     fn print_meta_list_item(&mut self, item: &ast::MetaItemInner) {

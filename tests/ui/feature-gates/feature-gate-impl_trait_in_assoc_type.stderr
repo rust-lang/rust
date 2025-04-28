@@ -18,6 +18,16 @@ LL |     type Bop = impl std::fmt::Debug;
    = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+error[E0658]: `impl Trait` in associated types is unstable
+  --> $DIR/feature-gate-impl_trait_in_assoc_type.rs:22:20
+   |
+LL |         type Bar = impl Sized;
+   |                    ^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(impl_trait_in_assoc_type)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0658]: inherent associated types are unstable
   --> $DIR/feature-gate-impl_trait_in_assoc_type.rs:14:5
    |
@@ -44,6 +54,14 @@ LL |     type Bop = impl std::fmt::Debug;
    |
    = note: `Bop` must be used in combination with a concrete type within the same impl
 
-error: aborting due to 5 previous errors
+error: unconstrained opaque type
+  --> $DIR/feature-gate-impl_trait_in_assoc_type.rs:22:20
+   |
+LL |         type Bar = impl Sized;
+   |                    ^^^^^^^^^^
+   |
+   = note: `Bar` must be used in combination with a concrete type within the same impl
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

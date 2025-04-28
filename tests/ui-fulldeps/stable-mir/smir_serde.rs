@@ -19,7 +19,6 @@ extern crate serde_json;
 extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
-use rustc_smir::rustc_internal;
 use serde_json::to_string;
 use stable_mir::mir::Body;
 use std::io::{BufWriter, Write};
@@ -47,7 +46,7 @@ fn serialize_to_json(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
 fn main() {
     let path = "internal_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),

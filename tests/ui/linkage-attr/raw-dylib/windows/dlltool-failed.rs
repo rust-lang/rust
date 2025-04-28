@@ -19,3 +19,5 @@ extern "C" {
 pub fn lib_main() {
     unsafe { f(42); }
 }
+
+//~? ERROR Dlltool could not create import library with

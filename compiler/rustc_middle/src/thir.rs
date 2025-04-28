@@ -27,7 +27,8 @@ use tracing::instrument;
 
 use crate::middle::region;
 use crate::mir::interpret::AllocId;
-use crate::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::mir::{self, AssignOp, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
@@ -402,7 +403,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A *non-overloaded* operation assignment, e.g. `lhs += rhs`.
     AssignOp {
-        op: BinOp,
+        op: AssignOp,
         lhs: ExprId,
         rhs: ExprId,
     },
@@ -672,27 +673,7 @@ impl<'tcx> Pat<'tcx> {
             return;
         }
 
-        use PatKind::*;
-        match &self.kind {
-            Wild
-            | Never
-            | Range(..)
-            | Binding { subpattern: None, .. }
-            | Constant { .. }
-            | Error(_) => {}
-            AscribeUserType { subpattern, .. }
-            | Binding { subpattern: Some(subpattern), .. }
-            | Deref { subpattern }
-            | DerefPattern { subpattern, .. }
-            | ExpandedConstant { subpattern, .. } => subpattern.walk_(it),
-            Leaf { subpatterns } | Variant { subpatterns, .. } => {
-                subpatterns.iter().for_each(|field| field.pattern.walk_(it))
-            }
-            Or { pats } => pats.iter().for_each(|p| p.walk_(it)),
-            Array { box prefix, slice, box suffix } | Slice { box prefix, slice, box suffix } => {
-                prefix.iter().chain(slice.as_deref()).chain(suffix.iter()).for_each(|p| p.walk_(it))
-            }
-        }
+        for_each_immediate_subpat(self, |p| p.walk_(it));
     }
 
     /// Whether the pattern has a `PatKind::Error` nested within.
@@ -766,6 +747,9 @@ pub struct Ascription<'tcx> {
 
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub enum PatKind<'tcx> {
+    /// A missing pattern, e.g. for an anonymous param in a bare fn like `fn f(u32)`.
+    Missing,
+
     /// A wildcard pattern: `_`.
     Wild,
 
@@ -783,8 +767,12 @@ pub enum PatKind<'tcx> {
         var: LocalVarId,
         ty: Ty<'tcx>,
         subpattern: Option<Box<Pat<'tcx>>>,
+
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
+        ///
+        /// (The same binding can occur multiple times in different branches of
+        /// an or-pattern, but only one of them will be primary.)
         is_primary: bool,
     },
 
@@ -815,9 +803,9 @@ pub enum PatKind<'tcx> {
     },
 
     /// One of the following:
-    /// * `&str`/`&[u8]` (represented as a valtree), which will be handled as a string/slice pattern
-    ///   and thus exhaustiveness checking will detect if you use the same string/slice twice in
-    ///   different patterns.
+    /// * `&str` (represented as a valtree), which will be handled as a string pattern and thus
+    ///   exhaustiveness checking will detect if you use the same string twice in different
+    ///   patterns.
     /// * integer, bool, char or float (represented as a valtree), which will be handled by
     ///   exhaustiveness to cover exactly its own value, similar to `&str`, but these values are
     ///   much simpler.
@@ -827,23 +815,17 @@ pub enum PatKind<'tcx> {
     },
 
     /// Pattern obtained by converting a constant (inline or named) to its pattern
-    /// representation using `const_to_pat`.
+    /// representation using `const_to_pat`. This is used for unsafety checking.
     ExpandedConstant {
-        /// [DefId] of the constant, we need this so that we have a
-        /// reference that can be used by unsafety checking to visit nested
-        /// unevaluated constants and for diagnostics. If the `DefId` doesn't
-        /// correspond to a local crate, it points at the `const` item.
+        /// [DefId] of the constant item.
         def_id: DefId,
-        /// If `false`, then `def_id` points at a `const` item, otherwise it
-        /// corresponds to a local inline const.
-        is_inline: bool,
-        /// If the inline constant is used in a range pattern, this subpattern
-        /// represents the range (if both ends are inline constants, there will
-        /// be multiple InlineConstant wrappers).
+        /// The pattern that the constant lowered to.
         ///
-        /// Otherwise, the actual pattern that the constant lowered to. As with
-        /// other constants, inline constants are matched structurally where
-        /// possible.
+        /// HACK: we need to keep the `DefId` of inline constants around for unsafety checking;
+        /// therefore when a range pattern contains inline constants, we re-wrap the range pattern
+        /// with the `ExpandedConstant` nodes that correspond to the range endpoints. Hence
+        /// `subpattern` may actually be a range pattern, and `def_id` be the constant for one of
+        /// its endpoints.
         subpattern: Box<Pat<'tcx>>,
     },
 

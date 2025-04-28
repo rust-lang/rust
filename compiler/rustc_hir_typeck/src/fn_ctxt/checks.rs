@@ -15,11 +15,10 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
@@ -99,22 +98,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
-            let expr_ty = |expr: &hir::Expr<'tcx>| {
-                let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
-                let ty = self.resolve_vars_if_possible(ty);
-                if ty.has_non_region_infer() {
-                    Ty::new_misc_error(self.tcx)
-                } else {
-                    self.tcx.erase_regions(ty)
-                }
-            };
-            let node_ty = |hir_id: HirId| self.typeck_results.borrow().node_type(hir_id);
             InlineAsmCtxt::new(
-                self.tcx,
                 enclosing_id,
+                &self.infcx,
                 self.typing_env(self.param_env),
-                expr_ty,
-                node_ty,
+                &*self.typeck_results.borrow(),
             )
             .check_asm(asm);
         }
@@ -628,7 +616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some((DefKind::AssocFn, def_id)) =
                     self.typeck_results.borrow().type_dependent_def(call_expr.hir_id)
                     && let Some(assoc) = tcx.opt_associated_item(def_id)
-                    && assoc.fn_has_self_parameter
+                    && assoc.is_method()
                 {
                     Some(*receiver)
                 } else {
@@ -654,8 +642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     TraitsInScope,
                     |mut ctxt| ctxt.probe_for_similar_candidate(),
                 )
-                && let ty::AssocKind::Fn = assoc.kind
-                && assoc.fn_has_self_parameter
+                && assoc.is_method()
             {
                 let args = self.infcx.fresh_args_for_item(call_name.span, assoc.def_id);
                 let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(tcx, args);
@@ -696,10 +683,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .all(|(expected, found)| self.may_coerce(*expected, *found))
                 && fn_sig.inputs()[1..].len() == input_types.len()
             {
+                let assoc_name = assoc.name();
                 err.span_suggestion_verbose(
                     call_name.span,
-                    format!("you might have meant to use `{}`", assoc.name),
-                    assoc.name,
+                    format!("you might have meant to use `{}`", assoc_name),
+                    assoc_name,
                     Applicability::MaybeIncorrect,
                 );
                 return;
@@ -719,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx.def_span(assoc.def_id),
                     format!(
                         "there's is a method with similar name `{}`, but the arguments don't match",
-                        assoc.name,
+                        assoc.name(),
                     ),
                 );
                 return;
@@ -731,7 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!(
                         "there's is a method with similar name `{}`, but their argument count \
                          doesn't match",
-                        assoc.name,
+                        assoc.name(),
                     ),
                 );
                 return;
@@ -937,7 +925,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let detect_dotdot = |err: &mut Diag<'_>, ty: Ty<'_>, expr: &hir::Expr<'_>| {
             if let ty::Adt(adt, _) = ty.kind()
-                && self.tcx().lang_items().get(hir::LangItem::RangeFull) == Some(adt.did())
+                && self.tcx().is_lang_item(adt.did(), hir::LangItem::RangeFull)
                 && let hir::ExprKind::Struct(
                     hir::QPath::LangItem(hir::LangItem::RangeFull, _),
                     [],
@@ -1147,8 +1135,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.tcx.def_kind(fn_def_id).is_fn_like()
                 && let self_implicit =
                     matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
-                && let Some(arg) =
-                    self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
+                && let Some(Some(arg)) =
+                    self.tcx.fn_arg_idents(fn_def_id).get(expected_idx.as_usize() + self_implicit)
                 && arg.name != kw::SelfLower
             {
                 format!("/* {} */", arg.name)
@@ -1647,7 +1635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Char(_) => tcx.types.char,
             ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => Ty::new_int(tcx, ty::int_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => Ty::new_uint(tcx, ty::uint_ty(t)),
-            ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
+            ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     // These exist to direct casts like `0x61 as char` to use
@@ -1656,6 +1644,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
                     ty::FnDef(..) | ty::FnPtr(..) => Some(tcx.types.usize),
+                    &ty::Pat(base, _) if base.is_integral() => {
+                        let layout = tcx
+                            .layout_of(self.typing_env(self.param_env).as_query_input(ty))
+                            .ok()?;
+                        assert!(!layout.uninhabited);
+
+                        match layout.backend_repr {
+                            rustc_abi::BackendRepr::Scalar(scalar) => {
+                                scalar.valid_range(&tcx).contains(u128::from(i.get())).then_some(ty)
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
@@ -2618,7 +2619,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
-        let (sig, generics, body_id, param_names) = match self.tcx.hir_get_if_local(def_id)? {
+        let (sig, generics, body_id, params) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
                 kind: hir::TraitItemKind::Fn(sig, trait_fn),
@@ -2660,7 +2661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             }
         });
-        match (body_id, param_names) {
+        match (body_id, params) {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
             (Some(body), None) => {
                 let params = self.tcx.hir_body(body).params;
@@ -2677,7 +2678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((
-                    fn_inputs.zip(params.iter().map(|param| FnParam::Name(param))).collect(),
+                    fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect(),
                     generics,
                 ))
             }
@@ -2708,23 +2709,20 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
 #[derive(Clone, Copy)]
 enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
-    Name(&'hir Ident),
+    Ident(Option<Ident>),
 }
+
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
-            Self::Param(x) => x.span,
-            Self::Name(x) => x.span,
-        }
-    }
-
-    fn name(&self) -> Option<Symbol> {
-        match self {
-            Self::Param(x) if let hir::PatKind::Binding(_, _, ident, _) = x.pat.kind => {
-                Some(ident.name)
+            Self::Param(param) => param.span,
+            Self::Ident(ident) => {
+                if let Some(ident) = ident {
+                    ident.span
+                } else {
+                    DUMMY_SP
+                }
             }
-            Self::Name(x) if x.name != kw::Empty => Some(x.name),
-            _ => None,
         }
     }
 
@@ -2732,8 +2730,24 @@ impl FnParam<'_> {
         struct D<'a>(FnParam<'a>, usize);
         impl fmt::Display for D<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                if let Some(name) = self.0.name() {
-                    write!(f, "`{name}`")
+                // A "unique" param name is one that (a) exists, and (b) is guaranteed to be unique
+                // among the parameters, i.e. `_` does not count.
+                let unique_name = match self.0 {
+                    FnParam::Param(param)
+                        if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind =>
+                    {
+                        Some(ident.name)
+                    }
+                    FnParam::Ident(ident)
+                        if let Some(ident) = ident
+                            && ident.name != kw::Underscore =>
+                    {
+                        Some(ident.name)
+                    }
+                    _ => None,
+                };
+                if let Some(unique_name) = unique_name {
+                    write!(f, "`{unique_name}`")
                 } else {
                     write!(f, "parameter #{}", self.1 + 1)
                 }

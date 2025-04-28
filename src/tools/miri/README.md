@@ -237,8 +237,7 @@ inherent interpreter slowdown and a loss of parallelism.
 You can get your test suite's parallelism back by running `cargo miri nextest run -jN`
 (note that you will need [`cargo-nextest`](https://nexte.st) installed).
 This works because `cargo-nextest` collects a list of all tests then launches a
-separate `cargo miri run` for each test. You will need to specify a `-j` or `--test-threads`;
-by default `cargo miri nextest run` runs one test at a time. For more details, see the
+separate `cargo miri run` for each test. For more information about nextest, see the
 [`cargo-nextest` Miri documentation](https://nexte.st/book/miri.html).
 
 Note: This one-test-per-process model means that `cargo miri test` is able to detect data
@@ -432,7 +431,8 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-track-weak-memory-loads` shows a backtrace when weak memory emulation returns an outdated
   value from a load. This can help diagnose problems that disappear under
   `-Zmiri-disable-weak-memory-emulation`.
-* `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
+* <a name="-Zmiri-tree-borrows"><!-- The playground links here --></a>
+  `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
   Tree Borrows is even more experimental than Stacked Borrows. While Tree Borrows
   is still sound in the sense of catching all aliasing violations that current versions
   of the compiler might exploit, it is likely that the eventual final aliasing model
@@ -565,6 +565,7 @@ Definite bugs found:
 * [Occasional memory leak in `std::mpsc` channels](https://github.com/rust-lang/rust/issues/121582) (original code in [crossbeam](https://github.com/crossbeam-rs/crossbeam/pull/1084))
 * [Weak-memory-induced memory leak in Windows thread-local storage](https://github.com/rust-lang/rust/pull/124281)
 * [A bug in the new `RwLock::downgrade` implementation](https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/Miri.20error.20library.20test) (caught by Miri before it landed in the Rust repo)
+* [Mockall reading unintialized memory when mocking `std::io::Read::read`, even if all expectations are satisfied](https://github.com/asomers/mockall/issues/647) (caught by Miri running Tokio's test suite)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

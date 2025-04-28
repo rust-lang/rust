@@ -144,6 +144,7 @@ pub struct ArgAttributes {
     /// (corresponding to LLVM's dereferenceable_or_null attributes, i.e., it is okay for this to be
     /// set on a null pointer, but all non-null pointers must be dereferenceable).
     pub pointee_size: Size,
+    /// The minimum alignment of the pointee, if any.
     pub pointee_align: Option<Align>,
 }
 
@@ -670,7 +671,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 }
             },
             "aarch64" | "arm64ec" => {
-                let kind = if cx.target_spec().is_like_osx {
+                let kind = if cx.target_spec().is_like_darwin {
                     aarch64::AbiKind::DarwinPCS
                 } else if cx.target_spec().is_like_windows {
                     aarch64::AbiKind::Win64
@@ -705,7 +706,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "xtensa" => xtensa::compute_abi_info(cx, self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" => {
-                if spec.os == "unknown" && cx.wasm_c_abi_opt() == WasmCAbi::Legacy {
+                if spec.os == "unknown" && matches!(cx.wasm_c_abi_opt(), WasmCAbi::Legacy { .. }) {
                     wasm::compute_wasm_abi_info(self)
                 } else {
                     wasm::compute_c_abi_info(cx, self)
@@ -717,16 +718,16 @@ impl<'a, Ty> FnAbi<'a, Ty> {
         }
     }
 
-    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: ExternAbi)
+    pub fn adjust_for_rust_abi<C>(&mut self, cx: &C)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec,
     {
         let spec = cx.target_spec();
         match &*spec.arch {
-            "x86" => x86::compute_rust_abi_info(cx, self, abi),
-            "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self, abi),
-            "loongarch64" => loongarch::compute_rust_abi_info(cx, self, abi),
+            "x86" => x86::compute_rust_abi_info(cx, self),
+            "riscv32" | "riscv64" => riscv::compute_rust_abi_info(cx, self),
+            "loongarch64" => loongarch::compute_rust_abi_info(cx, self),
             "aarch64" => aarch64::compute_rust_abi_info(cx, self),
             _ => {}
         };
@@ -850,10 +851,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     //
                     // Note that the intrinsic ABI is exempt here as those are not
                     // real functions anyway, and the backend expects very specific types.
-                    if abi != ExternAbi::RustIntrinsic
-                        && spec.simd_types_indirect
-                        && !can_pass_simd_directly(arg)
-                    {
+                    if spec.simd_types_indirect && !can_pass_simd_directly(arg) {
                         arg.make_indirect();
                     }
                 }

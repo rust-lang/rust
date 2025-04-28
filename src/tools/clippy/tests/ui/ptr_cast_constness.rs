@@ -12,11 +12,13 @@ extern crate proc_macros;
 use proc_macros::{external, inline_macros};
 
 unsafe fn ptr_to_ref<T, U>(p: *const T, om: *mut U) {
-    let _: &mut T = std::mem::transmute(p as *mut T);
-    //~^ ptr_cast_constness
-    let _ = &mut *(p as *mut T);
-    //~^ ptr_cast_constness
-    let _: &T = &*(om as *const T);
+    unsafe {
+        let _: &mut T = std::mem::transmute(p as *mut T);
+        //~^ ptr_cast_constness
+        let _ = &mut *(p as *mut T);
+        //~^ ptr_cast_constness
+        let _: &T = &*(om as *const T);
+    }
 }
 
 #[inline_macros]
@@ -97,4 +99,10 @@ fn null_pointers() {
     // Do not lint inside macros from external crates
     let _ = external!(ptr::null::<u32>() as *mut u32);
     let _ = external!(ptr::null::<u32>().cast_mut());
+}
+
+fn issue14621() {
+    let mut local = 4;
+    let _ = std::ptr::addr_of_mut!(local) as *const _;
+    //~^ ptr_cast_constness
 }

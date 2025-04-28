@@ -329,7 +329,7 @@ fn used_underscore_binding<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     let name = ident.name.as_str();
     if name.starts_with('_')
         && !name.starts_with("__")
-        && let definition_span = cx.tcx.hir().span(definition_hir_id)
+        && let definition_span = cx.tcx.hir_span(definition_hir_id)
         && !definition_span.from_expansion()
         && !fulfill_or_allowed(cx, USED_UNDERSCORE_BINDING, [expr.hir_id, definition_hir_id])
     {

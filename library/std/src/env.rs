@@ -13,7 +13,7 @@
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::path::{Path, PathBuf};
-use crate::sys::os as os_imp;
+use crate::sys::{env as env_imp, os as os_imp};
 use crate::{fmt, io, sys};
 
 /// Returns the current working directory as a [`PathBuf`].
@@ -96,7 +96,7 @@ pub struct Vars {
 /// [`env::vars_os()`]: vars_os
 #[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs {
-    inner: os_imp::Env,
+    inner: env_imp::Env,
 }
 
 /// Returns an iterator of (variable, value) pairs of strings, for all the
@@ -150,7 +150,7 @@ pub fn vars() -> Vars {
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn vars_os() -> VarsOs {
-    VarsOs { inner: os_imp::env() }
+    VarsOs { inner: env_imp::env() }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -259,7 +259,7 @@ pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
 }
 
 fn _var_os(key: &OsStr) -> Option<OsString> {
-    os_imp::getenv(key)
+    env_imp::getenv(key)
 }
 
 /// The error type for operations interacting with environment variables.
@@ -333,7 +333,7 @@ impl Error for VarError {
 ///
 /// Discussion of this unsafety on Unix may be found in:
 ///
-///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
+///  - [Austin Group Bugzilla (for POSIX)](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
 /// To pass an environment variable to a child process, you can instead use [`Command::env`].
@@ -363,7 +363,7 @@ impl Error for VarError {
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
     let (key, value) = (key.as_ref(), value.as_ref());
-    unsafe { os_imp::setenv(key, value) }.unwrap_or_else(|e| {
+    unsafe { env_imp::setenv(key, value) }.unwrap_or_else(|e| {
         panic!("failed to set environment variable `{key:?}` to `{value:?}`: {e}")
     })
 }
@@ -434,7 +434,7 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 #[stable(feature = "env", since = "1.0.0")]
 pub unsafe fn remove_var<K: AsRef<OsStr>>(key: K) {
     let key = key.as_ref();
-    unsafe { os_imp::unsetenv(key) }
+    unsafe { env_imp::unsetenv(key) }
         .unwrap_or_else(|e| panic!("failed to remove environment variable `{key:?}`: {e}"))
 }
 
@@ -950,7 +950,7 @@ impl fmt::Debug for ArgsOs {
 /// Constants associated with the current target
 #[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
-    use crate::sys::env::os;
+    use crate::sys::env_consts::os;
 
     /// A string describing the architecture of the CPU that is currently in use.
     /// An example value may be: `"x86"`, `"arm"` or `"riscv64"`.

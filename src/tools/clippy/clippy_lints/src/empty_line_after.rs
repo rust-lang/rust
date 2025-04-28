@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{SpanRangeExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
@@ -8,8 +10,7 @@ use rustc_errors::{Applicability, Diag, SuggestionStyle};
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol};
+use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, kw};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -90,7 +91,7 @@ declare_clippy_lint! {
 #[derive(Debug)]
 struct ItemInfo {
     kind: &'static str,
-    name: Symbol,
+    name: Option<Symbol>,
     span: Span,
     mod_items: Option<NodeId>,
 }
@@ -316,8 +317,12 @@ impl EmptyLineAfter {
                     for stop in gaps.iter().flat_map(|gap| gap.prev_chunk) {
                         stop.comment_out(cx, &mut suggestions);
                     }
+                    let name = match info.name {
+                        Some(name) => format!("{} `{name}`", info.kind).into(),
+                        None => Cow::from("the following item"),
+                    };
                     diag.multipart_suggestion_verbose(
-                        format!("if the doc comment should not document `{}` comment it out", info.name),
+                        format!("if the doc comment should not document {name} then comment it out"),
                         suggestions,
                         Applicability::MaybeIncorrect,
                     );
@@ -375,21 +380,20 @@ impl EmptyLineAfter {
         &mut self,
         cx: &EarlyContext<'_>,
         kind: &ItemKind,
-        ident: &Ident,
+        ident: Option<Ident>,
         span: Span,
         attrs: &[Attribute],
         id: NodeId,
     ) {
         self.items.push(ItemInfo {
             kind: kind.descr(),
-            name: ident.name,
-            span: if span.contains(ident.span) {
-                span.with_hi(ident.span.hi())
-            } else {
-                span.with_hi(span.lo())
+            name: ident.map(|ident| ident.name),
+            span: match ident {
+                Some(ident) => span.with_hi(ident.span.hi()),
+                None => span.shrink_to_lo(),
             },
             mod_items: match kind {
-                ItemKind::Mod(_, ModKind::Loaded(items, _, _, _)) => items
+                ItemKind::Mod(_, _, ModKind::Loaded(items, _, _, _)) => items
                     .iter()
                     .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
                     .map(|i| i.id)
@@ -446,7 +450,7 @@ impl EarlyLintPass for EmptyLineAfter {
     fn check_crate(&mut self, _: &EarlyContext<'_>, krate: &Crate) {
         self.items.push(ItemInfo {
             kind: "crate",
-            name: kw::Crate,
+            name: Some(kw::Crate),
             span: krate.spans.inner_span.with_hi(krate.spans.inner_span.lo()),
             mod_items: krate
                 .items
@@ -471,7 +475,7 @@ impl EarlyLintPass for EmptyLineAfter {
         self.check_item_kind(
             cx,
             &item.kind.clone().into(),
-            &item.ident,
+            item.kind.ident(),
             item.span,
             &item.attrs,
             item.id,
@@ -482,7 +486,7 @@ impl EarlyLintPass for EmptyLineAfter {
         self.check_item_kind(
             cx,
             &item.kind.clone().into(),
-            &item.ident,
+            item.kind.ident(),
             item.span,
             &item.attrs,
             item.id,
@@ -490,6 +494,6 @@ impl EarlyLintPass for EmptyLineAfter {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        self.check_item_kind(cx, &item.kind, &item.ident, item.span, &item.attrs, item.id);
+        self.check_item_kind(cx, &item.kind, item.kind.ident(), item.span, &item.attrs, item.id);
     }
 }

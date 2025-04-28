@@ -16,6 +16,7 @@
 //! relate them structurally.
 
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::solve::GoalSource;
 use rustc_type_ir::{self as ty, Interner};
 use tracing::{instrument, trace};
 
@@ -49,7 +50,10 @@ where
         // Structurally normalize the lhs.
         let lhs = if let Some(alias) = lhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(lhs);
-            self.add_normalizes_to_goal(goal.with(cx, ty::NormalizesTo { alias, term }));
+            self.add_goal(
+                GoalSource::TypeRelating,
+                goal.with(cx, ty::NormalizesTo { alias, term }),
+            );
             term
         } else {
             lhs
@@ -58,7 +62,10 @@ where
         // Structurally normalize the rhs.
         let rhs = if let Some(alias) = rhs.to_alias_term() {
             let term = self.next_term_infer_of_kind(rhs);
-            self.add_normalizes_to_goal(goal.with(cx, ty::NormalizesTo { alias, term }));
+            self.add_goal(
+                GoalSource::TypeRelating,
+                goal.with(cx, ty::NormalizesTo { alias, term }),
+            );
             term
         } else {
             rhs

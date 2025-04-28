@@ -46,6 +46,18 @@ fn main() {
 
     let partial = true.then_some(1);
     partial.unwrap_or_else(|| n * 2); // not lint
+
+    if true { () } else { Default::default() };
+    //~^ obfuscated_if_else
+
+    if true { () } else { Default::default() };
+    //~^ obfuscated_if_else
+
+    if true { 1 } else { Default::default() };
+    //~^ obfuscated_if_else
+
+    if true { 1 } else { Default::default() };
+    //~^ obfuscated_if_else
 }
 
 fn issue11141() {

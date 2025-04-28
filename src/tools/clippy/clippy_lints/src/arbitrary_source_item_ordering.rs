@@ -2,11 +2,13 @@ use clippy_config::Conf;
 use clippy_config::types::{
     SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind,
     SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
+    SourceItemOrderingWithinModuleItemGroupings,
 };
 use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::is_cfg_test;
 use rustc_hir::{
-    AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind, UseKind,
-    Variant, VariantData,
+    AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind, Variant,
+    VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -36,7 +38,7 @@ declare_clippy_lint! {
     /// 2. Individual ordering rules per item kind.
     ///
     /// The item kinds that can be linted are:
-    /// - Module (with customized groupings, alphabetical within)
+    /// - Module (with customized groupings, alphabetical within - configurable)
     /// - Trait (with customized order of associated items, alphabetical within)
     /// - Enum, Impl, Struct (purely alphabetical)
     ///
@@ -57,8 +59,31 @@ declare_clippy_lint! {
     /// | `PascalCase`       | "ty_alias", "opaque_ty", "enum", "struct", "union", "trait", "trait_alias", "impl" |
     /// | `lower_snake_case` | "fn"                 |
     ///
+    /// The groups' names are arbitrary and can be changed to suit the
+    /// conventions that should be enforced for a specific project.
+    ///
     /// All item kinds must be accounted for to create an enforceable linting
-    /// rule set.
+    /// rule set. Following are some example configurations that may be useful.
+    ///
+    /// Example: *module inclusions and use statements to be at the top*
+    ///
+    /// ```toml
+    /// module-item-order-groupings = [
+    ///     [ "modules", [ "extern_crate", "mod", "foreign_mod" ], ],
+    ///     [ "use", [ "use", ], ],
+    ///     [ "everything_else", [ "macro", "global_asm", "static", "const", "ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl", "fn", ], ],
+    /// ]
+    /// ```
+    ///
+    /// Example: *only consts and statics should be alphabetically ordered*
+    ///
+    /// It is also possible to configure a selection of module item groups that
+    /// should be ordered alphabetically. This may be useful if for example
+    /// statics and consts should be ordered, but the rest should be left open.
+    ///
+    /// ```toml
+    /// module-items-ordered-within-groupings = ["UPPER_SNAKE_CASE"]
+    /// ```
     ///
     /// ### Known Problems
     ///
@@ -143,6 +168,7 @@ pub struct ArbitrarySourceItemOrdering {
     enable_ordering_for_struct: bool,
     enable_ordering_for_trait: bool,
     module_item_order_groupings: SourceItemOrderingModuleItemGroupings,
+    module_items_ordered_within_groupings: SourceItemOrderingWithinModuleItemGroupings,
 }
 
 impl ArbitrarySourceItemOrdering {
@@ -157,6 +183,7 @@ impl ArbitrarySourceItemOrdering {
             enable_ordering_for_struct: conf.source_item_ordering.contains(&Struct),
             enable_ordering_for_trait: conf.source_item_ordering.contains(&Trait),
             module_item_order_groupings: conf.module_item_order_groupings.clone(),
+            module_items_ordered_within_groupings: conf.module_items_ordered_within_groupings.clone(),
         }
     }
 
@@ -176,11 +203,7 @@ impl ArbitrarySourceItemOrdering {
     }
 
     /// Produces a linting warning for incorrectly ordered item members.
-    fn lint_member_name<T: LintContext>(
-        cx: &T,
-        ident: &rustc_span::symbol::Ident,
-        before_ident: &rustc_span::symbol::Ident,
-    ) {
+    fn lint_member_name<T: LintContext>(cx: &T, ident: &rustc_span::Ident, before_ident: &rustc_span::Ident) {
         span_lint_and_note(
             cx,
             ARBITRARY_SOURCE_ITEM_ORDERING,
@@ -191,22 +214,19 @@ impl ArbitrarySourceItemOrdering {
         );
     }
 
-    fn lint_member_item<T: LintContext>(cx: &T, item: &Item<'_>, before_item: &Item<'_>) {
-        let span = if item.ident.as_str().is_empty() {
-            &item.span
+    fn lint_member_item<T: LintContext>(cx: &T, item: &Item<'_>, before_item: &Item<'_>, msg: &'static str) {
+        let span = if let Some(ident) = item.kind.ident() {
+            ident.span
         } else {
-            &item.ident.span
+            item.span
         };
 
-        let (before_span, note) = if before_item.ident.as_str().is_empty() {
-            (
-                &before_item.span,
-                "should be placed before the following item".to_owned(),
-            )
+        let (before_span, note) = if let Some(ident) = before_item.kind.ident() {
+            (ident.span, format!("should be placed before `{}`", ident.as_str(),))
         } else {
             (
-                &before_item.ident.span,
-                format!("should be placed before `{}`", before_item.ident.as_str(),),
+                before_item.span,
+                "should be placed before the following item".to_owned(),
             )
         };
 
@@ -215,14 +235,7 @@ impl ArbitrarySourceItemOrdering {
             return;
         }
 
-        span_lint_and_note(
-            cx,
-            ARBITRARY_SOURCE_ITEM_ORDERING,
-            *span,
-            "incorrect ordering of items (must be alphabetically ordered)",
-            Some(*before_span),
-            note,
-        );
+        span_lint_and_note(cx, ARBITRARY_SOURCE_ITEM_ORDERING, span, msg, Some(before_span), note);
     }
 
     /// Produces a linting warning for incorrectly ordered trait items.
@@ -244,37 +257,39 @@ impl ArbitrarySourceItemOrdering {
 impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         match &item.kind {
-            ItemKind::Enum(enum_def, _generics) if self.enable_ordering_for_enum => {
+            ItemKind::Enum(_, enum_def, _generics) if self.enable_ordering_for_enum => {
                 let mut cur_v: Option<&Variant<'_>> = None;
                 for variant in enum_def.variants {
                     if variant.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
-                    if let Some(cur_v) = cur_v {
-                        if cur_v.ident.name.as_str() > variant.ident.name.as_str() && cur_v.span != variant.span {
-                            Self::lint_member_name(cx, &variant.ident, &cur_v.ident);
-                        }
+                    if let Some(cur_v) = cur_v
+                        && cur_v.ident.name.as_str() > variant.ident.name.as_str()
+                        && cur_v.span != variant.span
+                    {
+                        Self::lint_member_name(cx, &variant.ident, &cur_v.ident);
                     }
                     cur_v = Some(variant);
                 }
             },
-            ItemKind::Struct(VariantData::Struct { fields, .. }, _generics) if self.enable_ordering_for_struct => {
+            ItemKind::Struct(_, VariantData::Struct { fields, .. }, _generics) if self.enable_ordering_for_struct => {
                 let mut cur_f: Option<&FieldDef<'_>> = None;
                 for field in *fields {
                     if field.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
-                    if let Some(cur_f) = cur_f {
-                        if cur_f.ident.name.as_str() > field.ident.name.as_str() && cur_f.span != field.span {
-                            Self::lint_member_name(cx, &field.ident, &cur_f.ident);
-                        }
+                    if let Some(cur_f) = cur_f
+                        && cur_f.ident.name.as_str() > field.ident.name.as_str()
+                        && cur_f.span != field.span
+                    {
+                        Self::lint_member_name(cx, &field.ident, &cur_f.ident);
                     }
                     cur_f = Some(field);
                 }
             },
-            ItemKind::Trait(is_auto, _safety, _generics, _generic_bounds, item_ref)
+            ItemKind::Trait(is_auto, _safety, _ident, _generics, _generic_bounds, item_ref)
                 if self.enable_ordering_for_trait && *is_auto == IsAuto::No =>
             {
                 let mut cur_t: Option<&TraitItemRef> = None;
@@ -330,7 +345,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
         struct CurItem<'a> {
             item: &'a Item<'a>,
             order: usize,
-            name: String,
+            name: Option<String>,
         }
         let mut cur_t: Option<CurItem<'_>> = None;
 
@@ -347,61 +362,40 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
         // as no sorting by source map/line of code has to be applied.
         //
         for item in items {
+            if is_cfg_test(cx.tcx, item.hir_id()) {
+                continue;
+            }
+
             if item.span.in_external_macro(cx.sess().source_map()) {
                 continue;
             }
 
-            // The following exceptions (skipping with `continue;`) may not be
-            // complete, edge cases have not been explored further than what
-            // appears in the existing code base.
-            if item.ident.name == rustc_span::symbol::kw::Empty {
-                if let ItemKind::Impl(_) = item.kind {
-                    // Sorting trait impls for unnamed types makes no sense.
-                    if get_item_name(item).is_empty() {
-                        continue;
-                    }
-                } else if let ItemKind::ForeignMod { .. } = item.kind {
-                    continue;
-                } else if let ItemKind::GlobalAsm { .. } = item.kind {
-                    continue;
-                } else if let ItemKind::Use(path, use_kind) = item.kind {
-                    if path.segments.is_empty() {
-                        // Use statements that contain braces get caught here.
-                        // They will still be linted internally.
-                        continue;
-                    } else if path.segments.len() >= 2
-                        && (path.segments[0].ident.name == rustc_span::sym::std
-                            || path.segments[0].ident.name == rustc_span::sym::core)
-                        && path.segments[1].ident.name == rustc_span::sym::prelude
-                    {
-                        // Filters the autogenerated prelude use statement.
-                        // e.g. `use std::prelude::rustc_2021`
-                    } else if use_kind == UseKind::Glob {
-                        // Filters glob kinds of uses.
-                        // e.g. `use std::sync::*`
-                    } else {
-                        // This can be used for debugging.
-                        // println!("Unknown autogenerated use statement: {:?}", item);
-                    }
+            if let Some(ident) = item.kind.ident() {
+                if ident.name.as_str().starts_with('_') {
+                    // Filters out unnamed macro-like impls for various derives,
+                    // e.g. serde::Serialize or num_derive::FromPrimitive.
                     continue;
                 }
-            }
 
-            if item.ident.name.as_str().starts_with('_') {
-                // Filters out unnamed macro-like impls for various derives,
-                // e.g. serde::Serialize or num_derive::FromPrimitive.
+                if ident.name == rustc_span::sym::std && item.span.is_dummy() {
+                    if let ItemKind::ExternCrate(None, _) = item.kind {
+                        // Filters the auto-included Rust standard library.
+                        continue;
+                    }
+                    if cfg!(debug_assertions) {
+                        rustc_middle::bug!("unknown item: {item:?}");
+                    }
+                }
+            } else if let ItemKind::Impl(_) = item.kind
+                && get_item_name(item).is_some()
+            {
+                // keep going below
+            } else {
                 continue;
             }
 
-            if item.ident.name == rustc_span::sym::std && item.span.is_dummy() {
-                if let ItemKind::ExternCrate(None) = item.kind {
-                    // Filters the auto-included Rust standard library.
-                    continue;
-                }
-                println!("Unknown item: {item:?}");
-            }
-
             let item_kind = convert_module_item_kind(&item.kind);
+            let grouping_name = self.module_item_order_groupings.grouping_name_of(&item_kind);
             let module_level_order = self
                 .module_item_order_groupings
                 .module_level_order_of(&item_kind)
@@ -411,13 +405,27 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 use std::cmp::Ordering; // Better legibility.
                 match module_level_order.cmp(&cur_t.order) {
                     Ordering::Less => {
-                        Self::lint_member_item(cx, item, cur_t.item);
+                        Self::lint_member_item(
+                            cx,
+                            item,
+                            cur_t.item,
+                            "incorrect ordering of items (module item groupings specify another order)",
+                        );
                     },
                     Ordering::Equal if item_kind == SourceItemOrderingModuleItemKind::Use => {
                         // Skip ordering use statements, as these should be ordered by rustfmt.
                     },
-                    Ordering::Equal if cur_t.name > get_item_name(item) => {
-                        Self::lint_member_item(cx, item, cur_t.item);
+                    Ordering::Equal
+                        if (grouping_name.is_some_and(|grouping_name| {
+                            self.module_items_ordered_within_groupings.ordered_within(grouping_name)
+                        }) && cur_t.name > get_item_name(item)) =>
+                    {
+                        Self::lint_member_item(
+                            cx,
+                            item,
+                            cur_t.item,
+                            "incorrect ordering of items (must be alphabetically ordered)",
+                        );
                     },
                     Ordering::Equal | Ordering::Greater => {
                         // Nothing to do in this case, they're already in the right order.
@@ -492,7 +500,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
 /// further in the [Rust Reference, Paths Chapter][rust_ref].
 ///
 /// [rust_ref]: https://doc.rust-lang.org/reference/paths.html#crate-1
-fn get_item_name(item: &Item<'_>) -> String {
+fn get_item_name(item: &Item<'_>) -> Option<String> {
     match item.kind {
         ItemKind::Impl(im) => {
             if let TyKind::Path(path) = im.self_ty.kind {
@@ -512,19 +520,19 @@ fn get_item_name(item: &Item<'_>) -> String {
                         }
 
                         segs.push(String::new());
-                        segs.join("!!")
+                        Some(segs.join("!!"))
                     },
                     QPath::TypeRelative(_, _path_seg) => {
                         // This case doesn't exist in the clippy tests codebase.
-                        String::new()
+                        None
                     },
-                    QPath::LangItem(_, _) => String::new(),
+                    QPath::LangItem(_, _) => None,
                 }
             } else {
                 // Impls for anything that isn't a named type can be skipped.
-                String::new()
+                None
             }
         },
-        _ => item.ident.name.as_str().to_owned(),
+        _ => item.kind.ident().map(|name| name.as_str().to_owned()),
     }
 }

@@ -48,7 +48,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
     for feature in sess.opts.cg.target_feature.split(',') {
         if let Some(feature) = feature.strip_prefix('+') {
             all_rust_features.extend(
-                UnordSet::from(sess.target.implied_target_features(std::iter::once(feature)))
+                UnordSet::from(sess.target.implied_target_features(feature))
                     .to_sorted_stable_ord()
                     .iter()
                     .map(|&&s| (true, s)),
@@ -136,14 +136,12 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
         });
     features.extend(feats);
 
-    if diagnostics {
-        if let Some(f) = check_tied_features(sess, &featsmap) {
-            sess.dcx().emit_err(TargetFeatureDisableOrEnable {
-                features: f,
-                span: None,
-                missing_features: None,
-            });
-        }
+    if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
+        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
+            features: f,
+            span: None,
+            missing_features: None,
+        });
     }
 
     features
@@ -194,6 +192,7 @@ pub fn to_gcc_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]>
 
 fn arch_to_gcc(name: &str) -> &str {
     match name {
+        "M68000" => "68000",
         "M68020" => "68020",
         _ => name,
     }

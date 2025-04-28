@@ -17,7 +17,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::{Body, ConstOperand, Operand, Rvalue, StatementKind, TerminatorKind};
@@ -121,7 +120,7 @@ fn get_item<'a>(
 fn main() {
     let path = "transform_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),

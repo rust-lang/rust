@@ -11,7 +11,6 @@ use std::sync::Arc;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::{LangItem, RangeEnd};
 use rustc_middle::mir::*;
-use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -141,12 +140,35 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let success_block = target_block(TestBranch::Success);
                 let fail_block = target_block(TestBranch::Failure);
 
-                let expect_ty = value.ty();
-                let expect = self.literal_operand(test.span, value);
+                let mut expect_ty = value.ty();
+                let mut expect = self.literal_operand(test.span, value);
 
                 let mut place = place;
                 let mut block = block;
                 match ty.kind() {
+                    ty::Str => {
+                        // String literal patterns may have type `str` if `deref_patterns` is
+                        // enabled, in order to allow `deref!("..."): String`. In this case, `value`
+                        // is of type `&str`, so we compare it to `&place`.
+                        if !tcx.features().deref_patterns() {
+                            span_bug!(
+                                test.span,
+                                "matching on `str` went through without enabling deref_patterns"
+                            );
+                        }
+                        let re_erased = tcx.lifetimes.re_erased;
+                        let ref_str_ty = Ty::new_imm_ref(tcx, re_erased, tcx.types.str_);
+                        let ref_place = self.temp(ref_str_ty, test.span);
+                        // `let ref_place: &str = &place;`
+                        self.cfg.push_assign(
+                            block,
+                            self.source_info(test.span),
+                            ref_place,
+                            Rvalue::Ref(re_erased, BorrowKind::Shared, place),
+                        );
+                        place = ref_place;
+                        ty = ref_str_ty;
+                    }
                     ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::String) => {
                         if !tcx.features().string_deref_patterns() {
                             span_bug!(
@@ -175,24 +197,58 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         place = ref_str;
                         ty = ref_str_ty;
                     }
+                    &ty::Pat(base, _) => {
+                        assert_eq!(ty, value.ty());
+                        assert!(base.is_trivially_pure_clone_copy());
+
+                        let transmuted_place = self.temp(base, test.span);
+                        self.cfg.push_assign(
+                            block,
+                            self.source_info(scrutinee_span),
+                            transmuted_place,
+                            Rvalue::Cast(CastKind::Transmute, Operand::Copy(place), base),
+                        );
+
+                        let transmuted_expect = self.temp(base, test.span);
+                        self.cfg.push_assign(
+                            block,
+                            self.source_info(test.span),
+                            transmuted_expect,
+                            Rvalue::Cast(CastKind::Transmute, expect, base),
+                        );
+
+                        place = transmuted_place;
+                        expect = Operand::Copy(transmuted_expect);
+                        ty = base;
+                        expect_ty = base;
+                    }
                     _ => {}
                 }
 
+                assert_eq!(expect_ty, ty);
                 if !ty.is_scalar() {
                     // Use `PartialEq::eq` instead of `BinOp::Eq`
                     // (the binop can only handle primitives)
-                    self.non_scalar_compare(
+                    // Make sure that we do *not* call any user-defined code here.
+                    // The only type that can end up here is string literals, which have their
+                    // comparison defined in `core`.
+                    // (Interestingly this means that exhaustiveness analysis relies, for soundness,
+                    // on the `PartialEq` impl for `str` to b correct!)
+                    match *ty.kind() {
+                        ty::Ref(_, deref_ty, _) if deref_ty == self.tcx.types.str_ => {}
+                        _ => {
+                            span_bug!(source_info.span, "invalid type for non-scalar compare: {ty}")
+                        }
+                    };
+                    self.string_compare(
                         block,
                         success_block,
                         fail_block,
                         source_info,
                         expect,
-                        expect_ty,
                         Operand::Copy(place),
-                        ty,
                     );
                 } else {
-                    assert_eq!(expect_ty, ty);
                     self.compare(
                         block,
                         success_block,
@@ -370,97 +426,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    /// Compare two values using `<T as std::compare::PartialEq>::eq`.
-    /// If the values are already references, just call it directly, otherwise
-    /// take a reference to the values first and then call it.
-    fn non_scalar_compare(
+    /// Compare two values of type `&str` using `<str as std::cmp::PartialEq>::eq`.
+    fn string_compare(
         &mut self,
         block: BasicBlock,
         success_block: BasicBlock,
         fail_block: BasicBlock,
         source_info: SourceInfo,
-        mut expect: Operand<'tcx>,
-        expect_ty: Ty<'tcx>,
-        mut val: Operand<'tcx>,
-        mut ty: Ty<'tcx>,
+        expect: Operand<'tcx>,
+        val: Operand<'tcx>,
     ) {
-        // If we're using `b"..."` as a pattern, we need to insert an
-        // unsizing coercion, as the byte string has the type `&[u8; N]`.
-        //
-        // We want to do this even when the scrutinee is a reference to an
-        // array, so we can call `<[u8]>::eq` rather than having to find an
-        // `<[u8; N]>::eq`.
-        let unsize = |ty: Ty<'tcx>| match ty.kind() {
-            ty::Ref(region, rty, _) => match rty.kind() {
-                ty::Array(inner_ty, n) => Some((region, inner_ty, n)),
-                _ => None,
-            },
-            _ => None,
-        };
-        let opt_ref_ty = unsize(ty);
-        let opt_ref_test_ty = unsize(expect_ty);
-        match (opt_ref_ty, opt_ref_test_ty) {
-            // nothing to do, neither is an array
-            (None, None) => {}
-            (Some((region, elem_ty, _)), _) | (None, Some((region, elem_ty, _))) => {
-                let tcx = self.tcx;
-                // make both a slice
-                ty = Ty::new_imm_ref(tcx, *region, Ty::new_slice(tcx, *elem_ty));
-                if opt_ref_ty.is_some() {
-                    let temp = self.temp(ty, source_info.span);
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        temp,
-                        Rvalue::Cast(
-                            CastKind::PointerCoercion(
-                                PointerCoercion::Unsize,
-                                CoercionSource::Implicit,
-                            ),
-                            val,
-                            ty,
-                        ),
-                    );
-                    val = Operand::Copy(temp);
-                }
-                if opt_ref_test_ty.is_some() {
-                    let slice = self.temp(ty, source_info.span);
-                    self.cfg.push_assign(
-                        block,
-                        source_info,
-                        slice,
-                        Rvalue::Cast(
-                            CastKind::PointerCoercion(
-                                PointerCoercion::Unsize,
-                                CoercionSource::Implicit,
-                            ),
-                            expect,
-                            ty,
-                        ),
-                    );
-                    expect = Operand::Move(slice);
-                }
-            }
-        }
-
-        // Figure out the type on which we are calling `PartialEq`. This involves an extra wrapping
-        // reference: we can only compare two `&T`, and then compare_ty will be `T`.
-        // Make sure that we do *not* call any user-defined code here.
-        // The only types that can end up here are string and byte literals,
-        // which have their comparison defined in `core`.
-        // (Interestingly this means that exhaustiveness analysis relies, for soundness,
-        // on the `PartialEq` impls for `str` and `[u8]` to b correct!)
-        let compare_ty = match *ty.kind() {
-            ty::Ref(_, deref_ty, _)
-                if deref_ty == self.tcx.types.str_ || deref_ty != self.tcx.types.u8 =>
-            {
-                deref_ty
-            }
-            _ => span_bug!(source_info.span, "invalid type for non-scalar compare: {}", ty),
-        };
-
+        let str_ty = self.tcx.types.str_;
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [compare_ty, compare_ty]);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, [str_ty, str_ty]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -540,8 +518,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) =
-            candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == test_place)?;
+        let (match_pair_index, match_pair) = candidate
+            .match_pairs
+            .iter()
+            .enumerate()
+            .find(|&(_, mp)| mp.place == Some(test_place))?;
 
         // If true, the match pair is completely entailed by its corresponding test
         // branch, so it can be removed. If false, the match pair is _compatible_
@@ -584,7 +565,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     candidate
                         .match_pairs
                         .iter()
-                        .any(|mp| mp.place == test_place && is_covering_range(&mp.test_case))
+                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
                 };
                 if sorted_candidates
                     .get(&TestBranch::Failure)
@@ -782,7 +763,7 @@ fn trait_method<'tcx>(
     let item = tcx
         .associated_items(trait_def_id)
         .filter_by_name_unhygienic(method_name)
-        .find(|item| item.kind == ty::AssocKind::Fn)
+        .find(|item| item.is_fn())
         .expect("trait method not found");
 
     let method_ty = Ty::new_fn_def(tcx, item.def_id, args);

@@ -559,6 +559,9 @@
 //@ revisions: wasm32_wasip2
 //@ [wasm32_wasip2] compile-flags: --target wasm32-wasip2
 //@ [wasm32_wasip2] needs-llvm-components: webassembly
+//@ revisions: wasm32_wali_linux_musl
+//@ [wasm32_wali_linux_musl] compile-flags: --target wasm32-wali-linux-musl
+//@ [wasm32_wali_linux_musl] needs-llvm-components: webassembly
 //@ revisions: wasm64_unknown_unknown
 //@ [wasm64_unknown_unknown] compile-flags: --target wasm64-unknown-unknown
 //@ [wasm64_unknown_unknown] needs-llvm-components: webassembly
@@ -568,6 +571,9 @@
 //@ revisions: x86_64_linux_android
 //@ [x86_64_linux_android] compile-flags: --target x86_64-linux-android
 //@ [x86_64_linux_android] needs-llvm-components: x86
+//@ revisions: x86_64_lynx_lynxos178
+//@ [x86_64_lynx_lynxos178] compile-flags: --target x86_64-lynx-lynxos178
+//@ [x86_64_lynx_lynxos178] needs-llvm-components: x86
 //@ revisions: x86_64_pc_nto_qnx710
 //@ [x86_64_pc_nto_qnx710] compile-flags: --target x86_64-pc-nto-qnx710
 //@ [x86_64_pc_nto_qnx710] needs-llvm-components: x86

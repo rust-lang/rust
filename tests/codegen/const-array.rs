@@ -2,7 +2,7 @@
 
 #![crate_type = "lib"]
 
-const LUT: [u8; 2] = [1, 1];
+const LUT: [u8; 4] = [1, 1, 1, 1];
 
 // CHECK-LABEL: @decode
 #[no_mangle]
@@ -11,5 +11,5 @@ pub fn decode(i: u8) -> u8 {
     // CHECK-NEXT: icmp
     // CHECK-NEXT: select
     // CHECK-NEXT: ret
-    if i < 2 { LUT[i as usize] } else { 2 }
+    if i < 4 { LUT[i as usize] } else { 2 }
 }

@@ -38,7 +38,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
         if cx.tcx.data_layout.pointer_size.bits() != 64 {
             return;
         }
-        if let ItemKind::Enum(def, _) = &item.kind {
+        if let ItemKind::Enum(_, def, _) = &item.kind {
             for var in def.variants {
                 if let Some(anon_const) = &var.disr_expr {
                     let def_id = cx.tcx.hir_body_owner_def_id(anon_const.body);
@@ -49,10 +49,10 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                         .ok()
                         .map(|val| rustc_middle::mir::Const::from_value(val, ty));
                     if let Some(Constant::Int(val)) = constant.and_then(|c| mir_to_const(cx.tcx, c)) {
-                        if let ty::Adt(adt, _) = ty.kind() {
-                            if adt.is_enum() {
-                                ty = adt.repr().discr_type().to_ty(cx.tcx);
-                            }
+                        if let ty::Adt(adt, _) = ty.kind()
+                            && adt.is_enum()
+                        {
+                            ty = adt.repr().discr_type().to_ty(cx.tcx);
                         }
                         match ty.kind() {
                             ty::Int(IntTy::Isize) => {

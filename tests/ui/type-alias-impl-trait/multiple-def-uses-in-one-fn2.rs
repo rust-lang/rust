@@ -6,9 +6,10 @@
 
 type X<A: ToString + Clone, B: ToString + Clone> = impl ToString;
 
+#[define_opaque(X)]
 fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<B, A>) {
-    (a.clone(), a)
     //~^ ERROR concrete type differs from previous defining opaque type
+    (a.clone(), a)
 }
 
 fn main() {

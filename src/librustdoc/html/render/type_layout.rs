@@ -1,6 +1,6 @@
 use std::fmt;
 
-use rinja::Template;
+use askama::Template;
 use rustc_abi::{Primitive, TagEncoding, Variants};
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;

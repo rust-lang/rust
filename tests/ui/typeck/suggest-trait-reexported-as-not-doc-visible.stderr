@@ -1,0 +1,15 @@
+error[E0599]: no function or associated item named `foo` found for struct `Bar` in the current scope
+  --> $DIR/suggest-trait-reexported-as-not-doc-visible.rs:9:10
+   |
+LL |     Bar::foo();
+   |          ^^^ function or associated item not found in `Bar`
+   |
+   = help: items from traits can only be used if the trait is in scope
+help: trait `Foo` which provides `foo` is implemented but not in scope; perhaps you want to import it
+   |
+LL + use suggest_trait_reexported_as_not_doc_visible_a::Foo;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

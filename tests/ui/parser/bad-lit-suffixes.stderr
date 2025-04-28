@@ -51,7 +51,7 @@ LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    |
    = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
-warning: extern declarations without an explicit ABI are deprecated
+warning: `extern` declarations without an explicit ABI are deprecated
   --> $DIR/bad-lit-suffixes.rs:3:1
    |
 LL | extern
@@ -59,7 +59,7 @@ LL | extern
    |
    = note: `#[warn(missing_abi)]` on by default
 
-warning: extern declarations without an explicit ABI are deprecated
+warning: `extern` declarations without an explicit ABI are deprecated
   --> $DIR/bad-lit-suffixes.rs:7:1
    |
 LL | extern

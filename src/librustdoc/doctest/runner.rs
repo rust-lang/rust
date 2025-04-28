@@ -47,11 +47,8 @@ impl DocTestRunner {
                 self.crate_attrs.insert(line.to_string());
             }
         }
-        if !self.ids.is_empty() {
-            self.ids.push(',');
-        }
         self.ids.push_str(&format!(
-            "{}::TEST",
+            "tests.push({}::TEST);\n",
             generate_mergeable_doctest(
                 doctest,
                 scraped_test,
@@ -116,6 +113,7 @@ impl DocTestRunner {
 mod __doctest_mod {{
     use std::sync::OnceLock;
     use std::path::PathBuf;
+    use std::process::ExitCode;
 
     pub static BINARY_PATH: OnceLock<PathBuf> = OnceLock::new();
     pub const RUN_OPTION: &str = \"RUSTDOC_DOCTEST_RUN_NB_TEST\";
@@ -126,35 +124,54 @@ mod __doctest_mod {{
     }}
 
     #[allow(unused)]
-    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize) -> Result<(), String> {{
+    pub fn doctest_runner(bin: &std::path::Path, test_nb: usize) -> ExitCode {{
         let out = std::process::Command::new(bin)
             .env(self::RUN_OPTION, test_nb.to_string())
             .args(std::env::args().skip(1).collect::<Vec<_>>())
             .output()
             .expect(\"failed to run command\");
         if !out.status.success() {{
-            Err(String::from_utf8_lossy(&out.stderr).to_string())
+            if let Some(code) = out.status.code() {{
+                eprintln!(\"Test executable failed (exit status: {{code}}).\");
+            }} else {{
+                eprintln!(\"Test executable failed (terminated by signal).\");
+            }}
+            if !out.stdout.is_empty() || !out.stderr.is_empty() {{
+                eprintln!();
+            }}
+            if !out.stdout.is_empty() {{
+                eprintln!(\"stdout:\");
+                eprintln!(\"{{}}\", String::from_utf8_lossy(&out.stdout));
+            }}
+            if !out.stderr.is_empty() {{
+                eprintln!(\"stderr:\");
+                eprintln!(\"{{}}\", String::from_utf8_lossy(&out.stderr));
+            }}
+            ExitCode::FAILURE
         }} else {{
-            Ok(())
+            ExitCode::SUCCESS
         }}
     }}
 }}
 
 #[rustc_main]
 fn main() -> std::process::ExitCode {{
-const TESTS: [test::TestDescAndFn; {nb_tests}] = [{ids}];
-let test_marker = std::ffi::OsStr::new(__doctest_mod::RUN_OPTION);
+let tests = {{
+    let mut tests = Vec::with_capacity({nb_tests});
+    {ids}
+    tests
+}};
 let test_args = &[{test_args}];
 const ENV_BIN: &'static str = \"RUSTDOC_DOCTEST_BIN_PATH\";
 
 if let Ok(binary) = std::env::var(ENV_BIN) {{
     let _ = crate::__doctest_mod::BINARY_PATH.set(binary.into());
     unsafe {{ std::env::remove_var(ENV_BIN); }}
-    return std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), None));
+    return std::process::Termination::report(test::test_main(test_args, tests, None));
 }} else if let Ok(nb_test) = std::env::var(__doctest_mod::RUN_OPTION) {{
     if let Ok(nb_test) = nb_test.parse::<usize>() {{
-        if let Some(test) = TESTS.get(nb_test) {{
-            if let test::StaticTestFn(f) = test.testfn {{
+        if let Some(test) = tests.get(nb_test) {{
+            if let test::StaticTestFn(f) = &test.testfn {{
                 return std::process::Termination::report(f());
             }}
         }}
@@ -164,7 +181,7 @@ if let Ok(binary) = std::env::var(ENV_BIN) {{
 
 eprintln!(\"WARNING: No rustdoc doctest environment variable provided so doctests will be run in \
 the same process\");
-std::process::Termination::report(test::test_main(test_args, Vec::from(TESTS), None))
+std::process::Termination::report(test::test_main(test_args, tests, None))
 }}",
             nb_tests = self.nb_tests,
             output = self.output_merged_tests,

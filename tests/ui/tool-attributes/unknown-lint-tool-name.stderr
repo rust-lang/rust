@@ -41,6 +41,15 @@ LL | #![deny(foo::bar)]
    = help: add `#![register_tool(foo)]` to the crate root
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 5 previous errors
+error[E0710]: unknown tool name `foo` found in scoped lint: `foo::bar`
+  --> $DIR/unknown-lint-tool-name.rs:5:9
+   |
+LL | #[allow(foo::bar)]
+   |         ^^^
+   |
+   = help: add `#![register_tool(foo)]` to the crate root
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0710`.

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::{iter, mem};
 
-use rustc_ast::token::{Delimiter, Token, TokenKind};
+use rustc_ast::token::{Delimiter, Token};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, AttrsTarget, DelimSpacing, DelimSpan, LazyAttrTokenStream,
     Spacing, ToAttrTokenStream,
@@ -120,7 +120,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
         // produce an empty `TokenStream` if no calls were made, and omit the
         // final token otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
-        let tokens = iter::once(FlatToken::Token(self.start_token.clone()))
+        let tokens = iter::once(FlatToken::Token(self.start_token))
             .chain(iter::repeat_with(|| FlatToken::Token(cursor_snapshot.next())))
             .take(self.num_calls as usize);
 
@@ -186,7 +186,7 @@ impl ToAttrTokenStream for LazyAttrTokenStreamImpl {
 impl<'a> Parser<'a> {
     pub(super) fn collect_pos(&self) -> CollectPos {
         CollectPos {
-            start_token: (self.token.clone(), self.token_spacing),
+            start_token: (self.token, self.token_spacing),
             cursor_snapshot: self.token_cursor.clone(),
             start_pos: self.num_bump_calls,
         }
@@ -501,27 +501,27 @@ fn make_attr_token_stream(
     let mut stack_rest = vec![];
     for flat_token in iter {
         match flat_token {
-            FlatToken::Token((Token { kind: TokenKind::OpenDelim(delim), span }, spacing)) => {
-                stack_rest.push(mem::replace(
-                    &mut stack_top,
-                    FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
-                ));
-            }
-            FlatToken::Token((Token { kind: TokenKind::CloseDelim(delim), span }, spacing)) => {
-                let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
-                let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
-                assert!(
-                    open_delim.eq_ignoring_invisible_origin(&delim),
-                    "Mismatched open/close delims: open={open_delim:?} close={span:?}"
-                );
-                let dspan = DelimSpan::from_pair(open_sp, span);
-                let dspacing = DelimSpacing::new(open_spacing, spacing);
-                let stream = AttrTokenStream::new(frame_data.inner);
-                let delimited = AttrTokenTree::Delimited(dspan, dspacing, delim, stream);
-                stack_top.inner.push(delimited);
-            }
-            FlatToken::Token((token, spacing)) => {
-                stack_top.inner.push(AttrTokenTree::Token(token, spacing))
+            FlatToken::Token((token @ Token { kind, span }, spacing)) => {
+                if let Some(delim) = kind.open_delim() {
+                    stack_rest.push(mem::replace(
+                        &mut stack_top,
+                        FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
+                    ));
+                } else if let Some(delim) = kind.close_delim() {
+                    let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());
+                    let (open_delim, open_sp, open_spacing) = frame_data.open_delim_sp.unwrap();
+                    assert!(
+                        open_delim.eq_ignoring_invisible_origin(&delim),
+                        "Mismatched open/close delims: open={open_delim:?} close={span:?}"
+                    );
+                    let dspan = DelimSpan::from_pair(open_sp, span);
+                    let dspacing = DelimSpacing::new(open_spacing, spacing);
+                    let stream = AttrTokenStream::new(frame_data.inner);
+                    let delimited = AttrTokenTree::Delimited(dspan, dspacing, delim, stream);
+                    stack_top.inner.push(delimited);
+                } else {
+                    stack_top.inner.push(AttrTokenTree::Token(token, spacing))
+                }
             }
             FlatToken::AttrsTarget(target) => {
                 stack_top.inner.push(AttrTokenTree::AttrsTarget(target))

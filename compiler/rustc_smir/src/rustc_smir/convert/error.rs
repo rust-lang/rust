@@ -6,6 +6,7 @@ use rustc_middle::mir::interpret::AllocError;
 use rustc_middle::ty::layout::LayoutError;
 
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 impl<'tcx> Stable<'tcx> for LayoutError<'tcx> {
     type T = stable_mir::Error;

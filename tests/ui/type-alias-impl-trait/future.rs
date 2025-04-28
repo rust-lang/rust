@@ -11,6 +11,7 @@ trait Bar {
 
 type FooFuture<B> = impl Future<Output = ()>;
 
+#[define_opaque(FooFuture)]
 fn foo<B: Bar>(bar: B) -> FooFuture<B> {
     async move { bar.bar() }
     //~^ ERROR: the trait bound `B: Bar` is not satisfied

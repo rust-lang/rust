@@ -3,9 +3,6 @@ interface_abi_required_feature =
     .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 interface_abi_required_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
 
-interface_cant_emit_mir =
-    could not emit MIR: {$error}
-
 interface_crate_name_does_not_match = `--crate-name` and `#[crate_name]` are required to match, but `{$crate_name}` != `{$attr_crate_name}`
 
 interface_crate_name_invalid = crate names cannot start with a `-`, but `{$crate_name}` has a leading hyphen
@@ -52,12 +49,6 @@ interface_out_dir_error =
 
 interface_proc_macro_crate_panic_abort =
     building proc macro crate with `panic=abort` may crash the compiler should the proc-macro panic
-
-interface_rustc_error_fatal =
-    fatal error triggered by #[rustc_error]
-
-interface_rustc_error_unexpected_annotation =
-    unexpected annotation used with `#[rustc_error(...)]`!
 
 interface_temps_dir_error =
     failed to find or create the directory specified by `--temps-dir`

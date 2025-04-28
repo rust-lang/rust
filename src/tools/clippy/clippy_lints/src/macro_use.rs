@@ -98,7 +98,7 @@ impl LateLintPass<'_> for MacroUseImports {
         if cx.sess().opts.edition >= Edition::Edition2018
             && let hir::ItemKind::Use(path, _kind) = &item.kind
             && let hir_id = item.hir_id()
-            && let attrs = cx.tcx.hir().attrs(hir_id)
+            && let attrs = cx.tcx.hir_attrs(hir_id)
             && let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use))
             && let Some(id) = path.res.iter().find_map(|res| match res {
                 Res::Def(DefKind::Mod, id) => Some(id),
@@ -153,9 +153,15 @@ impl LateLintPass<'_> for MacroUseImports {
                     [] | [_] => return,
                     [root, item] => {
                         if !check_dup.contains(&(*item).to_string()) {
-                            used.entry(((*root).to_string(), span, hir_id))
-                                .or_insert_with(Vec::new)
-                                .push((*item).to_string());
+                            used.entry((
+                                (*root).to_string(),
+                                span,
+                                hir_id.local_id,
+                                cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
+                            ))
+                            .or_insert_with(|| (vec![], hir_id))
+                            .0
+                            .push((*item).to_string());
                             check_dup.push((*item).to_string());
                         }
                     },
@@ -171,15 +177,27 @@ impl LateLintPass<'_> for MacroUseImports {
                                     }
                                 })
                                 .collect::<Vec<_>>();
-                            used.entry(((*root).to_string(), span, hir_id))
-                                .or_insert_with(Vec::new)
-                                .push(filtered.join("::"));
+                            used.entry((
+                                (*root).to_string(),
+                                span,
+                                hir_id.local_id,
+                                cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
+                            ))
+                            .or_insert_with(|| (vec![], hir_id))
+                            .0
+                            .push(filtered.join("::"));
                             check_dup.extend(filtered);
                         } else {
                             let rest = rest.to_vec();
-                            used.entry(((*root).to_string(), span, hir_id))
-                                .or_insert_with(Vec::new)
-                                .push(rest.join("::"));
+                            used.entry((
+                                (*root).to_string(),
+                                span,
+                                hir_id.local_id,
+                                cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
+                            ))
+                            .or_insert_with(|| (vec![], hir_id))
+                            .0
+                            .push(rest.join("::"));
                             check_dup.extend(rest.iter().map(ToString::to_string));
                         }
                     },
@@ -190,7 +208,7 @@ impl LateLintPass<'_> for MacroUseImports {
         // If mac_refs is not empty we have encountered an import we could not handle
         // such as `std::prelude::v1::foo` or some other macro that expands to an import.
         if self.mac_refs.is_empty() {
-            for ((root, span, hir_id), path) in used {
+            for ((root, span, ..), (path, hir_id)) in used {
                 let import = if let [single] = &path[..] {
                     format!("{root}::{single}")
                 } else {

@@ -117,8 +117,7 @@ fn relate_mir_and_user_args<'tcx>(
             CRATE_DEF_ID,
             ObligationCauseCode::AscribeUserTypeProvePredicate(predicate_span),
         );
-        let instantiated_predicate =
-            ocx.normalize(&cause.clone(), param_env, instantiated_predicate);
+        let instantiated_predicate = ocx.normalize(&cause, param_env, instantiated_predicate);
 
         ocx.register_obligation(Obligation::new(tcx, cause, param_env, instantiated_predicate));
     }
@@ -132,12 +131,12 @@ fn relate_mir_and_user_args<'tcx>(
     //     const CONST: () = { /* arbitrary code that depends on T being WF */ };
     // }
     // ```
-    for arg in args {
+    for term in args.iter().filter_map(ty::GenericArg::as_term) {
         ocx.register_obligation(Obligation::new(
             tcx,
             cause.clone(),
             param_env,
-            ty::ClauseKind::WellFormed(arg),
+            ty::ClauseKind::WellFormed(term),
         ));
     }
 

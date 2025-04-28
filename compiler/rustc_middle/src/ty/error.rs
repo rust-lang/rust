@@ -279,7 +279,7 @@ impl<'tcx> TyCtxt<'tcx> {
         p.hash(&mut s);
         let hash = s.finish();
         *path = Some(path.take().unwrap_or_else(|| {
-            self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None)
+            self.output_filenames(()).temp_path_for_diagnostic(&format!("long-type-{hash}.txt"))
         }));
         let Ok(mut file) =
             File::options().create(true).read(true).append(true).open(&path.as_ref().unwrap())

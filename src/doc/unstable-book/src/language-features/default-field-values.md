@@ -67,7 +67,7 @@ have default field values.
 ## Lints
 
 When manually implementing the `Default` trait for a type that has default
-field values, if any of these are overriden in the impl the
+field values, if any of these are overridden in the impl the
 `default_overrides_default_fields` lint will trigger. This lint is in place
 to avoid surprising diverging behavior between `S { .. }` and
 `S::default()`, where using the same type in both ways could result in

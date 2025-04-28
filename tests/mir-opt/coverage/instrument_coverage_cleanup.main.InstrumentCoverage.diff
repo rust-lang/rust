@@ -7,7 +7,6 @@
   
       coverage branch { true: BlockMarkerId(0), false: BlockMarkerId(1) } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0)
   
-+     coverage body span: $DIR/instrument_coverage_cleanup.rs:13:11: 15:2 (#0)
 +     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage_cleanup.rs:13:1: 14:36 (#0);
 +     coverage Code { bcb: bcb3 } => $DIR/instrument_coverage_cleanup.rs:14:37: 14:39 (#0);
 +     coverage Code { bcb: bcb1 } => $DIR/instrument_coverage_cleanup.rs:14:39: 14:39 (#0);

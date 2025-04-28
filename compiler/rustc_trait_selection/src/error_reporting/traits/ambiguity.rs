@@ -228,13 +228,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Pick the first generic parameter that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
                 // a more general error.
-                let arg = data.trait_ref.args.iter().find(|s| s.has_non_region_infer());
+                let term = data
+                    .trait_ref
+                    .args
+                    .iter()
+                    .filter_map(ty::GenericArg::as_term)
+                    .find(|s| s.has_non_region_infer());
 
-                let mut err = if let Some(arg) = arg {
+                let mut err = if let Some(term) = term {
                     self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
-                        arg,
+                        term,
                         TypeAnnotationNeeded::E0283,
                         true,
                     )
@@ -276,7 +281,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 if ambiguities.len() > 1 && ambiguities.len() < 10 && has_non_region_infer {
                     if let Some(e) = self.tainted_by_errors()
-                        && arg.is_none()
+                        && term.is_none()
                     {
                         // If `arg.is_none()`, then this is probably two param-env
                         // candidates or impl candidates that are equal modulo lifetimes.
@@ -313,7 +318,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_pred.def_id());
                 }
 
-                if let Some(ty::GenericArgKind::Type(_)) = arg.map(|arg| arg.unpack())
+                if term.is_some_and(|term| term.as_type().is_some())
                     && let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id)
                 {
                     let mut expr_finder = FindExprBySpan::new(span, self.tcx);
@@ -338,7 +343,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 ..
                             },
                             hir::PathSegment {
-                                ident: assoc_item_name,
+                                ident: assoc_item_ident,
                                 res: Res::Def(_, item_id),
                                 ..
                             },
@@ -348,11 +353,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && let None = self.tainted_by_errors()
                     {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {
-                            ty::AssocKind::Const => ("refer to the", "constant"),
-                            ty::AssocKind::Fn => ("call", "function"),
+                            ty::AssocKind::Const { .. } => ("refer to the", "constant"),
+                            ty::AssocKind::Fn { .. } => ("call", "function"),
                             // This is already covered by E0223, but this following single match
                             // arm doesn't hurt here.
-                            ty::AssocKind::Type => ("refer to the", "type"),
+                            ty::AssocKind::Type { .. } => ("refer to the", "type"),
                         };
 
                         // Replace the more general E0283 with a more specific error
@@ -368,17 +373,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
                             && let hir::Node::Item(hir::Item {
-                                ident: trait_name,
-                                kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs),
+                                kind: hir::ItemKind::Trait(_, _, trait_ident, _, _, trait_item_refs),
                                 ..
                             }) = self.tcx.hir_node_by_def_id(local_def_id)
                             && let Some(method_ref) = trait_item_refs
                                 .iter()
-                                .find(|item_ref| item_ref.ident == *assoc_item_name)
+                                .find(|item_ref| item_ref.ident == *assoc_item_ident)
                         {
                             err.span_label(
                                 method_ref.span,
-                                format!("`{trait_name}::{assoc_item_name}` defined here"),
+                                format!("`{trait_ident}::{assoc_item_ident}` defined here"),
                             );
                         }
 
@@ -465,11 +469,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 err
             }
 
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
 
-                if let Err(e) = arg.error_reported() {
+                if let Err(e) = term.error_reported() {
                     return e;
                 }
                 if let Some(e) = self.tainted_by_errors() {
@@ -479,7 +483,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.emit_inference_failure_err(
                     obligation.cause.body_id,
                     span,
-                    arg,
+                    term,
                     TypeAnnotationNeeded::E0282,
                     false,
                 )
@@ -520,18 +524,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // other `Foo` impls are incoherent.
                     return guar;
                 }
-                let arg = data
+                let term = data
                     .projection_term
                     .args
                     .iter()
-                    .chain(Some(data.term.into_arg()))
+                    .filter_map(ty::GenericArg::as_term)
+                    .chain([data.term])
                     .find(|g| g.has_non_region_infer());
                 let predicate = self.tcx.short_string(predicate, &mut file);
-                if let Some(arg) = arg {
+                if let Some(term) = term {
                     self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
-                        arg,
+                        term,
                         TypeAnnotationNeeded::E0284,
                         true,
                     )
@@ -555,12 +560,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                let arg = data.walk().find(|g| g.is_non_region_infer());
-                if let Some(arg) = arg {
+                let term =
+                    data.walk().filter_map(ty::GenericArg::as_term).find(|term| term.is_infer());
+                if let Some(term) = term {
                     let err = self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
-                        arg,
+                        term,
                         TypeAnnotationNeeded::E0284,
                         true,
                     );

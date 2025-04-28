@@ -717,7 +717,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         // The program didn't actually do a read, so suppress the memory access hooks.
         // This is also a very special exception where we just ignore an error -- if this read
         // was UB e.g. because the memory is uninitialized, we don't want to know!
-        let old_val = this.run_for_validation(|this| this.read_scalar(dest)).discard_err();
+        let old_val = this.run_for_validation_mut(|this| this.read_scalar(dest)).discard_err();
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
         this.buffered_atomic_write(val, dest, atomic, old_val)

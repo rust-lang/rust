@@ -6,7 +6,8 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{
-    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, peel_middle_ty_refs, return_ty,
+    fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, is_expr_temporary_value, peel_middle_ty_refs,
+    return_ty,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -152,7 +153,7 @@ fn check_addr_of_expr(
         }
         if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
             && implements_trait(cx, receiver_ty, deref_trait_id, &[])
-            && cx.get_associated_type(receiver_ty, deref_trait_id, "Target") == Some(target_ty)
+            && cx.get_associated_type(receiver_ty, deref_trait_id, sym::Target) == Some(target_ty)
             // Make sure that it's actually calling the right `.to_string()`, (#10033)
             // *or* this is a `Cow::into_owned()` call (which would be the wrong into_owned receiver (str != Cow)
             // but that's ok for Cow::into_owned specifically)
@@ -219,6 +220,8 @@ fn check_into_iter_call_arg(
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
         // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
         && !is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Cow)
+        // Calling `iter()` on a temporary object can lead to false positives. #14242
+        && !is_expr_temporary_value(cx, receiver)
     {
         if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
             return true;
@@ -319,7 +322,7 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
         // add `.as_ref()` to the suggestion.
         let as_ref = if is_type_lang_item(cx, cx.typeck_results().expr_ty(expr), LangItem::String)
             && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
-            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, "Target")
+            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, sym::Target)
                 != Some(cx.tcx.types.str_)
         {
             ".as_ref()"
@@ -645,7 +648,7 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (cx.get_associated_type(ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_)
+        && (cx.get_associated_type(ty, deref_trait_id, sym::Target) == Some(cx.tcx.types.str_)
             || implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()]))
     {
         true

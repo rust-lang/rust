@@ -99,7 +99,7 @@ pub fn check_for_loop_iter(
             && let Some(into_iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
             && let collection_ty = cx.typeck_results().expr_ty(collection)
             && implements_trait(cx, collection_ty, into_iterator_trait_id, &[])
-            && let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, "Item")
+            && let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, sym::Item)
             && iter_item_ty == into_iter_item_ty
             && let Some(collection_snippet) = collection.span.get_source_text(cx)
         {

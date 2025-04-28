@@ -61,7 +61,7 @@ to be pretty clearly safe and also still retains a very high hit rate
 **TODO**: it looks like `pick_candidate_cache` no longer exists. In
 general, is this section still accurate at all?
 
-[`ParamEnv`]: ../param_env/param_env_summary.html
+[`ParamEnv`]: ../typing_parameter_envs.html
 [`tcx`]: ../ty.html
 [#18290]: https://github.com/rust-lang/rust/issues/18290
 [#22019]: https://github.com/rust-lang/rust/issues/22019

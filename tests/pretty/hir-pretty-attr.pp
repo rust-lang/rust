@@ -6,6 +6,6 @@ extern crate std;
 //@ pretty-mode:hir
 //@ pp-exact:hir-pretty-attr.pp
 
-#[attr="Repr([ReprC, ReprPacked(Align(4 bytes)), ReprTransparent])")]
+#[attr = Repr([ReprC, ReprPacked(Align(4 bytes)), ReprTransparent])]
 struct Example {
 }

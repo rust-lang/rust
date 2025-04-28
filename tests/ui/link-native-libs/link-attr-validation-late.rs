@@ -9,7 +9,7 @@ extern "C" {}
 #[link(name = "foo", name = "bar")] //~ ERROR multiple `name` arguments
 #[link(name = "...", kind = "dylib", kind = "bar")] //~ ERROR multiple `kind` arguments
 #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")] //~ ERROR multiple `modifiers` arguments
-#[link(name = "...", cfg(FALSE), cfg(FALSE))] //~ ERROR multiple `cfg` arguments
+#[link(name = "...", cfg(false), cfg(false))] //~ ERROR multiple `cfg` arguments
 #[link(wasm_import_module = "foo", wasm_import_module = "bar")] //~ ERROR multiple `wasm_import_module` arguments
 extern "C" {}
 

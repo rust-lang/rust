@@ -1,8 +1,7 @@
 //@ compile-flags: -Zunpretty=hir
 //@ check-pass
+//@ edition: 2015
 
-// FIXME(jdonszelmann): the pretty printing output for deprecated (and possibly more attrs) is
-// slightly broken.
 #[deprecated]
 pub struct PlainDeprecated;
 
