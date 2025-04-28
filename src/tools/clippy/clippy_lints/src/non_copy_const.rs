@@ -9,7 +9,7 @@ use rustc_abi::VariantIdx;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
-    BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
+    Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId, ReportedErrorInfo};
@@ -260,8 +260,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         )
     }
 
-    fn is_value_unfrozen_poly(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<'tcx>) -> bool {
-        let def_id = body_id.hir_id.owner.to_def_id();
+    fn is_value_unfrozen_poly(cx: &LateContext<'tcx>, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
         let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId {
@@ -310,11 +309,11 @@ impl<'tcx> NonCopyConst<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx Item<'_>) {
-        if let ItemKind::Const(.., body_id) = it.kind {
+        if let ItemKind::Const(..) = it.kind {
             let ty = cx.tcx.type_of(it.owner_id).instantiate_identity();
             if !ignored_macro(cx, it)
                 && self.interior_mut.is_interior_mut_ty(cx, ty)
-                && Self::is_value_unfrozen_poly(cx, body_id, ty)
+                && Self::is_value_unfrozen_poly(cx, it.owner_id.def_id.into(), ty)
             {
                 lint(cx, Source::Item { item: it.span, ty });
             }
@@ -341,7 +340,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 // i.e. having an enum doesn't necessary mean a type has a frozen variant.
                 // And, implementing it isn't a trivial task; it'll probably end up
                 // re-implementing the trait predicate evaluation specific to `Freeze`.
-                && body_id_opt.is_none_or(|body_id| Self::is_value_unfrozen_poly(cx, body_id, normalized))
+                && body_id_opt.is_none_or(|_| Self::is_value_unfrozen_poly(cx, trait_item.owner_id.def_id.into(), normalized))
             {
                 lint(cx, Source::Assoc { item: trait_item.span });
             }
@@ -349,7 +348,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
-        if let ImplItemKind::Const(_, body_id) = &impl_item.kind {
+        if let ImplItemKind::Const(..) = &impl_item.kind {
             let item_def_id = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let item = cx.tcx.hir_expect_item(item_def_id);
 
@@ -384,7 +383,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                         && let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity()
                         && let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty)
                         && self.interior_mut.is_interior_mut_ty(cx, normalized)
-                        && Self::is_value_unfrozen_poly(cx, *body_id, normalized)
+                        && Self::is_value_unfrozen_poly(cx, impl_item.owner_id.def_id.into(), normalized)
                     {
                         lint(cx, Source::Assoc { item: impl_item.span });
                     }
@@ -395,7 +394,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                     let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
 
                     if self.interior_mut.is_interior_mut_ty(cx, normalized)
-                        && Self::is_value_unfrozen_poly(cx, *body_id, normalized)
+                        && Self::is_value_unfrozen_poly(cx, impl_item.owner_id.def_id.into(), normalized)
                     {
                         lint(cx, Source::Assoc { item: impl_item.span });
                     }
