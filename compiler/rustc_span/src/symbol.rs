@@ -614,6 +614,7 @@ symbols! {
         cfg_target_feature,
         cfg_target_has_atomic,
         cfg_target_has_atomic_equal_alignment,
+        cfg_target_has_reliable_f16_f128,
         cfg_target_thread_local,
         cfg_target_vendor,
         cfg_trace: "<cfg>", // must not be a valid identifier
@@ -2068,6 +2069,10 @@ symbols! {
         target_has_atomic,
         target_has_atomic_equal_alignment,
         target_has_atomic_load_store,
+        target_has_reliable_f128,
+        target_has_reliable_f128_math,
+        target_has_reliable_f16,
+        target_has_reliable_f16_math,
         target_os,
         target_pointer_width,
         target_thread_local,
