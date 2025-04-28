@@ -57,7 +57,12 @@ pub struct Files {
 
 impl Files {
     pub fn file_text(&self, file_id: vfs::FileId) -> FileText {
-        *self.files.get(&file_id).expect("Unable to fetch file; this is a bug")
+        match self.files.get(&file_id) {
+            Some(text) => *text,
+            None => {
+                panic!("Unable to fetch file text for `vfs::FileId`: {:?}; this is a bug", file_id)
+            }
+        }
     }
 
     pub fn set_file_text(&self, db: &mut dyn SourceDatabase, file_id: vfs::FileId, text: &str) {
@@ -93,10 +98,13 @@ impl Files {
 
     /// Source root of the file.
     pub fn source_root(&self, source_root_id: SourceRootId) -> SourceRootInput {
-        let source_root = self
-            .source_roots
-            .get(&source_root_id)
-            .expect("Unable to fetch source root id; this is a bug");
+        let source_root = match self.source_roots.get(&source_root_id) {
+            Some(source_root) => source_root,
+            None => panic!(
+                "Unable to fetch `SourceRootInput` with `SourceRootId` ({:?}); this is a bug",
+                source_root_id
+            ),
+        };
 
         *source_root
     }
@@ -121,10 +129,13 @@ impl Files {
     }
 
     pub fn file_source_root(&self, id: vfs::FileId) -> FileSourceRootInput {
-        let file_source_root = self
-            .file_source_roots
-            .get(&id)
-            .expect("Unable to fetch FileSourceRootInput; this is a bug");
+        let file_source_root = match self.file_source_roots.get(&id) {
+            Some(file_source_root) => file_source_root,
+            None => panic!(
+                "Unable to get `FileSourceRootInput` with `vfs::FileId` ({:?}); this is a bug",
+                id
+            ),
+        };
         *file_source_root
     }
 
