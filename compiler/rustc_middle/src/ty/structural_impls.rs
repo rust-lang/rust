@@ -13,7 +13,6 @@ use rustc_type_ir::{ConstKind, TypeFolder, VisitorResult, try_visit};
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
-use crate::infer::canonical::CanonicalVarInfos;
 use crate::mir::PlaceElem;
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
 use crate::ty::{
@@ -779,5 +778,4 @@ list_fold! {
     ty::Clauses<'tcx> : mk_clauses,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
-    CanonicalVarInfos<'tcx> : mk_canonical_var_infos,
 }
