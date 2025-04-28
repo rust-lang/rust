@@ -9,6 +9,7 @@ use std::{fmt, iter, slice};
 use itertools::Either;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
+use super::old_dense_bit_set::DenseBitSet as OldDenseBitSet;
 use super::{
     BitRelations, CHUNK_WORDS, Chunk, ChunkedBitSet, WORD_BITS, Word, word_index_and_mask,
 };
@@ -274,6 +275,47 @@ impl<T> ThinBitSet<T> {
         }
     }
 
+    /// Returns an iterator over the indices for all elements in this set.
+    #[inline(always)]
+    pub fn iter_usizes(&self) -> BitIter<'_, usize> {
+        if self.is_inline() {
+            let x = unsafe { self.inline };
+            // Remove the tag bit.
+            let without_tag_bit = x ^ Self::IS_INLINE_TAG_BIT;
+            BitIter::from_single_word(without_tag_bit)
+        } else if let Some(on_heap) = self.on_heap() {
+            BitIter::from_slice(on_heap.as_slice())
+        } else {
+            debug_assert!(self.is_empty_unallocated());
+            BitIter::from_single_word(0)
+        }
+    }
+
+    /// Insert the elem with index `idx`. Returns `true` if the set has changed.
+    #[inline(always)]
+    fn insert_usize(&mut self, idx: usize) -> bool {
+        // Insert the `i`th bit in a word and return `true` if it changed.
+        let insert_bit = |word: &mut Word, bit_idx: u32| {
+            let mask = 0x01 << bit_idx;
+            let old = *word;
+            *word |= mask;
+            *word != old
+        };
+
+        if self.is_inline() {
+            let x = unsafe { &mut self.inline };
+            debug_assert!(idx < Self::INLINE_CAPACITY, "index too large: {idx}");
+            insert_bit(x, idx as u32)
+        } else {
+            let words = self.on_heap_get_or_alloc().as_mut_slice();
+
+            let word_idx = idx / WORD_BITS;
+            let bit_idx = (idx % WORD_BITS) as u32;
+            let word = &mut words[word_idx];
+            insert_bit(word, bit_idx)
+        }
+    }
+
     /// Insert `0..domain_size` in the set.
     ///
     /// We would like an insert all function that doesn't require the domain size, but the exact
@@ -385,7 +427,7 @@ impl<T> ThinBitSet<T> {
     }
 
     #[inline(always)]
-    pub fn union_not(&mut self, _other: &Self) -> bool {
+    pub fn union_not(&mut self, _other: &Self) {
         todo!()
     }
 
@@ -463,27 +505,7 @@ impl<T: Idx> ThinBitSet<T> {
     /// Insert `elem`. Returns `true` if the set has changed.
     #[inline(always)]
     pub fn insert(&mut self, elem: T) -> bool {
-        // Insert the `i`th bit in a word and return `true` if it changed.
-        let insert_bit = |word: &mut Word, bit_idx: u32| {
-            let mask = 0x01 << bit_idx;
-            let old = *word;
-            *word |= mask;
-            *word != old
-        };
-
-        let idx = elem.index();
-        if self.is_inline() {
-            let x = unsafe { &mut self.inline };
-            debug_assert!(idx < Self::INLINE_CAPACITY, "index too large: {idx}");
-            insert_bit(x, idx as u32)
-        } else {
-            let words = self.on_heap_get_or_alloc().as_mut_slice();
-
-            let word_idx = idx / WORD_BITS;
-            let bit_idx = (idx % WORD_BITS) as u32;
-            let word = &mut words[word_idx];
-            insert_bit(word, bit_idx)
-        }
+        self.insert_usize(elem.index())
     }
 
     /// Remove `elem`. Returns `true` if the set has changed.
@@ -700,6 +722,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ThinBitSet<T> {
 }
 
 impl<S: Encoder, T> Encodable<S> for ThinBitSet<T> {
+    #[inline(never)] // FIXME: For profiling purposes
     fn encode(&self, s: &mut S) {
         /* FIXME: This is new incompatable encoding
         // The encoding is as follows:
@@ -733,11 +756,16 @@ impl<S: Encoder, T> Encodable<S> for ThinBitSet<T> {
         */
 
         // Old compatable encoding.
-        self.words().collect::<Vec<Word>>().encode(s);
+        let mut old_set = OldDenseBitSet::<usize>::new_empty(self.capacity());
+        for x in self.iter_usizes() {
+            old_set.insert(x);
+        }
+        old_set.encode(s);
     }
 }
 
 impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
+    #[inline(never)] // FIXME: For profiling purposes
     fn decode(d: &mut D) -> Self {
         /* FIXME: This is new incompatable decoding.
         // First we read one `Word` and check the variant.
@@ -771,12 +799,12 @@ impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
         */
 
         // Old compatable decoding.
-        let words = Vec::<Word>::decode(d);
-        let mut set = GrowableBitSet::<usize>::new_empty();
-        for x in BitIter::from_slice(words.as_slice()) {
-            set.insert(x);
+        let old_set = OldDenseBitSet::<usize>::decode(d);
+        let mut set = Self::new_empty(old_set.domain_size());
+        for x in old_set.iter() {
+            set.insert_usize(x);
         }
-        unsafe { std::mem::transmute::<ThinBitSet<usize>, ThinBitSet<T>>(set.bit_set) }
+        set
     }
 }
 
@@ -877,7 +905,7 @@ impl BitSetOnHeap {
     }
 
     /// Get the number of words.
-    #[expect(dead_code)] // FIXME: Needed for the new Encodable/Decodable implementation.
+    #[allow(dead_code)] // FIXME
     #[inline]
     fn n_words(&self) -> Word {
         let ptr = (self.0 << 2) as *const Word;
@@ -1097,18 +1125,18 @@ impl<T> Hash for ThinBitSet<T> {
 ///
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size.
-#[derive(Clone, Debug, PartialEq)]
-pub struct GrowableBitSet<T: Idx> {
+#[derive(Clone, PartialEq)]
+pub struct GrowableBitSet<T> {
     bit_set: ThinBitSet<T>,
 }
 
-impl<T: Idx> Default for GrowableBitSet<T> {
+impl<T> Default for GrowableBitSet<T> {
     fn default() -> Self {
         GrowableBitSet::new_empty()
     }
 }
 
-impl<T: Idx> GrowableBitSet<T> {
+impl<T> GrowableBitSet<T> {
     /// Ensure that the set can hold at least `min_domain_size` elements.
     pub fn ensure(&mut self, min_domain_size: usize) {
         if min_domain_size <= self.bit_set.capacity() {
@@ -1141,11 +1169,19 @@ impl<T: Idx> GrowableBitSet<T> {
         GrowableBitSet { bit_set: ThinBitSet::new_empty(capacity) }
     }
 
-    /// Returns `true` if the set has changed.
+    /// Insert the element with index `idx`. Returns `true` if the set has changed.
+    #[inline]
+    pub fn insert_usize(&mut self, idx: usize) -> bool {
+        self.ensure(idx + 1);
+        self.bit_set.insert_usize(idx)
+    }
+}
+
+impl<T: Idx> GrowableBitSet<T> {
+    /// Insert `elem` into the set, resizing if necessary. Returns `true` if the set has changed.
     #[inline]
     pub fn insert(&mut self, elem: T) -> bool {
-        self.ensure(elem.index() + 1);
-        self.bit_set.insert(elem)
+        self.insert_usize(elem.index())
     }
 
     /// Returns `true` if the set has changed.
@@ -1176,15 +1212,21 @@ impl<T: Idx> GrowableBitSet<T> {
     }
 }
 
-impl<T: Idx> From<ThinBitSet<T>> for GrowableBitSet<T> {
+impl<T> From<ThinBitSet<T>> for GrowableBitSet<T> {
     fn from(bit_set: ThinBitSet<T>) -> Self {
         Self { bit_set }
     }
 }
 
-impl<T: Idx> From<GrowableBitSet<T>> for ThinBitSet<T> {
+impl<T> From<GrowableBitSet<T>> for ThinBitSet<T> {
     fn from(bit_set: GrowableBitSet<T>) -> Self {
         bit_set.bit_set
+    }
+}
+
+impl<T: Idx> fmt::Debug for GrowableBitSet<T> {
+    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.bit_set.fmt(w)
     }
 }
 

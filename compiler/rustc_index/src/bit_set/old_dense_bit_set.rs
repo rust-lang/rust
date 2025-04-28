@@ -221,11 +221,6 @@ impl<T: Idx> DenseBitSet<T> {
     }
 
     #[inline]
-    pub(crate) fn words(&self) -> impl ExactSizeIterator<Item = Word> {
-        self.words.iter().copied()
-    }
-
-    #[inline]
     pub(crate) fn capacity(&self) -> usize {
         self.domain_size()
     }
@@ -234,6 +229,13 @@ impl<T: Idx> DenseBitSet<T> {
     #[inline]
     pub fn insert_range_inclusive(&mut self, elems: impl RangeBounds<T>) {
         self.insert_range(elems);
+    }
+}
+
+impl<T> DenseBitSet<T> {
+    #[inline]
+    pub(crate) fn words(&self) -> impl ExactSizeIterator<Item = Word> {
+        self.words.iter().copied()
     }
 }
 
