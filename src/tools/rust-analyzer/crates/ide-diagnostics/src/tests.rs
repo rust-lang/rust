@@ -3,14 +3,16 @@
 mod overly_long_real_world_cases;
 
 use ide_db::{
-    LineIndexDatabase, RootDatabase, assists::AssistResolveStrategy, base_db::SourceDatabase,
+    LineIndexDatabase, RootDatabase,
+    assists::{AssistResolveStrategy, ExprFillDefaultMode},
+    base_db::SourceDatabase,
 };
 use itertools::Itertools;
 use stdx::trim_indent;
 use test_fixture::WithFixture;
 use test_utils::{MiniCore, assert_eq_text, extract_annotations};
 
-use crate::{DiagnosticsConfig, ExprFillDefaultMode, Severity};
+use crate::{DiagnosticsConfig, Severity};
 
 /// Takes a multi-file input fixture with annotated cursor positions,
 /// and checks that:
@@ -158,55 +160,6 @@ pub(crate) fn check_has_fix(
             .is_some()
     });
     assert!(fix.is_some(), "no diagnostic with desired fix");
-}
-
-#[track_caller]
-pub(crate) fn check_has_single_fix(
-    #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
-    #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
-) {
-    let after = trim_indent(ra_fixture_after);
-
-    let (db, file_position) = RootDatabase::with_position(ra_fixture_before);
-    let mut conf = DiagnosticsConfig::test_sample();
-    conf.expr_fill_default = ExprFillDefaultMode::Default;
-    let mut n_fixes = 0;
-    let fix = super::full_diagnostics(
-        &db,
-        &conf,
-        &AssistResolveStrategy::All,
-        file_position.file_id.file_id(&db),
-    )
-    .into_iter()
-    .find(|d| {
-        d.fixes
-            .as_ref()
-            .and_then(|fixes| {
-                n_fixes += fixes.len();
-                fixes.iter().find(|fix| {
-                    if !fix.target.contains_inclusive(file_position.offset) {
-                        return false;
-                    }
-                    let actual = {
-                        let source_change = fix.source_change.as_ref().unwrap();
-                        let file_id = *source_change.source_file_edits.keys().next().unwrap();
-                        let mut actual = db.file_text(file_id).text(&db).to_string();
-
-                        for (edit, snippet_edit) in source_change.source_file_edits.values() {
-                            edit.apply(&mut actual);
-                            if let Some(snippet_edit) = snippet_edit {
-                                snippet_edit.apply(&mut actual);
-                            }
-                        }
-                        actual
-                    };
-                    after == actual
-                })
-            })
-            .is_some()
-    });
-    assert!(fix.is_some(), "no diagnostic with desired fix");
-    assert!(n_fixes == 1, "Too many fixes suggested");
 }
 
 /// Checks that there's a diagnostic *without* fix at `$0`.

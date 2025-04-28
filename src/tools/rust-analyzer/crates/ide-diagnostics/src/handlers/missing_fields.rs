@@ -5,9 +5,13 @@ use hir::{
     sym,
 };
 use ide_db::{
-    FxHashMap, assists::Assist, famous_defs::FamousDefs,
-    imports::import_assets::item_for_path_search, source_change::SourceChange,
-    syntax_helpers::tree_diff::diff, text_edit::TextEdit,
+    FxHashMap,
+    assists::{Assist, ExprFillDefaultMode},
+    famous_defs::FamousDefs,
+    imports::import_assets::item_for_path_search,
+    source_change::SourceChange,
+    syntax_helpers::tree_diff::diff,
+    text_edit::TextEdit,
     use_trivial_constructor::use_trivial_constructor,
 };
 use stdx::format_to;
@@ -102,8 +106,9 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
             });
 
             let generate_fill_expr = |ty: &Type| match ctx.config.expr_fill_default {
-                crate::ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                crate::ExprFillDefaultMode::Default => {
+                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                ExprFillDefaultMode::Default => {
                     get_default_constructor(ctx, d, ty).unwrap_or_else(make::ext::expr_todo)
                 }
             };

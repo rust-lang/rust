@@ -69,6 +69,9 @@ pub mod ext {
     pub fn expr_todo() -> ast::Expr {
         expr_from_text("todo!()")
     }
+    pub fn expr_underscore() -> ast::Expr {
+        expr_from_text("_")
+    }
     pub fn expr_ty_default(ty: &ast::Type) -> ast::Expr {
         expr_from_text(&format!("{ty}::default()"))
     }

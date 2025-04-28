@@ -142,7 +142,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
         .map(|(id, ty)| {
             match name_generator.for_type(&ty, ctx.db(), ctx.edition()) {
                 Some(name) => name,
-                None => name_generator.suggest_name(&format!("_{}", id)),
+                None => name_generator.suggest_name(&format!("_{id}")),
             }
             .to_string()
         })

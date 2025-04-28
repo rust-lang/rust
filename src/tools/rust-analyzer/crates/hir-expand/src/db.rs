@@ -752,8 +752,7 @@ fn check_tt_count(tt: &tt::TopSubtree) -> Result<(), ExpandResult<()>> {
             err: Some(ExpandError::other(
                 tt.delimiter.open,
                 format!(
-                    "macro invocation exceeds token limit: produced {} tokens, limit is {}",
-                    count, TOKEN_LIMIT,
+                    "macro invocation exceeds token limit: produced {count} tokens, limit is {TOKEN_LIMIT}",
                 ),
             )),
         })

@@ -599,7 +599,7 @@ fn filename_and_frag_for_def(
             Some(name) => {
                 match m.attrs(db).by_key(sym::doc).find_string_value_in_tt(sym::keyword) {
                     Some(kw) => {
-                        format!("keyword.{}.html", kw)
+                        format!("keyword.{kw}.html")
                     }
                     None => format!("{}/index.html", name.as_str()),
                 }
