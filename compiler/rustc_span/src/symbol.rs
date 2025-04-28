@@ -449,6 +449,7 @@ symbols! {
         allow_fail,
         allow_internal_unsafe,
         allow_internal_unstable,
+        allow_unstable_feature,
         altivec,
         alu32,
         always,
