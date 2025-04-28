@@ -172,6 +172,7 @@ hashbrown = { version = "0.14.0", features = [
 elided_lifetimes_in_paths = "warn"
 explicit_outlives_requirements = "warn"
 unsafe_op_in_unsafe_fn = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
 unused_extern_crates = "warn"
 unused_lifetimes = "warn"
 unreachable_pub = "warn"
