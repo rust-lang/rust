@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `<Foo as Bar<Foo>>::Item == Foo`
-  --> $DIR/type-alias-impl-trait-with-cycle-error-2.rs:10:21
+  --> $DIR/type-alias-impl-trait-with-cycle-error-2.rs:9:21
    |
 LL | fn crash(x: Foo) -> Foo {
    |                     ^^^

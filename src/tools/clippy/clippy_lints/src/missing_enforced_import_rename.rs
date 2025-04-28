@@ -67,7 +67,7 @@ impl_lint_pass!(ImportRename => [MISSING_ENFORCED_IMPORT_RENAMES]);
 
 impl LateLintPass<'_> for ImportRename {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        if let ItemKind::Use(path, UseKind::Single) = &item.kind {
+        if let ItemKind::Use(path, UseKind::Single(_)) = &item.kind {
             for &res in &path.res {
                 if let Res::Def(_, id) = res
                     && let Some(name) = self.renames.get(&id)

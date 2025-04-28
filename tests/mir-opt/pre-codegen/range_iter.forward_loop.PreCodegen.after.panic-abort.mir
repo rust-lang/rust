@@ -23,6 +23,14 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
                 let _7: u32;
                 let mut _8: u32;
                 scope 6 {
+                    scope 8 (inlined <u32 as Step>::forward_unchecked) {
+                        scope 9 (inlined core::num::<impl u32>::unchecked_add) {
+                            scope 10 (inlined core::ub_checks::check_language_ub) {
+                                scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
+                                }
+                            }
+                        }
+                    }
                 }
                 scope 7 (inlined std::cmp::impls::<impl PartialOrd for u32>::lt) {
                     let mut _5: u32;
@@ -41,7 +49,6 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
 
     bb1: {
         StorageLive(_9);
-        StorageLive(_7);
         StorageLive(_6);
         StorageLive(_5);
         _5 = copy _4;
@@ -52,7 +59,6 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
 
     bb2: {
         StorageDead(_6);
-        StorageDead(_7);
         StorageDead(_9);
         StorageDead(_4);
         drop(_3) -> [return: bb3, unwind unreachable];
@@ -65,24 +71,20 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     bb4: {
         _7 = copy _4;
         StorageLive(_8);
-        _8 = <u32 as Step>::forward_unchecked(copy _7, const 1_usize) -> [return: bb5, unwind unreachable];
-    }
-
-    bb5: {
+        _8 = AddUnchecked(copy _7, const 1_u32);
         _4 = move _8;
         StorageDead(_8);
         _9 = Option::<u32>::Some(copy _7);
         StorageDead(_6);
-        StorageDead(_7);
         _10 = copy ((_9 as Some).0: u32);
         StorageLive(_11);
         _11 = &_3;
         StorageLive(_12);
         _12 = (copy _10,);
-        _13 = <impl Fn(u32) as Fn<(u32,)>>::call(move _11, move _12) -> [return: bb6, unwind unreachable];
+        _13 = <impl Fn(u32) as Fn<(u32,)>>::call(move _11, move _12) -> [return: bb5, unwind unreachable];
     }
 
-    bb6: {
+    bb5: {
         StorageDead(_12);
         StorageDead(_11);
         StorageDead(_9);

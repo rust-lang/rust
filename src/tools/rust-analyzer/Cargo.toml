@@ -85,11 +85,11 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.100", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.100", default-features = false }
-ra-ap-rustc_index = { version = "0.100", default-features = false }
-ra-ap-rustc_abi = { version = "0.100", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.100", default-features = false }
+ra-ap-rustc_lexer = { version = "0.110", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.110", default-features = false }
+ra-ap-rustc_index = { version = "0.110", default-features = false }
+ra-ap-rustc_abi = { version = "0.110", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.110", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -132,11 +132,12 @@ pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
 salsa = "0.20.0"
-rustc-hash = "2.1.1"
 semver = "1.0.26"
 serde = { version = "1.0.219" }
 serde_derive = { version = "1.0.219" }
 serde_json = "1.0.140"
+rustc-hash = "2.1.1"
+rustc-literal-escaper = "0.0.2"
 smallvec = { version = "1.14.0", features = [
   "const_new",
   "union",
@@ -171,6 +172,7 @@ hashbrown = { version = "0.14.0", features = [
 elided_lifetimes_in_paths = "warn"
 explicit_outlives_requirements = "warn"
 unsafe_op_in_unsafe_fn = "warn"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
 unused_extern_crates = "warn"
 unused_lifetimes = "warn"
 unreachable_pub = "warn"

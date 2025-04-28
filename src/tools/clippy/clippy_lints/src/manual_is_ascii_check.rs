@@ -148,7 +148,7 @@ fn check_is_ascii(
     };
     let default_snip = "..";
     let mut app = Applicability::MachineApplicable;
-    let recv = Sugg::hir_with_context(cx, recv, span.ctxt(), default_snip, &mut app).maybe_par();
+    let recv = Sugg::hir_with_context(cx, recv, span.ctxt(), default_snip, &mut app).maybe_paren();
     let mut suggestion = vec![(span, format!("{recv}.{sugg}()"))];
     if let Some((ty_span, ty)) = ty_sugg {
         suggestion.push((ty_span, format!("{recv}: {ty}")));

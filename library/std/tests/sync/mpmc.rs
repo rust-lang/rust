@@ -64,6 +64,24 @@ fn smoke_port_gone() {
 }
 
 #[test]
+fn smoke_receiver_clone() {
+    let (tx, rx) = channel::<i32>();
+    let rx2 = rx.clone();
+    drop(rx);
+    tx.send(1).unwrap();
+    assert_eq!(rx2.recv().unwrap(), 1);
+}
+
+#[test]
+fn smoke_receiver_clone_port_gone() {
+    let (tx, rx) = channel::<i32>();
+    let rx2 = rx.clone();
+    drop(rx);
+    drop(rx2);
+    assert!(tx.send(1).is_err());
+}
+
+#[test]
 fn smoke_shared_port_gone() {
     let (tx, rx) = channel::<i32>();
     drop(rx);
@@ -122,6 +140,18 @@ fn chan_gone_concurrent() {
         tx.send(1).unwrap();
     });
     while rx.recv().is_ok() {}
+}
+
+#[test]
+fn receiver_cloning() {
+    let (tx, rx) = channel::<i32>();
+    let rx2 = rx.clone();
+
+    tx.send(1).unwrap();
+    tx.send(2).unwrap();
+
+    assert_eq!(rx2.recv(), Ok(1));
+    assert_eq!(rx.recv(), Ok(2));
 }
 
 #[test]

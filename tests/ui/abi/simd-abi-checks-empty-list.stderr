@@ -1,23 +1,8 @@
-warning: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
-  --> $DIR/simd-abi-checks-empty-list.rs:16:1
+error: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
+  --> $DIR/simd-abi-checks-empty-list.rs:17:1
    |
 LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
-   = note: `#[warn(abi_unsupported_vector_types)]` on by default
 
-warning: 1 warning emitted
-
-Future incompatibility report: Future breakage diagnostic:
-warning: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
-  --> $DIR/simd-abi-checks-empty-list.rs:16:1
-   |
-LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #116558 <https://github.com/rust-lang/rust/issues/116558>
-   = note: `#[warn(abi_unsupported_vector_types)]` on by default
+error: aborting due to 1 previous error
 

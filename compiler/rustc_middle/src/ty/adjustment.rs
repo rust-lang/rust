@@ -5,7 +5,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::Span;
 
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{Ty, TyCtxt};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum PointerCoercion {
@@ -133,7 +133,7 @@ impl OverloadedDeref {
         };
         tcx.associated_items(trait_def_id)
             .in_definition_order()
-            .find(|m| m.kind == ty::AssocKind::Fn)
+            .find(|item| item.is_fn())
             .unwrap()
             .def_id
     }
@@ -213,4 +213,26 @@ pub struct CoerceUnsizedInfo {
 pub enum CustomCoerceUnsized {
     /// Records the index of the field being coerced.
     Struct(FieldIdx),
+}
+
+/// Represents an implicit coercion applied to the scrutinee of a match before testing a pattern
+/// against it. Currently, this is used only for implicit dereferences.
+#[derive(Clone, Copy, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
+pub struct PatAdjustment<'tcx> {
+    pub kind: PatAdjust,
+    /// The type of the scrutinee before the adjustment is applied, or the "adjusted type" of the
+    /// pattern.
+    pub source: Ty<'tcx>,
+}
+
+/// Represents implicit coercions of patterns' types, rather than values' types.
+#[derive(Clone, Copy, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
+pub enum PatAdjust {
+    /// An implicit dereference before matching, such as when matching the pattern `0` against a
+    /// scrutinee of type `&u8` or `&mut u8`.
+    BuiltinDeref,
+    /// An implicit call to `Deref(Mut)::deref(_mut)` before matching, such as when matching the
+    /// pattern `[..]` against a scrutinee of type `Vec<T>`.
+    OverloadedDeref,
 }

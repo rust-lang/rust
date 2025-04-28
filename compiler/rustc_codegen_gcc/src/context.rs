@@ -23,6 +23,8 @@ use rustc_target::spec::{
     HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, TlsModel, WasmCAbi, X86Abi,
 };
 
+#[cfg(feature = "master")]
+use crate::abi::conv_to_fn_attribute;
 use crate::callee::get_fn;
 use crate::common::SignType;
 
@@ -213,33 +215,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let bool_type = context.new_type::<bool>();
 
         let mut functions = FxHashMap::default();
-        let builtins = [
-            "__builtin_unreachable",
-            "abort",
-            "__builtin_expect", /*"__builtin_expect_with_probability",*/
-            "__builtin_constant_p",
-            "__builtin_add_overflow",
-            "__builtin_mul_overflow",
-            "__builtin_saddll_overflow",
-            /*"__builtin_sadd_overflow",*/
-            "__builtin_smulll_overflow", /*"__builtin_smul_overflow",*/
-            "__builtin_ssubll_overflow",
-            /*"__builtin_ssub_overflow",*/ "__builtin_sub_overflow",
-            "__builtin_uaddll_overflow",
-            "__builtin_uadd_overflow",
-            "__builtin_umulll_overflow",
-            "__builtin_umul_overflow",
-            "__builtin_usubll_overflow",
-            "__builtin_usub_overflow",
-            "__builtin_powif",
-            "__builtin_powi",
-            "fabsf",
-            "fabs",
-            "copysignf",
-            "copysign",
-            "nearbyintf",
-            "nearbyint",
-        ];
+        let builtins = ["abort"];
 
         for builtin in builtins.iter() {
             functions.insert(builtin.to_string(), context.get_builtin_function(builtin));
@@ -509,7 +485,11 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if !self.functions.borrow().contains_key(entry_name) {
-            Some(self.declare_entry_fn(entry_name, fn_type, ()))
+            #[cfg(feature = "master")]
+            let conv = conv_to_fn_attribute(self.sess().target.entry_abi, &self.sess().target.arch);
+            #[cfg(not(feature = "master"))]
+            let conv = None;
+            Some(self.declare_entry_fn(entry_name, fn_type, conv))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
@@ -605,7 +585,10 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
-        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
+        // Offset the index by the base so that always at least two characters
+        // are generated. This avoids cases where the suffix is interpreted as
+        // size by the assembler (for m68k: .b, .w, .l).
+        name.push_str(&(idx as u64 + ALPHANUMERIC_ONLY as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }

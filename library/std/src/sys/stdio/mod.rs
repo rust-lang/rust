@@ -19,6 +19,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "teeos")] {
         mod teeos;
         pub use teeos::*;
+    } else if #[cfg(target_os = "trusty")] {
+        mod trusty;
+        pub use trusty::*;
     } else if #[cfg(target_os = "uefi")] {
         mod uefi;
         pub use uefi::*;

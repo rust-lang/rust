@@ -6,6 +6,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, MultiSpan, SuggestionStyle,
@@ -42,10 +43,10 @@ use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
-    HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module, ModuleKind,
-    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError,
-    ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
-    errors as errs, path_names_to_string,
+    ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
+    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
+    PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
+    VisResolutionError, errors as errs, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -169,10 +170,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn report_with_use_injections(&mut self, krate: &Crate) {
         for UseError { mut err, candidates, def_id, instead, suggestion, path, is_call } in
-            self.use_injections.drain(..)
+            std::mem::take(&mut self.use_injections)
         {
             let (span, found_use) = if let Some(def_id) = def_id.as_local() {
-                UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id])
+                UsePlacementFinder::check(krate, self.def_id_to_node_id(def_id))
             } else {
                 (None, FoundUse::No)
             };
@@ -887,9 +888,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 participle,
                 name,
             }),
-            ResolutionError::ForwardDeclaredGenericParam => {
-                self.dcx().create_err(errs::ForwardDeclaredGenericParam { span })
-            }
+            ResolutionError::ForwardDeclaredGenericParam(param, reason) => match reason {
+                ForwardGenericParamBanReason::Default => {
+                    self.dcx().create_err(errs::ForwardDeclaredGenericParam { param, span })
+                }
+                ForwardGenericParamBanReason::ConstParamTy => self
+                    .dcx()
+                    .create_err(errs::ForwardDeclaredGenericInConstParamTy { param, span }),
+            },
             ResolutionError::ParamInTyOfConstParam { name } => {
                 self.dcx().create_err(errs::ParamInTyOfConstParam { span, name })
             }
@@ -908,9 +914,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
                 .dcx()
                 .create_err(errs::ParamInEnumDiscriminant { span, name, param_kind: is_type }),
-            ResolutionError::SelfInGenericParamDefault => {
-                self.dcx().create_err(errs::SelfInGenericParamDefault { span })
-            }
+            ResolutionError::ForwardDeclaredSelf(reason) => match reason {
+                ForwardGenericParamBanReason::Default => {
+                    self.dcx().create_err(errs::SelfInGenericParamDefault { span })
+                }
+                ForwardGenericParamBanReason::ConstParamTy => {
+                    self.dcx().create_err(errs::SelfInConstGenericTy { span })
+                }
+            },
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
                 let ((sub_suggestion_label, sub_suggestion), sub_unreachable_label) =
                     match suggestion {
@@ -1080,7 +1091,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     ));
                 }
                 Scope::BuiltinAttrs => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(kw::Empty));
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(sym::dummy));
                     if filter_fn(res) {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES
@@ -1314,11 +1325,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             })
         }
 
-        // If only some candidates are accessible, take just them
-        if !candidates.iter().all(|v: &ImportSuggestion| !v.accessible) {
-            candidates.retain(|x| x.accessible)
-        }
-
         candidates
     }
 
@@ -1429,7 +1435,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let import_suggestions =
             self.lookup_import_candidates(ident, Namespace::MacroNS, parent_scope, is_expected);
         let (span, found_use) = match parent_scope.module.nearest_parent_mod().as_local() {
-            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id[def_id]),
+            Some(def_id) => UsePlacementFinder::check(krate, self.def_id_to_node_id(def_id)),
             None => (None, FoundUse::No),
         };
         show_candidates(
@@ -1782,7 +1788,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 &import_suggestions,
                 Instead::Yes,
                 FoundUse::Yes,
-                DiagMode::Import { append: single_nested },
+                DiagMode::Import { append: single_nested, unresolved_import: false },
                 vec![],
                 "",
             );
@@ -2266,7 +2272,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && !first.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
-                path.insert(0, Segment::from_ident(Ident::empty()));
+                path.insert(0, Segment::from_ident(Ident::dummy()));
             }
             _ => return None,
         }
@@ -2427,7 +2433,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() else {
             return None;
         };
-        let module_name = crate_module.kind.name().unwrap();
+        let module_name = crate_module.kind.name().unwrap_or(kw::Empty);
         let import_snippet = match import.kind {
             ImportKind::Single { source, target, .. } if source != target => {
                 format!("{source} as {target}")
@@ -2544,7 +2550,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .filter_map(|item| {
                     let parent_module = self.opt_local_def_id(item.parent_module)?.to_def_id();
-                    Some(StrippedCfgItem { parent_module, name: item.name, cfg: item.cfg.clone() })
+                    Some(StrippedCfgItem {
+                        parent_module,
+                        ident: item.ident,
+                        cfg: item.cfg.clone(),
+                    })
                 })
                 .collect::<Vec<_>>();
             local_items.as_slice()
@@ -2552,12 +2562,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx.stripped_cfg_items(module.krate)
         };
 
-        for &StrippedCfgItem { parent_module, name, ref cfg } in symbols {
-            if parent_module != module || name.name != *segment {
+        for &StrippedCfgItem { parent_module, ident, ref cfg } in symbols {
+            if parent_module != module || ident.name != *segment {
                 continue;
             }
 
-            let note = errors::FoundItemConfigureOut { span: name.span };
+            let note = errors::FoundItemConfigureOut { span: ident.span };
             err.subdiagnostic(note);
 
             if let MetaItemKind::List(nested) = &cfg.kind
@@ -2739,6 +2749,8 @@ pub(crate) enum DiagMode {
     Pattern,
     /// The binding is part of a use statement
     Import {
+        /// `true` means diagnostics is for unresolved import
+        unresolved_import: bool,
         /// `true` mean add the tips afterward for case `use a::{b,c}`,
         /// rather than replacing within.
         append: bool,
@@ -2789,6 +2801,7 @@ fn show_candidates(
         return false;
     }
 
+    let mut showed = false;
     let mut accessible_path_strings: Vec<PathString<'_>> = Vec::new();
     let mut inaccessible_path_strings: Vec<PathString<'_>> = Vec::new();
 
@@ -2853,18 +2866,11 @@ fn show_candidates(
             } else {
                 // Get the unique item kinds and if there's only one, we use the right kind name
                 // instead of the more generic "items".
-                let mut kinds = accessible_path_strings
+                let kinds = accessible_path_strings
                     .iter()
                     .map(|(_, descr, _, _, _)| *descr)
-                    .collect::<FxHashSet<&str>>()
-                    .into_iter();
-                let kind = if let Some(kind) = kinds.next()
-                    && let None = kinds.next()
-                {
-                    kind
-                } else {
-                    "item"
-                };
+                    .collect::<UnordSet<&str>>();
+                let kind = if let Some(kind) = kinds.get_only() { kind } else { "item" };
                 let s = if kind.ends_with('s') { "es" } else { "s" };
 
                 ("one of these", kind, s, String::new(), "")
@@ -2954,8 +2960,11 @@ fn show_candidates(
             append_candidates(&mut msg, accessible_path_strings);
             err.help(msg);
         }
-        true
-    } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagMode::Import { .. })) {
+        showed = true;
+    }
+    if !inaccessible_path_strings.is_empty()
+        && (!matches!(mode, DiagMode::Import { unresolved_import: false, .. }))
+    {
         let prefix =
             if let DiagMode::Pattern = mode { "you might have meant to match on " } else { "" };
         if let [(name, descr, source_span, note, _)] = &inaccessible_path_strings[..] {
@@ -3018,10 +3027,9 @@ fn show_candidates(
 
             err.span_note(multi_span, msg);
         }
-        true
-    } else {
-        false
+        showed = true;
     }
+    showed
 }
 
 #[derive(Debug)]
@@ -3059,7 +3067,7 @@ impl<'tcx> visit::Visitor<'tcx> for UsePlacementFinder {
 
     fn visit_item(&mut self, item: &'tcx ast::Item) {
         if self.target_module == item.id {
-            if let ItemKind::Mod(_, ModKind::Loaded(items, _inline, mod_spans, _)) = &item.kind {
+            if let ItemKind::Mod(_, _, ModKind::Loaded(items, _inline, mod_spans, _)) = &item.kind {
                 let inject = mod_spans.inject_use_span;
                 if is_span_suitable_for_use_injection(inject) {
                     self.first_legal_span = Some(inject);

@@ -295,6 +295,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         record_variants!(
             (self, p, p.kind, Some(p.hir_id), hir, Pat, PatKind),
             [
+                Missing,
                 Wild,
                 Binding,
                 Struct,
@@ -597,6 +598,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
         record_variants!(
             (self, p, p.kind, None, ast, Pat, PatKind),
             [
+                Missing,
                 Wild,
                 Ident,
                 Struct,

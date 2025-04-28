@@ -10,6 +10,7 @@ use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
+use rustc_hir::PreciseCapturingArgKind;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
@@ -35,7 +36,7 @@ use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
+use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
@@ -55,7 +56,7 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 9;
+const METADATA_VERSION: u8 = 10;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
@@ -192,7 +193,7 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable = LazyTable<u32, Option<LazyValue<SyntaxContextData>>>;
+type SyntaxContextTable = LazyTable<u32, Option<LazyValue<SyntaxContextKey>>>;
 type ExpnDataTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnData>>>;
 type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 
@@ -220,6 +221,12 @@ pub(crate) struct CrateHeader {
     /// This is separate from [`ProcMacroData`] to avoid having to update [`METADATA_VERSION`] every
     /// time ProcMacroData changes.
     pub(crate) is_proc_macro_crate: bool,
+    /// Whether this crate metadata section is just a stub.
+    /// Stubs do not contain the full metadata (it will be typically stored
+    /// in a separate rmeta file).
+    ///
+    /// This is used inside rlibs and dylibs when using `-Zembed-metadata=no`.
+    pub(crate) is_stub: bool,
 }
 
 /// Serialized `.rmeta` data for a crate.
@@ -440,11 +447,13 @@ define_tables! {
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
-    rendered_precise_capturing_args: Table<DefIndex, LazyArray<Symbol>>,
+    rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
-    fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
+    fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,
+    adt_destructor: Table<DefIndex, LazyValue<ty::Destructor>>,
+    adt_async_destructor: Table<DefIndex, LazyValue<ty::AsyncDestructor>>,
     coroutine_by_move_body_def_id: Table<DefIndex, RawDefId>,
     eval_static_initializer: Table<DefIndex, LazyValue<mir::interpret::ConstAllocation<'static>>>,
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
@@ -575,7 +584,7 @@ impl SpanTag {
 // Tags for encoding Symbol's
 const SYMBOL_STR: u8 = 0;
 const SYMBOL_OFFSET: u8 = 1;
-const SYMBOL_PREINTERNED: u8 = 2;
+const SYMBOL_PREDEFINED: u8 = 2;
 
 pub fn provide(providers: &mut Providers) {
     encoder::provide(providers);

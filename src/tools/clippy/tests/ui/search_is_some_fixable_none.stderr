@@ -248,116 +248,122 @@ LL |         let _ = vfoo.iter().find(|v| v.by_ref(&v.bar)).is_none();
 error: called `is_none()` after searching an `Iterator` with `find`
   --> tests/ui/search_is_some_fixable_none.rs:224:17
    |
-LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|(&x, y)| x == *y).is_none();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
-
-error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:226:17
+LL |           let _ = [&(&1, 2), &(&3, 4), &(&5, 4)]
+   |  _________________^
+LL | |
+LL | |             .iter()
+LL | |             .find(|&&&(&x, ref y)| x == *y)
+LL | |             .is_none();
+   | |______________________^
    |
-LL |         let _ = [&(&1, 2), &(&3, 4), &(&5, 4)].iter().find(|&(&x, y)| x == *y).is_none();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `![&(&1, 2), &(&3, 4), &(&5, 4)].iter().any(|(&x, y)| x == *y)`
+help: consider using
+   |
+LL ~         let _ = ![&(&1, 2), &(&3, 4), &(&5, 4)]
+LL +
+LL ~             .iter().any(|&&(&x, ref y)| x == *y);
+   |
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:246:17
+  --> tests/ui/search_is_some_fixable_none.rs:247:17
    |
 LL |         let _ = v.iter().find(|s| s[0].is_empty()).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|s| s[0].is_empty())`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:248:17
+  --> tests/ui/search_is_some_fixable_none.rs:249:17
    |
 LL |         let _ = v.iter().find(|s| test_string_1(&s[0])).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|s| test_string_1(&s[0]))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:258:17
+  --> tests/ui/search_is_some_fixable_none.rs:259:17
    |
 LL |         let _ = v.iter().find(|fp| fp.field.is_power_of_two()).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|fp| fp.field.is_power_of_two())`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:260:17
+  --> tests/ui/search_is_some_fixable_none.rs:261:17
    |
 LL |         let _ = v.iter().find(|fp| test_u32_1(fp.field)).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|fp| test_u32_1(fp.field))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:262:17
+  --> tests/ui/search_is_some_fixable_none.rs:263:17
    |
 LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|fp| test_u32_2(*fp.field))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:279:17
+  --> tests/ui/search_is_some_fixable_none.rs:280:17
    |
 LL |         let _ = v.iter().find(|x| **x == 42).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|x| *x == 42)`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:281:17
+  --> tests/ui/search_is_some_fixable_none.rs:282:17
    |
 LL |         Foo.bar(v.iter().find(|x| **x == 42).is_none());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|x| *x == 42)`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:287:9
+  --> tests/ui/search_is_some_fixable_none.rs:288:9
    |
 LL |         v.iter().find(|x| **x == 42).is_none().then(computations);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!v.iter().any(|x| *x == 42))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> tests/ui/search_is_some_fixable_none.rs:293:9
+  --> tests/ui/search_is_some_fixable_none.rs:294:9
    |
 LL |         v.iter().find(|x| **x == 42).is_none().then_some(0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!v.iter().any(|x| *x == 42))`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:299:17
+  --> tests/ui/search_is_some_fixable_none.rs:300:17
    |
 LL |         let _ = s.find("world").is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!s.contains("world")`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:301:17
+  --> tests/ui/search_is_some_fixable_none.rs:302:17
    |
 LL |         Foo.bar(s.find("world").is_none());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!s.contains("world")`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:304:17
+  --> tests/ui/search_is_some_fixable_none.rs:305:17
    |
 LL |         let _ = s.find("world").is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!s.contains("world")`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:306:17
+  --> tests/ui/search_is_some_fixable_none.rs:307:17
    |
 LL |         Foo.bar(s.find("world").is_none());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!s.contains("world")`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:312:17
+  --> tests/ui/search_is_some_fixable_none.rs:313:17
    |
 LL |         let _ = s.find("world").is_none().then(computations);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!s.contains("world"))`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:315:17
+  --> tests/ui/search_is_some_fixable_none.rs:316:17
    |
 LL |         let _ = s.find("world").is_none().then(computations);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!s.contains("world"))`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:321:17
+  --> tests/ui/search_is_some_fixable_none.rs:322:17
    |
 LL |         let _ = s.find("world").is_none().then_some(0);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!s.contains("world"))`
 
 error: called `is_none()` after calling `find()` on a string
-  --> tests/ui/search_is_some_fixable_none.rs:324:17
+  --> tests/ui/search_is_some_fixable_none.rs:325:17
    |
 LL |         let _ = s.find("world").is_none().then_some(0);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!s.contains("world"))`
 
-error: aborting due to 55 previous errors
+error: aborting due to 54 previous errors
 

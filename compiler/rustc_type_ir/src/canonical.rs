@@ -4,7 +4,7 @@ use std::ops::Index;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::inherent::*;
@@ -16,7 +16,10 @@ use crate::{self as ty, Interner, TypingMode, UniverseIndex};
 #[derive_where(Eq; I: Interner, V: Eq)]
 #[derive_where(Debug; I: Interner, V: fmt::Debug)]
 #[derive_where(Copy; I: Interner, V: Copy)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub struct CanonicalQueryInput<I: Interner, V> {
     pub canonical: Canonical<I, V>,
     pub typing_mode: TypingMode<I>,
@@ -32,7 +35,10 @@ pub struct CanonicalQueryInput<I: Interner, V> {
 #[derive_where(Debug; I: Interner, V: fmt::Debug)]
 #[derive_where(Copy; I: Interner, V: Copy)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
@@ -85,7 +91,10 @@ impl<I: Interner, V: fmt::Display> fmt::Display for Canonical<I, V> {
 /// with fresh inference variables replacing the canonical values.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub struct CanonicalVarInfo<I: Interner> {
     pub kind: CanonicalVarKind<I>,
 }
@@ -139,7 +148,10 @@ impl<I: Interner> CanonicalVarInfo<I> {
 /// that analyzes type-like values.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub enum CanonicalVarKind<I: Interner> {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
@@ -213,7 +225,10 @@ impl<I: Interner> CanonicalVarKind<I> {
 /// know what set of types a given type variable can be unified with.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub enum CanonicalTyVarKind {
     /// General type variable `?T` that can be unified with arbitrary types.
     General(UniverseIndex),
@@ -235,7 +250,10 @@ pub enum CanonicalTyVarKind {
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
 pub struct CanonicalVarValues<I: Interner> {
     pub var_values: I::GenericArgs,

@@ -13,5 +13,29 @@ error: use `core::ptr::eq` when comparing raw pointers
 LL |     let _ = a as *const _ == b as *const _;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a, b)`
 
-error: aborting due to 2 previous errors
+error: use `core::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq_no_std.rs:35:13
+   |
+LL |     let _ = a.as_ptr() == b as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a.as_ptr(), b as *const _)`
+
+error: use `core::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq_no_std.rs:37:13
+   |
+LL |     let _ = a.as_ptr() == b.as_ptr();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a.as_ptr(), b.as_ptr())`
+
+error: use `core::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq_no_std.rs:48:13
+   |
+LL |     let _ = a.as_mut_ptr() == b as *mut [i32] as *mut _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a.as_mut_ptr(), b as *mut [i32] as *mut _)`
+
+error: use `core::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq_no_std.rs:50:13
+   |
+LL |     let _ = a.as_mut_ptr() == b.as_mut_ptr();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `core::ptr::eq(a.as_mut_ptr(), b.as_mut_ptr())`
+
+error: aborting due to 6 previous errors
 

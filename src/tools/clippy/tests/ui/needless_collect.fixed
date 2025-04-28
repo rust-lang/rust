@@ -98,8 +98,115 @@ fn main() {
     let mut out = vec![];
     values.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
     let _y = values.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>(); // this is fine
+
+    // Don't write a warning if we call `clone()` on the iterator
+    // https://github.com/rust-lang/rust-clippy/issues/13430
+    let my_collection: Vec<()> = vec![()].into_iter().map(|()| {}).collect();
+    let _cloned = my_collection.into_iter().clone();
+    let my_collection: Vec<()> = vec![()].into_iter().map(|()| {}).collect();
+    let my_iter = my_collection.into_iter();
+    let _cloned = my_iter.clone();
+    // Same for `as_slice()`, for same reason.
+    let my_collection: Vec<()> = vec![()].into_iter().map(|()| {}).collect();
+    let _sliced = my_collection.into_iter().as_slice();
+    let my_collection: Vec<()> = vec![()].into_iter().map(|()| {}).collect();
+    let my_iter = my_collection.into_iter();
+    let _sliced = my_iter.as_slice();
+    // Assignment outside of main scope
+    {
+        let x;
+        {
+            let xxx: Vec<()> = vec![()].into_iter().map(|()| {}).collect();
+            x = xxx.into_iter();
+            for i in x.as_slice() {}
+        }
+    }
 }
 
 fn foo(_: impl IntoIterator<Item = usize>) {}
 fn bar<I: IntoIterator<Item = usize>>(_: Vec<usize>, _: I) {}
 fn baz<I: IntoIterator<Item = usize>>(_: I, _: (), _: impl IntoIterator<Item = char>) {}
+
+mod issue9191 {
+    use std::cell::Cell;
+    use std::collections::HashSet;
+    use std::hash::Hash;
+    use std::marker::PhantomData;
+    use std::ops::Deref;
+
+    fn captures_ref_mut(xs: Vec<i32>, mut ys: HashSet<i32>) {
+        if xs.iter().map(|x| ys.remove(x)).collect::<Vec<_>>().contains(&true) {
+            todo!()
+        }
+    }
+
+    #[derive(Debug, Clone)]
+    struct MyRef<'a>(PhantomData<&'a mut Cell<HashSet<i32>>>, *mut Cell<HashSet<i32>>);
+
+    impl MyRef<'_> {
+        fn new(target: &mut Cell<HashSet<i32>>) -> Self {
+            MyRef(PhantomData, target)
+        }
+
+        fn get(&mut self) -> &mut Cell<HashSet<i32>> {
+            unsafe { &mut *self.1 }
+        }
+    }
+
+    fn captures_phantom(xs: Vec<i32>, mut ys: Cell<HashSet<i32>>) {
+        let mut ys_ref = MyRef::new(&mut ys);
+        if xs
+            .iter()
+            .map({
+                let mut ys_ref = ys_ref.clone();
+                move |x| ys_ref.get().get_mut().remove(x)
+            })
+            .collect::<Vec<_>>()
+            .contains(&true)
+        {
+            todo!()
+        }
+    }
+}
+
+pub fn issue8055(v: impl IntoIterator<Item = i32>) -> Result<impl Iterator<Item = i32>, usize> {
+    let mut zeros = 0;
+
+    let res: Vec<_> = v
+        .into_iter()
+        .filter(|i| {
+            if *i == 0 {
+                zeros += 1
+            };
+            *i != 0
+        })
+        .collect();
+
+    if zeros != 0 {
+        return Err(zeros);
+    }
+    Ok(res.into_iter())
+}
+
+mod issue8055_regression {
+    struct Foo<T> {
+        inner: T,
+        marker: core::marker::PhantomData<Self>,
+    }
+
+    impl<T: Iterator> Iterator for Foo<T> {
+        type Item = T::Item;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.inner.next()
+        }
+    }
+
+    fn foo() {
+        Foo {
+            inner: [].iter(),
+            marker: core::marker::PhantomData,
+        }
+        .collect::<Vec<&i32>>()
+        .len();
+    }
+}

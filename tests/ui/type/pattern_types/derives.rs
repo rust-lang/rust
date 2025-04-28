@@ -1,4 +1,5 @@
-//! Check that pattern types don't implement traits of their base automatically
+//! Check that pattern types don't implement traits of their base automatically.
+//! Exceptions are `Clone` and `Copy`, which have builtin impls for pattern types.
 
 #![feature(pattern_types)]
 #![feature(pattern_type_macro)]

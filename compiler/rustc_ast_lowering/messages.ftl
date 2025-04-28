@@ -141,9 +141,6 @@ ast_lowering_never_pattern_with_guard =
 
 ast_lowering_no_precise_captures_on_apit = `use<...>` precise capturing syntax not allowed in argument-position `impl Trait`
 
-ast_lowering_no_precise_captures_on_rpitit = `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
-    .note = currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
-
 ast_lowering_previously_used_here = previously used here
 
 ast_lowering_register1 = register `{$reg1_name}`
@@ -185,8 +182,6 @@ ast_lowering_underscore_expr_lhs_assign =
 ast_lowering_unstable_inline_assembly = inline assembly is not stable yet on this architecture
 ast_lowering_unstable_inline_assembly_label_operand_with_outputs =
     using both label and output operands for inline assembly is unstable
-ast_lowering_unstable_inline_assembly_label_operands =
-    label operands for inline assembly are unstable
 ast_lowering_unstable_may_unwind = the `may_unwind` option is unstable
 
 ast_lowering_use_angle_brackets = use angle brackets instead

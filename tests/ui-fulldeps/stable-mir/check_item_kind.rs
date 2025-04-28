@@ -16,7 +16,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::*;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -48,7 +47,7 @@ fn test_item_kind() -> ControlFlow<()> {
 fn main() {
     let path = "item_kind_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-type=lib".to_string(),

@@ -17,7 +17,6 @@ extern crate stable_mir;
 
 use mir::mono::Instance;
 use ty::{Ty, TyKind, RigidTy};
-use rustc_smir::rustc_internal;
 use stable_mir::*;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -62,7 +61,7 @@ fn check_ty(ty: Ty) {
 fn main() {
     let path = "normalization_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "-Cpanic=abort".to_string(),
         "--crate-type=lib".to_string(),

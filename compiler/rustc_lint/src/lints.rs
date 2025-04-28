@@ -6,7 +6,7 @@ use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
+    EmissionGuarantee, LintDiagnostic, MultiSpan, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
@@ -449,11 +449,7 @@ pub(crate) struct BuiltinUnpermittedTypeInitSub {
 }
 
 impl Subdiagnostic for BuiltinUnpermittedTypeInitSub {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut err = self.err;
         loop {
             if let Some(span) = err.span {
@@ -504,16 +500,12 @@ pub(crate) struct BuiltinClashingExternSub<'a> {
 }
 
 impl Subdiagnostic for BuiltinClashingExternSub<'_> {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut expected_str = DiagStyledString::new();
         expected_str.push(self.expected.fn_sig(self.tcx).to_string(), false);
         let mut found_str = DiagStyledString::new();
         found_str.push(self.found.fn_sig(self.tcx).to_string(), true);
-        diag.note_expected_found(&"", expected_str, &"", found_str);
+        diag.note_expected_found("", expected_str, "", found_str);
     }
 }
 
@@ -591,22 +583,38 @@ pub(crate) struct ExpectationNote {
 
 // ptr_nulls.rs
 #[derive(LintDiagnostic)]
-pub(crate) enum PtrNullChecksDiag<'a> {
-    #[diag(lint_ptr_null_checks_fn_ptr)]
-    #[help(lint_help)]
+pub(crate) enum UselessPtrNullChecksDiag<'a> {
+    #[diag(lint_useless_ptr_null_checks_fn_ptr)]
+    #[help]
     FnPtr {
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
-    #[diag(lint_ptr_null_checks_ref)]
+    #[diag(lint_useless_ptr_null_checks_ref)]
     Ref {
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
-    #[diag(lint_ptr_null_checks_fn_ret)]
+    #[diag(lint_useless_ptr_null_checks_fn_ret)]
     FnRet { fn_name: Ident },
+}
+
+#[derive(LintDiagnostic)]
+pub(crate) enum InvalidNullArgumentsDiag {
+    #[diag(lint_invalid_null_arguments)]
+    #[help(lint_doc)]
+    NullPtrInline {
+        #[label(lint_origin)]
+        null_span: Span,
+    },
+    #[diag(lint_invalid_null_arguments)]
+    #[help(lint_doc)]
+    NullPtrThroughBinding {
+        #[note(lint_origin)]
+        null_span: Span,
+    },
 }
 
 // for_loops_over_fallibles.rs
@@ -808,11 +816,7 @@ pub(crate) struct HiddenUnicodeCodepointsDiagLabels {
 }
 
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagLabels {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         for (c, span) in self.spans {
             diag.span_label(span, format!("{c:?}"));
         }
@@ -826,11 +830,7 @@ pub(crate) enum HiddenUnicodeCodepointsDiagSub {
 
 // Used because of multiple multipart_suggestion and note
 impl Subdiagnostic for HiddenUnicodeCodepointsDiagSub {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             HiddenUnicodeCodepointsDiagSub::Escape { spans } => {
                 diag.multipart_suggestion_with_style(
@@ -944,6 +944,11 @@ pub(crate) struct TyQualified {
 pub(crate) struct TypeIrInherentUsage;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_type_ir_trait_usage)]
+#[note]
+pub(crate) struct TypeIrTraitUsage;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_non_glob_import_type_ir_inherent)]
 pub(crate) struct NonGlobImportTypeIrInherent {
     #[suggestion(code = "{snippet}", applicability = "maybe-incorrect")]
@@ -994,11 +999,7 @@ pub(crate) struct NonBindingLetSub {
 }
 
 impl Subdiagnostic for NonBindingLetSub {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let can_suggest_binding = self.drop_fn_start_end.is_some() || !self.is_assign_desugar;
 
         if can_suggest_binding {
@@ -1282,11 +1283,7 @@ pub(crate) enum NonSnakeCaseDiagSub {
 }
 
 impl Subdiagnostic for NonSnakeCaseDiagSub {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             NonSnakeCaseDiagSub::Label { span } => {
                 diag.span_label(span, fluent::lint_label);
@@ -1608,11 +1605,7 @@ pub(crate) enum OverflowingBinHexSign {
 }
 
 impl Subdiagnostic for OverflowingBinHexSign {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             OverflowingBinHexSign::Positive => {
                 diag.note(fluent::lint_positive_note);

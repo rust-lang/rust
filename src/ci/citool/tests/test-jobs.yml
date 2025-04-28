@@ -27,7 +27,7 @@ runners:
     <<: *base-job
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
-    SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
+    SCRIPT: ./x.py check compiletest --set build.compiletest-use-stage0-libtest=true && ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
     # Ensure that host tooling is tested on our minimum supported macOS version.
@@ -53,13 +53,6 @@ envs:
 
   try:
     <<: *production
-    # The following env var activates faster `try` builds in `opt-dist` by, e.g.
-    # - building only the more commonly useful components (we rarely need e.g. rust-docs in try
-    #   builds)
-    # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
-    #
-    # If you *want* these to happen however, temporarily comment it before triggering a try build.
-    DIST_TRY_BUILD: 1
 
   auto:
     <<: *production
@@ -75,6 +68,7 @@ pr:
     <<: *job-linux-4c
   - name: mingw-check-tidy
     continue_on_error: true
+    doc_url: https://foo.bar
     <<: *job-linux-4c
 
 # Jobs that run when you perform a try build (@bors try)

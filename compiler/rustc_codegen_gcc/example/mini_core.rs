@@ -51,6 +51,10 @@ impl<T: ?Sized> LegacyReceiver for &T {}
 impl<T: ?Sized> LegacyReceiver for &mut T {}
 impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
 
+#[lang = "receiver"]
+trait Receiver {
+}
+
 #[lang = "copy"]
 pub trait Copy {}
 
@@ -134,7 +138,23 @@ impl Mul for u8 {
     }
 }
 
+impl Mul for i32 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
 impl Mul for usize {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
+impl Mul for isize {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -158,6 +178,14 @@ impl Add for u8 {
 }
 
 impl Add for i8 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
+impl Add for i32 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -196,6 +224,14 @@ impl Sub for usize {
     }
 }
 
+impl Sub for isize {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
 impl Sub for u8 {
     type Output = Self;
 
@@ -213,6 +249,14 @@ impl Sub for i8 {
 }
 
 impl Sub for i16 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for i32 {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -595,25 +639,25 @@ pub mod intrinsics {
     #[rustc_intrinsic]
     pub fn size_of<T>() -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn size_of_val<T: ?::Sized>(_val: *const T) -> usize;
+    pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
     pub fn min_align_of<T>() -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn min_align_of_val<T: ?::Sized>(_val: *const T) -> usize;
+    pub unsafe fn min_align_of_val<T: ?::Sized>(val: *const T) -> usize;
     #[rustc_intrinsic]
-    pub unsafe fn copy<T>(_src: *const T, _dst: *mut T, _count: usize);
+    pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
     #[rustc_intrinsic]
-    pub unsafe fn transmute<T, U>(_e: T) -> U;
+    pub unsafe fn transmute<T, U>(e: T) -> U;
     #[rustc_intrinsic]
-    pub unsafe fn ctlz_nonzero<T>(_x: T) -> u32;
+    pub unsafe fn ctlz_nonzero<T>(x: T) -> u32;
     #[rustc_intrinsic]
     pub fn needs_drop<T: ?::Sized>() -> bool;
     #[rustc_intrinsic]
-    pub fn bitreverse<T>(_x: T) -> T;
+    pub fn bitreverse<T>(x: T) -> T;
     #[rustc_intrinsic]
-    pub fn bswap<T>(_x: T) -> T;
+    pub fn bswap<T>(x: T) -> T;
     #[rustc_intrinsic]
-    pub unsafe fn write_bytes<T>(_dst: *mut T, _val: u8, _count: usize);
+    pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     #[rustc_intrinsic]
     pub unsafe fn unreachable() -> !;
 }
@@ -628,6 +672,10 @@ pub mod libc {
         pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);
         pub fn memmove(dst: *mut u8, src: *const u8, size: usize);
         pub fn strncpy(dst: *mut u8, src: *const u8, size: usize);
+        pub fn fflush(stream: *mut i32) -> i32;
+        pub fn exit(status: i32);
+
+        pub static stdout: *mut i32;
     }
 }
 

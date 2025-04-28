@@ -3,16 +3,12 @@ error[E0080]: evaluation of constant value failed
    |
 LL | const Z: () = panic!("cheese");
    |               ^^^^^^^^^^^^^^^^ evaluation panicked: cheese
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_libcore_bin.rs:11:15
    |
 LL | const Y: () = unreachable!();
    |               ^^^^^^^^^^^^^^ evaluation panicked: internal error: entered unreachable code
-   |
-   = note: this error originates in the macro `$crate::panic::unreachable_2015` which comes from the expansion of the macro `unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic_libcore_bin.rs:14:15

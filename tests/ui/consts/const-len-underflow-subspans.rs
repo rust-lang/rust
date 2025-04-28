@@ -7,5 +7,5 @@ const TWO: usize = 2;
 fn main() {
     let a: [i8; ONE - TWO] = unimplemented!();
     //~^ ERROR evaluation of constant value failed
-    //~| attempt to compute `1_usize - 2_usize`, which would overflow
+    //~| NOTE attempt to compute `1_usize - 2_usize`, which would overflow
 }

@@ -7,9 +7,8 @@ LL |         let _ = expr.span.ctxt().outer_expn().expn_data();
 note: the lint level is defined here
   --> tests/ui-internal/outer_expn_data.rs:1:9
    |
-LL | #![deny(clippy::internal)]
-   |         ^^^^^^^^^^^^^^^^
-   = note: `#[deny(clippy::outer_expn_expn_data)]` implied by `#[deny(clippy::internal)]`
+LL | #![deny(clippy::outer_expn_expn_data)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

@@ -7,6 +7,7 @@ use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
+use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::builder::SBuilder;
 use crate::declare::declare_simple_fn;
@@ -53,8 +54,8 @@ pub(crate) unsafe fn codegen(
                 }
             };
 
-            let from_name = global_fn_name(method.name);
-            let to_name = default_fn_name(method.name);
+            let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
+            let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
             create_wrapper_function(tcx, &cx, &from_name, &to_name, &args, output, false);
         }
@@ -64,8 +65,8 @@ pub(crate) unsafe fn codegen(
     create_wrapper_function(
         tcx,
         &cx,
-        "__rust_alloc_error_handler",
-        alloc_error_handler_name(alloc_error_handler_kind),
+        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
+        &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
         &[usize, usize], // size, align
         None,
         true,
@@ -73,15 +74,15 @@ pub(crate) unsafe fn codegen(
 
     unsafe {
         // __rust_alloc_error_handler_should_panic
-        let name = OomStrategy::SYMBOL;
-        let ll_g = cx.declare_global(name, i8);
+        let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
+        let ll_g = cx.declare_global(&name, i8);
         llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let val = tcx.sess.opts.unstable_opts.oom.should_panic();
         let llval = llvm::LLVMConstInt(i8, val as u64, False);
         llvm::set_initializer(ll_g, llval);
 
-        let name = NO_ALLOC_SHIM_IS_UNSTABLE;
-        let ll_g = cx.declare_global(name, i8);
+        let name = mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE);
+        let ll_g = cx.declare_global(&name, i8);
         llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let llval = llvm::LLVMConstInt(i8, 0, False);
         llvm::set_initializer(ll_g, llval);

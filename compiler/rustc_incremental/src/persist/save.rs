@@ -173,7 +173,7 @@ pub(crate) fn build_dep_graph(
     sess.opts.dep_tracking_hash(false).encode(&mut encoder);
 
     Some(DepGraph::new(
-        &sess.prof,
+        sess,
         prev_graph,
         prev_work_products,
         encoder,

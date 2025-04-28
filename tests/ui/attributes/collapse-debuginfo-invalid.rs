@@ -24,15 +24,15 @@ const BAR: u32 = 3;
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 fn foo() {
     let _ = #[collapse_debuginfo(yes)] || { };
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     #[collapse_debuginfo(yes)]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     let _ = 3;
     let _ = #[collapse_debuginfo(yes)] 3;
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     match (3, 4) {
         #[collapse_debuginfo(yes)]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+        //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
         _ => (),
     }
 }
@@ -50,7 +50,7 @@ type Map = HashMap<u32, u32>;
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 enum Foo {
     #[collapse_debuginfo(yes)]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     Variant,
 }
 
@@ -58,7 +58,7 @@ enum Foo {
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 struct Bar {
     #[collapse_debuginfo(yes)]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     field: u32,
 }
 
@@ -73,7 +73,7 @@ union Qux {
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 trait Foobar {
     #[collapse_debuginfo(yes)]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     type Bar;
 }
 
@@ -85,6 +85,7 @@ impl Foobar for Bar {
     type Bar = u32;
 }
 
+#[define_opaque(AFoobar)]
 fn constraining() -> AFoobar {
     Bar { field: 3 }
 }
@@ -93,11 +94,11 @@ fn constraining() -> AFoobar {
 //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
 impl Bar {
     #[collapse_debuginfo(yes)]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     const FOO: u32 = 3;
 
     #[collapse_debuginfo(yes)]
-//~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
+    //~^ ERROR `collapse_debuginfo` attribute should be applied to macro definitions
     fn bar(&self) {}
 }
 

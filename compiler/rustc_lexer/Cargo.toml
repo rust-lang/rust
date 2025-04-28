@@ -24,6 +24,3 @@ features = ["emoji"]
 
 [dev-dependencies]
 expect-test = "1.4.0"
-
-[lints]
-workspace = true

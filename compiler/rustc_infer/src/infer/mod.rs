@@ -27,15 +27,13 @@ use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
+use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{
-    BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions,
-};
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
-    self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
-    GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt, TyVid,
-    TypeVisitable, TypingEnv, TypingMode,
+    self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
+    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Term, TermKind,
+    Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
+    TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
@@ -271,7 +269,7 @@ pub struct InferCtxt<'tcx> {
     /// The set of predicates on which errors have been reported, to
     /// avoid reporting the same error twice.
     pub reported_trait_errors:
-        RefCell<FxIndexMap<Span, (Vec<ty::Predicate<'tcx>>, ErrorGuaranteed)>>,
+        RefCell<FxIndexMap<Span, (Vec<Goal<'tcx, ty::Predicate<'tcx>>>, ErrorGuaranteed)>>,
 
     pub reported_signature_mismatch: RefCell<FxHashSet<(Span, Option<Span>)>>,
 
@@ -969,7 +967,10 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
         match self.typing_mode() {
-            TypingMode::Analysis { defining_opaque_types } => {
+            TypingMode::Analysis {
+                defining_opaque_types_and_generators: defining_opaque_types,
+            }
+            | TypingMode::Borrowck { defining_opaque_types } => {
                 id.into().as_local().is_some_and(|def_id| defining_opaque_types.contains(&def_id))
             }
             // FIXME(#132279): This function is quite weird in post-analysis
@@ -1263,7 +1264,8 @@ impl<'tcx> InferCtxt<'tcx> {
             // to handle them without proper canonicalization. This means we may cause cycle
             // errors and fail to reveal opaques while inside of bodies. We should rename this
             // function and require explicit comments on all use-sites in the future.
-            ty::TypingMode::Analysis { defining_opaque_types: _ } => {
+            ty::TypingMode::Analysis { defining_opaque_types_and_generators: _ }
+            | ty::TypingMode::Borrowck { defining_opaque_types: _ } => {
                 TypingMode::non_body_analysis()
             }
             mode @ (ty::TypingMode::Coherence
@@ -1396,6 +1398,16 @@ impl<'tcx> TyOrConstInferVar {
             GenericArgKind::Type(ty) => Self::maybe_from_ty(ty),
             GenericArgKind::Const(ct) => Self::maybe_from_const(ct),
             GenericArgKind::Lifetime(_) => None,
+        }
+    }
+
+    /// Tries to extract an inference variable from a type or a constant, returns `None`
+    /// for types other than `ty::Infer(_)` (or `InferTy::Fresh*`) and
+    /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
+    pub fn maybe_from_term(term: Term<'tcx>) -> Option<Self> {
+        match term.unpack() {
+            TermKind::Ty(ty) => Self::maybe_from_ty(ty),
+            TermKind::Const(ct) => Self::maybe_from_const(ct),
         }
     }
 

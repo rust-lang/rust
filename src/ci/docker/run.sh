@@ -288,7 +288,7 @@ args="$args --privileged"
 # `LOCAL_USER_ID` (recognized in `src/ci/run.sh`) to ensure that files are all
 # read/written as the same user as the bare-metal user.
 if [ -f /.dockerenv ]; then
-  docker create -v /checkout --name checkout alpine:3.4 /bin/true
+  docker create -v /checkout --name checkout ghcr.io/rust-lang/alpine:3.4 /bin/true
   docker cp . checkout:/checkout
   args="$args --volumes-from checkout"
 else
@@ -355,12 +355,15 @@ docker \
   --env GITHUB_ACTIONS \
   --env GITHUB_REF \
   --env GITHUB_STEP_SUMMARY="/checkout/obj/${SUMMARY_FILE}" \
+  --env GITHUB_WORKFLOW_RUN_ID \
+  --env GITHUB_REPOSITORY \
   --env RUST_BACKTRACE \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \
   --env TOOLSTATE_PUBLISH \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
+  --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
   --env DIST_TRY_BUILD \
   --env PR_CI_JOB \

@@ -24,8 +24,6 @@ type Literal = tt::Literal;
 type Span = tt::TokenId;
 type TokenStream = crate::server_impl::TokenStream<Span>;
 
-#[derive(Clone)]
-pub struct SourceFile;
 pub struct FreeFunctions;
 
 pub struct TokenIdServer {
@@ -37,7 +35,6 @@ pub struct TokenIdServer {
 impl server::Types for TokenIdServer {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type SourceFile = SourceFile;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -223,24 +220,15 @@ impl server::TokenStream for TokenIdServer {
     }
 }
 
-impl server::SourceFile for TokenIdServer {
-    fn eq(&mut self, _file1: &Self::SourceFile, _file2: &Self::SourceFile) -> bool {
-        true
-    }
-    fn path(&mut self, _file: &Self::SourceFile) -> String {
-        String::new()
-    }
-    fn is_real(&mut self, _file: &Self::SourceFile) -> bool {
-        true
-    }
-}
-
 impl server::Span for TokenIdServer {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?}", span.0)
     }
-    fn source_file(&mut self, _span: Self::Span) -> Self::SourceFile {
-        SourceFile {}
+    fn file(&mut self, _span: Self::Span) -> String {
+        String::new()
+    }
+    fn local_file(&mut self, _span: Self::Span) -> Option<String> {
+        None
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
         0

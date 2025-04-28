@@ -26,7 +26,8 @@
 ///
 /// let _val = Fail::<i32>::C;
 /// ```
-#[no_mangle]
+// This is imported in `main.rs`.
+#[unsafe(no_mangle)]
 pub fn make_true() -> bool {
     proc_macro_crate::use_the_dependency!();
     issue_1567::use_the_dependency();

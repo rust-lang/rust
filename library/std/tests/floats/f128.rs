@@ -112,6 +112,8 @@ fn test_nan() {
     assert!(!nan.is_sign_negative());
     assert!(!nan.is_normal());
     assert_eq!(Fp::Nan, nan.classify());
+    // Ensure the quiet bit is set.
+    assert!(nan.to_bits() & (1 << (f128::MANTISSA_DIGITS - 2)) != 0);
 }
 
 #[test]
@@ -982,4 +984,54 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f128::MAX));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f128::INFINITY));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
+}
+
+#[test]
+fn test_algebraic() {
+    let a: f128 = 123.0;
+    let b: f128 = 456.0;
+
+    // Check that individual operations match their primitive counterparts.
+    //
+    // This is a check of current implementations and does NOT imply any form of
+    // guarantee about future behavior. The compiler reserves the right to make
+    // these operations inexact matches in the future.
+    let eps = if cfg!(miri) { 1e-6 } else { 0.0 };
+
+    assert_approx_eq!(a.algebraic_add(b), a + b, eps);
+    assert_approx_eq!(a.algebraic_sub(b), a - b, eps);
+    assert_approx_eq!(a.algebraic_mul(b), a * b, eps);
+    assert_approx_eq!(a.algebraic_div(b), a / b, eps);
+    assert_approx_eq!(a.algebraic_rem(b), a % b, eps);
+}
+
+#[test]
+fn test_from() {
+    assert_eq!(f128::from(false), 0.0);
+    assert_eq!(f128::from(true), 1.0);
+    assert_eq!(f128::from(u8::MIN), 0.0);
+    assert_eq!(f128::from(42_u8), 42.0);
+    assert_eq!(f128::from(u8::MAX), 255.0);
+    assert_eq!(f128::from(i8::MIN), -128.0);
+    assert_eq!(f128::from(42_i8), 42.0);
+    assert_eq!(f128::from(i8::MAX), 127.0);
+    assert_eq!(f128::from(u16::MIN), 0.0);
+    assert_eq!(f128::from(42_u16), 42.0);
+    assert_eq!(f128::from(u16::MAX), 65535.0);
+    assert_eq!(f128::from(i16::MIN), -32768.0);
+    assert_eq!(f128::from(42_i16), 42.0);
+    assert_eq!(f128::from(i16::MAX), 32767.0);
+    assert_eq!(f128::from(u32::MIN), 0.0);
+    assert_eq!(f128::from(42_u32), 42.0);
+    assert_eq!(f128::from(u32::MAX), 4294967295.0);
+    assert_eq!(f128::from(i32::MIN), -2147483648.0);
+    assert_eq!(f128::from(42_i32), 42.0);
+    assert_eq!(f128::from(i32::MAX), 2147483647.0);
+    // FIXME(f16_f128): Uncomment these tests once the From<{u64,i64}> impls are added.
+    // assert_eq!(f128::from(u64::MIN), 0.0);
+    // assert_eq!(f128::from(42_u64), 42.0);
+    // assert_eq!(f128::from(u64::MAX), 18446744073709551615.0);
+    // assert_eq!(f128::from(i64::MIN), -9223372036854775808.0);
+    // assert_eq!(f128::from(42_i64), 42.0);
+    // assert_eq!(f128::from(i64::MAX), 9223372036854775807.0);
 }

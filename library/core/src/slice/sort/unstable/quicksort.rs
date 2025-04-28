@@ -9,7 +9,7 @@ use crate::slice::sort::shared::pivot::choose_pivot;
 use crate::slice::sort::shared::smallsort::UnstableSmallSortTypeImpl;
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::unstable::heapsort;
-use crate::{intrinsics, ptr};
+use crate::{cfg_match, intrinsics, ptr};
 
 /// Sorts `v` recursively.
 ///
@@ -142,10 +142,11 @@ const fn inst_partition<T, F: FnMut(&T, &T) -> bool>() -> fn(&mut [T], &T, &mut 
     if size_of::<T>() <= MAX_BRANCHLESS_PARTITION_SIZE {
         // Specialize for types that are relatively cheap to copy, where branchless optimizations
         // have large leverage e.g. `u64` and `String`.
-        cfg_if! {
-            if #[cfg(feature = "optimize_for_size")] {
+        cfg_match! {
+            feature = "optimize_for_size" => {
                 partition_lomuto_branchless_simple::<T, F>
-            } else {
+            }
+            _ => {
                 partition_lomuto_branchless_cyclic::<T, F>
             }
         }

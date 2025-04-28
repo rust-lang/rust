@@ -70,5 +70,25 @@ error: type `OtherType` from private dependency 'priv_dep' in public interface
 LL | pub type Alias = OtherType;
    | ^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:80:1
+   |
+LL | impl OtherTrait for PublicWithPrivateImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:85:1
+   |
+LL | impl PubTraitOnPrivate for OtherType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:85:1
+   |
+LL | impl PubTraitOnPrivate for OtherType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 14 previous errors
 

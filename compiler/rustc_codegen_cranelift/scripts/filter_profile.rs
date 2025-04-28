@@ -4,7 +4,7 @@
 pushd $(dirname "$0")/../
 RUSTC="$(pwd)/dist/rustc-clif"
 popd
-PROFILE=$1 OUTPUT=$2 exec $RUSTC -Zunstable-options -Cllvm-args=mode=jit -Cprefer-dynamic $0
+PROFILE=$1 OUTPUT=$2 exec $RUSTC -Zunstable-options -Cllvm-args=jit-mode -Cprefer-dynamic $0
 #*/
 
 //! This program filters away uninteresting samples and trims uninteresting frames for stackcollapse

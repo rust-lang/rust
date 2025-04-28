@@ -69,30 +69,30 @@ fn main() {
 
     let _ = STRUCT4;
     let _: Struct4<isize> = Struct4 { field: 1 };
-    //~^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
-    //~^^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
-    //~^^^ use of deprecated field `unstable_generic_param::Struct4::field`: test [deprecated]
+    //~^ WARN use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^ WARN use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^^ WARN use of deprecated field `unstable_generic_param::Struct4::field`: test [deprecated]
     let _ = STRUCT4;
-    let _: Struct4 = STRUCT4; //~ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
-    let _: Struct4<usize> = STRUCT4; //~ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    let _: Struct4 = STRUCT4; //~ WARN use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    let _: Struct4<usize> = STRUCT4; //~ WARN use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
     let _: Struct4<isize> = Struct4 { field: 0 };
-    //~^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
-    //~^^ use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
-    //~^^^ use of deprecated field `unstable_generic_param::Struct4::field`: test [deprecated]
+    //~^ WARN use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^ WARN use of deprecated struct `unstable_generic_param::Struct4`: test [deprecated]
+    //~^^^ WARN use of deprecated field `unstable_generic_param::Struct4::field`: test [deprecated]
 
     let _ = STRUCT5;
     let _: Struct5<isize> = Struct5 { field: 1 }; //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
-    //~^^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
-    //~^^^ use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
+    //~^ WARN use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^ WARN use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^^ WARN use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
     let _ = STRUCT5;
-    let _: Struct5 = STRUCT5; //~ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    let _: Struct5 = STRUCT5; //~ WARN use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     let _: Struct5<usize> = STRUCT5; //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^ WARN use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
     let _: Struct5<isize> = Struct5 { field: 0 }; //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
-    //~^^ use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
-    //~^^^ use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
+    //~^ WARN use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^ WARN use of deprecated struct `unstable_generic_param::Struct5`: test [deprecated]
+    //~^^^ WARN use of deprecated field `unstable_generic_param::Struct5::field`: test [deprecated]
 
     let _: Struct6<isize> = Struct6 { field: 1 }; // ok
     let _: Struct6<isize> = Struct6 { field: 0 }; // ok
@@ -145,26 +145,26 @@ fn main() {
 
     let _ = ALIAS4;
     let _: Alias4<isize> = Alias4::Some(1);
-    //~^ use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
-    //~^^ use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
+    //~^ WARN use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
+    //~^^ WARN use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
     let _ = ALIAS4;
-    let _: Alias4 = ALIAS4; //~ use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
-    let _: Alias4<usize> = ALIAS4; //~ use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
+    let _: Alias4 = ALIAS4; //~ WARN use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
+    let _: Alias4<usize> = ALIAS4; //~ WARN use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
     let _: Alias4<isize> = Alias4::Some(0);
-    //~^ use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
-    //~^^ use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
+    //~^ WARN use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
+    //~^^ WARN use of deprecated type alias `unstable_generic_param::Alias4`: test [deprecated]
 
     let _ = ALIAS5;
     let _: Alias5<isize> = Alias5::Some(1); //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
-    //~^^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
+    //~^ WARN use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
+    //~^^ WARN use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
     let _ = ALIAS5;
-    let _: Alias5 = ALIAS5; //~ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
+    let _: Alias5 = ALIAS5; //~ WARN use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
     let _: Alias5<usize> = ALIAS5; //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
+    //~^ WARN use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
     let _: Alias5<isize> = Alias5::Some(0); //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
-    //~^^ use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
+    //~^ WARN use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
+    //~^^ WARN use of deprecated type alias `unstable_generic_param::Alias5`: test [deprecated]
 
     let _: Alias6<isize> = Alias6::Some(1); // ok
     let _: Alias6<isize> = Alias6::Some(0); // ok
@@ -217,26 +217,26 @@ fn main() {
 
     let _ = ENUM4;
     let _: Enum4<isize> = Enum4::Some(1);
-    //~^ use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test [deprecated]
-    //~^^ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
+    //~^ WARN use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test [deprecated]
+    //~^^ WARN use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
     let _ = ENUM4;
-    let _: Enum4 = ENUM4; //~ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
-    let _: Enum4<usize> = ENUM4; //~ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
+    let _: Enum4 = ENUM4; //~ WARN use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
+    let _: Enum4<usize> = ENUM4; //~ WARN use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
     let _: Enum4<isize> = Enum4::Some(0);
-    //~^ use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test [deprecated]
-    //~^^ use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
+    //~^ WARN use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test [deprecated]
+    //~^^ WARN use of deprecated enum `unstable_generic_param::Enum4`: test [deprecated]
 
     let _ = ENUM5;
     let _: Enum5<isize> = Enum5::Some(1); //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
-    //~^^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
+    //~^ WARN use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
+    //~^^ WARN use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
     let _ = ENUM5;
-    let _: Enum5 = ENUM5; //~ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
+    let _: Enum5 = ENUM5; //~ WARN use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
     let _: Enum5<usize> = ENUM5; //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
+    //~^ WARN use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
     let _: Enum5<isize> = Enum5::Some(0); //~ ERROR use of unstable library feature `unstable_default`
-    //~^ use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
-    //~^^ use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
+    //~^ WARN use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test [deprecated]
+    //~^^ WARN use of deprecated enum `unstable_generic_param::Enum5`: test [deprecated]
 
     let _: Enum6<isize> = Enum6::Some(1); // ok
     let _: Enum6<isize> = Enum6::Some(0); // ok

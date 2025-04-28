@@ -7,3 +7,5 @@
 extern "C" {}
 
 fn main() {}
+
+//[in_flag]~? ERROR linking modifier `as-needed` is unstable

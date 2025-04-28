@@ -1,8 +1,13 @@
-error: lifetime in trait object type must be followed by `+`
+error: lifetimes must be followed by `+` to form a trait object type
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:29
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                             ^^
+   |
+help: consider adding a trait bound after the potential lifetime bound
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y('a + /* Trait */) = &'a ()>>) {}
+   |                                +++++++++++++
 
 error: parenthesized generic arguments cannot be used in associated type constraints
   --> $DIR/gat-trait-path-parenthesised-args.rs:5:27

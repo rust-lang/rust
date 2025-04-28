@@ -3,7 +3,7 @@ use std::fmt::Display;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::{def_path_res_with_base, find_crates, path_def_id, paths};
+use clippy_utils::{def_path_res_with_base, find_crates, path_def_id, paths, sym};
 use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{BorrowKind, Expr, ExprKind, OwnerId};
@@ -76,7 +76,7 @@ declare_clippy_lint! {
     /// This is documented as an antipattern [on the regex documentation](https://docs.rs/regex/latest/regex/#avoid-re-compiling-regexes-especially-in-a-loop)
     ///
     /// ### Example
-    /// ```no_run
+    /// ```rust,ignore
     /// # let haystacks = [""];
     /// # const MY_REGEX: &str = "a.b";
     /// for haystack in haystacks {
@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// can be replaced with
-    /// ```no_run
+    /// ```rust,ignore
     /// # let haystacks = [""];
     /// # const MY_REGEX: &str = "a.b";
     /// let regex = regex::Regex::new(MY_REGEX).unwrap();
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for Regex {
         //
         // `def_path_res_with_base` will resolve through re-exports but is relatively heavy, so we only
         // perform the operation once and store the results
-        let regex_crates = find_crates(cx.tcx, sym!(regex));
+        let regex_crates = find_crates(cx.tcx, sym::regex);
         let mut resolve = |path: &[&str], kind: RegexKind| {
             for res in def_path_res_with_base(cx.tcx, regex_crates.clone(), &path[1..]) {
                 if let Some(id) = res.opt_def_id() {

@@ -206,7 +206,7 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
         }) = item.kind
         {
             let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
-            let is_automatically_derived = cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
+            let is_automatically_derived = cx.tcx.is_automatically_derived(item.owner_id.to_def_id());
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -235,7 +235,7 @@ fn check_hash_peq<'tcx>(
     {
         // Look for the PartialEq implementations for `ty`
         cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
-            let peq_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
+            let peq_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
 
             if !hash_is_automatically_derived || peq_is_automatically_derived {
                 return;
@@ -254,7 +254,7 @@ fn check_hash_peq<'tcx>(
                     |diag| {
                         if let Some(local_def_id) = impl_id.as_local() {
                             let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
-                            diag.span_note(cx.tcx.hir().span(hir_id), "`PartialEq` implemented here");
+                            diag.span_note(cx.tcx.hir_span(hir_id), "`PartialEq` implemented here");
                         }
                     },
                 );
@@ -278,7 +278,7 @@ fn check_ord_partial_ord<'tcx>(
     {
         // Look for the PartialOrd implementations for `ty`
         cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
-            let partial_ord_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
+            let partial_ord_is_automatically_derived = cx.tcx.is_automatically_derived(impl_id);
 
             if partial_ord_is_automatically_derived == ord_is_automatically_derived {
                 return;
@@ -298,7 +298,7 @@ fn check_ord_partial_ord<'tcx>(
                 span_lint_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, span, mess, |diag| {
                     if let Some(local_def_id) = impl_id.as_local() {
                         let hir_id = cx.tcx.local_def_id_to_hir_id(local_def_id);
-                        diag.span_note(cx.tcx.hir().span(hir_id), "`PartialOrd` implemented here");
+                        diag.span_note(cx.tcx.hir_span(hir_id), "`PartialOrd` implemented here");
                     }
                 });
             }
@@ -324,11 +324,9 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
     // there's a Copy impl for any instance of the adt.
     if !is_copy(cx, ty) {
         if ty_subs.non_erasable_generics().next().is_some() {
-            let has_copy_impl = cx.tcx.all_local_trait_impls(()).get(&copy_id).is_some_and(|impls| {
-                impls.iter().any(|&id| {
-                    matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _)
+            let has_copy_impl = cx.tcx.local_trait_impls(copy_id).iter().any(|&id| {
+                matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _)
                                         if ty_adt.did() == adt.did())
-                })
             });
             if !has_copy_impl {
                 return;
@@ -349,6 +347,10 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
             .iter()
             .any(|arg| matches!(arg.unpack(), GenericArgKind::Type(_) | GenericArgKind::Const(_)))
     {
+        return;
+    }
+    // The presence of `unsafe` fields prevents deriving `Clone` automatically
+    if ty_adt.all_fields().any(|f| f.safety.is_unsafe()) {
         return;
     }
 
@@ -384,7 +386,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
             .tcx
             .inherent_impls(def.did())
             .iter()
-            .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
+            .map(|imp_did| cx.tcx.hir_expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
     {
         span_lint_hir_and_then(
@@ -428,10 +430,10 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> Self::Result {
-        if let ExprKind::Block(block, _) = expr.kind {
-            if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
-                return ControlFlow::Break(());
-            }
+        if let ExprKind::Block(block, _) = expr.kind
+            && block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+        {
+            return ControlFlow::Break(());
         }
 
         walk_expr(self, expr)
@@ -481,7 +483,7 @@ fn ty_implements_eq_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, eq_trait_id: De
     tcx.non_blanket_impls_for_ty(eq_trait_id, ty).next().is_some()
 }
 
-/// Creates the `ParamEnv` used for the give type's derived `Eq` impl.
+/// Creates the `ParamEnv` used for the given type's derived `Eq` impl.
 fn typing_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> ty::TypingEnv<'_> {
     // Initial map from generic index to param def.
     // Vec<(param_def, needs_eq)>

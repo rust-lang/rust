@@ -73,7 +73,6 @@ struct ThirBuildCx<'tcx> {
 impl<'tcx> ThirBuildCx<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Self {
         let typeck_results = tcx.typeck(def);
-        let hir = tcx.hir();
         let hir_id = tcx.local_def_id_to_hir_id(def);
 
         let body_type = match tcx.hir_body_owner_kind(def) {
@@ -111,10 +110,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
             typeck_results,
             rvalue_scopes: &typeck_results.rvalue_scopes,
             body_owner: def.to_def_id(),
-            apply_adjustments: hir
-                .attrs(hir_id)
+            apply_adjustments: tcx
+                .hir_attrs(hir_id)
                 .iter()
-                .all(|attr| attr.name_or_empty() != rustc_span::sym::custom_mir),
+                .all(|attr| !attr.has_name(rustc_span::sym::custom_mir)),
         }
     }
 
@@ -207,7 +206,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         &self,
         hir_id: HirId,
     ) -> Option<ty::CanonicalUserType<'tcx>> {
-        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.tcx, self.typeck_results, hir_id)
     }
 }
 

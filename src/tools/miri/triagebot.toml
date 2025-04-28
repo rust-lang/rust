@@ -40,3 +40,9 @@ unless = ["S-blocked", "S-waiting-on-team", "S-waiting-on-review"]
 
 # Automatically close and reopen PRs made by bots to run CI on them
 [bot-pull-requests]
+
+# Canonicalize issue numbers to avoid closing the wrong issue when upstreaming this subtree
+[canonicalize-issue-links]
+
+# Prevents mentions in commits to avoid users being spammed
+[no-mentions]

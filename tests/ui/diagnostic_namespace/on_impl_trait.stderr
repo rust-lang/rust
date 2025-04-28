@@ -1,0 +1,31 @@
+warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
+  --> $DIR/on_impl_trait.rs:7:1
+   |
+LL | #[diagnostic::on_unimplemented(message = "blah", label = "blah", note = "blah")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
+
+error[E0277]: the trait bound `{integer}: Alias` is not satisfied
+  --> $DIR/on_impl_trait.rs:15:9
+   |
+LL |     foo(&1);
+   |     --- ^^ the trait `Test` is not implemented for `{integer}`
+   |     |
+   |     required by a bound introduced by this call
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/on_impl_trait.rs:5:1
+   |
+LL | trait Test {}
+   | ^^^^^^^^^^
+   = note: required for `{integer}` to implement `Alias`
+note: required by a bound in `foo`
+  --> $DIR/on_impl_trait.rs:12:11
+   |
+LL | fn foo<T: Alias>(v: &T) {}
+   |           ^^^^^ required by this bound in `foo`
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

@@ -131,7 +131,7 @@ struct WaitFinder<'a, 'tcx> {
     local_id: HirId,
     state: VisitorState,
     early_return: Option<Span>,
-    // When joining two if branches where one of them doesn't call `wait()`, stores its span for more targetted help
+    // When joining two if branches where one of them doesn't call `wait()`, stores its span for more targeted help
     // messages
     missing_wait_branch: Option<MissingWaitBranch>,
 }

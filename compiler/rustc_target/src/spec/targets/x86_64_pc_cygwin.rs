@@ -18,7 +18,7 @@ pub(crate) fn target() -> Target {
             description: Some("64-bit x86 Cygwin".into()),
             tier: Some(3),
             host_tools: Some(false),
-            std: None,
+            std: Some(true),
         },
     }
 }

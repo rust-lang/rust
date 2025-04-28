@@ -1,4 +1,4 @@
-use std::ops::ControlFlow;
+use std::ops::{ControlFlow, RangeInclusive};
 
 use super::{Byte, Def, Ref};
 
@@ -32,6 +32,22 @@ where
     Byte(Byte),
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub(crate) enum Endian {
+    Little,
+    Big,
+}
+
+#[cfg(feature = "rustc")]
+impl From<rustc_abi::Endian> for Endian {
+    fn from(order: rustc_abi::Endian) -> Endian {
+        match order {
+            rustc_abi::Endian::Little => Endian::Little,
+            rustc_abi::Endian::Big => Endian::Big,
+        }
+    }
+}
+
 impl<D, R> Tree<D, R>
 where
     D: Def,
@@ -54,27 +70,65 @@ where
 
     /// A `Tree` containing a single, uninitialized byte.
     pub(crate) fn uninit() -> Self {
-        Self::Byte(Byte::Uninit)
+        Self::Byte(Byte::uninit())
     }
 
     /// A `Tree` representing the layout of `bool`.
     pub(crate) fn bool() -> Self {
-        Self::from_bits(0x00).or(Self::from_bits(0x01))
+        Self::byte(0x00..=0x01)
     }
 
     /// A `Tree` whose layout matches that of a `u8`.
     pub(crate) fn u8() -> Self {
-        Self::Alt((0u8..=255).map(Self::from_bits).collect())
+        Self::byte(0x00..=0xFF)
     }
 
-    /// A `Tree` whose layout accepts exactly the given bit pattern.
-    pub(crate) fn from_bits(bits: u8) -> Self {
-        Self::Byte(Byte::Init(bits))
+    /// A `Tree` whose layout matches that of a `char`.
+    pub(crate) fn char(order: Endian) -> Self {
+        // `char`s can be in the following ranges:
+        // - [0, 0xD7FF]
+        // - [0xE000, 10FFFF]
+        //
+        // All other `char` values are illegal. We can thus represent a `char`
+        // as a union of three possible layouts:
+        // - 00 00 [00, D7] XX
+        // - 00 00 [E0, FF] XX
+        // - 00 [01, 10] XX XX
+
+        const _0: RangeInclusive<u8> = 0..=0;
+        const BYTE: RangeInclusive<u8> = 0x00..=0xFF;
+        let x = Self::from_big_endian(order, [_0, _0, 0x00..=0xD7, BYTE]);
+        let y = Self::from_big_endian(order, [_0, _0, 0xE0..=0xFF, BYTE]);
+        let z = Self::from_big_endian(order, [_0, 0x01..=0x10, BYTE, BYTE]);
+        Self::alt([x, y, z])
+    }
+
+    /// A `Tree` whose layout matches `std::num::NonZeroXxx`.
+    #[allow(dead_code)]
+    pub(crate) fn nonzero(width_in_bytes: u64) -> Self {
+        const BYTE: RangeInclusive<u8> = 0x00..=0xFF;
+        const NONZERO: RangeInclusive<u8> = 0x01..=0xFF;
+
+        (0..width_in_bytes)
+            .map(|nz_idx| {
+                (0..width_in_bytes)
+                    .map(|pos| Self::byte(if pos == nz_idx { NONZERO } else { BYTE }))
+                    .fold(Self::unit(), Self::then)
+            })
+            .fold(Self::uninhabited(), Self::or)
+    }
+
+    pub(crate) fn bytes<const N: usize, B: Into<Byte>>(bytes: [B; N]) -> Self {
+        Self::seq(bytes.map(B::into).map(Self::Byte))
+    }
+
+    pub(crate) fn byte(byte: impl Into<Byte>) -> Self {
+        Self::Byte(byte.into())
     }
 
     /// A `Tree` whose layout is a number of the given width.
-    pub(crate) fn number(width_in_bytes: usize) -> Self {
-        Self::Seq(vec![Self::u8(); width_in_bytes])
+    pub(crate) fn number(width_in_bytes: u64) -> Self {
+        Self::Seq(vec![Self::u8(); width_in_bytes.try_into().unwrap()])
     }
 
     /// A `Tree` whose layout is entirely padding of the given width.
@@ -125,13 +179,35 @@ where
             Self::Byte(..) | Self::Ref(..) | Self::Def(..) => true,
         }
     }
-}
 
-impl<D, R> Tree<D, R>
-where
-    D: Def,
-    R: Ref,
-{
+    /// Produces a `Tree` which represents a sequence of bytes stored in
+    /// `order`.
+    ///
+    /// `bytes` is taken to be in big-endian byte order, and its order will be
+    /// swapped if `order == Endian::Little`.
+    pub(crate) fn from_big_endian<const N: usize, B: Into<Byte>>(
+        order: Endian,
+        mut bytes: [B; N],
+    ) -> Self {
+        if order == Endian::Little {
+            (&mut bytes[..]).reverse();
+        }
+
+        Self::bytes(bytes)
+    }
+
+    /// Produces a `Tree` where each of the trees in `trees` are sequenced one
+    /// after another.
+    pub(crate) fn seq<const N: usize>(trees: [Tree<D, R>; N]) -> Self {
+        trees.into_iter().fold(Tree::unit(), Self::then)
+    }
+
+    /// Produces a `Tree` where each of the trees in `trees` are accepted as
+    /// alternative layouts.
+    pub(crate) fn alt<const N: usize>(trees: [Tree<D, R>; N]) -> Self {
+        trees.into_iter().fold(Tree::uninhabited(), Self::or)
+    }
+
     /// Produces a new `Tree` where `other` is sequenced after `self`.
     pub(crate) fn then(self, other: Self) -> Self {
         match (self, other) {
@@ -222,17 +298,17 @@ pub(crate) mod rustc {
 
                 ty::Float(nty) => {
                     let width = nty.bit_width() / 8;
-                    Ok(Self::number(width as _))
+                    Ok(Self::number(width.try_into().unwrap()))
                 }
 
                 ty::Int(nty) => {
                     let width = nty.normalize(pointer_size.bits() as _).bit_width().unwrap() / 8;
-                    Ok(Self::number(width as _))
+                    Ok(Self::number(width.try_into().unwrap()))
                 }
 
                 ty::Uint(nty) => {
                     let width = nty.normalize(pointer_size.bits() as _).bit_width().unwrap() / 8;
-                    Ok(Self::number(width as _))
+                    Ok(Self::number(width.try_into().unwrap()))
                 }
 
                 ty::Tuple(members) => Self::from_tuple((ty, layout), members, cx),
@@ -249,11 +325,33 @@ pub(crate) mod rustc {
                         .fold(Tree::unit(), |tree, elt| tree.then(elt)))
                 }
 
-                ty::Adt(adt_def, _args_ref) if !ty.is_box() => match adt_def.adt_kind() {
-                    AdtKind::Struct => Self::from_struct((ty, layout), *adt_def, cx),
-                    AdtKind::Enum => Self::from_enum((ty, layout), *adt_def, cx),
-                    AdtKind::Union => Self::from_union((ty, layout), *adt_def, cx),
-                },
+                ty::Adt(adt_def, _args_ref) if !ty.is_box() => {
+                    let (lo, hi) = cx.tcx().layout_scalar_valid_range(adt_def.did());
+
+                    use core::ops::Bound::*;
+                    let is_transparent = adt_def.repr().transparent();
+                    match (adt_def.adt_kind(), lo, hi) {
+                        (AdtKind::Struct, Unbounded, Unbounded) => {
+                            Self::from_struct((ty, layout), *adt_def, cx)
+                        }
+                        (AdtKind::Struct, Included(1), Included(_hi)) if is_transparent => {
+                            // FIXME(@joshlf): Support `NonZero` types:
+                            // - Check to make sure that the first field is
+                            //   numerical
+                            // - Check to make sure that the upper bound is the
+                            //   maximum value for the field's type
+                            // - Construct `Self::nonzero`
+                            Err(Err::NotYetSupported)
+                        }
+                        (AdtKind::Enum, Unbounded, Unbounded) => {
+                            Self::from_enum((ty, layout), *adt_def, cx)
+                        }
+                        (AdtKind::Union, Unbounded, Unbounded) => {
+                            Self::from_union((ty, layout), *adt_def, cx)
+                        }
+                        _ => Err(Err::NotYetSupported),
+                    }
+                }
 
                 ty::Ref(lifetime, ty, mutability) => {
                     let layout = layout_of(cx, *ty)?;
@@ -267,6 +365,8 @@ pub(crate) mod rustc {
                         size,
                     }))
                 }
+
+                ty::Char => Ok(Self::char(cx.tcx().data_layout.endian.into())),
 
                 _ => Err(Err::NotYetSupported),
             }
@@ -450,7 +550,7 @@ pub(crate) mod rustc {
                     &bytes[bytes.len() - size.bytes_usize()..]
                 }
             };
-            Self::Seq(bytes.iter().map(|&b| Self::from_bits(b)).collect())
+            Self::Seq(bytes.iter().map(|&b| Self::byte(b)).collect())
         }
 
         /// Constructs a `Tree` from a union.
@@ -514,7 +614,7 @@ pub(crate) mod rustc {
                 }
             }
             ty::Tuple(fields) => fields[i.as_usize()],
-            kind @ _ => unimplemented!(
+            kind => unimplemented!(
                 "only a subset of `Ty::ty_and_layout_field`'s functionality is implemented. implementation needed for {:?}",
                 kind
             ),

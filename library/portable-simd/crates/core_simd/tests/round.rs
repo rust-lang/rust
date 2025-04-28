@@ -58,7 +58,7 @@ macro_rules! float_rounding_test {
                     // all of the mantissa digits set to 1, pushed up to the MSB.
                     const ALL_MANTISSA_BITS: IntScalar = ((1 << <Scalar>::MANTISSA_DIGITS) - 1);
                     const MAX_REPRESENTABLE_VALUE: Scalar =
-                        (ALL_MANTISSA_BITS << (core::mem::size_of::<Scalar>() * 8 - <Scalar>::MANTISSA_DIGITS as usize - 1)) as Scalar;
+                        (ALL_MANTISSA_BITS << (size_of::<Scalar>() * 8 - <Scalar>::MANTISSA_DIGITS as usize - 1)) as Scalar;
 
                     let mut runner = test_helpers::make_runner();
                     runner.run(

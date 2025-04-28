@@ -612,6 +612,15 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             generated_asm.push_str(".att_syntax\n");
         }
 
+        if self.arch == InlineAsmArch::AArch64 {
+            for feature in &self.tcx.codegen_fn_attrs(self.enclosing_def_id).target_features {
+                if feature.name == sym::neon {
+                    continue;
+                }
+                writeln!(generated_asm, ".arch_extension {}", feature.name).unwrap();
+            }
+        }
+
         // The actual inline asm
         for piece in self.template {
             match piece {
@@ -652,6 +661,20 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                                         .emit(&mut generated_asm, InlineAsmArch::X86_64, *modifier)
                                         .unwrap(),
                                 },
+                                InlineAsmArch::AArch64 => match reg {
+                                    InlineAsmReg::AArch64(reg) if reg.vreg_index().is_some() => {
+                                        // rustc emits v0 rather than q0
+                                        reg.emit(
+                                            &mut generated_asm,
+                                            InlineAsmArch::AArch64,
+                                            Some(modifier.unwrap_or('q')),
+                                        )
+                                        .unwrap()
+                                    }
+                                    _ => reg
+                                        .emit(&mut generated_asm, InlineAsmArch::AArch64, *modifier)
+                                        .unwrap(),
+                                },
                                 _ => reg.emit(&mut generated_asm, self.arch, *modifier).unwrap(),
                             }
                         }
@@ -664,6 +687,15 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             }
         }
         generated_asm.push('\n');
+
+        if self.arch == InlineAsmArch::AArch64 {
+            for feature in &self.tcx.codegen_fn_attrs(self.enclosing_def_id).target_features {
+                if feature.name == sym::neon {
+                    continue;
+                }
+                writeln!(generated_asm, ".arch_extension no{}", feature.name).unwrap();
+            }
+        }
 
         if is_x86 && self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
             generated_asm.push_str(".intel_syntax noprefix\n");
@@ -809,7 +841,13 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             }
             InlineAsmArch::AArch64 => {
                 generated_asm.push_str("    str ");
-                reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap();
+                match reg {
+                    InlineAsmReg::AArch64(reg) if reg.vreg_index().is_some() => {
+                        // rustc emits v0 rather than q0
+                        reg.emit(generated_asm, InlineAsmArch::AArch64, Some('q')).unwrap()
+                    }
+                    _ => reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap(),
+                }
                 writeln!(generated_asm, ", [x19, 0x{:x}]", offset.bytes()).unwrap();
             }
             InlineAsmArch::RiscV64 => {
@@ -851,7 +889,13 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             }
             InlineAsmArch::AArch64 => {
                 generated_asm.push_str("    ldr ");
-                reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap();
+                match reg {
+                    InlineAsmReg::AArch64(reg) if reg.vreg_index().is_some() => {
+                        // rustc emits v0 rather than q0
+                        reg.emit(generated_asm, InlineAsmArch::AArch64, Some('q')).unwrap()
+                    }
+                    _ => reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap(),
+                }
                 writeln!(generated_asm, ", [x19, 0x{:x}]", offset.bytes()).unwrap();
             }
             InlineAsmArch::RiscV64 => {

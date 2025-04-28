@@ -1,11 +1,11 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
@@ -116,7 +116,7 @@ fn typeck_with_inspect<'tcx>(
 
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
-    let span = tcx.hir().span(id);
+    let span = tcx.def_span(def_id);
 
     // Figure out what primary body this item has.
     let body_id = node.body_id().unwrap_or_else(|| {
@@ -265,7 +265,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
     let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
     {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
-            && let ty::AssocKind::Const = item.kind
+            && let ty::AssocKind::Const { .. } = item.kind
             && let ty::AssocItemContainer::Impl = item.container
             && let Some(trait_item_def_id) = item.trait_item_def_id
         {

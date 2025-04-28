@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock};
@@ -19,6 +19,7 @@ use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
+use rustc_middle::dep_graph::DepsType;
 use rustc_middle::ty::{self, CurrentGcx, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_parse::{
@@ -358,6 +359,31 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         (&**krate, &*krate.attrs),
     )
+}
+
+fn env_var_os<'tcx>(tcx: TyCtxt<'tcx>, key: &'tcx OsStr) -> Option<&'tcx OsStr> {
+    let value = env::var_os(key);
+
+    let value_tcx = value.as_ref().map(|value| {
+        let encoded_bytes = tcx.arena.alloc_slice(value.as_encoded_bytes());
+        debug_assert_eq!(value.as_encoded_bytes(), encoded_bytes);
+        // SAFETY: The bytes came from `as_encoded_bytes`, and we assume that
+        // `alloc_slice` is implemented correctly, and passes the same bytes
+        // back (debug asserted above).
+        unsafe { OsStr::from_encoded_bytes_unchecked(encoded_bytes) }
+    });
+
+    // Also add the variable to Cargo's dependency tracking
+    //
+    // NOTE: This only works for passes run before `write_dep_info`. See that
+    // for extension points for configuring environment variables to be
+    // properly change-tracked.
+    tcx.sess.psess.env_depinfo.borrow_mut().insert((
+        Symbol::intern(&key.to_string_lossy()),
+        value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(&value)),
+    ));
+
+    value_tcx
 }
 
 // Returns all the paths that correspond to generated files.
@@ -724,6 +750,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
         |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
+    providers.env_var_os = env_var_os;
     limits::provide(providers);
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
@@ -773,8 +800,11 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         sess.opts.cg.metadata.clone(),
         sess.cfg_version,
     );
+
     let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
-    let dep_graph = setup_dep_graph(sess, crate_name);
+
+    let dep_type = DepsType { dep_names: rustc_query_impl::dep_kind_names() };
+    let dep_graph = setup_dep_graph(sess, crate_name, &dep_type);
 
     let cstore =
         FreezeLock::new(Box::new(CStore::new(compiler.codegen_backend.metadata_loader())) as _);
@@ -926,7 +956,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
             tcx.ensure_ok().check_unsafety(def_id);
-            tcx.ensure_ok().mir_borrowck(def_id)
+            if !tcx.is_typeck_child(def_id.to_def_id()) {
+                tcx.ensure_ok().mir_borrowck(def_id)
+            }
         });
     });
     sess.time("MIR_effect_checking", || {
@@ -947,7 +979,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         tcx.par_hir_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
                 tcx.ensure_ok().mir_coroutine_witnesses(def_id);
-                tcx.ensure_ok().check_coroutine_obligations(
+                let _ = tcx.ensure_ok().check_coroutine_obligations(
                     tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
                 );
                 // Eagerly check the unsubstituted layout for cycles.
@@ -1038,55 +1070,31 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
     });
 }
 
-/// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
-/// to write UI tests that actually test that compilation succeeds without reporting
-/// an error.
-fn check_for_rustc_errors_attr(tcx: TyCtxt<'_>) {
-    let Some((def_id, _)) = tcx.entry_fn(()) else { return };
-    for attr in tcx.get_attrs(def_id, sym::rustc_error) {
-        match attr.meta_item_list() {
-            // Check if there is a `#[rustc_error(delayed_bug_from_inside_query)]`.
-            Some(list)
-                if list.iter().any(|list_item| {
-                    matches!(
-                        list_item.ident().map(|i| i.name),
-                        Some(sym::delayed_bug_from_inside_query)
-                    )
-                }) =>
-            {
-                tcx.ensure_ok().trigger_delayed_bug(def_id);
-            }
-
-            // Bare `#[rustc_error]`.
-            None => {
-                tcx.dcx().emit_fatal(errors::RustcErrorFatal { span: tcx.def_span(def_id) });
-            }
-
-            // Some other attribute.
-            Some(_) => {
-                tcx.dcx().emit_warn(errors::RustcErrorUnexpectedAnnotation {
-                    span: tcx.def_span(def_id),
-                });
-            }
-        }
-    }
-}
-
 /// Runs the codegen backend, after which the AST and analysis can
 /// be discarded.
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
 ) -> Box<dyn Any> {
+    // Hook for tests.
+    if let Some((def_id, _)) = tcx.entry_fn(())
+        && tcx.has_attr(def_id, sym::rustc_delayed_bug_from_inside_query)
+    {
+        tcx.ensure_ok().trigger_delayed_bug(def_id);
+    }
+
+    // Don't run this test assertions when not doing codegen. Compiletest tries to build
+    // build-fail tests in check mode first and expects it to not give an error in that case.
+    if tcx.sess.opts.output_types.should_codegen() {
+        rustc_symbol_mangling::test::report_symbol_names(tcx);
+    }
+
     // Don't do code generation if there were any errors. Likewise if
     // there were any delayed bugs, because codegen will likely cause
     // more ICEs, obscuring the original problem.
     if let Some(guar) = tcx.sess.dcx().has_errors_or_delayed_bugs() {
         guar.raise_fatal();
     }
-
-    // Hook for UI tests.
-    check_for_rustc_errors_attr(tcx);
 
     info!("Pre-codegen\n{:?}", tcx.debug_stats());
 
@@ -1096,19 +1104,7 @@ pub(crate) fn start_codegen<'tcx>(
         codegen_backend.codegen_crate(tcx, metadata, need_metadata_module)
     });
 
-    // Don't run this test assertions when not doing codegen. Compiletest tries to build
-    // build-fail tests in check mode first and expects it to not give an error in that case.
-    if tcx.sess.opts.output_types.should_codegen() {
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
-    }
-
     info!("Post-codegen\n{:?}", tcx.debug_stats());
-
-    if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
-        if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
-            tcx.dcx().emit_fatal(errors::CantEmitMIR { error });
-        }
-    }
 
     // This must run after monomorphization so that all generic types
     // have been instantiated.

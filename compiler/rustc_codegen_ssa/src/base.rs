@@ -10,7 +10,7 @@ use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_n
 use rustc_attr_parsing::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::par_map;
+use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
@@ -28,6 +28,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -639,8 +640,11 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         let metadata_cgu_name =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
         tcx.sess.time("write_compressed_metadata", || {
-            let file_name =
-                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+            let file_name = tcx.output_filenames(()).temp_path_for_cgu(
+                OutputType::Metadata,
+                &metadata_cgu_name,
+                tcx.sess.invocation_temp.as_deref(),
+            );
             let data = create_compressed_metadata_file(
                 tcx.sess,
                 &metadata,
@@ -657,6 +661,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 bytecode: None,
                 assembly: None,
                 llvm_ir: None,
+                links_from_incr_cache: Vec::new(),
             }
         })
     });
@@ -755,7 +760,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
             let pre_compiled_cgus = par_map(cgus, |(i, _)| {
                 let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                (i, module)
+                (i, IntoDynSyncSend(module))
             });
 
             total_codegen_time += start_time.elapsed();
@@ -775,7 +780,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         match cgu_reuse {
             CguReuse::No => {
                 let (module, cost) = if let Some(cgu) = pre_compiled_cgus.remove(&i) {
-                    cgu
+                    cgu.0
                 } else {
                     let start_time = Instant::now();
                     let module = backend.compile_codegen_unit(tcx, cgu.name());
@@ -876,7 +881,7 @@ impl CrateInfo {
         let linked_symbols =
             crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+        let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem =
             ast::attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
@@ -989,7 +994,12 @@ impl CrateInfo {
                 .for_each(|(_, linked_symbols)| {
                     let mut symbols = missing_weak_lang_items
                         .iter()
-                        .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text))
+                        .map(|item| {
+                            (
+                                format!("{prefix}{}", mangle_internal_symbol(tcx, item.as_str())),
+                                SymbolExportKind::Text,
+                            )
+                        })
                         .collect::<Vec<_>>();
                     symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
                     linked_symbols.extend(symbols);
@@ -1002,7 +1012,13 @@ impl CrateInfo {
                         // errors.
                         linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
                             (
-                                format!("{prefix}{}", global_fn_name(method.name).as_str()),
+                                format!(
+                                    "{prefix}{}",
+                                    mangle_internal_symbol(
+                                        tcx,
+                                        global_fn_name(method.name).as_str()
+                                    )
+                                ),
                                 SymbolExportKind::Text,
                             )
                         }));
@@ -1092,11 +1108,12 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
     // know that later). If we are not doing LTO, there is only one optimized
     // version of each module, so we re-use that.
     let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(
-        !tcx.dep_graph.dep_node_exists(&dep_node),
-        "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
-        cgu.name()
-    );
+    tcx.dep_graph.assert_dep_node_not_yet_allocated_in_current_session(&dep_node, || {
+        format!(
+            "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
+            cgu.name()
+        )
+    });
 
     if tcx.try_mark_green(&dep_node) {
         // We can re-use either the pre- or the post-thinlto state. If no LTO is

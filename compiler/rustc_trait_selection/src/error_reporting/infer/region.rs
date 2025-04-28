@@ -299,7 +299,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx.param_env(generic_param_scope),
                     terr,
                 );
-                match (*sub, *sup) {
+                match (sub.kind(), sup.kind()) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
                     (ty::RePlaceholder(_), _) => {
                         note_and_explain_region(
@@ -391,7 +391,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 })
             }
             infer::RelateParamBound(span, ty, opt_span) => {
-                let prefix = match *sub {
+                let prefix = match sub.kind() {
                     ty::ReStatic => note_and_explain::PrefixKind::TypeSatisfy,
                     _ => note_and_explain::PrefixKind::TypeOutlive,
                 };
@@ -850,14 +850,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         add_lt_suggs: &mut Vec<(Span, String)>,
     ) -> String {
         struct LifetimeReplaceVisitor<'a> {
-            needle: hir::LifetimeName,
+            needle: hir::LifetimeKind,
             new_lt: &'a str,
             add_lt_suggs: &'a mut Vec<(Span, String)>,
         }
 
         impl<'hir> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'_> {
             fn visit_lifetime(&mut self, lt: &'hir hir::Lifetime) {
-                if lt.res == self.needle {
+                if lt.kind == self.needle {
                     self.add_lt_suggs.push(lt.suggestion(self.new_lt));
                 }
             }
@@ -894,7 +894,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut visitor = LifetimeReplaceVisitor {
-            needle: hir::LifetimeName::Param(lifetime_def_id),
+            needle: hir::LifetimeKind::Param(lifetime_def_id),
             add_lt_suggs,
             new_lt: &new_lt,
         };
@@ -967,7 +967,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 format!("...so that the {}", sup_trace.cause.as_requirement_str()),
             );
 
-            err.note_expected_found(&"", sup_expected, &"", sup_found);
+            err.note_expected_found("", sup_expected, "", sup_found);
             return if sub_region.is_error() | sup_region.is_error() {
                 err.delay_as_bug()
             } else {
@@ -1017,13 +1017,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::BoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
                 " for lifetime parameter {}in trait containing associated type `{}`",
                 br_string(br),
-                self.tcx.associated_item(def_id).name
+                self.tcx.associated_item(def_id).name()
             ),
             infer::RegionParameterDefinition(_, name) => {
                 format!(" for lifetime parameter `{name}`")
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir_name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{var_name}` by closure")
             }
             infer::Nll(..) => bug!("NLL variable found in lexical phase"),
@@ -1048,7 +1048,7 @@ pub(super) fn note_and_explain_region<'tcx>(
     suffix: &str,
     alt_span: Option<Span>,
 ) {
-    let (description, span) = match *region {
+    let (description, span) = match region.kind() {
         ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReStatic => {
             msg_span_from_named_region(tcx, generic_param_scope, region, alt_span)
         }
@@ -1085,7 +1085,7 @@ fn msg_span_from_named_region<'tcx>(
     region: ty::Region<'tcx>,
     alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
-    match *region {
+    match region.kind() {
         ty::ReEarlyParam(br) => {
             let param_def_id = tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id;
             let span = tcx.def_span(param_def_id);
@@ -1185,7 +1185,7 @@ pub fn unexpected_hidden_region_diagnostic<'a, 'tcx>(
     });
 
     // Explain the region we are capturing.
-    match *hidden_region {
+    match hidden_region.kind() {
         ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
             // Assuming regionck succeeded (*), we ought to always be
             // capturing *some* region from the fn header, and hence it

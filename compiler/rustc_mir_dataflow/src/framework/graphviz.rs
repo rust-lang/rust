@@ -109,27 +109,29 @@ impl RustcMirAttrs {
             .flat_map(|attr| attr.meta_item_list().into_iter().flat_map(|v| v.into_iter()));
 
         for attr in rustc_mir_attrs {
-            let attr_result = if attr.has_name(sym::borrowck_graphviz_postflow) {
-                Self::set_field(&mut ret.basename_and_suffix, tcx, &attr, |s| {
-                    let path = PathBuf::from(s.to_string());
-                    match path.file_name() {
-                        Some(_) => Ok(path),
-                        None => {
-                            tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
+            let attr_result = match attr.name() {
+                Some(name @ sym::borrowck_graphviz_postflow) => {
+                    Self::set_field(&mut ret.basename_and_suffix, tcx, name, &attr, |s| {
+                        let path = PathBuf::from(s.to_string());
+                        match path.file_name() {
+                            Some(_) => Ok(path),
+                            None => {
+                                tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
+                                Err(())
+                            }
+                        }
+                    })
+                }
+                Some(name @ sym::borrowck_graphviz_format) => {
+                    Self::set_field(&mut ret.formatter, tcx, name, &attr, |s| match s {
+                        sym::two_phase => Ok(s),
+                        _ => {
+                            tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
                             Err(())
                         }
-                    }
-                })
-            } else if attr.has_name(sym::borrowck_graphviz_format) {
-                Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
-                    sym::gen_kill | sym::two_phase => Ok(s),
-                    _ => {
-                        tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
-                        Err(())
-                    }
-                })
-            } else {
-                Ok(())
+                    })
+                }
+                _ => Ok(()),
             };
 
             result = result.and(attr_result);
@@ -141,12 +143,12 @@ impl RustcMirAttrs {
     fn set_field<T>(
         field: &mut Option<T>,
         tcx: TyCtxt<'_>,
+        name: Symbol,
         attr: &ast::MetaItemInner,
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {
-            tcx.dcx()
-                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
+            tcx.dcx().emit_err(DuplicateValuesFor { span: attr.span(), name });
 
             return Err(());
         }
@@ -156,7 +158,7 @@ impl RustcMirAttrs {
             Ok(())
         } else {
             tcx.dcx()
-                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
+                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name().unwrap() });
             Err(())
         }
     }
@@ -199,11 +201,12 @@ struct Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
+    body: &'mir Body<'tcx>,
     // The `RefCell` is used because `<Formatter as Labeller>::node_label`
-    // takes `&self`, but it needs to modify the cursor. This is also the
+    // takes `&self`, but it needs to modify the results. This is also the
     // reason for the `Formatter`/`BlockFormatter` split; `BlockFormatter` has
     // the operations that involve the mutation, i.e. within the `borrow_mut`.
-    cursor: RefCell<ResultsCursor<'mir, 'tcx, A>>,
+    results: RefCell<&'mir mut Results<'tcx, A>>,
     style: OutputStyle,
     reachable: DenseBitSet<BasicBlock>,
 }
@@ -218,11 +221,7 @@ where
         style: OutputStyle,
     ) -> Self {
         let reachable = traversal::reachable_as_bitset(body);
-        Formatter { cursor: results.as_results_cursor(body).into(), style, reachable }
-    }
-
-    fn body(&self) -> &'mir Body<'tcx> {
-        self.cursor.borrow().body()
+        Formatter { body, results: results.into(), style, reachable }
     }
 }
 
@@ -251,7 +250,7 @@ where
     type Edge = CfgEdge;
 
     fn graph_id(&self) -> dot::Id<'_> {
-        let name = graphviz_safe_def_name(self.body().source.def_id());
+        let name = graphviz_safe_def_name(self.body.source.def_id());
         dot::Id::new(format!("graph_for_def_id_{name}")).unwrap()
     }
 
@@ -260,10 +259,16 @@ where
     }
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
-        let mut cursor = self.cursor.borrow_mut();
-        let mut fmt =
-            BlockFormatter { cursor: &mut cursor, style: self.style, bg: Background::Light };
-        let label = fmt.write_node_label(*block).unwrap();
+        let mut results = self.results.borrow_mut();
+
+        let diffs = StateDiffCollector::run(self.body, *block, *results, self.style);
+
+        let mut fmt = BlockFormatter {
+            cursor: results.as_results_cursor(self.body),
+            style: self.style,
+            bg: Background::Light,
+        };
+        let label = fmt.write_node_label(*block, diffs).unwrap();
 
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
@@ -273,7 +278,7 @@ where
     }
 
     fn edge_label(&self, e: &Self::Edge) -> dot::LabelText<'_> {
-        let label = &self.body()[e.source].terminator().kind.fmt_successor_labels()[e.index];
+        let label = &self.body[e.source].terminator().kind.fmt_successor_labels()[e.index];
         dot::LabelText::label(label.clone())
     }
 }
@@ -286,7 +291,7 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body()
+        self.body
             .basic_blocks
             .indices()
             .filter(|&idx| self.reachable.contains(idx))
@@ -295,10 +300,10 @@ where
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
-        let body = self.body();
-        body.basic_blocks
+        self.body
+            .basic_blocks
             .indices()
-            .flat_map(|bb| dataflow_successors(body, bb))
+            .flat_map(|bb| dataflow_successors(self.body, bb))
             .collect::<Vec<_>>()
             .into()
     }
@@ -308,20 +313,20 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body()[edge.source].terminator().successors().nth(edge.index).unwrap()
+        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }
 
-struct BlockFormatter<'a, 'mir, 'tcx, A>
+struct BlockFormatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    cursor: &'a mut ResultsCursor<'mir, 'tcx, A>,
+    cursor: ResultsCursor<'mir, 'tcx, A>,
     bg: Background,
     style: OutputStyle,
 }
 
-impl<'tcx, A> BlockFormatter<'_, '_, 'tcx, A>
+impl<'tcx, A> BlockFormatter<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -334,7 +339,11 @@ where
         bg
     }
 
-    fn write_node_label(&mut self, block: BasicBlock) -> io::Result<Vec<u8>> {
+    fn write_node_label(
+        &mut self,
+        block: BasicBlock,
+        diffs: StateDiffCollector<A::Domain>,
+    ) -> io::Result<Vec<u8>> {
         use std::io::Write;
 
         //   Sample output:
@@ -390,7 +399,7 @@ where
         self.write_row_with_full_state(w, "", "(on start)")?;
 
         // D + E: Statement and terminator transfer functions
-        self.write_statements_and_terminator(w, block)?;
+        self.write_statements_and_terminator(w, block, diffs)?;
 
         // F: State at end of block
 
@@ -573,14 +582,8 @@ where
         &mut self,
         w: &mut impl io::Write,
         block: BasicBlock,
+        diffs: StateDiffCollector<A::Domain>,
     ) -> io::Result<()> {
-        let diffs = StateDiffCollector::run(
-            self.cursor.body(),
-            block,
-            self.cursor.mut_results(),
-            self.style,
-        );
-
         let mut diffs_before = diffs.before.map(|v| v.into_iter());
         let mut diffs_after = diffs.after.into_iter();
 
@@ -707,7 +710,7 @@ impl<D> StateDiffCollector<D> {
     }
 }
 
-impl<'tcx, A> ResultsVisitor<'_, 'tcx, A> for StateDiffCollector<A::Domain>
+impl<'tcx, A> ResultsVisitor<'tcx, A> for StateDiffCollector<A::Domain>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,

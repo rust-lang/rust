@@ -32,6 +32,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -39,13 +40,11 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef, elaborate};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_type_ir::elaborate;
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
@@ -155,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 enum CastError<'tcx> {
     ErrorGuaranteed(ErrorGuaranteed),
 
@@ -182,6 +181,7 @@ enum CastError<'tcx> {
     /// when we're typechecking a type parameter with a ?Sized bound.
     IntToWideCast(Option<&'static str>),
     ForeignNonExhaustiveAdt,
+    PtrPtrAddingAutoTrait(Vec<DefId>),
 }
 
 impl From<ErrorGuaranteed> for CastError<'_> {
@@ -501,12 +501,25 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .must_apply_modulo_regions()
                         {
                             label = false;
-                            err.span_suggestion(
-                                self.span,
-                                "consider using the `From` trait instead",
-                                format!("{}::from({})", self.cast_ty, snippet),
-                                Applicability::MaybeIncorrect,
-                            );
+                            if let ty::Adt(def, args) = self.cast_ty.kind() {
+                                err.span_suggestion_verbose(
+                                    self.span,
+                                    "consider using the `From` trait instead",
+                                    format!(
+                                        "{}::from({})",
+                                        fcx.tcx.value_path_str_with_args(def.did(), args),
+                                        snippet
+                                    ),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            } else {
+                                err.span_suggestion(
+                                    self.span,
+                                    "consider using the `From` trait instead",
+                                    format!("{}::from({})", self.cast_ty, snippet),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            };
                         }
                     }
 
@@ -595,6 +608,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 )
                 .with_note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
                 .emit();
+            }
+            CastError::PtrPtrAddingAutoTrait(added) => {
+                fcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
+                    span: self.span,
+                    traits_len: added.len(),
+                    traits: {
+                        let mut traits: Vec<_> = added
+                            .into_iter()
+                            .map(|trait_did| fcx.tcx.def_path_str(trait_did))
+                            .collect();
+
+                        traits.sort();
+                        traits.into()
+                    },
+                });
             }
         }
     }
@@ -789,7 +817,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             _ => return Err(CastError::NonScalar),
         };
         if let ty::Adt(adt_def, _) = *self.expr_ty.kind()
-            && adt_def.did().krate != LOCAL_CRATE
+            && !adt_def.did().is_local()
             && adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive)
         {
             return Err(CastError::ForeignNonExhaustiveAdt);
@@ -940,19 +968,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .collect::<Vec<_>>();
 
                         if !added.is_empty() {
-                            tcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
-                                span: self.span,
-                                traits_len: added.len(),
-                                traits: {
-                                    let mut traits: Vec<_> = added
-                                        .into_iter()
-                                        .map(|trait_did| tcx.def_path_str(trait_did))
-                                        .collect();
-
-                                    traits.sort();
-                                    traits.into()
-                                },
-                            });
+                            return Err(CastError::PtrPtrAddingAutoTrait(added));
                         }
 
                         Ok(CastKind::PtrPtrCast)
@@ -1039,30 +1055,31 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError<'tcx>> {
         // array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
-        if m_expr.mutbl >= m_cast.mutbl {
-            if let ty::Array(ety, _) = m_expr.ty.kind() {
-                // Due to the limitations of LLVM global constants,
-                // region pointers end up pointing at copies of
-                // vector elements instead of the original values.
-                // To allow raw pointers to work correctly, we
-                // need to special-case obtaining a raw pointer
-                // from a region pointer to a vector.
+        if m_expr.mutbl >= m_cast.mutbl
+            && let ty::Array(ety, _) = m_expr.ty.kind()
+            && fcx.can_eq(fcx.param_env, *ety, m_cast.ty)
+        {
+            // Due to the limitations of LLVM global constants,
+            // region pointers end up pointing at copies of
+            // vector elements instead of the original values.
+            // To allow raw pointers to work correctly, we
+            // need to special-case obtaining a raw pointer
+            // from a region pointer to a vector.
 
-                // Coerce to a raw pointer so that we generate RawPtr in MIR.
-                let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
-                fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
-                    .unwrap_or_else(|_| {
-                        bug!(
+            // Coerce to a raw pointer so that we generate RawPtr in MIR.
+            let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
+            fcx.coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No, None)
+                .unwrap_or_else(|_| {
+                    bug!(
                         "could not cast from reference to array to pointer to array ({:?} to {:?})",
                         self.expr_ty,
                         array_ptr_type,
                     )
-                    });
+                });
 
-                // this will report a type mismatch if needed
-                fcx.demand_eqtype(self.span, *ety, m_cast.ty);
-                return Ok(CastKind::ArrayPtrCast);
-            }
+            // this will report a type mismatch if needed
+            fcx.demand_eqtype(self.span, *ety, m_cast.ty);
+            return Ok(CastKind::ArrayPtrCast);
         }
 
         Err(CastError::IllegalCast)

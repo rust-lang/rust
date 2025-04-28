@@ -13,7 +13,7 @@ use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -48,11 +48,11 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 /// this directly; instead use the cached version via `mir_built`.
 pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     tcx.ensure_done().thir_abstract_const(def);
-    if let Err(e) = tcx.check_match(def) {
+    if let Err(e) = tcx.ensure_ok().check_match(def) {
         return construct_error(tcx, def, e);
     }
 
-    if let Err(err) = tcx.check_tail_calls(def) {
+    if let Err(err) = tcx.ensure_ok().check_tail_calls(def) {
         return construct_error(tcx, def, err);
     }
 
@@ -221,7 +221,7 @@ struct Builder<'a, 'tcx> {
     coverage_info: Option<coverageinfo::CoverageInfoBuilder>,
 }
 
-type CaptureMap<'tcx> = SortedIndexMultiMap<usize, HirId, Capture<'tcx>>;
+type CaptureMap<'tcx> = SortedIndexMultiMap<usize, ItemLocalId, Capture<'tcx>>;
 
 #[derive(Debug)]
 struct Capture<'tcx> {
@@ -457,7 +457,7 @@ fn construct_fn<'tcx>(
 
     // Figure out what primary body this item has.
     let body = tcx.hir_body_owned_by(fn_def);
-    let span_with_body = tcx.hir().span_with_body(fn_id);
+    let span_with_body = tcx.hir_span_with_body(fn_id);
     let return_ty_span = tcx
         .hir_fn_decl_by_hir_id(fn_id)
         .unwrap_or_else(|| span_bug!(span, "can't build MIR for {:?}", fn_def))
@@ -485,7 +485,7 @@ fn construct_fn<'tcx>(
     };
 
     if let Some(custom_mir_attr) =
-        tcx.hir().attrs(fn_id).iter().find(|attr| attr.name_or_empty() == sym::custom_mir)
+        tcx.hir_attrs(fn_id).iter().find(|attr| attr.has_name(sym::custom_mir))
     {
         return custom::build_custom_mir(
             tcx,
@@ -563,7 +563,7 @@ fn construct_const<'a, 'tcx>(
     // Figure out what primary body this item has.
     let (span, const_ty_span) = match tcx.hir_node(hir_id) {
         Node::Item(hir::Item {
-            kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _, _),
+            kind: hir::ItemKind::Static(_, ty, _, _) | hir::ItemKind::Const(_, ty, _, _),
             span,
             ..
         })
@@ -741,7 +741,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         coroutine: Option<Box<CoroutineInfo<'tcx>>>,
     ) -> Builder<'a, 'tcx> {
         let tcx = infcx.tcx;
-        let attrs = tcx.hir().attrs(hir_id);
+        let attrs = tcx.hir_attrs(hir_id);
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
         // the settings for the crate they are codegened in.
@@ -853,6 +853,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let capture_tys = upvar_args.upvar_tys();
 
         let tcx = self.tcx;
+        let mut upvar_owner = None;
         self.upvars = tcx
             .closure_captures(self.def_id)
             .iter()
@@ -866,6 +867,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                     _ => bug!("Expected an upvar"),
                 };
+                let upvar_base = upvar_owner.get_or_insert(var_id.owner);
+                assert_eq!(*upvar_base, var_id.owner);
+                let var_id = var_id.local_id;
 
                 let mutability = captured_place.mutability;
 

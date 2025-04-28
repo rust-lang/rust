@@ -52,7 +52,7 @@ use rustc_data_structures::stable_hasher::StableOrd;
 use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_Generic, Encodable_Generic, HashStable_Generic};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_Generic};
 
 mod callconv;
 mod layout;
@@ -74,7 +74,10 @@ pub use layout::{LayoutCalculator, LayoutCalculatorError};
 pub trait HashStableContext {}
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct ReprFlags(u8);
 
 bitflags! {
@@ -106,7 +109,10 @@ impl std::fmt::Debug for ReprFlags {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub enum IntegerType {
     /// Pointer-sized integer type, i.e. `isize` and `usize`. The field shows signedness, e.g.
     /// `Pointer(true)` means `isize`.
@@ -127,7 +133,10 @@ impl IntegerType {
 
 /// Represents the repr options provided by the user.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct ReprOptions {
     pub int: Option<IntegerType>,
     pub align: Option<Align>,
@@ -487,7 +496,10 @@ impl FromStr for Endian {
 
 /// Size of a type in bytes.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct Size {
     raw: u64,
 }
@@ -713,7 +725,10 @@ impl Step for Size {
 
 /// Alignment of a type in bytes (always a power of two).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub struct Align {
     pow2: u8,
 }
@@ -802,7 +817,7 @@ impl Align {
     }
 
     #[inline]
-    pub fn bytes(self) -> u64 {
+    pub const fn bytes(self) -> u64 {
         1 << self.pow2
     }
 
@@ -812,7 +827,7 @@ impl Align {
     }
 
     #[inline]
-    pub fn bits(self) -> u64 {
+    pub const fn bits(self) -> u64 {
         self.bytes() * 8
     }
 
@@ -872,7 +887,10 @@ impl AbiAndPrefAlign {
 
 /// Integers, also used for enum discriminants.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable_Generic, Decodable_Generic, HashStable_Generic))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_Generic)
+)]
 pub enum Integer {
     I8,
     I16,
@@ -1444,7 +1462,8 @@ impl BackendRepr {
         !self.is_unsized()
     }
 
-    /// Returns `true` if this is a single signed integer scalar
+    /// Returns `true` if this is a single signed integer scalar.
+    /// Sanity check: panics if this is not a scalar type (see PR #70189).
     #[inline]
     pub fn is_signed(&self) -> bool {
         match self {
@@ -1810,7 +1829,7 @@ pub struct PointeeInfo {
     pub safe: Option<PointerKind>,
     /// If `safe` is `Some`, then the pointer is either null or dereferenceable for this many bytes.
     /// On a function argument, "dereferenceable" here means "dereferenceable for the entire duration
-    /// of this function call", i.e. it is UB for the memory that this pointer points to to be freed
+    /// of this function call", i.e. it is UB for the memory that this pointer points to be freed
     /// while this function is still running.
     /// The size can be zero if the pointer is not dereferenceable.
     pub size: Size,

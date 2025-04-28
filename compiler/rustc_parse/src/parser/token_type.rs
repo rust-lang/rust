@@ -114,6 +114,7 @@ pub enum TokenType {
     KwSelfUpper,
     KwStatic,
     KwStruct,
+    KwSuper,
     KwTrait,
     KwTry,
     KwType,
@@ -250,6 +251,7 @@ impl TokenType {
             KwSelfUpper,
             KwStatic,
             KwStruct,
+            KwSuper,
             KwTrait,
             KwTry,
             KwType,
@@ -324,6 +326,7 @@ impl TokenType {
             TokenType::KwSelfUpper => Some(kw::SelfUpper),
             TokenType::KwStatic => Some(kw::Static),
             TokenType::KwStruct => Some(kw::Struct),
+            TokenType::KwSuper => Some(kw::Super),
             TokenType::KwTrait => Some(kw::Trait),
             TokenType::KwTry => Some(kw::Try),
             TokenType::KwType => Some(kw::Type),
@@ -445,18 +448,6 @@ macro_rules! exp {
             token_type: $crate::parser::token_type::TokenType::$tok
         }
     };
-    (@open, $delim:ident, $token_type:ident) => {
-        $crate::parser::token_type::ExpTokenPair {
-            tok: &rustc_ast::token::OpenDelim(rustc_ast::token::Delimiter::$delim),
-            token_type: $crate::parser::token_type::TokenType::$token_type,
-        }
-    };
-    (@close, $delim:ident, $token_type:ident) => {
-        $crate::parser::token_type::ExpTokenPair {
-            tok: &rustc_ast::token::CloseDelim(rustc_ast::token::Delimiter::$delim),
-            token_type: $crate::parser::token_type::TokenType::$token_type,
-        }
-    };
 
     // `ExpKeywordPair` helper rules.
     (@kw, $kw:ident, $token_type:ident) => {
@@ -501,12 +492,12 @@ macro_rules! exp {
     (Question)       => { exp!(@tok, Question) };
     (Eof)            => { exp!(@tok, Eof) };
 
-    (OpenParen)      => { exp!(@open,  Parenthesis, OpenParen) };
-    (OpenBrace)      => { exp!(@open,  Brace,       OpenBrace) };
-    (OpenBracket)    => { exp!(@open,  Bracket,     OpenBracket) };
-    (CloseParen)     => { exp!(@close, Parenthesis, CloseParen) };
-    (CloseBrace)     => { exp!(@close, Brace,       CloseBrace) };
-    (CloseBracket)   => { exp!(@close, Bracket,     CloseBracket) };
+    (OpenParen)      => { exp!(@tok, OpenParen) };
+    (OpenBrace)      => { exp!(@tok, OpenBrace) };
+    (OpenBracket)    => { exp!(@tok, OpenBracket) };
+    (CloseParen)     => { exp!(@tok, CloseParen) };
+    (CloseBrace)     => { exp!(@tok, CloseBrace) };
+    (CloseBracket)   => { exp!(@tok, CloseBracket) };
 
     (As)             => { exp!(@kw, As,         KwAs) };
     (Async)          => { exp!(@kw, Async,      KwAsync) };
@@ -549,6 +540,7 @@ macro_rules! exp {
     (SelfUpper)      => { exp!(@kw, SelfUpper,  KwSelfUpper) };
     (Static)         => { exp!(@kw, Static,     KwStatic) };
     (Struct)         => { exp!(@kw, Struct,     KwStruct) };
+    (Super)          => { exp!(@kw, Super,      KwSuper) };
     (Trait)          => { exp!(@kw, Trait,      KwTrait) };
     (Try)            => { exp!(@kw, Try,        KwTry) };
     (Type)           => { exp!(@kw, Type,       KwType) };

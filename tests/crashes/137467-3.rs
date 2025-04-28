@@ -1,5 +1,5 @@
 //@ known-bug: #137467
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 
 fn meow(x: (u32, u32, u32)) {
     let f = || {

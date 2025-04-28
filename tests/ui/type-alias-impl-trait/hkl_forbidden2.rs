@@ -10,6 +10,7 @@ impl<'a> Trait<'a> for () {
     type Assoc = ();
 }
 
+#[define_opaque(Opaque)]
 fn test() -> &'static dyn for<'a> Trait<'a, Assoc = Opaque<'a>> {
     &()
     //~^ ERROR: expected generic lifetime parameter, found `'a`

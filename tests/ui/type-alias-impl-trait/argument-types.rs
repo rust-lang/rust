@@ -2,20 +2,19 @@
 #![allow(dead_code)]
 //@ check-pass
 
-mod foo {
-    use std::fmt::Debug;
+use std::fmt::Debug;
 
-    pub type Foo = impl Debug;
+pub type Foo = impl Debug;
 
-    fn foo1(mut x: Foo) {
-        x = 22_u32;
-    }
-
-    pub fn foo_value() -> Foo {
-        11_u32
-    }
+#[define_opaque(Foo)]
+fn foo1(mut x: Foo) {
+    x = 22_u32;
 }
-use foo::*;
+
+#[define_opaque(Foo)]
+pub fn foo_value() -> Foo {
+    11_u32
+}
 
 fn foo2(mut x: Foo) {
     // no constraint on x

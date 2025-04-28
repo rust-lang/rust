@@ -1,15 +1,11 @@
 use std::str::FromStr;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::expand::autodiff_attrs::{
-    AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
-};
-use rustc_ast::{MetaItem, MetaItemInner, attr};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
+use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_parsing::ReprAttr::ReprAlign;
 use rustc_attr_parsing::{AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::codes::*;
-use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
@@ -64,7 +60,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         );
     }
 
-    let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(did));
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(did));
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
@@ -79,7 +75,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     // When `no_builtins` is applied at the crate level, we should add the
     // `no-builtins` attribute to each function to ensure it takes effect in LTO.
-    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
     let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
     if no_builtins {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
@@ -118,7 +114,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 AttributeKind::Repr(reprs) => {
                     codegen_fn_attrs.alignment = reprs
                         .iter()
-                        .find_map(|(r, _)| if let ReprAlign(x) = r { Some(*x) } else { None });
+                        .filter_map(|(r, _)| if let ReprAlign(x) = r { Some(*x) } else { None })
+                        .max();
                 }
 
                 _ => {}
@@ -217,7 +214,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         // somewhat, and is subject to change in the future (which
                         // is a good thing, because this would ideally be a bit
                         // more firmed up).
-                        let is_like_elf = !(tcx.sess.target.is_like_osx
+                        let is_like_elf = !(tcx.sess.target.is_like_darwin
                             || tcx.sess.target.is_like_windows
                             || tcx.sess.target.is_like_wasm);
                         codegen_fn_attrs.flags |= if is_like_elf {
@@ -236,13 +233,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().abi() != ExternAbi::Rust
                 {
-                    struct_span_code_err!(
-                        tcx.dcx(),
-                        attr.span(),
-                        E0737,
-                        "`#[track_caller]` requires Rust ABI"
-                    )
-                    .emit();
+                    tcx.dcx().emit_err(errors::RequiresRustAbi { span: attr.span() });
                 }
                 if is_closure
                     && !tcx.features().closure_track_caller()
@@ -263,13 +254,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     if s.as_str().contains('\0') {
                         // `#[export_name = ...]` will be converted to a null-terminated string,
                         // so it may not contain any null characters.
-                        struct_span_code_err!(
-                            tcx.dcx(),
-                            attr.span(),
-                            E0648,
-                            "`export_name` may not contain null characters"
-                        )
-                        .emit();
+                        tcx.dcx().emit_err(errors::NullOnExport { span: attr.span() });
                     }
                     codegen_fn_attrs.export_name = Some(s);
                     mixed_export_name_no_mangle_lint_state.track_export_name(attr.span());
@@ -361,20 +346,26 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 no_sanitize_span = Some(attr.span());
                 if let Some(list) = attr.meta_item_list() {
                     for item in list.iter() {
-                        match item.name_or_empty() {
-                            sym::address => {
+                        match item.name() {
+                            Some(sym::address) => {
                                 codegen_fn_attrs.no_sanitize |=
                                     SanitizerSet::ADDRESS | SanitizerSet::KERNELADDRESS
                             }
-                            sym::cfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI,
-                            sym::kcfi => codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI,
-                            sym::memory => codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY,
-                            sym::memtag => codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG,
-                            sym::shadow_call_stack => {
+                            Some(sym::cfi) => codegen_fn_attrs.no_sanitize |= SanitizerSet::CFI,
+                            Some(sym::kcfi) => codegen_fn_attrs.no_sanitize |= SanitizerSet::KCFI,
+                            Some(sym::memory) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMORY
+                            }
+                            Some(sym::memtag) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::MEMTAG
+                            }
+                            Some(sym::shadow_call_stack) => {
                                 codegen_fn_attrs.no_sanitize |= SanitizerSet::SHADOWCALLSTACK
                             }
-                            sym::thread => codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD,
-                            sym::hwaddress => {
+                            Some(sym::thread) => {
+                                codegen_fn_attrs.no_sanitize |= SanitizerSet::THREAD
+                            }
+                            Some(sym::hwaddress) => {
                                 codegen_fn_attrs.no_sanitize |= SanitizerSet::HWADDRESS
                             }
                             _ => {
@@ -394,47 +385,28 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 [sym::arm, sym::a32 | sym::t32]
                                     if !tcx.sess.target.has_thumb_interworking =>
                                 {
-                                    struct_span_code_err!(
-                                        tcx.dcx(),
-                                        attr.span(),
-                                        E0779,
-                                        "target does not support `#[instruction_set]`"
-                                    )
-                                    .emit();
+                                    tcx.dcx().emit_err(errors::UnsuportedInstructionSet {
+                                        span: attr.span(),
+                                    });
                                     None
                                 }
                                 [sym::arm, sym::a32] => Some(InstructionSetAttr::ArmA32),
                                 [sym::arm, sym::t32] => Some(InstructionSetAttr::ArmT32),
                                 _ => {
-                                    struct_span_code_err!(
-                                        tcx.dcx(),
-                                        attr.span(),
-                                        E0779,
-                                        "invalid instruction set specified",
-                                    )
-                                    .emit();
+                                    tcx.dcx().emit_err(errors::InvalidInstructionSet {
+                                        span: attr.span(),
+                                    });
                                     None
                                 }
                             }
                         }
                         [] => {
-                            struct_span_code_err!(
-                                tcx.dcx(),
-                                attr.span(),
-                                E0778,
-                                "`#[instruction_set]` requires an argument"
-                            )
-                            .emit();
+                            tcx.dcx().emit_err(errors::BareInstructionSet { span: attr.span() });
                             None
                         }
                         _ => {
-                            struct_span_code_err!(
-                                tcx.dcx(),
-                                attr.span(),
-                                E0779,
-                                "cannot specify more than one instruction set"
-                            )
-                            .emit();
+                            tcx.dcx()
+                                .emit_err(errors::MultipleInstructionSet { span: attr.span() });
                             None
                         }
                     })
@@ -445,58 +417,38 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     let mut entry = None;
                     for item in l {
                         let Some(meta_item) = item.meta_item() else {
-                            tcx.dcx().span_err(item.span(), "expected name value pair");
+                            tcx.dcx().emit_err(errors::ExpectedNameValuePair { span: item.span() });
                             continue;
                         };
 
                         let Some(name_value_lit) = meta_item.name_value_literal() else {
-                            tcx.dcx().span_err(item.span(), "expected name value pair");
+                            tcx.dcx().emit_err(errors::ExpectedNameValuePair { span: item.span() });
                             continue;
                         };
 
-                        fn emit_error_with_label(
-                            tcx: TyCtxt<'_>,
-                            span: Span,
-                            error: impl Into<DiagMessage>,
-                            label: impl Into<SubdiagMessage>,
-                        ) {
-                            let mut err: rustc_errors::Diag<'_, _> =
-                                tcx.dcx().struct_span_err(span, error);
-                            err.span_label(span, label);
-                            err.emit();
-                        }
-
-                        let attrib_to_write = match meta_item.name_or_empty() {
-                            sym::prefix_nops => &mut prefix,
-                            sym::entry_nops => &mut entry,
+                        let attrib_to_write = match meta_item.name() {
+                            Some(sym::prefix_nops) => &mut prefix,
+                            Some(sym::entry_nops) => &mut entry,
                             _ => {
-                                emit_error_with_label(
-                                    tcx,
-                                    item.span(),
-                                    "unexpected parameter name",
-                                    format!("expected {} or {}", sym::prefix_nops, sym::entry_nops),
-                                );
+                                tcx.dcx().emit_err(errors::UnexpectedParameterName {
+                                    span: item.span(),
+                                    prefix_nops: sym::prefix_nops,
+                                    entry_nops: sym::entry_nops,
+                                });
                                 continue;
                             }
                         };
 
                         let rustc_ast::LitKind::Int(val, _) = name_value_lit.kind else {
-                            emit_error_with_label(
-                                tcx,
-                                name_value_lit.span,
-                                "invalid literal value",
-                                "value must be an integer between `0` and `255`",
-                            );
+                            tcx.dcx().emit_err(errors::InvalidLiteralValue {
+                                span: name_value_lit.span,
+                            });
                             continue;
                         };
 
                         let Ok(val) = val.get().try_into() else {
-                            emit_error_with_label(
-                                tcx,
-                                name_value_lit.span,
-                                "integer value out of range",
-                                "value must be between `0` and `255`",
-                            );
+                            tcx.dcx()
+                                .emit_err(errors::OutOfRangeInteger { span: name_value_lit.span });
                             continue;
                         };
 
@@ -533,7 +485,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         inline_span = Some(attr.span());
 
         let [item] = &items[..] else {
-            struct_span_code_err!(tcx.dcx(), attr.span(), E0534, "expected one argument").emit();
+            tcx.dcx().emit_err(errors::ExpectedOneArgument { span: attr.span() });
             return InlineAttr::None;
         };
 
@@ -542,9 +494,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         } else if item.has_name(sym::never) {
             InlineAttr::Never
         } else {
-            struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                .with_help("valid inline arguments are `always` and `never`")
-                .emit();
+            tcx.dcx().emit_err(errors::InvalidArgument { span: items[0].span() });
 
             InlineAttr::None
         }
@@ -575,9 +525,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
-        let err = |sp, s| struct_span_code_err!(tcx.dcx(), sp, E0722, "{}", s).emit();
         if attr.is_word() {
-            err(attr.span(), "expected one argument");
+            tcx.dcx().emit_err(errors::ExpectedOneArgumentOptimize { span: attr.span() });
             return ia;
         }
         let Some(ref items) = attr.meta_item_list() else {
@@ -586,7 +535,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
         inline_span = Some(attr.span());
         let [item] = &items[..] else {
-            err(attr.span(), "expected one argument");
+            tcx.dcx().emit_err(errors::ExpectedOneArgumentOptimize { span: attr.span() });
             return OptimizeAttr::Default;
         };
         if item.has_name(sym::size) {
@@ -596,7 +545,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         } else if item.has_name(sym::none) {
             OptimizeAttr::DoNotOptimize
         } else {
-            err(item.span(), "invalid argument");
+            tcx.dcx().emit_err(errors::InvalidArgumentOptimize { span: item.span() });
             OptimizeAttr::Default
         }
     });
@@ -659,24 +608,18 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if WEAK_LANG_ITEMS.iter().any(|&l| tcx.lang_items().get(l) == Some(did.to_def_id())) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-    }
     if let Some((name, _)) = lang_items::extract(attrs)
         && let Some(lang_item) = LangItem::from_name(name)
-        && let Some(link_name) = lang_item.link_name()
     {
-        codegen_fn_attrs.export_name = Some(link_name);
-        codegen_fn_attrs.link_name = Some(link_name);
+        if WEAK_LANG_ITEMS.contains(&lang_item) {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        }
+        if let Some(link_name) = lang_item.link_name() {
+            codegen_fn_attrs.export_name = Some(link_name);
+            codegen_fn_attrs.link_name = Some(link_name);
+        }
     }
     check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
-
-    // Internal symbols to the standard library all have no_mangle semantics in
-    // that they have defined symbol names present in the function name. This
-    // also applies to weak symbols where they all have known symbol names.
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-    }
 
     // Any linkage to LLVM intrinsics for now forcibly marks them all as never
     // unwinds since LLVM sometimes can't handle codegen which `invoke`s
@@ -849,21 +792,14 @@ impl<'a> MixedExportNameAndNoMangleState<'a> {
 fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let attrs = tcx.get_attrs(id, sym::rustc_autodiff);
 
-    let attrs =
-        attrs.filter(|attr| attr.name_or_empty() == sym::rustc_autodiff).collect::<Vec<_>>();
+    let attrs = attrs.filter(|attr| attr.has_name(sym::rustc_autodiff)).collect::<Vec<_>>();
 
     // check for exactly one autodiff attribute on placeholder functions.
     // There should only be one, since we generate a new placeholder per ad macro.
-    // FIXME(ZuseZ4): re-enable this check. Currently we add multiple, which doesn't cause harm but
-    // looks strange e.g. under cargo-expand.
     let attr = match &attrs[..] {
         [] => return None,
         [attr] => attr,
-        // These two attributes are the same and unfortunately duplicated due to a previous bug.
-        [attr, _attr2] => attr,
         _ => {
-            //FIXME(ZuseZ4): Once we fixed our parser, we should also prohibit the two-attribute
-            //branch above.
             span_bug!(attrs[1].span(), "cg_ssa: rustc_autodiff should only exist once per source");
         }
     };
@@ -875,8 +811,8 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         return Some(AutoDiffAttrs::source());
     }
 
-    let [mode, input_activities @ .., ret_activity] = &list[..] else {
-        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode and activities");
+    let [mode, width_meta, input_activities @ .., ret_activity] = &list[..] else {
+        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode, width and activities");
     };
     let mode = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = mode {
         p1.segments.first().unwrap().ident
@@ -890,6 +826,30 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         "Reverse" => DiffMode::Reverse,
         _ => {
             span_bug!(mode.span, "rustc_autodiff attribute contains invalid mode");
+        }
+    };
+
+    let width: u32 = match width_meta {
+        MetaItemInner::MetaItem(MetaItem { path: p1, .. }) => {
+            let w = p1.segments.first().unwrap().ident;
+            match w.as_str().parse() {
+                Ok(val) => val,
+                Err(_) => {
+                    span_bug!(w.span, "rustc_autodiff width should fit u32");
+                }
+            }
+        }
+        MetaItemInner::Lit(lit) => {
+            if let LitKind::Int(val, _) = lit.kind {
+                match val.get().try_into() {
+                    Ok(val) => val,
+                    Err(_) => {
+                        span_bug!(lit.span, "rustc_autodiff width should fit u32");
+                    }
+                }
+            } else {
+                span_bug!(lit.span, "rustc_autodiff width should be an integer");
+            }
         }
     };
 
@@ -930,16 +890,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         }
     }
 
-    for &input in &arg_activities {
-        if !valid_input_activity(mode, input) {
-            span_bug!(attr.span(), "Invalid input activity {} for {} mode", input, mode);
-        }
-    }
-    if !valid_ret_activity(mode, ret_activity) {
-        span_bug!(attr.span(), "Invalid return activity {} for {} mode", ret_activity, mode);
-    }
-
-    Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })
+    Some(AutoDiffAttrs { mode, width, ret_activity, input_activity: arg_activities })
 }
 
 pub(crate) fn provide(providers: &mut Providers) {

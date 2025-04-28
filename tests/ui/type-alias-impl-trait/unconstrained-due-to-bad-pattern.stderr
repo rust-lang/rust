@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `Tait` is non-empty
-  --> $DIR/unconstrained-due-to-bad-pattern.rs:8:15
+  --> $DIR/unconstrained-due-to-bad-pattern.rs:9:15
    |
 LL |         match empty_opaque() {}
    |               ^^^^^^^^^^^^^^

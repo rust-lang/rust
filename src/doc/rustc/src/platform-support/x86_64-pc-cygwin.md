@@ -10,7 +10,7 @@ Cygwin is only intended as an emulation layer for Unix-only programs which do no
 
 ## Target maintainers
 
-- [Berrysoft](https://github.com/Berrysoft)
+[@Berrysoft](https://github.com/Berrysoft)
 
 ## Requirements
 
@@ -20,8 +20,9 @@ The `target_os` of the target is `cygwin`, and it is `unix`.
 
 ## Building the target
 
-For cross-compilation you want LLVM with [llvm/llvm-project#121439 (merged)](https://github.com/llvm/llvm-project/pull/121439) applied to fix the LLVM codegen on importing external global variables from DLLs.
-No native builds on Cygwin now. It should be possible theoretically though, but might need a lot of patches.
+For cross-compilation you want LLVM at least 20.1.0-rc1.
+No native builds on Cygwin now.
+The tracking issue for host tools on Cygwin is [#137819](https://github.com/rust-lang/rust/issues/137819).
 
 ## Building Rust programs
 

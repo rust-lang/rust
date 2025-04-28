@@ -19,8 +19,8 @@ use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint;
 use rustc_session::lint::builtin::DEAD_CODE;
+use rustc_session::lint::{self, LintExpectationId};
 use rustc_span::{Symbol, sym};
 
 use crate::errors::{
@@ -361,7 +361,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.tcx.hir_fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
                 && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
                 && let TyKind::Path(hir::QPath::Resolved(_, path)) =
-                    self.tcx.hir().expect_item(local_impl_of).expect_impl().self_ty.kind
+                    self.tcx.hir_expect_item(local_impl_of).expect_impl().self_ty.kind
                 && let Res::Def(def_kind, did) = path.res
             {
                 match def_kind {
@@ -421,10 +421,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 }
                 hir::ItemKind::ForeignMod { .. } => {}
                 hir::ItemKind::Trait(..) => {
-                    for impl_def_id in self.tcx.all_impls(item.owner_id.to_def_id()) {
-                        if let Some(local_def_id) = impl_def_id.as_local()
-                            && let ItemKind::Impl(impl_ref) =
-                                self.tcx.hir().expect_item(local_def_id).kind
+                    for &impl_def_id in self.tcx.local_trait_impls(item.owner_id.def_id) {
+                        if let ItemKind::Impl(impl_ref) = self.tcx.hir_expect_item(impl_def_id).kind
                         {
                             // skip items
                             // mark dependent traits live
@@ -448,7 +446,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     for impl_id in self.tcx.all_impls(trait_id) {
                         if let Some(local_impl_id) = impl_id.as_local()
                             && let ItemKind::Impl(impl_ref) =
-                                self.tcx.hir().expect_item(local_impl_id).kind
+                                self.tcx.hir_expect_item(local_impl_id).kind
                         {
                             if !matches!(trait_item.kind, hir::TraitItemKind::Type(..))
                                 && !ty_ref_to_pub_struct(self.tcx, impl_ref.self_ty)
@@ -698,8 +696,8 @@ fn has_allow_dead_code_or_lang_attr(
 
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
-        matches!(lint_level, lint::Allow | lint::Expect(_))
+        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).level;
+        matches!(lint_level, lint::Allow | lint::Expect)
     }
 
     fn has_used_like_attr(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -751,7 +749,7 @@ fn check_item<'tcx>(
     match tcx.def_kind(id.owner_id) {
         DefKind::Enum => {
             let item = tcx.hir_item(id);
-            if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
+            if let hir::ItemKind::Enum(_, ref enum_def, _) = item.kind {
                 if let Some(comes_from_allow) = allow_dead_code {
                     worklist.extend(
                         enum_def.variants.iter().map(|variant| (variant.def_id, comes_from_allow)),
@@ -806,7 +804,7 @@ fn check_item<'tcx>(
         }
         DefKind::Struct => {
             let item = tcx.hir_item(id);
-            if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
+            if let hir::ItemKind::Struct(_, ref variant_data, _) = item.kind
                 && let Some(ctor_def_id) = variant_data.ctor_def_id()
             {
                 struct_constructors.insert(ctor_def_id, item.owner_id.def_id);
@@ -917,7 +915,7 @@ fn live_symbols_and_ignored_derived_traits(
 struct DeadItem {
     def_id: LocalDefId,
     name: Symbol,
-    level: lint::Level,
+    level: (lint::Level, Option<LintExpectationId>),
 }
 
 struct DeadVisitor<'tcx> {
@@ -961,9 +959,10 @@ impl<'tcx> DeadVisitor<'tcx> {
         ShouldWarnAboutField::Yes
     }
 
-    fn def_lint_level(&self, id: LocalDefId) -> lint::Level {
+    fn def_lint_level(&self, id: LocalDefId) -> (lint::Level, Option<LintExpectationId>) {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
-        self.tcx.lint_level_at_node(DEAD_CODE, hir_id).0
+        let level = self.tcx.lint_level_at_node(DEAD_CODE, hir_id);
+        (level.level, level.lint_id)
     }
 
     // # Panics
@@ -987,7 +986,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 && let Some(enum_did) = tcx.opt_parent(may_variant.to_def_id())
                 && let Some(enum_local_id) = enum_did.as_local()
                 && let Node::Item(item) = tcx.hir_node_by_def_id(enum_local_id)
-                && let ItemKind::Enum(_, _) = item.kind
+                && let ItemKind::Enum(..) = item.kind
             {
                 enum_local_id
             } else {
@@ -1062,7 +1061,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                 let tuple_fields = if let Some(parent_id) = parent_item
                     && let node = tcx.hir_node_by_def_id(parent_id)
                     && let hir::Node::Item(hir::Item {
-                        kind: hir::ItemKind::Struct(hir::VariantData::Tuple(fields, _, _), _),
+                        kind: hir::ItemKind::Struct(_, hir::VariantData::Tuple(fields, _, _), _),
                         ..
                     }) = node
                 {
@@ -1131,8 +1130,9 @@ impl<'tcx> DeadVisitor<'tcx> {
         if dead_codes.is_empty() {
             return;
         }
-        dead_codes.sort_by_key(|v| v.level);
-        for group in dead_codes[..].chunk_by(|a, b| a.level == b.level) {
+        // FIXME: `dead_codes` should probably be morally equivalent to `IndexMap<(Level, LintExpectationId), (DefId, Symbol)>`
+        dead_codes.sort_by_key(|v| v.level.0);
+        for group in dead_codes.chunk_by(|a, b| a.level == b.level) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);
         }
     }

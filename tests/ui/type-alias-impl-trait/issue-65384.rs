@@ -9,6 +9,7 @@ type Bar = impl MyTrait;
 impl MyTrait for Bar {}
 //~^ ERROR: conflicting implementations of trait `MyTrait` for type `()`
 
-fn bazr() -> Bar { }
+#[define_opaque(Bar)]
+fn bazr() -> Bar {}
 
 fn main() {}

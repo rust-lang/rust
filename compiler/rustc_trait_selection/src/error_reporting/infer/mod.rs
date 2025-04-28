@@ -509,7 +509,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 hir::MatchSource::TryDesugar(scrut_hir_id),
             ) => {
                 if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
-                    let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
+                    let scrut_expr = self.tcx.hir_expect_expr(scrut_hir_id);
                     let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
                         let arg_expr = args.first().expect("try desugaring call w/out arg");
                         self.typeck_results
@@ -548,7 +548,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }) => match source {
                 hir::MatchSource::TryDesugar(scrut_hir_id) => {
                     if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
-                        let scrut_expr = self.tcx.hir().expect_expr(scrut_hir_id);
+                        let scrut_expr = self.tcx.hir_expect_expr(scrut_hir_id);
                         let scrut_ty = if let hir::ExprKind::Call(_, args) = &scrut_expr.kind {
                             let arg_expr = args.first().expect("try desugaring call w/out arg");
                             self.typeck_results
@@ -1466,7 +1466,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypesVisitor<'tcx> {
             fn visit_ty(&mut self, t: Ty<'tcx>) {
                 if let Some((kind, def_id)) = TyCategory::from_ty(self.tcx, t) {
                     let span = self.tcx.def_span(def_id);
@@ -2026,7 +2026,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 LetVisitor { span }.visit_body(body).break_value()
             }
-            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(ty, _, _), .. }) => {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(_, ty, _, _), .. }) => {
                 Some(&ty.peel_refs().kind)
             }
             _ => None,
@@ -2334,13 +2334,13 @@ impl<'tcx> ObligationCause<'tcx> {
         subdiags: Vec<TypeErrorAdditionalDiags>,
     ) -> ObligationCauseFailureCode {
         match self.code() {
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
                 ObligationCauseFailureCode::MethodCompat { span, subdiags }
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
                 ObligationCauseFailureCode::TypeCompat { span, subdiags }
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const { .. }, .. } => {
                 ObligationCauseFailureCode::ConstCompat { span, subdiags }
             }
             ObligationCauseCode::BlockTailExpression(.., hir::MatchSource::TryDesugar(_)) => {
@@ -2398,13 +2398,13 @@ impl<'tcx> ObligationCause<'tcx> {
 
     fn as_requirement_str(&self) -> &'static str {
         match self.code() {
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
                 "method type is compatible with trait"
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
                 "associated type is compatible with trait"
             }
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const { .. }, .. } => {
                 "const is compatible with trait"
             }
             ObligationCauseCode::MainFunctionType => "`main` function has the correct type",
@@ -2422,9 +2422,13 @@ pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
     fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self.0.code() {
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => "method_compat",
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => "type_compat",
-            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const, .. } => {
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn { .. }, .. } => {
+                "method_compat"
+            }
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type { .. }, .. } => {
+                "type_compat"
+            }
+            ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Const { .. }, .. } => {
                 "const_compat"
             }
             ObligationCauseCode::MainFunctionType => "fn_main_correct_type",

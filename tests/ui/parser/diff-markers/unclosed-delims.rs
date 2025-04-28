@@ -9,4 +9,4 @@ mod tests {
     fn test2() {
 >>>>>>> 7a4f13c blah blah blah
     }
-} //~ this file contains an unclosed delimiter
+} //~ ERROR this file contains an unclosed delimiter

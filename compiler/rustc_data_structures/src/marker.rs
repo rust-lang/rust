@@ -1,13 +1,13 @@
 use std::alloc::Allocator;
 
-#[rustc_on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
+#[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`")]
 // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
 // is true. These types can be wrapped in a `FromDyn` to get a `Send` type. Wrapping a
 // `Send` type in `IntoDynSyncSend` will create a `DynSend` type.
 pub unsafe auto trait DynSend {}
 
-#[rustc_on_unimplemented(message = "`{Self}` doesn't implement `DynSync`. \
+#[diagnostic::on_unimplemented(message = "`{Self}` doesn't implement `DynSync`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Sync`")]
 // This is an auto trait for types which can be shared across threads if `sync::is_dyn_thread_safe()`
 // is true. These types can be wrapped in a `FromDyn` to get a `Sync` type. Wrapping a
@@ -39,8 +39,15 @@ impls_dyn_send_neg!(
     [std::io::StderrLock<'_>]
 );
 
-#[cfg(any(unix, target_os = "hermit", target_os = "wasi", target_os = "solid_asp3"))]
-// Consistent with `std`, `os_imp::Env` is `!Sync` in these platforms
+#[cfg(any(
+    unix,
+    target_os = "hermit",
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    target_os = "solid_asp3",
+    target_os = "wasi",
+    target_os = "xous"
+))]
+// Consistent with `std`, `env_imp::Env` is `!Sync` in these platforms
 impl !DynSend for std::env::VarsOs {}
 
 macro_rules! already_send {
@@ -76,6 +83,7 @@ impl_dyn_send!(
     [crate::sync::RwLock<T> where T: DynSend]
     [crate::tagged_ptr::TaggedRef<'a, P, T> where 'a, P: Sync, T: Send + crate::tagged_ptr::Tag]
     [rustc_arena::TypedArena<T> where T: DynSend]
+    [hashbrown::HashTable<T> where T: DynSend]
     [indexmap::IndexSet<V, S> where V: DynSend, S: DynSend]
     [indexmap::IndexMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
     [thin_vec::ThinVec<T> where T: DynSend]
@@ -105,8 +113,15 @@ impls_dyn_sync_neg!(
     [std::sync::mpsc::Sender<T> where T]
 );
 
-#[cfg(any(unix, target_os = "hermit", target_os = "wasi", target_os = "solid_asp3"))]
-// Consistent with `std`, `os_imp::Env` is `!Sync` in these platforms
+#[cfg(any(
+    unix,
+    target_os = "hermit",
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    target_os = "solid_asp3",
+    target_os = "wasi",
+    target_os = "xous"
+))]
+// Consistent with `std`, `env_imp::Env` is `!Sync` in these platforms
 impl !DynSync for std::env::VarsOs {}
 
 macro_rules! already_sync {
@@ -153,6 +168,7 @@ impl_dyn_sync!(
     [crate::tagged_ptr::TaggedRef<'a, P, T> where 'a, P: Sync, T: Sync + crate::tagged_ptr::Tag]
     [parking_lot::lock_api::Mutex<R, T> where R: DynSync, T: ?Sized + DynSend]
     [parking_lot::lock_api::RwLock<R, T> where R: DynSync, T: ?Sized + DynSend + DynSync]
+    [hashbrown::HashTable<T> where T: DynSync]
     [indexmap::IndexSet<V, S> where V: DynSync, S: DynSync]
     [indexmap::IndexMap<K, V, S> where K: DynSync, V: DynSync, S: DynSync]
     [smallvec::SmallVec<A> where A: smallvec::Array + DynSync]
@@ -178,6 +194,12 @@ impl<T> FromDyn<T> {
     }
 
     #[inline(always)]
+    pub fn derive<O>(&self, val: O) -> FromDyn<O> {
+        // We already did the check for `sync::is_dyn_thread_safe()` when creating `Self`
+        FromDyn(val)
+    }
+
+    #[inline(always)]
     pub fn into_inner(self) -> T {
         self.0
     }
@@ -195,6 +217,13 @@ impl<T> std::ops::Deref for FromDyn<T> {
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T> std::ops::DerefMut for FromDyn<T> {
+    #[inline(always)]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

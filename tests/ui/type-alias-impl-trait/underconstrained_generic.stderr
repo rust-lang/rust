@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `T: Trait` is not satisfied
-  --> $DIR/underconstrained_generic.rs:22:5
+  --> $DIR/underconstrained_generic.rs:23:5
    |
 LL |     ()
    |     ^^ the trait `Trait` is not implemented for `T`
@@ -17,7 +17,7 @@ note: required by a bound in an opaque type
 LL | type Converter<T> = impl ProofForConversion<T>;
    |                          ^^^^^^^^^^^^^^^^^^^^^
 note: this definition site has more where clauses than the opaque type
-  --> $DIR/underconstrained_generic.rs:21:1
+  --> $DIR/underconstrained_generic.rs:22:1
    |
 LL | fn _defining_use<T: Trait>() -> Converter<T> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

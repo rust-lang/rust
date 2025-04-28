@@ -14,6 +14,7 @@
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IRPrinter/IRPrintingPasses.h"
 #include "llvm/LTO/LTO.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
@@ -47,10 +48,7 @@
 #include <vector>
 
 // Conditional includes prevent clang-format from fully sorting the list,
-// so keep them separate.
-#if LLVM_VERSION_GE(19, 0)
-#include "llvm/Support/PGOOptions.h"
-#endif
+// so if any are needed, keep them separate down here.
 
 using namespace llvm;
 
@@ -432,31 +430,15 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   }
   if (!strcmp("zlib", DebugInfoCompression) &&
       llvm::compression::zlib::isAvailable()) {
-#if LLVM_VERSION_GE(19, 0)
     Options.MCOptions.CompressDebugSections = DebugCompressionType::Zlib;
-#else
-    Options.CompressDebugSections = DebugCompressionType::Zlib;
-#endif
   } else if (!strcmp("zstd", DebugInfoCompression) &&
              llvm::compression::zstd::isAvailable()) {
-#if LLVM_VERSION_GE(19, 0)
     Options.MCOptions.CompressDebugSections = DebugCompressionType::Zstd;
-#else
-    Options.CompressDebugSections = DebugCompressionType::Zstd;
-#endif
   } else if (!strcmp("none", DebugInfoCompression)) {
-#if LLVM_VERSION_GE(19, 0)
     Options.MCOptions.CompressDebugSections = DebugCompressionType::None;
-#else
-    Options.CompressDebugSections = DebugCompressionType::None;
-#endif
   }
 
-#if LLVM_VERSION_GE(19, 0)
   Options.MCOptions.X86RelaxRelocations = RelaxELFRelocations;
-#else
-  Options.RelaxELFRelocations = RelaxELFRelocations;
-#endif
   Options.UseInitArray = UseInitArray;
   Options.EmulatedTLS = UseEmulatedTls;
 
@@ -722,7 +704,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     bool LintIR, LLVMRustThinLTOBuffer **ThinLTOBufferRef, bool EmitThinLTO,
     bool EmitThinLTOSummary, bool MergeFunctions, bool UnrollLoops,
     bool SLPVectorize, bool LoopVectorize, bool DisableSimplifyLibCalls,
-    bool EmitLifetimeMarkers, bool RunEnzyme,
+    bool EmitLifetimeMarkers, bool RunEnzyme, bool PrintBeforeEnzyme,
+    bool PrintAfterEnzyme, bool PrintPasses,
     LLVMRustSanitizerOptions *SanitizerOptions, const char *PGOGenPath,
     const char *PGOUsePath, bool InstrumentCoverage,
     const char *InstrProfileOutput, const char *PGOSampleUsePath,
@@ -753,34 +736,23 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   auto FS = vfs::getRealFileSystem();
   if (PGOGenPath) {
     assert(!PGOUsePath && !PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOGenPath, "", "", "", FS, PGOOptions::IRInstr,
-                        PGOOptions::NoCSAction,
-#if LLVM_VERSION_GE(19, 0)
-                        PGOOptions::ColdFuncOpt::Default,
-#endif
-                        DebugInfoForProfiling);
+    PGOOpt = PGOOptions(
+        PGOGenPath, "", "", "", FS, PGOOptions::IRInstr, PGOOptions::NoCSAction,
+        PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOUsePath) {
     assert(!PGOSampleUsePath);
-    PGOOpt = PGOOptions(PGOUsePath, "", "", "", FS, PGOOptions::IRUse,
-                        PGOOptions::NoCSAction,
-#if LLVM_VERSION_GE(19, 0)
-                        PGOOptions::ColdFuncOpt::Default,
-#endif
-                        DebugInfoForProfiling);
+    PGOOpt = PGOOptions(
+        PGOUsePath, "", "", "", FS, PGOOptions::IRUse, PGOOptions::NoCSAction,
+        PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   } else if (PGOSampleUsePath) {
-    PGOOpt = PGOOptions(PGOSampleUsePath, "", "", "", FS, PGOOptions::SampleUse,
-                        PGOOptions::NoCSAction,
-#if LLVM_VERSION_GE(19, 0)
-                        PGOOptions::ColdFuncOpt::Default,
-#endif
-                        DebugInfoForProfiling);
+    PGOOpt =
+        PGOOptions(PGOSampleUsePath, "", "", "", FS, PGOOptions::SampleUse,
+                   PGOOptions::NoCSAction, PGOOptions::ColdFuncOpt::Default,
+                   DebugInfoForProfiling);
   } else if (DebugInfoForProfiling) {
-    PGOOpt = PGOOptions("", "", "", "", FS, PGOOptions::NoAction,
-                        PGOOptions::NoCSAction,
-#if LLVM_VERSION_GE(19, 0)
-                        PGOOptions::ColdFuncOpt::Default,
-#endif
-                        DebugInfoForProfiling);
+    PGOOpt = PGOOptions(
+        "", "", "", "", FS, PGOOptions::NoAction, PGOOptions::NoCSAction,
+        PGOOptions::ColdFuncOpt::Default, DebugInfoForProfiling);
   }
 
   auto PB = PassBuilder(TM, PTO, PGOOpt, &PIC);
@@ -855,10 +827,15 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   }
 
   if (LintIR) {
-    PipelineStartEPCallbacks.push_back(
-        [](ModulePassManager &MPM, OptimizationLevel Level) {
-          MPM.addPass(createModuleToFunctionPassAdaptor(LintPass()));
-        });
+    PipelineStartEPCallbacks.push_back([](ModulePassManager &MPM,
+                                          OptimizationLevel Level) {
+#if LLVM_VERSION_GE(21, 0)
+      MPM.addPass(
+          createModuleToFunctionPassAdaptor(LintPass(/*AbortOnError=*/true)));
+#else
+      MPM.addPass(createModuleToFunctionPassAdaptor(LintPass()));
+#endif
+    });
   }
 
   if (InstrumentCoverage) {
@@ -1073,14 +1050,38 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   // now load "-enzyme" pass:
 #ifdef ENZYME
   if (RunEnzyme) {
-    registerEnzymeAndPassPipeline(PB, true);
+
+    if (PrintBeforeEnzyme) {
+      // Handle the Rust flag `-Zautodiff=PrintModBefore`.
+      std::string Banner = "Module before EnzymeNewPM";
+      MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+    }
+
+    registerEnzymeAndPassPipeline(PB, false);
     if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
       std::string ErrMsg = toString(std::move(Err));
       LLVMRustSetLastError(ErrMsg.c_str());
       return LLVMRustResult::Failure;
     }
+
+    if (PrintAfterEnzyme) {
+      // Handle the Rust flag `-Zautodiff=PrintModAfter`.
+      std::string Banner = "Module after EnzymeNewPM";
+      MPM.addPass(PrintModulePass(outs(), Banner, true, false));
+    }
   }
 #endif
+  if (PrintPasses) {
+    // Print all passes from the PM:
+    std::string Pipeline;
+    raw_string_ostream SOS(Pipeline);
+    MPM.printPipeline(SOS, [&PIC](StringRef ClassName) {
+      auto PassName = PIC.getPassNameForClassName(ClassName);
+      return PassName.empty() ? ClassName : PassName;
+    });
+    outs() << Pipeline;
+    outs() << "\n";
+  }
 
   // Upgrade all calls to old intrinsics first.
   for (Module::iterator I = TheModule->begin(), E = TheModule->end(); I != E;)
@@ -1682,12 +1683,21 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
 #endif
 
   // Based on the 'InProcessThinBackend' constructor in LLVM
+#if LLVM_VERSION_GE(21, 0)
+  for (auto &Name : Data->Index.cfiFunctionDefs().symbols())
+    CfiFunctionDefs.insert(
+        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
+  for (auto &Name : Data->Index.cfiFunctionDecls().symbols())
+    CfiFunctionDecls.insert(
+        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
+#else
   for (auto &Name : Data->Index.cfiFunctionDefs())
     CfiFunctionDefs.insert(
         GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
   for (auto &Name : Data->Index.cfiFunctionDecls())
     CfiFunctionDecls.insert(
         GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
+#endif
 
 #if LLVM_VERSION_GE(20, 0)
   Key = llvm::computeLTOCacheKey(conf, Data->Index, ModId, ImportList,

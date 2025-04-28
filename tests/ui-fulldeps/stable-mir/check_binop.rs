@@ -15,7 +15,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::mir::mono::Instance;
 use stable_mir::mir::visit::{Location, MirVisitor};
 use stable_mir::mir::{LocalDecl, Rvalue, Statement, StatementKind, Terminator, TerminatorKind};
@@ -82,7 +81,7 @@ impl<'a> MirVisitor for Visitor<'a> {
 fn main() {
     let path = "binop_input.rs";
     generate_input(&path).unwrap();
-    let args = vec!["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
+    let args = &["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
     run!(args, test_binops).unwrap();
 }
 

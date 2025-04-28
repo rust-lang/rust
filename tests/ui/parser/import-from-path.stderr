@@ -1,5 +1,5 @@
 error: expected `;`, found `::`
-  --> $DIR/import-from-path.rs:2:15
+  --> $DIR/import-from-path.rs:1:15
    |
 LL | use foo::{bar}::baz
    |               ^^ expected `;`

@@ -8,7 +8,7 @@ Target for macOS on late-generation `x86_64` Apple chips, usable as the
 
 ## Target maintainers
 
-- Thom Chiovoloni `thom@shift.click` <https://github.com/thomcc>
+[@thomcc](https://github.com/thomcc)
 
 ## Requirements
 
@@ -29,7 +29,7 @@ respects.
 ## Building the target
 
 Users on Apple targets can build this by adding it to the `target` list in
-`config.toml`, or with `-Zbuild-std`.
+`bootstrap.toml`, or with `-Zbuild-std`.
 
 ## Building Rust programs
 

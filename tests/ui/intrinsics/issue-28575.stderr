@@ -1,11 +1,20 @@
+error[E0703]: invalid ABI: found `rust-intrinsic`
+  --> $DIR/issue-28575.rs:4:28
+   |
+LL |     pub static FOO: extern "rust-intrinsic" fn();
+   |                            ^^^^^^^^^^^^^^^^ invalid ABI
+   |
+   = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
+
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
-  --> $DIR/issue-28575.rs:8:5
+  --> $DIR/issue-28575.rs:9:5
    |
 LL |     FOO()
    |     ^^^ use of extern static
    |
    = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0133`.
+Some errors have detailed explanations: E0133, E0703.
+For more information about an error, try `rustc --explain E0133`.

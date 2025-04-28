@@ -26,6 +26,7 @@ extern crate rustc_index;
 extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 #[macro_use]
 extern crate tracing;
@@ -41,7 +42,6 @@ use std::sync::Arc;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
-use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -124,6 +124,7 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx {
     output_filenames: Arc<OutputFilenames>,
+    invocation_temp: Option<String>,
     should_write_ir: bool,
     global_asm: String,
     inline_asm_index: usize,
@@ -142,6 +143,7 @@ impl CodegenCx {
         };
         CodegenCx {
             output_filenames: tcx.output_filenames(()).clone(),
+            invocation_temp: tcx.sess.invocation_temp.clone(),
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
             inline_asm_index: 0,
@@ -176,13 +178,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features_cfg(
-        &self,
-        sess: &Session,
-        _allow_unstable: bool,
-    ) -> Vec<rustc_span::Symbol> {
+    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
-        if sess.target.arch == "x86_64" && sess.target.os != "none" {
+        let target_features = if sess.target.arch == "x86_64" && sess.target.os != "none" {
             // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
             vec![sym::fsxr, sym::sse, sym::sse2, Symbol::intern("x87")]
         } else if sess.target.arch == "aarch64" {
@@ -196,7 +194,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
             }
         } else {
             vec![]
-        }
+        };
+        // FIXME do `unstable_target_features` properly
+        let unstable_target_features = target_features.clone();
+        (target_features, unstable_target_features)
     }
 
     fn print_version(&self) {
@@ -214,15 +215,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
                 .unwrap_or_else(|err| tcx.sess.dcx().fatal(err))
         });
-        match config.codegen_mode {
-            CodegenMode::Aot => driver::aot::run_aot(tcx, metadata, need_metadata_module),
-            CodegenMode::Jit | CodegenMode::JitLazy => {
-                #[cfg(feature = "jit")]
-                driver::jit::run_jit(tcx, config.codegen_mode, config.jit_args);
+        if config.jit_mode {
+            #[cfg(feature = "jit")]
+            driver::jit::run_jit(tcx, config.jit_args);
 
-                #[cfg(not(feature = "jit"))]
-                tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
-            }
+            #[cfg(not(feature = "jit"))]
+            tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+        } else {
+            driver::aot::run_aot(tcx, metadata, need_metadata_module)
         }
     }
 
@@ -247,21 +247,19 @@ fn enable_verifier(sess: &Session) -> bool {
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    // FIXME(madsmtm): Use `sess.target.llvm_target` once target-lexicon supports unversioned macOS.
-    // See <https://github.com/bytecodealliance/target-lexicon/pull/113>
-    match versioned_llvm_target(sess).parse() {
+    match sess.target.llvm_target.parse() {
         Ok(triple) => triple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
 }
 
-fn build_isa(sess: &Session) -> Arc<dyn TargetIsa + 'static> {
+fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
 
     let mut flags_builder = settings::builder();
-    flags_builder.enable("is_pic").unwrap();
+    flags_builder.set("is_pic", if jit { "false" } else { "true" }).unwrap();
     let enable_verifier = if enable_verifier(sess) { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();

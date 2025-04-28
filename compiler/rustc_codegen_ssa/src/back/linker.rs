@@ -111,24 +111,22 @@ pub(crate) fn get_linker<'a>(
     // PATH for the child.
     let mut new_path = sess.get_tools_search_paths(self_contained);
     let mut msvc_changed_path = false;
-    if sess.target.is_like_msvc {
-        if let Some(ref tool) = msvc_tool {
-            cmd.args(tool.args());
-            for (k, v) in tool.env() {
-                if k == "PATH" {
-                    new_path.extend(env::split_paths(v));
-                    msvc_changed_path = true;
-                } else {
-                    cmd.env(k, v);
-                }
+    if sess.target.is_like_msvc
+        && let Some(ref tool) = msvc_tool
+    {
+        cmd.args(tool.args());
+        for (k, v) in tool.env() {
+            if k == "PATH" {
+                new_path.extend(env::split_paths(v));
+                msvc_changed_path = true;
+            } else {
+                cmd.env(k, v);
             }
         }
     }
 
-    if !msvc_changed_path {
-        if let Some(path) = env::var_os("PATH") {
-            new_path.extend(env::split_paths(&path));
-        }
+    if !msvc_changed_path && let Some(path) = env::var_os("PATH") {
+        new_path.extend(env::split_paths(&path));
     }
     cmd.env("PATH", env::join_paths(new_path).unwrap());
 
@@ -375,7 +373,7 @@ impl<'a> GccLinker<'a> {
         // * On OSX they have their own linker, not binutils'
         // * For WebAssembly the only functional linker is LLD, which doesn't
         //   support hint flags
-        !self.sess.target.is_like_osx && !self.sess.target.is_like_wasm
+        !self.sess.target.is_like_darwin && !self.sess.target.is_like_wasm
     }
 
     // Some platforms take hints about whether a library is static or dynamic.
@@ -427,7 +425,7 @@ impl<'a> GccLinker<'a> {
 
     fn build_dylib(&mut self, crate_type: CrateType, out_filename: &Path) {
         // On mac we need to tell the linker to let this library be rpathed
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             if self.is_cc() {
                 // `-dynamiclib` makes `cc` pass `-dylib` to the linker.
                 self.cc_arg("-dynamiclib");
@@ -452,9 +450,10 @@ impl<'a> GccLinker<'a> {
                     // The output filename already contains `dll_suffix` so
                     // the resulting import library will have a name in the
                     // form of libfoo.dll.a
-                    let mut implib_name = OsString::from(&*self.sess.target.staticlib_prefix);
+                    let (prefix, suffix) = self.sess.staticlib_components(false);
+                    let mut implib_name = OsString::from(prefix);
                     implib_name.push(name);
-                    implib_name.push(&*self.sess.target.staticlib_suffix);
+                    implib_name.push(suffix);
                     let mut out_implib = OsString::from("--out-implib=");
                     out_implib.push(out_filename.with_file_name(implib_name));
                     self.link_arg(out_implib);
@@ -472,7 +471,7 @@ impl<'a> GccLinker<'a> {
 
     fn with_as_needed(&mut self, as_needed: bool, f: impl FnOnce(&mut Self)) {
         if !as_needed {
-            if self.sess.target.is_like_osx {
+            if self.sess.target.is_like_darwin {
                 // FIXME(81490): ld64 doesn't support these flags but macOS 11
                 // has -needed-l{} / -needed_library {}
                 // but we have no way to detect that here.
@@ -487,7 +486,7 @@ impl<'a> GccLinker<'a> {
         f(self);
 
         if !as_needed {
-            if self.sess.target.is_like_osx {
+            if self.sess.target.is_like_darwin {
                 // See above FIXME comment
             } else if self.is_gnu && !self.sess.target.is_like_windows {
                 self.link_arg("--as-needed");
@@ -620,7 +619,7 @@ impl<'a> Linker for GccLinker<'a> {
         let colon = if verbatim && self.is_gnu { ":" } else { "" };
         if !whole_archive {
             self.link_or_cc_arg(format!("-l{colon}{name}"));
-        } else if self.sess.target.is_like_osx {
+        } else if self.sess.target.is_like_darwin {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.link_arg("-force_load");
@@ -636,7 +635,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         if !whole_archive {
             self.link_or_cc_arg(path);
-        } else if self.sess.target.is_like_osx {
+        } else if self.sess.target.is_like_darwin {
             self.link_arg("-force_load").link_arg(path);
         } else {
             self.link_arg("--whole-archive").link_arg(path).link_arg("--no-whole-archive");
@@ -671,7 +670,7 @@ impl<'a> Linker for GccLinker<'a> {
         // -dead_strip can't be part of the pre_link_args because it's also used
         // for partial linking when using multiple codegen units (-r). So we
         // insert it here.
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             self.link_arg("-dead_strip");
 
         // If we're building a dylib, we don't use --gc-sections because LLVM
@@ -729,7 +728,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         // MacOS linker doesn't support stripping symbols directly anymore.
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             return;
         }
 
@@ -796,7 +795,7 @@ impl<'a> Linker for GccLinker<'a> {
 
         debug!("EXPORTED SYMBOLS:");
 
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             // Write a plain, newline-separated list of symbols
             let res: io::Result<()> = try {
                 let mut f = File::create_buffered(&path)?;
@@ -842,7 +841,7 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
 
-        if self.sess.target.is_like_osx {
+        if self.sess.target.is_like_darwin {
             self.link_arg("-exported_symbols_list").link_arg(path);
         } else if self.sess.target.is_like_solaris {
             self.link_arg("-M").link_arg(path);
@@ -960,9 +959,9 @@ impl<'a> Linker for MsvcLinker<'a> {
         if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
             self.link_staticlib_by_path(&path, whole_archive);
         } else {
-            let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-            let suffix = if verbatim { "" } else { ".lib" };
-            self.link_arg(format!("{prefix}{name}{suffix}"));
+            let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+            let (prefix, suffix) = self.sess.staticlib_components(verbatim);
+            self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
         }
     }
 
@@ -1784,7 +1783,10 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) {
+        // Do not export mangled symbols from cdylibs and don't attempt to export compiler-builtins
+        // from any cdylib. The latter doesn't work anyway as we use hidden visibility for
+        // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
             symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
                 tcx, symbol, cnum,
             ));
@@ -1823,7 +1825,9 @@ pub(crate) fn linked_symbols(
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum)
+            || info.used
+        {
             symbols.push((
                 symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
                 info.kind,

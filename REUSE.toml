@@ -22,7 +22,7 @@ path = [
     "Cargo.lock",
     "Cargo.toml",
     "CODE_OF_CONDUCT.md",
-    "config.example.toml",
+    "bootstrap.example.toml",
     "configure",
     "CONTRIBUTING.md",
     "COPYRIGHT",

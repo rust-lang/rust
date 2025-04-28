@@ -33,10 +33,10 @@ pub(super) use self::impl_apple::peer_cred;
     target_os = "nto"
 ))]
 pub(super) use self::impl_bsd::peer_cred;
-#[cfg(any(target_os = "android", target_os = "linux"))]
+#[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
 pub(super) use self::impl_linux::peer_cred;
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "cygwin"))]
 mod impl_linux {
     use libc::{SO_PEERCRED, SOL_SOCKET, c_void, getsockopt, socklen_t, ucred};
 

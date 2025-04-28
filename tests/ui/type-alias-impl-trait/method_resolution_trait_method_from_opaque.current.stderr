@@ -1,11 +1,11 @@
-error: item does not constrain `Tait::{opaque#0}`, but has it in its signature
-  --> $DIR/method_resolution_trait_method_from_opaque.rs:24:8
+error: item does not constrain `Tait::{opaque#0}`
+  --> $DIR/method_resolution_trait_method_from_opaque.rs:26:8
    |
 LL |     fn foo(&mut self) {
    |        ^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
   --> $DIR/method_resolution_trait_method_from_opaque.rs:17:13
    |
 LL | type Tait = impl Iterator<Item = ()>;

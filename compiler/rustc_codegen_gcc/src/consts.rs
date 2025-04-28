@@ -131,7 +131,7 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             // will use load-unaligned instructions instead, and thus avoiding the crash.
             //
             // We could remove this hack whenever we decide to drop macOS 10.10 support.
-            if self.tcx.sess.target.options.is_like_osx {
+            if self.tcx.sess.target.options.is_like_darwin {
                 // The `inspect` method is okay here because we checked for provenance, and
                 // because we are doing this access to inspect the final interpreter state
                 // (not as part of the interpreter execution).
@@ -242,10 +242,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
 
         let global = if def_id.is_local() && !self.tcx.is_foreign_item(def_id) {
-            if let Some(global) = self.get_declared_value(sym) {
-                if self.val_ty(global) != self.type_ptr_to(gcc_type) {
-                    span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
-                }
+            if let Some(global) = self.get_declared_value(sym)
+                && self.val_ty(global) != self.type_ptr_to(gcc_type)
+            {
+                span_bug!(self.tcx.def_span(def_id), "Conflicting types for static");
             }
 
             let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
@@ -364,6 +364,7 @@ pub fn const_alloc_to_gcc<'gcc>(
         llvals.push(cx.const_bytes(bytes));
     }
 
+    // FIXME(bjorn3) avoid wrapping in a struct when there is only a single element.
     cx.const_struct(&llvals, true)
 }
 

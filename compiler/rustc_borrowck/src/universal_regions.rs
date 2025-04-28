@@ -27,11 +27,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_macros::extension;
-use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionVid, Ty,
-    TyCtxt, TypeVisitableExt,
+    TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, kw, sym};
@@ -182,6 +181,20 @@ impl<'tcx> DefiningTy<'tcx> {
             | DefiningTy::Const(def_id, ..)
             | DefiningTy::InlineConst(def_id, ..)
             | DefiningTy::GlobalAsm(def_id) => def_id,
+        }
+    }
+
+    /// Returns the args of the `DefiningTy`. These are equivalent to the identity
+    /// substs of the body, but replaced with region vids.
+    pub(crate) fn args(&self) -> ty::GenericArgsRef<'tcx> {
+        match *self {
+            DefiningTy::Closure(_, args)
+            | DefiningTy::Coroutine(_, args)
+            | DefiningTy::CoroutineClosure(_, args)
+            | DefiningTy::FnDef(_, args)
+            | DefiningTy::Const(_, args)
+            | DefiningTy::InlineConst(_, args) => args,
+            DefiningTy::GlobalAsm(_) => ty::List::empty(),
         }
     }
 }
@@ -423,6 +436,10 @@ impl<'tcx> UniversalRegions<'tcx> {
             }
             DefiningTy::GlobalAsm(_) => unreachable!(),
         }
+    }
+
+    pub(crate) fn implicit_region_bound(&self) -> RegionVid {
+        self.fr_fn_body
     }
 
     pub(crate) fn tainted_by_errors(&self) -> Option<ErrorGuaranteed> {
@@ -896,19 +913,19 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// if it is a placeholder. Handling placeholders requires access to the
     /// `MirTypeckRegionConstraints`.
     fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::ReVar(..) = *r {
-            r.as_var()
-        } else if let ty::ReError(guar) = *r {
-            self.tainted_by_errors.set(Some(guar));
-            // We use the `'static` `RegionVid` because `ReError` doesn't actually exist in the
-            // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if
-            // errors are being emitted and 2) it leaves the happy path unaffected.
-            self.fr_static
-        } else {
-            *self
+        match r.kind() {
+            ty::ReVar(..) => r.as_var(),
+            ty::ReError(guar) => {
+                self.tainted_by_errors.set(Some(guar));
+                // We use the `'static` `RegionVid` because `ReError` doesn't actually exist in the
+                // `UniversalRegionIndices`. This is fine because 1) it is a fallback only used if
+                // errors are being emitted and 2) it leaves the happy path unaffected.
+                self.fr_static
+            }
+            _ => *self
                 .indices
                 .get(&r)
-                .unwrap_or_else(|| bug!("cannot convert `{:?}` to a region vid", r))
+                .unwrap_or_else(|| bug!("cannot convert `{:?}` to a region vid", r)),
         }
     }
 

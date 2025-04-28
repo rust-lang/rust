@@ -50,8 +50,16 @@ pub enum DiffActivity {
     /// with it.
     Dual,
     /// Forward Mode, Compute derivatives for this input/output and *overwrite* the shadow argument
+    /// with it. It expects the shadow argument to be `width` times larger than the original
+    /// input/output.
+    Dualv,
+    /// Forward Mode, Compute derivatives for this input/output and *overwrite* the shadow argument
     /// with it. Drop the code which updates the original input/output for maximum performance.
     DualOnly,
+    /// Forward Mode, Compute derivatives for this input/output and *overwrite* the shadow argument
+    /// with it. Drop the code which updates the original input/output for maximum performance.
+    /// It expects the shadow argument to be `width` times larger than the original input/output.
+    DualvOnly,
     /// Reverse Mode, Compute derivatives for this &T or *T input and *add* it to the shadow argument.
     Duplicated,
     /// Reverse Mode, Compute derivatives for this &T or *T input and *add* it to the shadow argument.
@@ -59,7 +67,15 @@ pub enum DiffActivity {
     DuplicatedOnly,
     /// All Integers must be Const, but these are used to mark the integer which represents the
     /// length of a slice/vec. This is used for safety checks on slices.
-    FakeActivitySize,
+    /// The integer (if given) specifies the size of the slice element in bytes.
+    FakeActivitySize(Option<u32>),
+}
+
+impl DiffActivity {
+    pub fn is_dual_or_const(&self) -> bool {
+        use DiffActivity::*;
+        matches!(self, |Dual| DualOnly | Dualv | DualvOnly | Const)
+    }
 }
 /// We generate one of these structs for each `#[autodiff(...)]` attribute.
 #[derive(Clone, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -77,8 +93,25 @@ pub struct AutoDiffAttrs {
     /// e.g. in the [JAX
     /// Documentation](https://jax.readthedocs.io/en/latest/_tutorials/advanced-autodiff.html#how-it-s-made-two-foundational-autodiff-functions).
     pub mode: DiffMode,
+    /// A user-provided, batching width. If not given, we will default to 1 (no batching).
+    /// Calling a differentiated, non-batched function through a loop 100 times is equivalent to:
+    /// - Calling the function 50 times with a batch size of 2
+    /// - Calling the function 25 times with a batch size of 4,
+    /// etc. A batched function takes more (or longer) arguments, and might be able to benefit from
+    /// cache locality, better re-usal of primal values, and other optimizations.
+    /// We will (before LLVM's vectorizer runs) just generate most LLVM-IR instructions `width`
+    /// times, so this massively increases code size. As such, values like 1024 are unlikely to
+    /// work. We should consider limiting this to u8 or u16, but will leave it at u32 for
+    /// experiments for now and focus on documenting the implications of a large width.
+    pub width: u32,
     pub ret_activity: DiffActivity,
     pub input_activity: Vec<DiffActivity>,
+}
+
+impl AutoDiffAttrs {
+    pub fn has_primal_ret(&self) -> bool {
+        matches!(self.ret_activity, DiffActivity::Active | DiffActivity::Dual)
+    }
 }
 
 impl DiffMode {
@@ -114,11 +147,7 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
     match mode {
         DiffMode::Error => false,
         DiffMode::Source => false,
-        DiffMode::Forward => {
-            activity == DiffActivity::Dual
-                || activity == DiffActivity::DualOnly
-                || activity == DiffActivity::Const
-        }
+        DiffMode::Forward => activity.is_dual_or_const(),
         DiffMode::Reverse => {
             activity == DiffActivity::Const
                 || activity == DiffActivity::Active
@@ -136,10 +165,8 @@ pub fn valid_ret_activity(mode: DiffMode, activity: DiffActivity) -> bool {
 pub fn valid_ty_for_activity(ty: &P<Ty>, activity: DiffActivity) -> bool {
     use DiffActivity::*;
     // It's always allowed to mark something as Const, since we won't compute derivatives wrt. it.
-    if matches!(activity, Const) {
-        return true;
-    }
-    if matches!(activity, Dual | DualOnly) {
+    // Dual variants also support all types.
+    if activity.is_dual_or_const() {
         return true;
     }
     // FIXME(ZuseZ4) We should make this more robust to also
@@ -155,9 +182,7 @@ pub fn valid_input_activity(mode: DiffMode, activity: DiffActivity) -> bool {
     return match mode {
         DiffMode::Error => false,
         DiffMode::Source => false,
-        DiffMode::Forward => {
-            matches!(activity, Dual | DualOnly | Const)
-        }
+        DiffMode::Forward => activity.is_dual_or_const(),
         DiffMode::Reverse => {
             matches!(activity, Active | ActiveOnly | Duplicated | DuplicatedOnly | Const)
         }
@@ -172,10 +197,12 @@ impl Display for DiffActivity {
             DiffActivity::Active => write!(f, "Active"),
             DiffActivity::ActiveOnly => write!(f, "ActiveOnly"),
             DiffActivity::Dual => write!(f, "Dual"),
+            DiffActivity::Dualv => write!(f, "Dualv"),
             DiffActivity::DualOnly => write!(f, "DualOnly"),
+            DiffActivity::DualvOnly => write!(f, "DualvOnly"),
             DiffActivity::Duplicated => write!(f, "Duplicated"),
             DiffActivity::DuplicatedOnly => write!(f, "DuplicatedOnly"),
-            DiffActivity::FakeActivitySize => write!(f, "FakeActivitySize"),
+            DiffActivity::FakeActivitySize(s) => write!(f, "FakeActivitySize({:?})", s),
         }
     }
 }
@@ -203,7 +230,9 @@ impl FromStr for DiffActivity {
             "ActiveOnly" => Ok(DiffActivity::ActiveOnly),
             "Const" => Ok(DiffActivity::Const),
             "Dual" => Ok(DiffActivity::Dual),
+            "Dualv" => Ok(DiffActivity::Dualv),
             "DualOnly" => Ok(DiffActivity::DualOnly),
+            "DualvOnly" => Ok(DiffActivity::DualvOnly),
             "Duplicated" => Ok(DiffActivity::Duplicated),
             "DuplicatedOnly" => Ok(DiffActivity::DuplicatedOnly),
             _ => Err(()),
@@ -222,6 +251,7 @@ impl AutoDiffAttrs {
     pub const fn error() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Error,
+            width: 0,
             ret_activity: DiffActivity::None,
             input_activity: Vec::new(),
         }
@@ -229,6 +259,7 @@ impl AutoDiffAttrs {
     pub fn source() -> Self {
         AutoDiffAttrs {
             mode: DiffMode::Source,
+            width: 0,
             ret_activity: DiffActivity::None,
             input_activity: Vec::new(),
         }

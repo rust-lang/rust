@@ -379,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let def_id = method_item.def_id;
-        if method_item.kind != ty::AssocKind::Fn {
+        if !method_item.is_fn() {
             span_bug!(tcx.def_span(def_id), "expected `{m_name}` to be an associated function");
         }
 
@@ -529,17 +529,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let def_kind = pick.item.kind.as_def_kind();
+        let def_kind = pick.item.as_def_kind();
         tcx.check_stability(pick.item.def_id, Some(expr_id), span, Some(method_name.span));
         Ok((def_kind, pick.item.def_id))
     }
 
-    /// Finds item with name `item_name` defined in impl/trait `def_id`
+    /// Finds item with name `item_ident` defined in impl/trait `def_id`
     /// and return it, or `None`, if no such item was defined there.
-    fn associated_value(&self, def_id: DefId, item_name: Ident) -> Option<ty::AssocItem> {
+    fn associated_value(&self, def_id: DefId, item_ident: Ident) -> Option<ty::AssocItem> {
         self.tcx
             .associated_items(def_id)
-            .find_by_name_and_namespace(self.tcx, item_name, Namespace::ValueNS, def_id)
+            .find_by_ident_and_namespace(self.tcx, item_ident, Namespace::ValueNS, def_id)
             .copied()
     }
 }

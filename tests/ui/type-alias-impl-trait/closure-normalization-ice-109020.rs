@@ -6,14 +6,12 @@
 
 use std::marker::PhantomData;
 
-mod foo {
-    pub type WithEmplacableForFn<'a> = impl super::EmplacableFn + 'a;
+type WithEmplacableForFn<'a> = impl EmplacableFn + 'a;
 
-    fn _constrain(_: &mut ()) -> WithEmplacableForFn<'_> {
-        ()
-    }
+#[define_opaque(WithEmplacableForFn)]
+fn _constrain(_: &mut ()) -> WithEmplacableForFn<'_> {
+    ()
 }
-use foo::*;
 
 fn with_emplacable_for<'a, F, R>(mut f: F) -> R
 where

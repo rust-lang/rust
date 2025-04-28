@@ -9,7 +9,6 @@ note: inside `f::<{closure@$DIR/issue-81899.rs:4:31: 4:34}>`
    |
 LL |     panic!()
    |     ^^^^^^^^ the failure occurred here
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
   --> $DIR/issue-81899.rs:4:23

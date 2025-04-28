@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -13,7 +14,6 @@
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(iterator_try_collect)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
@@ -32,6 +32,7 @@ mod needs_drop;
 mod opaque_types;
 mod representability;
 pub mod sig_types;
+mod stalled_generators;
 mod structural_match;
 mod ty;
 
@@ -50,4 +51,5 @@ pub fn provide(providers: &mut Providers) {
     ty::provide(providers);
     instance::provide(providers);
     structural_match::provide(providers);
+    stalled_generators::provide(providers);
 }

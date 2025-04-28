@@ -486,7 +486,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) epoll_interests: shims::EpollInterestTable,
 
     /// This machine's monotone clock.
-    pub(crate) clock: Clock,
+    pub(crate) monotonic_clock: MonotonicClock,
 
     /// The set of threads.
     pub(crate) threads: ThreadManager<'tcx>,
@@ -611,6 +611,9 @@ pub struct MiriMachine<'tcx> {
     pub(crate) reject_in_isolation_warned: RefCell<FxHashSet<String>>,
     /// Remembers which int2ptr casts we have already warned about.
     pub(crate) int2ptr_warned: RefCell<FxHashSet<Span>>,
+
+    /// Cache for `mangle_internal_symbol`.
+    pub(crate) mangle_internal_symbol_cache: FxHashMap<&'static str, String>,
 }
 
 impl<'tcx> MiriMachine<'tcx> {
@@ -710,7 +713,7 @@ impl<'tcx> MiriMachine<'tcx> {
             preemption_rate: config.preemption_rate,
             report_progress: config.report_progress,
             basic_block_count: 0,
-            clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
+            monotonic_clock: MonotonicClock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(unix)]
             native_lib: config.native_lib.as_ref().map(|lib_file_path| {
                 let host_triple = rustc_session::config::host_tuple();
@@ -757,6 +760,7 @@ impl<'tcx> MiriMachine<'tcx> {
             native_call_mem_warned: Cell::new(false),
             reject_in_isolation_warned: Default::default(),
             int2ptr_warned: Default::default(),
+            mangle_internal_symbol_cache: Default::default(),
         }
     }
 
@@ -814,6 +818,59 @@ impl<'tcx> MiriMachine<'tcx> {
             .and_then(|(_allocated, deallocated)| *deallocated)
             .map(Span::data)
     }
+
+    fn init_allocation(
+        ecx: &MiriInterpCx<'tcx>,
+        id: AllocId,
+        kind: MemoryKind,
+        size: Size,
+        align: Align,
+    ) -> InterpResult<'tcx, AllocExtra<'tcx>> {
+        if ecx.machine.tracked_alloc_ids.contains(&id) {
+            ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id, size, align, kind));
+        }
+
+        let borrow_tracker = ecx
+            .machine
+            .borrow_tracker
+            .as_ref()
+            .map(|bt| bt.borrow_mut().new_allocation(id, size, kind, &ecx.machine));
+
+        let data_race = ecx.machine.data_race.as_ref().map(|data_race| {
+            data_race::AllocState::new_allocation(
+                data_race,
+                &ecx.machine.threads,
+                size,
+                kind,
+                ecx.machine.current_span(),
+            )
+        });
+        let weak_memory = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
+
+        // If an allocation is leaked, we want to report a backtrace to indicate where it was
+        // allocated. We don't need to record a backtrace for allocations which are allowed to
+        // leak.
+        let backtrace = if kind.may_leak() || !ecx.machine.collect_leak_backtraces {
+            None
+        } else {
+            Some(ecx.generate_stacktrace())
+        };
+
+        if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
+            ecx.machine
+                .allocation_spans
+                .borrow_mut()
+                .insert(id, (ecx.machine.current_span(), None));
+        }
+
+        interp_ok(AllocExtra {
+            borrow_tracker,
+            data_race,
+            weak_memory,
+            backtrace,
+            sync: FxHashMap::default(),
+        })
+    }
 }
 
 impl VisitProvenance for MiriMachine<'_> {
@@ -839,7 +896,7 @@ impl VisitProvenance for MiriMachine<'_> {
             tcx: _,
             isolated_op: _,
             validation: _,
-            clock: _,
+            monotonic_clock: _,
             layouts: _,
             static_roots: _,
             profiler: _,
@@ -877,6 +934,7 @@ impl VisitProvenance for MiriMachine<'_> {
             native_call_mem_warned: _,
             reject_in_isolation_warned: _,
             int2ptr_warned: _,
+            mangle_internal_symbol_cache: _,
         } = self;
 
         threads.visit_provenance(visit);
@@ -1200,57 +1258,15 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
     }
 
-    fn init_alloc_extra(
+    fn init_local_allocation(
         ecx: &MiriInterpCx<'tcx>,
         id: AllocId,
         kind: MemoryKind,
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Self::AllocExtra> {
-        if ecx.machine.tracked_alloc_ids.contains(&id) {
-            ecx.emit_diagnostic(NonHaltingDiagnostic::CreatedAlloc(id, size, align, kind));
-        }
-
-        let borrow_tracker = ecx
-            .machine
-            .borrow_tracker
-            .as_ref()
-            .map(|bt| bt.borrow_mut().new_allocation(id, size, kind, &ecx.machine));
-
-        let data_race = ecx.machine.data_race.as_ref().map(|data_race| {
-            data_race::AllocState::new_allocation(
-                data_race,
-                &ecx.machine.threads,
-                size,
-                kind,
-                ecx.machine.current_span(),
-            )
-        });
-        let weak_memory = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
-
-        // If an allocation is leaked, we want to report a backtrace to indicate where it was
-        // allocated. We don't need to record a backtrace for allocations which are allowed to
-        // leak.
-        let backtrace = if kind.may_leak() || !ecx.machine.collect_leak_backtraces {
-            None
-        } else {
-            Some(ecx.generate_stacktrace())
-        };
-
-        if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
-            ecx.machine
-                .allocation_spans
-                .borrow_mut()
-                .insert(id, (ecx.machine.current_span(), None));
-        }
-
-        interp_ok(AllocExtra {
-            borrow_tracker,
-            data_race,
-            weak_memory,
-            backtrace,
-            sync: FxHashMap::default(),
-        })
+        assert!(kind != MiriMemoryKind::Global.into());
+        MiriMachine::init_allocation(ecx, id, kind, size, align)
     }
 
     fn adjust_alloc_root_pointer(
@@ -1340,13 +1356,13 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         alloc: &'b Allocation,
     ) -> InterpResult<'tcx, Cow<'b, Allocation<Self::Provenance, Self::AllocExtra, Self::Bytes>>>
     {
-        let kind = Self::GLOBAL_KIND.unwrap().into();
         let alloc = alloc.adjust_from_tcx(
             &ecx.tcx,
-            |bytes, align| ecx.get_global_alloc_bytes(id, kind, bytes, align),
+            |bytes, align| ecx.get_global_alloc_bytes(id, bytes, align),
             |ptr| ecx.global_root_pointer(ptr),
         )?;
-        let extra = Self::init_alloc_extra(ecx, id, kind, alloc.size(), alloc.align)?;
+        let kind = MiriMemoryKind::Global.into();
+        let extra = MiriMachine::init_allocation(ecx, id, kind, alloc.size(), alloc.align)?;
         interp_ok(Cow::Owned(alloc.with_extra(extra)))
     }
 
@@ -1355,6 +1371,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         machine: &Self,
         alloc_extra: &AllocExtra<'tcx>,
+        _ptr: Pointer,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -1379,6 +1396,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra<'tcx>,
+        _ptr: Pointer,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -1403,6 +1421,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra<'tcx>,
+        _ptr: Pointer,
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         size: Size,
         align: Align,
@@ -1526,7 +1545,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn before_terminator(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         ecx.machine.basic_block_count += 1u64; // a u64 that is only incremented by 1 will "never" overflow
         ecx.machine.since_gc += 1;
-        // Possibly report our progress.
+        // Possibly report our progress. This will point at the terminator we are about to execute.
         if let Some(report_progress) = ecx.machine.report_progress {
             if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
                 ecx.emit_diagnostic(NonHaltingDiagnostic::ProgressReport {
@@ -1545,10 +1564,11 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
 
         // These are our preemption points.
+        // (This will only take effect after the terminator has been executed.)
         ecx.maybe_preempt_active_thread();
 
         // Make sure some time passes.
-        ecx.machine.clock.tick();
+        ecx.machine.monotonic_clock.tick();
 
         interp_ok(())
     }

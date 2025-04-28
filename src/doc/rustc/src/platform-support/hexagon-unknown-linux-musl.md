@@ -11,7 +11,7 @@ DSP architecture.
 
 ## Target maintainers
 
-- [Brian Cain](https://github.com/androm3da), `bcain@quicinc.com`
+[@androm3da](https://github.com/androm3da)
 
 ## Requirements
 The target is cross-compiled. This target supports `std`.  By default, code
@@ -44,7 +44,7 @@ Because it is Tier 3, rust does not yet ship pre-compiled artifacts for this
 target.
 
 Therefore, you can build Rust with support for the target by adding it to the
-target list in `config.toml`, a sample configuration is shown below.
+target list in `bootstrap.toml`, a sample configuration is shown below.
 
 ```toml
 [build]

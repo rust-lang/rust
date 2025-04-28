@@ -10,7 +10,7 @@ Rust for bare-metal 32-bit SPARC V7 and V8 systems, e.g. the Gaisler LEON3.
 
 ## Target maintainers
 
-- Jonathan Pallant, <jonathan.pallant@ferrous-systems.com>, https://ferrous-systems.com
+[@jonathanpallant](https://github.com/jonathanpallant)
 
 ## Requirements
 
@@ -34,7 +34,7 @@ considerations for binary layout will require linker options or linker scripts.
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml`:
+list in `bootstrap.toml`:
 
 ```toml
 [build]

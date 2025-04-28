@@ -20,6 +20,7 @@ impl<'x, T: 'x> Trait<'x> for (T,) {
 }
 
 impl Foo<'_> {
+    #[define_opaque(Fut)]
     fn make_fut(&self) -> Box<dyn for<'a> Trait<'a, Thing = Fut<'a>>> {
         Box::new((async { () },))
         //~^ ERROR expected generic lifetime parameter, found `'a`

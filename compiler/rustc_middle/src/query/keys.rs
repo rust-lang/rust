@@ -1,5 +1,7 @@
 //! Defines the set of legal keys that can be used in queries.
 
+use std::ffi::OsStr;
+
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -498,6 +500,14 @@ impl Key for Option<Symbol> {
     }
 }
 
+impl<'tcx> Key for &'tcx OsStr {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
 impl<'tcx, T: Clone> Key for CanonicalQueryInput<'tcx, T> {
@@ -576,7 +586,7 @@ impl Key for HirId {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.hir().span(*self)
+        tcx.hir_span(*self)
     }
 
     #[inline(always)]
@@ -589,7 +599,7 @@ impl Key for (LocalDefId, HirId) {
     type Cache<V> = DefaultCache<Self, V>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
-        tcx.hir().span(self.1)
+        tcx.hir_span(self.1)
     }
 
     #[inline(always)]

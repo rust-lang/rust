@@ -15,8 +15,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, NoSolution, QueryResult};
-use rustc_middle::ty::visit::{VisitorResult, try_visit};
-use rustc_middle::ty::{TyCtxt, TypeFoldable};
+use rustc_middle::ty::{TyCtxt, TypeFoldable, VisitorResult, try_visit};
 use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::resolve::EagerResolver;
 use rustc_next_trait_solver::solve::inspect::{self, instantiate_canonical_state};
@@ -293,7 +292,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     match probe.kind {
                         // These never assemble candidates for the goal we're trying to solve.
-                        inspect::ProbeKind::UpcastProjectionCompatibility
+                        inspect::ProbeKind::ProjectionCompatibility
                         | inspect::ProbeKind::ShadowedEnvProbing => continue,
 
                         inspect::ProbeKind::NormalizedSelfTyAssembly
@@ -315,8 +314,10 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         }
 
         match probe.kind {
-            inspect::ProbeKind::UpcastProjectionCompatibility
-            | inspect::ProbeKind::ShadowedEnvProbing => bug!(),
+            inspect::ProbeKind::ProjectionCompatibility
+            | inspect::ProbeKind::ShadowedEnvProbing => {
+                bug!()
+            }
 
             inspect::ProbeKind::NormalizedSelfTyAssembly | inspect::ProbeKind::UnsizeAssembly => {}
 

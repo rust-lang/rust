@@ -109,8 +109,12 @@ impl<R: Read + ?Sized> BufReader<R> {
     ///
     /// `n` must be less than or equal to `capacity`.
     ///
-    /// the returned slice may be less than `n` bytes long if
+    /// The returned slice may be less than `n` bytes long if
     /// end of file is reached.
+    ///
+    /// After calling this method, you may call [`consume`](BufRead::consume)
+    /// with a value less than or equal to `n` to advance over some or all of
+    /// the returned bytes.
     ///
     /// ## Examples
     ///

@@ -119,7 +119,7 @@ mod break_keyword {}
 
 #[doc(keyword = "const")]
 //
-/// Compile-time constants, compile-time evaluable functions, and raw pointers.
+/// Compile-time constants, compile-time blocks, compile-time evaluable functions, and raw pointers.
 ///
 /// ## Compile-time constants
 ///
@@ -166,6 +166,12 @@ mod break_keyword {}
 ///
 /// For more detail on `const`, see the [Rust Book] or the [Reference].
 ///
+/// ## Compile-time blocks
+///
+/// The `const` keyword can also be used to define a block of code that is evaluated at compile time.
+/// This is useful for ensuring certain computations are completed before optimizations happen, as well as
+/// before runtime. For more details, see the [Reference][const-blocks].
+///
 /// ## Compile-time evaluable functions
 ///
 /// The other main use of the `const` keyword is in `const fn`. This marks a function as being
@@ -184,6 +190,7 @@ mod break_keyword {}
 /// [pointer primitive]: pointer
 /// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#constants
 /// [Reference]: ../reference/items/constant-items.html
+/// [const-blocks]: ../reference/expressions/block-expr.html#const-blocks
 /// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
 
@@ -381,11 +388,15 @@ mod enum_keyword {}
 /// lazy_static;`. The other use is in foreign function interfaces (FFI).
 ///
 /// `extern` is used in two different contexts within FFI. The first is in the form of external
-/// blocks, for declaring function interfaces that Rust code can call foreign code by.
+/// blocks, for declaring function interfaces that Rust code can call foreign code by. This use
+/// of `extern` is unsafe, since we are asserting to the compiler that all function declarations
+/// are correct. If they are not, using these items may lead to undefined behavior.
 ///
 /// ```rust ignore
+/// // SAFETY: The function declarations given below are in
+/// // line with the header files of `my_c_library`.
 /// #[link(name = "my_c_library")]
-/// extern "C" {
+/// unsafe extern "C" {
 ///     fn my_c_function(x: i32) -> bool;
 /// }
 /// ```
@@ -1064,7 +1075,7 @@ mod move_keyword {}
 /// ```rust,compile_fail,E0502
 /// let mut v = vec![0, 1];
 /// let mut_ref_v = &mut v;
-/// ##[allow(unused)]
+/// # #[allow(unused)]
 /// let ref_v = &v;
 /// mut_ref_v.push(2);
 /// ```

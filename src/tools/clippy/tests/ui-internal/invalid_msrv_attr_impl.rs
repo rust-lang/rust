@@ -1,4 +1,4 @@
-#![deny(clippy::internal)]
+#![deny(clippy::missing_msrv_attr_impl)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
 
@@ -26,6 +26,7 @@ struct Pass {
 impl_lint_pass!(Pass => [TEST_LINT]);
 
 impl EarlyLintPass for Pass {
+    //~^ missing_msrv_attr_impl
     fn check_expr(&mut self, _: &EarlyContext<'_>, _: &rustc_ast::Expr) {}
 }
 

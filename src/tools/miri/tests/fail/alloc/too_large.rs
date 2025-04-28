@@ -1,4 +1,7 @@
+#![feature(rustc_attrs)]
+
 extern "Rust" {
+    #[rustc_std_internal_symbol]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
 }
 

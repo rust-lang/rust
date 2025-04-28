@@ -77,8 +77,8 @@ pub struct TypeckResults<'tcx> {
     /// to a form valid in all Editions, either as a lint diagnostic or hard error.
     rust_2024_migration_desugared_pats: ItemLocalMap<Rust2024IncompatiblePatInfo>,
 
-    /// Stores the types which were implicitly dereferenced in pattern binding modes
-    /// for later usage in THIR lowering. For example,
+    /// Stores the types which were implicitly dereferenced in pattern binding modes or deref
+    /// patterns for later usage in THIR lowering. For example,
     ///
     /// ```
     /// match &&Some(5i32) {
@@ -86,11 +86,20 @@ pub struct TypeckResults<'tcx> {
     ///     _ => {},
     /// }
     /// ```
-    /// leads to a `vec![&&Option<i32>, &Option<i32>]`. Empty vectors are not stored.
+    /// leads to a `vec![&&Option<i32>, &Option<i32>]` and
+    ///
+    /// ```
+    /// #![feature(deref_patterns)]
+    /// match &Box::new(Some(5i32)) {
+    ///     Some(n) => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    /// leads to a `vec![&Box<Option<i32>>, Box<Option<i32>>]`. Empty vectors are not stored.
     ///
     /// See:
     /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
-    pat_adjustments: ItemLocalMap<Vec<Ty<'tcx>>>,
+    pat_adjustments: ItemLocalMap<Vec<ty::adjustment::PatAdjustment<'tcx>>>,
 
     /// Set of reference patterns that match against a match-ergonomics inserted reference
     /// (as opposed to against a reference in the scrutinee type).
@@ -158,7 +167,7 @@ pub struct TypeckResults<'tcx> {
     /// We also store the type here, so that the compiler can use it as a hint
     /// for figuring out hidden types, even if they are only set in dead code
     /// (which doesn't show up in MIR).
-    pub concrete_opaque_types: FxIndexMap<ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: FxIndexMap<LocalDefId, ty::OpaqueHiddenType<'tcx>>,
 
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -197,12 +206,6 @@ pub struct TypeckResults<'tcx> {
     /// formatting modified file tests/ui/coroutine/retain-resume-ref.rs
     pub coroutine_stalled_predicates: FxIndexSet<(ty::Predicate<'tcx>, ObligationCause<'tcx>)>,
 
-    /// We sometimes treat byte string literals (which are of type `&[u8; N]`)
-    /// as `&[u8]`, depending on the pattern in which they are used.
-    /// This hashset records all instances where we behave
-    /// like this to allow `const_to_pat` to reliably handle this situation.
-    pub treat_byte_string_as_slice: ItemLocalSet,
-
     /// Contains the data for evaluating the effect of feature `capture_disjoint_fields`
     /// on closure size.
     pub closure_size_eval: LocalDefIdMap<ClosureSizeProfileData<'tcx>>,
@@ -237,7 +240,6 @@ impl<'tcx> TypeckResults<'tcx> {
             closure_fake_reads: Default::default(),
             rvalue_scopes: Default::default(),
             coroutine_stalled_predicates: Default::default(),
-            treat_byte_string_as_slice: Default::default(),
             closure_size_eval: Default::default(),
             offset_of_data: Default::default(),
         }
@@ -310,7 +312,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
-            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
+            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir_id_to_string(id)))
         })
     }
 
@@ -410,11 +412,15 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_binding_modes }
     }
 
-    pub fn pat_adjustments(&self) -> LocalTableInContext<'_, Vec<Ty<'tcx>>> {
+    pub fn pat_adjustments(
+        &self,
+    ) -> LocalTableInContext<'_, Vec<ty::adjustment::PatAdjustment<'tcx>>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.pat_adjustments }
     }
 
-    pub fn pat_adjustments_mut(&mut self) -> LocalTableInContextMut<'_, Vec<Ty<'tcx>>> {
+    pub fn pat_adjustments_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Vec<ty::adjustment::PatAdjustment<'tcx>>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.pat_adjustments }
     }
 
@@ -554,7 +560,7 @@ fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir().node_to_string(hir_id),
+            tcx.hir_id_to_string(hir_id),
             hir_owner
         )
     });
@@ -765,7 +771,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                             _ => false,
                         },
 
-                        GenericArgKind::Lifetime(r) => match *r {
+                        GenericArgKind::Lifetime(r) => match r.kind() {
                             ty::ReBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in generic parameters.
                                 assert_eq!(debruijn, ty::INNERMOST);

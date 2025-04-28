@@ -1,5 +1,5 @@
 error[E0601]: `main` function not found in crate `elided_test`
-  --> $DIR/elided-test.rs:7:2
+  --> $DIR/elided-test.rs:5:2
    |
 LL | }
    |  ^ consider adding a `main` function to `$DIR/elided-test.rs`

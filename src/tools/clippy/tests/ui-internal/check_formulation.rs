@@ -1,4 +1,5 @@
-#![warn(clippy::almost_standard_lint_formulation)]
+#![deny(clippy::almost_standard_lint_formulation)]
+#![allow(clippy::lint_without_lint_pass)]
 #![feature(rustc_private)]
 
 #[macro_use]
@@ -21,6 +22,7 @@ declare_tool_lint! {
 declare_tool_lint! {
     /// # What it does
     /// Check for lint formulations that are correct
+    //~^ almost_standard_lint_formulation
     #[clippy::version = "pre 1.29.0"]
     pub clippy::INVALID1,
     Warn,
@@ -31,6 +33,7 @@ declare_tool_lint! {
 declare_tool_lint! {
     /// # What it does
     /// Detects uses of incorrect formulations
+    //~^ almost_standard_lint_formulation
     #[clippy::version = "pre 1.29.0"]
     pub clippy::INVALID2,
     Warn,

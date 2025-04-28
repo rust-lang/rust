@@ -8,5 +8,5 @@ fn mk_gen() -> impl Coroutine<Return=!, Yield=()> {
 
 fn main() {
     let gens: [impl Coroutine<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
-    //~^ `impl Trait` is not allowed in the type of variable bindings
+    //~^ ERROR `impl Trait` is not allowed in the type of variable bindings
 }

@@ -9,7 +9,7 @@ use clippy_utils::macros::{
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use clippy_utils::{is_diag_trait_item, is_from_proc_macro};
+use clippy_utils::{is_diag_trait_item, is_from_proc_macro, is_in_test};
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -141,7 +141,7 @@ declare_clippy_lint! {
     /// format!("{var:.prec$}");
     /// ```
     ///
-    /// If allow-mixed-uninlined-format-args is set to false in clippy.toml,
+    /// If `allow-mixed-uninlined-format-args` is set to `false` in clippy.toml,
     /// the following code will also trigger the lint:
     /// ```no_run
     /// # let var = 42;
@@ -159,7 +159,7 @@ declare_clippy_lint! {
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
     #[clippy::version = "1.66.0"]
     pub UNINLINED_FORMAT_ARGS,
-    pedantic,
+    style,
     "using non-inlined variables in `format!` calls"
 }
 
@@ -484,7 +484,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
 
     fn check_unnecessary_debug_formatting(&self, name: Symbol, value: &Expr<'tcx>) {
         let cx = self.cx;
-        if !value.span.from_expansion()
+        if !is_in_test(cx.tcx, value.hir_id)
+            && !value.span.from_expansion()
             && !is_from_proc_macro(cx, value)
             && let ty = cx.typeck_results().expr_ty(value)
             && self.can_display_format(ty)
@@ -549,7 +550,7 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
         // a `Target` that is in `self.ty_msrv_map`.
         if let Some(deref_trait_id) = self.cx.tcx.lang_items().deref_trait()
             && implements_trait(self.cx, ty, deref_trait_id, &[])
-            && let Some(target_ty) = self.cx.get_associated_type(ty, deref_trait_id, "Target")
+            && let Some(target_ty) = self.cx.get_associated_type(ty, deref_trait_id, sym::Target)
             && let Some(msrv) = self.ty_msrv_map.get(&target_ty)
             && msrv.is_none_or(|msrv| self.msrv.meets(self.cx, msrv))
         {

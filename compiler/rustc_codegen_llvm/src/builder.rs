@@ -14,6 +14,7 @@ use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTypingEnv, LayoutError, LayoutOfHelpers,
@@ -29,6 +30,7 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
+use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, FullCx, GenericCx, SCx};
 use crate::llvm::{
@@ -37,7 +39,6 @@ use crate::llvm::{
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use crate::{attributes, llvm_util};
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SCx<'ll>>> {
@@ -122,7 +123,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
 /// Empty string, to be used where LLVM expects an instruction name, indicating
 /// that the instruction is to be left unnamed (i.e. numbered, in textual IR).
 // FIXME(eddyb) pass `&CStr` directly to FFI once it's a thin pointer.
-const UNNAMED: *const c_char = c"".as_ptr();
+pub(crate) const UNNAMED: *const c_char = c"".as_ptr();
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
     type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
@@ -593,6 +594,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn load(&mut self, ty: &'ll Type, ptr: &'ll Value, align: Align) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
+            let align = align.min(self.cx().tcx.sess.target.max_reliable_alignment());
             llvm::LLVMSetAlignment(load, align.bytes() as c_uint);
             load
         }
@@ -806,6 +808,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert_eq!(self.cx.type_kind(self.cx.val_ty(ptr)), TypeKind::Pointer);
         unsafe {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            let align = align.min(self.cx().tcx.sess.target.max_reliable_alignment());
             let align =
                 if flags.contains(MemFlags::UNALIGNED) { 1 } else { align.bytes() as c_uint };
             llvm::LLVMSetAlignment(store, align);
@@ -926,11 +929,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug_assert_ne!(self.val_ty(val), dest_ty);
 
         let trunc = self.trunc(val, dest_ty);
-        if llvm_util::get_version() >= (19, 0, 0) {
-            unsafe {
-                if llvm::LLVMIsAInstruction(trunc).is_some() {
-                    llvm::LLVMSetNUW(trunc, True);
-                }
+        unsafe {
+            if llvm::LLVMIsAInstruction(trunc).is_some() {
+                llvm::LLVMSetNUW(trunc, True);
             }
         }
         trunc
@@ -940,11 +941,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug_assert_ne!(self.val_ty(val), dest_ty);
 
         let trunc = self.trunc(val, dest_ty);
-        if llvm_util::get_version() >= (19, 0, 0) {
-            unsafe {
-                if llvm::LLVMIsAInstruction(trunc).is_some() {
-                    llvm::LLVMSetNSW(trunc, True);
-                }
+        unsafe {
+            if llvm::LLVMIsAInstruction(trunc).is_some() {
+                llvm::LLVMSetNSW(trunc, True);
             }
         }
         trunc
@@ -1072,6 +1071,35 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn fcmp(&mut self, op: RealPredicate, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         let op = llvm::RealPredicate::from_generic(op);
         unsafe { llvm::LLVMBuildFCmp(self.llbuilder, op as c_uint, lhs, rhs, UNNAMED) }
+    }
+
+    fn three_way_compare(
+        &mut self,
+        ty: Ty<'tcx>,
+        lhs: Self::Value,
+        rhs: Self::Value,
+    ) -> Option<Self::Value> {
+        // FIXME: See comment on the definition of `three_way_compare`.
+        if crate::llvm_util::get_version() < (20, 0, 0) {
+            return None;
+        }
+
+        let name = match (ty.is_signed(), ty.primitive_size(self.tcx).bits()) {
+            (true, 8) => "llvm.scmp.i8.i8",
+            (true, 16) => "llvm.scmp.i8.i16",
+            (true, 32) => "llvm.scmp.i8.i32",
+            (true, 64) => "llvm.scmp.i8.i64",
+            (true, 128) => "llvm.scmp.i8.i128",
+
+            (false, 8) => "llvm.ucmp.i8.i8",
+            (false, 16) => "llvm.ucmp.i8.i16",
+            (false, 32) => "llvm.ucmp.i8.i32",
+            (false, 64) => "llvm.ucmp.i8.i64",
+            (false, 128) => "llvm.ucmp.i8.i128",
+
+            _ => bug!("three-way compare unsupported for type {ty:?}"),
+        };
+        Some(self.call_intrinsic(name, &[lhs, rhs]))
     }
 
     /* Miscellaneous instructions */
@@ -1869,10 +1897,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         hash: &'ll Value,
         bitmap_bits: &'ll Value,
     ) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         self.call_intrinsic("llvm.instrprof.mcdc.parameters", &[fn_name, hash, bitmap_bits]);
     }
 
@@ -1884,10 +1908,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         bitmap_index: &'ll Value,
         mcdc_temp: &'ll Value,
     ) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         let args = &[fn_name, hash, bitmap_index, mcdc_temp];
         self.call_intrinsic("llvm.instrprof.mcdc.tvbitmap.update", args);
     }
@@ -1899,10 +1919,6 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn mcdc_condbitmap_update(&mut self, cond_index: &'ll Value, mcdc_temp: &'ll Value) {
-        assert!(
-            crate::llvm_util::get_version() >= (19, 0, 0),
-            "MCDC intrinsics require LLVM 19 or later"
-        );
         let align = self.tcx.data_layout.i32_align.abi;
         let current_tv_index = self.load(self.cx.type_i32(), mcdc_temp, align);
         let new_tv_index = self.add(current_tv_index, cond_index);

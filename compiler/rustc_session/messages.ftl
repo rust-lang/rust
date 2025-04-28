@@ -1,3 +1,9 @@
+session_apple_deployment_target_invalid =
+    failed to parse deployment target specified in {$env_var}: {$error}
+
+session_apple_deployment_target_too_low =
+    deployment target in {$env_var} was set to {$version}, but the minimum supported by `rustc` is {$os_min}
+
 session_binary_float_literal_not_supported = binary float literal is not supported
 session_branch_protection_requires_aarch64 = `-Zbranch-protection` is only supported on aarch64
 
@@ -93,6 +99,8 @@ session_sanitizer_cfi_normalize_integers_requires_cfi = `-Zsanitizer-cfi-normali
 session_sanitizer_cfi_requires_lto = `-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`
 
 session_sanitizer_cfi_requires_single_codegen_unit = `-Zsanitizer=cfi` with `-Clto` requires `-Ccodegen-units=1`
+
+session_sanitizer_kcfi_arity_requires_kcfi = `-Zsanitizer-kcfi-arity` requires `-Zsanitizer=kcfi`
 
 session_sanitizer_kcfi_requires_panic_abort = `-Z sanitizer=kcfi` requires `-C panic=abort`
 

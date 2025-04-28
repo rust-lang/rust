@@ -107,7 +107,7 @@ impl FileDescription for AnonSocket {
         anonsocket_write(self, ptr, len, ecx, finish)
     }
 
-    fn as_unix(&self) -> &dyn UnixFileDescription {
+    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
         self
     }
 }

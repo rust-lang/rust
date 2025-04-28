@@ -222,7 +222,7 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
 
                 if let Some(break_expr) = opt_expr {
                     let (head, loop_label, loop_kind) = if let Some(loop_id) = loop_id {
-                        match self.tcx.hir().expect_expr(loop_id).kind {
+                        match self.tcx.hir_expect_expr(loop_id).kind {
                             hir::ExprKind::Loop(_, label, source, sp) => {
                                 (Some(sp), label, Some(source))
                             }

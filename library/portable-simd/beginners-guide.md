@@ -80,12 +80,12 @@ Most of the portable SIMD API is designed to allow the user to gloss over the de
 
 Fortunately, most SIMD types have a fairly predictable size. `i32x4` is bit-equivalent to `[i32; 4]` and so can be bitcast to it, e.g. using [`mem::transmute`], though the API usually offers a safe cast you can use instead.
 
-However, this is not the same as alignment. Computer architectures generally prefer aligned accesses, especially when moving data between memory and vector registers, and while some support specialized operations that can bend the rules to help with this, unaligned access is still typically slow, or even undefined behavior. In addition, different architectures can require different alignments when interacting with their native SIMD types. For this reason, any `#[repr(simd)]` type has a non-portable alignment. If it is necessary to directly interact with the alignment of these types, it should be via [`mem::align_of`].
+However, this is not the same as alignment. Computer architectures generally prefer aligned accesses, especially when moving data between memory and vector registers, and while some support specialized operations that can bend the rules to help with this, unaligned access is still typically slow, or even undefined behavior. In addition, different architectures can require different alignments when interacting with their native SIMD types. For this reason, any `#[repr(simd)]` type has a non-portable alignment. If it is necessary to directly interact with the alignment of these types, it should be via [`align_of`].
 
 When working with slices, data correctly aligned for SIMD can be acquired using the [`as_simd`] and [`as_simd_mut`] methods of the slice primitive.
 
 [`mem::transmute`]: https://doc.rust-lang.org/core/mem/fn.transmute.html
-[`mem::align_of`]: https://doc.rust-lang.org/core/mem/fn.align_of.html
+[`align_of`]: https://doc.rust-lang.org/core/mem/fn.align_of.html
 [`as_simd`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.as_simd
 [`as_simd_mut`]: https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.as_simd_mut
 

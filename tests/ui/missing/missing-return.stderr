@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/missing-return.rs:3:11
+  --> $DIR/missing-return.rs:1:11
    |
 LL | fn f() -> isize { }
    |    -      ^^^^^ expected `isize`, found `()`

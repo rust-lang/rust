@@ -70,6 +70,17 @@ fn has_no_inference_or_external_constraints<I: Interner>(
         && normalization_nested_goals.is_empty()
 }
 
+fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<I>>) -> bool {
+    let ExternalConstraintsData {
+        region_constraints: _,
+        ref opaque_types,
+        ref normalization_nested_goals,
+    } = *response.value.external_constraints;
+    response.value.var_values.is_identity_modulo_regions()
+        && opaque_types.is_empty()
+        && normalization_nested_goals.is_empty()
+}
+
 impl<'a, D, I> EvalCtxt<'a, D>
 where
     D: SolverDelegate<Interner = I>,
@@ -126,7 +137,7 @@ where
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::GenericArg>) -> QueryResult<I> {
+    fn compute_well_formed_goal(&mut self, goal: Goal<I, I::Term>) -> QueryResult<I> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
                 self.add_goals(GoalSource::Misc, goals);
@@ -313,7 +324,9 @@ where
                     ty::AliasRelationDirection::Equate,
                 ),
             );
-            self.add_goal(GoalSource::Misc, alias_relate_goal);
+            // We normalize the self type to be able to relate it with
+            // types from candidates.
+            self.add_goal(GoalSource::TypeRelating, alias_relate_goal);
             self.try_evaluate_added_goals()?;
             Ok(self.resolve_vars_if_possible(normalized_term))
         } else {
@@ -327,7 +340,8 @@ where
             TypingMode::Coherence | TypingMode::PostAnalysis => false,
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
-            TypingMode::Analysis { defining_opaque_types: non_rigid_opaques }
+            TypingMode::Analysis { defining_opaque_types_and_generators: non_rigid_opaques }
+            | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
             }

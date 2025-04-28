@@ -31,7 +31,7 @@ LL | #[link(name = "...", modifiers = "+verbatim", modifiers = "bar")]
 error: multiple `cfg` arguments in a single `#[link]` attribute
   --> $DIR/link-attr-validation-late.rs:12:34
    |
-LL | #[link(name = "...", cfg(FALSE), cfg(FALSE))]
+LL | #[link(name = "...", cfg(false), cfg(false))]
    |                                  ^^^^^^^^^^
 
 error: multiple `wasm_import_module` arguments in a single `#[link]` attribute

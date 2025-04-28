@@ -16,6 +16,7 @@ impl Foo for u32 {
 
 impl Foo for () {
     type Bar = impl Sized;
+    //~^ ERROR: unconstrained opaque type
     type Gat<T: Foo> = <T as Foo>::Bar;
     // Because we encounter `Gat<u32>` first, we never walk into another `Gat`
     // again, thus missing the opaque type that we could be defining.

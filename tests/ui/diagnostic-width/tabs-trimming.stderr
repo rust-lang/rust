@@ -15,8 +15,6 @@ LL | ...                     v @ 1 | 2 | 3 => panic!("You gave me too little mon
    |                         |
    |                         binding initialized here in some conditions
    |                         binding declared here but left uninitialized
-   |
-   = note: this error originates in the macro `$crate::const_format_args` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

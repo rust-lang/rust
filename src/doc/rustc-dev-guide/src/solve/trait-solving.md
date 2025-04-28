@@ -2,8 +2,7 @@
 
 This chapter describes how trait solving works with the new WIP solver located in
 [`rustc_trait_selection/solve`][solve]. Feel free to also look at the docs for
-[the current solver](../traits/resolution.md) and [the chalk solver](../traits/chalk.md)
-can be found separately.
+[the current solver](../traits/resolution.md) and [the chalk solver](../traits/chalk.md).
 
 ## Core concepts
 

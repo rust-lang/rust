@@ -1,4 +1,4 @@
-# Errors and Lints
+# Errors and lints
 
 <!-- toc -->
 
@@ -772,7 +772,7 @@ store.register_renamed("single_use_lifetime", "single_use_lifetimes");
 [`store.register_removed`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/struct.LintStore.html#method.register_removed
 [`rustc_lint::register_builtins`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/fn.register_builtins.html
 
-### Lint Groups
+### Lint groups
 
 Lints can be turned on in groups. These groups are declared in the
 [`register_builtins`][rbuiltins] function in [`rustc_lint::lib`][builtin]. The
@@ -954,9 +954,6 @@ application of these fields based on a variety of attributes when using
    `Self="std::iter::Iterator<char>"`. This is needed because `Self` is a
    keyword which cannot appear in attributes.
  - `direct`: user-specified rather than derived obligation.
- - `from_method`: usable both as boolean (whether the flag is present, like
-   `crate_local`) or matching against a particular method. Currently used
-   for `try`.
  - `from_desugaring`: usable both as boolean (whether the flag is present)
    or matching against a particular desugaring. The desugaring is identified
    with its variant name in the `DesugaringKind` enum.

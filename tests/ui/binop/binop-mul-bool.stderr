@@ -1,5 +1,5 @@
 error[E0369]: cannot multiply `bool` by `bool`
-  --> $DIR/binop-mul-bool.rs:3:26
+  --> $DIR/binop-mul-bool.rs:1:26
    |
 LL | fn main() { let x = true * false; }
    |                     ---- ^ ----- bool

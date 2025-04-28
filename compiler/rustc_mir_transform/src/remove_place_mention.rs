@@ -8,7 +8,7 @@ pub(super) struct RemovePlaceMention;
 
 impl<'tcx> crate::MirPass<'tcx> for RemovePlaceMention {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        !sess.opts.unstable_opts.mir_keep_place_mention
+        !sess.opts.unstable_opts.mir_preserve_ub
     }
 
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

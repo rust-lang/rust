@@ -53,8 +53,8 @@ bitflags::bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
-        /// Indicates whether the type is anonymous.
-        const IS_ANONYMOUS                = 1 << 10;
+        /// Indicates whether the type is `UnsafePinned`.
+        const IS_UNSAFE_PINNED              = 1 << 10;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -238,7 +238,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
     }
 
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
-        Some(match self.destructor(tcx)?.constness {
+        Some(match tcx.constness(self.destructor(tcx)?.did) {
             hir::Constness::Const => AdtDestructorKind::Const,
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })
@@ -304,6 +304,9 @@ impl AdtDefData {
         if tcx.is_lang_item(did, LangItem::UnsafeCell) {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
+        if tcx.is_lang_item(did, LangItem::UnsafePinned) {
+            flags |= AdtFlags::IS_UNSAFE_PINNED;
+        }
 
         AdtDefData { did, variants, flags, repr }
     }
@@ -329,9 +332,20 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`.
+    ///
+    /// Note that this function will return `true` even if the ADT has been
+    /// defined in the crate currently being compiled. If that's not what you
+    /// want, see [`Self::variant_list_has_applicable_non_exhaustive`].
     #[inline]
     pub fn is_variant_list_non_exhaustive(self) -> bool {
         self.flags().contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Returns `true` if the variant list of this ADT is `#[non_exhaustive]`
+    /// and has been defined in another crate.
+    #[inline]
+    pub fn variant_list_has_applicable_non_exhaustive(self) -> bool {
+        self.is_variant_list_non_exhaustive() && !self.did().is_local()
     }
 
     /// Returns the kind of the ADT.
@@ -396,16 +410,16 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_UNSAFE_CELL)
     }
 
+    /// Returns `true` if this is `UnsafePinned<T>`.
+    #[inline]
+    pub fn is_unsafe_pinned(self) -> bool {
+        self.flags().contains(AdtFlags::IS_UNSAFE_PINNED)
+    }
+
     /// Returns `true` if this is `ManuallyDrop<T>`.
     #[inline]
     pub fn is_manually_drop(self) -> bool {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
-    }
-
-    /// Returns `true` if this is an anonymous adt
-    #[inline]
-    pub fn is_anonymous(self) -> bool {
-        self.flags().contains(AdtFlags::IS_ANONYMOUS)
     }
 
     /// Returns `true` if this type has a destructor.

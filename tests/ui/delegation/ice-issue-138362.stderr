@@ -1,0 +1,19 @@
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+  --> $DIR/ice-issue-138362.rs:11:20
+   |
+LL |     reuse HasSelf::method;
+   |                    ^^^^^^ argument #1 is missing
+   |
+note: method defined here
+  --> $DIR/ice-issue-138362.rs:5:8
+   |
+LL |     fn method(self);
+   |        ^^^^^^ ----
+help: provide the argument
+   |
+LL |     reuse HasSelf::method(/* value */);
+   |                          +++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0061`.

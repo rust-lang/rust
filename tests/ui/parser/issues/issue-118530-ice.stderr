@@ -33,13 +33,13 @@ LL |     attr::fn bar() -> String {
    |             |
    |             help: add `;` here
 
-error: `->` used for field access or method call
+error: `->` is not valid syntax for field accesses and method calls
   --> $DIR/issue-118530-ice.rs:5:20
    |
 LL |     attr::fn bar() -> String {
    |                    ^^
    |
-   = help: the `.` operator will dereference the value if needed
+   = help: the `.` operator will automatically dereference the value, except if the value is a raw pointer
 help: try using `.` instead
    |
 LL -     attr::fn bar() -> String {

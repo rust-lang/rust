@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(test, feature(test))]
 #![feature(never_type)]
 // tidy-alphabetical-end
 

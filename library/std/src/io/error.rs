@@ -48,6 +48,7 @@ use crate::{error, fmt, result, sys};
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(search_unbox))]
 pub type Result<T> = result::Result<T, Error>;
 
 /// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
@@ -373,8 +374,8 @@ pub enum ErrorKind {
     TooManyLinks,
     /// A filename was invalid.
     ///
-    /// This error can also cause if it exceeded the filename length limit.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    /// This error can also occur if a length limit for a name was exceeded.
+    #[stable(feature = "io_error_invalid_filename", since = "1.87.0")]
     InvalidFilename,
     /// Program argument list too long.
     ///

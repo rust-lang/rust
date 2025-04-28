@@ -2,16 +2,13 @@ use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
-use std::path::Path;
-use std::str::FromStr;
 use std::sync::OnceLock;
 
+use camino::Utf8Path;
 use regex::Regex;
 use tracing::*;
 
-use self::WhichLine::*;
-
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
     Help,
     Error,
@@ -20,41 +17,63 @@ pub enum ErrorKind {
     Warning,
 }
 
-impl FromStr for ErrorKind {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.to_uppercase();
-        let part0: &str = s.split(':').next().unwrap();
-        match part0 {
-            "HELP" => Ok(ErrorKind::Help),
-            "ERROR" => Ok(ErrorKind::Error),
-            "NOTE" => Ok(ErrorKind::Note),
-            "SUGGESTION" => Ok(ErrorKind::Suggestion),
-            "WARN" | "WARNING" => Ok(ErrorKind::Warning),
-            _ => Err(()),
+impl ErrorKind {
+    pub fn from_compiler_str(s: &str) -> ErrorKind {
+        match s {
+            "help" => ErrorKind::Help,
+            "error" | "error: internal compiler error" => ErrorKind::Error,
+            "note" | "failure-note" => ErrorKind::Note,
+            "warning" => ErrorKind::Warning,
+            _ => panic!("unexpected compiler diagnostic kind `{s}`"),
         }
+    }
+
+    /// Either the canonical uppercase string, or some additional versions for compatibility.
+    /// FIXME: consider keeping only the canonical versions here.
+    fn from_user_str(s: &str) -> Option<ErrorKind> {
+        Some(match s {
+            "HELP" | "help" => ErrorKind::Help,
+            "ERROR" | "error" => ErrorKind::Error,
+            "NOTE" | "note" => ErrorKind::Note,
+            "SUGGESTION" => ErrorKind::Suggestion,
+            "WARN" | "WARNING" | "warn" | "warning" => ErrorKind::Warning,
+            _ => return None,
+        })
+    }
+
+    pub fn expect_from_user_str(s: &str) -> ErrorKind {
+        ErrorKind::from_user_str(s).unwrap_or_else(|| {
+            panic!(
+                "unexpected diagnostic kind `{s}`, expected \
+                 `ERROR`, `WARN`, `NOTE`, `HELP` or `SUGGESTION`"
+            )
+        })
     }
 }
 
 impl fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ErrorKind::Help => write!(f, "help message"),
-            ErrorKind::Error => write!(f, "error"),
-            ErrorKind::Note => write!(f, "note"),
-            ErrorKind::Suggestion => write!(f, "suggestion"),
-            ErrorKind::Warning => write!(f, "warning"),
+            ErrorKind::Help => write!(f, "HELP"),
+            ErrorKind::Error => write!(f, "ERROR"),
+            ErrorKind::Note => write!(f, "NOTE"),
+            ErrorKind::Suggestion => write!(f, "SUGGESTION"),
+            ErrorKind::Warning => write!(f, "WARN"),
         }
     }
 }
 
 #[derive(Debug)]
 pub struct Error {
-    pub line_num: usize,
+    pub line_num: Option<usize>,
     /// What kind of message we expect (e.g., warning, error, suggestion).
     /// `None` if not specified or unknown message kind.
     pub kind: Option<ErrorKind>,
     pub msg: String,
+    /// For some `Error`s, like secondary lines of multi-line diagnostics, line annotations
+    /// are not mandatory, even if they would otherwise be mandatory for primary errors.
+    /// Only makes sense for "actual" errors, not for "expected" errors.
+    pub require_annotation: bool,
 }
 
 impl Error {
@@ -62,18 +81,15 @@ impl Error {
         use colored::Colorize;
         format!(
             "{: <10}line {: >3}: {}",
-            self.kind.map(|kind| kind.to_string()).unwrap_or_default().to_uppercase(),
-            self.line_num,
+            self.kind.map(|kind| kind.to_string()).unwrap_or_default(),
+            self.line_num_str(),
             self.msg.cyan(),
         )
     }
-}
 
-#[derive(PartialEq, Debug)]
-enum WhichLine {
-    ThisLine,
-    FollowPrevious(usize),
-    AdjustBackward(usize),
+    pub fn line_num_str(&self) -> String {
+        self.line_num.map_or("?".to_string(), |line_num| line_num.to_string())
+    }
 }
 
 /// Looks for either "//~| KIND MESSAGE" or "//~^^... KIND MESSAGE"
@@ -86,8 +102,8 @@ enum WhichLine {
 ///
 /// If revision is not None, then we look
 /// for `//[X]~` instead, where `X` is the current revision.
-pub fn load_errors(testfile: &Path, revision: Option<&str>) -> Vec<Error> {
-    let rdr = BufReader::new(File::open(testfile).unwrap());
+pub fn load_errors(testfile: &Utf8Path, revision: Option<&str>) -> Vec<Error> {
+    let rdr = BufReader::new(File::open(testfile.as_std_path()).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen
     // line with an error template that did not use the
@@ -105,12 +121,10 @@ pub fn load_errors(testfile: &Path, revision: Option<&str>) -> Vec<Error> {
         .filter(|(_, line)| line.is_ok())
         .filter_map(|(line_num, line)| {
             parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), revision).map(
-                |(which, error)| {
-                    match which {
-                        FollowPrevious(_) => {}
-                        _ => last_nonfollow_error = Some(error.line_num),
+                |(follow_prev, error)| {
+                    if !follow_prev {
+                        last_nonfollow_error = error.line_num;
                     }
-
                     error
                 },
             )
@@ -123,18 +137,23 @@ fn parse_expected(
     line_num: usize,
     line: &str,
     test_revision: Option<&str>,
-) -> Option<(WhichLine, Error)> {
+) -> Option<(bool, Error)> {
     // Matches comments like:
     //     //~
     //     //~|
     //     //~^
     //     //~^^^^^
+    //     //~v
+    //     //~vvvvv
+    //     //~?
     //     //[rev1]~
     //     //[rev1,rev2]~^^
     static RE: OnceLock<Regex> = OnceLock::new();
 
     let captures = RE
-        .get_or_init(|| Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\||\^*)").unwrap())
+        .get_or_init(|| {
+            Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\?|\||[v\^]*)").unwrap()
+        })
         .captures(line)?;
 
     match (test_revision, captures.name("revs")) {
@@ -151,47 +170,34 @@ fn parse_expected(
         (Some(_), None) | (None, None) => {}
     }
 
-    let (follow, adjusts) = match &captures["adjust"] {
-        "|" => (true, 0),
-        circumflexes => (false, circumflexes.len()),
-    };
-
     // Get the part of the comment after the sigil (e.g. `~^^` or ~|).
-    let whole_match = captures.get(0).unwrap();
-    let (_, mut msg) = line.split_at(whole_match.end());
+    let tag = captures.get(0).unwrap();
+    let rest = line[tag.end()..].trim_start();
+    let (kind_str, _) = rest.split_once(|c: char| !c.is_ascii_alphabetic()).unwrap_or((rest, ""));
+    let kind = ErrorKind::from_user_str(kind_str);
+    let untrimmed_msg = if kind.is_some() { &rest[kind_str.len()..] } else { rest };
+    let msg = untrimmed_msg.strip_prefix(':').unwrap_or(untrimmed_msg).trim().to_owned();
 
-    let first_word = msg.split_whitespace().next().expect("Encountered unexpected empty comment");
-
-    // If we find `//~ ERROR foo` or something like that, skip the first word.
-    let kind = first_word.parse::<ErrorKind>().ok();
-    if kind.is_some() {
-        msg = &msg.trim_start().split_at(first_word.len()).1;
-    }
-
-    let msg = msg.trim().to_owned();
-
-    let (which, line_num) = if follow {
-        assert_eq!(adjusts, 0, "use either //~| or //~^, not both.");
-        let line_num = last_nonfollow_error.expect(
-            "encountered //~| without \
-             preceding //~^ line.",
-        );
-        (FollowPrevious(line_num), line_num)
+    let line_num_adjust = &captures["adjust"];
+    let (follow_prev, line_num) = if line_num_adjust == "|" {
+        (true, Some(last_nonfollow_error.expect("encountered //~| without preceding //~^ line")))
+    } else if line_num_adjust == "?" {
+        (false, None)
+    } else if line_num_adjust.starts_with('v') {
+        (false, Some(line_num + line_num_adjust.len()))
     } else {
-        let which = if adjusts > 0 { AdjustBackward(adjusts) } else { ThisLine };
-        let line_num = line_num - adjusts;
-        (which, line_num)
+        (false, Some(line_num - line_num_adjust.len()))
     };
 
     debug!(
-        "line={} tag={:?} which={:?} kind={:?} msg={:?}",
+        "line={:?} tag={:?} follow_prev={:?} kind={:?} msg={:?}",
         line_num,
-        whole_match.as_str(),
-        which,
+        tag.as_str(),
+        follow_prev,
         kind,
         msg
     );
-    Some((which, Error { line_num, kind, msg }))
+    Some((follow_prev, Error { line_num, kind, msg, require_annotation: true }))
 }
 
 #[cfg(test)]

@@ -61,10 +61,6 @@ declare_clippy_lint! {
     /// `Vec` already keeps its contents in a separate area on
     /// the heap. So if you `Box` its contents, you just add another level of indirection.
     ///
-    /// ### Known problems
-    /// Vec<Box<T: Sized>> makes sense if T is a large type (see [#3530](https://github.com/rust-lang/rust-clippy/issues/3530),
-    /// 1st comment).
-    ///
     /// ### Example
     /// ```no_run
     /// struct X {
@@ -451,7 +447,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
-            ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _, _) => self.check_ty(
+            ItemKind::Static(_, ty, _, _) | ItemKind::Const(_, ty, _, _) => self.check_ty(
                 cx,
                 ty,
                 CheckTyContext {
@@ -595,26 +591,26 @@ impl Types {
             TyKind::Path(ref qpath) if !context.in_body => {
                 let hir_id = hir_ty.hir_id;
                 let res = cx.qpath_res(qpath, hir_id);
-                if let Some(def_id) = res.opt_def_id() {
-                    if self.is_type_change_allowed(context) {
-                        // All lints that are being checked in this block are guarded by
-                        // the `avoid_breaking_exported_api` configuration. When adding a
-                        // new lint, please also add the name to the configuration documentation
-                        // in `clippy_config::conf`
+                if let Some(def_id) = res.opt_def_id()
+                    && self.is_type_change_allowed(context)
+                {
+                    // All lints that are being checked in this block are guarded by
+                    // the `avoid_breaking_exported_api` configuration. When adding a
+                    // new lint, please also add the name to the configuration documentation
+                    // in `clippy_config::conf`
 
-                        let mut triggered = false;
-                        triggered |= box_collection::check(cx, hir_ty, qpath, def_id);
-                        triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
-                        triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
-                        triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
-                        triggered |= option_option::check(cx, hir_ty, qpath, def_id);
-                        triggered |= linked_list::check(cx, hir_ty, def_id);
-                        triggered |= rc_mutex::check(cx, hir_ty, qpath, def_id);
-                        triggered |= owned_cow::check(cx, qpath, def_id);
+                    let mut triggered = false;
+                    triggered |= box_collection::check(cx, hir_ty, qpath, def_id);
+                    triggered |= redundant_allocation::check(cx, hir_ty, qpath, def_id);
+                    triggered |= rc_buffer::check(cx, hir_ty, qpath, def_id);
+                    triggered |= vec_box::check(cx, hir_ty, qpath, def_id, self.vec_box_size_threshold);
+                    triggered |= option_option::check(cx, hir_ty, qpath, def_id);
+                    triggered |= linked_list::check(cx, hir_ty, def_id);
+                    triggered |= rc_mutex::check(cx, hir_ty, qpath, def_id);
+                    triggered |= owned_cow::check(cx, qpath, def_id);
 
-                        if triggered {
-                            return;
-                        }
+                    if triggered {
+                        return;
                     }
                 }
                 match *qpath {

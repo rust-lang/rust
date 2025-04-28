@@ -174,7 +174,9 @@
 //!
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
-//! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
+//! - under UNIX, before main, file descriptors 0, 1, and 2 may be unchanged
+//!   (they are guaranteed to be open during main,
+//!    and are opened to /dev/null O_RDWR if they weren't open on program start)
 //!
 //!
 //! [I/O]: io
@@ -295,6 +297,7 @@
 #![feature(extended_varargs_abi_support)]
 #![feature(f128)]
 #![feature(f16)]
+#![feature(ffi_const)]
 #![feature(formatting_options)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
@@ -309,7 +312,6 @@
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
-#![feature(no_sanitize)]
 #![feature(optimize_attribute)]
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
@@ -327,7 +329,6 @@
 #![feature(array_chunks)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
-#![feature(c_str_module)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(core_intrinsics)]
@@ -338,6 +339,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
 #![feature(extend_one)]
+#![feature(float_algebraic)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(fmt_internals)]
@@ -666,6 +668,8 @@ pub mod arch {
     pub use std_detect::is_loongarch_feature_detected;
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    pub use std_detect::is_s390x_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
     #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
@@ -699,11 +703,18 @@ pub use core::cfg_match;
     reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 pub use core::concat_bytes;
+#[stable(feature = "matches_macro", since = "1.42.0")]
+#[allow(deprecated, deprecated_in_future)]
+pub use core::matches;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
+#[stable(feature = "todo_macro", since = "1.40.0")]
+#[allow(deprecated, deprecated_in_future)]
+pub use core::todo;
 // Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
+#[cfg_attr(bootstrap, allow(deprecated_in_future))]
 pub use core::{
     assert, assert_matches, cfg, column, compile_error, concat, concat_idents, const_format_args,
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
@@ -713,8 +724,8 @@ pub use core::{
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
-    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, matches, todo, r#try,
-    unimplemented, unreachable, write, writeln,
+    assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert_ne, r#try, unimplemented,
+    unreachable, write, writeln,
 };
 
 // Include a number of private modules that exist solely to provide

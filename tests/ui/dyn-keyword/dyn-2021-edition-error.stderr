@@ -30,6 +30,17 @@ LL | fn function(x: &SomeTrait, y: Box<dyn SomeTrait>) {
    |                                   +++
 
 error[E0782]: expected a type, found a trait
+  --> $DIR/dyn-2021-edition-error.rs:12:24
+   |
+LL |     fn foo() -> *const SomeTrait;
+   |                        ^^^^^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     fn foo() -> *const dyn SomeTrait;
+   |                        +++
+
+error[E0782]: expected a type, found a trait
   --> $DIR/dyn-2021-edition-error.rs:6:14
    |
 LL |     let _x: &SomeTrait = todo!();
@@ -40,6 +51,6 @@ help: you can add the `dyn` keyword if you want a trait object
 LL |     let _x: &dyn SomeTrait = todo!();
    |              +++
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0782`.

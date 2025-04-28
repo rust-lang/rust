@@ -6,16 +6,16 @@
 
 // Crate use statements
 
-#[cfg(FALSE)]
+#[cfg(false)]
 use flippity;
 
-#[cfg(FALSE)]
+#[cfg(false)]
 static b: bool = false;
 
 static b: bool = true;
 
 mod rustrt {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     extern "C" {
         // This symbol doesn't exist and would be a link error if this
         // module was codegened
@@ -25,12 +25,12 @@ mod rustrt {
     extern "C" {}
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 type t = isize;
 
 type t = bool;
 
-#[cfg(FALSE)]
+#[cfg(false)]
 enum tg {
     foo,
 }
@@ -39,12 +39,12 @@ enum tg {
     bar,
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 struct r {
     i: isize,
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn r(i: isize) -> r {
     r { i: i }
 }
@@ -57,7 +57,7 @@ fn r(i: isize) -> r {
     r { i: i }
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 mod m {
     // This needs to parse but would fail in typeck. Since it's not in
     // the current config it should not be typechecked.
@@ -69,7 +69,7 @@ mod m {
 mod m {
     // Submodules have slightly different code paths than the top-level
     // module, so let's make sure this jazz works here as well
-    #[cfg(FALSE)]
+    #[cfg(false)]
     pub fn f() {}
 
     pub fn f() {}
@@ -77,7 +77,7 @@ mod m {
 
 // Since the FALSE configuration isn't defined main will just be
 // parsed, but nothing further will be done with it
-#[cfg(FALSE)]
+#[cfg(false)]
 pub fn main() {
     panic!()
 }
@@ -93,14 +93,14 @@ pub fn main() {
 }
 
 fn test_in_fn_ctxt() {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     fn f() {
         panic!()
     }
     fn f() {}
     f();
 
-    #[cfg(FALSE)]
+    #[cfg(false)]
     static i: isize = 0;
     static i: isize = 1;
     assert_eq!(i, 1);
@@ -109,7 +109,7 @@ fn test_in_fn_ctxt() {
 mod test_foreign_items {
     pub mod rustrt {
         extern "C" {
-            #[cfg(FALSE)]
+            #[cfg(false)]
             pub fn write() -> String;
             pub fn write() -> String;
         }
@@ -117,7 +117,7 @@ mod test_foreign_items {
 }
 
 mod test_use_statements {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     use flippity_foo;
 }
 
@@ -127,24 +127,24 @@ mod test_methods {
     }
 
     impl Fooable for Foo {
-        #[cfg(FALSE)]
+        #[cfg(false)]
         fn what(&self) {}
 
         fn what(&self) {}
 
-        #[cfg(FALSE)]
+        #[cfg(false)]
         fn the(&self) {}
 
         fn the(&self) {}
     }
 
     trait Fooable {
-        #[cfg(FALSE)]
+        #[cfg(false)]
         fn what(&self);
 
         fn what(&self);
 
-        #[cfg(FALSE)]
+        #[cfg(false)]
         fn the(&self);
 
         fn the(&self);

@@ -177,17 +177,16 @@ fn find_first_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(Span, Mut
             PatKind::Or([p, ..]) => p,
             _ => p,
         };
-        if let Some(adjustments) = cx.typeck_results().pat_adjustments().get(adjust_pat.hir_id) {
-            if let [first, ..] = **adjustments {
-                if let ty::Ref(.., mutability) = *first.kind() {
-                    let level = if p.hir_id == pat.hir_id {
-                        Level::Top
-                    } else {
-                        Level::Lower
-                    };
-                    result = Some((p.span, mutability, level));
-                }
-            }
+        if let Some(adjustments) = cx.typeck_results().pat_adjustments().get(adjust_pat.hir_id)
+            && let [first, ..] = **adjustments
+            && let ty::Ref(.., mutability) = *first.source.kind()
+        {
+            let level = if p.hir_id == pat.hir_id {
+                Level::Top
+            } else {
+                Level::Lower
+            };
+            result = Some((p.span, mutability, level));
         }
         result.is_none()
     });

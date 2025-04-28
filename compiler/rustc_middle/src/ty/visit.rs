@@ -1,10 +1,11 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_type_ir::fold::TypeFoldable;
-pub use rustc_type_ir::visit::*;
+use rustc_type_ir::TypeFoldable;
 
-use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
+use crate::ty::{
+    self, Binder, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
@@ -76,7 +77,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> Self::Result {
-                match *r {
+                match r.kind() {
                     ty::ReBound(debruijn, _) if debruijn < self.outer_index => {
                         ControlFlow::Continue(())
                     }
@@ -204,7 +205,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::ReBound(debruijn, br) = *r {
+        if let ty::ReBound(debruijn, br) = r.kind() {
             if debruijn == self.current_index {
                 self.regions.insert(br.kind);
             }
@@ -230,9 +231,7 @@ impl MaxUniverse {
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
     fn visit_ty(&mut self, t: Ty<'tcx>) {
         if let ty::Placeholder(placeholder) = t.kind() {
-            self.max_universe = ty::UniverseIndex::from_u32(
-                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
-            );
+            self.max_universe = self.max_universe.max(placeholder.universe);
         }
 
         t.super_visit_with(self)
@@ -240,19 +239,15 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxUniverse {
 
     fn visit_const(&mut self, c: ty::consts::Const<'tcx>) {
         if let ty::ConstKind::Placeholder(placeholder) = c.kind() {
-            self.max_universe = ty::UniverseIndex::from_u32(
-                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
-            );
+            self.max_universe = self.max_universe.max(placeholder.universe);
         }
 
         c.super_visit_with(self)
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
-        if let ty::RePlaceholder(placeholder) = *r {
-            self.max_universe = ty::UniverseIndex::from_u32(
-                self.max_universe.as_u32().max(placeholder.universe.as_u32()),
-            );
+        if let ty::RePlaceholder(placeholder) = r.kind() {
+            self.max_universe = self.max_universe.max(placeholder.universe);
         }
     }
 }

@@ -105,7 +105,7 @@ enum AllocDiscriminant {
     Static,
 }
 
-pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>>(
+pub fn specialized_encode_alloc_id<'tcx, E: TyEncoder<'tcx>>(
     encoder: &mut E,
     tcx: TyCtxt<'tcx>,
     alloc_id: AllocId,
@@ -175,7 +175,7 @@ impl<'s> AllocDecodingSession<'s> {
     /// Decodes an `AllocId` in a thread-safe way.
     pub fn decode_alloc_id<'tcx, D>(&self, decoder: &mut D) -> AllocId
     where
-        D: TyDecoder<I = TyCtxt<'tcx>>,
+        D: TyDecoder<'tcx>,
     {
         // Read the index of the allocation.
         let idx = usize::try_from(decoder.read_u32()).unwrap();
@@ -452,12 +452,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
         let id = self.alloc_map.reserve();
         debug!("creating alloc {:?} with id {id:?}", alloc_salt.0);
-        let had_previous = self
-            .alloc_map
-            .to_alloc
-            .lock_shard_by_value(&id)
-            .insert(id, alloc_salt.0.clone())
-            .is_some();
+        let had_previous = self.alloc_map.to_alloc.insert(id, alloc_salt.0.clone()).is_some();
         // We just reserved, so should always be unique.
         assert!(!had_previous);
         dedup.insert(alloc_salt, id);
@@ -510,7 +505,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// local dangling pointers and allocations in constants/statics.
     #[inline]
     pub fn try_get_global_alloc(self, id: AllocId) -> Option<GlobalAlloc<'tcx>> {
-        self.alloc_map.to_alloc.lock_shard_by_value(&id).get(&id).cloned()
+        self.alloc_map.to_alloc.get(&id)
     }
 
     #[inline]
@@ -529,9 +524,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Freezes an `AllocId` created with `reserve` by pointing it at an `Allocation`. Trying to
     /// call this function twice, even with the same `Allocation` will ICE the compiler.
     pub fn set_alloc_id_memory(self, id: AllocId, mem: ConstAllocation<'tcx>) {
-        if let Some(old) =
-            self.alloc_map.to_alloc.lock_shard_by_value(&id).insert(id, GlobalAlloc::Memory(mem))
-        {
+        if let Some(old) = self.alloc_map.to_alloc.insert(id, GlobalAlloc::Memory(mem)) {
             bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }
     }
@@ -539,11 +532,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Freezes an `AllocId` created with `reserve` by pointing it at a static item. Trying to
     /// call this function twice, even with the same `DefId` will ICE the compiler.
     pub fn set_nested_alloc_id_static(self, id: AllocId, def_id: LocalDefId) {
-        if let Some(old) = self
-            .alloc_map
-            .to_alloc
-            .lock_shard_by_value(&id)
-            .insert(id, GlobalAlloc::Static(def_id.to_def_id()))
+        if let Some(old) =
+            self.alloc_map.to_alloc.insert(id, GlobalAlloc::Static(def_id.to_def_id()))
         {
             bug!("tried to set allocation ID {id:?}, but it was already existing as {old:#?}");
         }

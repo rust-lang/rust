@@ -14,7 +14,7 @@ trait Foo {
         [(); std::mem::size_of::<Self::Assoc>()]: ,
     {
         Self::AssocInstance == [(); std::mem::size_of::<Self::Assoc>()];
-        //~^ Error: mismatched types
+        //~^ ERROR mismatched types
     }
 }
 

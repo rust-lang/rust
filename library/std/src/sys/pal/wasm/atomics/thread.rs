@@ -6,7 +6,7 @@ use crate::time::Duration;
 
 pub struct Thread(!);
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 64 * 1024;
+pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * 1024;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements

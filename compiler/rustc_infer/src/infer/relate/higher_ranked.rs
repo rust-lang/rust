@@ -1,9 +1,7 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use rustc_middle::ty::fold::FnMutDelegate;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, FnMutDelegate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use tracing::{debug, instrument};
 
 use super::RelateResult;

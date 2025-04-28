@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         // special handling for self trait bounds as these are not considered generics
         // ie. trait Foo: Display {}
         if let Item {
-            kind: ItemKind::Trait(_, _, _, bounds, ..),
+            kind: ItemKind::Trait(_, _, _, _, bounds, ..),
             ..
         } = item
         {
@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     ..
                 }) = segments.first()
                 && let Some(Node::Item(Item {
-                    kind: ItemKind::Trait(_, _, _, self_bounds, _),
+                    kind: ItemKind::Trait(_, _, _, _, self_bounds, _),
                     ..
                 })) = cx.tcx.hir_get_if_local(*def_id)
             {
@@ -151,20 +151,19 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                     .iter()
                     .filter_map(get_trait_info_from_bound)
                     .for_each(|(trait_item_res, trait_item_segments, span)| {
-                        if let Some(self_segments) = self_bounds_map.get(&trait_item_res) {
-                            if SpanlessEq::new(cx)
+                        if let Some(self_segments) = self_bounds_map.get(&trait_item_res)
+                            && SpanlessEq::new(cx)
                                 .paths_by_resolution()
                                 .eq_path_segments(self_segments, trait_item_segments)
-                            {
-                                span_lint_and_help(
-                                    cx,
-                                    TRAIT_DUPLICATION_IN_BOUNDS,
-                                    span,
-                                    "this trait bound is already specified in trait declaration",
-                                    None,
-                                    "consider removing this trait bound",
-                                );
-                            }
+                        {
+                            span_lint_and_help(
+                                cx,
+                                TRAIT_DUPLICATION_IN_BOUNDS,
+                                span,
+                                "this trait bound is already specified in trait declaration",
+                                None,
+                                "consider removing this trait bound",
+                            );
                         }
                     });
             }

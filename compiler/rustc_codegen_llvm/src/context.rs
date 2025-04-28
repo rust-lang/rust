@@ -8,6 +8,7 @@ use std::str;
 use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
@@ -27,6 +28,7 @@ use rustc_session::config::{
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::spec::{HasTargetSpec, RelocModel, SmallDataThresholdSupport, Target, TlsModel};
 use smallvec::SmallVec;
 
@@ -37,7 +39,7 @@ use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::Metadata;
 use crate::type_::Type;
 use crate::value::Value;
-use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
+use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
 /// However, there are various cx related functions which we want to be available to the builder and
@@ -161,23 +163,6 @@ pub(crate) unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-
-    if llvm_version < (19, 0, 0) {
-        if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
-            // LLVM 19 sets -Fn32 in its data layout string for 64-bit ARM
-            // Earlier LLVMs leave this default, so remove it.
-            // See https://github.com/llvm/llvm-project/pull/90702
-            target_data_layout = target_data_layout.replace("-Fn32", "");
-        }
-    }
-
-    if llvm_version < (19, 0, 0) {
-        if sess.target.arch == "loongarch64" {
-            // LLVM 19 updates the LoongArch64 data layout.
-            // See https://github.com/llvm/llvm-project/pull/93814
-            target_data_layout = target_data_layout.replace("-n32:64", "-n64");
-        }
-    }
 
     if llvm_version < (20, 0, 0) {
         if sess.target.arch == "aarch64" || sess.target.arch.starts_with("arm64") {
@@ -324,6 +309,22 @@ pub(crate) unsafe fn create_module<'ll>(
                 llvm::ModuleFlagMergeBehavior::Override,
                 "kcfi-offset",
                 pfe.prefix().into(),
+            );
+        }
+
+        // Add "kcfi-arity" module flag if KCFI arity indicator is enabled. (See
+        // https://github.com/llvm/llvm-project/pull/117121.)
+        if sess.is_sanitizer_kcfi_arity_enabled() {
+            // KCFI arity indicator requires LLVM 21.0.0 or later.
+            if llvm_version < (21, 0, 0) {
+                tcx.dcx().emit_err(crate::errors::SanitizerKcfiArityRequiresLLVM2100);
+            }
+
+            llvm::add_module_flag_u32(
+                llmod,
+                llvm::ModuleFlagMergeBehavior::Override,
+                "kcfi-arity",
+                1,
             );
         }
     }
@@ -642,7 +643,18 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         llvm::set_section(g, c"llvm.metadata");
     }
 }
-
+impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+        assert_eq!(self.type_kind(ty), TypeKind::Function);
+        unsafe { llvm::LLVMGetReturnType(ty) }
+    }
+    pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
+        unsafe { llvm::LLVMGlobalGetValueType(val) }
+    }
+    pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        common::val_ty(v)
+    }
+}
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn new(
         llmod: &'ll llvm::Module,
@@ -657,6 +669,13 @@ impl<'ll> SimpleCx<'ll> {
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
         llvm::LLVMMetadataAsValue(self.llcx(), metadata)
+    }
+
+    // FIXME(autodiff): We should split `ConstCodegenMethods` to pull the reusable parts
+    // onto a trait that is also implemented for GenericCx.
+    pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
+        let ty = unsafe { llvm::LLVMInt64TypeInContext(self.llcx()) };
+        unsafe { llvm::LLVMConstInt(ty, n, llvm::False) }
     }
 
     pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
@@ -1126,6 +1145,18 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.usub.sat.i64", fn(t_i64, t_i64) -> t_i64);
         ifn!("llvm.usub.sat.i128", fn(t_i128, t_i128) -> t_i128);
 
+        ifn!("llvm.scmp.i8.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.scmp.i8.i16", fn(t_i16, t_i16) -> t_i8);
+        ifn!("llvm.scmp.i8.i32", fn(t_i32, t_i32) -> t_i8);
+        ifn!("llvm.scmp.i8.i64", fn(t_i64, t_i64) -> t_i8);
+        ifn!("llvm.scmp.i8.i128", fn(t_i128, t_i128) -> t_i8);
+
+        ifn!("llvm.ucmp.i8.i8", fn(t_i8, t_i8) -> t_i8);
+        ifn!("llvm.ucmp.i8.i16", fn(t_i16, t_i16) -> t_i8);
+        ifn!("llvm.ucmp.i8.i32", fn(t_i32, t_i32) -> t_i8);
+        ifn!("llvm.ucmp.i8.i64", fn(t_i64, t_i64) -> t_i8);
+        ifn!("llvm.ucmp.i8.i128", fn(t_i128, t_i128) -> t_i8);
+
         ifn!("llvm.lifetime.start.p0i8", fn(t_i64, ptr) -> void);
         ifn!("llvm.lifetime.end.p0i8", fn(t_i64, ptr) -> void);
 
@@ -1170,10 +1201,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(ptr, t_i64, t_i32, t_i32) -> void);
-            if crate::llvm_util::get_version() >= (19, 0, 0) {
-                ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
-                ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
-            }
+            ifn!("llvm.instrprof.mcdc.parameters", fn(ptr, t_i64, t_i32) -> void);
+            ifn!("llvm.instrprof.mcdc.tvbitmap.update", fn(ptr, t_i64, t_i32, ptr) -> void);
         }
 
         ifn!("llvm.type.test", fn(ptr, t_metadata) -> i1);
@@ -1199,7 +1228,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             Some(def_id) => self.get_static(def_id),
             _ => {
                 let ty = self.type_struct(&[self.type_ptr(), self.type_ptr()], false);
-                self.declare_global("rust_eh_catch_typeinfo", ty)
+                self.declare_global(&mangle_internal_symbol(self.tcx, "rust_eh_catch_typeinfo"), ty)
             }
         };
         self.eh_catch_typeinfo.set(Some(eh_catch_typeinfo));

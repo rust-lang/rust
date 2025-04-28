@@ -23,7 +23,7 @@ Here's the list of the notification groups:
 - [ARM](./arm.md)
 - [Cleanup Crew](./cleanup-crew.md)
 - [Emscripten](./emscripten.md)
-- [LLVM](./llvm.md)
+- [LLVM Icebreakers](./llvm.md)
 - [RISC-V](./risc-v.md)
 - [WASI](./wasi.md)
 - [WebAssembly](./wasm.md)
@@ -83,7 +83,7 @@ group. For example:
 @rustbot ping arm
 @rustbot ping cleanup-crew
 @rustbot ping emscripten
-@rustbot ping llvm
+@rustbot ping icebreakers-llvm
 @rustbot ping risc-v
 @rustbot ping wasi
 @rustbot ping wasm

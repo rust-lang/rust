@@ -32,20 +32,18 @@ where
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let candidates = self.assemble_and_evaluate_candidates(goal);
                 let trait_ref = goal.predicate.alias.trait_ref(cx);
                 let (_, proven_via) =
                     self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
                         let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
                         ecx.compute_trait_goal(trait_goal)
                     })?;
-                self.merge_candidates(proven_via, candidates, |ecx| {
+                self.assemble_and_merge_candidates(proven_via, goal, |ecx| {
                     ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
                         this.structurally_instantiate_normalizes_to_term(
                             goal,
                             goal.predicate.alias,
                         );
-                        this.add_goal(GoalSource::AliasWellFormed, goal.with(cx, trait_ref));
                         this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                 })
@@ -134,7 +132,7 @@ where
                     // Add GAT where clauses from the trait's definition
                     // FIXME: We don't need these, since these are the type's own WF obligations.
                     ecx.add_goals(
-                        GoalSource::Misc,
+                        GoalSource::AliasWellFormed,
                         cx.own_predicates_of(goal.predicate.def_id())
                             .iter_instantiated(cx, goal.predicate.alias.args)
                             .map(|pred| goal.with(cx, pred)),
@@ -199,7 +197,7 @@ where
             // Add GAT where clauses from the trait's definition.
             // FIXME: We don't need these, since these are the type's own WF obligations.
             ecx.add_goals(
-                GoalSource::Misc,
+                GoalSource::AliasWellFormed,
                 cx.own_predicates_of(goal.predicate.def_id())
                     .iter_instantiated(cx, goal.predicate.alias.args)
                     .map(|pred| goal.with(cx, pred)),
@@ -215,9 +213,6 @@ where
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             };
 
-            // In case the associated item is hidden due to specialization, we have to
-            // return ambiguity this would otherwise be incomplete, resulting in
-            // unsoundness during coherence (#105782).
             let target_item_def_id = match ecx.fetch_eligible_assoc_item(
                 goal_trait_ref,
                 goal.predicate.def_id(),
@@ -225,14 +220,60 @@ where
             ) {
                 Ok(Some(target_item_def_id)) => target_item_def_id,
                 Ok(None) => {
-                    return ecx
-                        .evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS);
+                    match ecx.typing_mode() {
+                        // In case the associated item is hidden due to specialization, we have to
+                        // return ambiguity this would otherwise be incomplete, resulting in
+                        // unsoundness during coherence (#105782).
+                        ty::TypingMode::Coherence => {
+                            return ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
+                        }
+                        // Outside of coherence, we treat the associated item as rigid instead.
+                        ty::TypingMode::Analysis { .. }
+                        | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::PostBorrowckAnalysis { .. }
+                        | ty::TypingMode::PostAnalysis => {
+                            ecx.structurally_instantiate_normalizes_to_term(
+                                goal,
+                                goal.predicate.alias,
+                            );
+                            return ecx
+                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                        }
+                    };
                 }
                 Err(guar) => return error_response(ecx, guar),
             };
 
             if !cx.has_item_definition(target_item_def_id) {
-                return error_response(ecx, cx.delay_bug("missing item"));
+                // If the impl is missing an item, it's either because the user forgot to
+                // provide it, or the user is not *obligated* to provide it (because it
+                // has a trivially false `Sized` predicate). If it's the latter, we cannot
+                // delay a bug because we can have trivially false where clauses, so we
+                // treat it as rigid.
+                if cx.impl_self_is_guaranteed_unsized(impl_def_id) {
+                    match ecx.typing_mode() {
+                        ty::TypingMode::Coherence => {
+                            return ecx.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
+                        }
+                        ty::TypingMode::Analysis { .. }
+                        | ty::TypingMode::Borrowck { .. }
+                        | ty::TypingMode::PostBorrowckAnalysis { .. }
+                        | ty::TypingMode::PostAnalysis => {
+                            ecx.structurally_instantiate_normalizes_to_term(
+                                goal,
+                                goal.predicate.alias,
+                            );
+                            return ecx
+                                .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                        }
+                    }
+                } else {
+                    return error_response(ecx, cx.delay_bug("missing item"));
+                }
             }
 
             let target_container_def_id = cx.parent(target_item_def_id);

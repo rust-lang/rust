@@ -131,6 +131,14 @@ mod m4 {
     }
 }
 
+mod m5 {
+    pub mod m5_1 {}
+    // Test that the primary span isn't butchered for item kinds that don't have an ident.
+    pub(crate) use m5_1::*; //~ redundant_pub_crate
+    #[rustfmt::skip]
+    pub(crate) use m5_1::{*}; //~ redundant_pub_crate
+}
+
 pub use m4::*;
 
 mod issue_8732 {

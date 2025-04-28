@@ -1,4 +1,5 @@
-//@ compile-flags: --emit metadata --crate-type lib --edition 2018
+//@ compile-flags: --emit metadata --crate-type lib
+//@ edition: 2018
 
 #![crate_name = "foo"]
 

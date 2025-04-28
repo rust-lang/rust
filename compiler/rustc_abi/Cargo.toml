@@ -6,13 +6,13 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
-rand = { version = "0.8.4", default-features = false, optional = true }
-rand_xoshiro = { version = "0.6.0", optional = true }
-rustc_data_structures = { path = "../rustc_data_structures", optional = true  }
+rand = { version = "0.9.0", default-features = false, optional = true }
+rand_xoshiro = { version = "0.7.0", optional = true }
+rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_hashes = { path = "../rustc_hashes" }
 rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
-rustc_serialize = { path = "../rustc_serialize", optional = true  }
+rustc_serialize = { path = "../rustc_serialize", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 tracing = "0.1"
 # tidy-alphabetical-end
@@ -31,6 +31,3 @@ nightly = [
 ]
 randomize = ["dep:rand", "dep:rand_xoshiro", "nightly"]
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

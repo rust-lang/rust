@@ -17,4 +17,10 @@ fn main() {
     // This does work, since the attribute is on a parent
     // of the macro invocation.
     #[allow(warnings)] { #[inline] foo!(); }
+
+    // Ok, `cfg` and `cfg_attr` are expanded eagerly and do not warn.
+    #[cfg(true)] foo!();
+    #[cfg(false)] foo!();
+    #[cfg_attr(true, cfg(true))] foo!();
+    #[cfg_attr(false, nonexistent)] foo!();
 }

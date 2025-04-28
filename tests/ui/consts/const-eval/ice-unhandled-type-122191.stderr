@@ -1,3 +1,13 @@
+error[E0658]: use of unstable library feature `type_alias_impl_trait`: `type_alias_impl_trait` has open design concerns
+  --> $DIR/ice-unhandled-type-122191.rs:6:3
+   |
+LL | #[define_opaque(Foo)]
+   |   ^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
 error[E0658]: `impl Trait` in type aliases is unstable
   --> $DIR/ice-unhandled-type-122191.rs:1:12
    |
@@ -9,13 +19,16 @@ LL | type Foo = impl Send;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0425]: cannot find function `value` in this scope
-  --> $DIR/ice-unhandled-type-122191.rs:6:20
+  --> $DIR/ice-unhandled-type-122191.rs:9:5
    |
-LL | const VALUE: Foo = value();
-   |                    ^^^^^ not found in this scope
+LL |     value()
+   |     ^^^^^ help: a constant with a similar name exists: `VALUE`
+...
+LL | const VALUE: Foo = foo();
+   | ------------------------- similarly named constant `VALUE` defined here
 
 error[E0308]: mismatched types
-  --> $DIR/ice-unhandled-type-122191.rs:11:9
+  --> $DIR/ice-unhandled-type-122191.rs:17:9
    |
 LL | type Foo = impl Send;
    |            --------- the expected opaque type
@@ -27,14 +40,14 @@ LL |         0 | 0 => {}
    |
    = note: expected opaque type `Foo`
                      found type `{integer}`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/ice-unhandled-type-122191.rs:9:4
+note: this item must have a `#[define_opaque(Foo)]` attribute to be able to define hidden types
+  --> $DIR/ice-unhandled-type-122191.rs:15:4
    |
 LL | fn test() {
    |    ^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/ice-unhandled-type-122191.rs:11:13
+  --> $DIR/ice-unhandled-type-122191.rs:17:13
    |
 LL | type Foo = impl Send;
    |            --------- the expected opaque type
@@ -46,13 +59,13 @@ LL |         0 | 0 => {}
    |
    = note: expected opaque type `Foo`
                      found type `{integer}`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/ice-unhandled-type-122191.rs:9:4
+note: this item must have a `#[define_opaque(Foo)]` attribute to be able to define hidden types
+  --> $DIR/ice-unhandled-type-122191.rs:15:4
    |
 LL | fn test() {
    |    ^^^^
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0308, E0425, E0658.
 For more information about an error, try `rustc --explain E0308`.

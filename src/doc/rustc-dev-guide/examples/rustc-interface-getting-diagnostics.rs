@@ -1,4 +1,4 @@
-// Tested with nightly-2025-02-13
+// Tested with nightly-2025-03-28
 
 #![feature(rustc_private)]
 
@@ -86,8 +86,10 @@ fn main() {
     rustc_interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
         rustc_interface::create_and_enter_global_ctxt(&compiler, krate, |tcx| {
-            // Run the analysis phase on the local crate to trigger the type error.
-            let _ = tcx.analysis(());
+            // Iterate all the items defined and perform type checking.
+            tcx.par_hir_body_owners(|item_def_id| {
+                tcx.ensure_ok().typeck(item_def_id);
+            });
         });
         // If the compiler has encountered errors when this closure returns, it will abort (!) the program.
         // We avoid this by resetting the error count before returning

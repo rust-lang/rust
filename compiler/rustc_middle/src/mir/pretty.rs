@@ -531,12 +531,12 @@ fn write_mir_intro<'tcx>(
 
     // construct a scope tree and write it out
     let mut scope_tree: FxHashMap<SourceScope, Vec<SourceScope>> = Default::default();
-    for (index, scope_data) in body.source_scopes.iter().enumerate() {
+    for (index, scope_data) in body.source_scopes.iter_enumerated() {
         if let Some(parent) = scope_data.parent_scope {
-            scope_tree.entry(parent).or_default().push(SourceScope::new(index));
+            scope_tree.entry(parent).or_default().push(index);
         } else {
             // Only the argument scope has no parent, because it's the root.
-            assert_eq!(index, OUTERMOST_SOURCE_SCOPE.index());
+            assert_eq!(index, OUTERMOST_SOURCE_SCOPE);
         }
     }
 
@@ -620,9 +620,8 @@ fn write_function_coverage_info(
     function_coverage_info: &coverage::FunctionCoverageInfo,
     w: &mut dyn io::Write,
 ) -> io::Result<()> {
-    let coverage::FunctionCoverageInfo { body_span, mappings, .. } = function_coverage_info;
+    let coverage::FunctionCoverageInfo { mappings, .. } = function_coverage_info;
 
-    writeln!(w, "{INDENT}coverage body span: {body_span:?}")?;
     for coverage::Mapping { kind, span } in mappings {
         writeln!(w, "{INDENT}coverage {kind:?} => {span:?};")?;
     }
@@ -653,7 +652,10 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
+        // things like anon const, not an item
+        (DefKind::AnonConst | DefKind::InlineConst, _) => {}
+        // `global_asm!` have fake bodies, which we may dump after mir-build
+        (DefKind::GlobalAsm, _) => {}
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
@@ -857,7 +859,7 @@ impl Debug for Statement<'_> {
             BackwardIncompatibleDropHint { ref place, reason: _ } => {
                 // For now, we don't record the reason because there is only one use case,
                 // which is to report breaking change in drop order by Edition 2024
-                write!(fmt, "backward incompatible drop({place:?})")
+                write!(fmt, "BackwardIncompatibleDropHint({place:?})")
             }
         }
     }
@@ -1200,7 +1202,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             && let Some(upvars) = tcx.upvars_mentioned(def_id)
                         {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir().name(var_id);
+                                let var_name = tcx.hir_name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
                             }
                         } else {
@@ -1221,7 +1223,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             && let Some(upvars) = tcx.upvars_mentioned(def_id)
                         {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir().name(var_id);
+                                let var_name = tcx.hir_name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
                             }
                         } else {

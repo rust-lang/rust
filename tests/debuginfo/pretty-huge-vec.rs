@@ -1,5 +1,6 @@
 //@ ignore-windows-gnu: #128981
 //@ ignore-android: FIXME(#10381)
+//@ ignore-aix: FIXME(#137965)
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================

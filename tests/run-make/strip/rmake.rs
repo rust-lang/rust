@@ -1,4 +1,5 @@
-//@ ignore-windows Windows does not actually strip
+//@ ignore-windows (Windows does not actually strip)
+//@ ignore-cross-compile (relocations in generic ELF against `arm-unknown-linux-gnueabihf`)
 
 // Test that -Cstrip correctly strips/preserves debuginfo and symbols.
 

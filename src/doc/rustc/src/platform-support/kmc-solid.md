@@ -14,9 +14,9 @@ The target names follow this format: `$ARCH-kmc-solid_$KERNEL-$ABI`, where `$ARC
 | `armv7a-kmc-solid_asp3-eabi`   | `arm`         | `kmc`           | `solid_asp3` |
 | `armv7a-kmc-solid_asp3-eabihf` | `arm`         | `kmc`           | `solid_asp3` |
 
-## Designated Developers
+## Target Maintainers
 
-- [@kawadakk](https://github.com/kawadakk)
+[@kawadakk](https://github.com/kawadakk)
 
 ## Requirements
 
@@ -32,7 +32,7 @@ The target can be built by enabling it for a `rustc` build.
 target = ["aarch64-kmc-solid_asp3"]
 ```
 
-Make sure `aarch64-kmc-elf-gcc` is included in `$PATH`. Alternatively, you can use GNU Arm Embedded Toolchain by adding the following to `config.toml`:
+Make sure `aarch64-kmc-elf-gcc` is included in `$PATH`. Alternatively, you can use GNU Arm Embedded Toolchain by adding the following to `bootstrap.toml`:
 
 ```toml
 [target.aarch64-kmc-solid_asp3]

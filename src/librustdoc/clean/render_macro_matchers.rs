@@ -4,8 +4,8 @@ use rustc_ast_pretty::pprust::PrintState;
 use rustc_ast_pretty::pprust::state::State as Printer;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::ParseSess;
-use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::{FileName, Span};
 
 /// Render a macro matcher in a format suitable for displaying to the user
 /// as part of an item declaration.
@@ -63,7 +63,7 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
 
     // Create a Parser.
     let psess = ParseSess::new(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec());
-    let file_name = source_map.span_to_filename(span);
+    let file_name = FileName::macro_expansion_source_code(&snippet);
     let mut parser =
         match rustc_parse::new_parser_from_source_str(&psess, file_name, snippet.clone()) {
             Ok(parser) => parser,
@@ -96,7 +96,7 @@ fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
             }
         }
         TokenTree::Delimited(_span, _spacing, delim, tts) => {
-            let open_delim = printer.token_kind_to_string(&token::OpenDelim(*delim));
+            let open_delim = printer.token_kind_to_string(&delim.as_open_token_kind());
             printer.word(open_delim);
             if !tts.is_empty() {
                 if *delim == Delimiter::Brace {
@@ -107,7 +107,7 @@ fn print_tt(printer: &mut Printer<'_>, tt: &TokenTree) {
                     printer.space();
                 }
             }
-            let close_delim = printer.token_kind_to_string(&token::CloseDelim(*delim));
+            let close_delim = printer.token_kind_to_string(&delim.as_close_token_kind());
             printer.word(close_delim);
         }
     }

@@ -15,27 +15,27 @@ impl Iterator for Bar {
     }
 }
 
-mod ret {
-    pub type FooRet = impl std::fmt::Debug;
-    pub fn quux(st: super::FooArg) -> FooRet {
-        Some(st.to_string())
-    }
+pub type FooRet = impl std::fmt::Debug;
+#[define_opaque(FooRet)]
+pub fn quux(st: FooArg) -> FooRet {
+    Some(st.to_string())
 }
-use ret::*;
-mod foo {
-    pub type Foo = impl Iterator<Item = super::FooItem>;
-    pub fn ham() -> Foo {
-        super::Bar(1)
-    }
-    pub fn oof(_: Foo) -> impl std::fmt::Debug {
-        //~^ ERROR: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-        let mut bar = ham();
-        let func = bar.next().unwrap();
-        return func(&"oof");
-    }
+pub type Foo = impl Iterator<Item = FooItem>;
+#[define_opaque(Foo)]
+pub fn ham() -> Foo {
+    //~^ ERROR: item does not constrain `FooRet::{opaque#0}`
+    Bar(1)
 }
-use foo::*;
+#[define_opaque(Foo)]
+pub fn oof() -> impl std::fmt::Debug {
+    //~^ ERROR: item does not constrain `FooRet::{opaque#0}`
+    //~| ERROR: item does not constrain `Foo::{opaque#0}`
+    let mut bar = ham();
+    let func = bar.next().unwrap();
+    return func(&"oof");
+    //~^ ERROR: opaque type's hidden type cannot be another opaque type
+}
 
 fn main() {
-    let _ = oof(ham());
+    let _ = oof();
 }

@@ -109,7 +109,6 @@ note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
 note: inside `std::ptr::const_ptr::<impl *const ()>::offset_from_unsigned`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: could not evaluate static initializer
   --> $DIR/forbidden_slices.rs:54:25

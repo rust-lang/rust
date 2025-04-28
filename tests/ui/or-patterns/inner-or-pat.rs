@@ -49,7 +49,7 @@ fn hey() {
     match x {
         x @ ("foo" | "bar") |
         (x @ "red" | (x @ "blue" |  "red")) => {
-        //[or4]~^ variable `x` is not bound in all patterns
+        //[or4]~^ ERROR variable `x` is not bound in all patterns
         }
         _ => (),
     }

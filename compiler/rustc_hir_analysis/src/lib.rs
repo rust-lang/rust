@@ -59,6 +59,7 @@ This API is completely unstable and subject to change.
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -67,7 +68,6 @@ This API is completely unstable and subject to change.
 #![feature(if_let_guard)]
 #![feature(iter_from_coroutine)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(slice_partition_dedup)]
@@ -251,7 +251,9 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
     let env_def_id = tcx.hir_get_parent_item(hir_ty.hir_id);
-    collect::ItemCtxt::new(tcx, env_def_id.def_id).lower_ty(hir_ty)
+    collect::ItemCtxt::new(tcx, env_def_id.def_id)
+        .lowerer()
+        .lower_ty_maybe_return_type_notation(hir_ty)
 }
 
 /// This is for rustdoc.

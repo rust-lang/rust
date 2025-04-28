@@ -1,11 +1,14 @@
+use std::env::VarError;
 use std::{panic, thread};
 
+use build_helper::stage0_parser::parse_stage0_file;
 use llvm::prebuilt_llvm_config;
 
 use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::config::Config;
+use crate::utils::tests::git::{GitCtx, git_test};
 
 static TEST_TRIPLE_1: &str = "i686-unknown-haiku";
 static TEST_TRIPLE_2: &str = "i686-unknown-hurd-gnu";
@@ -239,36 +242,80 @@ fn alias_and_path_for_library() {
 }
 
 #[test]
-fn ci_rustc_if_unchanged_logic() {
-    let config = Config::parse_inner(
+fn ci_rustc_if_unchanged_invalidate_on_compiler_changes() {
+    git_test(|ctx| {
+        prepare_rustc_checkout(ctx);
+        ctx.create_upstream_merge(&["compiler/bar"]);
+        // This change should invalidate download-ci-rustc
+        ctx.create_nonupstream_merge(&["compiler/foo"]);
+
+        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
+        assert_eq!(config.download_rustc_commit, None);
+    });
+}
+
+#[test]
+fn ci_rustc_if_unchanged_invalidate_on_library_changes_in_ci() {
+    git_test(|ctx| {
+        prepare_rustc_checkout(ctx);
+        ctx.create_upstream_merge(&["compiler/bar"]);
+        // This change should invalidate download-ci-rustc
+        ctx.create_nonupstream_merge(&["library/foo"]);
+
+        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
+        assert_eq!(config.download_rustc_commit, None);
+    });
+}
+
+#[test]
+fn ci_rustc_if_unchanged_do_not_invalidate_on_library_changes_outside_ci() {
+    git_test(|ctx| {
+        prepare_rustc_checkout(ctx);
+        let sha = ctx.create_upstream_merge(&["compiler/bar"]);
+        // This change should not invalidate download-ci-rustc
+        ctx.create_nonupstream_merge(&["library/foo"]);
+
+        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", false);
+        assert_eq!(config.download_rustc_commit, Some(sha));
+    });
+}
+
+#[test]
+fn ci_rustc_if_unchanged_do_not_invalidate_on_tool_changes() {
+    git_test(|ctx| {
+        prepare_rustc_checkout(ctx);
+        let sha = ctx.create_upstream_merge(&["compiler/bar"]);
+        // This change should not invalidate download-ci-rustc
+        ctx.create_nonupstream_merge(&["src/tools/foo"]);
+
+        let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
+        assert_eq!(config.download_rustc_commit, Some(sha));
+    });
+}
+
+/// Prepares the given directory so that it looks like a rustc checkout.
+/// Also configures `GitCtx` to use the correct merge bot e-mail for upstream merge commits.
+fn prepare_rustc_checkout(ctx: &mut GitCtx) {
+    ctx.merge_bot_email =
+        format!("Merge bot <{}>", parse_stage0_file().config.git_merge_commit_email);
+    ctx.write("src/ci/channel", "nightly");
+    ctx.commit();
+}
+
+/// Parses a Config directory from `path`, with the given value of `download_rustc`.
+fn parse_config_download_rustc_at(path: &Path, download_rustc: &str, ci: bool) -> Config {
+    Config::parse_inner(
         Flags::parse(&[
             "build".to_owned(),
             "--dry-run".to_owned(),
-            "--set=rust.download-rustc='if-unchanged'".to_owned(),
+            "--ci".to_owned(),
+            if ci { "true" } else { "false" }.to_owned(),
+            format!("--set=rust.download-rustc='{download_rustc}'"),
+            "--src".to_owned(),
+            path.to_str().unwrap().to_owned(),
         ]),
         |&_| Ok(Default::default()),
-    );
-
-    let build = Build::new(config.clone());
-    let builder = Builder::new(&build);
-
-    if config.out.exists() {
-        fs::remove_dir_all(&config.out).unwrap();
-    }
-
-    builder.run_step_descriptions(&Builder::get_step_descriptions(config.cmd.kind()), &[]);
-
-    // Make sure "if-unchanged" logic doesn't try to use CI rustc while there are changes
-    // in compiler and/or library.
-    if config.download_rustc_commit.is_some() {
-        let has_changes =
-            config.last_modified_commit(&["compiler", "library"], "download-rustc", true).is_none();
-
-        assert!(
-            !has_changes,
-            "CI-rustc can't be used with 'if-unchanged' while there are changes in compiler and/or library."
-        );
-    }
+    )
 }
 
 mod defaults {
@@ -402,6 +449,7 @@ mod dist {
     use pretty_assertions::assert_eq;
 
     use super::{Config, TEST_TRIPLE_1, TEST_TRIPLE_2, TEST_TRIPLE_3, first, run_build};
+    use crate::Flags;
     use crate::core::builder::*;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
@@ -636,6 +684,37 @@ mod dist {
                 compile::Assemble { target_compiler: Compiler::new(1, a) },
                 compile::Assemble { target_compiler: Compiler::new(2, a) },
                 compile::Assemble { target_compiler: Compiler::new(2, b) },
+            ]
+        );
+    }
+
+    /// This also serves as an important regression test for <https://github.com/rust-lang/rust/issues/138123>
+    /// and <https://github.com/rust-lang/rust/issues/138004>.
+    #[test]
+    fn dist_all_cross() {
+        let cmd_args =
+            &["dist", "--stage", "2", "--dry-run", "--config=/does/not/exist"].map(str::to_owned);
+        let config_str = r#"
+            [rust]
+            channel = "nightly"
+
+            [build]
+            extended = true
+
+            build = "i686-unknown-haiku"
+            host = ["i686-unknown-netbsd"]
+            target = ["i686-unknown-netbsd"]
+        "#;
+        let config = Config::parse_inner(Flags::parse(cmd_args), |&_| toml::from_str(config_str));
+        let mut cache = run_build(&[], config);
+
+        // Stage 2 `compile::Rustc` should **NEVER** be cached here.
+        assert_eq!(
+            first(cache.all::<compile::Rustc>()),
+            &[
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_3, stage = 1),
             ]
         );
     }
@@ -1068,7 +1147,7 @@ fn test_prebuilt_llvm_config_path_resolution() {
     let config = configure(
         r#"
             [llvm]
-            download-ci-llvm = true
+            download-ci-llvm = "if-unchanged"
         "#,
     );
 
@@ -1101,8 +1180,8 @@ fn test_is_builder_target() {
         let build = Build::new(config);
         let builder = Builder::new(&build);
 
-        assert!(builder.is_builder_target(target1));
-        assert!(!builder.is_builder_target(target2));
+        assert!(builder.config.is_host_target(target1));
+        assert!(!builder.config.is_host_target(target2));
     }
 }
 

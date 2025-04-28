@@ -10,6 +10,7 @@ use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::ty::{self, TyCtxt};
 
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 /// Builds a monomorphic body for a given instance.
 pub(crate) struct BodyBuilder<'tcx> {

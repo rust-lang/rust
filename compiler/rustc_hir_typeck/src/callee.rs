@@ -37,7 +37,7 @@ pub(crate) fn check_legal_trait_for_method_call(
     body_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
     if tcx.is_lang_item(trait_id, LangItem::Drop)
-        && tcx.lang_items().fallback_surface_drop_fn() != Some(body_id)
+        && !tcx.is_lang_item(body_id, LangItem::FallbackSurfaceDrop)
     {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
@@ -713,8 +713,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for id in self.tcx.hir_free_items() {
                 if let Some(node) = self.tcx.hir_get_if_local(id.owner_id.into())
                     && let hir::Node::Item(item) = node
-                    && let hir::ItemKind::Fn { .. } = item.kind
-                    && item.ident.name == segment.ident.name
+                    && let hir::ItemKind::Fn { ident, .. } = item.kind
+                    && ident.name == segment.ident.name
                 {
                     err.span_label(
                         self.tcx.def_span(id.owner_id),
@@ -771,7 +771,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!("this {descr} returns an unsized value `{output_ty}`, so it cannot be called")
                 );
                 if let DefIdOrName::DefId(def_id) = maybe_def
-                    && let Some(def_span) = self.tcx.hir().span_if_local(def_id)
+                    && let Some(def_span) = self.tcx.hir_span_if_local(def_id)
                 {
                     err.span_label(def_span, "the callable type is defined here");
                 }
@@ -780,7 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if let Some(span) = self.tcx.hir().res_span(def) {
+        if let Some(span) = self.tcx.hir_res_span(def) {
             let callee_ty = callee_ty.to_string();
             let label = match (unit_variant, inner_callee_path) {
                 (Some((_, kind, path)), _) => {
@@ -799,7 +799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Emit a different diagnostic for local variables, as they are not
                         // type definitions themselves, but rather variables *of* that type.
                         Res::Local(hir_id) => {
-                            err.arg("local_name", self.tcx.hir().name(hir_id));
+                            err.arg("local_name", self.tcx.hir_name(hir_id));
                             Some(fluent_generated::hir_typeck_invalid_local)
                         }
                         Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {

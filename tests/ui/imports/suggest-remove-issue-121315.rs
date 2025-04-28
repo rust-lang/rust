@@ -1,4 +1,4 @@
-//@ compile-flags: --edition 2021
+//@ edition: 2021
 #![deny(unused_imports, redundant_imports)]
 #![allow(dead_code)]
 

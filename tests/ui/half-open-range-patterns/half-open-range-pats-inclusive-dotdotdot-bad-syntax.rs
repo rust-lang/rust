@@ -9,7 +9,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn syntax() {
     match scrutinee {
         ...X => {} //~ ERROR range-to patterns with `...` are not allowed

@@ -71,7 +71,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for HighlightBuilder<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) {
                 if !r.has_name() && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);
@@ -98,7 +98,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let assoc_item = self.tcx().associated_item(trait_item_def_id);
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
         match assoc_item.kind {
-            ty::AssocKind::Fn => {
+            ty::AssocKind::Fn { .. } => {
                 if let Some(hir_id) =
                     assoc_item.def_id.as_local().map(|id| self.tcx().local_def_id_to_hir_id(id))
                 {

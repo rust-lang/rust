@@ -129,7 +129,7 @@ Both `tracing::*` macros and the `tracing::instrument` proc-macro attribute need
 
 ```rs
 #[cfg(feature = "tracing")]
-use tracing::{instrument, trace};
+use tracing::instrument;
 
 struct Foo;
 
@@ -138,7 +138,6 @@ impl Step for Foo {
 
     #[cfg_attr(feature = "tracing", instrument(level = "trace", name = "Foo::should_run", skip_all))]
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        #[cfg(feature = "tracing")]
         trace!(?run, "entered Foo::should_run");
 
         todo!()
@@ -154,7 +153,6 @@ impl Step for Foo {
         ),
     )]
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        #[cfg(feature = "tracing")]
         trace!(?run, "entered Foo::run");
 
         todo!()

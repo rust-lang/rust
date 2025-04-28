@@ -16,7 +16,6 @@ LL | struct Y(usize);
 LL | struct X(Y);
    |          - you could clone this value
    = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
-   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0161]: cannot move a value of type `[u8]`
   --> $DIR/deriving-with-repr-packed.rs:29:5
@@ -34,7 +33,6 @@ LL |     data: [u8],
    |     ^^^^^^^^^^ move occurs because `self.data` has type `[u8]`, which does not implement the `Copy` trait
    |
    = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
-   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0161]: cannot move a value of type `str`
   --> $DIR/deriving-with-repr-packed.rs:38:5
@@ -52,7 +50,6 @@ LL |     data: str,
    |     ^^^^^^^^^ move occurs because `self.data` has type `str`, which does not implement the `Copy` trait
    |
    = note: `#[derive(Debug)]` triggers a move because taking references to the fields of a packed struct is undefined behaviour
-   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 5 previous errors
 

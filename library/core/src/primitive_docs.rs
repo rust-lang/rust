@@ -127,15 +127,13 @@ mod prim_bool {}
 /// [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```
-/// #![feature(exhaustive_patterns)]
 /// use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// Since the [`Err`] variant contains a `!`, it can never occur. If the `exhaustive_patterns`
-/// feature is present this means we can exhaustively match on [`Result<T, !>`] by just taking the
-/// [`Ok`] variant. This illustrates another behavior of `!` - it can be used to "delete" certain
-/// enum variants from generic types like `Result`.
+/// Since the [`Err`] variant contains a `!`, it can never occur. This means we can exhaustively
+/// match on [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behavior
+/// of `!` - it can be used to "delete" certain enum variants from generic types like `Result`.
 ///
 /// ## Infinite loops
 ///
@@ -1309,12 +1307,59 @@ mod prim_f16 {}
 // FIXME: Is there a better place to put this?
 ///
 /// | `target_arch` | Extra payloads possible on this platform |
-/// |---------------|---------|
-/// | `x86`, `x86_64`, `arm`, `aarch64`, `riscv32`, `riscv64` | None |
+/// |---------------|------------------------------------------|
+// Sorted alphabetically
+/// | `aarch64`, `arm`, `arm64ec`, `loongarch64`, `powerpc` (except when `target_abi = "spe"`), `powerpc64`, `riscv32`, `riscv64`, `s390x`, `x86`, `x86_64` | None |
+/// | `nvptx64` | All payloads |
 /// | `sparc`, `sparc64` | The all-one payload |
-/// | `wasm32`, `wasm64` | If all input NaNs are quiet with all-zero payload: None.<br> Otherwise: all possible payloads. |
+/// | `wasm32`, `wasm64` | If all input NaNs are quiet with all-zero payload: None.<br> Otherwise: all payloads. |
 ///
 /// For targets not in this table, all payloads are possible.
+///
+/// # Algebraic operators
+///
+/// Algebraic operators of the form `a.algebraic_*(b)` allow the compiler to optimize
+/// floating point operations using all the usual algebraic properties of real numbers --
+/// despite the fact that those properties do *not* hold on floating point numbers.
+/// This can give a great performance boost since it may unlock vectorization.
+///
+/// The exact set of optimizations is unspecified but typically allows combining operations,
+/// rearranging series of operations based on mathematical properties, converting between division
+/// and reciprocal multiplication, and disregarding the sign of zero. This means that the results of
+/// elementary operations may have undefined precision, and "non-mathematical" values
+/// such as NaN, +/-Inf, or -0.0 may behave in unexpected ways, but these operations
+/// will never cause undefined behavior.
+///
+/// Because of the unpredictable nature of compiler optimizations, the same inputs may produce
+/// different results even within a single program run. **Unsafe code must not rely on any property
+/// of the return value for soundness.** However, implementations will generally do their best to
+/// pick a reasonable tradeoff between performance and accuracy of the result.
+///
+/// For example:
+///
+/// ```
+/// # #![feature(float_algebraic)]
+/// # #![allow(unused_assignments)]
+/// # let mut x: f32 = 0.0;
+/// # let a: f32 = 1.0;
+/// # let b: f32 = 2.0;
+/// # let c: f32 = 3.0;
+/// # let d: f32 = 4.0;
+/// x = a.algebraic_add(b).algebraic_add(c).algebraic_add(d);
+/// ```
+///
+/// May be rewritten as:
+///
+/// ```
+/// # #![allow(unused_assignments)]
+/// # let mut x: f32 = 0.0;
+/// # let a: f32 = 1.0;
+/// # let b: f32 = 2.0;
+/// # let c: f32 = 3.0;
+/// # let d: f32 = 4.0;
+/// x = a + b + c + d; // As written
+/// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
+/// ```
 
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}

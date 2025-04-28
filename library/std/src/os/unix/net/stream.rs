@@ -10,6 +10,7 @@ use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_wi
     target_os = "openbsd",
     target_os = "nto",
     target_vendor = "apple",
+    target_os = "cygwin"
 ))]
 use super::{UCred, peer_cred};
 use crate::fmt;
@@ -231,6 +232,7 @@ impl UnixStream {
         target_os = "openbsd",
         target_os = "nto",
         target_vendor = "apple",
+        target_os = "cygwin"
     ))]
     pub fn peer_cred(&self) -> io::Result<UCred> {
         peer_cred(self)

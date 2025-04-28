@@ -170,3 +170,18 @@ fn msrv_1_54() {
     let _ = map.iter().map(|(_, v)| v + 2).collect::<Vec<_>>();
     //~^ iter_kv_map
 }
+
+fn issue14595() {
+    pub struct Foo(BTreeMap<String, i32>);
+
+    impl AsRef<BTreeMap<String, i32>> for Foo {
+        fn as_ref(&self) -> &BTreeMap<String, i32> {
+            &self.0
+        }
+    }
+
+    let map = Foo(BTreeMap::default());
+
+    let _ = map.as_ref().iter().map(|(_, v)| v).copied().collect::<Vec<_>>();
+    //~^ iter_kv_map
+}

@@ -18,7 +18,6 @@ extern crate rustc_interface;
 extern crate stable_mir;
 
 use rustc_hir::def::DefKind;
-use rustc_smir::rustc_internal;
 use stable_mir::ItemKind;
 use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::mono::Instance;
@@ -187,7 +186,7 @@ fn get_item<'a>(
 fn main() {
     let path = "input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),

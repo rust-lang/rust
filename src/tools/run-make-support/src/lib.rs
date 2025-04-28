@@ -17,6 +17,7 @@ pub mod assertion_helpers;
 pub mod diff;
 pub mod env;
 pub mod external_deps;
+pub mod linker;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
@@ -40,8 +41,6 @@ pub use bstr;
 pub use gimli;
 pub use libc;
 pub use object;
-// FIXME(#137532): replace with std `anonymous_pipe` once it stabilizes and reaches beta.
-pub use os_pipe;
 pub use regex;
 pub use serde_json;
 pub use similar;
@@ -68,7 +67,7 @@ pub use llvm::{
     LlvmFilecheck, LlvmNm, LlvmObjcopy, LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
 pub use python::python_command;
-pub use rustc::{aux_build, bare_rustc, rustc, rustc_path, Rustc};
+pub use rustc::{bare_rustc, rustc, rustc_path, Rustc};
 pub use rustdoc::{rustdoc, Rustdoc};
 
 /// [`diff`][mod@diff] is implemented in terms of the [similar] library.

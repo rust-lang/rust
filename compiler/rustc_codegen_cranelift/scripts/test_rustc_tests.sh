@@ -27,7 +27,6 @@ done
 git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 git checkout -- tests/ui/proc-macro/pretty-print-hack/
 git checkout -- tests/ui/entry-point/auxiliary/bad_main_functions.rs
-rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 
 # missing features
 # ================
@@ -57,7 +56,6 @@ rm tests/ui/asm/x86_64/issue-96797.rs # const and sym inline asm operands don't 
 rm tests/ui/asm/x86_64/goto.rs # inline asm labels not supported
 rm tests/ui/simd/simd-bitmask-notpow2.rs # non-pow-of-2 simd vector sizes
 rm -r tests/run-make/embed-source-dwarf # embedding sources in debuginfo
-rm tests/ui/simd-abi-checks.rs # vector types >128bits not yet supported
 
 # requires LTO
 rm -r tests/run-make/cdylib
@@ -120,6 +118,7 @@ rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/consts/const-mut-refs-crate.rs # same
 rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
+rm tests/ui/abi/simd-abi-checks-avx.rs # attempts to declare function with two different signatures
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
@@ -136,7 +135,6 @@ rm -r tests/run-make/incr-add-rust-src-component
 # ============
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
-rm tests/ui/deprecation/deprecated_inline_threshold.rs # missing deprecation warning for -Cinline-threshold
 
 # bugs in the test suite
 # ======================
@@ -150,48 +148,8 @@ rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
 rm tests/ui/process/process-panic-after-fork.rs # same
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
-cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
-# prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
-# rustdoc-clif
 cat <<EOF | git apply -
-diff --git a/tests/run-make/tools.mk b/tests/run-make/tools.mk
-index ea06b620c4c..b969d0009c6 100644
---- a/tests/run-make/tools.mk
-+++ b/tests/run-make/tools.mk
-@@ -9,7 +9,7 @@ RUSTC_ORIGINAL := \$(RUSTC)
- BARE_RUSTC := \$(HOST_RPATH_ENV) '\$(RUSTC)'
- BARE_RUSTDOC := \$(HOST_RPATH_ENV) '\$(RUSTDOC)'
- RUSTC := \$(BARE_RUSTC) --out-dir \$(TMPDIR) -L \$(TMPDIR) \$(RUSTFLAGS) -Ainternal_features
--RUSTDOC := \$(BARE_RUSTDOC) -L \$(TARGET_RPATH_DIR)
-+RUSTDOC := \$(BARE_RUSTDOC)
- ifdef RUSTC_LINKER
- RUSTC := \$(RUSTC) -Clinker='\$(RUSTC_LINKER)'
- RUSTDOC := \$(RUSTDOC) -Clinker='\$(RUSTC_LINKER)'
-diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-support/src/rustdoc.rs
-index 9607ff02f96..b7d97caf9a2 100644
---- a/src/tools/run-make-support/src/external_deps/rustdoc.rs
-+++ b/src/tools/run-make-support/src/external_deps/rustdoc.rs
-@@ -34,7 +34,6 @@ pub fn bare() -> Self {
-     #[track_caller]
-     pub fn new() -> Self {
-         let mut cmd = setup_common();
--        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
-         Self { cmd }
-     }
-
-diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
-index e7ae773ffa1d3..04bc2d7787da7 100644
---- a/src/tools/compiletest/src/runtest/run_make.rs
-+++ b/src/tools/compiletest/src/runtest/run_make.rs
-@@ -329,7 +329,6 @@ impl TestCx<'_> {
-             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
-             .arg("--edition=2021")
-             .arg(&self.testpaths.file.join("rmake.rs"))
--            .arg("-Cprefer-dynamic")
-             // Provide necessary library search paths for rustc.
-             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
-
 diff --git a/tests/run-make/linker-warning/rmake.rs b/tests/run-make/linker-warning/rmake.rs
 index 30387af428c..f7895b12961 100644
 --- a/tests/run-make/linker-warning/rmake.rs
@@ -205,7 +163,19 @@ index 30387af428c..f7895b12961 100644
                  regex::escape(run_make_support::build_root().to_str().unwrap()),
                  "/build-root",
              )
-             .run();
+             .normalize(r#""[^"]*\/symbols.o""#, "\\"/symbols.o\\"")
+diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
+index 073116933bd..c3e4578204d 100644
+--- a/src/tools/compiletest/src/runtest/run_make.rs
++++ b/src/tools/compiletest/src/runtest/run_make.rs
+@@ -109,7 +109,6 @@ pub(super) fn run_rmake_test(&self) {
+             // library or compiler features. Here, we force the stage 0 rustc to consider itself as
+             // a stable-channel compiler via \`RUSTC_BOOTSTRAP=-1\` to prevent *any* unstable
+             // library/compiler usages, even if stage 0 rustc is *actually* a nightly rustc.
+-            .env("RUSTC_BOOTSTRAP", "-1")
+             .arg("-o")
+             .arg(&recipe_bin)
+             // Specify library search paths for \`run_make_support\`.
 EOF
 
 echo "[TEST] rustc test suite"

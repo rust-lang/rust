@@ -12,7 +12,7 @@ Target triplets available so far:
 
 ## Target maintainers
 
-- Martin Kröning ([@mkroening](https://github.com/mkroening))
+[@mkroening](https://github.com/mkroening)
 
 ## Requirements
 
@@ -34,7 +34,7 @@ Instead, the Unikraft build system will produce the final Unikernel image for th
 
 ## Building the targets
 
-You can build Rust with support for the targets by adding it to the `target` list in `config.toml`:
+You can build Rust with support for the targets by adding it to the `target` list in `bootstrap.toml`:
 
 ```toml
 [build]

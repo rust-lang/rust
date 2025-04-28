@@ -45,7 +45,7 @@ enum EInt {
     B,
 }
 
-#[repr()] //~ attribute should be applied to a struct, enum, function, associated function, or union [E0517]
+#[repr()] //~ ERROR attribute should be applied to a struct, enum, function, associated function, or union [E0517]
 type SirThisIsAType = i32;
 
 #[repr()]

@@ -24,6 +24,15 @@ fn main() {
     let result = if b <= a { 0 } else { a - b };
     //~^ inverted_saturating_sub
 
+    let result = if b * 2 <= a { 0 } else { a - b * 2 };
+    //~^ inverted_saturating_sub
+
+    let result = if b <= a * 2 { 0 } else { a * 2 - b };
+    //~^ inverted_saturating_sub
+
+    let result = if b + 3 <= a + 2 { 0 } else { (a + 2) - (b + 3) };
+    //~^ inverted_saturating_sub
+
     let af = 12f32;
     let bf = 13f32;
     // Should not lint!

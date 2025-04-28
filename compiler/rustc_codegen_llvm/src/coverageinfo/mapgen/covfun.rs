@@ -5,6 +5,7 @@
 //! [^win]: On Windows the section name is `.lcovfun`.
 
 use std::ffi::CString;
+use std::sync::Arc;
 
 use rustc_abi::Align;
 use rustc_codegen_ssa::traits::{
@@ -15,7 +16,7 @@ use rustc_middle::mir::coverage::{
     MappingKind, Op,
 };
 use rustc_middle::ty::{Instance, TyCtxt};
-use rustc_span::Span;
+use rustc_span::{SourceFile, Span};
 use rustc_target::spec::HasTargetSpec;
 use tracing::debug;
 
@@ -38,16 +39,15 @@ pub(crate) struct CovfunRecord<'tcx> {
 }
 
 impl<'tcx> CovfunRecord<'tcx> {
-    /// FIXME(Zalathar): Make this the responsibility of the code that determines
-    /// which functions are unused.
-    pub(crate) fn mangled_function_name_if_unused(&self) -> Option<&'tcx str> {
-        (!self.is_used).then_some(self.mangled_function_name)
+    /// Iterator that yields all source files referred to by this function's
+    /// coverage mappings. Used to build the global file table for the CGU.
+    pub(crate) fn all_source_files(&self) -> impl Iterator<Item = &SourceFile> {
+        self.virtual_file_mapping.local_file_table.iter().map(Arc::as_ref)
     }
 }
 
 pub(crate) fn prepare_covfun_record<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &mut GlobalFileTable,
     instance: Instance<'tcx>,
     is_used: bool,
 ) -> Option<CovfunRecord<'tcx>> {
@@ -65,7 +65,7 @@ pub(crate) fn prepare_covfun_record<'tcx>(
         regions: ffi::Regions::default(),
     };
 
-    fill_region_tables(tcx, global_file_table, fn_cov_info, ids_info, &mut covfun);
+    fill_region_tables(tcx, fn_cov_info, ids_info, &mut covfun);
 
     if covfun.regions.has_no_regions() {
         debug!(?covfun, "function has no mappings to embed; skipping");
@@ -100,28 +100,37 @@ fn prepare_expressions(ids_info: &CoverageIdsInfo) -> Vec<ffi::CounterExpression
 /// Populates the mapping region tables in the current function's covfun record.
 fn fill_region_tables<'tcx>(
     tcx: TyCtxt<'tcx>,
-    global_file_table: &mut GlobalFileTable,
     fn_cov_info: &'tcx FunctionCoverageInfo,
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
-    // Currently a function's mappings must all be in the same file as its body span.
+    // Currently a function's mappings must all be in the same file, so use the
+    // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
-    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
-
-    // Look up the global file ID for that file.
-    let global_file_id = global_file_table.global_file_id_for_file(&source_file);
-
-    // Associate that global file ID with a local file ID for this function.
-    let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
-
-    let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
-        &mut covfun.regions;
-
-    let make_cov_span = |span: Span| {
-        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
+    let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
+        debug_assert!(false, "function has no mappings: {:?}", covfun.mangled_function_name);
+        return;
     };
+    let source_file = source_map.lookup_source_file(first_span.lo());
+
+    let local_file_id = covfun.virtual_file_mapping.push_file(&source_file);
+
+    // In rare cases, _all_ of a function's spans are discarded, and coverage
+    // codegen needs to handle that gracefully to avoid #133606.
+    // It's hard for tests to trigger this organically, so instead we set
+    // `-Zcoverage-options=discard-all-spans-in-codegen` to force it to occur.
     let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+    let make_coords = |span: Span| {
+        if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
+    };
+
+    let ffi::Regions {
+        code_regions,
+        expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
+        branch_regions,
+        mcdc_branch_regions,
+        mcdc_decision_regions,
+    } = &mut covfun.regions;
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
@@ -136,17 +145,8 @@ fn fill_region_tables<'tcx>(
             ffi::Counter::from_term(term)
         };
 
-        // Convert the `Span` into coordinates that we can pass to LLVM, or
-        // discard the span if conversion fails. In rare, cases _all_ of a
-        // function's spans are discarded, and the rest of coverage codegen
-        // needs to handle that gracefully to avoid a repeat of #133606.
-        // We don't have a good test case for triggering that organically, so
-        // instead we set `-Zcoverage-options=discard-all-spans-in-codegen`
-        // to force it to occur.
-        let Some(cov_span) = make_cov_span(span) else { continue };
-        if discard_all {
-            continue;
-        }
+        let Some(coords) = make_coords(span) else { continue };
+        let cov_span = coords.make_coverage_span(local_file_id);
 
         match *kind {
             MappingKind::Code { bcb } => {
@@ -182,7 +182,7 @@ fn fill_region_tables<'tcx>(
 /// as a global variable in the `__llvm_covfun` section.
 pub(crate) fn generate_covfun_record<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
-    filenames_hash: u64,
+    global_file_table: &GlobalFileTable,
     covfun: &CovfunRecord<'tcx>,
 ) {
     let &CovfunRecord {
@@ -194,12 +194,19 @@ pub(crate) fn generate_covfun_record<'tcx>(
         ref regions,
     } = covfun;
 
+    let Some(local_file_table) = virtual_file_mapping.resolve_all(global_file_table) else {
+        debug_assert!(
+            false,
+            "all local files should be present in the global file table: \
+                global_file_table = {global_file_table:?}, \
+                virtual_file_mapping = {virtual_file_mapping:?}"
+        );
+        return;
+    };
+
     // Encode the function's coverage mappings into a buffer.
-    let coverage_mapping_buffer = llvm_cov::write_function_mappings_to_buffer(
-        &virtual_file_mapping.to_vec(),
-        expressions,
-        regions,
-    );
+    let coverage_mapping_buffer =
+        llvm_cov::write_function_mappings_to_buffer(&local_file_table, expressions, regions);
 
     // A covfun record consists of four target-endian integers, followed by the
     // encoded mapping data in bytes. Note that the length field is 32 bits.
@@ -212,7 +219,7 @@ pub(crate) fn generate_covfun_record<'tcx>(
             cx.const_u64(func_name_hash),
             cx.const_u32(coverage_mapping_buffer.len() as u32),
             cx.const_u64(source_hash),
-            cx.const_u64(filenames_hash),
+            cx.const_u64(global_file_table.filenames_hash),
             cx.const_bytes(&coverage_mapping_buffer),
         ],
         // This struct needs to be packed, so that the 32-bit length field

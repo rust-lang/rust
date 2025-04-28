@@ -103,6 +103,12 @@ impl Target {
                     base.$key_name = Some(s);
                 }
             } );
+            ($key_name:ident, Option<StaticCow<str>>) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(s) = obj.remove(&name).and_then(|b| Some(b.as_str()?.to_string())) {
+                    base.$key_name = Some(s.into());
+                }
+            } );
             ($key_name:ident, BinaryFormat) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|f| f.as_str().and_then(|s| {
@@ -592,7 +598,7 @@ impl Target {
         key!(families, target_families);
         key!(abi_return_struct_as_int, bool);
         key!(is_like_aix, bool);
-        key!(is_like_osx, bool);
+        key!(is_like_darwin, bool);
         key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
@@ -623,6 +629,7 @@ impl Target {
         key!(stack_probes, StackProbeType)?;
         key!(min_global_align, Option<u64>);
         key!(default_codegen_units, Option<u64>);
+        key!(default_codegen_backend, Option<StaticCow<str>>);
         key!(trap_unreachable, bool);
         key!(requires_lto, bool);
         key!(singlethread, bool);
@@ -770,7 +777,7 @@ impl ToJson for Target {
         target_option_val!(families, "target-family");
         target_option_val!(abi_return_struct_as_int);
         target_option_val!(is_like_aix);
-        target_option_val!(is_like_osx);
+        target_option_val!(is_like_darwin);
         target_option_val!(is_like_solaris);
         target_option_val!(is_like_windows);
         target_option_val!(is_like_msvc);
@@ -801,6 +808,7 @@ impl ToJson for Target {
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
         target_option_val!(default_codegen_units);
+        target_option_val!(default_codegen_backend);
         target_option_val!(trap_unreachable);
         target_option_val!(requires_lto);
         target_option_val!(singlethread);

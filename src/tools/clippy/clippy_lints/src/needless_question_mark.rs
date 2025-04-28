@@ -40,7 +40,7 @@ declare_clippy_lint! {
     /// }
     ///
     /// fn f(to: TO) -> Option<usize> {
-    ///    to.magic
+    ///     to.magic
     /// }
     ///
     /// struct TR {

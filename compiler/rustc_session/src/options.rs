@@ -94,45 +94,49 @@ fn tmod_push_impl(
     tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
     tmods: &mut Vec<TargetModifier>,
 ) {
-    tmods.push(TargetModifier { opt, value_name: tmod_vals.get(&opt).cloned().unwrap_or_default() })
+    if let Some(v) = tmod_vals.get(&opt) {
+        tmods.push(TargetModifier { opt, value_name: v.clone() })
+    }
 }
 
 macro_rules! tmod_push {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $mods:expr, $tmod_vals:expr) => {
-        tmod_push_impl(
-            OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
-            $tmod_vals,
-            $mods,
-        );
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr) => {
+        if *$opt_expr != $init {
+            tmod_push_impl(
+                OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
+                $tmod_vals,
+                $mods,
+            );
+        }
     };
 }
 
 macro_rules! gather_tmods {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], [TARGET_MODIFIER]) => {
         compile_error!("SUBSTRUCT can't be target modifier");
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], []) => {
         $opt_expr.gather_target_modifiers($mods, $tmod_vals);
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], []) => {{}};
 }
 
@@ -333,7 +337,7 @@ top_level_options!(
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<NativeLib> [TRACKED],
-        maybe_sysroot: Option<PathBuf> [UNTRACKED],
+        sysroot: PathBuf [UNTRACKED],
 
         target_triple: TargetTuple [TRACKED],
 
@@ -389,7 +393,7 @@ top_level_options!(
         ///
         /// This directory is what the virtual `/rustc/$hash` is translated back to,
         /// if Rust was built with path remapping to `/rustc/$hash` enabled
-        /// (the `rust.remap-debuginfo` option in `config.toml`).
+        /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
         real_rust_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
 
         edition: Edition [TRACKED],
@@ -474,7 +478,8 @@ macro_rules! tmod_enum {
                 $($pout)*
                 Self::$opt => {
                     let mut parsed : $t = Default::default();
-                    parse::$parse(&mut parsed, Some($puser_value));
+                    let val = if $puser_value.is_empty() { None } else { Some($puser_value) };
+                    parse::$parse(&mut parsed, val);
                     ExtendedTargetModifierInfo {
                         prefix: $prefix.to_string(),
                         name: stringify!($opt).to_string().replace('_', "-"),
@@ -569,7 +574,7 @@ macro_rules! options {
             _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
         ) {
             $({
-                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, _mods, _tmod_vals,
+                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, $init, _mods, _tmod_vals,
                     [$dep_tracking_marker], [$($tmod),*]);
             })*
         }
@@ -681,10 +686,9 @@ fn build_options<O: Default>(
                         ),
                     }
                 }
-                if let Some(tmod) = *tmod
-                    && let Some(value) = value
-                {
-                    target_modifiers.insert(tmod, value.to_string());
+                if let Some(tmod) = *tmod {
+                    let v = value.map_or(String::new(), ToOwned::to_owned);
+                    target_modifiers.insert(tmod, v);
                 }
             }
             None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
@@ -707,7 +711,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
-    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `LooseTypes`, `Inline`";
+    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -1355,6 +1359,9 @@ pub mod parse {
                 "PrintSteps" => AutoDiff::PrintSteps,
                 "PrintModBefore" => AutoDiff::PrintModBefore,
                 "PrintModAfter" => AutoDiff::PrintModAfter,
+                "PrintModFinal" => AutoDiff::PrintModFinal,
+                "NoPostopt" => AutoDiff::NoPostopt,
+                "PrintPasses" => AutoDiff::PrintPasses,
                 "LooseTypes" => AutoDiff::LooseTypes,
                 "Inline" => AutoDiff::Inline,
                 _ => {
@@ -1886,7 +1893,8 @@ pub mod parse {
     pub(crate) fn parse_wasm_c_abi(slot: &mut WasmCAbi, v: Option<&str>) -> bool {
         match v {
             Some("spec") => *slot = WasmCAbi::Spec,
-            Some("legacy") => *slot = WasmCAbi::Legacy,
+            // Explicitly setting the `-Z` flag suppresses the lint.
+            Some("legacy") => *slot = WasmCAbi::Legacy { with_lint: false },
             _ => return false,
         }
         true
@@ -1950,6 +1958,9 @@ options! {
         "allow the linker to link its default libraries (default: no)"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "import library generation tool (ignored except when targeting windows-gnu)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
+    dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
+        "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],
@@ -2088,6 +2099,9 @@ options! {
         `=PrintSteps`
         `=PrintModBefore`
         `=PrintModAfter`
+        `=PrintModFinal`
+        `=PrintPasses`,
+        `=NoPostopt`
         `=LooseTypes`
         `=Inline`
         Multiple options can be combined with commas."),
@@ -2170,6 +2184,8 @@ options! {
         them only if an error has not been emitted"),
     ehcont_guard: bool = (false, parse_bool, [TRACKED],
         "generate Windows EHCont Guard tables"),
+    embed_metadata: bool = (true, parse_bool, [TRACKED],
+        "embed metadata in rlibs and dylibs (default: yes)"),
     embed_source: bool = (false, parse_bool, [TRACKED],
         "embed source text in DWARF debug sections (default: no)"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
@@ -2180,6 +2196,8 @@ options! {
         "Use WebAssembly error handling for wasm32-unknown-emscripten"),
     enforce_type_length_limit: bool = (false, parse_bool, [TRACKED],
         "enforce the type length limit when monomorphizing instances in codegen"),
+    experimental_default_bounds: bool = (false, parse_bool, [TRACKED],
+        "enable default bounds for experimental group of auto traits"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],
         "export symbols from executables, as if they were dynamic libraries"),
     external_clangrt: bool = (false, parse_bool, [UNTRACKED],
@@ -2227,7 +2245,8 @@ options! {
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify extended properties for incr. comp. (default: no):
         - hashes of green query instances
-        - hash collisions of query keys"),
+        - hash collisions of query keys
+        - hash collisions when creating dep-nodes"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2307,18 +2326,20 @@ options! {
     mir_include_spans: MirIncludeSpans = (MirIncludeSpans::default(), parse_mir_include_spans, [UNTRACKED],
         "include extra comments in mir pretty printing, like line numbers and statement indices, \
          details about types, etc. (boolean for all passes, 'nll' to enable in NLL MIR only, default: 'nll')"),
-    mir_keep_place_mention: bool = (false, parse_bool, [TRACKED],
-        "keep place mention MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 \
-        (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::mir_opt_level` instead of this field")]
     mir_opt_level: Option<usize> = (None, parse_opt_number, [TRACKED],
         "MIR optimization level (0-4; default: 1 in non optimized builds and 2 in optimized builds)"),
+    mir_preserve_ub: bool = (false, parse_bool, [TRACKED],
+        "keep place mention statements and reads in trivial SwitchInt terminators, which are interpreted \
+        e.g., by miri; implies -Zmir-opt-level=0 (default: no)"),
     mir_strip_debuginfo: MirStripDebugInfo = (MirStripDebugInfo::None, parse_mir_strip_debuginfo, [TRACKED],
         "Whether to remove some of the MIR debug info from methods.  Default: None"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
     mutable_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for mutable references (default: yes)"),
+    namespaced_crates: bool = (false, parse_bool, [TRACKED],
+        "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
         "enable and configure the next generation trait solver used by rustc"),
     nll_facts: bool = (false, parse_bool, [UNTRACKED],
@@ -2433,6 +2454,8 @@ written to standard error output)"),
         "enable normalizing integer types (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
+    sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable KCFI arity indicator (default: no)"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
         "enable origins tracking in MemorySanitizer"),
     sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
@@ -2525,7 +2548,7 @@ written to standard error output)"),
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "tracks where in rustc a diagnostic was emitted"),
-    // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
+    // Diagnostics are considered side-effects of a query (see `QuerySideEffect`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
     // translation options should be tracked.
     translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
@@ -2545,6 +2568,9 @@ written to standard error output)"),
         "in diagnostics, use heuristics to shorten paths referring to items"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
+    #[rustc_lint_opt_deny_field_access("use `TyCtxt::use_typing_mode_borrowck` instead of this field")]
+    typing_mode_borrowck: bool = (false, parse_bool, [TRACKED],
+        "enable `TypingMode::Borrowck`, changing the way opaque types are handled during MIR borrowck"),
     #[rustc_lint_opt_deny_field_access("use `Session::ub_checks` instead of this field")]
     ub_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "emit runtime checks for Undefined Behavior (default: -Cdebug-assertions)"),
@@ -2599,7 +2625,7 @@ written to standard error output)"),
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
-    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy, parse_wasm_c_abi, [TRACKED],
+    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy { with_lint: true }, parse_wasm_c_abi, [TRACKED],
         "use spec-compliant C ABI for `wasm32-unknown-unknown` (default: legacy)"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),

@@ -1,5 +1,5 @@
 error[E0275]: overflow evaluating the requirement `<Foo<'_> as FnOnce<()>>::Output == Foo<'a>`
-  --> $DIR/type-alias-impl-trait-with-cycle-error-3.rs:6:40
+  --> $DIR/type-alias-impl-trait-with-cycle-error-3.rs:5:40
    |
 LL | fn crash<'a>(_: &'a (), x: Foo<'a>) -> Foo<'a> {
    |                                        ^^^^^^^

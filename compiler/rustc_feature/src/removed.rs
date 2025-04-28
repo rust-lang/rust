@@ -142,6 +142,9 @@ declare_features! (
     /// Allows inferring `'static` outlives requirements (RFC 2093).
     (removed, infer_static_outlives_requirements, "1.63.0", Some(54185),
      Some("removed as it caused some confusion and discussion was inactive for years")),
+    /// Allow anonymous constants from an inline `const` block in pattern position
+    (removed, inline_const_pat, "CURRENT_RUSTC_VERSION", Some(76001),
+     Some("removed due to implementation concerns as it requires significant refactorings")),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.46.0", Some(72219), Some("superseded by `generic_const_exprs`")),
     /// Changes `impl Trait` to capture all lifetimes in scope.
@@ -244,7 +247,7 @@ declare_features! (
     /// Allows unnamed fields of struct and union type
     (removed, unnamed_fields, "1.83.0", Some(49804), Some("feature needs redesign")),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
-    (removed, unsized_tuple_coercion, "CURRENT_RUSTC_VERSION", Some(42877),
+    (removed, unsized_tuple_coercion, "1.87.0", Some(42877),
      Some("The feature restricts possible layouts for tuples, and this restriction is not worth it.")),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.
     (removed, untagged_unions, "1.13.0", Some(55149),

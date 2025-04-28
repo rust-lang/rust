@@ -38,6 +38,19 @@ LL | #[coverage(on)]
    |           ++++
 
 error: malformed `coverage` attribute input
+  --> $DIR/word-only.rs:26:1
+   |
+LL | #[coverage]
+   | ^^^^^^^^^^^
+   |
+help: the following are the possible correct uses
+   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
+
+error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:29:5
    |
 LL |     #[coverage]
@@ -51,7 +64,7 @@ LL |     #[coverage(on)]
    |               ++++
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:26:1
+  --> $DIR/word-only.rs:35:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -90,7 +103,7 @@ LL |     #[coverage(on)]
    |               ++++
 
 error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:35:1
+  --> $DIR/word-only.rs:50:1
    |
 LL | #[coverage]
    | ^^^^^^^^^^^
@@ -127,19 +140,6 @@ LL |     #[coverage(off)]
    |               +++++
 LL |     #[coverage(on)]
    |               ++++
-
-error: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:50:1
-   |
-LL | #[coverage]
-   | ^^^^^^^^^^^
-   |
-help: the following are the possible correct uses
-   |
-LL | #[coverage(off)]
-   |           +++++
-LL | #[coverage(on)]
-   |           ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:64:1

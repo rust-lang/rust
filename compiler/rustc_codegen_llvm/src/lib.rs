@@ -6,6 +6,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -15,7 +16,6 @@
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
@@ -29,7 +29,7 @@ use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use context::SimpleCx;
 use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
-pub(crate) use llvm_util::target_features_cfg;
+use llvm_util::target_features_cfg;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -71,9 +71,7 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
-// FIXME(Zalathar): Fix all the unreachable-pub warnings that would occur if
-// this isn't pub, then make it not pub.
-pub mod llvm;
+mod llvm;
 mod llvm_util;
 mod mono_item;
 mod type_;
@@ -340,8 +338,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features_cfg(sess, allow_unstable)
+    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
+        target_features_cfg(sess)
     }
 
     fn codegen_crate<'tcx>(

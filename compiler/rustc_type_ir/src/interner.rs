@@ -15,6 +15,7 @@ use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesDat
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, search_graph};
 
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
     Sized
     + Copy
@@ -30,6 +31,7 @@ pub trait Interner:
     + IrPrint<ty::SubtypePredicate<Self>>
     + IrPrint<ty::CoercePredicate<Self>>
     + IrPrint<ty::FnSig<Self>>
+    + IrPrint<ty::PatternKind<Self>>
 {
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
@@ -54,7 +56,7 @@ pub trait Interner:
         data: PredefinedOpaquesData<Self>,
     ) -> Self::PredefinedOpaques;
 
-    type DefiningOpaqueTypes: Copy
+    type LocalDefIds: Copy
         + Debug
         + Hash
         + Default
@@ -103,7 +105,14 @@ pub trait Interner:
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
-    type Pat: Copy + Debug + Hash + Eq + Debug + Relate<Self>;
+    type Pat: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Debug
+        + Relate<Self>
+        + Flags
+        + IntoKind<Kind = ty::PatternKind<Self>>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
@@ -148,6 +157,8 @@ pub trait Interner:
     ) -> Option<Self::VariancesOf>;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
+    fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId)
+    -> ty::EarlyBinder<Self, Self::Ty>;
 
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::DefId) -> Self::AdtDef;
@@ -252,11 +263,15 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
 
+    fn impl_self_is_guaranteed_unsized(self, def_id: Self::DefId) -> bool;
+
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
 
     fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
+
+    fn is_default_trait(self, def_id: Self::DefId) -> bool;
 
     fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
 
@@ -270,6 +285,8 @@ pub trait Interner:
     );
 
     fn has_item_definition(self, def_id: Self::DefId) -> bool;
+
+    fn impl_specializes(self, impl_def_id: Self::DefId, victim_def_id: Self::DefId) -> bool;
 
     fn impl_is_default(self, impl_def_id: Self::DefId) -> bool;
 
@@ -315,10 +332,12 @@ pub trait Interner:
         binder: ty::Binder<Self, T>,
     ) -> ty::Binder<Self, T>;
 
-    fn opaque_types_defined_by(
+    fn opaque_types_defined_by(self, defining_anchor: Self::LocalDefId) -> Self::LocalDefIds;
+
+    fn opaque_types_and_generators_defined_by(
         self,
         defining_anchor: Self::LocalDefId,
-    ) -> Self::DefiningOpaqueTypes;
+    ) -> Self::LocalDefIds;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

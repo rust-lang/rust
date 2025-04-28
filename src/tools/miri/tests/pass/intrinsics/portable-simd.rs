@@ -16,7 +16,7 @@ use std::simd::prelude::*;
 
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(_x: T, _y: T) -> U;
+pub unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
 fn simd_ops_f32() {
     let a = f32x4::splat(10.0);

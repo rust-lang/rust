@@ -1,5 +1,5 @@
-hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_name}` in bounds of `{$qself}`
-    .label = ambiguous associated {$assoc_kind} `{$assoc_name}`
+hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`
+    .label = ambiguous associated {$assoc_kind} `{$assoc_ident}`
 
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
@@ -12,13 +12,13 @@ hir_analysis_assoc_item_is_private = {$kind} `{$name}` is private
     .label = private {$kind}
     .defined_here_label = the {$kind} is defined here
 
-hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_name}` not found for `{$qself}`
+hir_analysis_assoc_item_not_found = associated {$assoc_kind} `{$assoc_ident}` not found for `{$qself}`
 
 hir_analysis_assoc_item_not_found_found_in_other_trait_label = there is {$identically_named ->
         [true] an
         *[false] a similarly named
     } associated {$assoc_kind} `{$suggested_name}` in the trait `{$trait_name}`
-hir_analysis_assoc_item_not_found_label = associated {$assoc_kind} `{$assoc_name}` not found
+hir_analysis_assoc_item_not_found_label = associated {$assoc_kind} `{$assoc_ident}` not found
 hir_analysis_assoc_item_not_found_other_sugg = `{$qself}` has the following associated {$assoc_kind}
 hir_analysis_assoc_item_not_found_similar_in_other_trait_qpath_sugg =
     consider fully qualifying{$identically_named ->
@@ -486,6 +486,9 @@ hir_analysis_self_in_impl_self =
     `Self` is not valid in the self type of an impl block
     .note = replace `Self` with a different type
 
+hir_analysis_self_in_type_alias = `Self` is not allowed in type aliases
+    .label = `Self` is only available in impls, traits, and concrete type definitions
+
 hir_analysis_self_ty_not_captured = `impl Trait` must mention the `Self` type of the trait in `use<...>`
     .label = `Self` type parameter is implicitly captured by this `impl Trait`
     .note = currently, all type parameters are required to be mentioned in the precise captures list
@@ -504,12 +507,9 @@ hir_analysis_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by
 
 hir_analysis_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
 
-hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
-    .note = this item must mention the opaque type in its signature in order to be able to register hidden types
-
-hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`, but has it in its signature
-    .note = consider moving the opaque type's declaration and defining uses into a separate module
-    .opaque = this opaque type is in the signature
+hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`
+    .note = consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+    .opaque = this opaque type is supposed to be constrained
 
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 

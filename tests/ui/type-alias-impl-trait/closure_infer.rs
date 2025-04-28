@@ -22,12 +22,14 @@ impl StreamConsumer for DispatchExecutor {
 
 // Functions that constrain TAITs can contain closures with an `_` in the return type.
 type Foo = impl Sized;
+#[define_opaque(Foo)]
 fn foo() -> Foo {
     || -> _ {}
 }
 
 // The `_` in the closure return type can also be the TAIT itself.
 type Bar = impl Sized;
+#[define_opaque(Bar)]
 fn bar() -> impl FnOnce() -> Bar {
     || -> _ {}
 }

@@ -1,0 +1,53 @@
+error[E0658]: use of unstable library feature `deref_patterns`: placeholder syntax for deref patterns
+  --> $DIR/needs-gate.rs:5:9
+   |
+LL |         deref!(0) => {}
+   |         ^^^^^
+   |
+   = note: see issue #87121 <https://github.com/rust-lang/rust/issues/87121> for more information
+   = help: add `#![feature(deref_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0308]: mismatched types
+  --> $DIR/needs-gate.rs:11:9
+   |
+LL |     match Box::new(0) {
+   |           ----------- this expression has type `Box<{integer}>`
+LL |         0 => {}
+   |         ^ expected `Box<{integer}>`, found integer
+   |
+   = note: expected struct `Box<{integer}>`
+                found type `{integer}`
+help: consider dereferencing to access the inner value using the Deref trait
+   |
+LL |     match *Box::new(0) {
+   |           +
+
+error[E0308]: mismatched types
+  --> $DIR/needs-gate.rs:18:9
+   |
+LL |     match *"test" {
+   |           ------- this expression has type `str`
+LL |         "test" => {}
+   |         ^^^^^^ expected `str`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/needs-gate.rs:23:9
+   |
+LL |     match *b"test" {
+   |           -------- this expression has type `[u8; 4]`
+LL |         b"test" => {}
+   |         ^^^^^^^ expected `[u8; 4]`, found `&[u8; 4]`
+
+error[E0308]: mismatched types
+  --> $DIR/needs-gate.rs:28:9
+   |
+LL |     match *(b"test" as &[u8]) {
+   |           ------------------- this expression has type `[u8]`
+LL |         b"test" => {}
+   |         ^^^^^^^ expected `[u8]`, found `&[u8; 4]`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.

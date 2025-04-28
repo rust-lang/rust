@@ -4,7 +4,7 @@ use std::fmt::Debug;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
-use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
 
@@ -20,7 +20,7 @@ pub use index_map::SortedIndexMultiMap;
 /// stores data in a more compact way. It also supports accessing contiguous
 /// ranges of elements as a slice, and slices of already sorted elements can be
 /// inserted efficiently.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable_Generic, Decodable_Generic)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable_NoContext, Decodable_NoContext)]
 pub struct SortedMap<K, V> {
     data: Vec<(K, V)>,
 }

@@ -26,6 +26,3 @@ smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2"
 tracing = "0.1"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

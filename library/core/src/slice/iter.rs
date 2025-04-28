@@ -93,9 +93,9 @@ unsafe impl<T: Sync> Send for Iter<'_, T> {}
 
 impl<'a, T> Iter<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T]) -> Self {
+    pub(super) const fn new(slice: &'a [T]) -> Self {
         let len = slice.len();
-        let ptr: NonNull<T> = NonNull::from(slice).cast();
+        let ptr: NonNull<T> = NonNull::from_ref(slice).cast();
         // SAFETY: Similar to `IterMut::new`.
         unsafe {
             let end_or_len =
@@ -218,9 +218,9 @@ unsafe impl<T: Send> Send for IterMut<'_, T> {}
 
 impl<'a, T> IterMut<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a mut [T]) -> Self {
+    pub(super) const fn new(slice: &'a mut [T]) -> Self {
         let len = slice.len();
-        let ptr: NonNull<T> = NonNull::from(slice).cast();
+        let ptr: NonNull<T> = NonNull::from_mut(slice).cast();
         // SAFETY: There are several things here:
         //
         // `ptr` has been obtained by `slice.as_ptr()` where `slice` is a valid
@@ -1335,7 +1335,7 @@ pub struct Windows<'a, T: 'a> {
 
 impl<'a, T: 'a> Windows<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], size: NonZero<usize>) -> Self {
+    pub(super) const fn new(slice: &'a [T], size: NonZero<usize>) -> Self {
         Self { v: slice, size }
     }
 }
@@ -1380,14 +1380,16 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (end, overflow) = self.size.get().overflowing_add(n);
-        if end > self.v.len() || overflow {
-            self.v = &[];
-            None
-        } else {
-            let nth = &self.v[n..end];
-            self.v = &self.v[n + 1..];
+        let size = self.size.get();
+        if let Some(rest) = self.v.get(n..)
+            && let Some(nth) = rest.get(..size)
+        {
+            self.v = &rest[1..];
             Some(nth)
+        } else {
+            // setting length to 0 is cheaper than overwriting the pointer when assigning &[]
+            self.v = &self.v[..0]; // cheaper than &[]
+            None
         }
     }
 
@@ -1427,7 +1429,7 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let (end, overflow) = self.v.len().overflowing_sub(n);
         if end < self.size.get() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let ret = &self.v[end - self.size.get()..end];
@@ -1487,7 +1489,7 @@ pub struct Chunks<'a, T: 'a> {
 
 impl<'a, T: 'a> Chunks<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], size: usize) -> Self {
+    pub(super) const fn new(slice: &'a [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size }
     }
 }
@@ -1536,17 +1538,15 @@ impl<'a, T> Iterator for Chunks<'a, T> {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        if start >= self.v.len() || overflow {
-            self.v = &[];
-            None
-        } else {
-            let end = match start.checked_add(self.chunk_size) {
-                Some(sum) => cmp::min(self.v.len(), sum),
-                None => self.v.len(),
-            };
-            let nth = &self.v[start..end];
-            self.v = &self.v[end..];
+        // min(len) makes a wrong start harmless, but enables optimizing this to brachless code
+        let chunk_start = &self.v[start.min(self.v.len())..];
+        let (nth, remainder) = chunk_start.split_at(self.chunk_size.min(chunk_start.len()));
+        if !overflow && start < self.v.len() {
+            self.v = remainder;
             Some(nth)
+        } else {
+            self.v = &self.v[..0]; // cheaper than &[]
+            None
         }
     }
 
@@ -1609,7 +1609,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let start = (len - 1 - n) * self.chunk_size;
@@ -1677,7 +1677,7 @@ pub struct ChunksMut<'a, T: 'a> {
 
 impl<'a, T: 'a> ChunksMut<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a mut [T], size: usize) -> Self {
+    pub(super) const fn new(slice: &'a mut [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size, _marker: PhantomData }
     }
 }
@@ -1863,7 +1863,7 @@ pub struct ChunksExact<'a, T: 'a> {
 
 impl<'a, T> ChunksExact<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], chunk_size: usize) -> Self {
+    pub(super) const fn new(slice: &'a [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         let fst_len = slice.len() - rem;
         // SAFETY: 0 <= fst_len <= slice.len() by construction above
@@ -1933,7 +1933,7 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (start, overflow) = n.overflowing_mul(self.chunk_size);
         if start >= self.v.len() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let (_, snd) = self.v.split_at(start);
@@ -1971,7 +1971,7 @@ impl<'a, T> DoubleEndedIterator for ChunksExact<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let start = (len - 1 - n) * self.chunk_size;
@@ -2043,7 +2043,7 @@ pub struct ChunksExactMut<'a, T: 'a> {
 
 impl<'a, T> ChunksExactMut<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
+    pub(super) const fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         let fst_len = slice.len() - rem;
         // SAFETY: 0 <= fst_len <= slice.len() by construction above
@@ -2210,7 +2210,7 @@ pub struct ArrayWindows<'a, T: 'a, const N: usize> {
 
 impl<'a, T: 'a, const N: usize> ArrayWindows<'a, T, N> {
     #[inline]
-    pub(super) fn new(slice: &'a [T]) -> Self {
+    pub(super) const fn new(slice: &'a [T]) -> Self {
         let num_windows = slice.len().saturating_sub(N - 1);
         Self { slice_head: slice.as_ptr(), num: num_windows, marker: PhantomData }
     }
@@ -2334,8 +2334,10 @@ pub struct ArrayChunks<'a, T: 'a, const N: usize> {
 }
 
 impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    // #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
-    pub(super) fn new(slice: &'a [T]) -> Self {
+    pub(super) const fn new(slice: &'a [T]) -> Self {
         let (array_slice, rem) = slice.as_chunks();
         Self { iter: array_slice.iter(), rem }
     }
@@ -2460,8 +2462,9 @@ pub struct ArrayChunksMut<'a, T: 'a, const N: usize> {
 }
 
 impl<'a, T, const N: usize> ArrayChunksMut<'a, T, N> {
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
-    pub(super) fn new(slice: &'a mut [T]) -> Self {
+    pub(super) const fn new(slice: &'a mut [T]) -> Self {
         let (array_slice, rem) = slice.as_chunks_mut();
         Self { iter: array_slice.iter_mut(), rem }
     }
@@ -2579,7 +2582,7 @@ pub struct RChunks<'a, T: 'a> {
 
 impl<'a, T: 'a> RChunks<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], size: usize) -> Self {
+    pub(super) const fn new(slice: &'a [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size }
     }
 }
@@ -2635,7 +2638,7 @@ impl<'a, T> Iterator for RChunks<'a, T> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (end, overflow) = n.overflowing_mul(self.chunk_size);
         if end >= self.v.len() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             // Can't underflow because of the check above
@@ -2692,7 +2695,7 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             // can't underflow because `n < len`
@@ -2759,7 +2762,7 @@ pub struct RChunksMut<'a, T: 'a> {
 
 impl<'a, T: 'a> RChunksMut<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a mut [T], size: usize) -> Self {
+    pub(super) const fn new(slice: &'a mut [T], size: usize) -> Self {
         Self { v: slice, chunk_size: size, _marker: PhantomData }
     }
 }
@@ -2950,7 +2953,7 @@ pub struct RChunksExact<'a, T: 'a> {
 
 impl<'a, T> RChunksExact<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], chunk_size: usize) -> Self {
+    pub(super) const fn new(slice: &'a [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         // SAFETY: 0 <= rem <= slice.len() by construction above
         let (fst, snd) = unsafe { slice.split_at_unchecked(rem) };
@@ -2976,7 +2979,8 @@ impl<'a, T> RChunksExact<'a, T> {
     /// ```
     #[must_use]
     #[stable(feature = "rchunks", since = "1.31.0")]
-    pub fn remainder(&self) -> &'a [T] {
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    pub const fn remainder(&self) -> &'a [T] {
         self.rem
     }
 }
@@ -3019,7 +3023,7 @@ impl<'a, T> Iterator for RChunksExact<'a, T> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (end, overflow) = n.overflowing_mul(self.chunk_size);
         if end >= self.v.len() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let (fst, _) = self.v.split_at(self.v.len() - end);
@@ -3058,7 +3062,7 @@ impl<'a, T> DoubleEndedIterator for RChunksExact<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             // now that we know that `n` corresponds to a chunk,
@@ -3132,7 +3136,7 @@ pub struct RChunksExactMut<'a, T: 'a> {
 
 impl<'a, T> RChunksExactMut<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
+    pub(super) const fn new(slice: &'a mut [T], chunk_size: usize) -> Self {
         let rem = slice.len() % chunk_size;
         // SAFETY: 0 <= rem <= slice.len() by construction above
         let (fst, snd) = unsafe { slice.split_at_mut_unchecked(rem) };
@@ -3144,7 +3148,8 @@ impl<'a, T> RChunksExactMut<'a, T> {
     /// elements.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rchunks", since = "1.31.0")]
-    pub fn into_remainder(self) -> &'a mut [T] {
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
+    pub const fn into_remainder(self) -> &'a mut [T] {
         self.rem
     }
 }
@@ -3308,7 +3313,7 @@ pub struct ChunkBy<'a, T: 'a, P> {
 
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> ChunkBy<'a, T, P> {
-    pub(super) fn new(slice: &'a [T], predicate: P) -> Self {
+    pub(super) const fn new(slice: &'a [T], predicate: P) -> Self {
         ChunkBy { slice, predicate }
     }
 }
@@ -3395,7 +3400,7 @@ pub struct ChunkByMut<'a, T: 'a, P> {
 
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> ChunkByMut<'a, T, P> {
-    pub(super) fn new(slice: &'a mut [T], predicate: P) -> Self {
+    pub(super) const fn new(slice: &'a mut [T], predicate: P) -> Self {
         ChunkByMut { slice, predicate }
     }
 }

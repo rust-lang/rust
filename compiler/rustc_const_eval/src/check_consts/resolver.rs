@@ -22,17 +22,17 @@ use super::{ConstCx, Qualif, qualifs};
 /// qualified immediately after it is borrowed or its address escapes. The borrow must allow for
 /// mutation, which includes shared borrows of places with interior mutability. The type of
 /// borrowed place must contain the qualif.
-struct TransferFunction<'a, 'mir, 'tcx, Q> {
-    ccx: &'a ConstCx<'mir, 'tcx>,
-    state: &'a mut State,
+struct TransferFunction<'mir, 'tcx, Q> {
+    ccx: &'mir ConstCx<'mir, 'tcx>,
+    state: &'mir mut State,
     _qualif: PhantomData<Q>,
 }
 
-impl<'a, 'mir, 'tcx, Q> TransferFunction<'a, 'mir, 'tcx, Q>
+impl<'mir, 'tcx, Q> TransferFunction<'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(ccx: &'a ConstCx<'mir, 'tcx>, state: &'a mut State) -> Self {
+    fn new(ccx: &'mir ConstCx<'mir, 'tcx>, state: &'mir mut State) -> Self {
         TransferFunction { ccx, state, _qualif: PhantomData }
     }
 
@@ -124,7 +124,7 @@ where
     }
 }
 
-impl<'tcx, Q> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Visitor<'tcx> for TransferFunction<'_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -228,20 +228,20 @@ where
 }
 
 /// The dataflow analysis used to propagate qualifs on arbitrary CFGs.
-pub(super) struct FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q> {
-    ccx: &'a ConstCx<'mir, 'tcx>,
+pub(super) struct FlowSensitiveAnalysis<'mir, 'tcx, Q> {
+    ccx: &'mir ConstCx<'mir, 'tcx>,
     _qualif: PhantomData<Q>,
 }
 
-impl<'a, 'mir, 'tcx, Q> FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>
+impl<'mir, 'tcx, Q> FlowSensitiveAnalysis<'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    pub(super) fn new(_: Q, ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
+    pub(super) fn new(_: Q, ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
         FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
-    fn transfer_function(&self, state: &'a mut State) -> TransferFunction<'a, 'mir, 'tcx, Q> {
+    fn transfer_function(&self, state: &'mir mut State) -> TransferFunction<'mir, 'tcx, Q> {
         TransferFunction::<Q>::new(self.ccx, state)
     }
 }
@@ -313,7 +313,7 @@ impl JoinSemiLattice for State {
     }
 }
 
-impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, 'tcx, Q>
 where
     Q: Qualif,
 {

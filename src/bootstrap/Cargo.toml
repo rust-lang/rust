@@ -1,7 +1,7 @@
 [package]
 name = "bootstrap"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 build = "build.rs"
 default-run = "bootstrap"
 
@@ -28,19 +28,12 @@ name = "rustdoc"
 path = "src/bin/rustdoc.rs"
 test = false
 
-[[bin]]
-name = "sccache-plus-cl"
-path = "src/bin/sccache-plus-cl.rs"
-test = false
-
 [dependencies]
 # Most of the time updating these dependencies requires modifications to the
 # bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
 # otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
-#
-# Do not upgrade this crate unless https://github.com/rust-lang/cc-rs/issues/1317 is fixed.
-cc = "=1.1.22"
-cmake = "=0.1.48"
+cc = "=1.2.17"
+cmake = "=0.1.54"
 
 build_helper = { path = "../build_helper" }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
@@ -90,6 +83,7 @@ features = [
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+tempfile = "3.15.0"
 
 # We care a lot about bootstrap's compile times, so don't include debuginfo for
 # dependencies, only bootstrap itself.

@@ -1,4 +1,3 @@
-//@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(io_error_more)]
@@ -18,20 +17,23 @@ mod utils;
 
 fn main() {
     test_path_conversion();
-    test_file();
-    test_file_clone();
-    test_file_create_new();
-    test_seek();
-    test_metadata();
-    test_file_set_len();
-    test_file_sync();
-    test_errors();
-    test_rename();
-    test_directory();
-    test_canonicalize();
-    test_from_raw_os_error();
-    #[cfg(unix)]
-    test_pread_pwrite();
+    // Windows file handling is very incomplete.
+    if cfg!(not(windows)) {
+        test_file();
+        test_file_create_new();
+        test_seek();
+        test_file_clone();
+        test_metadata();
+        test_file_set_len();
+        test_file_sync();
+        test_errors();
+        test_rename();
+        test_directory();
+        test_canonicalize();
+        test_from_raw_os_error();
+        #[cfg(unix)]
+        test_pread_pwrite();
+    }
 }
 
 fn test_path_conversion() {
@@ -144,10 +146,10 @@ fn test_metadata() {
     let path = utils::prepare_with_content("miri_test_fs_metadata.txt", bytes);
 
     // Test that metadata of an absolute path is correct.
-    check_metadata(bytes, &path).unwrap();
+    check_metadata(bytes, &path).expect("absolute path metadata");
     // Test that metadata of a relative path is correct.
     std::env::set_current_dir(path.parent().unwrap()).unwrap();
-    check_metadata(bytes, Path::new(path.file_name().unwrap())).unwrap();
+    check_metadata(bytes, Path::new(path.file_name().unwrap())).expect("relative path metadata");
 
     // Removing file should succeed.
     remove_file(&path).unwrap();

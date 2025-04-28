@@ -14,6 +14,7 @@ use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, GenericArgsRef, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::{FnAbi, PassMode};
 use rustc_target::spec::{HasTargetSpec, PanicStrategy};
 use tracing::debug;
@@ -812,7 +813,10 @@ fn codegen_msvc_try<'ll>(
         let type_name = bx.const_bytes(b"rust_panic\0");
         let type_info =
             bx.const_struct(&[type_info_vtable, bx.const_null(bx.type_ptr()), type_name], false);
-        let tydesc = bx.declare_global("__rust_panic_type_info", bx.val_ty(type_info));
+        let tydesc = bx.declare_global(
+            &mangle_internal_symbol(bx.tcx, "__rust_panic_type_info"),
+            bx.val_ty(type_info),
+        );
 
         llvm::set_linkage(tydesc, llvm::Linkage::LinkOnceODRLinkage);
         if bx.cx.tcx.sess.target.supports_comdat() {
@@ -1180,18 +1184,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }};
     }
 
-    /// Returns the bitwidth of the `$ty` argument if it is an `Int` type.
-    macro_rules! require_int_ty {
-        ($ty: expr, $diag: expr) => {
-            match $ty {
-                ty::Int(i) => i.bit_width().unwrap_or_else(|| bx.data_layout().pointer_size.bits()),
-                _ => {
-                    return_error!($diag);
-                }
-            }
-        };
-    }
-
     /// Returns the bitwidth of the `$ty` argument if it is an `Int` or `Uint` type.
     macro_rules! require_int_or_uint_ty {
         ($ty: expr, $diag: expr) => {
@@ -1417,7 +1409,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(bx.shuffle_vector(args[0].immediate(), args[1].immediate(), indices));
     }
 
-    if name == sym::simd_insert {
+    if name == sym::simd_insert || name == sym::simd_insert_dyn {
         require!(
             in_elem == arg_tys[2],
             InvalidMonomorphization::InsertedType {
@@ -1428,40 +1420,49 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 out_ty: arg_tys[2]
             }
         );
-        let idx = bx
-            .const_to_opt_u128(args[1].immediate(), false)
-            .expect("typeck should have ensure that this is a const");
-        if idx >= in_len.into() {
-            return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
-                span,
-                name,
-                arg_idx: 1,
-                total_len: in_len.into(),
-            });
-        }
-        return Ok(bx.insert_element(
-            args[0].immediate(),
-            args[2].immediate(),
-            bx.const_i32(idx as i32),
-        ));
+
+        let index_imm = if name == sym::simd_insert {
+            let idx = bx
+                .const_to_opt_u128(args[1].immediate(), false)
+                .expect("typeck should have ensure that this is a const");
+            if idx >= in_len.into() {
+                return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
+                    span,
+                    name,
+                    arg_idx: 1,
+                    total_len: in_len.into(),
+                });
+            }
+            bx.const_i32(idx as i32)
+        } else {
+            args[1].immediate()
+        };
+
+        return Ok(bx.insert_element(args[0].immediate(), args[2].immediate(), index_imm));
     }
-    if name == sym::simd_extract {
+    if name == sym::simd_extract || name == sym::simd_extract_dyn {
         require!(
             ret_ty == in_elem,
             InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
         );
-        let idx = bx
-            .const_to_opt_u128(args[1].immediate(), false)
-            .expect("typeck should have ensure that this is a const");
-        if idx >= in_len.into() {
-            return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
-                span,
-                name,
-                arg_idx: 1,
-                total_len: in_len.into(),
-            });
-        }
-        return Ok(bx.extract_element(args[0].immediate(), bx.const_i32(idx as i32)));
+        let index_imm = if name == sym::simd_extract {
+            let idx = bx
+                .const_to_opt_u128(args[1].immediate(), false)
+                .expect("typeck should have ensure that this is a const");
+            if idx >= in_len.into() {
+                return_error!(InvalidMonomorphization::SimdIndexOutOfBounds {
+                    span,
+                    name,
+                    arg_idx: 1,
+                    total_len: in_len.into(),
+                });
+            }
+            bx.const_i32(idx as i32)
+        } else {
+            args[1].immediate()
+        };
+
+        return Ok(bx.extract_element(args[0].immediate(), index_imm));
     }
 
     if name == sym::simd_select {
@@ -1472,9 +1473,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
         );
-        let in_elem_bitwidth = require_int_ty!(
+        let in_elem_bitwidth = require_int_or_uint_ty!(
             m_elem_ty.kind(),
-            InvalidMonomorphization::MaskType { span, name, ty: m_elem_ty }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: m_elem_ty }
         );
         let m_i1s = vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, m_len);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
@@ -1495,7 +1496,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         // Integer vector <i{in_bitwidth} x in_len>:
         let in_elem_bitwidth = require_int_or_uint_ty!(
             in_elem.kind(),
-            InvalidMonomorphization::VectorArgument { span, name, in_ty, in_elem }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: in_elem }
         );
 
         let i1xn = vector_mask_to_bitmask(bx, args[0].immediate(), in_elem_bitwidth, in_len);
@@ -1719,14 +1720,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        let mask_elem_bitwidth = require_int_ty!(
+        let mask_elem_bitwidth = require_int_or_uint_ty!(
             element_ty2.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: element_ty2,
-                third_arg: arg_tys[2]
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: element_ty2 }
         );
 
         // Alignment of T, must be a constant integer value:
@@ -1821,14 +1817,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        let m_elem_bitwidth = require_int_ty!(
+        let m_elem_bitwidth = require_int_or_uint_ty!(
             mask_elem.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: values_elem,
-                third_arg: mask_ty,
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: mask_elem }
         );
 
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
@@ -1911,14 +1902,9 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        let m_elem_bitwidth = require_int_ty!(
+        let m_elem_bitwidth = require_int_or_uint_ty!(
             mask_elem.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: values_elem,
-                third_arg: mask_ty,
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: mask_elem }
         );
 
         let mask = vector_mask_to_bitmask(bx, args[0].immediate(), m_elem_bitwidth, mask_len);
@@ -2006,15 +1992,10 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             }
         );
 
-        // The element type of the third argument must be a signed integer type of any width:
-        let mask_elem_bitwidth = require_int_ty!(
+        // The element type of the third argument must be an integer type of any width:
+        let mask_elem_bitwidth = require_int_or_uint_ty!(
             element_ty2.kind(),
-            InvalidMonomorphization::ThirdArgElementType {
-                span,
-                name,
-                expected_element: element_ty2,
-                third_arg: arg_tys[2]
-            }
+            InvalidMonomorphization::MaskWrongElementType { span, name, ty: element_ty2 }
         );
 
         // Alignment of T, must be a constant integer value:

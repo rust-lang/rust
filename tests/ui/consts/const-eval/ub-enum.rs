@@ -3,7 +3,7 @@
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 //@ normalize-stderr: "0x0+" -> "0x0"
 #![feature(never_type)]
-#![allow(invalid_value)]
+#![allow(invalid_value, unnecessary_transmutes)]
 
 use std::mem;
 

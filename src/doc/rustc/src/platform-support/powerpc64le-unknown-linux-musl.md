@@ -6,9 +6,9 @@ Target for 64-bit little endian PowerPC Linux programs using musl libc.
 
 ## Target maintainers
 
-- [@Gelbpunkt](https://github.com/Gelbpunkt)
-- [@famfo](https://github.com/famfo)
-- [@neuschaefer](https://github.com/neuschaefer)
+[@Gelbpunkt](https://github.com/Gelbpunkt)
+[@famfo](https://github.com/famfo)
+[@neuschaefer](https://github.com/neuschaefer)
 
 ## Requirements
 
@@ -23,7 +23,7 @@ The target can be built by enabling it for a `rustc` build.
 target = ["powerpc64le-unknown-linux-musl"]
 ```
 
-Make sure your C compiler is included in `$PATH`, then add it to the `config.toml`:
+Make sure your C compiler is included in `$PATH`, then add it to the `bootstrap.toml`:
 
 ```toml
 [target.powerpc64le-unknown-linux-musl]

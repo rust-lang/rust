@@ -1,0 +1,9 @@
+error[E0412]: cannot find type alias or associated type with opaqaue types `Boom` in this scope
+  --> $DIR/invalid_path.rs:3:17
+   |
+LL | #[define_opaque(Boom)]
+   |                 ^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

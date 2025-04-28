@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `Trait` for type `Wrapper<OpaqueCoroutine>`
-  --> $DIR/coherence-with-coroutine.rs:22:1
+  --> $DIR/coherence-with-coroutine.rs:23:1
    |
 LL | impl Trait for Wrapper<OpaqueCoroutine> {}
    | --------------------------------------- first implementation here

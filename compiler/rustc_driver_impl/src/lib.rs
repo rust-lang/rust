@@ -7,10 +7,10 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(decl_macro)]
-#![feature(let_chains)]
 #![feature(panic_backtrace_config)]
 #![feature(panic_update_hook)]
 #![feature(result_flattening)]
@@ -19,7 +19,7 @@
 // tidy-alphabetical-end
 
 use std::cmp::max;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
@@ -29,11 +29,10 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Instant, SystemTime};
+use std::time::Instant;
 use std::{env, str};
 
 use rustc_ast as ast;
-use rustc_codegen_ssa::back::apple;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
@@ -43,6 +42,10 @@ use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
+// This avoids a false positive with `-Wunused_crate_dependencies`.
+// `rust_index` isn't used in this crate's code, but it must be named in the
+// `Cargo.toml` for the `rustc_randomized_layouts` feature.
+use rustc_index as _;
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
@@ -56,13 +59,12 @@ use rustc_session::config::{
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::output::collect_crate_types;
+use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_target::json::ToJson;
 use rustc_target::spec::{Target, TargetTuple};
-use time::OffsetDateTime;
-use time::macros::format_description;
 use tracing::trace;
 
 #[allow(unused_macros)]
@@ -88,6 +90,10 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
+
+// Keep the OS parts of this `cfg` in sync with the `cfg` on the `libc`
+// dependency in `compiler/rustc_driver/Cargo.toml`, to keep
+// `-Wunused-crated-dependencies` satisfied.
 #[cfg(all(not(miri), unix, any(target_env = "gnu", target_os = "macos")))]
 mod signal_handler;
 
@@ -99,7 +105,7 @@ mod signal_handler {
 }
 
 use crate::session_diagnostics::{
-    RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
+    CantEmitMIR, RLinkEmptyVersionNumber, RLinkEncodingVersionMismatch, RLinkRustcVersionMismatch,
     RLinkWrongFileType, RlinkCorruptFile, RlinkNotAFile, RlinkUnableToRead, UnstableFeatureUsage,
 };
 
@@ -234,12 +240,17 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         return;
     }
 
+    let input = make_input(&default_early_dcx, &matches.free);
+    let has_input = input.is_some();
     let (odir, ofile) = make_output(&matches);
+
+    drop(default_early_dcx);
+
     let mut config = interface::Config {
         opts: sopts,
         crate_cfg: matches.opt_strs("cfg"),
         crate_check_cfg: matches.opt_strs("check-cfg"),
-        input: Input::File(PathBuf::new()),
+        input: input.unwrap_or(Input::File(PathBuf::new())),
         output_file: ofile,
         output_dir: odir,
         ice_file,
@@ -250,21 +261,12 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         hash_untracked_state: None,
         register_lints: None,
         override_queries: None,
+        extra_symbols: Vec::new(),
         make_codegen_backend: None,
         registry: diagnostics_registry(),
         using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args: args,
     };
-
-    let has_input = match make_input(&default_early_dcx, &matches.free) {
-        Some(input) => {
-            config.input = input;
-            true // has input: normal compilation
-        }
-        None => false, // no input: we will exit early
-    };
-
-    drop(default_early_dcx);
 
     callbacks.config(&mut config);
 
@@ -344,10 +346,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             // Make sure name resolution and macro expansion is run.
             let _ = tcx.resolver_for_lowering();
 
-            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                dump_feature_usage_metrics(tcx, metrics_dir);
-            }
-
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
                 return early_exit();
             }
@@ -366,8 +364,18 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
             tcx.ensure_ok().analysis(());
 
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
+
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return early_exit();
+            }
+
+            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+                if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
+                    tcx.dcx().emit_fatal(CantEmitMIR { error });
+                }
             }
 
             Some(Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend))
@@ -382,14 +390,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 }
 
 fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
-    let output_filenames = tcxt.output_filenames(());
-    let mut metrics_file_name = std::ffi::OsString::from("unstable_feature_usage_metrics-");
-    let mut metrics_path = output_filenames.with_directory_and_extension(metrics_dir, "json");
-    let metrics_file_stem =
-        metrics_path.file_name().expect("there should be a valid default output filename");
-    metrics_file_name.push(metrics_file_stem);
-    metrics_path.pop();
-    metrics_path.push(metrics_file_name);
+    let hash = tcxt.crate_hash(LOCAL_CRATE);
+    let crate_name = tcxt.crate_name(LOCAL_CRATE);
+    let metrics_file_name = format!("unstable_feature_usage_metrics-{crate_name}-{hash}.json");
+    let metrics_path = metrics_dir.join(metrics_file_name);
     if let Err(error) = tcxt.features().dump_feature_usage_metrics(metrics_path) {
         // FIXME(yaahc): once metrics can be enabled by default we will want "failure to emit
         // default metrics" to only produce a warning when metrics are enabled by default and emit
@@ -398,7 +402,7 @@ fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
     }
 }
 
-// Extract output directory and file from matches.
+/// Extract output directory and file from matches.
 fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileName>) {
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
     let ofile = matches.opt_str("o").map(|o| match o.as_str() {
@@ -456,8 +460,7 @@ pub enum Compilation {
 fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
     // Allow "E0123" or "0123" form.
     let upper_cased_code = code.to_ascii_uppercase();
-    let start = if upper_cased_code.starts_with('E') { 1 } else { 0 };
-    if let Ok(code) = upper_cased_code[start..].parse::<u32>()
+    if let Ok(code) = upper_cased_code.strip_prefix('E').unwrap_or(&upper_cased_code).parse::<u32>()
         && let Ok(description) = registry.try_find_description(ErrCode::from_u32(code))
     {
         let mut is_in_code_block = false;
@@ -648,10 +651,10 @@ fn print_crate_info(
             HostTuple => println_info!("{}", rustc_session::config::host_tuple()),
             Sysroot => println_info!("{}", sess.sysroot.display()),
             TargetLibdir => println_info!("{}", sess.target_tlib_path.dir.display()),
-            TargetSpec => {
+            TargetSpecJson => {
                 println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
-            AllTargetSpecs => {
+            AllTargetSpecsJson => {
                 let mut targets = BTreeMap::new();
                 for name in rustc_target::spec::TARGETS {
                     let triple = TargetTuple::from_tuple(name);
@@ -681,6 +684,34 @@ fn print_crate_info(
                     return Compilation::Continue;
                 };
                 println_info!("{}", passes::get_crate_name(sess, attrs));
+            }
+            CrateRootLintLevels => {
+                let Some(attrs) = attrs.as_ref() else {
+                    // no crate attributes, print out an error and exit
+                    return Compilation::Continue;
+                };
+                let crate_name = passes::get_crate_name(sess, attrs);
+                let lint_store = crate::unerased_lint_store(sess);
+                let registered_tools = rustc_resolve::registered_tools_ast(sess.dcx(), attrs);
+                let features = rustc_expand::config::features(sess, attrs, crate_name);
+                let lint_levels = rustc_lint::LintLevelsBuilder::crate_root(
+                    sess,
+                    &features,
+                    true,
+                    lint_store,
+                    &registered_tools,
+                    attrs,
+                );
+                for lint in lint_store.get_lints() {
+                    if let Some(feature_symbol) = lint.feature_gate
+                        && !features.enabled(feature_symbol)
+                    {
+                        // lint is unstable and feature gate isn't active, don't print
+                        continue;
+                    }
+                    let level = lint_levels.lint_level(lint).level;
+                    println_info!("{}={}", lint.name_lower(), level.as_str());
+                }
             }
             Cfg => {
                 let mut cfgs = sess
@@ -770,15 +801,25 @@ fn print_crate_info(
                 }
             }
             DeploymentTarget => {
-                if sess.target.is_like_osx {
+                if sess.target.is_like_darwin {
                     println_info!(
                         "{}={}",
-                        apple::deployment_target_env_var(&sess.target.os),
-                        apple::pretty_version(apple::deployment_target(sess)),
+                        rustc_target::spec::apple::deployment_target_env_var(&sess.target.os),
+                        sess.apple_deployment_target().fmt_pretty(),
                     )
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
+                }
+            }
+            SupportedCrateTypes => {
+                let supported_crate_types = CRATE_TYPES
+                    .iter()
+                    .filter(|(_, crate_type)| !invalid_output_for_target(&sess, *crate_type))
+                    .map(|(crate_type_sym, _)| *crate_type_sym)
+                    .collect::<BTreeSet<_>>();
+                for supported_crate_type in supported_crate_types {
+                    println_info!("{}", supported_crate_type.as_str());
                 }
             }
         }
@@ -1257,13 +1298,8 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
                 .or_else(|| std::env::current_dir().ok())
                 .unwrap_or_default(),
         };
-        let now: OffsetDateTime = SystemTime::now().into();
-        let file_now = now
-            .format(
-                // Don't use a standard datetime format because Windows doesn't support `:` in paths
-                &format_description!("[year]-[month]-[day]T[hour]_[minute]_[second]"),
-            )
-            .unwrap_or_default();
+        // Don't use a standard datetime format because Windows doesn't support `:` in paths
+        let file_now = jiff::Zoned::now().strftime("%Y-%m-%dT%H_%M_%S");
         let pid = std::process::id();
         path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
         Some(path)

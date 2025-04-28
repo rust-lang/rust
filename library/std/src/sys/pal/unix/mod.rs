@@ -6,9 +6,8 @@ use crate::io::ErrorKind;
 #[macro_use]
 pub mod weak;
 
-pub mod args;
-pub mod env;
-pub mod fd;
+#[cfg(target_os = "fuchsia")]
+pub mod fuchsia;
 pub mod futex;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod kernel_copy;
@@ -16,7 +15,6 @@ pub mod kernel_copy;
 pub mod linux;
 pub mod os;
 pub mod pipe;
-pub mod process;
 pub mod stack_overflow;
 pub mod sync;
 pub mod thread;
@@ -27,6 +25,7 @@ pub mod time;
 pub fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 #[cfg(not(target_os = "espidf"))]
+#[cfg_attr(target_os = "vita", allow(unused_variables))]
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
 // See `fn init()` in `library/std/src/rt.rs` for docs on `sigpipe`.
@@ -47,7 +46,8 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     reset_sigpipe(sigpipe);
 
     stack_overflow::init();
-    args::init(argc, argv);
+    #[cfg(not(target_os = "vita"))]
+    crate::sys::args::init(argc, argv);
 
     // Normally, `thread::spawn` will call `Thread::set_name` but since this thread
     // already exists, we have to call it ourselves. We only do this on Apple targets
@@ -273,6 +273,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ETXTBSY => ExecutableFileBusy,
         libc::EXDEV => CrossesDevices,
         libc::EINPROGRESS => InProgress,
+        libc::EOPNOTSUPP => Unsupported,
 
         libc::EACCES | libc::EPERM => PermissionDenied,
 
@@ -380,7 +381,7 @@ cfg_if::cfg_if! {
         #[link(name = "pthread")]
         #[link(name = "rt")]
         unsafe extern "C" {}
-    } else if #[cfg(any(target_os = "dragonfly", target_os = "openbsd"))] {
+    } else if #[cfg(any(target_os = "dragonfly", target_os = "openbsd", target_os = "cygwin"))] {
         #[link(name = "pthread")]
         unsafe extern "C" {}
     } else if #[cfg(target_os = "solaris")] {
@@ -419,7 +420,7 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]
-mod unsupported {
+pub mod unsupported {
     use crate::io;
 
     pub fn unsupported<T>() -> io::Result<T> {

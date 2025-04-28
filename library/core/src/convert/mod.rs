@@ -214,7 +214,7 @@ pub const fn identity<T>(x: T) -> T {
 /// is_hello(s);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "AsRef")]
+#[rustc_diagnostic_item = "AsRef"]
 pub trait AsRef<T: ?Sized> {
     /// Converts this type into a shared reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -365,7 +365,7 @@ pub trait AsRef<T: ?Sized> {
 /// Note, however, that APIs don't need to be generic. In many cases taking a `&mut [u8]` or
 /// `&mut Vec<u8>`, for example, is the better choice (callers need to pass the correct type then).
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "AsMut")]
+#[rustc_diagnostic_item = "AsMut"]
 pub trait AsMut<T: ?Sized> {
     /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]

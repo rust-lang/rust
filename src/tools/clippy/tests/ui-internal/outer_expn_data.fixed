@@ -1,4 +1,4 @@
-#![deny(clippy::internal)]
+#![deny(clippy::outer_expn_expn_data)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
 
@@ -21,6 +21,7 @@ declare_lint_pass!(Pass => [TEST_LINT]);
 impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_expr(&mut self, _cx: &LateContext<'tcx>, expr: &'tcx Expr) {
         let _ = expr.span.ctxt().outer_expn_data();
+        //~^ outer_expn_expn_data
     }
 }
 

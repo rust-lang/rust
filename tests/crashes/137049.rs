@@ -22,6 +22,7 @@ impl<T: Project1<Assoc1 = ()>> Project2 for PhantomData<T> {
 
 type Alias<T> = impl Project2;
 
+#[define_opaque(Alias)]
 fn constrain<T>() -> Alias<T> {
     PhantomData::<T>
 }

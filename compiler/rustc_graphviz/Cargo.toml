@@ -6,6 +6,3 @@ edition = "2024"
 [dependencies]
 # tidy-alphabetical-start
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

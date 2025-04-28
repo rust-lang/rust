@@ -1,5 +1,4 @@
 //@ compile-flags: --passes unknown-pass
-//@ error-pattern: the `passes` flag no longer functions
 
 #![doc(no_default_passes)]
 //~^ ERROR unknown `doc` attribute `no_default_passes`
@@ -19,3 +18,7 @@
 //~| NOTE see issue #44136
 //~| NOTE no longer functions
 //~| NOTE `doc(plugins)` is now a no-op
+
+//~? WARN the `passes` flag no longer functions
+//~? NOTE see issue #44136
+//~? HELP you may want to use --document-private-items

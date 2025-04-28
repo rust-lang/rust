@@ -23,7 +23,7 @@ pub(crate) struct AmbiguousAssocItem<'a> {
     #[label]
     pub span: Span,
     pub assoc_kind: &'static str,
-    pub assoc_name: Ident,
+    pub assoc_ident: Ident,
     pub qself: &'a str,
 }
 
@@ -75,7 +75,7 @@ pub(crate) struct AssocItemIsPrivate {
 pub(crate) struct AssocItemNotFound<'a> {
     #[primary_span]
     pub span: Span,
-    pub assoc_name: Ident,
+    pub assoc_ident: Ident,
     pub assoc_kind: &'static str,
     pub qself: &'a str,
     #[subdiagnostic]
@@ -422,16 +422,6 @@ pub(crate) struct UnconstrainedOpaqueType {
     pub span: Span,
     pub name: Ident,
     pub what: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_tait_forward_compat)]
-#[note]
-pub(crate) struct TaitForwardCompat {
-    #[primary_span]
-    pub span: Span,
-    #[note]
-    pub item_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1716,4 +1706,12 @@ pub(crate) enum SupertraitItemShadowee {
         spans: MultiSpan,
         traits: DiagSymbolList,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_self_in_type_alias, code = E0411)]
+pub(crate) struct SelfInTypeAlias {
+    #[primary_span]
+    #[label]
+    pub span: Span,
 }

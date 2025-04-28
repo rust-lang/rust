@@ -14,14 +14,14 @@ extern crate test_macros;
 #[print_attr]
 #[derive(Print)]
 struct AttributeDerive {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     field: u8,
 }
 
 #[derive(Print)]
 #[print_attr]
 struct DeriveAttribute {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     field: u8,
 }
 

@@ -176,8 +176,8 @@ fn convert_to_from(
         return None;
     };
     let body = cx.tcx.hir_body(body_id);
-    let [input] = body.params else { return None };
-    let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
+    let [self_param] = body.params else { return None };
+    let PatKind::Binding(.., self_ident, None) = self_param.pat.kind else {
         return None;
     };
 
@@ -194,12 +194,12 @@ fn convert_to_from(
         // impl Into<T> for U  ->  impl Into<T> for T
         //                  ~                       ~
         (self_ty.span, into.to_owned()),
-        // fn into(self) -> T  ->  fn from(self) -> T
-        //    ~~~~                    ~~~~
+        // fn into(self: U) -> T  ->  fn from(self) -> T
+        //    ~~~~                       ~~~~
         (impl_item.ident.span, String::from("from")),
-        // fn into([mut] self) -> T  ->  fn into([mut] v: T) -> T
-        //               ~~~~                          ~~~~
-        (self_ident.span, format!("val: {from}")),
+        // fn into([mut] self: U) -> T  ->  fn into([mut] val: T) -> T
+        //               ~~~~~~~                          ~~~~~~
+        (self_ident.span.to(self_param.ty_span), format!("val: {from}")),
     ];
 
     if let FnRetTy::Return(_) = sig.decl.output {
