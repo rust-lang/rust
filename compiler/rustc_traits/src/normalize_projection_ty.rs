@@ -13,7 +13,7 @@ use tracing::debug;
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
         normalize_canonicalized_projection_ty,
-        normalize_canonicalized_weak_ty,
+        normalize_canonicalized_free_alias,
         normalize_canonicalized_inherent_projection_ty,
         ..*p
     };
@@ -63,11 +63,11 @@ fn normalize_canonicalized_projection_ty<'tcx>(
     )
 }
 
-fn normalize_canonicalized_weak_ty<'tcx>(
+fn normalize_canonicalized_free_alias<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalAliasGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
-    debug!("normalize_canonicalized_weak_ty(goal={:#?})", goal);
+    debug!("normalize_canonicalized_free_alias(goal={:#?})", goal);
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,

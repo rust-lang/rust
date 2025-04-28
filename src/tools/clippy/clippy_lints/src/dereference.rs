@@ -853,7 +853,7 @@ impl TyCoercionStability {
                     continue;
                 },
                 ty::Param(_) if for_return => Self::Deref,
-                ty::Alias(ty::Weak | ty::Inherent, _) => unreachable!("should have been normalized away above"),
+                ty::Alias(ty::Free | ty::Inherent, _) => unreachable!("should have been normalized away above"),
                 ty::Alias(ty::Projection, _) if !for_return && ty.has_non_region_param() => Self::Reborrow,
                 ty::Infer(_)
                 | ty::Error(_)

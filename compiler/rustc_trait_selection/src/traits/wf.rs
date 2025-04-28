@@ -761,7 +761,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Simple cases that are WF if their type args are WF.
             }
 
-            ty::Alias(ty::Projection | ty::Opaque | ty::Weak, data) => {
+            ty::Alias(ty::Projection | ty::Opaque | ty::Free, data) => {
                 let obligations = self.nominal_obligations(data.def_id, data.args);
                 self.out.extend(obligations);
             }

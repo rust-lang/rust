@@ -73,8 +73,8 @@ bitflags::bitflags! {
 
         /// Does this have `Projection`?
         const HAS_TY_PROJECTION           = 1 << 10;
-        /// Does this have `Weak`?
-        const HAS_TY_WEAK                 = 1 << 11;
+        /// Does this have `Free` aliases?
+        const HAS_TY_FREE_ALIAS                 = 1 << 11;
         /// Does this have `Opaque`?
         const HAS_TY_OPAQUE               = 1 << 12;
         /// Does this have `Inherent`?
@@ -86,7 +86,7 @@ bitflags::bitflags! {
         ///
         /// Rephrased, could this term be normalized further?
         const HAS_ALIAS                   = TypeFlags::HAS_TY_PROJECTION.bits()
-                                          | TypeFlags::HAS_TY_WEAK.bits()
+                                          | TypeFlags::HAS_TY_FREE_ALIAS.bits()
                                           | TypeFlags::HAS_TY_OPAQUE.bits()
                                           | TypeFlags::HAS_TY_INHERENT.bits()
                                           | TypeFlags::HAS_CT_PROJECTION.bits();
@@ -273,7 +273,7 @@ impl<I: Interner> FlagComputation<I> {
             ty::Alias(kind, data) => {
                 self.add_flags(match kind {
                     ty::Projection => TypeFlags::HAS_TY_PROJECTION,
-                    ty::Weak => TypeFlags::HAS_TY_WEAK,
+                    ty::Free => TypeFlags::HAS_TY_FREE_ALIAS,
                     ty::Opaque => TypeFlags::HAS_TY_OPAQUE,
                     ty::Inherent => TypeFlags::HAS_TY_INHERENT,
                 });

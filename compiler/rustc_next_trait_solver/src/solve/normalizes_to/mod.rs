@@ -1,7 +1,7 @@
 mod anon_const;
+mod free_alias;
 mod inherent;
 mod opaque_types;
-mod weak_types;
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
@@ -50,7 +50,7 @@ where
             }
             ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
-            ty::AliasTermKind::WeakTy => self.normalize_weak_type(goal),
+            ty::AliasTermKind::FreeTy => self.normalize_free_alias(goal),
             ty::AliasTermKind::UnevaluatedConst => self.normalize_anon_const(goal),
         }
     }
