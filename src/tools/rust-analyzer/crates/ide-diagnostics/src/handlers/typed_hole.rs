@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use hir::{
     ClosureStyle, HirDisplay, ImportPathConfig,
     db::ExpandDatabase,
@@ -60,9 +62,13 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
 
     let mut formatter = |_: &hir::Type| String::from("_");
 
-    let assists: Vec<Assist> = paths
+    let assists: Vec<Assist> = d
+        .expected
+        .is_unknown()
+        .not()
+        .then(|| "todo!()".to_owned())
         .into_iter()
-        .filter_map(|path| {
+        .chain(paths.into_iter().filter_map(|path| {
             path.gen_source_code(
                 &scope,
                 &mut formatter,
@@ -75,7 +81,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
                 ctx.display_target,
             )
             .ok()
-        })
+        }))
         .unique()
         .map(|code| Assist {
             id: AssistId::quick_fix("typed-hole"),
@@ -95,9 +101,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{
-        check_diagnostics, check_fixes_unordered, check_has_fix, check_has_single_fix,
-    };
+    use crate::tests::{check_diagnostics, check_fixes_unordered, check_has_fix};
 
     #[test]
     fn unknown() {
@@ -119,9 +123,9 @@ fn main() {
     if _ {}
      //^ 💡 error: invalid `_` expression, expected type `bool`
     let _: fn() -> i32 = _;
-                       //^ error: invalid `_` expression, expected type `fn() -> i32`
+                       //^ 💡 error: invalid `_` expression, expected type `fn() -> i32`
     let _: fn() -> () = _; // FIXME: This should trigger an assist because `main` matches via *coercion*
-                      //^ error: invalid `_` expression, expected type `fn()`
+                      //^ 💡 error: invalid `_` expression, expected type `fn()`
 }
 "#,
         );
@@ -147,7 +151,7 @@ fn main() {
 fn main() {
     let mut x = t();
     x = _;
-      //^ error: invalid `_` expression, expected type `&str`
+      //^ 💡 error: invalid `_` expression, expected type `&str`
     x = "";
 }
 fn t<T>() -> T { loop {} }
@@ -308,7 +312,7 @@ fn main() {
 
     #[test]
     fn ignore_impl_func_with_incorrect_return() {
-        check_has_single_fix(
+        check_fixes_unordered(
             r#"
 struct Bar {}
 trait Foo {
@@ -323,7 +327,8 @@ fn main() {
     let a: i32 = 1;
     let c: Bar = _$0;
 }"#,
-            r#"
+            vec![
+                r#"
 struct Bar {}
 trait Foo {
     type Res;
@@ -337,6 +342,21 @@ fn main() {
     let a: i32 = 1;
     let c: Bar = Bar {  };
 }"#,
+                r#"
+struct Bar {}
+trait Foo {
+    type Res;
+    fn foo(&self) -> Self::Res;
+}
+impl Foo for i32 {
+    type Res = Self;
+    fn foo(&self) -> Self::Res { 1 }
+}
+fn main() {
+    let a: i32 = 1;
+    let c: Bar = todo!();
+}"#,
+            ],
         );
     }
 

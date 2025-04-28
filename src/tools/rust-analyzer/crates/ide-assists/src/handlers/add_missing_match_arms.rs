@@ -3,6 +3,7 @@ use std::iter::{self, Peekable};
 use either::Either;
 use hir::{Adt, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics, sym};
 use ide_db::RootDatabase;
+use ide_db::assists::ExprFillDefaultMode;
 use ide_db::syntax_helpers::suggest_name;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
@@ -216,7 +217,17 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     // filter out hidden patterns because they're handled by the catch-all arm
                     !hidden
                 })
-                .map(|(pat, _)| make.match_arm(pat, None, make::ext::expr_todo()));
+                .map(|(pat, _)| {
+                    make.match_arm(
+                        pat,
+                        None,
+                        match ctx.config.expr_fill_default {
+                            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                            ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                        },
+                    )
+                });
 
             let mut arms: Vec<_> = match_arm_list
                 .arms()
@@ -246,7 +257,15 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
             if needs_catch_all_arm && !has_catch_all_arm {
                 cov_mark::hit!(added_wildcard_pattern);
-                let arm = make.match_arm(make.wildcard_pat().into(), None, make::ext::expr_todo());
+                let arm = make.match_arm(
+                    make.wildcard_pat().into(),
+                    None,
+                    match ctx.config.expr_fill_default {
+                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                    },
+                );
                 arms.push(arm);
             }
 

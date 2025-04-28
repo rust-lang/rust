@@ -159,7 +159,7 @@ fn collect_tests(s: &str) -> Vec<Test> {
                 (name.to_owned(), Some(edition.to_owned()))
             }
             [name] => (name.to_owned(), None),
-            _ => panic!("invalid test name: {:?}", name),
+            _ => panic!("invalid test name: {name:?}"),
         };
         let text: String = edition
             .as_ref()
@@ -212,7 +212,7 @@ fn existing_tests(dir: &Path, ok: TestKind) -> Result<HashMap<String, (PathBuf, 
                 text.lines().next().and_then(|it| it.strip_prefix("// ")).map(ToOwned::to_owned);
             let test = Test { name: name.clone(), text, kind: ok, edition };
             if let Some(old) = res.insert(name, (path, test)) {
-                println!("Duplicate test: {:?}", old);
+                println!("Duplicate test: {old:?}");
             }
         }
     }

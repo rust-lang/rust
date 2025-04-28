@@ -265,10 +265,10 @@ impl flags::Scip {
         };
 
         if !duplicate_symbol_errors.is_empty() {
-            eprintln!("{}", DUPLICATE_SYMBOLS_MESSAGE);
+            eprintln!("{DUPLICATE_SYMBOLS_MESSAGE}");
             for (source_location, symbol) in duplicate_symbol_errors {
-                eprintln!("{}", source_location);
-                eprintln!("  Duplicate symbol: {}", symbol);
+                eprintln!("{source_location}");
+                eprintln!("  Duplicate symbol: {symbol}");
                 eprintln!();
             }
         }

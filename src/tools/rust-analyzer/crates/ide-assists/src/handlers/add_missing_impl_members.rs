@@ -150,6 +150,7 @@ fn add_missing_impl_members_inner(
         let new_impl_def = edit.make_mut(impl_def.clone());
         let first_new_item = add_trait_assoc_items_to_impl(
             &ctx.sema,
+            ctx.config,
             &missing_items,
             trait_,
             &new_impl_def,
