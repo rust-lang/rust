@@ -142,6 +142,10 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_atomic, Some(_))
             | (sym::target_has_atomic_equal_alignment, Some(_))
             | (sym::target_has_atomic_load_store, Some(_))
+            | (sym::target_has_reliable_f16, None | Some(_))
+            | (sym::target_has_reliable_f16_math, None | Some(_))
+            | (sym::target_has_reliable_f128, None | Some(_))
+            | (sym::target_has_reliable_f128_math, None | Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
             (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),

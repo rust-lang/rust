@@ -205,6 +205,8 @@ declare_features! (
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows access to the emscripten_wasm_eh config, used by panic_unwind and unwind
     (internal, cfg_emscripten_wasm_eh, "1.86.0", None),
+    /// Allows checking whether or not the backend correctly supports unstable float types.
+    (internal, cfg_target_has_reliable_f16_f128, "CURRENT_RUSTC_VERSION", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
