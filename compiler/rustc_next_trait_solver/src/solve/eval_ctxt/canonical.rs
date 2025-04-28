@@ -81,12 +81,19 @@ where
     ///   the values inferred while solving the instantiated goal.
     /// - `external_constraints`: additional constraints which aren't expressible
     ///   using simple unification of inference variables.
+    ///
+    /// This takes the `shallow_certainty` which represents whether we're confident
+    /// that the final result of the current goal only depends on the nested goals.
+    ///
+    /// In case this is `Certainy::Maybe`, there may still be additional nested goals
+    /// or inference constraints required for this candidate to be hold. The candidate
+    /// always requires all already added constraints and nested goals.
     #[instrument(level = "trace", skip(self), ret)]
     pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
         &mut self,
-        certainty: Certainty,
+        shallow_certainty: Certainty,
     ) -> QueryResult<I> {
-        self.inspect.make_canonical_response(certainty);
+        self.inspect.make_canonical_response(shallow_certainty);
 
         let goals_certainty = self.try_evaluate_added_goals()?;
         assert_eq!(
@@ -103,26 +110,29 @@ where
             NoSolution
         })?;
 
-        // When normalizing, we've replaced the expected term with an unconstrained
-        // inference variable. This means that we dropped information which could
-        // have been important. We handle this by instead returning the nested goals
-        // to the caller, where they are then handled.
-        //
-        // As we return all ambiguous nested goals, we can ignore the certainty returned
-        // by `try_evaluate_added_goals()`.
-        let (certainty, normalization_nested_goals) = match self.current_goal_kind {
-            CurrentGoalKind::NormalizesTo => {
-                let goals = std::mem::take(&mut self.nested_goals);
-                if goals.is_empty() {
-                    assert!(matches!(goals_certainty, Certainty::Yes));
+        let (certainty, normalization_nested_goals) =
+            match (self.current_goal_kind, shallow_certainty) {
+                // When normalizing, we've replaced the expected term with an unconstrained
+                // inference variable. This means that we dropped information which could
+                // have been important. We handle this by instead returning the nested goals
+                // to the caller, where they are then handled. We only do so if we do not
+                // need to recompute the `NormalizesTo` goal afterwards to avoid repeatedly
+                // uplifting its nested goals. This is the case if the `shallow_certainty` is
+                // `Certainty::Yes`.
+                (CurrentGoalKind::NormalizesTo, Certainty::Yes) => {
+                    let goals = std::mem::take(&mut self.nested_goals);
+                    // As we return all ambiguous nested goals, we can ignore the certainty
+                    // returned by `self.try_evaluate_added_goals()`.
+                    if goals.is_empty() {
+                        assert!(matches!(goals_certainty, Certainty::Yes));
+                    }
+                    (Certainty::Yes, NestedNormalizationGoals(goals))
                 }
-                (certainty, NestedNormalizationGoals(goals))
-            }
-            CurrentGoalKind::Misc | CurrentGoalKind::CoinductiveTrait => {
-                let certainty = certainty.unify_with(goals_certainty);
-                (certainty, NestedNormalizationGoals::empty())
-            }
-        };
+                _ => {
+                    let certainty = shallow_certainty.unify_with(goals_certainty);
+                    (certainty, NestedNormalizationGoals::empty())
+                }
+            };
 
         if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
             // If we have overflow, it's probable that we're substituting a type
