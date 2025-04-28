@@ -1425,7 +1425,10 @@ pub fn _mm256_insert_epi32<const INDEX: i32>(a: __m256i, i: i32) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_load_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vmovap))]
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovap)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
@@ -1440,7 +1443,10 @@ pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_store_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vmovap))]
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovap)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_store_pd(mem_addr: *mut f64, a: __m256d) {
@@ -1455,7 +1461,10 @@ pub unsafe fn _mm256_store_pd(mem_addr: *mut f64, a: __m256d) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_load_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vmovaps))]
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
@@ -1470,7 +1479,10 @@ pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_store_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vmovaps))]
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_store_ps(mem_addr: *mut f32, a: __m256) {
@@ -1548,7 +1560,10 @@ pub unsafe fn _mm256_storeu_ps(mem_addr: *mut f32, a: __m256) {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_load_si256)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovdqa expected
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] // FIXME vmovdqa expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
     *mem_addr
@@ -1561,7 +1576,10 @@ pub unsafe fn _mm256_load_si256(mem_addr: *const __m256i) -> __m256i {
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_store_si256)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovdqa expected
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] // FIXME vmovdqa expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_store_si256(mem_addr: *mut __m256i, a: __m256i) {
     *mem_addr = a;

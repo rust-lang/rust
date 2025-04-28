@@ -34468,7 +34468,10 @@ pub unsafe fn _mm512_storeu_ps(mem_addr: *mut f32, a: __m512) {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm512_load_si512(mem_addr: *const __m512i) -> __m512i {
     ptr::read(mem_addr)
 }
@@ -34479,7 +34482,10 @@ pub unsafe fn _mm512_load_si512(mem_addr: *const __m512i) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm512_store_si512(mem_addr: *mut __m512i, a: __m512i) {
     ptr::write(mem_addr, a);
 }
@@ -34490,7 +34496,10 @@ pub unsafe fn _mm512_store_si512(mem_addr: *mut __m512i, a: __m512i) {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm512_load_epi32(mem_addr: *const i32) -> __m512i {
     ptr::read(mem_addr as *const __m512i)
 }
@@ -34501,7 +34510,10 @@ pub unsafe fn _mm512_load_epi32(mem_addr: *const i32) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm256_load_epi32(mem_addr: *const i32) -> __m256i {
     ptr::read(mem_addr as *const __m256i)
 }
@@ -34512,7 +34524,10 @@ pub unsafe fn _mm256_load_epi32(mem_addr: *const i32) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm_load_epi32(mem_addr: *const i32) -> __m128i {
     ptr::read(mem_addr as *const __m128i)
 }
@@ -34523,7 +34538,10 @@ pub unsafe fn _mm_load_epi32(mem_addr: *const i32) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm512_store_epi32(mem_addr: *mut i32, a: __m512i) {
     ptr::write(mem_addr as *mut __m512i, a);
 }
@@ -34534,7 +34552,10 @@ pub unsafe fn _mm512_store_epi32(mem_addr: *mut i32, a: __m512i) {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm256_store_epi32(mem_addr: *mut i32, a: __m256i) {
     ptr::write(mem_addr as *mut __m256i, a);
 }
@@ -34545,7 +34566,10 @@ pub unsafe fn _mm256_store_epi32(mem_addr: *mut i32, a: __m256i) {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa32
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa32
 pub unsafe fn _mm_store_epi32(mem_addr: *mut i32, a: __m128i) {
     ptr::write(mem_addr as *mut __m128i, a);
 }
@@ -34556,7 +34580,10 @@ pub unsafe fn _mm_store_epi32(mem_addr: *mut i32, a: __m128i) {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa64
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa64
 pub unsafe fn _mm512_load_epi64(mem_addr: *const i64) -> __m512i {
     ptr::read(mem_addr as *const __m512i)
 }
@@ -34567,7 +34594,10 @@ pub unsafe fn _mm512_load_epi64(mem_addr: *const i64) -> __m512i {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa64
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa64
 pub unsafe fn _mm256_load_epi64(mem_addr: *const i64) -> __m256i {
     ptr::read(mem_addr as *const __m256i)
 }
@@ -34578,7 +34608,10 @@ pub unsafe fn _mm256_load_epi64(mem_addr: *const i64) -> __m256i {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa64
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa64
 pub unsafe fn _mm_load_epi64(mem_addr: *const i64) -> __m128i {
     ptr::read(mem_addr as *const __m128i)
 }
@@ -34589,7 +34622,10 @@ pub unsafe fn _mm_load_epi64(mem_addr: *const i64) -> __m128i {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa64
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa64
 pub unsafe fn _mm512_store_epi64(mem_addr: *mut i64, a: __m512i) {
     ptr::write(mem_addr as *mut __m512i, a);
 }
@@ -34600,7 +34636,10 @@ pub unsafe fn _mm512_store_epi64(mem_addr: *mut i64, a: __m512i) {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa64
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa64
 pub unsafe fn _mm256_store_epi64(mem_addr: *mut i64, a: __m256i) {
     ptr::write(mem_addr as *mut __m256i, a);
 }
@@ -34611,7 +34650,10 @@ pub unsafe fn _mm256_store_epi64(mem_addr: *mut i64, a: __m256i) {
 #[inline]
 #[target_feature(enable = "avx512f,avx512vl")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovdqa64
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovdqa64
 pub unsafe fn _mm_store_epi64(mem_addr: *mut i64, a: __m128i) {
     ptr::write(mem_addr as *mut __m128i, a);
 }
@@ -34622,7 +34664,10 @@ pub unsafe fn _mm_store_epi64(mem_addr: *mut i64, a: __m128i) {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))]
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)]
 pub unsafe fn _mm512_load_ps(mem_addr: *const f32) -> __m512 {
     ptr::read(mem_addr as *const __m512)
 }
@@ -34633,7 +34678,10 @@ pub unsafe fn _mm512_load_ps(mem_addr: *const f32) -> __m512 {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))]
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)]
 pub unsafe fn _mm512_store_ps(mem_addr: *mut f32, a: __m512) {
     ptr::write(mem_addr as *mut __m512, a);
 }
@@ -34644,7 +34692,10 @@ pub unsafe fn _mm512_store_ps(mem_addr: *mut f32, a: __m512) {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovapd
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovapd
 pub unsafe fn _mm512_load_pd(mem_addr: *const f64) -> __m512d {
     ptr::read(mem_addr as *const __m512d)
 }
@@ -34655,7 +34706,10 @@ pub unsafe fn _mm512_load_pd(mem_addr: *const f64) -> __m512d {
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[unstable(feature = "stdarch_x86_avx512", issue = "111137")]
-#[cfg_attr(test, assert_instr(vmovaps))] //should be vmovapd
+#[cfg_attr(
+    all(test, not(all(target_arch = "x86", target_env = "msvc"))),
+    assert_instr(vmovaps)
+)] //should be vmovapd
 pub unsafe fn _mm512_store_pd(mem_addr: *mut f64, a: __m512d) {
     ptr::write(mem_addr as *mut __m512d, a);
 }
