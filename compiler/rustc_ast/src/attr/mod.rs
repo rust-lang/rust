@@ -206,8 +206,8 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn style(&self) -> AttrStyle {
-        self.style
+    fn opt_style(&self) -> Option<AttrStyle> {
+        Some(self.style)
     }
 }
 
@@ -806,7 +806,14 @@ pub trait AttributeExt: Debug {
     /// * `#[doc(...)]` returns `None`.
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)>;
 
-    fn style(&self) -> AttrStyle;
+    fn style(&self) -> AttrStyle {
+        match self.opt_style() {
+            Some(style) => style,
+            None => panic!("AttributeExt::style: `{self:?}` has no style"),
+        }
+    }
+
+    fn opt_style(&self) -> Option<AttrStyle>;
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding

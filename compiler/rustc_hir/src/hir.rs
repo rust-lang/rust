@@ -1245,11 +1245,11 @@ impl AttributeExt for Attribute {
     }
 
     #[inline]
-    fn style(&self) -> AttrStyle {
+    fn opt_style(&self) -> Option<AttrStyle> {
         match &self {
-            Attribute::Unparsed(u) => u.style,
-            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
-            _ => panic!(),
+            Attribute::Unparsed(u) => Some(u.style),
+            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => Some(*style),
+            _ => None,
         }
     }
 }
@@ -1344,6 +1344,11 @@ impl Attribute {
     #[inline]
     pub fn style(&self) -> AttrStyle {
         AttributeExt::style(self)
+    }
+
+    #[inline]
+    pub fn opt_style(&self) -> Option<AttrStyle> {
+        AttributeExt::opt_style(self)
     }
 }
 
