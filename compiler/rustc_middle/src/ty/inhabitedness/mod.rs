@@ -127,7 +127,7 @@ impl<'tcx> Ty<'tcx> {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,
-            Param(_) | Alias(ty::Projection | ty::Weak, _) => InhabitedPredicate::GenericType(self),
+            Param(_) | Alias(ty::Projection | ty::Free, _) => InhabitedPredicate::GenericType(self),
             Alias(ty::Opaque, alias_ty) => {
                 match alias_ty.def_id.as_local() {
                     // Foreign opaque is considered inhabited.

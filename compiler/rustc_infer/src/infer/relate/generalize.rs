@@ -113,7 +113,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         }]);
                     }
                     // The old solver only accepts projection predicates for associated types.
-                    ty::Alias(ty::Inherent | ty::Weak | ty::Opaque, _) => {
+                    ty::Alias(ty::Inherent | ty::Free | ty::Opaque, _) => {
                         return Err(TypeError::CyclicTy(source_ty));
                     }
                     _ => bug!("generalized `{source_ty:?} to infer, not an alias"),

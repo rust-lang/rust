@@ -87,59 +87,80 @@ printDF() {
 
 removeUnusedFilesAndDirs() {
     local to_remove=(
-        "/usr/local/aws-sam-cli"
-        "/usr/local/doc/cmake"
-        "/usr/local/julia"*
-        "/usr/local/lib/android"
-        "/usr/local/share/chromedriver-"*
-        "/usr/local/share/chromium"
-        "/usr/local/share/cmake-"*
-        "/usr/local/share/edge_driver"
-        "/usr/local/share/gecko_driver"
-        "/usr/local/share/icons"
-        "/usr/local/share/vim"
-        "/usr/local/share/emacs"
-        "/usr/local/share/powershell"
-        "/usr/local/share/vcpkg"
-        "/usr/share/apache-maven-"*
-        "/usr/share/gradle-"*
         "/usr/share/java"
-        "/usr/share/kotlinc"
-        "/usr/share/miniconda"
-        "/usr/share/php"
-        "/usr/share/ri"
-        "/usr/share/swift"
-
-        # binaries
-        "/usr/local/bin/azcopy"
-        "/usr/local/bin/bicep"
-        "/usr/local/bin/ccmake"
-        "/usr/local/bin/cmake-"*
-        "/usr/local/bin/cmake"
-        "/usr/local/bin/cpack"
-        "/usr/local/bin/ctest"
-        "/usr/local/bin/helm"
-        "/usr/local/bin/kind"
-        "/usr/local/bin/kustomize"
-        "/usr/local/bin/minikube"
-        "/usr/local/bin/packer"
-        "/usr/local/bin/phpunit"
-        "/usr/local/bin/pulumi-"*
-        "/usr/local/bin/pulumi"
-        "/usr/local/bin/stack"
-
-        # Haskell runtime
-        "/usr/local/.ghcup"
-
-        # Azure
-        "/opt/az"
-        "/usr/share/az_"*
     )
 
-    if [ -n "${AGENT_TOOLSDIRECTORY:-}" ]; then
-        # Environment variable set by GitHub Actions
+    if isGitHubRunner; then
         to_remove+=(
-            "${AGENT_TOOLSDIRECTORY}"
+            "/usr/local/aws-sam-cli"
+            "/usr/local/doc/cmake"
+            "/usr/local/julia"*
+            "/usr/local/lib/android"
+            "/usr/local/share/chromedriver-"*
+            "/usr/local/share/chromium"
+            "/usr/local/share/cmake-"*
+            "/usr/local/share/edge_driver"
+            "/usr/local/share/emacs"
+            "/usr/local/share/gecko_driver"
+            "/usr/local/share/icons"
+            "/usr/local/share/powershell"
+            "/usr/local/share/vcpkg"
+            "/usr/local/share/vim"
+            "/usr/share/apache-maven-"*
+            "/usr/share/gradle-"*
+            "/usr/share/kotlinc"
+            "/usr/share/miniconda"
+            "/usr/share/php"
+            "/usr/share/ri"
+            "/usr/share/swift"
+
+            # binaries
+            "/usr/local/bin/azcopy"
+            "/usr/local/bin/bicep"
+            "/usr/local/bin/ccmake"
+            "/usr/local/bin/cmake-"*
+            "/usr/local/bin/cmake"
+            "/usr/local/bin/cpack"
+            "/usr/local/bin/ctest"
+            "/usr/local/bin/helm"
+            "/usr/local/bin/kind"
+            "/usr/local/bin/kustomize"
+            "/usr/local/bin/minikube"
+            "/usr/local/bin/packer"
+            "/usr/local/bin/phpunit"
+            "/usr/local/bin/pulumi-"*
+            "/usr/local/bin/pulumi"
+            "/usr/local/bin/stack"
+
+            # Haskell runtime
+            "/usr/local/.ghcup"
+
+            # Azure
+            "/opt/az"
+            "/usr/share/az_"*
+        )
+
+        if [ -n "${AGENT_TOOLSDIRECTORY:-}" ]; then
+            # Environment variable set by GitHub Actions
+            to_remove+=(
+                "${AGENT_TOOLSDIRECTORY}"
+            )
+        else
+            echo "::warning::AGENT_TOOLSDIRECTORY is not set. Skipping removal."
+        fi
+    else
+        # Remove folders and files present in AWS CodeBuild
+        to_remove+=(
+            # binaries
+            "/usr/local/bin/ecs-cli"
+            "/usr/local/bin/eksctl"
+            "/usr/local/bin/kubectl"
+
+            "${HOME}/.gradle"
+            "${HOME}/.dotnet"
+            "${HOME}/.goenv"
+            "${HOME}/.phpenv"
+
         )
     fi
 
@@ -194,6 +215,10 @@ cleanPackages() {
                 'powershell'
             )
         fi
+    else
+        packages+=(
+            'google-chrome-stable'
+        )
     fi
 
     sudo apt-get -qq remove -y --fix-missing "${packages[@]}"

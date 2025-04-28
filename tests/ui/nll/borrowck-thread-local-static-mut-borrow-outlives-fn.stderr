@@ -1,4 +1,4 @@
-warning: creating a mutable reference to mutable static is discouraged
+warning: creating a mutable reference to mutable static
   --> $DIR/borrowck-thread-local-static-mut-borrow-outlives-fn.rs:17:26
    |
 LL |         S1 { a: unsafe { &mut X1 } }

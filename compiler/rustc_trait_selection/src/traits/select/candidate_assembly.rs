@@ -725,7 +725,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 ty::Param(..)
-                | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
+                | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
                 | ty::Placeholder(..)
                 | ty::Bound(..) => {
                     // In these cases, we don't know what the actual

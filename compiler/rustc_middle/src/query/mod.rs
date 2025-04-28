@@ -289,7 +289,7 @@ rustc_queries! {
 
     /// Returns whether the type alias given by `DefId` is lazy.
     ///
-    /// I.e., if the type alias expands / ought to expand to a [weak] [alias type]
+    /// I.e., if the type alias expands / ought to expand to a [free] [alias type]
     /// instead of the underyling aliased type.
     ///
     /// Relevant for features `lazy_type_alias` and `type_alias_impl_trait`.
@@ -298,7 +298,7 @@ rustc_queries! {
     ///
     /// This query *may* panic if the given definition is not a type alias.
     ///
-    /// [weak]: rustc_middle::ty::Weak
+    /// [free]: rustc_middle::ty::Free
     /// [alias type]: rustc_middle::ty::AliasTy
     query type_alias_is_lazy(key: DefId) -> bool {
         desc { |tcx|
@@ -2296,7 +2296,7 @@ rustc_queries! {
     /// Do not call this query directly: Invoke `normalize` instead.
     ///
     /// </div>
-    query normalize_canonicalized_weak_ty(
+    query normalize_canonicalized_free_alias(
         goal: CanonicalAliasGoal<'tcx>
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,

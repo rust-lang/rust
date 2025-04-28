@@ -491,7 +491,7 @@ impl<'tcx> Ty<'tcx> {
             (kind, tcx.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Weak, DefKind::TyAlias)
+                | (ty::Free, DefKind::TyAlias)
         );
         Ty::new(tcx, Alias(kind, alias_ty))
     }

@@ -1140,7 +1140,7 @@ where
             ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
-            | ty::Alias(ty::Projection | ty::Weak | ty::Inherent, ..)
+            | ty::Alias(ty::Projection | ty::Free | ty::Inherent, ..)
             | ty::Placeholder(..) => Some(Err(NoSolution)),
 
             ty::Infer(_) | ty::Bound(_, _) => panic!("unexpected type `{self_ty:?}`"),

@@ -707,7 +707,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::Projection | ty::Inherent => {
                     format!("the associated type `{p}`")
                 }
-                ty::Weak => format!("the type alias `{p}`"),
+                ty::Free => format!("the type alias `{p}`"),
                 ty::Opaque => format!("the opaque type `{p}`"),
             },
         };

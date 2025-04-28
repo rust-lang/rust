@@ -892,7 +892,7 @@ impl<'tcx> TyCtxt<'tcx> {
             || self.extern_crate(key).is_some_and(|e| e.is_direct())
     }
 
-    /// Expand any [weak alias types][weak] contained within the given `value`.
+    /// Expand any [free alias types][free] contained within the given `value`.
     ///
     /// This should be used over other normalization routines in situations where
     /// it's important not to normalize other alias types and where the predicates
@@ -907,19 +907,19 @@ impl<'tcx> TyCtxt<'tcx> {
     /// <div class="warning">
     /// This delays a bug on overflow! Therefore you need to be certain that the
     /// contained types get fully normalized at a later stage. Note that even on
-    /// overflow all well-behaved weak alias types get expanded correctly, so the
+    /// overflow all well-behaved free alias types get expanded correctly, so the
     /// result is still useful.
     /// </div>
     ///
-    /// [weak]: ty::Weak
-    pub fn expand_weak_alias_tys<T: TypeFoldable<TyCtxt<'tcx>>>(self, value: T) -> T {
-        value.fold_with(&mut WeakAliasTypeExpander { tcx: self, depth: 0 })
+    /// [free]: ty::Free
+    pub fn expand_free_alias_tys<T: TypeFoldable<TyCtxt<'tcx>>>(self, value: T) -> T {
+        value.fold_with(&mut FreeAliasTypeExpander { tcx: self, depth: 0 })
     }
 
-    /// Peel off all [weak alias types] in this type until there are none left.
+    /// Peel off all [free alias types] in this type until there are none left.
     ///
-    /// This only expands weak alias types in “head” / outermost positions. It can
-    /// be used over [expand_weak_alias_tys] as an optimization in situations where
+    /// This only expands free alias types in “head” / outermost positions. It can
+    /// be used over [expand_free_alias_tys] as an optimization in situations where
     /// one only really cares about the *kind* of the final aliased type but not
     /// the types the other constituent types alias.
     ///
@@ -928,17 +928,17 @@ impl<'tcx> TyCtxt<'tcx> {
     /// type gets fully normalized at a later stage.
     /// </div>
     ///
-    /// [weak]: ty::Weak
-    /// [expand_weak_alias_tys]: Self::expand_weak_alias_tys
-    pub fn peel_off_weak_alias_tys(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        let ty::Alias(ty::Weak, _) = ty.kind() else { return ty };
+    /// [free]: ty::Free
+    /// [expand_free_alias_tys]: Self::expand_free_alias_tys
+    pub fn peel_off_free_alias_tys(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        let ty::Alias(ty::Free, _) = ty.kind() else { return ty };
 
         let limit = self.recursion_limit();
         let mut depth = 0;
 
-        while let ty::Alias(ty::Weak, alias) = ty.kind() {
+        while let ty::Alias(ty::Free, alias) = ty.kind() {
             if !limit.value_within_limit(depth) {
-                let guar = self.dcx().delayed_bug("overflow expanding weak alias type");
+                let guar = self.dcx().delayed_bug("overflow expanding free alias type");
                 return Ty::new_error(self, guar);
             }
 
@@ -966,7 +966,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::OpaqueTy => Some(self.variances_of(def_id)),
             ty::AliasTermKind::InherentTy
-            | ty::AliasTermKind::WeakTy
+            | ty::AliasTermKind::FreeTy
             | ty::AliasTermKind::UnevaluatedConst
             | ty::AliasTermKind::ProjectionConst => None,
         }
@@ -1059,25 +1059,25 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for OpaqueTypeExpander<'tcx> {
     }
 }
 
-struct WeakAliasTypeExpander<'tcx> {
+struct FreeAliasTypeExpander<'tcx> {
     tcx: TyCtxt<'tcx>,
     depth: usize,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_FREE_ALIAS) {
             return ty;
         }
-        let ty::Alias(ty::Weak, alias) = ty.kind() else {
+        let ty::Alias(ty::Free, alias) = ty.kind() else {
             return ty.super_fold_with(self);
         };
         if !self.tcx.recursion_limit().value_within_limit(self.depth) {
-            let guar = self.tcx.dcx().delayed_bug("overflow expanding weak alias type");
+            let guar = self.tcx.dcx().delayed_bug("overflow expanding free alias type");
             return Ty::new_error(self.tcx, guar);
         }
 
@@ -1088,7 +1088,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for WeakAliasTypeExpander<'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_WEAK) {
+        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_FREE_ALIAS) {
             return ct;
         }
         ct.super_fold_with(self)
