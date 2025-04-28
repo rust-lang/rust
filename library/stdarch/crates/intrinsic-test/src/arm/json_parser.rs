@@ -1,6 +1,6 @@
-use super::constraint::Constraint;
 use super::intrinsic::ArmIntrinsicType;
 use crate::common::argument::{Argument, ArgumentList};
+use crate::common::constraint::Constraint;
 use crate::common::intrinsic::Intrinsic;
 use crate::common::intrinsic_helpers::{IntrinsicType, IntrinsicTypeDefinition};
 use serde::Deserialize;
@@ -55,7 +55,7 @@ struct JsonIntrinsic {
 pub fn get_neon_intrinsics(
     filename: &Path,
     target: &String,
-) -> Result<Vec<Intrinsic<ArmIntrinsicType, Constraint>>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Intrinsic<ArmIntrinsicType>>, Box<dyn std::error::Error>> {
     let file = std::fs::File::open(filename)?;
     let reader = std::io::BufReader::new(file);
     let json: Vec<JsonIntrinsic> = serde_json::from_reader(reader).expect("Couldn't parse JSON");
@@ -76,7 +76,7 @@ pub fn get_neon_intrinsics(
 fn json_to_intrinsic(
     mut intr: JsonIntrinsic,
     target: &String,
-) -> Result<Intrinsic<ArmIntrinsicType, Constraint>, Box<dyn std::error::Error>> {
+) -> Result<Intrinsic<ArmIntrinsicType>, Box<dyn std::error::Error>> {
     let name = intr.name.replace(['[', ']'], "");
 
     let results = ArmIntrinsicType::from_c(&intr.return_type.value, target)?;
@@ -86,11 +86,13 @@ fn json_to_intrinsic(
         .into_iter()
         .enumerate()
         .map(|(i, arg)| {
-            let arg_name = Argument::<ArmIntrinsicType, Constraint>::type_and_name_from_c(&arg).1;
+            let arg_name = Argument::<ArmIntrinsicType>::type_and_name_from_c(&arg).1;
             let metadata = intr.args_prep.as_mut();
             let metadata = metadata.and_then(|a| a.remove(arg_name));
-            let mut arg =
-                Argument::<ArmIntrinsicType, Constraint>::from_c(i, &arg, target, metadata);
+            let arg_prep: Option<ArgPrep> = metadata.and_then(|a| a.try_into().ok());
+            let constraint: Option<Constraint> = arg_prep.and_then(|a| a.try_into().ok());
+
+            let mut arg = Argument::<ArmIntrinsicType>::from_c(i, &arg, target, constraint);
 
             // The JSON doesn't list immediates as const
             let IntrinsicType {
@@ -103,7 +105,7 @@ fn json_to_intrinsic(
         })
         .collect();
 
-    let arguments = ArgumentList::<ArmIntrinsicType, Constraint> { args };
+    let arguments = ArgumentList::<ArmIntrinsicType> { args };
 
     Ok(Intrinsic {
         name,
@@ -111,4 +113,25 @@ fn json_to_intrinsic(
         results: *results,
         arch_tags: intr.architectures,
     })
+}
+
+/// ARM-specific
+impl TryFrom<ArgPrep> for Constraint {
+    type Error = ();
+
+    fn try_from(prep: ArgPrep) -> Result<Self, Self::Error> {
+        let parsed_ints = match prep {
+            ArgPrep::Immediate { min, max } => Ok((min, max)),
+            _ => Err(()),
+        };
+        if let Ok((min, max)) = parsed_ints {
+            if min == max {
+                Ok(Constraint::Equal(min))
+            } else {
+                Ok(Constraint::Range(min..max + 1))
+            }
+        } else {
+            Err(())
+        }
+    }
 }

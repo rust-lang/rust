@@ -6,6 +6,7 @@ pub mod argument;
 pub mod cli;
 pub mod compare;
 pub mod compile_c;
+pub mod constraint;
 pub mod gen_c;
 pub mod gen_rust;
 pub mod indentation;

@@ -1,4 +1,3 @@
-use super::constraint::Constraint;
 use crate::base_intrinsictype_trait_def_macro;
 use crate::common::argument::ArgumentList;
 use crate::common::cli::Language;
@@ -10,8 +9,8 @@ use crate::common::intrinsic_helpers::{
 
 base_intrinsictype_trait_def_macro! {ArmIntrinsicType}
 
-impl IntrinsicDefinition<ArmIntrinsicType, Constraint> for Intrinsic<ArmIntrinsicType, Constraint> {
-    fn arguments(&self) -> ArgumentList<ArmIntrinsicType, Constraint> {
+impl IntrinsicDefinition<ArmIntrinsicType> for Intrinsic<ArmIntrinsicType> {
+    fn arguments(&self) -> ArgumentList<ArmIntrinsicType> {
         self.arguments.clone()
     }
 

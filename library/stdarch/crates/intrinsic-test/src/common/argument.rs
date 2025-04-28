@@ -1,10 +1,11 @@
 use crate::common::cli::Language;
+use crate::common::constraint::Constraint;
 use crate::common::indentation::Indentation;
 use crate::common::intrinsic_helpers::IntrinsicTypeDefinition;
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
-pub struct Argument<T: IntrinsicTypeDefinition, M: MetadataDefinition> {
+pub struct Argument<T: IntrinsicTypeDefinition> {
     /// The argument's index in the intrinsic function call.
     pub pos: usize,
     /// The argument name.
@@ -12,17 +13,12 @@ pub struct Argument<T: IntrinsicTypeDefinition, M: MetadataDefinition> {
     /// The type of the argument.
     pub ty: T,
     /// Any constraints that are on this argument
-    pub metadata: Vec<M>,
+    pub constraint: Option<Constraint>,
 }
 
-pub trait MetadataDefinition {
-    fn from_metadata(metadata: Option<Value>) -> Vec<Box<Self>>;
-}
-
-impl<T, M> Argument<T, M>
+impl<T> Argument<T>
 where
     T: IntrinsicTypeDefinition,
-    M: MetadataDefinition,
 {
     pub fn to_c_type(&self) -> String {
         self.ty.c_type()
@@ -37,7 +33,7 @@ where
     }
 
     pub fn has_constraint(&self) -> bool {
-        !self.metadata.is_empty()
+        !self.constraint.is_some()
     }
 
     pub fn type_and_name_from_c(arg: &str) -> (&str, &str) {
@@ -70,20 +66,18 @@ where
         pos: usize,
         arg: &str,
         target: &String,
-        metadata: Option<Value>,
-    ) -> Argument<T, M> {
+        constraint: Option<Constraint>,
+    ) -> Argument<T> {
         let (ty, var_name) = Self::type_and_name_from_c(arg);
 
         let ty =
             T::from_c(ty, target).unwrap_or_else(|_| panic!("Failed to parse argument '{arg}'"));
 
-        let metadata: Vec<M> = M::from_metadata(metadata).into_iter().map(|b| *b).collect();
-
         Argument {
             pos,
             name: String::from(var_name),
             ty: *ty,
-            metadata,
+            constraint,
         }
     }
 
@@ -93,14 +87,13 @@ where
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ArgumentList<T: IntrinsicTypeDefinition, M: MetadataDefinition> {
-    pub args: Vec<Argument<T, M>>,
+pub struct ArgumentList<T: IntrinsicTypeDefinition> {
+    pub args: Vec<Argument<T>>,
 }
 
-impl<T, M> ArgumentList<T, M>
+impl<T> ArgumentList<T>
 where
     T: IntrinsicTypeDefinition,
-    M: MetadataDefinition,
 {
     /// Converts the argument list into the call parameters for a C function call.
     /// e.g. this would generate something like `a, &b, c`
@@ -217,7 +210,7 @@ where
             .collect()
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, Argument<T, M>> {
+    pub fn iter(&self) -> std::slice::Iter<'_, Argument<T>> {
         self.args.iter()
     }
 }

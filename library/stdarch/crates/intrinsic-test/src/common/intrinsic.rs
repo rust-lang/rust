@@ -2,16 +2,14 @@ use crate::common::argument::ArgumentList;
 use crate::common::indentation::Indentation;
 use crate::common::intrinsic_helpers::IntrinsicTypeDefinition;
 
-use super::argument::MetadataDefinition;
-
 /// An intrinsic
 #[derive(Debug, PartialEq, Clone)]
-pub struct Intrinsic<T: IntrinsicTypeDefinition, M: MetadataDefinition> {
+pub struct Intrinsic<T: IntrinsicTypeDefinition> {
     /// The function name of this intrinsic.
     pub name: String,
 
     /// Any arguments for this intrinsic.
-    pub arguments: ArgumentList<T, M>,
+    pub arguments: ArgumentList<T>,
 
     /// The return type of this intrinsic.
     pub results: T,
@@ -20,12 +18,11 @@ pub struct Intrinsic<T: IntrinsicTypeDefinition, M: MetadataDefinition> {
     pub arch_tags: Vec<String>,
 }
 
-pub trait IntrinsicDefinition<T, M>
+pub trait IntrinsicDefinition<T>
 where
     T: IntrinsicTypeDefinition,
-    M: MetadataDefinition,
 {
-    fn arguments(&self) -> ArgumentList<T, M>;
+    fn arguments(&self) -> ArgumentList<T>;
 
     fn results(&self) -> T;
 
