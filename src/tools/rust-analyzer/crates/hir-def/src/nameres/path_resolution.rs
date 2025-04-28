@@ -18,14 +18,16 @@ use hir_expand::{
 };
 use span::Edition;
 use stdx::TupleExt;
-use triomphe::Arc;
 
 use crate::{
     AdtId, LocalModuleId, ModuleDefId,
     db::DefDatabase,
     item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
     item_tree::FieldsShape,
-    nameres::{BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, sub_namespace_match},
+    nameres::{
+        BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, crate_def_map,
+        sub_namespace_match,
+    },
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
 };
@@ -175,7 +177,6 @@ impl DefMap {
             return result;
         }
 
-        let mut arc;
         let mut current_map = self;
 
         let mut merge = |new: ResolvePathResult| {
@@ -197,8 +198,7 @@ impl DefMap {
                 Some(block) if original_module == Self::ROOT => {
                     // Block modules "inherit" names from its parent module.
                     original_module = block.parent.local_id;
-                    arc = block.parent.def_map(db, current_map.krate);
-                    current_map = &arc;
+                    current_map = block.parent.def_map(db, current_map.krate);
                 }
                 // Proper (non-block) modules, including those in block `DefMap`s, don't.
                 _ => {
@@ -206,8 +206,7 @@ impl DefMap {
                         // A module inside a block. Do not resolve items declared in upper blocks, but we do need to get
                         // the prelude items (which are not inserted into blocks because they can be overridden there).
                         original_module = Self::ROOT;
-                        arc = db.crate_def_map(self.krate);
-                        current_map = &arc;
+                        current_map = crate_def_map(db, self.krate);
 
                         let new = current_map.resolve_path_fp_in_all_preludes(
                             local_def_map,
@@ -255,7 +254,7 @@ impl DefMap {
                     cov_mark::hit!(macro_dollar_crate_self);
                     PerNs::types(self.crate_root().into(), Visibility::Public, None)
                 } else {
-                    let def_map = db.crate_def_map(krate);
+                    let def_map = crate_def_map(db, krate);
                     let module = def_map.module_id(Self::ROOT);
                     cov_mark::hit!(macro_dollar_crate_other);
                     PerNs::types(module.into(), Visibility::Public, None)
@@ -314,7 +313,7 @@ impl DefMap {
                 // Adjust `local_id` to `self`, i.e. the nearest non-block module.
                 if def_map.module_id(local_id).is_block_module() {
                     (ext, local_id) = adjust_to_nearest_non_block_module(db, def_map, local_id);
-                    def_map = &ext;
+                    def_map = ext;
                 }
 
                 // Go up the module tree but skip block modules as `super` always refers to the
@@ -327,7 +326,7 @@ impl DefMap {
                         if def_map.module_id(local_id).is_block_module() {
                             (ext, local_id) =
                                 adjust_to_nearest_non_block_module(db, def_map, local_id);
-                            def_map = &ext;
+                            def_map = ext;
                         }
                     } else {
                         stdx::always!(def_map.block.is_none());
@@ -772,7 +771,7 @@ impl DefMap {
             } else {
                 // Extend lifetime
                 keep = prelude.def_map(db);
-                &keep
+                keep
             };
             def_map[prelude.local_id].scope.get(name)
         } else {
@@ -782,25 +781,23 @@ impl DefMap {
 }
 
 /// Given a block module, returns its nearest non-block module and the `DefMap` it belongs to.
-fn adjust_to_nearest_non_block_module(
-    db: &dyn DefDatabase,
-    def_map: &DefMap,
+fn adjust_to_nearest_non_block_module<'db>(
+    db: &'db dyn DefDatabase,
+    def_map: &'db DefMap,
     mut local_id: LocalModuleId,
-) -> (Arc<DefMap>, LocalModuleId) {
+) -> (&'db DefMap, LocalModuleId) {
     // INVARIANT: `local_id` in `def_map` must be a block module.
     stdx::always!(def_map.module_id(local_id).is_block_module());
 
-    let mut ext;
     // This needs to be a local variable due to our mighty lifetime.
     let mut def_map = def_map;
     loop {
         let BlockInfo { parent, .. } = def_map.block.expect("block module without parent module");
 
-        ext = parent.def_map(db, def_map.krate);
-        def_map = &ext;
+        def_map = parent.def_map(db, def_map.krate);
         local_id = parent.local_id;
         if !parent.is_block_module() {
-            return (ext, local_id);
+            return (def_map, local_id);
         }
     }
 }

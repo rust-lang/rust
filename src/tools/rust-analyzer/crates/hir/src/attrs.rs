@@ -160,7 +160,7 @@ fn resolve_doc_path_on_(
 
 fn resolve_assoc_or_field(
     db: &dyn HirDatabase,
-    resolver: Resolver,
+    resolver: Resolver<'_>,
     path: ModPath,
     name: Name,
     ns: Option<Namespace>,
@@ -248,7 +248,7 @@ fn resolve_assoc_item(
 
 fn resolve_impl_trait_item(
     db: &dyn HirDatabase,
-    resolver: Resolver,
+    resolver: Resolver<'_>,
     ty: &Type,
     name: &Name,
     ns: Option<Namespace>,

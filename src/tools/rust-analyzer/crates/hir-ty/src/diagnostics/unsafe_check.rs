@@ -131,28 +131,28 @@ pub fn unsafe_operations(
     visitor.walk_expr(current);
 }
 
-struct UnsafeVisitor<'a> {
-    db: &'a dyn HirDatabase,
-    infer: &'a InferenceResult,
-    body: &'a Body,
-    resolver: Resolver,
+struct UnsafeVisitor<'db> {
+    db: &'db dyn HirDatabase,
+    infer: &'db InferenceResult,
+    body: &'db Body,
+    resolver: Resolver<'db>,
     def: DefWithBodyId,
     inside_unsafe_block: InsideUnsafeBlock,
     inside_assignment: bool,
     inside_union_destructure: bool,
-    callback: &'a mut dyn FnMut(UnsafeDiagnostic),
+    callback: &'db mut dyn FnMut(UnsafeDiagnostic),
     def_target_features: TargetFeatures,
     // FIXME: This needs to be the edition of the span of each call.
     edition: Edition,
 }
 
-impl<'a> UnsafeVisitor<'a> {
+impl<'db> UnsafeVisitor<'db> {
     fn new(
-        db: &'a dyn HirDatabase,
-        infer: &'a InferenceResult,
-        body: &'a Body,
+        db: &'db dyn HirDatabase,
+        infer: &'db InferenceResult,
+        body: &'db Body,
         def: DefWithBodyId,
-        unsafe_expr_cb: &'a mut dyn FnMut(UnsafeDiagnostic),
+        unsafe_expr_cb: &'db mut dyn FnMut(UnsafeDiagnostic),
     ) -> Self {
         let resolver = def.resolver(db);
         let def_target_features = match def {

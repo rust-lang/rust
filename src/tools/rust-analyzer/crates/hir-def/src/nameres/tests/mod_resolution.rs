@@ -839,6 +839,7 @@ mod foo;
 #[path = "./foo.rs"]
 mod foo;
 "#,
+        |_| (),
     );
 
     compute_crate_def_map(
@@ -852,6 +853,7 @@ mod bar;
 #[path = "./foo.rs"]
 mod foo;
 "#,
+        |_| (),
     );
 }
 
