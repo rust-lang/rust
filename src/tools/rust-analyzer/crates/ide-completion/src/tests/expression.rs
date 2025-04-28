@@ -2110,3 +2110,19 @@ fn foo() {
         "#]],
     );
 }
+
+#[test]
+fn escaped_label() {
+    check(
+        r#"
+fn main() {
+    'r#break: {
+        break '$0;
+    }
+}
+    "#,
+        expect![[r#"
+            lb 'r#break
+        "#]],
+    );
+}
