@@ -236,11 +236,13 @@ fn explain_lint_level_source(
     match src {
         LintLevelSource::Default => {
             let level_str = level.as_str();
-            err.note_once(format!("`#[{level_str}({name})]` on by default"));
-            if let Some(group_name) = lint_group_name(lint, sess) {
-                err.note_once(format!(
-                    "`#[{level_str}({name})]` implied by `#[{level_str}({group_name})]`"
-                ));
+            match lint_group_name(lint, sess) {
+                Some(group_name) => {
+                    err.note_once(format!("`#[{level_str}({name})]` (part of `#[{level_str}({group_name})]`) on by default"));
+                }
+                None => {
+                    err.note_once(format!("`#[{level_str}({name})]` on by default"));
+                }
             }
         }
         LintLevelSource::CommandLine(lint_flag_val, orig_level) => {
