@@ -673,12 +673,11 @@ impl DefMap {
     }
 
     fn resolve_in_macro_use_prelude(&self, name: &Name) -> PerNs {
-        self.macro_use_prelude.get(name).map_or(PerNs::none(), |&(it, _extern_crate)| {
+        self.macro_use_prelude.get(name).map_or(PerNs::none(), |&(it, extern_crate)| {
             PerNs::macros(
                 it,
                 Visibility::Public,
-                // FIXME?
-                None, // extern_crate.map(ImportOrExternCrate::ExternCrate),
+                extern_crate.map(ImportOrExternCrate::ExternCrate),
             )
         })
     }
