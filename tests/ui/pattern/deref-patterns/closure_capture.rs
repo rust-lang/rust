@@ -2,8 +2,12 @@
 #![feature(deref_patterns)]
 #![allow(incomplete_features)]
 
+use std::rc::Rc;
+
+struct NoCopy;
+
 fn main() {
-    let b = Box::new("aaa".to_string());
+    let b = Rc::new("aaa".to_string());
     let f = || {
         let deref!(ref s) = b else { unreachable!() };
         assert_eq!(s.len(), 3);
@@ -20,13 +24,13 @@ fn main() {
     assert_eq!(v, [1, 2, 3]);
     f();
 
-    let mut b = Box::new("aaa".to_string());
+    let mut b = "aaa".to_string();
     let mut f = || {
         let deref!(ref mut s) = b else { unreachable!() };
-        s.push_str("aa");
+        s.make_ascii_uppercase();
     };
     f();
-    assert_eq!(b.len(), 5);
+    assert_eq!(b, "AAA");
 
     let mut v = vec![1, 2, 3];
     let mut f = || {
@@ -45,4 +49,20 @@ fn main() {
     };
     f();
     assert_eq!(v, [1, 2, 4]);
+
+    let b = Box::new(NoCopy);
+    let f = || {
+        // this should move out of the box rather than borrow.
+        let deref!(x) = b else { unreachable!() };
+        drop::<NoCopy>(x);
+    };
+    f();
+
+    let b = Box::new((NoCopy,));
+    let f = || {
+        // this should move out of the box rather than borrow.
+        let (x,) = b else { unreachable!() };
+        drop::<NoCopy>(x);
+    };
+    f();
 }

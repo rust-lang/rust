@@ -3,6 +3,8 @@
 #![feature(deref_patterns)]
 #![allow(incomplete_features)]
 
+use std::rc::Rc;
+
 #[cfg(explicit)]
 fn simple_vec(vec: Vec<u32>) -> u32 {
     match vec {
@@ -53,29 +55,29 @@ fn nested_vec(vecvec: Vec<Vec<u32>>) -> u32 {
 
 #[cfg(explicit)]
 fn ref_mut(val: u32) -> u32 {
-    let mut b = Box::new(0u32);
+    let mut b = vec![0u32];
     match &mut b {
-        deref!(_x) if false => unreachable!(),
-        deref!(x) => {
+        deref!([_x]) if false => unreachable!(),
+        deref!([x]) => {
             *x = val;
         }
         _ => unreachable!(),
     }
-    let deref!(x) = &b else { unreachable!() };
+    let deref!([x]) = &b else { unreachable!() };
     *x
 }
 
 #[cfg(implicit)]
 fn ref_mut(val: u32) -> u32 {
-    let mut b = Box::new((0u32,));
+    let mut b = vec![0u32];
     match &mut b {
-        (_x,) if false => unreachable!(),
-        (x,) => {
+        [_x] if false => unreachable!(),
+        [x] => {
             *x = val;
         }
         _ => unreachable!(),
     }
-    let (x,) = &b else { unreachable!() };
+    let [x] = &b else { unreachable!() };
     *x
 }
 
@@ -83,7 +85,7 @@ fn ref_mut(val: u32) -> u32 {
 #[rustfmt::skip]
 fn or_and_guard(tuple: (u32, u32)) -> u32 {
     let mut sum = 0;
-    let b = Box::new(tuple);
+    let b = Rc::new(tuple);
     match b {
         deref!((x, _) | (_, x)) if { sum += x; false } => {},
         _ => {},
@@ -95,7 +97,7 @@ fn or_and_guard(tuple: (u32, u32)) -> u32 {
 #[rustfmt::skip]
 fn or_and_guard(tuple: (u32, u32)) -> u32 {
     let mut sum = 0;
-    let b = Box::new(tuple);
+    let b = Rc::new(tuple);
     match b {
         (x, _) | (_, x) if { sum += x; false } => {},
         _ => {},
