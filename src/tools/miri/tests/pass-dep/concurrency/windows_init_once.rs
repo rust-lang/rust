@@ -1,6 +1,6 @@
 //@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-fixed-schedule
 
 use std::ptr::null_mut;
 use std::thread;

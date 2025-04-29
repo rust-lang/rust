@@ -6,6 +6,8 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use either::Either;
+use rand::rngs::StdRng;
+use rand::seq::IteratorRandom;
 use rustc_abi::ExternAbi;
 use rustc_const_eval::CTRL_C_RECEIVED;
 use rustc_data_structures::fx::FxHashMap;
@@ -401,6 +403,8 @@ pub struct ThreadManager<'tcx> {
     thread_local_allocs: FxHashMap<(DefId, ThreadId), StrictPointer>,
     /// A flag that indicates that we should change the active thread.
     yield_active_thread: bool,
+    /// A flag that indicates that we should do round robin scheduling of threads else randomized scheduling is used.
+    fixed_scheduling: bool,
 }
 
 impl VisitProvenance for ThreadManager<'_> {
@@ -410,6 +414,7 @@ impl VisitProvenance for ThreadManager<'_> {
             thread_local_allocs,
             active_thread: _,
             yield_active_thread: _,
+            fixed_scheduling: _,
         } = self;
 
         for thread in threads {
@@ -421,8 +426,8 @@ impl VisitProvenance for ThreadManager<'_> {
     }
 }
 
-impl<'tcx> Default for ThreadManager<'tcx> {
-    fn default() -> Self {
+impl<'tcx> ThreadManager<'tcx> {
+    pub(crate) fn new(config: &MiriConfig) -> Self {
         let mut threads = IndexVec::new();
         // Create the main thread and add it to the list of threads.
         threads.push(Thread::new(Some("main"), None));
@@ -431,11 +436,10 @@ impl<'tcx> Default for ThreadManager<'tcx> {
             threads,
             thread_local_allocs: Default::default(),
             yield_active_thread: false,
+            fixed_scheduling: config.fixed_scheduling,
         }
     }
-}
 
-impl<'tcx> ThreadManager<'tcx> {
     pub(crate) fn init(
         ecx: &mut MiriInterpCx<'tcx>,
         on_main_stack_empty: StackEmptyCallback<'tcx>,
@@ -702,7 +706,11 @@ impl<'tcx> ThreadManager<'tcx> {
     /// used in stateless model checkers such as Loom: run the active thread as
     /// long as we can and switch only when we have to (the active thread was
     /// blocked, terminated, or has explicitly asked to be preempted).
-    fn schedule(&mut self, clock: &MonotonicClock) -> InterpResult<'tcx, SchedulingAction> {
+    fn schedule(
+        &mut self,
+        clock: &MonotonicClock,
+        rng: &mut StdRng,
+    ) -> InterpResult<'tcx, SchedulingAction> {
         // This thread and the program can keep going.
         if self.threads[self.active_thread].state.is_enabled() && !self.yield_active_thread {
             // The currently active thread is still enabled, just continue with it.
@@ -720,30 +728,33 @@ impl<'tcx> ThreadManager<'tcx> {
         }
         // No callbacks immediately scheduled, pick a regular thread to execute.
         // The active thread blocked or yielded. So we go search for another enabled thread.
-        // Crucially, we start searching at the current active thread ID, rather than at 0, since we
-        // want to avoid always scheduling threads 0 and 1 without ever making progress in thread 2.
-        //
-        // `skip(N)` means we start iterating at thread N, so we skip 1 more to start just *after*
-        // the active thread. Then after that we look at `take(N)`, i.e., the threads *before* the
-        // active thread.
-        let threads = self
+        // We build the list of threads by starting with the threads after the current one, followed by
+        // the threads before the current one and then the current thread itself (i.e., this iterator acts
+        // like `threads.rotate_left(self.active_thread.index() + 1)`. This ensures that if we pick the first
+        // eligible thread, we do regular round-robin scheduling, and all threads get a chance to take a step.
+        let mut threads_iter = self
             .threads
             .iter_enumerated()
             .skip(self.active_thread.index() + 1)
-            .chain(self.threads.iter_enumerated().take(self.active_thread.index()));
-        for (id, thread) in threads {
-            debug_assert_ne!(self.active_thread, id);
-            if thread.state.is_enabled() {
+            .chain(self.threads.iter_enumerated().take(self.active_thread.index() + 1))
+            .filter(|(_id, thread)| thread.state.is_enabled());
+        // Pick a new thread, and switch to it.
+        let new_thread =
+            if self.fixed_scheduling { threads_iter.next() } else { threads_iter.choose(rng) };
+
+        if let Some((id, _thread)) = new_thread {
+            if self.active_thread != id {
                 info!(
                     "---------- Now executing on thread `{}` (previous: `{}`) ----------------------------------------",
                     self.get_thread_display_name(id),
                     self.get_thread_display_name(self.active_thread)
                 );
                 self.active_thread = id;
-                break;
             }
         }
+        // This completes the `yield`, if any was requested.
         self.yield_active_thread = false;
+
         if self.threads[self.active_thread].state.is_enabled() {
             return interp_ok(SchedulingAction::ExecuteStep);
         }
@@ -1138,7 +1149,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         use rand::Rng as _;
 
         let this = self.eval_context_mut();
-        if this.machine.rng.get_mut().random_bool(this.machine.preemption_rate) {
+        if !this.machine.threads.fixed_scheduling
+            && this.machine.rng.get_mut().random_bool(this.machine.preemption_rate)
+        {
             this.yield_active_thread();
         }
     }
@@ -1152,7 +1165,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.machine.handle_abnormal_termination();
                 throw_machine_stop!(TerminationInfo::Interrupted);
             }
-            match this.machine.threads.schedule(&this.machine.monotonic_clock)? {
+            let rng = this.machine.rng.get_mut();
+            match this.machine.threads.schedule(&this.machine.monotonic_clock, rng)? {
                 SchedulingAction::ExecuteStep => {
                     if !this.step()? {
                         // See if this thread can do something else.

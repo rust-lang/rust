@@ -1,6 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-fixed-schedule
 
 // Joining itself is undefined behavior.
 

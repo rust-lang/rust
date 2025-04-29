@@ -1,5 +1,5 @@
 //@only-target: freebsd
-//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-fixed-schedule -Zmiri-disable-isolation
 
 use std::mem::{self, MaybeUninit};
 use std::ptr::{self, addr_of};
