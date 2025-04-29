@@ -59,7 +59,7 @@ impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
         // and moving things into the final place.
         // Which means we can replace the slice::Iter with pointers that won't point to deallocated
         // memory, so that Drain::drop is still allowed to call iter.len(), otherwise it would break
-        // the ptr.sub_ptr contract.
+        // the ptr.offset_from_unsigned contract.
         self.drain.iter = (&[]).iter();
 
         unsafe {

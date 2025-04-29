@@ -102,7 +102,7 @@ use rustc_codegen_ssa::back::write::{
 };
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, WriteBackendMethods};
-use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
+use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::DiagCtxtHandle;
@@ -260,8 +260,8 @@ impl CodegenBackend for GccCodegenBackend {
             .join(sess)
     }
 
-    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
-        target_features_cfg(sess, &self.target_info)
+    fn target_config(&self, sess: &Session) -> TargetConfig {
+        target_config(sess, &self.target_info)
     }
 }
 
@@ -485,10 +485,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 }
 
 /// Returns the features that should be set in `cfg(target_feature)`.
-fn target_features_cfg(
-    sess: &Session,
-    target_info: &LockedTargetInfo,
-) -> (Vec<Symbol>, Vec<Symbol>) {
+fn target_config(sess: &Session, target_info: &LockedTargetInfo) -> TargetConfig {
     // TODO(antoyo): use global_gcc_features.
     let f = |allow_unstable| {
         sess.target
@@ -523,5 +520,14 @@ fn target_features_cfg(
 
     let target_features = f(false);
     let unstable_target_features = f(true);
-    (target_features, unstable_target_features)
+
+    TargetConfig {
+        target_features,
+        unstable_target_features,
+        // There are no known bugs with GCC support for f16 or f128
+        has_reliable_f16: true,
+        has_reliable_f16_math: true,
+        has_reliable_f128: true,
+        has_reliable_f128_math: true,
+    }
 }

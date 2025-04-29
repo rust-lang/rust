@@ -6,13 +6,19 @@
 //@ needs-llvm-components: amdgpu
 //@ needs-rust-lld
 
+use run_make_support::targets::is_windows_gnu;
 use run_make_support::{llvm_readobj, rustc};
 
 fn main() {
+    // FIXME(#115985): rust-lld on gnu targets may spuriously fail with
+    // STATUS_HEAP_CORRUPTION (0xc0000374).
+    // To try to mitigate this we pass --threads=1 to the linker.
+    let extra_args: &[&str] = if is_windows_gnu() { &["-C", "link-arg=--threads=1"] } else { &[] };
     rustc()
         .crate_name("foo")
         .target("amdgcn-amd-amdhsa")
         .arg("-Ctarget-cpu=gfx900")
+        .args(&extra_args)
         .crate_type("cdylib")
         .input("foo.rs")
         .run();
