@@ -18,6 +18,7 @@ pub struct TestOpts {
     pub run_tests: bool,
     pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
+    pub test_results_file: Option<PathBuf>,
     pub nocapture: bool,
     pub color: ColorConfig,
     pub format: OutputFormat,
@@ -59,6 +60,7 @@ fn optgroups() -> getopts::Options {
         .optflag("", "list", "List all tests and benchmarks")
         .optflag("h", "help", "Display this message")
         .optopt("", "logfile", "Write logs to the specified file (deprecated)", "PATH")
+        .optopt("", "test-results-file", "Write test results to the specified file", "PATH")
         .optflag(
             "",
             "no-capture",
@@ -275,6 +277,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let run_tests = !bench_benchmarks || matches.opt_present("test");
 
     let logfile = get_log_file(&matches)?;
+    let test_results_file = get_test_results_file(&matches)?;
     let run_ignored = get_run_ignored(&matches, include_ignored)?;
     let filters = matches.free.clone();
     let nocapture = get_nocapture(&matches)?;
@@ -298,6 +301,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         run_tests,
         bench_benchmarks,
         logfile,
+        test_results_file,
         nocapture,
         color,
         format,
@@ -499,4 +503,10 @@ fn get_log_file(matches: &getopts::Matches) -> OptPartRes<Option<PathBuf>> {
     let logfile = matches.opt_str("logfile").map(|s| PathBuf::from(&s));
 
     Ok(logfile)
+}
+
+fn get_test_results_file(matches: &getopts::Matches) -> OptPartRes<Option<PathBuf>> {
+    let test_results_file = matches.opt_str("test-results-file").map(|s| PathBuf::from(&s));
+
+    Ok(test_results_file)
 }

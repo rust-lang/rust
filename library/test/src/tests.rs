@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::*;
 use crate::{
     console::OutputLocation,
@@ -24,6 +26,7 @@ impl TestOpts {
             run_tests: false,
             bench_benchmarks: false,
             logfile: None,
+            test_results_file: None,
             nocapture: false,
             color: AutoColor,
             format: OutputFormat::Pretty,
@@ -466,6 +469,29 @@ fn parse_include_ignored_flag() {
     let args = vec!["progname".to_string(), "filter".to_string(), "--include-ignored".to_string()];
     let opts = parse_opts(&args).unwrap().unwrap();
     assert_eq!(opts.run_ignored, RunIgnored::Yes);
+}
+
+#[test]
+fn parse_test_results_file_flag_reads_value() {
+    let args = vec![
+        "progname".to_string(),
+        "filter".to_string(),
+        "--test-results-file".to_string(),
+        "expected_path_to_results_file".to_string(),
+    ];
+    let opts = parse_opts(&args).unwrap().unwrap();
+    assert_eq!(opts.test_results_file, Some(PathBuf::from("expected_path_to_results_file")));
+}
+
+#[test]
+fn parse_test_results_file_requires_value() {
+    let args =
+        vec!["progname".to_string(), "filter".to_string(), "--test-results-file".to_string()];
+    let maybe_opts = parse_opts(&args).unwrap();
+    assert_eq!(
+        maybe_opts.err(),
+        Some("Argument to option 'test-results-file' missing".to_string())
+    );
 }
 
 #[test]
