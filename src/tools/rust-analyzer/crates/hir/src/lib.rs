@@ -136,7 +136,6 @@ pub use {
             HirFileRange, InFile, InFileWrapper, InMacroFile, InRealFile, MacroFilePosition,
             MacroFileRange,
         },
-        hygiene::{SyntaxContextExt, marks_rev},
         inert_attr_macro::AttributeTemplate,
         mod_path::{ModPath, PathKind, tool_path},
         name::Name,
