@@ -3740,6 +3740,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
+ "arrayvec",
  "itertools",
  "rustc_abi",
  "rustc_arena",

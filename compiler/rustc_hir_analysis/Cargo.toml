@@ -9,6 +9,7 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
+arrayvec = { version = "0.7", default-features = false }
 itertools = "0.12"
 rustc_abi = { path = "../rustc_abi" }
 rustc_arena = { path = "../rustc_arena" }
