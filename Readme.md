@@ -26,8 +26,8 @@ The default configuration (see below in the [Quick start](#quick-start) section)
 ### Quick start
 1. Clone and configure the repository:
    ```bash
-   git clone https://github.com/rust-lang/rust_codegen_gcc
-   cd rust_codegen_gcc
+   git clone https://github.com/rust-lang/rustc_codegen_gcc
+   cd rustc_codegen_gcc
    cp config.example.toml config.toml
    ```
 

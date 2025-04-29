@@ -1,6 +1,6 @@
-# Contributing to rust_codegen_gcc
+# Contributing to rustc_codegen_gcc
 
-Welcome to the `rust_codegen_gcc` project! This guide will help you get started as a contributor. The project aims to provide a GCC codegen backend for rustc, allowing Rust compilation on platforms unsupported by LLVM and potentially improving runtime performance through GCC's optimizations.
+Welcome to the `rustc_codegen_gcc` project! This guide will help you get started as a contributor. The project aims to provide a GCC codegen backend for rustc, allowing Rust compilation on platforms unsupported by LLVM and potentially improving runtime performance through GCC's optimizations.
 
 ## Getting Started
 
