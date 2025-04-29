@@ -133,10 +133,10 @@ impl FlycheckHandle {
         let actor =
             FlycheckActor::new(id, sender, config, sysroot_root, workspace_root, manifest_path);
         let (sender, receiver) = unbounded::<StateChange>();
-        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("Flycheck".to_owned())
-            .spawn(move || actor.run(receiver))
-            .expect("failed to spawn thread");
+        let thread =
+            stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, format!("Flycheck{id}"))
+                .spawn(move || actor.run(receiver))
+                .expect("failed to spawn thread");
         FlycheckHandle { id, sender, _thread: thread }
     }
 

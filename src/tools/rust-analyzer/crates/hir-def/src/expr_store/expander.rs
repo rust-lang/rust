@@ -3,10 +3,11 @@
 use std::mem;
 
 use base_db::Crate;
+use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
     ExpandError, ExpandErrorKind, ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
-    attrs::RawAttrs, eager::EagerCallBackFn, mod_path::ModPath, span_map::SpanMap,
+    eager::EagerCallBackFn, mod_path::ModPath, span_map::SpanMap,
 };
 use span::{AstIdMap, Edition, SyntaxContext};
 use syntax::ast::HasAttrs;
@@ -64,22 +65,13 @@ impl Expander {
         }
     }
 
-    pub(super) fn attrs(
-        &self,
-        db: &dyn DefDatabase,
-        krate: Crate,
-        has_attrs: &dyn HasAttrs,
-    ) -> Attrs {
-        Attrs::filter(db, krate, RawAttrs::new(db, has_attrs, self.span_map.as_ref()))
-    }
-
     pub(super) fn is_cfg_enabled(
         &self,
         db: &dyn DefDatabase,
-        krate: Crate,
         has_attrs: &dyn HasAttrs,
-    ) -> bool {
-        self.attrs(db, krate, has_attrs).is_cfg_enabled(krate.cfg_options(db))
+        cfg_options: &CfgOptions,
+    ) -> Result<(), cfg::CfgExpr> {
+        Attrs::is_cfg_enabled_for(db, has_attrs, self.span_map.as_ref(), cfg_options)
     }
 
     pub(super) fn call_syntax_ctx(&self) -> SyntaxContext {

@@ -90,15 +90,17 @@ pub fn parallel_prime_caches(
         };
 
         for id in 0..num_worker_threads {
-            stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-                .allow_leak(true)
-                .name(format!("PrimeCaches#{id}"))
-                .spawn({
-                    let worker = prime_caches_worker.clone();
-                    let db = db.clone();
-                    move || worker(db)
-                })
-                .expect("failed to spawn thread");
+            stdx::thread::Builder::new(
+                stdx::thread::ThreadIntent::Worker,
+                format!("PrimeCaches#{id}"),
+            )
+            .allow_leak(true)
+            .spawn({
+                let worker = prime_caches_worker.clone();
+                let db = db.clone();
+                move || worker(db)
+            })
+            .expect("failed to spawn thread");
         }
 
         (work_sender, progress_receiver)

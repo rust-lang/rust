@@ -148,10 +148,10 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         let stderr = child.0.stderr().take().unwrap();
 
         let actor = CargoActor::<T>::new(parser, sender, stdout, stderr);
-        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
-            .name("CommandHandle".to_owned())
-            .spawn(move || actor.run())
-            .expect("failed to spawn thread");
+        let thread =
+            stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker, "CommandHandle")
+                .spawn(move || actor.run())
+                .expect("failed to spawn thread");
         Ok(CommandHandle { program, arguments, current_dir, child, thread, _phantom: PhantomData })
     }
 

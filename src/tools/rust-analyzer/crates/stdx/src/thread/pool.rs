@@ -50,10 +50,9 @@ impl Pool {
         let extant_tasks = Arc::new(AtomicUsize::new(0));
 
         let mut handles = Vec::with_capacity(threads);
-        for _ in 0..threads {
-            let handle = Builder::new(INITIAL_INTENT)
+        for idx in 0..threads {
+            let handle = Builder::new(INITIAL_INTENT, format!("Worker{idx}",))
                 .stack_size(STACK_SIZE)
-                .name("Worker".into())
                 .allow_leak(true)
                 .spawn({
                     let extant_tasks = Arc::clone(&extant_tasks);

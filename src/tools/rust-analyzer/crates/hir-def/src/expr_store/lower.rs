@@ -7,6 +7,7 @@ mod path;
 
 use std::mem;
 
+use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
     HirFileId, InFile, Lookup, MacroDefId,
@@ -81,8 +82,6 @@ pub(super) fn lower_body(
     // even though they should be the same. Also, when the body comes from multiple expansions, their
     // hygiene is different.
 
-    let krate = module.krate();
-
     let mut self_param = None;
     let mut source_map_self_param = None;
     let mut params = vec![];
@@ -100,9 +99,8 @@ pub(super) fn lower_body(
     // and skip the body.
     if skip_body {
         if let Some(param_list) = parameters {
-            if let Some(self_param_syn) = param_list
-                .self_param()
-                .filter(|self_param| collector.expander.is_cfg_enabled(db, krate, self_param))
+            if let Some(self_param_syn) =
+                param_list.self_param().filter(|self_param| collector.check_cfg(self_param))
             {
                 let is_mutable =
                     self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
@@ -119,10 +117,7 @@ pub(super) fn lower_body(
                 source_map_self_param =
                     Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
             }
-            let count = param_list
-                .params()
-                .filter(|it| collector.expander.is_cfg_enabled(db, krate, it))
-                .count();
+            let count = param_list.params().filter(|it| collector.check_cfg(it)).count();
             params = (0..count).map(|_| collector.missing_pat()).collect();
         };
         let body_expr = collector.missing_expr();
@@ -138,9 +133,7 @@ pub(super) fn lower_body(
     }
 
     if let Some(param_list) = parameters {
-        if let Some(self_param_syn) =
-            param_list.self_param().filter(|it| collector.expander.is_cfg_enabled(db, krate, it))
-        {
+        if let Some(self_param_syn) = param_list.self_param().filter(|it| collector.check_cfg(it)) {
             let is_mutable =
                 self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
             let hygiene = self_param_syn
@@ -157,7 +150,7 @@ pub(super) fn lower_body(
         }
 
         for param in param_list.params() {
-            if collector.expander.is_cfg_enabled(db, krate, &param) {
+            if collector.check_cfg(&param) {
                 let param_pat = collector.collect_pat_top(param.pat());
                 params.push(param_pat);
             }
@@ -346,7 +339,7 @@ pub(crate) fn lower_function(
     collector.collect_impl_trait(&mut expr_collector, |collector, mut impl_trait_lower_fn| {
         if let Some(param_list) = fn_.value.param_list() {
             if let Some(param) = param_list.self_param() {
-                let enabled = collector.expander.is_cfg_enabled(db, module.krate(), &param);
+                let enabled = collector.check_cfg(&param);
                 if enabled {
                     has_self_param = true;
                     params.push(match param.ty() {
@@ -381,7 +374,7 @@ pub(crate) fn lower_function(
             }
             let p = param_list
                 .params()
-                .filter(|param| collector.expander.is_cfg_enabled(db, module.krate(), param))
+                .filter(|param| collector.check_cfg(param))
                 .filter(|param| {
                     let is_variadic = param.dotdotdot_token().is_some();
                     has_variadic |= is_variadic;
@@ -441,6 +434,7 @@ pub(crate) fn lower_function(
 
 pub struct ExprCollector<'db> {
     db: &'db dyn DefDatabase,
+    cfg_options: &'db CfgOptions,
     expander: Expander,
     def_map: Arc<DefMap>,
     local_def_map: Arc<LocalDefMap>,
@@ -553,6 +547,7 @@ impl ExprCollector<'_> {
         let expander = Expander::new(db, current_file_id, &def_map);
         ExprCollector {
             db,
+            cfg_options: module.krate().cfg_options(db),
             module,
             def_map,
             local_def_map,
@@ -1026,7 +1021,9 @@ impl ExprCollector<'_> {
     /// Returns `None` if and only if the expression is `#[cfg]`d out.
     fn maybe_collect_expr(&mut self, expr: ast::Expr) -> Option<ExprId> {
         let syntax_ptr = AstPtr::new(&expr);
-        self.check_cfg(&expr)?;
+        if !self.check_cfg(&expr) {
+            return None;
+        }
 
         // FIXME: Move some of these arms out into separate methods for clarity
         Some(match expr {
@@ -1114,6 +1111,7 @@ impl ExprCollector<'_> {
             ast::Expr::WhileExpr(e) => self.collect_while_loop(syntax_ptr, e),
             ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
             ast::Expr::CallExpr(e) => {
+                // FIXME: Remove this once we drop support for <1.86, https://github.com/rust-lang/rust/commit/ac9cb908ac4301dfc25e7a2edee574320022ae2c
                 let is_rustc_box = {
                     let attrs = e.attrs();
                     attrs.filter_map(|it| it.as_simple_atom()).any(|it| it == "rustc_box")
@@ -1156,13 +1154,17 @@ impl ExprCollector<'_> {
                     match_arm_list
                         .arms()
                         .filter_map(|arm| {
-                            self.check_cfg(&arm).map(|()| MatchArm {
-                                pat: self.collect_pat_top(arm.pat()),
-                                expr: self.collect_expr_opt(arm.expr()),
-                                guard: arm
-                                    .guard()
-                                    .map(|guard| self.collect_expr_opt(guard.condition())),
-                            })
+                            if self.check_cfg(&arm) {
+                                Some(MatchArm {
+                                    pat: self.collect_pat_top(arm.pat()),
+                                    expr: self.collect_expr_opt(arm.expr()),
+                                    guard: arm
+                                        .guard()
+                                        .map(|guard| self.collect_expr_opt(guard.condition())),
+                                })
+                            } else {
+                                None
+                            }
                         })
                         .collect()
                 } else {
@@ -1230,7 +1232,9 @@ impl ExprCollector<'_> {
                     let fields = nfl
                         .fields()
                         .filter_map(|field| {
-                            self.check_cfg(&field)?;
+                            if !self.check_cfg(&field) {
+                                return None;
+                            }
 
                             let name = field.field_name()?.as_name();
 
@@ -1483,7 +1487,9 @@ impl ExprCollector<'_> {
     }
 
     fn maybe_collect_expr_as_pat(&mut self, expr: &ast::Expr) -> Option<PatId> {
-        self.check_cfg(expr)?;
+        if !self.check_cfg(expr) {
+            return None;
+        }
         let syntax_ptr = AstPtr::new(expr);
 
         let result = match expr {
@@ -1558,7 +1564,9 @@ impl ExprCollector<'_> {
                 let args = record_field_list
                     .fields()
                     .filter_map(|f| {
-                        self.check_cfg(&f)?;
+                        if !self.check_cfg(&f) {
+                            return None;
+                        }
                         let field_expr = f.expr()?;
                         let pat = self.collect_expr_as_pat(field_expr);
                         let name = f.field_name()?.as_name();
@@ -2044,7 +2052,7 @@ impl ExprCollector<'_> {
     fn collect_stmt(&mut self, statements: &mut Vec<Statement>, s: ast::Stmt) {
         match s {
             ast::Stmt::LetStmt(stmt) => {
-                if self.check_cfg(&stmt).is_none() {
+                if !self.check_cfg(&stmt) {
                     return;
                 }
                 let pat = self.collect_pat_top(stmt.pat());
@@ -2059,7 +2067,7 @@ impl ExprCollector<'_> {
             ast::Stmt::ExprStmt(stmt) => {
                 let expr = stmt.expr();
                 match &expr {
-                    Some(expr) if self.check_cfg(expr).is_none() => return,
+                    Some(expr) if !self.check_cfg(expr) => return,
                     _ => (),
                 }
                 let has_semi = stmt.semicolon_token().is_some();
@@ -2074,7 +2082,7 @@ impl ExprCollector<'_> {
                 }
             }
             ast::Stmt::Item(ast::Item::MacroDef(macro_)) => {
-                if self.check_cfg(&macro_).is_none() {
+                if !self.check_cfg(&macro_) {
                     return;
                 }
                 let Some(name) = macro_.name() else {
@@ -2086,7 +2094,7 @@ impl ExprCollector<'_> {
                 self.collect_macro_def(statements, macro_id);
             }
             ast::Stmt::Item(ast::Item::MacroRules(macro_)) => {
-                if self.check_cfg(&macro_).is_none() {
+                if !self.check_cfg(&macro_) {
                     return;
                 }
                 let Some(name) = macro_.name() else {
@@ -2360,7 +2368,9 @@ impl ExprCollector<'_> {
                 let args = record_pat_field_list
                     .fields()
                     .filter_map(|f| {
-                        self.check_cfg(&f)?;
+                        if !self.check_cfg(&f) {
+                            return None;
+                        }
                         let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat, binding_list);
                         let name = f.field_name()?.as_name();
@@ -2536,25 +2546,18 @@ impl ExprCollector<'_> {
 
     /// Returns `None` (and emits diagnostics) when `owner` if `#[cfg]`d out, and `Some(())` when
     /// not.
-    fn check_cfg(&mut self, owner: &dyn ast::HasAttrs) -> Option<()> {
-        let attrs = self.expander.attrs(self.db, self.module.krate(), owner);
-        match attrs.cfg() {
-            Some(cfg) => {
-                let cfg_options = self.module.krate().cfg_options(self.db);
-
-                if cfg_options.check(&cfg) != Some(false) {
-                    return Some(());
-                }
-
+    fn check_cfg(&mut self, owner: &dyn ast::HasAttrs) -> bool {
+        let enabled = self.expander.is_cfg_enabled(self.db, owner, self.cfg_options);
+        match enabled {
+            Ok(()) => true,
+            Err(cfg) => {
                 self.source_map.diagnostics.push(ExpressionStoreDiagnostics::InactiveCode {
                     node: self.expander.in_file(SyntaxNodePtr::new(owner.syntax())),
                     cfg,
-                    opts: cfg_options.clone(),
+                    opts: self.cfg_options.clone(),
                 });
-
-                None
+                false
             }
-            None => Some(()),
         }
     }
 

@@ -110,7 +110,7 @@ impl GenericParamsCollector {
 
     fn lower_param_list(&mut self, ec: &mut ExprCollector<'_>, params: ast::GenericParamList) {
         for generic_param in params.generic_params() {
-            let enabled = ec.expander.is_cfg_enabled(ec.db, ec.module.krate(), &generic_param);
+            let enabled = ec.check_cfg(&generic_param);
             if !enabled {
                 continue;
             }
