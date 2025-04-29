@@ -5,7 +5,6 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![cfg_attr(bootstrap, feature(let_chains))]
-#![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
