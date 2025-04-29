@@ -1572,15 +1572,6 @@ impl<'a> State<'a> {
 
                 // This is a bare expression.
                 self.ann.nested(self, Nested::Body(body));
-                // FIXME(nnethercote): this is bogus
-                let fake_ib = BoxMarker;
-                self.end(fake_ib);
-
-                // A box will be closed by `print_expr`, but we didn't want an overall
-                // wrapper so we closed the corresponding opening. so create an
-                // empty box to satisfy the close.
-                // FIXME(nnethercote): this is bogus, and `print_expr` is missing
-                let _ib = self.ibox(0);
             }
             hir::ExprKind::Block(blk, opt_label) => {
                 if let Some(label) = opt_label {

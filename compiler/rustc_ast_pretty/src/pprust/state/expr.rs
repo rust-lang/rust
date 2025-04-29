@@ -13,7 +13,7 @@ use rustc_ast::{
 
 use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::fixup::FixupContext;
-use crate::pprust::state::{AnnNode, BoxMarker, INDENT_UNIT, PrintState, State};
+use crate::pprust::state::{AnnNode, INDENT_UNIT, PrintState, State};
 
 impl<'a> State<'a> {
     fn print_else(&mut self, els: Option<&ast::Expr>) {
@@ -542,15 +542,6 @@ impl<'a> State<'a> {
                 self.print_fn_params_and_ret(fn_decl, true);
                 self.space();
                 self.print_expr(body, FixupContext::default());
-                // FIXME(nnethercote): Bogus. Reduce visibility of `ended` once it's fixed.
-                let fake_ib = BoxMarker;
-                self.end(fake_ib);
-
-                // A box will be closed by print_expr, but we didn't want an overall
-                // wrapper so we closed the corresponding opening. so create an
-                // empty box to satisfy the close.
-                // FIXME(nnethercote): Bogus.
-                let _ib = self.ibox(0);
             }
             ast::ExprKind::Block(blk, opt_label) => {
                 if let Some(label) = opt_label {
