@@ -20,6 +20,7 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 pub mod util {
