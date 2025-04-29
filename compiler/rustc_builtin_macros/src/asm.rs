@@ -196,36 +196,10 @@ pub fn parse_raw_asm_args<'a>(
         if p.eat_keyword(exp!(ClobberAbi)) {
             allow_templates = false;
 
-            p.expect(exp!(OpenParen))?;
-
-            // FIXME: why not allow this?
-            if p.eat(exp!(CloseParen)) {
-                return Err(p.dcx().create_err(errors::NonABI { span: p.token.span }));
-            }
-
-            let mut new_abis = Vec::new();
-            while !p.eat(exp!(CloseParen)) {
-                match p.parse_str_lit() {
-                    Ok(str_lit) => {
-                        new_abis.push((str_lit.symbol_unescaped, str_lit.span));
-                    }
-                    Err(opt_lit) => {
-                        let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-                        return Err(p.dcx().create_err(errors::AsmExpectedStringLiteral { span }));
-                    }
-                };
-
-                // Allow trailing commas
-                if p.eat(exp!(CloseParen)) {
-                    break;
-                }
-                p.expect(exp!(Comma))?;
-            }
-
             args.push(RawAsmArg {
-                span: span_start.to(p.prev_token.span),
                 attributes: ast::AttrVec::new(),
-                kind: RawAsmArgKind::ClobberAbi(new_abis),
+                kind: RawAsmArgKind::ClobberAbi(parse_clobber_abi(p)?),
+                span: span_start.to(p.prev_token.span),
             });
 
             continue;
@@ -655,11 +629,10 @@ fn parse_options<'a>(
     Ok(())
 }
 
-fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, ()> {
-    let span_start = p.prev_token.span;
-
+fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>> {
     p.expect(exp!(OpenParen))?;
 
+    // FIXME: why not allow this?
     if p.eat(exp!(CloseParen)) {
         return Err(p.dcx().create_err(errors::NonABI { span: p.token.span }));
     }
@@ -683,20 +656,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
         p.expect(exp!(Comma))?;
     }
 
-    let full_span = span_start.to(p.prev_token.span);
-
-    match &new_abis[..] {
-        // should have errored above during parsing
-        [] => unreachable!(),
-        [(abi, _span)] => args.clobber_abis.push((*abi, full_span)),
-        abis => {
-            for (abi, span) in abis {
-                args.clobber_abis.push((*abi, *span));
-            }
-        }
-    }
-
-    Ok(())
+    Ok(new_abis)
 }
 
 fn parse_reg<'a>(p: &mut Parser<'a>) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
