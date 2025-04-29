@@ -87,6 +87,19 @@ const fn max_iov() -> usize {
     16 // The minimum value required by POSIX.
 }
 
+#[cfg(not(any(
+    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "android",
+    target_os = "hurd"
+)))]
+use libc::pread as pread64;
+#[cfg(any(
+    all(target_os = "linux", not(target_env = "musl")),
+    target_os = "android",
+    target_os = "hurd"
+))]
+use libc::pread64;
+
 impl FileDesc {
     #[inline]
     pub fn try_clone(&self) -> io::Result<Self> {
@@ -146,21 +159,8 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
-    #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        )))]
-        use libc::pread as pread64;
-        #[cfg(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        ))]
-        use libc::pread64;
-
+        #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
         unsafe {
             cvt(pread64(
                 self.as_raw_fd(),
@@ -178,6 +178,24 @@ impl FileDesc {
                 self.as_raw_fd(),
                 cursor.as_mut().as_mut_ptr() as *mut libc::c_void,
                 cmp::min(cursor.capacity(), READ_LIMIT),
+            )
+        })?;
+
+        // Safety: `ret` bytes were written to the initialized portion of the buffer
+        unsafe {
+            cursor.advance_unchecked(ret as usize);
+        }
+        Ok(())
+    }
+
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        #[cfg_attr(target_os = "vxworks", allow(unused_unsafe))]
+        let ret = cvt(unsafe {
+            pread64(
+                self.as_raw_fd(),
+                cursor.as_mut().as_mut_ptr() as *mut libc::c_void,
+                cmp::min(cursor.capacity(), READ_LIMIT),
+                offset as off64_t,
             )
         })?;
 
