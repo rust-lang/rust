@@ -353,15 +353,7 @@ pub fn validate_raw_asm_args<'a>(
 
                 for (symbol, option, span, full_span) in new_options {
                     if !asm_macro.is_supported_option(option) {
-                        /*
-                        // Tool-only output
-                        p.dcx().emit_err(errors::AsmUnsupportedOption {
-                            span,
-                            symbol,
-                            full_span,
-                            macro_name: asm_macro.macro_name(),
-                        });
-                        */
+                        // Currently handled during parsing.
                     } else if args.options.contains(option) {
                         // Tool-only output
                         dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
@@ -506,6 +498,7 @@ fn parse_options<'a>(
                     let full_span =
                         if p.token == token::Comma { span.to(p.token.span) } else { span };
 
+                    // NOTE: should this be handled during validation instead?
                     if !asm_macro.is_supported_option(option) {
                         // Tool-only output
                         p.dcx().emit_err(errors::AsmUnsupportedOption {
