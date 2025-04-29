@@ -3,6 +3,7 @@
 
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::solve::GoalSource;
 use rustc_type_ir::{self as ty, Interner, TypingMode, fold_regions};
 
 use crate::delegate::SolverDelegate;
@@ -31,7 +32,12 @@ where
                     goal.param_env,
                     expected,
                 );
-                self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
+                // Trying to normalize an opaque type during coherence is always ambiguous.
+                // We add a nested ambiguous goal here instead of using `Certainty::AMBIGUOUS`.
+                // This allows us to return the nested goals to the parent `AliasRelate` goal.
+                // This can then allow nested goals to fail after we've constrained the `term`.
+                self.add_goal(GoalSource::Misc, goal.with(cx, ty::PredicateKind::Ambiguous));
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             TypingMode::Analysis { defining_opaque_types_and_generators } => {
                 let Some(def_id) = opaque_ty

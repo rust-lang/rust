@@ -131,7 +131,22 @@ mod __doctest_mod {{
             .output()
             .expect(\"failed to run command\");
         if !out.status.success() {{
-            eprint!(\"{{}}\", String::from_utf8_lossy(&out.stderr));
+            if let Some(code) = out.status.code() {{
+                eprintln!(\"Test executable failed (exit status: {{code}}).\");
+            }} else {{
+                eprintln!(\"Test executable failed (terminated by signal).\");
+            }}
+            if !out.stdout.is_empty() || !out.stderr.is_empty() {{
+                eprintln!();
+            }}
+            if !out.stdout.is_empty() {{
+                eprintln!(\"stdout:\");
+                eprintln!(\"{{}}\", String::from_utf8_lossy(&out.stdout));
+            }}
+            if !out.stderr.is_empty() {{
+                eprintln!(\"stderr:\");
+                eprintln!(\"{{}}\", String::from_utf8_lossy(&out.stderr));
+            }}
             ExitCode::FAILURE
         }} else {{
             ExitCode::SUCCESS

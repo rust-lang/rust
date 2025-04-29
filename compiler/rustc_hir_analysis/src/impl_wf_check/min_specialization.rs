@@ -374,9 +374,12 @@ fn check_predicates<'tcx>(
 
     // Include the well-formed predicates of the type parameters of the impl.
     for arg in tcx.impl_trait_ref(impl1_def_id).unwrap().instantiate_identity().args {
+        let Some(term) = arg.as_term() else {
+            continue;
+        };
         let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         let obligations =
-            wf::obligations(infcx, tcx.param_env(impl1_def_id), impl1_def_id, 0, arg, span)
+            wf::obligations(infcx, tcx.param_env(impl1_def_id), impl1_def_id, 0, term, span)
                 .unwrap();
 
         assert!(!obligations.has_infer());

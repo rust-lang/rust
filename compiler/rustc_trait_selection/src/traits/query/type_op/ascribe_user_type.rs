@@ -131,12 +131,12 @@ fn relate_mir_and_user_args<'tcx>(
     //     const CONST: () = { /* arbitrary code that depends on T being WF */ };
     // }
     // ```
-    for arg in args {
+    for term in args.iter().filter_map(ty::GenericArg::as_term) {
         ocx.register_obligation(Obligation::new(
             tcx,
             cause.clone(),
             param_env,
-            ty::ClauseKind::WellFormed(arg),
+            ty::ClauseKind::WellFormed(term),
         ));
     }
 

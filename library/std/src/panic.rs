@@ -3,7 +3,7 @@
 #![stable(feature = "std_panic", since = "1.9.0")]
 
 use crate::any::Any;
-use crate::sync::atomic::{AtomicU8, Ordering};
+use crate::sync::atomic::{Atomic, AtomicU8, Ordering};
 use crate::sync::{Condvar, Mutex, RwLock};
 use crate::thread::Result;
 use crate::{collections, fmt, panicking};
@@ -469,7 +469,7 @@ impl BacktraceStyle {
 // that backtrace.
 //
 // Internally stores equivalent of an Option<BacktraceStyle>.
-static SHOULD_CAPTURE: AtomicU8 = AtomicU8::new(0);
+static SHOULD_CAPTURE: Atomic<u8> = AtomicU8::new(0);
 
 /// Configures whether the default panic hook will capture and display a
 /// backtrace.

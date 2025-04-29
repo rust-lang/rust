@@ -36,7 +36,7 @@ pub enum ClauseKind<I: Interner> {
     ConstArgHasType(I::Const, I::Ty),
 
     /// No syntax: `T` well-formed.
-    WellFormed(I::GenericArg),
+    WellFormed(I::Term),
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(I::Const),

@@ -28,7 +28,7 @@ jobs:
           # Cache the josh directory with checked out rustc
           cache-directories: "/home/runner/.cache/rustc-dev-guide-josh"
       - name: Install josh
-        run: RUSTFLAGS="--cap-lints warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
+        run: RUSTFLAGS="--cap-lints warn" cargo install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
       - name: Setup bot git name and email
         run: |
           git config --global user.name 'The rustc-dev-guide Cronjob Bot'

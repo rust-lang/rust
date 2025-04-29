@@ -76,12 +76,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         )
     }
 
-    fn register_wf_obligation(
-        &self,
-        span: Span,
-        loc: Option<WellFormedLoc>,
-        arg: ty::GenericArg<'tcx>,
-    ) {
+    fn register_wf_obligation(&self, span: Span, loc: Option<WellFormedLoc>, term: ty::Term<'tcx>) {
         let cause = traits::ObligationCause::new(
             span,
             self.body_def_id,
@@ -91,7 +86,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             self.tcx(),
             cause,
             self.param_env,
-            ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg))),
+            ty::ClauseKind::WellFormed(term),
         ));
     }
 }
@@ -1486,8 +1481,41 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
                     tcx.def_span(param.def_id),
                     matches!(param.kind, GenericParamDefKind::Type { .. })
                         .then(|| WellFormedLoc::Ty(param.def_id.expect_local())),
-                    default,
+                    default.as_term().unwrap(),
                 );
+            } else {
+                // If we've got a generic const parameter we still want to check its
+                // type is correct in case both it and the param type are fully concrete.
+                let GenericArgKind::Const(ct) = default.unpack() else {
+                    continue;
+                };
+
+                let ct_ty = match ct.kind() {
+                    ty::ConstKind::Infer(_)
+                    | ty::ConstKind::Placeholder(_)
+                    | ty::ConstKind::Bound(_, _) => unreachable!(),
+                    ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
+                    ty::ConstKind::Value(cv) => cv.ty,
+                    ty::ConstKind::Unevaluated(uv) => {
+                        infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
+                    }
+                    ty::ConstKind::Param(param_ct) => param_ct.find_ty_from_env(wfcx.param_env),
+                };
+
+                let param_ty = tcx.type_of(param.def_id).instantiate_identity();
+                if !ct_ty.has_param() && !param_ty.has_param() {
+                    let cause = traits::ObligationCause::new(
+                        tcx.def_span(param.def_id),
+                        wfcx.body_def_id,
+                        ObligationCauseCode::WellFormed(None),
+                    );
+                    wfcx.register_obligation(Obligation::new(
+                        tcx,
+                        cause,
+                        wfcx.param_env,
+                        ty::ClauseKind::ConstArgHasType(ct, param_ty),
+                    ));
+                }
             }
         }
     }

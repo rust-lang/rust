@@ -16,6 +16,7 @@ use rustc_type_ir::{
 };
 use tracing::{instrument, trace};
 
+use super::has_only_region_constraints;
 use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::{self, ProofTreeBuilder};
@@ -476,13 +477,8 @@ where
             Ok(response) => response,
         };
 
-        let has_changed = if !response.value.var_values.is_identity_modulo_regions()
-            || !response.value.external_constraints.opaque_types.is_empty()
-        {
-            HasChanged::Yes
-        } else {
-            HasChanged::No
-        };
+        let has_changed =
+            if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
         let (normalization_nested_goals, certainty) =
             self.instantiate_and_apply_query_response(goal.param_env, orig_values, response);
@@ -533,8 +529,8 @@ where
                 ty::PredicateKind::DynCompatible(trait_def_id) => {
                     self.compute_dyn_compatible_goal(trait_def_id)
                 }
-                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
-                    self.compute_well_formed_goal(Goal { param_env, predicate: arg })
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
+                    self.compute_well_formed_goal(Goal { param_env, predicate: term })
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => {
                     self.compute_const_evaluatable_goal(Goal { param_env, predicate: ct })
@@ -1012,9 +1008,9 @@ where
     pub(super) fn well_formed_goals(
         &self,
         param_env: I::ParamEnv,
-        arg: I::GenericArg,
+        term: I::Term,
     ) -> Option<Vec<Goal<I, I::Predicate>>> {
-        self.delegate.well_formed_goals(param_env, arg)
+        self.delegate.well_formed_goals(param_env, term)
     }
 
     pub(super) fn trait_ref_is_knowable(

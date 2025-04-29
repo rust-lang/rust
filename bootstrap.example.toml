@@ -180,7 +180,7 @@
 # Note that this will attempt to download GCC even if there are local
 # modifications to the `src/gcc` submodule.
 # Currently, this is only supported for the `x86_64-unknown-linux-gnu` target.
-# download-ci-gcc = false
+#download-ci-gcc = false
 
 # =============================================================================
 # General build configuration options
@@ -500,7 +500,7 @@
 # building without optimizations takes much longer than optimizing. Further, some platforms
 # fail to build without this optimization (c.f. #65352).
 # The valid options are:
-# true - Enable optimizations.
+# true - Enable optimizations (same as 3).
 # false - Disable optimizations.
 # 0 - Disable optimizations.
 # 1 - Basic optimizations.

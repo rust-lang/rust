@@ -308,7 +308,7 @@ impl str {
     /// Converts a slice of bytes to a string slice without checking
     /// that the string contains valid UTF-8; mutable version.
     ///
-    /// See the immutable version, [`from_utf8_unchecked()`] for more information.
+    /// See the immutable version, [`from_utf8_unchecked()`] for documentation and safety requirements.
     ///
     /// # Examples
     ///
@@ -2117,7 +2117,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "str_trim"]
     pub fn trim(&self) -> &str {
-        self.trim_matches(|c: char| c.is_whitespace())
+        self.trim_matches(char::is_whitespace)
     }
 
     /// Returns a string slice with leading whitespace removed.
@@ -2156,7 +2156,7 @@ impl str {
     #[stable(feature = "trim_direction", since = "1.30.0")]
     #[rustc_diagnostic_item = "str_trim_start"]
     pub fn trim_start(&self) -> &str {
-        self.trim_start_matches(|c: char| c.is_whitespace())
+        self.trim_start_matches(char::is_whitespace)
     }
 
     /// Returns a string slice with trailing whitespace removed.
@@ -2195,7 +2195,7 @@ impl str {
     #[stable(feature = "trim_direction", since = "1.30.0")]
     #[rustc_diagnostic_item = "str_trim_end"]
     pub fn trim_end(&self) -> &str {
-        self.trim_end_matches(|c: char| c.is_whitespace())
+        self.trim_end_matches(char::is_whitespace)
     }
 
     /// Returns a string slice with leading whitespace removed.

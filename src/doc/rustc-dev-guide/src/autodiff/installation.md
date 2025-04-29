@@ -25,9 +25,10 @@ rustup toolchain install nightly # enables -Z unstable-options
 You can then run our test cases:
 
 ```bash
-./x.py test --stage 1 library tests/ui/autodiff
-./x.py test --stage 1 library tests/codegen/autodiff
-./x.py test --stage 1 library tests/pretty/autodiff*
+./x.py test --stage 1 tests/codegen/autodiff
+./x.py test --stage 1 tests/pretty/autodiff
+./x.py test --stage 1 tests/ui/autodiff
+./x.py test --stage 1 tests/ui/feature-gates/feature-gate-autodiff.rs
 ```
 
 Autodiff is still experimental, so if you want to use it in your own projects, you will need to add `lto="fat"` to your Cargo.toml 
@@ -44,7 +45,7 @@ apt install wget vim python3 git curl libssl-dev pkg-config lld ninja-build cmak
 ```
 Then build rustc in a slightly altered way:
 ```bash
-git clone --depth=1 https://github.com/EnzymeAD/rust.git
+git clone --depth=1 https://github.com/rust-lang/rust.git
 cd rust
 ./configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
 ./x dist
@@ -54,7 +55,8 @@ We then copy the tarball to our host. The dockerid is the newest entry under `do
 docker cp <dockerid>:/rust/build/dist/rust-nightly-x86_64-unknown-linux-gnu.tar.gz rust-nightly-x86_64-unknown-linux-gnu.tar.gz
 ```
 Afterwards we can create a new (pre-release) tag on the EnzymeAD/rust repository and make a PR against the EnzymeAD/enzyme-explorer repository to update the tag.
-Remember to ping `tgymnich` on the PR to run his update script.
+Remember to ping `tgymnich` on the PR to run his update script. Note: We should archive EnzymeAD/rust and update the instructions here. The explorer should soon
+be able to get the rustc toolchain from the official rust servers.
 
 
 ## Build instruction for Enzyme itself
