@@ -1,30 +1,6 @@
-/* SPDX-License-Identifier: MIT */
-/* origin: musl src/math/fmaf.c. Ported to generic Rust algorithm in 2025, TG. */
-
-use super::support::{FpResult, IntTy, Round, Status};
-use super::{CastFrom, CastInto, DFloat, Float, HFloat, MinInt};
-
-// Placeholder so we can have `fmaf16` in the `Float` trait.
-#[allow(unused)]
-#[cfg(f16_enabled)]
-#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
-pub(crate) fn fmaf16(_x: f16, _y: f16, _z: f16) -> f16 {
-    unimplemented!()
-}
-
-/// Floating multiply add (f32)
-///
-/// Computes `(x*y)+z`, rounded as one ternary operation (i.e. calculated with infinite precision).
-#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
-pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
-    select_implementation! {
-        name: fmaf,
-        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
-        args: x, y, z,
-    }
-
-    fma_wide_round(x, y, z, Round::Nearest).val
-}
+use crate::support::{
+    CastFrom, CastInto, DFloat, Float, FpResult, HFloat, IntTy, MinInt, Round, Status,
+};
 
 /// Fma implementation when a hardware-backed larger float type is available. For `f32` and `f64`,
 /// `f64` has enough precision to represent the `f32` in its entirety, except for double rounding.
@@ -94,18 +70,4 @@ where
     }
 
     FpResult::ok(B::from_bits(ui).narrow())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn issue_263() {
-        let a = f32::from_bits(1266679807);
-        let b = f32::from_bits(1300234242);
-        let c = f32::from_bits(1115553792);
-        let expected = f32::from_bits(1501560833);
-        assert_eq!(fmaf(a, b, c), expected);
-    }
 }

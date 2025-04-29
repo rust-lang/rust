@@ -350,7 +350,7 @@
     "fmaf": {
         "sources": [
             "libm/src/math/arch/aarch64.rs",
-            "libm/src/math/fma_wide.rs"
+            "libm/src/math/fma.rs"
         ],
         "type": "f32"
     },

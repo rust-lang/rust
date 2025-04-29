@@ -159,7 +159,6 @@ mod fabs;
 mod fdim;
 mod floor;
 mod fma;
-mod fma_wide;
 mod fmin_fmax;
 mod fminimum_fmaximum;
 mod fminimum_fmaximum_num;
@@ -254,8 +253,7 @@ pub use self::expm1f::expm1f;
 pub use self::fabs::{fabs, fabsf};
 pub use self::fdim::{fdim, fdimf};
 pub use self::floor::{floor, floorf};
-pub use self::fma::fma;
-pub use self::fma_wide::fmaf;
+pub use self::fma::{fma, fmaf};
 pub use self::fmin_fmax::{fmax, fmaxf, fmin, fminf};
 pub use self::fminimum_fmaximum::{fmaximum, fmaximumf, fminimum, fminimumf};
 pub use self::fminimum_fmaximum_num::{fmaximum_num, fmaximum_numf, fminimum_num, fminimum_numf};
@@ -336,7 +334,7 @@ cfg_if! {
         // verify-sorted-end
 
         #[allow(unused_imports)]
-        pub(crate) use self::fma_wide::fmaf16;
+        pub(crate) use self::fma::fmaf16;
     }
 }
 
