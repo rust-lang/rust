@@ -12,7 +12,6 @@ use crate::common::{Config, TestPaths};
 
 mod deadline;
 mod json;
-pub(crate) mod libtest;
 
 pub(crate) fn run_tests(config: &Config, tests: Vec<CollectedTest>) -> bool {
     let tests_len = tests.len();

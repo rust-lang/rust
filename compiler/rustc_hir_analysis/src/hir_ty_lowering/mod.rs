@@ -2715,30 +2715,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::TyKind::Pat(ty, pat) => {
                 let ty_span = ty.span;
                 let ty = self.lower_ty(ty);
-                let pat_ty = match pat.kind {
-                    hir::TyPatKind::Range(start, end) => {
-                        let (ty, start, end) = match ty.kind() {
-                            // Keep this list of types in sync with the list of types that
-                            // the `RangePattern` trait is implemented for.
-                            ty::Int(_) | ty::Uint(_) | ty::Char => {
-                                let start = self.lower_const_arg(start, FeedConstTy::No);
-                                let end = self.lower_const_arg(end, FeedConstTy::No);
-                                (ty, start, end)
-                            }
-                            _ => {
-                                let guar = self.dcx().span_delayed_bug(
-                                    ty_span,
-                                    "invalid base type for range pattern",
-                                );
-                                let errc = ty::Const::new_error(tcx, guar);
-                                (Ty::new_error(tcx, guar), errc, errc)
-                            }
-                        };
-
-                        let pat = tcx.mk_pat(ty::PatternKind::Range { start, end });
-                        Ty::new_pat(tcx, ty, pat)
-                    }
-                    hir::TyPatKind::Err(e) => Ty::new_error(tcx, e),
+                let pat_ty = match self.lower_pat_ty_pat(ty, ty_span, pat) {
+                    Ok(kind) => Ty::new_pat(tcx, ty, tcx.mk_pat(kind)),
+                    Err(guar) => Ty::new_error(tcx, guar),
                 };
                 self.record_ty(pat.hir_id, ty, pat.span);
                 pat_ty
@@ -2748,6 +2727,39 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         self.record_ty(hir_ty.hir_id, result_ty, hir_ty.span);
         result_ty
+    }
+
+    fn lower_pat_ty_pat(
+        &self,
+        ty: Ty<'tcx>,
+        ty_span: Span,
+        pat: &hir::TyPat<'tcx>,
+    ) -> Result<ty::PatternKind<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx();
+        match pat.kind {
+            hir::TyPatKind::Range(start, end) => {
+                match ty.kind() {
+                    // Keep this list of types in sync with the list of types that
+                    // the `RangePattern` trait is implemented for.
+                    ty::Int(_) | ty::Uint(_) | ty::Char => {
+                        let start = self.lower_const_arg(start, FeedConstTy::No);
+                        let end = self.lower_const_arg(end, FeedConstTy::No);
+                        Ok(ty::PatternKind::Range { start, end })
+                    }
+                    _ => Err(self
+                        .dcx()
+                        .span_delayed_bug(ty_span, "invalid base type for range pattern")),
+                }
+            }
+            hir::TyPatKind::Or(patterns) => {
+                self.tcx()
+                    .mk_patterns_from_iter(patterns.iter().map(|pat| {
+                        self.lower_pat_ty_pat(ty, ty_span, pat).map(|pat| tcx.mk_pat(pat))
+                    }))
+                    .map(ty::PatternKind::Or)
+            }
+            hir::TyPatKind::Err(e) => Err(e),
+        }
     }
 
     /// Lower an opaque type (i.e., an existential impl-Trait type) from the HIR.

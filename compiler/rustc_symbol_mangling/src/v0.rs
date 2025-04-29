@@ -253,6 +253,22 @@ impl<'tcx> SymbolMangler<'tcx> {
 
         Ok(())
     }
+
+    fn print_pat(&mut self, pat: ty::Pattern<'tcx>) -> Result<(), std::fmt::Error> {
+        Ok(match *pat {
+            ty::PatternKind::Range { start, end } => {
+                let consts = [start, end];
+                for ct in consts {
+                    Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct).print(self)?;
+                }
+            }
+            ty::PatternKind::Or(patterns) => {
+                for pat in patterns {
+                    self.print_pat(pat)?;
+                }
+            }
+        })
+    }
 }
 
 impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
@@ -469,20 +485,14 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ty.print(self)?;
             }
 
-            ty::Pat(ty, pat) => match *pat {
-                ty::PatternKind::Range { start, end } => {
-                    let consts = [start, end];
-                    // HACK: Represent as tuple until we have something better.
-                    // HACK: constants are used in arrays, even if the types don't match.
-                    self.push("T");
-                    ty.print(self)?;
-                    for ct in consts {
-                        Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct)
-                            .print(self)?;
-                    }
-                    self.push("E");
-                }
-            },
+            ty::Pat(ty, pat) => {
+                // HACK: Represent as tuple until we have something better.
+                // HACK: constants are used in arrays, even if the types don't match.
+                self.push("T");
+                ty.print(self)?;
+                self.print_pat(pat)?;
+                self.push("E");
+            }
 
             ty::Array(ty, len) => {
                 self.push("A");
