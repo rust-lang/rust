@@ -44,8 +44,8 @@ make check-jit RUNTESTFLAGS="-v -v -v jit.exp=jit.dg/test-asm.cc"
 
 #### Debugging Tools
 The project provides several environment variables for debugging:
-- `CG_GCCJIT_DUMP_GIMPLE`: Most commonly used debug dump
-- `CG_RUSTFLAGS`: Additional Rust compiler flags
+- `CG_GCCJIT_DUMP_GIMPLE`: Dump the GIMPLE IR
+- `CG_RUSTFLAGS`: Additional Rust flags
 - `CG_GCCJIT_DUMP_MODULE`: Dumps a specific module
 - `CG_GCCJIT_DUMP_TO_FILE`: Creates C-like representation
 
