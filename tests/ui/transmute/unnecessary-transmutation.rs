@@ -8,7 +8,27 @@ pub fn bytes_at_home(x: u32) -> [u8; 4] {
     //~^ ERROR
 }
 
+pub const fn intinator_const(from: bool) -> u8 {
+    unsafe { transmute(from) }
+    //~^ ERROR
+}
+
+pub static X: u8 = unsafe { transmute(true) };
+//~^ ERROR
+pub const Y: u8 = unsafe { transmute(true) };
+//~^ ERROR
+
+pub struct Z {}
+impl Z {
+    pub const fn intinator_assoc(x: bool) -> u8 {
+        unsafe { transmute(x) }
+        //~^ ERROR
+    }
+}
+
 fn main() {
+    const { unsafe { transmute::<_, u8>(true) } };
+    //~^ ERROR
     unsafe {
         let x: u16 = transmute(*b"01");
         //~^ ERROR
