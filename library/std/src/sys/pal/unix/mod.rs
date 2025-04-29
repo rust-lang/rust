@@ -204,7 +204,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     target_os = "vxworks",
     target_os = "vita",
 )))]
-static ON_BROKEN_PIPE_FLAG_USED: crate::sync::atomic::AtomicBool =
+static ON_BROKEN_PIPE_FLAG_USED: crate::sync::atomic::Atomic<bool> =
     crate::sync::atomic::AtomicBool::new(false);
 
 #[cfg(not(any(

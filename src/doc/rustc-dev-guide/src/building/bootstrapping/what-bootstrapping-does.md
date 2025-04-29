@@ -394,8 +394,8 @@ will be rare to want to use it. Finally, `MAGIC_EXTRA_RUSTFLAGS` bypasses the
   this is `compiletest`. For unit tests and doc tests this is the `libtest`
   runner.
 
-Most test runner accept `--help`, which you can use to find out the options
-accepted by the runner.
+Most test runners accept `--help`,
+which you can use to find out the options accepted by the runner.
 
 ## Environment Variables
 

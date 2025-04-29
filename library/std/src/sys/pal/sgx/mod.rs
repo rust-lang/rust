@@ -6,7 +6,7 @@
 #![allow(fuzzy_provenance_casts)] // FIXME: this entire module systematically confuses pointers and integers
 
 use crate::io::ErrorKind;
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 
 pub mod abi;
 mod libunwind_integration;
@@ -46,7 +46,7 @@ pub fn unsupported_err() -> crate::io::Error {
 /// what happens when `SGX_INEFFECTIVE_ERROR` is set to `true`. If it is
 /// `false`, the behavior is the same as `unsupported`.
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
-    static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
+    static SGX_INEFFECTIVE_ERROR: Atomic<bool> = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
         Err(crate::io::const_error!(
             ErrorKind::Uncategorized,

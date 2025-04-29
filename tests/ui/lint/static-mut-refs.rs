@@ -12,8 +12,8 @@ static mut FOO: (u32, u32) = (1, 2);
 macro_rules! bar {
     ($x:expr) => {
         &mut ($x.0)
-        //[e2021]~^ WARN creating a mutable reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR creating a mutable reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN creating a mutable reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR creating a mutable reference to mutable static [static_mut_refs]
     };
 }
 
@@ -36,54 +36,54 @@ fn main() {
 
     unsafe {
         let _y = &X;
-        //[e2021]~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR shared reference to mutable static [static_mut_refs]
 
         let _y = &mut X;
-        //[e2021]~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR mutable reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN mutable reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR mutable reference to mutable static [static_mut_refs]
 
         let _z = &raw mut X;
 
         let _p = &raw const X;
 
         let ref _a = X;
-        //[e2021]~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR shared reference to mutable static [static_mut_refs]
 
         let (_b, _c) = (&X, &Y);
-        //[e2021]~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2021]~^^^ WARN shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^^^ ERROR shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR shared reference to mutable static [static_mut_refs]
+        //[e2021]~^^^ WARN shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^^^ ERROR shared reference to mutable static [static_mut_refs]
 
         foo(&X);
-        //[e2021]~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR shared reference to mutable static [static_mut_refs]
 
         static mut Z: &[i32; 3] = &[0, 1, 2];
 
         let _ = Z.len();
-        //[e2021]~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN creating a shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR creating a shared reference to mutable static [static_mut_refs]
 
         let _ = Z[0];
 
         let _ = format!("{:?}", Z);
-        //[e2021]~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN creating a shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR creating a shared reference to mutable static [static_mut_refs]
 
         let _v = &A.value;
-        //[e2021]~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN creating a shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR creating a shared reference to mutable static [static_mut_refs]
 
         let _s = &A.s.value;
-        //[e2021]~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN creating a shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR creating a shared reference to mutable static [static_mut_refs]
 
         let ref _v = A.value;
-        //[e2021]~^ WARN creating a shared reference to mutable static is discouraged [static_mut_refs]
-        //[e2024]~^^ ERROR creating a shared reference to mutable static is discouraged [static_mut_refs]
+        //[e2021]~^ WARN creating a shared reference to mutable static [static_mut_refs]
+        //[e2024]~^^ ERROR creating a shared reference to mutable static [static_mut_refs]
 
         let _x = bar!(FOO);
 

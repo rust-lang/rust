@@ -761,7 +761,7 @@ lint_single_use_lifetime = lifetime parameter `{$ident}` only used once
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
-lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static is discouraged
+lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static
     .label = {$shared_label}reference to mutable static
     .suggestion = use `&raw const` instead to create a raw pointer
     .suggestion_mut = use `&raw mut` instead to create a raw pointer

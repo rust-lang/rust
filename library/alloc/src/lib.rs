@@ -122,6 +122,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(formatting_options)]
+#![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]

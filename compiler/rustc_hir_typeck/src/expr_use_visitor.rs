@@ -1000,13 +1000,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     // determines whether to borrow *at the level of the deref pattern* rather than
                     // borrowing the bound place (since that inner place is inside the temporary that
                     // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
+                    // Deref patterns on boxes don't borrow, so we ignore them here.
                     // HACK: this could be a fake pattern corresponding to a deref inserted by match
                     // ergonomics, in which case `pat.hir_id` will be the id of the subpattern.
-                    let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpattern);
-                    let mutability =
-                        if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
-                    let bk = ty::BorrowKind::from_mutbl(mutability);
-                    self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
+                    if let hir::ByRef::Yes(mutability) =
+                        self.cx.typeck_results().deref_pat_borrow_mode(place.place.ty(), subpattern)
+                    {
+                        let bk = ty::BorrowKind::from_mutbl(mutability);
+                        self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
+                    }
                 }
                 PatKind::Never => {
                     // A `!` pattern always counts as an immutable read of the discriminant,
@@ -1691,18 +1693,19 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             place_with_id = match adjust.kind {
                 adjustment::PatAdjust::BuiltinDeref => self.cat_deref(pat.hir_id, place_with_id)?,
                 adjustment::PatAdjust::OverloadedDeref => {
-                    // This adjustment corresponds to an overloaded deref; it borrows the scrutinee to
-                    // call `Deref::deref` or `DerefMut::deref_mut`. Invoke the callback before setting
-                    // `place_with_id` to the temporary storing the result of the deref.
+                    // This adjustment corresponds to an overloaded deref; unless it's on a box, it
+                    // borrows the scrutinee to call `Deref::deref` or `DerefMut::deref_mut`. Invoke
+                    // the callback before setting `place_with_id` to the temporary storing the
+                    // result of the deref.
                     // HACK(dianne): giving the callback a fake deref pattern makes sure it behaves the
-                    // same as it would if this were an explicit deref pattern.
+                    // same as it would if this were an explicit deref pattern (including for boxes).
                     op(&place_with_id, &hir::Pat { kind: PatKind::Deref(pat), ..*pat })?;
                     let target_ty = match adjusts.peek() {
                         Some(&&next_adjust) => next_adjust.source,
                         // At the end of the deref chain, we get `pat`'s scrutinee.
                         None => self.pat_ty_unadjusted(pat)?,
                     };
-                    self.pat_deref_temp(pat.hir_id, pat, target_ty)?
+                    self.pat_deref_place(pat.hir_id, place_with_id, pat, target_ty)?
                 }
             };
         }
@@ -1810,7 +1813,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             }
             PatKind::Deref(subpat) => {
                 let ty = self.pat_ty_adjusted(subpat)?;
-                let place = self.pat_deref_temp(pat.hir_id, subpat, ty)?;
+                let place = self.pat_deref_place(pat.hir_id, place_with_id, subpat, ty)?;
                 self.cat_pattern(place, subpat, op)?;
             }
 
@@ -1863,21 +1866,27 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
-    /// Represents the place of the temp that stores the scrutinee of a deref pattern's interior.
-    fn pat_deref_temp(
+    /// Represents the place matched on by a deref pattern's interior.
+    fn pat_deref_place(
         &self,
         hir_id: HirId,
+        base_place: PlaceWithHirId<'tcx>,
         inner: &hir::Pat<'_>,
         target_ty: Ty<'tcx>,
     ) -> Result<PlaceWithHirId<'tcx>, Cx::Error> {
-        let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(inner);
-        let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
-        let re_erased = self.cx.tcx().lifetimes.re_erased;
-        let ty = Ty::new_ref(self.cx.tcx(), re_erased, target_ty, mutability);
-        // A deref pattern stores the result of `Deref::deref` or `DerefMut::deref_mut` ...
-        let base = self.cat_rvalue(hir_id, ty);
-        // ... and the inner pattern matches on the place behind that reference.
-        self.cat_deref(hir_id, base)
+        match self.cx.typeck_results().deref_pat_borrow_mode(base_place.place.ty(), inner) {
+            // Deref patterns on boxes are lowered using a built-in deref.
+            hir::ByRef::No => self.cat_deref(hir_id, base_place),
+            // For other types, we create a temporary to match on.
+            hir::ByRef::Yes(mutability) => {
+                let re_erased = self.cx.tcx().lifetimes.re_erased;
+                let ty = Ty::new_ref(self.cx.tcx(), re_erased, target_ty, mutability);
+                // A deref pattern stores the result of `Deref::deref` or `DerefMut::deref_mut` ...
+                let base = self.cat_rvalue(hir_id, ty);
+                // ... and the inner pattern matches on the place behind that reference.
+                self.cat_deref(hir_id, base)
+            }
+        }
     }
 
     fn is_multivariant_adt(&self, ty: Ty<'tcx>, span: Span) -> bool {

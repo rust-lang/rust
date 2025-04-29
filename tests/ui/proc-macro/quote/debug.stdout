@@ -32,12 +32,12 @@ fn main() {
                         let mut iter =
                             "\"world\"".parse::<crate::TokenStream>().unwrap().into_iter();
                         if let (Some(crate::TokenTree::Literal(mut lit)), None) =
-                                    (iter.next(), iter.next()) {
-                                lit.set_span(crate::Span::recover_proc_macro_span(2));
-                                lit
-                            } else {
-                               ::core::panicking::panic("internal error: entered unreachable code")
-                           }
+                                (iter.next(), iter.next()) {
+                            lit.set_span(crate::Span::recover_proc_macro_span(2));
+                            lit
+                        } else {
+                            ::core::panicking::panic("internal error: entered unreachable code")
+                        }
                     }), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
                         crate::Spacing::Alone)), &mut ts);
@@ -51,12 +51,12 @@ fn main() {
                         let mut iter =
                             "r#\"raw\"literal\"#".parse::<crate::TokenStream>().unwrap().into_iter();
                         if let (Some(crate::TokenTree::Literal(mut lit)), None) =
-                                    (iter.next(), iter.next()) {
-                                lit.set_span(crate::Span::recover_proc_macro_span(5));
-                                lit
-                            } else {
-                               ::core::panicking::panic("internal error: entered unreachable code")
-                           }
+                                (iter.next(), iter.next()) {
+                            lit.set_span(crate::Span::recover_proc_macro_span(5));
+                            lit
+                        } else {
+                            ::core::panicking::panic("internal error: entered unreachable code")
+                        }
                     }), &mut ts);
         crate::ToTokens::to_tokens(&crate::TokenTree::Punct(crate::Punct::new(';',
                         crate::Spacing::Alone)), &mut ts);

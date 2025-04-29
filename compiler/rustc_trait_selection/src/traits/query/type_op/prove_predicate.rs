@@ -19,10 +19,10 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
             return Some(());
         }
 
-        if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) =
+        if let ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) =
             key.value.predicate.kind().skip_binder()
         {
-            match arg.as_type()?.kind() {
+            match term.as_type()?.kind() {
                 ty::Param(_)
                 | ty::Bool
                 | ty::Char

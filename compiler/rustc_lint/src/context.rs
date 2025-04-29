@@ -812,7 +812,10 @@ impl<'tcx> LateContext<'tcx> {
                     return Ok(());
                 }
 
-                self.path.push(Symbol::intern(&disambiguated_data.data.to_string()));
+                self.path.push(match disambiguated_data.data.get_opt_name() {
+                    Some(sym) => sym,
+                    None => Symbol::intern(&disambiguated_data.data.to_string()),
+                });
                 Ok(())
             }
 

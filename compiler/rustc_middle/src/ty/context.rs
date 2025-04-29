@@ -590,6 +590,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.defaultness(def_id).has_value()
     }
 
+    fn impl_specializes(self, impl_def_id: Self::DefId, victim_def_id: Self::DefId) -> bool {
+        self.specializes((impl_def_id, victim_def_id))
+    }
+
     fn impl_is_default(self, impl_def_id: DefId) -> bool {
         self.defaultness(impl_def_id).is_default()
     }
@@ -713,7 +717,6 @@ macro_rules! bidirectional_lang_item_map {
 
 bidirectional_lang_item_map! {
 // tidy-alphabetical-start
-    AsyncDestruct,
     AsyncFn,
     AsyncFnKindHelper,
     AsyncFnKindUpvars,
@@ -1709,6 +1712,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_coroutine(self, def_id: DefId) -> bool {
         self.coroutine_kind(def_id).is_some()
+    }
+
+    pub fn is_async_drop_in_place_coroutine(self, def_id: DefId) -> bool {
+        self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics

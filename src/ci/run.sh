@@ -183,6 +183,9 @@ else
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
 
+  # Download GCC from CI on test builders
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set gcc.download-ci-gcc=true"
+
   if [ "$NO_DOWNLOAD_CI_RUSTC" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.download-rustc=if-unchanged"
   fi

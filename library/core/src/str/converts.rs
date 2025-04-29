@@ -178,7 +178,7 @@ pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8; mutable version.
 ///
-/// See the immutable version, [`from_utf8_unchecked()`] for more information.
+/// See the immutable version, [`from_utf8_unchecked()`] for documentation and safety requirements.
 ///
 /// # Examples
 ///

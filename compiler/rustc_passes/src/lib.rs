@@ -9,6 +9,7 @@
 #![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(box_patterns)]
 #![feature(map_try_insert)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]

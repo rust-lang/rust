@@ -26,8 +26,8 @@ use core::pin::{Pin, PinCoerceUnsized};
 use core::ptr::{self, NonNull};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
-use core::sync::atomic;
 use core::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use core::sync::atomic::{self, Atomic};
 use core::{borrow, fmt, hint};
 
 #[cfg(not(no_global_oom_handling))]
@@ -369,12 +369,12 @@ impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
 // inner types.
 #[repr(C)]
 struct ArcInner<T: ?Sized> {
-    strong: atomic::AtomicUsize,
+    strong: Atomic<usize>,
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
     // ability to upgrade weak pointers or downgrade strong ones; this is used
     // to avoid races in `make_mut` and `get_mut`.
-    weak: atomic::AtomicUsize,
+    weak: Atomic<usize>,
 
     data: T,
 }
@@ -2446,7 +2446,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
-        if this.is_unique() {
+        if Self::is_unique(this) {
             // This unsafety is ok because we're guaranteed that the pointer
             // returned is the *only* pointer that will ever be returned to T. Our
             // reference count is guaranteed to be 1 at this point, and we required
@@ -2526,11 +2526,64 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         unsafe { &mut (*this.ptr.as_ptr()).data }
     }
 
-    /// Determine whether this is the unique reference (including weak refs) to
-    /// the underlying data.
+    /// Determine whether this is the unique reference to the underlying data.
     ///
-    /// Note that this requires locking the weak ref count.
-    fn is_unique(&mut self) -> bool {
+    /// Returns `true` if there are no other `Arc` or [`Weak`] pointers to the same allocation;
+    /// returns `false` otherwise.
+    ///
+    /// If this function returns `true`, then is guaranteed to be safe to call [`get_mut_unchecked`]
+    /// on this `Arc`, so long as no clones occur in between.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_is_unique)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new(3);
+    /// assert!(Arc::is_unique(&x));
+    ///
+    /// let y = Arc::clone(&x);
+    /// assert!(!Arc::is_unique(&x));
+    /// drop(y);
+    ///
+    /// // Weak references also count, because they could be upgraded at any time.
+    /// let z = Arc::downgrade(&x);
+    /// assert!(!Arc::is_unique(&x));
+    /// ```
+    ///
+    /// # Pointer invalidation
+    ///
+    /// This function will always return the same value as `Arc::get_mut(arc).is_some()`. However,
+    /// unlike that operation it does not produce any mutable references to the underlying data,
+    /// meaning no pointers to the data inside the `Arc` are invalidated by the call. Thus, the
+    /// following code is valid, even though it would be UB if it used `Arc::get_mut`:
+    ///
+    /// ```
+    /// #![feature(arc_is_unique)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let arc = Arc::new(5);
+    /// let pointer: *const i32 = &*arc;
+    /// assert!(Arc::is_unique(&arc));
+    /// assert_eq!(unsafe { *pointer }, 5);
+    /// ```
+    ///
+    /// # Atomic orderings
+    ///
+    /// Concurrent drops to other `Arc` pointers to the same allocation will synchronize with this
+    /// call - that is, this call performs an `Acquire` operation on the underlying strong and weak
+    /// ref counts. This ensures that calling `get_mut_unchecked` is safe.
+    ///
+    /// Note that this operation requires locking the weak ref count, so concurrent calls to
+    /// `downgrade` may spin-loop for a short period of time.
+    ///
+    /// [`get_mut_unchecked`]: Self::get_mut_unchecked
+    #[inline]
+    #[unstable(feature = "arc_is_unique", issue = "138938")]
+    pub fn is_unique(this: &Self) -> bool {
         // lock the weak pointer count if we appear to be the sole weak pointer
         // holder.
         //
@@ -2538,16 +2591,16 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         // writes to `strong` (in particular in `Weak::upgrade`) prior to decrements
         // of the `weak` count (via `Weak::drop`, which uses release). If the upgraded
         // weak ref was never dropped, the CAS here will fail so we do not care to synchronize.
-        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
+        if this.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
             // This needs to be an `Acquire` to synchronize with the decrement of the `strong`
             // counter in `drop` -- the only access that happens when any but the last reference
             // is being dropped.
-            let unique = self.inner().strong.load(Acquire) == 1;
+            let unique = this.inner().strong.load(Acquire) == 1;
 
             // The release write here synchronizes with a read in `downgrade`,
             // effectively preventing the above read of `strong` from happening
             // after the write.
-            self.inner().weak.store(1, Release); // release the lock
+            this.inner().weak.store(1, Release); // release the lock
             unique
         } else {
             false
@@ -2760,8 +2813,8 @@ impl<T, A: Allocator> Weak<T, A> {
 /// Helper type to allow accessing the reference counts without
 /// making any assertions about the data field.
 struct WeakInner<'a> {
-    weak: &'a atomic::AtomicUsize,
-    strong: &'a atomic::AtomicUsize,
+    weak: &'a Atomic<usize>,
+    strong: &'a Atomic<usize>,
 }
 
 impl<T: ?Sized> Weak<T> {
