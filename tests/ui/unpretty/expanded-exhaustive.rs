@@ -1,6 +1,12 @@
-//@ compile-flags: -Zunpretty=expanded
+//@ revisions: expanded hir
+//@[expanded]compile-flags: -Zunpretty=expanded
+//@[expanded]check-pass
+//@[hir]compile-flags: -Zunpretty=hir
+//@[hir]check-fail
 //@ edition:2024
-//@ check-pass
+
+// Note: the HIR revision includes a `.stderr` file because there are some
+// errors that only occur once we get past the AST.
 
 #![feature(auto_traits)]
 #![feature(box_patterns)]
@@ -202,8 +208,8 @@ mod expressions {
         move || value;
         async || value;
         async move || value;
-        static || value;
-        static move || value;
+        static || value;            //[hir]~ closures cannot be static
+        static move || value;       //[hir]~ closures cannot be static
         (static async || value);
         (static async move || value);
         || -> u8 { value };
@@ -232,7 +238,7 @@ mod expressions {
     /// ExprKind::Await
     fn expr_await() {
         let fut;
-        fut.await;
+        fut.await;  //[hir]~ `await` is only allowed
     }
 
     /// ExprKind::TryBlock
@@ -281,7 +287,7 @@ mod expressions {
 
     /// ExprKind::Underscore
     fn expr_underscore() {
-        _;
+        _;      //[hir]~ in expressions, `_` can only
     }
 
     /// ExprKind::Path
@@ -291,10 +297,14 @@ mod expressions {
         crate::expressions::expr_path::<'static>;
         <T as Default>::default;
         <T as ::core::default::Default>::default::<>;
-        x::();
-        x::(T, T) -> T;
+        x::();            //[hir]~ parenthesized type parameters
+        x::(T, T) -> T;   //[hir]~ parenthesized type parameters
         crate::() -> ()::expressions::() -> ()::expr_path;
+        //[hir]~^ parenthesized type parameters
+        //[hir]~| parenthesized type parameters
         core::()::marker::()::PhantomData;
+        //[hir]~^ parenthesized type parameters
+        //[hir]~| parenthesized type parameters
     }
 
     /// ExprKind::AddrOf
@@ -390,7 +400,7 @@ mod expressions {
 
     /// ExprKind::Yield
     fn expr_yield() {
-        yield;
+        yield;          //[hir]~ `yield` can only be used
         yield true;
     }
 
@@ -470,7 +480,7 @@ mod items {
 
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
-        unsafe extern "C++" {}
+        unsafe extern "C++" {}  //[hir]~ invalid ABI
         unsafe extern "C" {}
     }
 
@@ -680,7 +690,7 @@ mod patterns {
 
     /// PatKind::Rest
     fn pat_rest() {
-        let ..;
+        let ..;     //[hir]~ `..` patterns are not allowed here
     }
 
     /// PatKind::Never
@@ -795,7 +805,7 @@ mod types {
         let _: T<'static>;
         let _: T<T>;
         let _: T::<T>;
-        let _: T() -> !;
+        let _: T() -> !;    //[hir]~ parenthesized type parameters
         let _: <T as ToOwned>::Owned;
     }
 
@@ -810,12 +820,12 @@ mod types {
 
     /// TyKind::ImplTrait
     const fn ty_impl_trait() {
-        let _: impl Send;
-        let _: impl Send + 'static;
-        let _: impl 'static + Send;
-        let _: impl ?Sized;
-        let _: impl ~const Clone;
-        let _: impl for<'a> Send;
+        let _: impl Send;               //[hir]~ `impl Trait` is not allowed
+        let _: impl Send + 'static;     //[hir]~ `impl Trait` is not allowed
+        let _: impl 'static + Send;     //[hir]~ `impl Trait` is not allowed
+        let _: impl ?Sized;             //[hir]~ `impl Trait` is not allowed
+        let _: impl ~const Clone;       //[hir]~ `impl Trait` is not allowed
+        let _: impl for<'a> Send;       //[hir]~ `impl Trait` is not allowed
     }
 
     /// TyKind::Paren
