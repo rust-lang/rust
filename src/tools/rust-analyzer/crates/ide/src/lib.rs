@@ -182,7 +182,7 @@ impl AnalysisHost {
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
-        Analysis { db: self.db.snapshot() }
+        Analysis { db: self.db.clone() }
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -864,7 +864,7 @@ impl Analysis {
     where
         F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
     {
-        let snap = self.db.snapshot();
+        let snap = self.db.clone();
         Cancelled::catch(|| f(&snap))
     }
 }

@@ -701,10 +701,9 @@ impl flags::AnalysisStats {
 
         if self.parallel {
             let mut inference_sw = self.stop_watch();
-            let snap = db.snapshot();
             bodies
                 .par_iter()
-                .map_with(snap, |snap, &body| {
+                .map_with(db.clone(), |snap, &body| {
                     snap.body(body.into());
                     snap.infer(body.into());
                 })

@@ -51,6 +51,7 @@ pub fn parallel_prime_caches(
     enum ParallelPrimeCacheWorkerProgress {
         BeginCrate { crate_id: Crate, crate_name: Symbol },
         EndCrate { crate_id: Crate },
+        Cancelled(Cancelled),
     }
 
     // We split off def map computation from other work,
@@ -71,26 +72,32 @@ pub fn parallel_prime_caches(
                 progress_sender
                     .send(ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name })?;
 
-                match kind {
+                let cancelled = Cancelled::catch(|| match kind {
                     PrimingPhase::DefMap => _ = db.crate_def_map(crate_id),
                     PrimingPhase::ImportMap => _ = db.import_map(crate_id),
                     PrimingPhase::CrateSymbols => _ = db.crate_symbols(crate_id.into()),
-                }
+                });
 
-                progress_sender.send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id })?;
+                match cancelled {
+                    Ok(()) => progress_sender
+                        .send(ParallelPrimeCacheWorkerProgress::EndCrate { crate_id })?,
+                    Err(cancelled) => progress_sender
+                        .send(ParallelPrimeCacheWorkerProgress::Cancelled(cancelled))?,
+                }
             }
 
             Ok::<_, crossbeam_channel::SendError<_>>(())
         };
 
         for id in 0..num_worker_threads {
-            let worker = prime_caches_worker.clone();
-            let db = db.snapshot();
-
             stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
                 .allow_leak(true)
                 .name(format!("PrimeCaches#{id}"))
-                .spawn(move || Cancelled::catch(|| worker(db.snapshot())))
+                .spawn({
+                    let worker = prime_caches_worker.clone();
+                    let db = db.clone();
+                    move || worker(db)
+                })
                 .expect("failed to spawn thread");
         }
 
@@ -142,9 +149,14 @@ pub fn parallel_prime_caches(
                 continue;
             }
             Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
-                // our workers may have died from a cancelled task, so we'll check and re-raise here.
-                db.unwind_if_revision_cancelled();
-                break;
+                // all our workers have exited, mark us as finished and exit
+                cb(ParallelPrimeCachesProgress {
+                    crates_currently_indexing: vec![],
+                    crates_done,
+                    crates_total: crates_done,
+                    work_type: "Indexing",
+                });
+                return;
             }
         };
         match worker_progress {
@@ -155,6 +167,10 @@ pub fn parallel_prime_caches(
                 crates_currently_indexing.swap_remove(&crate_id);
                 crates_to_prime.mark_done(crate_id);
                 crates_done += 1;
+            }
+            ParallelPrimeCacheWorkerProgress::Cancelled(cancelled) => {
+                // Cancelled::throw should probably be public
+                std::panic::resume_unwind(Box::new(cancelled));
             }
         };
 
@@ -186,9 +202,14 @@ pub fn parallel_prime_caches(
                 continue;
             }
             Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
-                // our workers may have died from a cancelled task, so we'll check and re-raise here.
-                db.unwind_if_revision_cancelled();
-                break;
+                // all our workers have exited, mark us as finished and exit
+                cb(ParallelPrimeCachesProgress {
+                    crates_currently_indexing: vec![],
+                    crates_done,
+                    crates_total: crates_done,
+                    work_type: "Populating symbols",
+                });
+                return;
             }
         };
         match worker_progress {
@@ -198,6 +219,10 @@ pub fn parallel_prime_caches(
             ParallelPrimeCacheWorkerProgress::EndCrate { crate_id } => {
                 crates_currently_indexing.swap_remove(&crate_id);
                 crates_done += 1;
+            }
+            ParallelPrimeCacheWorkerProgress::Cancelled(cancelled) => {
+                // Cancelled::throw should probably be public
+                std::panic::resume_unwind(Box::new(cancelled));
             }
         };
 

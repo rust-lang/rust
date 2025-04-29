@@ -78,6 +78,8 @@ pub type FileRange = FileRangeWrapper<FileId>;
 
 #[salsa::db]
 pub struct RootDatabase {
+    // FIXME: Revisit this commit now that we migrated to the new salsa, given we store arcs in this
+    // db directly now
     // We use `ManuallyDrop` here because every codegen unit that contains a
     // `&RootDatabase -> &dyn OtherDatabase` cast will instantiate its drop glue in the vtable,
     // which duplicates `Weak::drop` and `Arc::drop` tens of thousands of times, which makes
@@ -233,14 +235,6 @@ impl RootDatabase {
         //         .unwrap_or(base_db::DEFAULT_BORROWCK_LRU_CAP),
         // );
         // hir::db::BodyWithSourceMapQuery.in_db_mut(self).set_lru_capacity(2048);
-    }
-
-    pub fn snapshot(&self) -> Self {
-        Self {
-            storage: self.storage.clone(),
-            files: self.files.clone(),
-            crates_map: self.crates_map.clone(),
-        }
     }
 }
 

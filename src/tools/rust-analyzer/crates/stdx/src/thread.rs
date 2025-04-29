@@ -56,6 +56,8 @@ impl Builder {
         Self { inner: self.inner.stack_size(size), ..self }
     }
 
+    /// Whether dropping should detach the thread
+    /// instead of joining it.
     #[must_use]
     pub fn allow_leak(self, allow_leak: bool) -> Self {
         Self { allow_leak, ..self }
