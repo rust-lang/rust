@@ -136,6 +136,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type AllocId = crate::mir::interpret::AllocId;
     type Pat = Pattern<'tcx>;
+    type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
@@ -842,6 +843,7 @@ pub struct CtxtInterners<'tcx> {
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
+    patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -878,6 +880,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             captures: InternedSet::with_capacity(N),
             offset_of: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
+            patterns: InternedSet::with_capacity(N),
         }
     }
 
@@ -2662,6 +2665,7 @@ slice_interners!(
     local_def_ids: intern_local_def_ids(LocalDefId),
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
+    patterns: pub mk_patterns(Pattern<'tcx>),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2933,6 +2937,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // re-interning permutations, in which case that would be asserted
         // here.
         self.intern_local_def_ids(def_ids)
+    }
+
+    pub fn mk_patterns_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<ty::Pattern<'tcx>, &'tcx List<ty::Pattern<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_patterns(xs))
     }
 
     pub fn mk_local_def_ids_from_iter<I, T>(self, iter: I) -> T::Output

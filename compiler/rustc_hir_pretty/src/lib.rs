@@ -1882,6 +1882,19 @@ impl<'a> State<'a> {
                 self.word("..=");
                 self.print_const_arg(end);
             }
+            TyPatKind::Or(patterns) => {
+                self.popen();
+                let mut first = true;
+                for pat in patterns {
+                    if first {
+                        first = false;
+                    } else {
+                        self.word(" | ");
+                    }
+                    self.print_ty_pat(pat);
+                }
+                self.pclose();
+            }
             TyPatKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

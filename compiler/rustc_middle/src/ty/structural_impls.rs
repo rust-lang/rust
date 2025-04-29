@@ -779,5 +779,6 @@ list_fold! {
     ty::Clauses<'tcx> : mk_clauses,
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> : mk_poly_existential_predicates,
     &'tcx ty::List<PlaceElem<'tcx>> : mk_place_elems,
+    &'tcx ty::List<ty::Pattern<'tcx>> : mk_patterns,
     CanonicalVarInfos<'tcx> : mk_canonical_var_infos,
 }
