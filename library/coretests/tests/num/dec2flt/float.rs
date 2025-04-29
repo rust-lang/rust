@@ -2,7 +2,8 @@ use core::num::dec2flt::float::RawFloat;
 
 // FIXME(f16_f128): enable on all targets once possible.
 #[test]
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn test_f16_integer_decode() {
     assert_eq!(3.14159265359f16.integer_decode(), (1608, -9, 1));
     assert_eq!((-8573.5918555f16).integer_decode(), (1072, 3, -1));
@@ -54,7 +55,8 @@ fn test_f64_integer_decode() {
 
 // FIXME(f16_f128): enable on all targets once possible.
 #[test]
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn test_f16_consts() {
     assert_eq!(<f16 as RawFloat>::INFINITY, f16::INFINITY);
     assert_eq!(<f16 as RawFloat>::NEG_INFINITY, -f16::INFINITY);

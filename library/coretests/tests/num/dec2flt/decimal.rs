@@ -9,7 +9,8 @@ const FPATHS_F64: &[FPath<f64>] =
 
 // FIXME(f16_f128): enable on all targets once possible.
 #[test]
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn check_fast_path_f16() {
     const FPATHS_F16: &[FPath<f16>] =
         &[((0, 0, false, false), Some(0.0)), ((0, 0, false, false), Some(0.0))];

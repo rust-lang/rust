@@ -75,7 +75,8 @@ macro_rules! try_fixed {
     })
 }
 
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn ldexp_f16(a: f16, b: i32) -> f16 {
     ldexp_f64(a as f64, b) as f16
 }
@@ -181,7 +182,8 @@ trait TestableFloat: DecodableFloat + fmt::Display {
     fn ldexpi(f: i64, exp: isize) -> Self;
 }
 
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 impl TestableFloat for f16 {
     fn ldexpi(f: i64, exp: isize) -> Self {
         f as Self * (exp as Self).exp2()
@@ -239,7 +241,8 @@ macro_rules! check_exact_one {
 //     ftp://ftp.ee.lbl.gov/testbase-report.ps.Z
 //  or https://www.icir.org/vern/papers/testbase-report.pdf
 
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 pub fn f16_shortest_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
@@ -287,7 +290,8 @@ where
     check_shortest!(f(minf16) => b"6", -7);
 }
 
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 pub fn f16_exact_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),
@@ -635,7 +639,8 @@ where
     assert_eq!(to_string(f, 1.9971e20, Minus, 1), "199710000000000000000.0");
     assert_eq!(to_string(f, 1.9971e20, Minus, 8), "199710000000000000000.00000000");
 
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         // f16
         assert_eq!(to_string(f, f16::MAX, Minus, 0), "65500");
@@ -759,7 +764,8 @@ where
     assert_eq!(to_string(f, 1.0e23, Minus, (23, 24), false), "100000000000000000000000");
     assert_eq!(to_string(f, 1.0e23, Minus, (24, 25), false), "1e23");
 
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         // f16
         assert_eq!(to_string(f, f16::MAX, Minus, (-2, 2), false), "6.55e4");
@@ -913,7 +919,8 @@ where
         "9.999999999999999547481118258862586856139387236908078193664550781250000e-7"
     );
 
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         assert_eq!(to_string(f, f16::MAX, Minus, 1, false), "7e4");
         assert_eq!(to_string(f, f16::MAX, Minus, 2, false), "6.6e4");
@@ -1211,7 +1218,8 @@ where
         "0.000000999999999999999954748111825886258685613938723690807819366455078125000"
     );
 
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         assert_eq!(to_string(f, f16::MAX, Minus, 0), "65504");
         assert_eq!(to_string(f, f16::MAX, Minus, 1), "65504.0");
@@ -1227,7 +1235,8 @@ where
         return;
     }
 
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         let minf16 = ldexp_f16(1.0, -24);
         assert_eq!(to_string(f, minf16, Minus, 0), "0");

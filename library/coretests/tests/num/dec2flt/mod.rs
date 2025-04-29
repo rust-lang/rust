@@ -93,7 +93,8 @@ fn fast_path_correct() {
 
 #[test]
 fn lonely_dot() {
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     assert!(".".parse::<f16>().is_err());
     assert!(".".parse::<f32>().is_err());
     assert!(".".parse::<f64>().is_err());
@@ -101,7 +102,8 @@ fn lonely_dot() {
 
 #[test]
 fn exponentiated_dot() {
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     assert!(".e0".parse::<f16>().is_err());
     assert!(".e0".parse::<f32>().is_err());
     assert!(".e0".parse::<f64>().is_err());
@@ -109,7 +111,8 @@ fn exponentiated_dot() {
 
 #[test]
 fn lonely_sign() {
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     assert!("+".parse::<f16>().is_err());
     assert!("-".parse::<f32>().is_err());
     assert!("+".parse::<f64>().is_err());
@@ -117,7 +120,8 @@ fn lonely_sign() {
 
 #[test]
 fn whitespace() {
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     assert!("1.0 ".parse::<f16>().is_err());
     assert!(" 1.0".parse::<f32>().is_err());
     assert!("1.0 ".parse::<f64>().is_err());
@@ -125,7 +129,8 @@ fn whitespace() {
 
 #[test]
 fn nan() {
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         assert!("NaN".parse::<f16>().unwrap().is_nan());
         assert!("-NaN".parse::<f16>().unwrap().is_nan());
@@ -140,7 +145,8 @@ fn nan() {
 
 #[test]
 fn inf() {
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         assert_eq!("inf".parse(), Ok(f16::INFINITY));
         assert_eq!("-inf".parse(), Ok(f16::NEG_INFINITY));
@@ -155,7 +161,8 @@ fn inf() {
 
 #[test]
 fn massive_exponent() {
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     {
         let max = i16::MAX;
         assert_eq!(format!("1e{max}000").parse(), Ok(f16::INFINITY));

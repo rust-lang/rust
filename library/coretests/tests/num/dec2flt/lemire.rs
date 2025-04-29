@@ -1,7 +1,8 @@
 use core::num::dec2flt::float::RawFloat;
 use core::num::dec2flt::lemire::compute_float;
 
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn compute_float16(q: i64, w: u64) -> (i32, u64) {
     let fp = compute_float::<f16>(q, w);
     (fp.p_biased, fp.m)
@@ -19,7 +20,8 @@ fn compute_float64(q: i64, w: u64) -> (i32, u64) {
 
 // FIXME(f16_f128): enable on all targets once possible.
 #[test]
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn compute_float_f16_rounding() {
     // The maximum integer that cna be converted to a `f16` without lost precision.
     let val = 1 << 11;

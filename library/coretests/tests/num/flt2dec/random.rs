@@ -79,7 +79,8 @@ where
     (npassed, nignored)
 }
 
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 pub fn f16_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
@@ -119,7 +120,8 @@ where
     });
 }
 
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 pub fn f16_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
@@ -165,13 +167,15 @@ fn shortest_random_equivalence_test() {
 
     f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
     f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
-    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
     f16_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
 }
 
 #[test]
 #[cfg_attr(miri, ignore)] // Miri is to slow
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn shortest_f16_exhaustive_equivalence_test() {
     // see the f32 version
     use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
@@ -202,7 +206,8 @@ fn shortest_f64_hard_random_equivalence_test() {
 }
 
 #[test]
-#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 fn exact_f16_random_equivalence_test() {
     use core::num::flt2dec::strategy::dragon::format_exact as fallback;
     // Miri is too slow
