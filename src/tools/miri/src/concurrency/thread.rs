@@ -728,7 +728,7 @@ impl<'tcx> ThreadManager<'tcx> {
         }
         // No callbacks immediately scheduled, pick a regular thread to execute.
         // The active thread blocked or yielded. So we go search for another enabled thread.
-        // We build the list of threads by starting with the thread after the current one, followed by
+        // We build the list of threads by starting with the threads after the current one, followed by
         // the threads before the current one and then the current thread itself (i.e., this iterator acts
         // like `threads.rotate_left(self.active_thread.index() + 1)`. This ensures that if we pick the first
         // eligible thread, we do regular round-robin scheduling, and all threads get a chance to take a step.
@@ -752,7 +752,7 @@ impl<'tcx> ThreadManager<'tcx> {
                 self.active_thread = id;
             }
         }
-        //This completes the `yield`, if any was requested.
+        // This completes the `yield`, if any was requested.
         self.yield_active_thread = false;
 
         if self.threads[self.active_thread].state.is_enabled() {
