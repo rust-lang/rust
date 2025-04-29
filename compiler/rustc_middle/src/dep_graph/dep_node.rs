@@ -13,8 +13,11 @@ use crate::ty::TyCtxt;
 
 macro_rules! define_dep_nodes {
     (
-     $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $variant:ident($($K:tt)*) -> $V:ty,)*) => {
+        $(
+            $(#[$attr:meta])*
+            [$($modifiers:tt)*] fn $variant:ident($($K:tt)*) -> $V:ty,
+        )*
+    ) => {
 
         #[macro_export]
         macro_rules! make_dep_kind_array {

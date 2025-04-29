@@ -313,8 +313,11 @@ macro_rules! separate_provide_extern_default {
 
 macro_rules! define_callbacks {
     (
-     $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        $(
+            $(#[$attr:meta])*
+            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,
+        )*
+    ) => {
 
         #[allow(unused_lifetimes)]
         pub mod queries {

@@ -578,8 +578,11 @@ where
 // invoked by `rustc_with_all_queries`.
 macro_rules! define_queries {
     (
-     $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        $(
+            $(#[$attr:meta])*
+            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,
+        )*
+    ) => {
 
         pub(crate) mod query_impl { $(pub(crate) mod $name {
             use super::super::*;
