@@ -267,8 +267,10 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// # use core::mem::{MaybeUninit, transmute};
 /// # struct T; struct U;
 /// fn identity(t: T) -> T {
-///     let u: MaybeUninit<U> = transmute(t);
-///     transmute(u)
+///     unsafe {
+///         let u: MaybeUninit<U> = transmute(t);
+///         transmute(u)
+///     }
 /// }
 /// ```
 ///
