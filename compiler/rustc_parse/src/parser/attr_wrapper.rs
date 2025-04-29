@@ -10,6 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::{DUMMY_SP, sym};
+use thin_vec::ThinVec;
 
 use super::{Capturing, ForceCollect, Parser, Trailing};
 
@@ -294,10 +295,10 @@ impl<'a> Parser<'a> {
 
         // This is hot enough for `deep-vector` that checking the conditions for an empty iterator
         // is measurably faster than actually executing the iterator.
-        let node_replacements: Box<[_]> = if parser_replacements_start == parser_replacements_end
+        let node_replacements = if parser_replacements_start == parser_replacements_end
             && inner_attr_parser_replacements.is_empty()
         {
-            Box::new([])
+            ThinVec::new()
         } else {
             // Grab any replace ranges that occur *inside* the current AST node. Convert them
             // from `ParserRange` form to `NodeRange` form. We will perform the actual
