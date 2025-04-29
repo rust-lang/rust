@@ -3,7 +3,7 @@
 mod change;
 mod input;
 
-use std::hash::BuildHasherDefault;
+use std::{cell::RefCell, hash::BuildHasherDefault, panic, sync::Once};
 
 pub use crate::{
     change::FileChange,
@@ -60,7 +60,7 @@ impl Files {
         match self.files.get(&file_id) {
             Some(text) => *text,
             None => {
-                panic!("Unable to fetch file text for `vfs::FileId`: {:?}; this is a bug", file_id)
+                panic!("Unable to fetch file text for `vfs::FileId`: {file_id:?}; this is a bug")
             }
         }
     }
@@ -101,8 +101,7 @@ impl Files {
         let source_root = match self.source_roots.get(&source_root_id) {
             Some(source_root) => source_root,
             None => panic!(
-                "Unable to fetch `SourceRootInput` with `SourceRootId` ({:?}); this is a bug",
-                source_root_id
+                "Unable to fetch `SourceRootInput` with `SourceRootId` ({source_root_id:?}); this is a bug"
             ),
         };
 
@@ -132,8 +131,7 @@ impl Files {
         let file_source_root = match self.file_source_roots.get(&id) {
             Some(file_source_root) => file_source_root,
             None => panic!(
-                "Unable to get `FileSourceRootInput` with `vfs::FileId` ({:?}); this is a bug",
-                id
+                "Unable to get `FileSourceRootInput` with `vfs::FileId` ({id:?}); this is a bug",
             ),
         };
         *file_source_root
@@ -383,4 +381,52 @@ fn relevant_crates(db: &dyn RootQueryDb, file_id: FileId) -> Arc<[Crate]> {
 
     let source_root = db.file_source_root(file_id);
     db.source_root_crates(source_root.source_root_id(db))
+}
+
+#[must_use]
+pub struct DbPanicContext {
+    // prevent arbitrary construction
+    _priv: (),
+}
+
+impl Drop for DbPanicContext {
+    fn drop(&mut self) {
+        Self::with_ctx(|ctx| assert!(ctx.pop().is_some()));
+    }
+}
+
+impl DbPanicContext {
+    pub fn enter(frame: String) -> DbPanicContext {
+        #[expect(clippy::print_stderr, reason = "already panicking anyway")]
+        fn set_hook() {
+            let default_hook = panic::take_hook();
+            panic::set_hook(Box::new(move |panic_info| {
+                DbPanicContext::with_ctx(|ctx| {
+                    if !ctx.is_empty() {
+                        eprintln!("Panic context:");
+                        for frame in ctx.iter() {
+                            eprintln!("> {frame}\n");
+                        }
+                    }
+                });
+                if let Some(backtrace) = salsa::Backtrace::capture() {
+                    eprintln!("{backtrace}");
+                }
+                default_hook(panic_info);
+            }));
+        }
+
+        static SET_HOOK: Once = Once::new();
+        SET_HOOK.call_once(set_hook);
+
+        Self::with_ctx(|ctx| ctx.push(frame));
+        DbPanicContext { _priv: () }
+    }
+
+    fn with_ctx(f: impl FnOnce(&mut Vec<String>)) {
+        thread_local! {
+            static CTX: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+        }
+        CTX.with(|ctx| f(&mut ctx.borrow_mut()));
+    }
 }
