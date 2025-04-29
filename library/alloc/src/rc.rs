@@ -3536,7 +3536,7 @@ impl<T> Default for Weak<T> {
     }
 }
 
-// NOTE: We checked_add here to deal with mem::forget safely. In particular
+// NOTE: We wrapping_add here to deal with mem::forget safely. In particular
 // if you mem::forget Rcs (or Weaks), the ref-count can overflow, and then
 // you can free the allocation while outstanding Rcs (or Weaks) exist.
 // We abort because this is such a degenerate scenario that we don't care about
