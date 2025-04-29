@@ -107,47 +107,6 @@ fn align_addr(addr: u64, align: u64) -> u64 {
 
 impl<'tcx> EvalContextExtPriv<'tcx> for crate::MiriInterpCx<'tcx> {}
 trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    // Returns the exposed `AllocId` that corresponds to the specified addr,
-    // or `None` if the addr is out of bounds
-    fn alloc_id_from_addr(&self, addr: u64, size: i64) -> Option<AllocId> {
-        let this = self.eval_context_ref();
-        let global_state = this.machine.alloc_addresses.borrow();
-        assert!(global_state.provenance_mode != ProvenanceMode::Strict);
-
-        // We always search the allocation to the right of this address. So if the size is structly
-        // negative, we have to search for `addr-1` instead.
-        let addr = if size >= 0 { addr } else { addr.saturating_sub(1) };
-        let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
-
-        // Determine the in-bounds provenance for this pointer.
-        let alloc_id = match pos {
-            Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
-            Err(0) => None,
-            Err(pos) => {
-                // This is the largest of the addresses smaller than `int`,
-                // i.e. the greatest lower bound (glb)
-                let (glb, alloc_id) = global_state.int_to_ptr_map[pos - 1];
-                // This never overflows because `addr >= glb`
-                let offset = addr - glb;
-                // We require this to be strict in-bounds of the allocation. This arm is only
-                // entered for addresses that are not the base address, so even zero-sized
-                // allocations will get recognized at their base address -- but all other
-                // allocations will *not* be recognized at their "end" address.
-                let size = this.get_alloc_info(alloc_id).size;
-                if offset < size.bytes() { Some(alloc_id) } else { None }
-            }
-        }?;
-
-        // We only use this provenance if it has been exposed.
-        if global_state.exposed.contains(&alloc_id) {
-            // This must still be live, since we remove allocations from `int_to_ptr_map` when they get freed.
-            debug_assert!(this.is_alloc_live(alloc_id));
-            Some(alloc_id)
-        } else {
-            None
-        }
-    }
-
     fn addr_from_alloc_id_uncached(
         &self,
         global_state: &mut GlobalStateInner,
@@ -242,11 +201,65 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             interp_ok(base_addr)
         }
     }
+}
 
+impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
+pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    // Returns the `AllocId` that corresponds to the specified addr,
+    // or `None` if the addr is out of bounds.
+    // Setting `only_exposed_allocations` selects whether only exposed allocations are considered.
+    fn alloc_id_from_addr(
+        &self,
+        addr: u64,
+        size: i64,
+        only_exposed_allocations: bool,
+    ) -> Option<AllocId> {
+        let this = self.eval_context_ref();
+        let global_state = this.machine.alloc_addresses.borrow();
+        assert!(global_state.provenance_mode != ProvenanceMode::Strict);
+
+        // We always search the allocation to the right of this address. So if the size is strictly
+        // negative, we have to search for `addr-1` instead.
+        let addr = if size >= 0 { addr } else { addr.saturating_sub(1) };
+        let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
+
+        // Determine the in-bounds provenance for this pointer.
+        let alloc_id = match pos {
+            Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
+            Err(0) => None,
+            Err(pos) => {
+                // This is the largest of the addresses smaller than `int`,
+                // i.e. the greatest lower bound (glb)
+                let (glb, alloc_id) = global_state.int_to_ptr_map[pos - 1];
+                // This never overflows because `addr >= glb`
+                let offset = addr - glb;
+                // We require this to be strict in-bounds of the allocation. This arm is only
+                // entered for addresses that are not the base address, so even zero-sized
+                // allocations will get recognized at their base address -- but all other
+                // allocations will *not* be recognized at their "end" address.
+                let size = this.get_alloc_info(alloc_id).size;
+                if offset < size.bytes() { Some(alloc_id) } else { None }
+            }
+        }?;
+
+        // We only use this provenance if it has been exposed, or if the caller requested also non-exposed allocations
+        if !only_exposed_allocations || global_state.exposed.contains(&alloc_id) {
+            // This must still be live, since we remove allocations from `int_to_ptr_map` when they get freed.
+            debug_assert!(this.is_alloc_live(alloc_id));
+            Some(alloc_id)
+        } else {
+            None
+        }
+    }
+
+    /// Returns the base address of an allocation, or an error if no base address could be found
+    ///
+    /// # Panics
+    /// If `memory_kind = None` and the `alloc_id` is not cached, meaning that the first call to this function per `alloc_id` must get the `memory_kind`.
     fn addr_from_alloc_id(
         &self,
         alloc_id: AllocId,
-        memory_kind: MemoryKind,
+        memory_kind: Option<MemoryKind>,
     ) -> InterpResult<'tcx, u64> {
         let this = self.eval_context_ref();
         let mut global_state = this.machine.alloc_addresses.borrow_mut();
@@ -256,8 +269,10 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some(&addr) => interp_ok(addr),
             None => {
                 // First time we're looking for the absolute address of this allocation.
+                let memory_kind =
+                    memory_kind.expect("memory_kind is required since alloc_id is not cached");
                 let base_addr =
-                    self.addr_from_alloc_id_uncached(global_state, alloc_id, memory_kind)?;
+                    this.addr_from_alloc_id_uncached(global_state, alloc_id, memory_kind)?;
                 trace!("Assigning base address {:#x} to allocation {:?}", base_addr, alloc_id);
 
                 // Store address in cache.
@@ -283,10 +298,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }
     }
-}
 
-impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
-pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn expose_provenance(&self, provenance: Provenance) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         let mut global_state = this.machine.alloc_addresses.borrow_mut();
@@ -365,7 +377,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let alloc_id = prov.alloc_id();
 
         // Get a pointer to the beginning of this allocation.
-        let base_addr = this.addr_from_alloc_id(alloc_id, kind)?;
+        let base_addr = this.addr_from_alloc_id(alloc_id, Some(kind))?;
         let base_ptr = interpret::Pointer::new(
             Provenance::Concrete { alloc_id, tag },
             Size::from_bytes(base_addr),
@@ -388,7 +400,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // In native lib mode, MiriAllocBytes for global allocations are handled via `prepared_alloc_bytes`.
             // This additional call ensures that some `MiriAllocBytes` are always prepared, just in case
             // this function gets called before the first time `addr_from_alloc_id` gets called.
-            this.addr_from_alloc_id(id, MiriMemoryKind::Global.into())?;
+            this.addr_from_alloc_id(id, Some(MiriMemoryKind::Global.into()))?;
             // The memory we need here will have already been allocated during an earlier call to
             // `addr_from_alloc_id` for this allocation. So don't create a new `MiriAllocBytes` here, instead
             // fetch the previously prepared bytes from `prepared_alloc_bytes`.
@@ -423,7 +435,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             alloc_id
         } else {
             // A wildcard pointer.
-            this.alloc_id_from_addr(addr.bytes(), size)?
+            let only_exposed_allocations = true;
+            this.alloc_id_from_addr(addr.bytes(), size, only_exposed_allocations)?
         };
 
         // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_root_pointer

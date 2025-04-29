@@ -10,10 +10,10 @@
 #![allow(incomplete_features, dead_code)]
 
 // FIXME(zetanumbers): consider AsyncDestruct::async_drop cleanup tests
-use core::future::{async_drop_in_place, AsyncDrop, Future};
+use core::future::{AsyncDrop, Future, async_drop_in_place};
 use core::hint::black_box;
 use core::mem::{self, ManuallyDrop};
-use core::pin::{pin, Pin};
+use core::pin::{Pin, pin};
 use core::task::{Context, Poll, Waker};
 
 async fn test_async_drop<T>(x: T) {
@@ -200,11 +200,7 @@ union AsyncUnion {
 
 impl Drop for AsyncUnion {
     fn drop(&mut self) {
-        println!(
-            "AsyncUnion::drop: {}, {}",
-            unsafe { self.signed },
-            unsafe { self.unsigned },
-        );
+        println!("AsyncUnion::drop: {}, {}", unsafe { self.signed }, unsafe { self.unsigned },);
     }
 }
 impl AsyncDrop for AsyncUnion {
