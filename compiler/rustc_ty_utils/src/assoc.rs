@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
+use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::query::Providers;
@@ -159,6 +160,22 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         container: ty::AssocItemContainer::Impl,
     }
 }
+struct RPITVisitor {
+    rpits: FxIndexSet<LocalDefId>,
+}
+
+impl<'tcx> Visitor<'tcx> for RPITVisitor {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
+        if let hir::TyKind::OpaqueDef(opaq) = ty.kind
+            && self.rpits.insert(opaq.def_id)
+        {
+            for bound in opaq.bounds {
+                intravisit::walk_param_bound(self, bound);
+            }
+        }
+        intravisit::walk_ty(self, ty)
+    }
+}
 
 /// Given an `fn_def_id` of a trait or a trait implementation:
 ///
@@ -177,23 +194,6 @@ fn associated_types_for_impl_traits_in_associated_fn(
 
     match tcx.def_kind(parent_def_id) {
         DefKind::Trait => {
-            struct RPITVisitor {
-                rpits: FxIndexSet<LocalDefId>,
-            }
-
-            impl<'tcx> Visitor<'tcx> for RPITVisitor {
-                fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
-                    if let hir::TyKind::OpaqueDef(opaq) = ty.kind
-                        && self.rpits.insert(opaq.def_id)
-                    {
-                        for bound in opaq.bounds {
-                            intravisit::walk_param_bound(self, bound);
-                        }
-                    }
-                    intravisit::walk_ty(self, ty)
-                }
-            }
-
             let mut visitor = RPITVisitor { rpits: FxIndexSet::default() };
 
             if let Some(output) = tcx.hir_get_fn_output(fn_def_id) {
@@ -246,9 +246,23 @@ fn associated_type_for_impl_trait_in_trait(
     let trait_def_id = tcx.local_parent(fn_def_id);
     assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
 
+    // Collect all opaque types in return position for the method and use
+    // the index as the disambiguator to make an unique def path.
+    let mut visitor = RPITVisitor { rpits: FxIndexSet::default() };
+    visitor.visit_fn_ret_ty(tcx.hir_get_fn_output(fn_def_id).unwrap());
+    let disambiguator = visitor.rpits.get_index_of(&opaque_ty_def_id).unwrap().try_into().unwrap();
+
     let span = tcx.def_span(opaque_ty_def_id);
-    // No name because this is an anonymous associated type.
-    let trait_assoc_ty = tcx.at(span).create_def(trait_def_id, None, DefKind::AssocTy);
+    // Also use the method name to create an unique def path.
+    let data = DefPathData::AnonAssocTy(tcx.item_name(fn_def_id.to_def_id()));
+    let trait_assoc_ty = tcx.at(span).create_def(
+        trait_def_id,
+        // No name because this is an anonymous associated type.
+        None,
+        DefKind::AssocTy,
+        Some(data),
+        &mut DisambiguatorState::with(trait_def_id, data, disambiguator),
+    );
 
     let local_def_id = trait_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();
@@ -299,8 +313,22 @@ fn associated_type_for_impl_trait_in_impl(
         hir::FnRetTy::DefaultReturn(_) => tcx.def_span(impl_fn_def_id),
         hir::FnRetTy::Return(ty) => ty.span,
     };
-    // No name because this is an anonymous associated type.
-    let impl_assoc_ty = tcx.at(span).create_def(impl_local_def_id, None, DefKind::AssocTy);
+
+    // Use the same disambiguator and method name as the anon associated type in the trait.
+    let disambiguated_data = tcx.def_key(trait_assoc_def_id).disambiguated_data;
+    let DefPathData::AnonAssocTy(name) = disambiguated_data.data else {
+        bug!("expected anon associated type")
+    };
+    let data = DefPathData::AnonAssocTy(name);
+
+    let impl_assoc_ty = tcx.at(span).create_def(
+        impl_local_def_id,
+        // No name because this is an anonymous associated type.
+        None,
+        DefKind::AssocTy,
+        Some(data),
+        &mut DisambiguatorState::with(impl_local_def_id, data, disambiguated_data.disambiguator),
+    );
 
     let local_def_id = impl_assoc_ty.def_id();
     let def_id = local_def_id.to_def_id();

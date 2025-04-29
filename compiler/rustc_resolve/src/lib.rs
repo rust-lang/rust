@@ -55,6 +55,7 @@ use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS,
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
@@ -1184,6 +1185,8 @@ pub struct Resolver<'ra, 'tcx> {
 
     node_id_to_def_id: NodeMap<Feed<'tcx, LocalDefId>>,
 
+    disambiguator: DisambiguatorState,
+
     /// Indices of unnamed struct or variant fields with unresolved attributes.
     placeholder_field_indices: FxHashMap<NodeId, usize>,
     /// When collecting definitions from an AST fragment produced by a macro invocation `ExpnId`
@@ -1347,7 +1350,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         );
 
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let feed = self.tcx.create_def(parent, name, def_kind);
+        let feed = self.tcx.create_def(parent, name, def_kind, None, &mut self.disambiguator);
         let def_id = feed.def_id();
 
         // Create the definition.
@@ -1561,6 +1564,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lint_buffer: LintBuffer::default(),
             next_node_id: CRATE_NODE_ID,
             node_id_to_def_id,
+            disambiguator: DisambiguatorState::new(),
             placeholder_field_indices: Default::default(),
             invocation_parents,
             legacy_const_generic_args: Default::default(),
@@ -1690,6 +1694,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .into_items()
                 .map(|(k, f)| (k, f.key()))
                 .collect(),
+            disambiguator: self.disambiguator,
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),

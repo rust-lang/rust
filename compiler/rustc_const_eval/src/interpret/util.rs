@@ -1,4 +1,5 @@
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{AllocInit, Allocation, InterpResult, Pointer};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -40,8 +41,8 @@ pub(crate) fn create_static_alloc<'tcx>(
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     let alloc = Allocation::try_new(layout.size, layout.align.abi, AllocInit::Uninit)?;
     let alloc_id = ecx.tcx.reserve_and_set_static_alloc(static_def_id.into());
-    assert_eq!(ecx.machine.static_root_ids, None);
-    ecx.machine.static_root_ids = Some((alloc_id, static_def_id));
+    assert!(ecx.machine.static_root_ids.is_none());
+    ecx.machine.static_root_ids = Some((alloc_id, static_def_id, DisambiguatorState::new()));
     assert!(ecx.memory.alloc_map.insert(alloc_id, (MemoryKind::Stack, alloc)).is_none());
     interp_ok(ecx.ptr_to_mplace(Pointer::from(alloc_id).into(), layout))
 }

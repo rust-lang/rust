@@ -6,6 +6,7 @@ use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, IndexEntry};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::{self as hir, CRATE_HIR_ID, LangItem};
 use rustc_middle::mir::AssertMessage;
 use rustc_middle::mir::interpret::ReportedErrorInfo;
@@ -63,7 +64,7 @@ pub struct CompileTimeMachine<'tcx> {
     /// If `Some`, we are evaluating the initializer of the static with the given `LocalDefId`,
     /// storing the result in the given `AllocId`.
     /// Used to prevent reads from a static's base allocation, as that may allow for self-initialization loops.
-    pub(crate) static_root_ids: Option<(AllocId, LocalDefId)>,
+    pub(crate) static_root_ids: Option<(AllocId, LocalDefId, DisambiguatorState)>,
 
     /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
     union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
@@ -706,7 +707,7 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn before_alloc_read(ecx: &InterpCx<'tcx, Self>, alloc_id: AllocId) -> InterpResult<'tcx> {
         // Check if this is the currently evaluated static.
-        if Some(alloc_id) == ecx.machine.static_root_ids.map(|(id, _)| id) {
+        if Some(alloc_id) == ecx.machine.static_root_ids.as_ref().map(|(id, ..)| *id) {
             return Err(ConstEvalErrKind::RecursiveStatic).into();
         }
         // If this is another static, make sure we fire off the query to detect cycles.

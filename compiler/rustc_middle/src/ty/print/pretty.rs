@@ -391,6 +391,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let visible_parent_map = self.tcx().visible_parent_map(());
         let kind = self.tcx().def_kind(def_id);
 
+        if let DefPathData::AnonAssocTy(..) = key.disambiguated_data.data {
+            return Ok(false);
+        }
+
         let get_local_name = |this: &Self, name, def_id, key: DefKey| {
             if let Some(visible_parent) = visible_parent_map.get(&def_id)
                 && let actual_parent = this.tcx().opt_parent(def_id)

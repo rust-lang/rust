@@ -859,7 +859,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)
-            | DefPathData::AnonAssocTy => {
+            | DefPathData::AnonAssocTy(..) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
             }
         };

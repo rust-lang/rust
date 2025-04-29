@@ -68,7 +68,7 @@ impl DefPathTable {
             //
             // See the documentation for DefPathHash for more information.
             panic!(
-                "found DefPathHash collision between {def_path1:?} and {def_path2:?}. \
+                "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
             );
         }
@@ -97,13 +97,31 @@ impl DefPathTable {
     }
 }
 
+#[derive(Debug)]
+pub struct DisambiguatorState {
+    next: UnordMap<(LocalDefId, DefPathData), u32>,
+}
+
+impl DisambiguatorState {
+    pub fn new() -> Self {
+        Self { next: Default::default() }
+    }
+
+    /// Creates a `DisambiguatorState` where the next allocated `(LocalDefId, DefPathData)` pair
+    /// will have `index` as the disambiguator.
+    pub fn with(def_id: LocalDefId, data: DefPathData, index: u32) -> Self {
+        let mut this = Self::new();
+        this.next.insert((def_id, data), index);
+        this
+    }
+}
+
 /// The definition table containing node definitions.
 /// It holds the `DefPathTable` for `LocalDefId`s/`DefPath`s.
 /// It also stores mappings to convert `LocalDefId`s to/from `HirId`s.
 #[derive(Debug)]
 pub struct Definitions {
     table: DefPathTable,
-    next_disambiguator: UnordMap<(LocalDefId, DefPathData), u32>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -173,7 +191,11 @@ impl DisambiguatedDefPathData {
                 }
             }
             DefPathDataName::Anon { namespace } => {
-                write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                if let DefPathData::AnonAssocTy(method) = self.data {
+                    write!(writer, "{}::{{{}#{}}}", method, namespace, self.disambiguator)
+                } else {
+                    write!(writer, "{{{}#{}}}", namespace, self.disambiguator)
+                }
             }
         }
     }
@@ -288,7 +310,7 @@ pub enum DefPathData {
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
     /// An anonymous associated type from an RPITIT.
-    AnonAssocTy,
+    AnonAssocTy(Symbol),
     /// A synthetic body for a coroutine's by-move body.
     SyntheticCoroutineBody,
 }
@@ -342,11 +364,20 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        Definitions { table, next_disambiguator: Default::default() }
+        Definitions { table }
     }
 
-    /// Adds a definition with a parent definition.
-    pub fn create_def(&mut self, parent: LocalDefId, data: DefPathData) -> LocalDefId {
+    /// Creates a definition with a parent definition.
+    /// If there are multiple definitions with the same DefPathData and the same parent, use
+    /// `disambiguator` to differentiate them. Distinct `DisambiguatorState` instances are not
+    /// guaranteed to generate unique disambiguators and should instead ensure that the `parent`
+    /// and `data` pair is distinct from other instances.
+    pub fn create_def(
+        &mut self,
+        parent: LocalDefId,
+        data: DefPathData,
+        disambiguator: &mut DisambiguatorState,
+    ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
         debug!(
@@ -354,12 +385,12 @@ impl Definitions {
             self.def_path(parent).to_string_no_crate_verbose(),
         );
 
-        // The root node must be created with `create_root_def()`.
+        // The root node must be created in `new()`.
         assert!(data != DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            let next_disamb = self.next_disambiguator.entry((parent, data)).or_insert(0);
+            let next_disamb = disambiguator.next.entry((parent, data)).or_insert(0);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator
@@ -411,7 +442,9 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name) => {
+                Some(name)
+            }
 
             Impl
             | ForeignMod
@@ -422,7 +455,6 @@ impl DefPathData {
             | Ctor
             | AnonConst
             | OpaqueTy
-            | AnonAssocTy
             | SyntheticCoroutineBody => None,
         }
     }
@@ -443,7 +475,7 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
-            AnonAssocTy => DefPathDataName::Anon { namespace: sym::anon_assoc },
+            AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
         }
     }

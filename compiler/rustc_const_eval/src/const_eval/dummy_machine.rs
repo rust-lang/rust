@@ -1,3 +1,5 @@
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult};
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
@@ -42,7 +44,7 @@ pub macro throw_machine_stop_str($($tt:tt)*) {{
 pub struct DummyMachine;
 
 impl HasStaticRootDefId for DummyMachine {
-    fn static_def_id(&self) -> Option<rustc_hir::def_id::LocalDefId> {
+    fn static_parent_and_disambiguator(&mut self) -> Option<(LocalDefId, &mut DisambiguatorState)> {
         None
     }
 }

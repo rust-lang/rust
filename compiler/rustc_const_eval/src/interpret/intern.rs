@@ -17,6 +17,7 @@ use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{ConstAllocation, CtfeProvenance, InterpResult};
 use rustc_middle::query::TyCtxtAt;
@@ -46,12 +47,13 @@ pub trait CompileTimeMachine<'tcx, T> = Machine<
 pub trait HasStaticRootDefId {
     /// Returns the `DefId` of the static item that is currently being evaluated.
     /// Used for interning to be able to handle nested allocations.
-    fn static_def_id(&self) -> Option<LocalDefId>;
+    fn static_parent_and_disambiguator(&mut self) -> Option<(LocalDefId, &mut DisambiguatorState)>;
 }
 
 impl HasStaticRootDefId for const_eval::CompileTimeMachine<'_> {
-    fn static_def_id(&self) -> Option<LocalDefId> {
-        Some(self.static_root_ids?.1)
+    fn static_parent_and_disambiguator(&mut self) -> Option<(LocalDefId, &mut DisambiguatorState)> {
+        let (_, static_id, d) = self.static_root_ids.as_mut()?;
+        Some((*static_id, d))
     }
 }
 
@@ -87,8 +89,8 @@ fn intern_shallow<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
     }
     // link the alloc id to the actual allocation
     let alloc = ecx.tcx.mk_const_alloc(alloc);
-    if let Some(static_id) = ecx.machine.static_def_id() {
-        intern_as_new_static(ecx.tcx, static_id, alloc_id, alloc);
+    if let Some((static_id, disambiguator)) = ecx.machine.static_parent_and_disambiguator() {
+        intern_as_new_static(ecx.tcx, static_id, alloc_id, alloc, disambiguator);
     } else {
         ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
     }
@@ -102,11 +104,14 @@ fn intern_as_new_static<'tcx>(
     static_id: LocalDefId,
     alloc_id: AllocId,
     alloc: ConstAllocation<'tcx>,
+    disambiguator: &mut DisambiguatorState,
 ) {
     let feed = tcx.create_def(
         static_id,
         Some(sym::nested),
         DefKind::Static { safety: hir::Safety::Safe, mutability: alloc.0.mutability, nested: true },
+        None,
+        disambiguator,
     );
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
 
