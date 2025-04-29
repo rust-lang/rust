@@ -654,10 +654,11 @@ impl<'a> State<'a> {
                 self.bclose(item.span, cb);
             }
             hir::ItemKind::GlobalAsm { asm, .. } => {
-                // FIXME(nnethercote): `ib` is unclosed
-                let (cb, _ib) = self.head("global_asm!");
+                let (cb, ib) = self.head("global_asm!");
                 self.print_inline_asm(asm);
-                self.end(cb)
+                self.word(";");
+                self.end(cb);
+                self.end(ib);
             }
             hir::ItemKind::TyAlias(ident, ty, generics) => {
                 let (cb, ib) = self.head("type");
