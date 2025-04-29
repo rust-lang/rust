@@ -54,7 +54,7 @@ Full list of debugging options can be found in the [README](Readme.md#env-vars).
 ## Making Contributions
 
 ### Finding Issues to Work On
-1. Look for issues labeled with [`good first issue`](https://github.com/rust-lang/rustc_codegen_gcc/issues?q=is%3Aissue state%3Aopen label%3A"good first issue") or [`help wanted`](https://github.com/rust-lang/rustc_codegen_gcc/issues?q=is%3Aissue state%3Aopen label%3A"help wanted")
+1. Look for issues labeled with [`good first issue`](https://github.com/rust-lang/rustc_codegen_gcc/issues?q=is%3Aissue%20state%3Aopen%20label%3A"good%20first%20issue") or [`help wanted`](https://github.com/rust-lang/rustc_codegen_gcc/issues?q=is%3Aissue%20state%3Aopen%20label%3A"help%20wanted")
 2. Check the [progress report](https://blog.antoyo.xyz/rustc_codegen_gcc-progress-report-34#state_of_rustc_codegen_gcc) for larger initiatives
 3. Consider improving documentation or investigating [failing tests](https://github.com/rust-lang/rustc_codegen_gcc/tree/master/tests) (except `failing-ui-tests12.txt`)
 
