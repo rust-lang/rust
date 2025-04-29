@@ -135,9 +135,8 @@ pub fn parse_asm_args<'a>(
             None
         };
 
-        let mut explicit_reg = false;
         let op = if eat_operand_keyword(p, exp!(In), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
+            let reg = parse_reg(p)?;
             if p.eat_keyword(exp!(Underscore)) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
@@ -145,15 +144,15 @@ pub fn parse_asm_args<'a>(
             let expr = p.parse_expr()?;
             ast::InlineAsmOperand::In { reg, expr }
         } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
+            let reg = parse_reg(p)?;
             let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: false }
         } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
+            let reg = parse_reg(p)?;
             let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
             ast::InlineAsmOperand::Out { reg, expr, late: true }
         } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
+            let reg = parse_reg(p)?;
             if p.eat_keyword(exp!(Underscore)) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
@@ -167,7 +166,7 @@ pub fn parse_asm_args<'a>(
                 ast::InlineAsmOperand::InOut { reg, expr, late: false }
             }
         } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
+            let reg = parse_reg(p)?;
             if p.eat_keyword(exp!(Underscore)) {
                 let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
                 return Err(err);
@@ -223,6 +222,8 @@ pub fn parse_asm_args<'a>(
             p.unexpected_any()?
         };
 
+        let explicit_reg = matches!(op.reg(), Some(ast::InlineAsmRegOrRegClass::Reg(_)));
+
         allow_templates = false;
         let span = span_start.to(p.prev_token.span);
         let slot = args.operands.len();
@@ -231,6 +232,7 @@ pub fn parse_asm_args<'a>(
         // Validate the order of named, positional & explicit register operands and
         // clobber_abi/options. We do this at the end once we have the full span
         // of the argument available.
+
         if explicit_reg {
             if name.is_some() {
                 dcx.emit_err(errors::AsmExplicitRegisterName { span });
@@ -478,15 +480,11 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     Ok(())
 }
 
-fn parse_reg<'a>(
-    p: &mut Parser<'a>,
-    explicit_reg: &mut bool,
-) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
+fn parse_reg<'a>(p: &mut Parser<'a>) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
     p.expect(exp!(OpenParen))?;
     let result = match p.token.uninterpolate().kind {
         token::Ident(name, IdentIsRaw::No) => ast::InlineAsmRegOrRegClass::RegClass(name),
         token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
-            *explicit_reg = true;
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }
         _ => {
