@@ -119,6 +119,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::doc::DOC_MARKDOWN_INFO,
     crate::doc::DOC_NESTED_REFDEFS_INFO,
     crate::doc::DOC_OVERINDENTED_LIST_ITEMS_INFO,
+    crate::doc::DOC_SUSPICIOUS_FOOTNOTES_INFO,
     crate::doc::EMPTY_DOCS_INFO,
     crate::doc::MISSING_ERRORS_DOC_INFO,
     crate::doc::MISSING_PANICS_DOC_INFO,

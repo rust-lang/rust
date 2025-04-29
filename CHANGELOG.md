@@ -5736,6 +5736,7 @@ Released 2018-09-13
 [`doc_markdown`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
 [`doc_nested_refdefs`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_nested_refdefs
 [`doc_overindented_list_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_overindented_list_items
+[`doc_suspicious_footnotes`]: https://rust-lang.github.io/rust-clippy/master/index.html#doc_suspicious_footnotes
 [`double_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_comparisons
 [`double_ended_iterator_last`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_ended_iterator_last
 [`double_must_use`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_must_use
