@@ -10,8 +10,10 @@
 //@[aarch64] needs-llvm-components: aarch64
 //@[riscv] compile-flags: --target=riscv64gc-unknown-none-elf -Ctarget-feature=-d
 //@[riscv] needs-llvm-components: riscv
+//@[riscv] min-llvm-version: 20
 //@[loongarch] compile-flags: --target=loongarch64-unknown-none -Ctarget-feature=-d
 //@[loongarch] needs-llvm-components: loongarch
+//@[loongarch] min-llvm-version: 20
 // For now this is just a warning.
 //@ build-pass
 
