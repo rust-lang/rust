@@ -1,0 +1,60 @@
+
+running 4 tests
+test $DIR/main-alongside-macro-calls.rs - (line 19) ... ok
+test $DIR/main-alongside-macro-calls.rs - (line 24) ... ok
+test $DIR/main-alongside-macro-calls.rs - (line 28) ... FAILED
+test $DIR/main-alongside-macro-calls.rs - (line 33) ... FAILED
+
+failures:
+
+---- $DIR/main-alongside-macro-calls.rs - (line 28) stdout ----
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/main-alongside-macro-calls.rs:30:1
+   |
+LL | println!();
+   | ^^^^^^^^^^
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: macro expansion ignores `{` and any tokens following
+  --> $SRC_DIR/std/src/macros.rs:LL:COL
+   |
+  ::: $DIR/main-alongside-macro-calls.rs:30:1
+   |
+LL | println!();
+   | ---------- caused by the macro expansion here
+   |
+   = note: the usage of `print!` is likely invalid in item context
+
+error: aborting due to 2 previous errors
+
+Couldn't compile the test.
+---- $DIR/main-alongside-macro-calls.rs - (line 33) stdout ----
+error: macros that expand to items must be delimited with braces or followed by a semicolon
+  --> $DIR/main-alongside-macro-calls.rs:34:1
+   |
+LL | println!();
+   | ^^^^^^^^^^
+   |
+   = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: macro expansion ignores `{` and any tokens following
+  --> $SRC_DIR/std/src/macros.rs:LL:COL
+   |
+  ::: $DIR/main-alongside-macro-calls.rs:34:1
+   |
+LL | println!();
+   | ---------- caused by the macro expansion here
+   |
+   = note: the usage of `print!` is likely invalid in item context
+
+error: aborting due to 2 previous errors
+
+Couldn't compile the test.
+
+failures:
+    $DIR/main-alongside-macro-calls.rs - (line 28)
+    $DIR/main-alongside-macro-calls.rs - (line 33)
+
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
