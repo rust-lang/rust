@@ -575,6 +575,11 @@ fn main() {
             miri_config.retag_fields = RetagFields::Yes;
         } else if arg == "-Zmiri-fixed-schedule" {
             miri_config.fixed_scheduling = true;
+        } else if arg == "-Zmiri-deterministic-concurrency" {
+            miri_config.fixed_scheduling = true;
+            miri_config.address_reuse_cross_thread_rate = 0.0;
+            miri_config.cmpxchg_weak_failure_rate = 0.0;
+            miri_config.weak_memory_emulation = false;
         } else if let Some(retag_fields) = arg.strip_prefix("-Zmiri-retag-fields=") {
             miri_config.retag_fields = match retag_fields {
                 "all" => RetagFields::Yes,

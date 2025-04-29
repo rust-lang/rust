@@ -277,22 +277,15 @@ Try running `cargo miri clean`.
 Miri adds its own set of `-Z` flags, which are usually set via the `MIRIFLAGS`
 environment variable. We first document the most relevant and most commonly used flags:
 
-* `-Zmiri-address-reuse-rate=<rate>` changes the probability that a freed *non-stack* allocation
-  will be added to the pool for address reuse, and the probability that a new *non-stack* allocation
-  will be taken from the pool. Stack allocations never get added to or taken from the pool. The
-  default is `0.5`.
-* `-Zmiri-address-reuse-cross-thread-rate=<rate>` changes the probability that an allocation which
-  attempts to reuse a previously freed block of memory will also consider blocks freed by *other
-  threads*. The default is `0.1`, which means by default, in 90% of the cases where an address reuse
-  attempt is made, only addresses from the same thread will be considered. Reusing an address from
-  another thread induces synchronization between those threads, which can mask data races and weak
-  memory bugs.
-* `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
-  `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
-  You can change it to any value between `0.0` and `1.0`, where `1.0` means it
-  will always fail and `0.0` means it will never fail. Note that setting it to
-  `1.0` will likely cause hangs, since it means programs using
-  `compare_exchange_weak` cannot make progress.
+* `-Zmiri-deterministic-concurrency` makes Miri's concurrency-related behavior fully deterministic.
+  Strictly speaking, Miri is always fully deterministic when isolation is enabled (the default
+  mode), but this determinism is achieved by using an RNG with a fixed seed. Seemingly harmless
+  changes to the program, or just running it for a different target architecture, can thus lead to
+  completely different program behavior down the line. This flag disables the use of an RNG for
+  concurrency-related decisions. Therefore, Miri cannot find bugs that only occur under some
+  specific circumstances, but Miri's behavior will also be more stable across versions and targets.
+  This is equivalent to `-Zmiri-fixed-schedule -Zmiri-compare-exchange-weak-failure-rate=0.0
+  -Zmiri-address-reuse-cross-thread-rate=0.0 -Zmiri-disable-weak-memory-emulation`.
 * `-Zmiri-disable-isolation` disables host isolation. As a consequence,
   the program has access to host resources such as environment variables, file
   systems, and randomness.
@@ -334,9 +327,6 @@ environment variable. We first document the most relevant and most commonly used
   This will necessarily miss some bugs as those operations are not efficiently and accurately
   implementable in a sanitizer, but it will only miss bugs that concern memory/pointers which is
   subject to these operations.
-* `-Zmiri-preemption-rate` configures the probability that at the end of a basic block, the active
-  thread will be preempted. The default is `0.01` (i.e., 1%). Setting this to `0` disables
-  preemption.
 * `-Zmiri-report-progress` makes Miri print the current stacktrace every now and then, so you can
   tell what it is doing when a program just keeps running. You can customize how frequently the
   report is printed via `-Zmiri-report-progress=<blocks>`, which prints the report every N basic
@@ -365,6 +355,22 @@ The remaining flags are for advanced use only, and more likely to change or be r
 Some of these are **unsound**, which means they can lead
 to Miri failing to detect cases of undefined behavior in a program.
 
+* `-Zmiri-address-reuse-rate=<rate>` changes the probability that a freed *non-stack* allocation
+  will be added to the pool for address reuse, and the probability that a new *non-stack* allocation
+  will be taken from the pool. Stack allocations never get added to or taken from the pool. The
+  default is `0.5`.
+* `-Zmiri-address-reuse-cross-thread-rate=<rate>` changes the probability that an allocation which
+  attempts to reuse a previously freed block of memory will also consider blocks freed by *other
+  threads*. The default is `0.1`, which means by default, in 90% of the cases where an address reuse
+  attempt is made, only addresses from the same thread will be considered. Reusing an address from
+  another thread induces synchronization between those threads, which can mask data races and weak
+  memory bugs.
+* `-Zmiri-compare-exchange-weak-failure-rate=<rate>` changes the failure rate of
+  `compare_exchange_weak` operations. The default is `0.8` (so 4 out of 5 weak ops will fail).
+  You can change it to any value between `0.0` and `1.0`, where `1.0` means it
+  will always fail and `0.0` means it will never fail. Note that setting it to
+  `1.0` will likely cause hangs, since it means programs using
+  `compare_exchange_weak` cannot make progress.
 * `-Zmiri-disable-alignment-check` disables checking pointer alignment, so you
   can focus on other failures, but it means Miri can miss bugs in your program.
   Using this flag is **unsound**.
@@ -383,6 +389,10 @@ to Miri failing to detect cases of undefined behavior in a program.
   this flag is **unsound**.
 * `-Zmiri-disable-weak-memory-emulation` disables the emulation of some C++11 weak
   memory effects.
+* `-Zmiri-fixed-schedule` disables preemption (like `-Zmiri-preemption-rate=0.0`) and furthermore
+  disables the randomization of the next thread to be picked, instead fixing a round-robin schedule.
+  Note however that other aspects of Miri's concurrency behavior are still randomize; use
+  `-Zmiri-deterministic-concurrency` to disable them all.
 * `-Zmiri-native-lib=<path to a shared object file>` is an experimental flag for providing support
   for calling native functions from inside the interpreter via FFI. The flag is supported only on
   Unix systems. Functions not provided by that file are still executed via the usual Miri shims.
@@ -412,6 +422,10 @@ to Miri failing to detect cases of undefined behavior in a program.
   without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
   types where we would also emit `noalias` annotations in the generated LLVM IR (types passed as
   individual scalars or pairs of scalars). Setting this to `none` is **unsound**.
+* `-Zmiri-preemption-rate` configures the probability that at the end of a basic block, the active
+  thread will be preempted. The default is `0.01` (i.e., 1%). Setting this to `0` disables
+  preemption. Note that even without preemption, the schedule is still non-deterministic:
+  if a thread blocks or yields, the next thread is chosen randomly.
 * `-Zmiri-provenance-gc=<blocks>` configures how often the pointer provenance garbage collector runs.
   The default is to search for and remove unreachable provenance once every `10000` basic blocks. Setting
   this to `0` disables the garbage collector, which causes some programs to have explosive memory

@@ -1,5 +1,5 @@
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-strict-provenance -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::sync::{Arc, Condvar, Mutex, RwLock};
 use std::thread;

@@ -1,6 +1,6 @@
 //@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::os::windows::io::IntoRawHandle;
 use std::sync::atomic::{AtomicBool, Ordering};

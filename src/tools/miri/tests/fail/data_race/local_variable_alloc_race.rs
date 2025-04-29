@@ -1,4 +1,4 @@
-//@compile-flags:-Zmiri-fixed-schedule -Zmiri-disable-weak-memory-emulation
+//@compile-flags:-Zmiri-deterministic-concurrency
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
 

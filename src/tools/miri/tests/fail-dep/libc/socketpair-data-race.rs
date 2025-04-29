@@ -1,7 +1,7 @@
 //! This is a regression test for <https://github.com/rust-lang/miri/issues/3947>: we had some
 //! faulty logic around `release_clock` that led to this code not reporting a data race.
 //@ignore-target: windows # no libc socketpair on Windows
-//@compile-flags: -Zmiri-fixed-schedule -Zmiri-address-reuse-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 use std::thread;
 
 fn main() {

@@ -1,6 +1,4 @@
-//@compile-flags:-Zmiri-fixed-schedule -Zmiri-disable-weak-memory-emulation
-// Avoid accidental synchronization via address reuse inside `thread::spawn`.
-//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+//@compile-flags:-Zmiri-deterministic-concurrency
 //@revisions: fst snd
 
 use std::sync::atomic::{AtomicU8, AtomicU16, Ordering};

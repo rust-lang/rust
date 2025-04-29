@@ -4,7 +4,7 @@
 //! to be considered synchronized.
 //@only-target: linux android illumos
 // ensure deterministic schedule
-//@compile-flags: -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::convert::TryInto;
 use std::thread;
