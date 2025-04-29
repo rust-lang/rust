@@ -56,10 +56,6 @@ mod tests;
 mod tokenstream {
     mod tests;
 }
-#[cfg(test)]
-mod mut_visit {
-    mod tests;
-}
 
 bitflags::bitflags! {
     #[derive(Clone, Copy, Debug)]
