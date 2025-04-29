@@ -9,6 +9,7 @@ pub struct SystemTime(Duration);
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
 impl Instant {
+    #[inline(never)]
     pub fn now() -> Instant {
         panic!("time not implemented on this platform")
     }
@@ -27,6 +28,7 @@ impl Instant {
 }
 
 impl SystemTime {
+    #[inline(never)]
     pub fn now() -> SystemTime {
         panic!("time not implemented on this platform")
     }
