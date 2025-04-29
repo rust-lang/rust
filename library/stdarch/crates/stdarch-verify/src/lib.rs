@@ -70,14 +70,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     }
     assert!(!tests.is_empty());
 
-    functions.retain(|(f, _)| {
-        if let syn::Visibility::Public(_) = f.vis {
-            if f.sig.unsafety.is_some() {
-                return true;
-            }
-        }
-        false
-    });
+    functions.retain(|(f, _)| matches!(f.vis, syn::Visibility::Public(_)));
     assert!(!functions.is_empty());
 
     let input = proc_macro2::TokenStream::from(input);

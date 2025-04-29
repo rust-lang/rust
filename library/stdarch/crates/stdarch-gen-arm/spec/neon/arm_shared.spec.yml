@@ -14937,7 +14937,7 @@ intrinsics:
       - ['vdupq_n_u32', 'u32', 'uint32x4_t', 'vdup.32', 'dup', 'uint32x4_t::splat(value)']
       - ['vdupq_n_f32', 'f32', 'float32x4_t', 'vdup.32', 'dup', 'float32x4_t::splat(value)']
       - ['vdupq_n_u64', 'u64', 'uint64x2_t', 'vmov', 'dup', 'uint64x2_t::splat(value)']
-      - ['vdupq_n_p8', 'u8', 'poly8x16_t', 'vdup.8', 'dup', 'poly8x16_t::splat(value)']
+      - ['vdupq_n_p8', 'p8', 'poly8x16_t', 'vdup.8', 'dup', 'poly8x16_t::splat(value)']
       - ['vdupq_n_p16', 'p16', 'poly16x8_t', 'vdup.16', 'dup', 'poly16x8_t::splat(value)']
       - ['vdup_n_s8', 'i8', 'int8x8_t', 'vdup.8', 'dup', 'int8x8_t::splat(value)']
       - ['vdup_n_s16', 'i16', 'int16x4_t', 'vdup.16', 'dup', 'int16x4_t::splat(value)']

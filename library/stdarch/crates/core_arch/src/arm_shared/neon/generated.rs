@@ -10880,7 +10880,7 @@ pub fn vdupq_n_p16(value: p16) -> poly16x8_t {
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
-pub fn vdupq_n_p8(value: u8) -> poly8x16_t {
+pub fn vdupq_n_p8(value: p8) -> poly8x16_t {
     poly8x16_t::splat(value)
 }
 #[doc = "Duplicate vector element to vector or scalar"]

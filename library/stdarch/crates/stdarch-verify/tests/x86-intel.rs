@@ -244,6 +244,7 @@ fn verify_all_signatures() {
                 "_fxrstor",
                 "_fxrstor64",
                 "_xend",
+                "_xabort_code",
                 // Aliases
                 "_mm_comige_ss",
                 "_mm_cvt_ss2si",
@@ -290,13 +291,10 @@ fn verify_all_signatures() {
             "__cpuid_count" |
             "__cpuid" |
             "__get_cpuid_max" |
+            "_MM_SHUFFLE" |
+            "_xabort_code" |
             // Not listed with intel, but manually verified
-            "cmpxchg16b" |
-            // Intel requires the mask argument for _mm_shuffle_ps to be an
-            // unsigned integer, but all other _mm_shuffle_.. intrinsics
-            // take a signed-integer. This breaks `_MM_SHUFFLE` for
-            // `_mm_shuffle_ps`
-            "_mm_shuffle_ps"
+            "cmpxchg16b"
             => continue,
             _ => {}
         }
@@ -871,6 +869,11 @@ fn equate(
         // The _mm_stream_load_si128 intrinsic take a mutable pointer in the intrinsics
         // guide even though they never write through the pointer
         (&Type::ConstPtr(&Type::M128I), "void*") if intrinsic.name == "_mm_stream_load_si128" => {}
+        /// Intel requires the mask argument for _mm_shuffle_ps to be an
+        // unsigned integer, but all other _mm_shuffle_.. intrinsics
+        // take a signed-integer. This breaks `_MM_SHUFFLE` for
+        // `_mm_shuffle_ps`
+        (&Type::PrimSigned(32), "unsigned int") if intrinsic.name == "_mm_shuffle_ps" => {}
 
         _ => bail!(
             "failed to equate: `{intel}` and {t:?} for {}",
