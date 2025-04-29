@@ -183,7 +183,7 @@ impl<'a> State<'a> {
             Node::Ty(a) => self.print_type(a),
             Node::AssocItemConstraint(a) => self.print_assoc_item_constraint(a),
             Node::TraitRef(a) => self.print_trait_ref(a),
-            Node::OpaqueTy(o) => self.print_opaque_ty(o),
+            Node::OpaqueTy(_) => panic!("cannot print Node::OpaqueTy"),
             Node::Pat(a) => self.print_pat(a),
             Node::TyPat(a) => self.print_ty_pat(a),
             Node::PatField(a) => self.print_patfield(a),
@@ -762,14 +762,6 @@ impl<'a> State<'a> {
 
     fn print_trait_ref(&mut self, t: &hir::TraitRef<'_>) {
         self.print_path(t.path, false);
-    }
-
-    fn print_opaque_ty(&mut self, o: &hir::OpaqueTy<'_>) {
-        // FIXME(nnethercote): `cb` and `ib` are unclosed
-        let (_cb, _ib) = self.head("opaque");
-        self.word("{");
-        self.print_bounds("impl", o.bounds);
-        self.word("}");
     }
 
     fn print_formal_generic_params(&mut self, generic_params: &[hir::GenericParam<'_>]) {
