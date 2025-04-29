@@ -22,6 +22,7 @@ mod codegen;
 mod dist;
 mod install;
 mod metrics;
+mod pgo;
 mod publish;
 mod release;
 mod tidy;
