@@ -13,13 +13,13 @@ use hir_def::{
 use hir_expand::{HirFileId, name::Name};
 use hir_ty::{
     db::HirDatabase,
-    display::{DisplayTarget, HirDisplay, hir_display_with_store},
+    display::{HirDisplay, hir_display_with_store},
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use syntax::{AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
 
-use crate::{Module, ModuleDef, Semantics};
+use crate::{HasCrate, Module, ModuleDef, Semantics};
 
 pub type FxIndexSet<T> = indexmap::IndexSet<T, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
@@ -66,7 +66,6 @@ pub struct SymbolCollector<'a> {
     symbols: FxIndexSet<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
     current_container_name: Option<SmolStr>,
-    display_target: DisplayTarget,
 }
 
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
@@ -78,10 +77,6 @@ impl<'a> SymbolCollector<'a> {
             symbols: Default::default(),
             work: Default::default(),
             current_container_name: None,
-            display_target: DisplayTarget::from_crate(
-                db,
-                *db.all_crates().last().expect("no crate graph present"),
-            ),
         }
     }
 
@@ -93,8 +88,7 @@ impl<'a> SymbolCollector<'a> {
 
     pub fn collect(&mut self, module: Module) {
         let _p = tracing::info_span!("SymbolCollector::collect", ?module).entered();
-        tracing::info!(?module, "SymbolCollector::collect",);
-        self.display_target = module.krate().to_display_target(self.db);
+        tracing::info!(?module, "SymbolCollector::collect");
 
         // The initial work is the root module we're collecting, additional work will
         // be populated as we traverse the module's definitions.
@@ -321,7 +315,10 @@ impl<'a> SymbolCollector<'a> {
         let impl_data = self.db.impl_signature(impl_id);
         let impl_name = Some(
             hir_display_with_store(impl_data.self_ty, &impl_data.store)
-                .display(self.db, self.display_target)
+                .display(
+                    self.db,
+                    crate::Impl::from(impl_id).krate(self.db).to_display_target(self.db),
+                )
                 .to_smolstr(),
         );
         self.with_container_name(impl_name, |s| {
