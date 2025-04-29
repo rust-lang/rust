@@ -466,13 +466,9 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         _ => true,
     };
 
-    cfg.has_reliable_f16_math = match (target_arch, target_os) {
-        // x86 has a crash for `powi`: <https://github.com/llvm/llvm-project/issues/105747>
-        ("x86" | "x86_64", _) => false,
-        // Assume that working `f16` means working `f16` math for most platforms, since
-        // operations just go through `f32`.
-        _ => true,
-    } && cfg.has_reliable_f16;
+    // Assume that working `f16` means working `f16` math for most platforms, since
+    // operations just go through `f32`.
+    cfg.has_reliable_f16_math = cfg.has_reliable_f16;
 
     cfg.has_reliable_f128_math = match (target_arch, target_os) {
         // LLVM lowers `fp128` math to `long double` symbols even on platforms where
