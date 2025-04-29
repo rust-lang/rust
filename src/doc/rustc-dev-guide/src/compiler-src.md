@@ -62,21 +62,20 @@ huge. There is also the `rustc` crate which is the actual binary (i.e. the
 [`rustc_driver`] crate, which drives the various parts of compilation in other
 crates.
 
-The dependency structure of these crates is complex, but roughly it is
+The dependency order of these crates is complex, but roughly it is
 something like this:
 
-- `rustc` (the binary) calls [`rustc_driver::main`][main].
-    - [`rustc_driver`] depends on a lot of other crates, but the main one is
-      [`rustc_interface`].
-        - [`rustc_interface`] depends on most of the other compiler crates. It
-          is a fairly generic interface for driving the whole compilation.
-            - Most of the other `rustc_*` crates depend on [`rustc_middle`],
-              which defines a lot of central data structures in the compiler.
-                - [`rustc_middle`] and most of the other crates depend on a
-                  handful of crates representing the early parts of the
-                  compiler (e.g. the parser), fundamental data structures (e.g.
-                  [`Span`]), or error reporting: [`rustc_data_structures`],
-                  [`rustc_span`], [`rustc_errors`], etc.
+1. `rustc` (the binary) calls [`rustc_driver::main`][main].
+1. [`rustc_driver`] depends on a lot of other crates, but the main one is
+   [`rustc_interface`].
+1. [`rustc_interface`] depends on most of the other compiler crates. It is a
+   fairly generic interface for driving the whole compilation.
+1. Most of the other `rustc_*` crates depend on [`rustc_middle`], which defines
+   a lot of central data structures in the compiler.
+1. [`rustc_middle`] and most of the other crates depend on a handful of crates
+   representing the early parts of the compiler (e.g. the parser), fundamental
+   data structures (e.g. [`Span`]), or error reporting:
+   [`rustc_data_structures`], [`rustc_span`], [`rustc_errors`], etc.
 
 [`rustc_data_structures`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_data_structures/index.html
 [`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/index.html
