@@ -83,7 +83,9 @@ macro_rules! define_dep_nodes {
     };
 }
 
-rustc_query_append!(define_dep_nodes![
+// Create various data structures for each query, and also for a few things
+// that aren't queries.
+rustc_with_all_queries!(define_dep_nodes![
     /// We use this for most things when incr. comp. is turned off.
     [] fn Null() -> (),
     /// We use this to create a forever-red node.

@@ -575,7 +575,7 @@ where
 }
 
 // NOTE: `$V` isn't used here, but we still need to match on it so it can be passed to other macros
-// invoked by `rustc_query_append`.
+// invoked by `rustc_with_all_queries`.
 macro_rules! define_queries {
     (
      $($(#[$attr:meta])*

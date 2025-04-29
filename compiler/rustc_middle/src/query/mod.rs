@@ -2578,5 +2578,5 @@ rustc_queries! {
     }
 }
 
-rustc_query_append! { define_callbacks! }
+rustc_with_all_queries! { define_callbacks! }
 rustc_feedable_queries! { define_feedable! }
