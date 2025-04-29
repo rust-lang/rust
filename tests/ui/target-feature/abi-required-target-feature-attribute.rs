@@ -1,3 +1,5 @@
+//! Enabling a target feature that is anyway required changes nothing, so this is allowed
+//! for `#[target_feature]`.
 //@ compile-flags: --target=x86_64-unknown-none --crate-type=lib
 //@ needs-llvm-components: x86
 //@ build-pass
