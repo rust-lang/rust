@@ -333,6 +333,7 @@
 #![feature(array_chunks)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
+#![feature(cfg_select)]
 #![feature(char_internals)]
 #![feature(clone_to_uninit)]
 #![feature(core_intrinsics)]
