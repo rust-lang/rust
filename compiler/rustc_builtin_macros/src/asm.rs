@@ -4,7 +4,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::PResult;
+use rustc_errors::{DiagCtxtHandle, PResult};
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::exp;
@@ -18,10 +18,11 @@ use {rustc_ast as ast, rustc_parse_format as parse};
 use crate::errors;
 use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
+/// An argument to one of the `asm!` macros. The argument is syntactically valid, but is otherwise
+/// not validated at all.
 pub struct RawAsmArg {
-    pub span: Span,
-    pub attributes: ast::AttrVec,
     pub kind: RawAsmArgKind,
+    pub span: Span,
 }
 
 pub enum RawAsmArgKind {
@@ -31,6 +32,7 @@ pub enum RawAsmArgKind {
     ClobberAbi(Vec<(Symbol, Span)>),
 }
 
+/// Validated assembly arguments, ready for macro expansion.
 pub struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
@@ -70,16 +72,6 @@ fn eat_operand_keyword<'a>(
             Ok(false)
         }
     }
-}
-
-fn parse_args<'a>(
-    ecx: &ExtCtxt<'a>,
-    sp: Span,
-    tts: TokenStream,
-    asm_macro: AsmMacro,
-) -> PResult<'a, AsmArgs> {
-    let mut p = ecx.new_parser_from_tts(tts);
-    parse_asm_args(&mut p, sp, asm_macro)
 }
 
 fn parse_asm_operand<'a>(
@@ -168,7 +160,6 @@ pub fn parse_raw_asm_args<'a>(
     let first_template = p.parse_expr()?;
     args.push(RawAsmArg {
         span: first_template.span,
-        attributes: ast::AttrVec::new(),
         kind: RawAsmArgKind::Template(first_template),
     });
 
@@ -195,7 +186,6 @@ pub fn parse_raw_asm_args<'a>(
             allow_templates = false;
 
             args.push(RawAsmArg {
-                attributes: ast::AttrVec::new(),
                 kind: RawAsmArgKind::ClobberAbi(parse_clobber_abi(p)?),
                 span: span_start.to(p.prev_token.span),
             });
@@ -208,7 +198,6 @@ pub fn parse_raw_asm_args<'a>(
             allow_templates = false;
 
             args.push(RawAsmArg {
-                attributes: ast::AttrVec::new(),
                 kind: RawAsmArgKind::Options(parse_options(p, asm_macro)?),
                 span: span_start.to(p.prev_token.span),
             });
@@ -227,58 +216,68 @@ pub fn parse_raw_asm_args<'a>(
             None
         };
 
-        let Some(op) = parse_asm_operand(p, asm_macro)? else {
-            if allow_templates {
-                let template = p.parse_expr()?;
-                // If it can't possibly expand to a string, provide diagnostics here to include other
-                // things it could have been.
-                match template.kind {
-                    ast::ExprKind::Lit(token_lit)
-                        if matches!(
-                            token_lit.kind,
-                            token::LitKind::Str | token::LitKind::StrRaw(_)
-                        ) => {}
-                    ast::ExprKind::MacCall(..) => {}
-                    _ => {
-                        let err = dcx.create_err(errors::AsmExpectedOther {
-                            span: template.span,
-                            is_inline_asm: matches!(asm_macro, AsmMacro::Asm),
-                        });
-                        return Err(err);
-                    }
+        if let Some(op) = parse_asm_operand(p, asm_macro)? {
+            allow_templates = false;
+
+            args.push(RawAsmArg {
+                span: span_start.to(p.prev_token.span),
+                kind: RawAsmArgKind::Operand(name, op),
+            });
+        } else if allow_templates {
+            let template = p.parse_expr()?;
+            // If it can't possibly expand to a string, provide diagnostics here to include other
+            // things it could have been.
+            match template.kind {
+                ast::ExprKind::Lit(token_lit)
+                    if matches!(
+                        token_lit.kind,
+                        token::LitKind::Str | token::LitKind::StrRaw(_)
+                    ) => {}
+                ast::ExprKind::MacCall(..) => {}
+                _ => {
+                    let err = dcx.create_err(errors::AsmExpectedOther {
+                        span: template.span,
+                        is_inline_asm: matches!(asm_macro, AsmMacro::Asm),
+                    });
+                    return Err(err);
                 }
-
-                args.push(RawAsmArg {
-                    span: template.span,
-                    attributes: ast::AttrVec::new(),
-                    kind: RawAsmArgKind::Template(template),
-                });
-
-                continue;
-            } else {
-                p.unexpected_any()?
             }
-        };
 
-        allow_templates = false;
-
-        args.push(RawAsmArg {
-            span: span_start.to(p.prev_token.span),
-            attributes: ast::AttrVec::new(),
-            kind: RawAsmArgKind::Operand(name, op),
-        });
+            args.push(RawAsmArg { span: template.span, kind: RawAsmArgKind::Template(template) });
+        } else {
+            p.unexpected_any()?
+        }
     }
 
     Ok(args)
 }
 
+fn parse_args<'a>(
+    ecx: &ExtCtxt<'a>,
+    sp: Span,
+    tts: TokenStream,
+    asm_macro: AsmMacro,
+) -> PResult<'a, AsmArgs> {
+    let mut p = ecx.new_parser_from_tts(tts);
+    parse_asm_args(&mut p, sp, asm_macro)
+}
+
+// public for use in rustfmt
+// FIXME: use `RawAsmArg` in the formatting code instead.
 pub fn parse_asm_args<'a>(
     p: &mut Parser<'a>,
     sp: Span,
     asm_macro: AsmMacro,
 ) -> PResult<'a, AsmArgs> {
-    let dcx = p.dcx();
+    let raw_args = parse_raw_asm_args(p, sp, asm_macro)?;
+    validate_raw_asm_args(p.dcx(), asm_macro, raw_args)
+}
 
+pub fn validate_raw_asm_args<'a>(
+    dcx: DiagCtxtHandle<'a>,
+    asm_macro: AsmMacro,
+    raw_args: Vec<RawAsmArg>,
+) -> PResult<'a, AsmArgs> {
     let mut args = AsmArgs {
         templates: vec![],
         operands: vec![],
@@ -291,12 +290,11 @@ pub fn parse_asm_args<'a>(
 
     let mut allow_templates = true;
 
-    for arg in parse_raw_asm_args(p, sp, asm_macro)? {
+    for arg in raw_args {
         match arg.kind {
             RawAsmArgKind::Template(template) => {
-                if allow_templates {
-                    args.templates.push(template);
-                } else {
+                // The error for the first template is delayed.
+                if !allow_templates {
                     match template.kind {
                         ast::ExprKind::Lit(token_lit)
                             if matches!(
@@ -312,14 +310,14 @@ pub fn parse_asm_args<'a>(
                             return Err(err);
                         }
                     }
-                    args.templates.push(template);
                 }
+
+                args.templates.push(template);
             }
             RawAsmArgKind::Operand(name, op) => {
                 allow_templates = false;
 
                 let explicit_reg = matches!(op.reg(), Some(ast::InlineAsmRegOrRegClass::Reg(_)));
-
                 let span = arg.span;
                 let slot = args.operands.len();
                 args.operands.push((op, span));
@@ -366,7 +364,7 @@ pub fn parse_asm_args<'a>(
                         */
                     } else if args.options.contains(option) {
                         // Tool-only output
-                        p.dcx().emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+                        dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
                     } else {
                         args.options |= option;
                     }
@@ -496,6 +494,7 @@ fn parse_options<'a>(
 
         'blk: {
             for (exp, option) in OPTIONS {
+                // Gives a more accurate list of expected next tokens.
                 let kw_matched = if asm_macro.is_supported_option(option) {
                     p.eat_keyword(exp)
                 } else {
@@ -538,7 +537,6 @@ fn parse_options<'a>(
 fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>> {
     p.expect(exp!(OpenParen))?;
 
-    // FIXME: why not allow this?
     if p.eat(exp!(CloseParen)) {
         return Err(p.dcx().create_err(errors::NonABI { span: p.token.span }));
     }
