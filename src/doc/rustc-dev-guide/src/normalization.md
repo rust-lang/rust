@@ -129,7 +129,7 @@ This is likely to change as const generics functionality is improved, for exampl
 
 There are two forms of normalization, structural (sometimes called *shallow*) and deep. Structural normalization should be thought of as only normalizing the "outermost" part of a type. On the other hand deep normalization will normalize *all* aliases in a type.
 
-In practice structural normalization can result in more than just the outer layer of the type being normalized[^1], but this behaviour should not be relied upon. Unnormalizable non-rigid aliases making use of bound variables (`for<'a>`) cannot be normalized by either kind of normalization. 
+In practice structural normalization can result in more than just the outer layer of the type being normalized, but this behaviour should not be relied upon. Unnormalizable non-rigid aliases making use of bound variables (`for<'a>`) cannot be normalized by either kind of normalization. 
 
 As an example: conceptually, structurally normalizing the type `Vec<<u8 as Identity>::Assoc>` would be a no-op, whereas deeply normalizing would give `Vec<u8>`. In practice even structural normalization would give `Vec<u8>`, though, again, this should not be relied upon.
 
@@ -161,8 +161,6 @@ In this example:
 - Normalizing `Bar<?x>` would result in `<?x as Iterator>::Item`, except, again, we want to normalize aliases in the type `Bar` is defined as equal to
 - Normalizing `<?x as Iterator>::Item` results in some new inference variable `?y`, as `<?x as Iterator>::Item` is an ambiguous alias
 - The final result is that normalizing `Foo<?x>` results in `?y`
-
-[^1]: In the new solver this is done implicitly
 
 ## How to normalize
 
@@ -198,11 +196,7 @@ There are two ways to deeply normalize with an `InferCtxt`, `normalize` and `dee
 
 When the new solver is stabilized the `infcx.at.normalize` function will be removed and everything will have been migrated to the new deep or structural normalization methods. For this reason the `normalize` function is a no-op under the new solver, making it suitable only when the old solver needs normalization but the new solver does not.
 
-Using `deeply_normalize` will result in errors being emitted when encountering ambiguous aliases[^1] as it is not possible to support normalizing *all* ambiguous aliases to inference variables[^2]. `deeply_normalize` should generally only be used in cases where we do not expect to encounter ambiguous aliases, for example when working with types from item signatures.
-
-[^1]: There is a subtle difference in how ambiguous aliases in binders are handled between old and new solver. In the old solver we fail to error on some ambiguous aliases inside of higher ranked types whereas the new solver correctly errors.
-
-[^2]: Ambiguous aliases inside of binders cannot be normalized to inference variables, this will be covered more later.
+Using `deeply_normalize` will result in errors being emitted when encountering ambiguous aliases[^2] as it is not possible to support normalizing *all* ambiguous aliases to inference variables[^3]. `deeply_normalize` should generally only be used in cases where we do not expect to encounter ambiguous aliases, for example when working with types from item signatures.
 
 ##### `infcx.query_normalize`
 
@@ -281,7 +275,7 @@ Ultimately this means that it is not always possible to ensure all aliases insid
 
 Diverging aliases, like ambiguous aliases, are normalized to inference variables. As normalizing diverging aliases results in trait solver cycles, it always results in an error in the old solver. In the new solver it only results in an error if we wind up requiring all goals to hold in the current context. E.g. normalizing diverging aliases during HIR typeck will result in an error in both solvers.
 
-Alias well formedness doesn't require that the alias doesn't diverge[^1], this means that checking an alias is well formed isn't sufficient to cause an error to be emitted for diverging aliases; actually attempting to normalize the alias is required.
+Alias well formedness doesn't require that the alias doesn't diverge[^4], this means that checking an alias is well formed isn't sufficient to cause an error to be emitted for diverging aliases; actually attempting to normalize the alias is required.
 
 Erroring on diverging aliases being a side effect of normalization means that it is very *arbitrary* whether we actually emit an error, it also differs between the old and new solver as we now normalize in less places.
 
@@ -300,10 +294,16 @@ struct Bar<T: ?Sized = <u8 as Trait>::Diverges<u8>>(Box<T>);
 
 In this example a diverging alias is used but we happen to not emit an error as we never explicitly normalize the defaults of generic parameters. If the `?Sized` opt out is removed then an error is emitted because we wind up happening to normalize a `<u8 as Trait>::Diverges<u8>: Sized` goal which as a side effect results in erroring about the diverging alias.
 
-Const aliases differ from type aliases a bit here; well formedness of const aliases requires that they can be successfully evaluated (via [`ConstEvaluatable`][const_evaluatable] goals). This means that simply checking well formedness of const arguments is sufficient to error if they would fail to evaluate. It is somewhat unclear whether it would make sense to adopt this for type aliases too or if const aliases should stop requiring this for well formedness[^2].
+Const aliases differ from type aliases a bit here; well formedness of const aliases requires that they can be successfully evaluated (via [`ConstEvaluatable`][const_evaluatable] goals). This means that simply checking well formedness of const arguments is sufficient to error if they would fail to evaluate. It is somewhat unclear whether it would make sense to adopt this for type aliases too or if const aliases should stop requiring this for well formedness[^5].
 
-[^1]: As checking aliases are non-diverging cannot be done until they are fully concrete, this would either imply that we cant check aliases are well formed before codegen/const-evaluation or that aliases would go from being well-formed to not well-formed after monomorphization.
+[^1]: In the new solver this is done implicitly
 
-[^2]: Const aliases certainly wouldn't be *less* sound than type aliases if we stopped doing this
+[^2]: There is a subtle difference in how ambiguous aliases in binders are handled between old and new solver. In the old solver we fail to error on some ambiguous aliases inside of higher ranked types whereas the new solver correctly errors.
+
+[^3]: Ambiguous aliases inside of binders cannot be normalized to inference variables, this will be covered more later.
+
+[^4]: As checking aliases are non-diverging cannot be done until they are fully concrete, this would either imply that we cant check aliases are well formed before codegen/const-evaluation or that aliases would go from being well-formed to not well-formed after monomorphization.
+
+[^5]: Const aliases certainly wouldn't be *less* sound than type aliases if we stopped doing this
 
 [const_evaluatable]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/type.ClauseKind.html#variant.ConstEvaluatable
