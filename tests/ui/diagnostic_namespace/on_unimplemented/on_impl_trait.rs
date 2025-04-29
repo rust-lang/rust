@@ -1,5 +1,6 @@
-// used to ICE, see <https://github.com/rust-lang/rust/issues/130627>
-// Instead it should just ignore the diagnostic attribute
+//! used to ICE, see <https://github.com/rust-lang/rust/issues/130627>
+//! Instead it should just ignore the diagnostic attribute
+
 #![feature(trait_alias)]
 
 trait Test {}
