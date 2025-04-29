@@ -759,47 +759,8 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Vec<String> {
-        const ALLOWED_ATTRIBUTES: &[Symbol] =
-            &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
-
+    fn adt_item_extra_attrs(&self, tcx: TyCtxt<'_>, document_private: bool) -> Option<String> {
         use rustc_abi::IntegerType;
-
-        let mut attrs: Vec<String> = self
-            .attrs
-            .other_attrs
-            .iter()
-            .filter_map(|attr| {
-                if is_json {
-                    match attr {
-                        hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
-                            // rustdoc-json stores this in `Item::deprecation`, so we
-                            // don't want it it `Item::attrs`.
-                            None
-                        }
-                        rustc_hir::Attribute::Parsed(rustc_attr_parsing::AttributeKind::Repr(
-                            ..,
-                        )) => {
-                            // We have separate pretty-printing logic for `#[repr(..)]` attributes.
-                            // For example, there are circumstances where `#[repr(transparent)]`
-                            // is applied but should not be publicly shown in rustdoc
-                            // because it isn't public API.
-                            None
-                        }
-                        _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
-                    }
-                } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
-                    Some(
-                        rustc_hir_pretty::attribute_to_string(&tcx, attr)
-                            .replace("\\\n", "")
-                            .replace('\n', "")
-                            .replace("  ", " "),
-                    )
-                } else {
-                    None
-                }
-            })
-            .collect();
 
         // Add #[repr(...)]
         if let Some(def_id) = self.def_id()
@@ -814,7 +775,7 @@ impl Item {
             if repr.transparent() {
                 // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
                 // field is public in case all fields are 1-ZST fields.
-                let render_transparent = cache.document_private
+                let render_transparent = document_private
                     || adt
                         .all_fields()
                         .find(|field| {
@@ -860,10 +821,55 @@ impl Item {
                 out.push(&int_s);
             }
             if !out.is_empty() {
-                attrs.push(format!("#[repr({})]", out.join(", ")));
+                return Some(format!("#[repr({})]", out.join(", ")));
             }
         }
-        attrs
+        None
+    }
+
+    pub(crate) fn attributes(
+        &self,
+        tcx: TyCtxt<'_>,
+        cache: &Cache,
+        is_json: bool,
+    ) -> impl Iterator<Item = String> {
+        const ALLOWED_ATTRIBUTES: &[Symbol] =
+            &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
+
+        self.attrs
+            .other_attrs
+            .iter()
+            .filter_map(move |attr| {
+                if is_json {
+                    match attr {
+                        hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
+                            // rustdoc-json stores this in `Item::deprecation`, so we
+                            // don't want it it `Item::attrs`.
+                            None
+                        }
+                        rustc_hir::Attribute::Parsed(rustc_attr_parsing::AttributeKind::Repr(
+                            ..,
+                        )) => {
+                            // We have separate pretty-printing logic for `#[repr(..)]` attributes.
+                            // For example, there are circumstances where `#[repr(transparent)]`
+                            // is applied but should not be publicly shown in rustdoc
+                            // because it isn't public API.
+                            None
+                        }
+                        _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
+                    }
+                } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
+                    let attr = rustc_hir_pretty::attribute_to_string(&tcx, attr);
+                    Some(if attr.contains(['\n', '\\']) || attr.contains("  ") {
+                        attr.replace("\\\n", "").replace('\n', "").replace("  ", " ")
+                    } else {
+                        attr
+                    })
+                } else {
+                    None
+                }
+            })
+            .chain(AttrIterator::new(self, cache.document_private, tcx))
     }
 
     pub fn is_doc_hidden(&self) -> bool {
@@ -872,6 +878,32 @@ impl Item {
 
     pub fn def_id(&self) -> Option<DefId> {
         self.item_id.as_def_id()
+    }
+}
+
+struct AttrIterator<'a, 'tcx> {
+    item: &'a Item,
+    document_private: bool,
+    tcx: TyCtxt<'tcx>,
+    done: bool,
+}
+
+impl<'a, 'tcx> AttrIterator<'a, 'tcx> {
+    fn new(item: &'a Item, document_private: bool, tcx: TyCtxt<'tcx>) -> Self {
+        Self { item, document_private, tcx, done: false }
+    }
+}
+
+impl<'a, 'tcx> Iterator for AttrIterator<'a, 'tcx> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.done {
+            None
+        } else {
+            self.done = true;
+            self.item.adt_item_extra_attrs(self.tcx, self.document_private)
+        }
     }
 }
 
