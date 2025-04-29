@@ -1,5 +1,6 @@
 //@[new] compile-flags: -Znext-solver
 //@ revisions: old new
+//@ check-pass
 
 #![feature(const_destruct)]
 #![feature(const_trait_impl)]
@@ -19,6 +20,5 @@ impl<T> const Drop for ConstDropper<T> {
 }
 
 const fn foo(_var: ConstDropper<Moose>) {}
-//~^ ERROR destructor of `ConstDropper<Moose>` cannot be evaluated at compile-time
 
 fn main() {}
