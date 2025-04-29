@@ -193,6 +193,23 @@ When a user runs `cargo fix --edition`, cargo will pass the `--force-warn rust-2
 flag to force all of these lints to appear during the edition migration.
 Cargo also passes `--cap-lints=allow` so that no other lints interfere with the edition migration.
 
+Make sure that the example code sets the correct edition. The example should illustrate the previous edition, and show what the migration warning would look like. For example, this lint for a 2024 migration shows an example in 2021:
+
+```rust,ignore
+declare_lint! {
+    /// The `keyword_idents_2024` lint detects ...
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021
+    /// #![warn(keyword_idents_2024)]
+    /// fn gen() {}
+    /// ```
+    ///
+    /// {{produces}}
+}
+```
+
 Migration lints can be either `Allow` or `Warn` by default.
 If it is `Allow`, users usually won't see this warning unless they are doing an edition migration
 manually or there is a problem during the migration.
@@ -334,3 +351,40 @@ In general it is recommended to avoid these special cases except for very high v
 [into-iter]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html
 [panic-macro]: https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html
 [`non_fmt_panics`]: https://doc.rust-lang.org/nightly/rustc/lints/listing/warn-by-default.html#non-fmt-panics
+
+### Migrating the standard library edition
+
+Updating the edition of the standard library itself roughly involves the following process:
+
+- Wait until the newly stabilized edition has reached beta and the bootstrap compiler has been updated.
+- Apply migration lints. This can be an involved process since some code is in external submodules[^std-submodules], and the standard library makes heavy use of conditional compilation. Also, running `cargo fix --edition` can be impractical on the standard library itself. One approach is to individually add `#![warn(...)]` at the top of each crate for each lint, run `./x check library`, apply the migrations, remove the `#![warn(...)]` and commit each migration separately. You'll likely need to run `./x check` with `--target` for many different targets to get full coverage (otherwise you'll likely spend days or weeks getting CI to pass)[^ed-docker]. See also the [advanced migration guide] for more tips.
+    - Apply migrations to [`backtrace-rs`]. [Example for 2024](https://github.com/rust-lang/backtrace-rs/pull/700). Note that this doesn't update the edition of the crate itself because that is published independently on crates.io, and that would otherwise restrict the minimum Rust version. Consider adding some `#![deny()]` attributes to avoid regressions until its edition gets updated.
+    - Apply migrations to [`stdarch`], and update its edition, and formatting. [Example for 2024](https://github.com/rust-lang/stdarch/pull/1710).
+    - Post PRs to update the backtrace and stdarch submodules, and wait for those to land.
+    - Apply migration lints to the standard library crates, and update their edition. I recommend working one crate at a time starting with `core`. [Example for 2024](https://github.com/rust-lang/rust/pull/138162).
+
+[^std-submodules]: This will hopefully change in the future to pull these submodules into `rust-lang/rust`.
+[^ed-docker]: You'll also likely need to do a lot of testing for different targets, and this is where [docker testing](../tests/docker.md) comes in handy.
+
+[advanced migration guide]: https://doc.rust-lang.org/nightly/edition-guide/editions/advanced-migrations.html
+[`backtrace-rs`]: https://github.com/rust-lang/backtrace-rs/
+[`stdarch`]: https://github.com/rust-lang/stdarch/
+
+## Stabilizing an edition
+
+After the edition team has given the go-ahead, the process for stabilizing an edition is roughly:
+
+- Update [`LATEST_STABLE_EDITION`].
+- Update [`Edition::is_stable`].
+- Hunt and find any document that refers to edition by number, and update it:
+    - [`--edition` flag](https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/command-line-arguments.md#--edition-specify-the-edition-to-use)
+    - [Rustdoc attributes](https://github.com/rust-lang/rust/blob/master/src/doc/rustdoc/src/write-documentation/documentation-tests.md#attributes)
+- Clean up any tests that use the `//@ edition` header to remove the `-Zunstable-options` flag to ensure they are indeed stable. Note: Ideally this should be automated, see [#133582].
+- Bless any tests that change.
+- Update `lint-docs` to default to the new edition.
+
+See [example for 2024](https://github.com/rust-lang/rust/pull/133349).
+
+[`LATEST_STABLE_EDITION`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/edition/constant.LATEST_STABLE_EDITION.html
+[`Edition::is_stable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/edition/enum.Edition.html#method.is_stable
+[#133582]: https://github.com/rust-lang/rust/issues/133582
