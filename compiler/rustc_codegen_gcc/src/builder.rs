@@ -45,7 +45,7 @@ enum ExtremumOperation {
     Min,
 }
 
-pub struct Builder<'a: 'gcc, 'gcc, 'tcx> {
+pub struct Builder<'a, 'gcc, 'tcx> {
     pub cx: &'a CodegenCx<'gcc, 'tcx>,
     pub block: Block<'gcc>,
     pub location: Option<Location<'gcc>>,
