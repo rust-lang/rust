@@ -40,7 +40,11 @@ pub struct Compiler {
     pub sess: Session,
     pub codegen_backend: Box<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
+
+    /// A reference to the current `GlobalCtxt` which we pass on to `GlobalCtxt`.
     pub(crate) current_gcx: CurrentGcx,
+
+    /// A jobserver reference which we pass on to `GlobalCtxt`.
     pub(crate) jobserver_proxy: Arc<Proxy>,
 }
 

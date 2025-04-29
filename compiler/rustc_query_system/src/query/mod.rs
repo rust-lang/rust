@@ -152,6 +152,8 @@ pub enum QuerySideEffect {
 pub trait QueryContext: HasDepContext {
     type QueryInfo: Clone;
 
+    /// Gets a jobserver reference which is used to release then acquire
+    /// a token while waiting on a query.
     fn jobserver_proxy(&self) -> &Proxy;
 
     fn next_job_id(self) -> QueryJobId;

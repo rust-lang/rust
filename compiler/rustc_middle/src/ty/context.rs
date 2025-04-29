@@ -1440,6 +1440,7 @@ pub struct GlobalCtxt<'tcx> {
 
     current_gcx: CurrentGcx,
 
+    /// A jobserver reference used to release then acquire a token while waiting on a query.
     pub jobserver_proxy: Arc<Proxy>,
 }
 
