@@ -252,6 +252,30 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///     std::process::exit(*code); // UB! Accessing uninitialized memory.
 /// }
 /// ```
+///
+/// # Validity
+///
+/// A `MaybeUninit<T>` has no validity requirement – any sequence of bytes of the appropriate length,
+/// initialized to any value or uninitialized, are a valid value of `MaybeUninit<T>`. Equivalently,
+/// it is always sound to perform `transmute::<[MaybeUninit<u8>; size_of::<T>()], MaybeUninit<T>>(...)`.
+///
+/// Note that "round-tripping" via `MaybeUninit` does not always result in the original value.
+/// Concretely, given distinct `T` and `U` where `size_of::<T>() == size_of::<U>()`, the following
+/// code is not guaranteed to be sound:
+///
+/// ```rust,no_run
+/// # use core::mem::{MaybeUninit, transmute};
+/// # struct T; struct U;
+/// fn identity(t: T) -> T {
+///     let u: MaybeUninit<U> = transmute(t);
+///     transmute(u)
+/// }
+/// ```
+///
+/// If `T` contains initialized bytes at byte offsets where `U` contains padding bytes, these
+/// may not be preserved in `MaybeUninit<U>`, and so `transmute(u)` may produce a `T` with
+/// uninitialized bytes in these positions. This is an active area of discussion, and this code
+/// may become sound in the future.
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
