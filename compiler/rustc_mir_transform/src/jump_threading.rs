@@ -177,16 +177,8 @@ impl<'a> ConditionSet<'a> {
         arena: &'a DroplessArena,
         f: impl Fn(Condition) -> Option<Condition>,
     ) -> Option<ConditionSet<'a>> {
-        let mut all_ok = true;
-        let set = arena.alloc_from_iter(self.iter().map_while(|c| {
-            if let Some(c) = f(c) {
-                Some(c)
-            } else {
-                all_ok = false;
-                None
-            }
-        }));
-        all_ok.then_some(ConditionSet(set))
+        let set = arena.try_alloc_from_iter(self.iter().map(|c| f(c).ok_or(()))).ok()?;
+        Some(ConditionSet(set))
     }
 }
 
