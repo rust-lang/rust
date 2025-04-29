@@ -4,7 +4,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AsmMacro, token};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{DiagCtxtHandle, PResult};
+use rustc_errors::PResult;
 use rustc_expand::base::*;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::exp;
@@ -33,7 +33,7 @@ pub enum RawAsmArgKind {
 }
 
 /// Validated assembly arguments, ready for macro expansion.
-pub struct AsmArgs {
+struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxIndexMap<Symbol, usize>,
@@ -144,6 +144,7 @@ fn parse_asm_operand<'a>(
     }))
 }
 
+// Public for rustfmt
 pub fn parse_raw_asm_args<'a>(
     p: &mut Parser<'a>,
     sp: Span,
@@ -258,26 +259,17 @@ fn parse_args<'a>(
     tts: TokenStream,
     asm_macro: AsmMacro,
 ) -> PResult<'a, AsmArgs> {
-    let mut p = ecx.new_parser_from_tts(tts);
-    parse_asm_args(&mut p, sp, asm_macro)
+    let raw_args = parse_raw_asm_args(&mut ecx.new_parser_from_tts(tts), sp, asm_macro)?;
+    validate_raw_asm_args(ecx, asm_macro, raw_args)
 }
 
-// public for use in rustfmt
-// FIXME: use `RawAsmArg` in the formatting code instead.
-pub fn parse_asm_args<'a>(
-    p: &mut Parser<'a>,
-    sp: Span,
-    asm_macro: AsmMacro,
-) -> PResult<'a, AsmArgs> {
-    let raw_args = parse_raw_asm_args(p, sp, asm_macro)?;
-    validate_raw_asm_args(p.dcx(), asm_macro, raw_args)
-}
-
-pub fn validate_raw_asm_args<'a>(
-    dcx: DiagCtxtHandle<'a>,
+fn validate_raw_asm_args<'a>(
+    ecx: &ExtCtxt<'a>,
     asm_macro: AsmMacro,
     raw_args: Vec<RawAsmArg>,
 ) -> PResult<'a, AsmArgs> {
+    let dcx = ecx.dcx();
+
     let mut args = AsmArgs {
         templates: vec![],
         operands: vec![],
