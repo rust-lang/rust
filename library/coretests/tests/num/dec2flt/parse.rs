@@ -10,6 +10,8 @@ fn new_dec(e: i64, m: u64) -> Decimal {
 fn missing_pieces() {
     let permutations = &[".e", "1e", "e4", "e", ".12e", "321.e", "32.12e+", "12.32e-"];
     for &s in permutations {
+        #[cfg(not(bootstrap))]
+        #[cfg(target_has_reliable_f16)]
         assert_eq!(dec2flt::<f16>(s), Err(pfe_invalid()));
         assert_eq!(dec2flt::<f32>(s), Err(pfe_invalid()));
         assert_eq!(dec2flt::<f64>(s), Err(pfe_invalid()));
@@ -28,6 +30,8 @@ fn invalid_chars() {
                 input.push_str(s);
                 input.insert(i, c);
 
+                #[cfg(not(bootstrap))]
+                #[cfg(target_has_reliable_f16)]
                 assert_eq!(
                     dec2flt::<f16>(&input),
                     Err(pfe_invalid()),

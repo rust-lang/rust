@@ -11,6 +11,8 @@ mod parse;
 // Requires a *polymorphic literal*, i.e., one that can serve as f64 as well as f32.
 macro_rules! test_literal {
     ($x: expr) => {{
+        #[cfg(not(bootstrap))]
+        #[cfg(target_has_reliable_f16)]
         let x16: f16 = $x;
         let x32: f32 = $x;
         let x64: f64 = $x;
@@ -19,11 +21,15 @@ macro_rules! test_literal {
         for input in inputs {
             assert_eq!(input.parse(), Ok(x64), "failed f64 {input}");
             assert_eq!(input.parse(), Ok(x32), "failed f32 {input}");
+            #[cfg(not(bootstrap))]
+            #[cfg(target_has_reliable_f16)]
             assert_eq!(input.parse(), Ok(x16), "failed f16 {input}");
 
             let neg_input = format!("-{input}");
             assert_eq!(neg_input.parse(), Ok(-x64), "failed f64 {neg_input}");
             assert_eq!(neg_input.parse(), Ok(-x32), "failed f32 {neg_input}");
+            #[cfg(not(bootstrap))]
+            #[cfg(target_has_reliable_f16)]
             assert_eq!(neg_input.parse(), Ok(-x16), "failed f16 {neg_input}");
         }
     }};

@@ -218,6 +218,8 @@ const fn pow2_to_pow10(a: i64) -> i64 {
     res as i64
 }
 
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
 impl RawFloat for f16 {
     type Int = u16;
 
