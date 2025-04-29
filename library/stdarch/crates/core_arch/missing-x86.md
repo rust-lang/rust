@@ -213,31 +213,6 @@
 </p></details>
 
 
-<details><summary>["SHA512", "AVX"]</summary><p>
-
-  * [ ] [`_mm256_sha512msg1_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sha512msg1_epi64)
-  * [ ] [`_mm256_sha512msg2_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sha512msg2_epi64)
-  * [ ] [`_mm256_sha512rnds2_epi64`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sha512rnds2_epi64)
-</p></details>
-
-
-<details><summary>["SM3", "AVX"]</summary><p>
-
-  * [ ] [`_mm_sm3msg1_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sm3msg1_epi32)
-  * [ ] [`_mm_sm3msg2_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sm3msg2_epi32)
-  * [ ] [`_mm_sm3rnds2_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sm3rnds2_epi32)
-</p></details>
-
-
-<details><summary>["SM4", "AVX"]</summary><p>
-
-  * [ ] [`_mm256_sm4key4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sm4key4_epi32)
-  * [ ] [`_mm256_sm4rnds4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_sm4rnds4_epi32)
-  * [ ] [`_mm_sm4key4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sm4key4_epi32)
-  * [ ] [`_mm_sm4rnds4_epi32`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sm4rnds4_epi32)
-</p></details>
-
-
 <details><summary>["SSE"]</summary><p>
 
   * [ ] [`_mm_free`](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_free)
