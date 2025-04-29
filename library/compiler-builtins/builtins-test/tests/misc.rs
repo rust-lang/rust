@@ -77,16 +77,13 @@ fn leading_zeros() {
             let lz1 = leading_zeros_default(x);
             let lz2 = leading_zeros_riscv(x);
             if lz0 != lz {
-                panic!("__clzsi2({}): std: {}, builtins: {}", x, lz, lz0);
+                panic!("__clzsi2({x}): std: {lz}, builtins: {lz0}");
             }
             if lz1 != lz {
-                panic!(
-                    "leading_zeros_default({}): std: {}, builtins: {}",
-                    x, lz, lz1
-                );
+                panic!("leading_zeros_default({x}): std: {lz}, builtins: {lz1}");
             }
             if lz2 != lz {
-                panic!("leading_zeros_riscv({}): std: {}, builtins: {}", x, lz, lz2);
+                panic!("leading_zeros_riscv({x}): std: {lz}, builtins: {lz2}");
             }
         });
     }
@@ -102,16 +99,13 @@ fn leading_zeros() {
             let lz1 = leading_zeros_default(x);
             let lz2 = leading_zeros_riscv(x);
             if lz0 != lz {
-                panic!("__clzdi2({}): std: {}, builtins: {}", x, lz, lz0);
+                panic!("__clzdi2({x}): std: {lz}, builtins: {lz0}");
             }
             if lz1 != lz {
-                panic!(
-                    "leading_zeros_default({}): std: {}, builtins: {}",
-                    x, lz, lz1
-                );
+                panic!("leading_zeros_default({x}): std: {lz}, builtins: {lz1}");
             }
             if lz2 != lz {
-                panic!("leading_zeros_riscv({}): std: {}, builtins: {}", x, lz, lz2);
+                panic!("leading_zeros_riscv({x}): std: {lz}, builtins: {lz2}");
             }
         });
     }
@@ -125,7 +119,7 @@ fn leading_zeros() {
             let lz = x.leading_zeros() as usize;
             let lz0 = __clzti2(x);
             if lz0 != lz {
-                panic!("__clzti2({}): std: {}, builtins: {}", x, lz, lz0);
+                panic!("__clzti2({x}): std: {lz}, builtins: {lz0}");
             }
         });
     }
@@ -142,10 +136,10 @@ fn trailing_zeros() {
         let tz0 = __ctzsi2(x);
         let tz1 = trailing_zeros(x);
         if tz0 != tz {
-            panic!("__ctzsi2({}): std: {}, builtins: {}", x, tz, tz0);
+            panic!("__ctzsi2({x}): std: {tz}, builtins: {tz0}");
         }
         if tz1 != tz {
-            panic!("trailing_zeros({}): std: {}, builtins: {}", x, tz, tz1);
+            panic!("trailing_zeros({x}): std: {tz}, builtins: {tz1}");
         }
     });
     fuzz(N, |x: u64| {
@@ -156,10 +150,10 @@ fn trailing_zeros() {
         let tz0 = __ctzdi2(x);
         let tz1 = trailing_zeros(x);
         if tz0 != tz {
-            panic!("__ctzdi2({}): std: {}, builtins: {}", x, tz, tz0);
+            panic!("__ctzdi2({x}): std: {tz}, builtins: {tz0}");
         }
         if tz1 != tz {
-            panic!("trailing_zeros({}): std: {}, builtins: {}", x, tz, tz1);
+            panic!("trailing_zeros({x}): std: {tz}, builtins: {tz1}");
         }
     });
     fuzz(N, |x: u128| {
@@ -169,7 +163,7 @@ fn trailing_zeros() {
         let tz = x.trailing_zeros() as usize;
         let tz0 = __ctzti2(x);
         if tz0 != tz {
-            panic!("__ctzti2({}): std: {}, builtins: {}", x, tz, tz0);
+            panic!("__ctzti2({x}): std: {tz}, builtins: {tz0}");
         }
     });
 }

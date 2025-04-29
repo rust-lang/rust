@@ -137,7 +137,7 @@ fn aarch64_symbol(ordering: Ordering) -> &'static str {
         Ordering::Acquire => "acq",
         Ordering::Release => "rel",
         Ordering::AcqRel => "acq_rel",
-        _ => panic!("unknown symbol for {:?}", ordering),
+        _ => panic!("unknown symbol for {ordering:?}"),
     }
 }
 
@@ -229,7 +229,7 @@ fn configure_check_cfg() {
 
         for op_size in op_sizes {
             for ordering in ["relax", "acq", "rel", "acq_rel"] {
-                aarch_atomic.push(format!("__aarch64_{}{}_{}", aarch_op, op_size, ordering));
+                aarch_atomic.push(format!("__aarch64_{aarch_op}{op_size}_{ordering}"));
             }
         }
     }
@@ -239,10 +239,7 @@ fn configure_check_cfg() {
         .copied()
         .chain(aarch_atomic.iter().map(|s| s.as_str()))
     {
-        println!(
-            "cargo::rustc-check-cfg=cfg({}, values(\"optimized-c\"))",
-            fn_name
-        );
+        println!("cargo::rustc-check-cfg=cfg({fn_name}, values(\"optimized-c\"))",);
     }
 
     // Rustc is unaware of sparc target features, but this does show up from

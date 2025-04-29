@@ -38,7 +38,7 @@ unsafe fn read_usize_unaligned(x: *const usize) -> usize {
     // Do not use `core::ptr::read_unaligned` here, since it calls `copy_nonoverlapping` which
     // is translated to memcpy in LLVM.
     let x_read = (x as *const [u8; core::mem::size_of::<usize>()]).read();
-    core::mem::transmute(x_read)
+    usize::from_ne_bytes(x_read)
 }
 
 /// Loads a `T`-sized chunk from `src` into `dst` at offset `offset`, if that does not exceed

@@ -18,8 +18,8 @@ mod int_mul {
                         let mul1: $i = $fn(x, y);
                         if mul0 != mul1 {
                             panic!(
-                                "{}({}, {}): std: {}, builtins: {}",
-                                stringify!($fn), x, y, mul0, mul1
+                                "{func}({x}, {y}): std: {mul0}, builtins: {mul1}",
+                                func = stringify!($fn),
                             );
                         }
                     });
@@ -52,8 +52,8 @@ mod int_overflowing_mul {
                         let o1 = o1 != 0;
                         if mul0 != mul1 || o0 != o1 {
                             panic!(
-                                "{}({}, {}): std: ({}, {}), builtins: ({}, {})",
-                                stringify!($fn), x, y, mul0, o0, mul1, o1
+                                "{func}({x}, {y}): std: ({mul0}, {o0}), builtins: ({mul1}, {o1})",
+                                func = stringify!($fn),
                             );
                         }
                     });
@@ -77,20 +77,14 @@ mod int_overflowing_mul {
             let (mul0, o0) = x.overflowing_mul(y);
             let mul1 = __rust_u128_mulo(x, y, &mut o1);
             if mul0 != mul1 || i32::from(o0) != o1 {
-                panic!(
-                    "__rust_u128_mulo({}, {}): std: ({}, {}), builtins: ({}, {})",
-                    x, y, mul0, o0, mul1, o1
-                );
+                panic!("__rust_u128_mulo({x}, {y}): std: ({mul0}, {o0}), builtins: ({mul1}, {o1})",);
             }
             let x = x as i128;
             let y = y as i128;
             let (mul0, o0) = x.overflowing_mul(y);
             let mul1 = __rust_i128_mulo(x, y, &mut o1);
             if mul0 != mul1 || i32::from(o0) != o1 {
-                panic!(
-                    "__rust_i128_mulo({}, {}): std: ({}, {}), builtins: ({}, {})",
-                    x, y, mul0, o0, mul1, o1
-                );
+                panic!("__rust_i128_mulo({x}, {y}): std: ({mul0}, {o0}), builtins: ({mul1}, {o1})",);
             }
         });
     }
@@ -109,8 +103,8 @@ macro_rules! float_mul {
                     let mul1: $f = $fn(x, y);
                     if !Float::eq_repr(mul0, mul1) {
                         panic!(
-                            "{}({:?}, {:?}): std: {:?}, builtins: {:?}",
-                            stringify!($fn), x, y, mul0, mul1
+                            "{func}({x:?}, {y:?}): std: {mul0:?}, builtins: {mul1:?}",
+                            func = stringify!($fn),
                         );
                     }
                 });

@@ -452,11 +452,7 @@ mod tests {
             } else {
                 pow(base, exponent) == expected
             },
-            "{} ** {} was {} instead of {}",
-            base,
-            exponent,
-            res,
-            expected
+            "{base} ** {exponent} was {res} instead of {expected}",
         );
     }
 
@@ -486,10 +482,7 @@ mod tests {
                     } else {
                         exp == res
                     },
-                    "test for {} was {} instead of {}",
-                    val,
-                    res,
-                    exp
+                    "test for {val} was {res} instead of {exp}",
                 );
             })
         });

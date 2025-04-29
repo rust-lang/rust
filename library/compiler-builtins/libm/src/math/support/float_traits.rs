@@ -1,3 +1,5 @@
+#![allow(unknown_lints)] // FIXME(msrv) we shouldn't need this
+
 use core::{fmt, mem, ops};
 
 use super::int_traits::{CastFrom, Int, MinInt};
@@ -344,24 +346,28 @@ float_impl!(
 /* FIXME(msrv): vendor some things that are not const stable at our MSRV */
 
 /// `f32::from_bits`
+#[allow(unnecessary_transmutes)] // lint appears in newer versions of Rust
 pub const fn f32_from_bits(bits: u32) -> f32 {
     // SAFETY: POD cast with no preconditions
     unsafe { mem::transmute::<u32, f32>(bits) }
 }
 
 /// `f32::to_bits`
+#[allow(unnecessary_transmutes)] // lint appears in newer versions of Rust
 pub const fn f32_to_bits(x: f32) -> u32 {
     // SAFETY: POD cast with no preconditions
     unsafe { mem::transmute::<f32, u32>(x) }
 }
 
 /// `f64::from_bits`
+#[allow(unnecessary_transmutes)] // lint appears in newer versions of Rust
 pub const fn f64_from_bits(bits: u64) -> f64 {
     // SAFETY: POD cast with no preconditions
     unsafe { mem::transmute::<u64, f64>(bits) }
 }
 
 /// `f64::to_bits`
+#[allow(unnecessary_transmutes)] // lint appears in newer versions of Rust
 pub const fn f64_to_bits(x: f64) -> u64 {
     // SAFETY: POD cast with no preconditions
     unsafe { mem::transmute::<f64, u64>(x) }
