@@ -20,3 +20,4 @@ syn = { version = "2.0", features = ["full", "extra-traits", "visit-mut"] }
 [dev-dependencies]
 expect-test = "1.5.1"
 salsa.workspace = true
+salsa-macros.workspace = true

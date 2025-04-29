@@ -1468,7 +1468,7 @@ fn type_for_enum_variant_constructor(
     }
 }
 
-#[salsa::tracked(cycle_result = type_for_adt_cycle_result)]
+#[salsa_macros::tracked(cycle_result = type_for_adt_cycle_result)]
 fn type_for_adt_tracked(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
     type_for_adt(db, adt)
 }
@@ -1533,7 +1533,7 @@ pub enum TyDefId {
 }
 impl_from!(BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId for TyDefId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum ValueTyDefId {
     FunctionId(FunctionId),
     StructId(StructId),

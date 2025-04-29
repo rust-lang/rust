@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-#[salsa::db]
+#[salsa_macros::db]
 #[derive(Default, Clone)]
 pub(crate) struct LoggerDb {
     storage: salsa::Storage<Self>,
@@ -12,7 +12,7 @@ struct Logger {
     logs: Arc<Mutex<Vec<String>>>,
 }
 
-#[salsa::db]
+#[salsa_macros::db]
 impl salsa::Database for LoggerDb {
     fn salsa_event(&self, event: &dyn Fn() -> salsa::Event) {
         let event = event();

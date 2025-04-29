@@ -1,4 +1,8 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
+
+pub use salsa;
+pub use salsa_macros;
+
 // FIXME: Rename this crate, base db is non descriptive
 mod change;
 mod input;
@@ -17,7 +21,6 @@ pub use crate::{
 use dashmap::{DashMap, mapref::entry::Entry};
 pub use query_group::{self};
 use rustc_hash::{FxHashSet, FxHasher};
-pub use salsa::{self};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
 use span::Edition;
@@ -28,7 +31,7 @@ pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet}
 #[macro_export]
 macro_rules! impl_intern_key {
     ($id:ident, $loc:ident) => {
-        #[salsa::interned(no_lifetime)]
+        #[salsa_macros::interned(no_lifetime)]
         pub struct $id {
             pub loc: $loc,
         }
@@ -161,7 +164,7 @@ impl Files {
     }
 }
 
-#[salsa::interned(no_lifetime, debug, constructor=from_span)]
+#[salsa_macros::interned(no_lifetime, debug, constructor=from_span)]
 pub struct EditionedFileId {
     pub editioned_file_id: span::EditionedFileId,
 }
@@ -196,18 +199,18 @@ impl EditionedFileId {
     }
 }
 
-#[salsa::input(debug)]
+#[salsa_macros::input(debug)]
 pub struct FileText {
     pub text: Arc<str>,
     pub file_id: vfs::FileId,
 }
 
-#[salsa::input(debug)]
+#[salsa_macros::input(debug)]
 pub struct FileSourceRootInput {
     pub source_root_id: SourceRootId,
 }
 
-#[salsa::input(debug)]
+#[salsa_macros::input(debug)]
 pub struct SourceRootInput {
     pub source_root: Arc<SourceRoot>,
 }
@@ -274,7 +277,7 @@ pub fn transitive_deps(db: &dyn SourceDatabase, crate_id: Crate) -> FxHashSet<Cr
     deps
 }
 
-#[salsa::db]
+#[salsa_macros::db]
 pub trait SourceDatabase: salsa::Database {
     /// Text of the file.
     fn file_text(&self, file_id: vfs::FileId) -> FileText;
@@ -353,7 +356,7 @@ fn parse(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Parse<ast::SourceFil
 }
 
 fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<&[SyntaxError]> {
-    #[salsa::tracked(return_ref)]
+    #[salsa_macros::tracked(return_ref)]
     fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Box<[SyntaxError]>> {
         let errors = db.parse(file_id).errors();
         match &*errors {
