@@ -115,9 +115,7 @@ impl<'tcx> MutVisitor<'tcx> for BasicBlockUpdater<'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, _location: Location) {
-        for succ in terminator.successors_mut() {
-            *succ = self.map[*succ];
-        }
+        terminator.successors_mut(|succ| *succ = self.map[*succ]);
     }
 }
 
