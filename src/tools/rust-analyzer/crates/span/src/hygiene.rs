@@ -94,16 +94,11 @@ const _: () = {
         }
     }
     impl zalsa_struct_::Configuration for SyntaxContext {
+        const LOCATION: salsa::plumbing::Location =
+            salsa::plumbing::Location { file: file!(), line: line!() };
         const DEBUG_NAME: &'static str = "SyntaxContextData";
         type Fields<'a> = SyntaxContextData;
         type Struct<'a> = SyntaxContext;
-        fn struct_from_id<'db>(id: salsa::Id) -> Self::Struct<'db> {
-            SyntaxContext::from_salsa_id(id)
-        }
-        fn deref_struct(s: Self::Struct<'_>) -> salsa::Id {
-            s.as_salsa_id()
-                .expect("`SyntaxContext::deref_structs()` called on a root `SyntaxContext`")
-        }
     }
     impl SyntaxContext {
         pub fn ingredient<Db>(db: &Db) -> &zalsa_struct_::IngredientImpl<Self>

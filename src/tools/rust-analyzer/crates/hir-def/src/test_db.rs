@@ -19,7 +19,7 @@ use crate::{
     src::HasSource,
 };
 
-#[salsa::db]
+#[salsa_macros::db]
 #[derive(Clone)]
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
@@ -44,7 +44,7 @@ impl Default for TestDB {
     }
 }
 
-#[salsa::db]
+#[salsa_macros::db]
 impl salsa::Database for TestDB {
     fn salsa_event(&self, event: &dyn std::ops::Fn() -> salsa::Event) {
         let mut events = self.events.lock().unwrap();
@@ -63,7 +63,7 @@ impl fmt::Debug for TestDB {
 
 impl panic::RefUnwindSafe for TestDB {}
 
-#[salsa::db]
+#[salsa_macros::db]
 impl SourceDatabase for TestDB {
     fn file_text(&self, file_id: base_db::FileId) -> FileText {
         self.files.file_text(file_id)

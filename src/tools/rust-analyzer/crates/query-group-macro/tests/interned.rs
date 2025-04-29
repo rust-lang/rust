@@ -6,7 +6,7 @@ use salsa::plumbing::AsId;
 mod logger_db;
 use logger_db::LoggerDb;
 
-#[salsa::interned(no_lifetime)]
+#[salsa_macros::interned(no_lifetime)]
 pub struct InternedString {
     data: String,
 }

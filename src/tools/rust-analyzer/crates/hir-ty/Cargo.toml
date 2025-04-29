@@ -34,6 +34,7 @@ indexmap.workspace = true
 rustc_apfloat = "0.2.2"
 query-group.workspace = true
 salsa.workspace = true
+salsa-macros.workspace = true
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true

@@ -144,7 +144,7 @@ pub trait ExpandDatabase: RootQueryDb {
     fn syntax_context(&self, file: HirFileId, edition: Edition) -> SyntaxContext;
 }
 
-#[salsa::interned(no_lifetime, id = span::SyntaxContext)]
+#[salsa_macros::interned(no_lifetime, id = span::SyntaxContext)]
 pub struct SyntaxContextWrapper {
     pub data: SyntaxContext,
 }
