@@ -1,0 +1,10 @@
+warning: variable `WrongCase` should have a snake case name
+  --> $DIR/default-groups-issue-65464.rs:11:9
+   |
+LL |     let WrongCase = 1;
+   |         ^^^^^^^^^ help: convert the identifier to snake case: `wrong_case`
+   |
+   = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: 1 warning emitted
+
