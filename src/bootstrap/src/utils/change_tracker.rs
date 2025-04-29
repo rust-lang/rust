@@ -401,4 +401,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added new option `include` to create config extensions.",
     },
+    ChangeInfo {
+        change_id: 140438,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `rust.debug-assertions-tools` to control debug asssertions for tools.",
+    },
 ];
