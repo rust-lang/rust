@@ -69,6 +69,76 @@ fn parse_args<'a>(
     parse_asm_args(&mut p, sp, asm_macro)
 }
 
+fn parse_asm_operand<'a>(
+    p: &mut Parser<'a>,
+    asm_macro: AsmMacro,
+) -> PResult<'a, Option<ast::InlineAsmOperand>> {
+    let dcx = p.dcx();
+
+    Ok(Some(if eat_operand_keyword(p, exp!(In), asm_macro)? {
+        let reg = parse_reg(p)?;
+        if p.eat_keyword(exp!(Underscore)) {
+            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            return Err(err);
+        }
+        let expr = p.parse_expr()?;
+        ast::InlineAsmOperand::In { reg, expr }
+    } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
+        let reg = parse_reg(p)?;
+        let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+        ast::InlineAsmOperand::Out { reg, expr, late: false }
+    } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
+        let reg = parse_reg(p)?;
+        let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+        ast::InlineAsmOperand::Out { reg, expr, late: true }
+    } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
+        let reg = parse_reg(p)?;
+        if p.eat_keyword(exp!(Underscore)) {
+            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            return Err(err);
+        }
+        let expr = p.parse_expr()?;
+        if p.eat(exp!(FatArrow)) {
+            let out_expr =
+                if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+            ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: false }
+        } else {
+            ast::InlineAsmOperand::InOut { reg, expr, late: false }
+        }
+    } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
+        let reg = parse_reg(p)?;
+        if p.eat_keyword(exp!(Underscore)) {
+            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            return Err(err);
+        }
+        let expr = p.parse_expr()?;
+        if p.eat(exp!(FatArrow)) {
+            let out_expr =
+                if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+            ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: true }
+        } else {
+            ast::InlineAsmOperand::InOut { reg, expr, late: true }
+        }
+    } else if eat_operand_keyword(p, exp!(Label), asm_macro)? {
+        let block = p.parse_block()?;
+        ast::InlineAsmOperand::Label { block }
+    } else if p.eat_keyword(exp!(Const)) {
+        let anon_const = p.parse_expr_anon_const()?;
+        ast::InlineAsmOperand::Const { anon_const }
+    } else if p.eat_keyword(exp!(Sym)) {
+        let expr = p.parse_expr()?;
+        let ast::ExprKind::Path(qself, path) = &expr.kind else {
+            let err = dcx.create_err(errors::AsmSymNoPath { span: expr.span });
+            return Err(err);
+        };
+        let sym =
+            ast::InlineAsmSym { id: ast::DUMMY_NODE_ID, qself: qself.clone(), path: path.clone() };
+        ast::InlineAsmOperand::Sym { sym }
+    } else {
+        return Ok(None);
+    }))
+}
+
 // Primarily public for rustfmt consumption.
 // Internal consumers should continue to leverage `expand_asm`/`expand__global_asm`
 pub fn parse_asm_args<'a>(
@@ -135,91 +205,31 @@ pub fn parse_asm_args<'a>(
             None
         };
 
-        let op = if eat_operand_keyword(p, exp!(In), asm_macro)? {
-            let reg = parse_reg(p)?;
-            if p.eat_keyword(exp!(Underscore)) {
-                let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
-                return Err(err);
-            }
-            let expr = p.parse_expr()?;
-            ast::InlineAsmOperand::In { reg, expr }
-        } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
-            let reg = parse_reg(p)?;
-            let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::Out { reg, expr, late: false }
-        } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
-            let reg = parse_reg(p)?;
-            let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::Out { reg, expr, late: true }
-        } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
-            let reg = parse_reg(p)?;
-            if p.eat_keyword(exp!(Underscore)) {
-                let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
-                return Err(err);
-            }
-            let expr = p.parse_expr()?;
-            if p.eat(exp!(FatArrow)) {
-                let out_expr =
-                    if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-                ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: false }
-            } else {
-                ast::InlineAsmOperand::InOut { reg, expr, late: false }
-            }
-        } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
-            let reg = parse_reg(p)?;
-            if p.eat_keyword(exp!(Underscore)) {
-                let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
-                return Err(err);
-            }
-            let expr = p.parse_expr()?;
-            if p.eat(exp!(FatArrow)) {
-                let out_expr =
-                    if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-                ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: true }
-            } else {
-                ast::InlineAsmOperand::InOut { reg, expr, late: true }
-            }
-        } else if eat_operand_keyword(p, exp!(Label), asm_macro)? {
-            let block = p.parse_block()?;
-            ast::InlineAsmOperand::Label { block }
-        } else if p.eat_keyword(exp!(Const)) {
-            let anon_const = p.parse_expr_anon_const()?;
-            ast::InlineAsmOperand::Const { anon_const }
-        } else if p.eat_keyword(exp!(Sym)) {
-            let expr = p.parse_expr()?;
-            let ast::ExprKind::Path(qself, path) = &expr.kind else {
-                let err = dcx.create_err(errors::AsmSymNoPath { span: expr.span });
-                return Err(err);
-            };
-            let sym = ast::InlineAsmSym {
-                id: ast::DUMMY_NODE_ID,
-                qself: qself.clone(),
-                path: path.clone(),
-            };
-            ast::InlineAsmOperand::Sym { sym }
-        } else if allow_templates {
-            let template = p.parse_expr()?;
-            // If it can't possibly expand to a string, provide diagnostics here to include other
-            // things it could have been.
-            match template.kind {
-                ast::ExprKind::Lit(token_lit)
-                    if matches!(
-                        token_lit.kind,
-                        token::LitKind::Str | token::LitKind::StrRaw(_)
-                    ) => {}
-                ast::ExprKind::MacCall(..) => {}
-                _ => {
-                    let err = dcx.create_err(errors::AsmExpectedOther {
-                        span: template.span,
-                        is_inline_asm: matches!(asm_macro, AsmMacro::Asm),
-                    });
-                    return Err(err);
+        let Some(op) = parse_asm_operand(p, asm_macro)? else {
+            if allow_templates {
+                let template = p.parse_expr()?;
+                // If it can't possibly expand to a string, provide diagnostics here to include other
+                // things it could have been.
+                match template.kind {
+                    ast::ExprKind::Lit(token_lit)
+                        if matches!(
+                            token_lit.kind,
+                            token::LitKind::Str | token::LitKind::StrRaw(_)
+                        ) => {}
+                    ast::ExprKind::MacCall(..) => {}
+                    _ => {
+                        let err = dcx.create_err(errors::AsmExpectedOther {
+                            span: template.span,
+                            is_inline_asm: matches!(asm_macro, AsmMacro::Asm),
+                        });
+                        return Err(err);
+                    }
                 }
+                args.templates.push(template);
+                continue;
+            } else {
+                p.unexpected_any()?
             }
-            args.templates.push(template);
-            continue;
-        } else {
-            p.unexpected_any()?
         };
 
         let explicit_reg = matches!(op.reg(), Some(ast::InlineAsmRegOrRegClass::Reg(_)));
