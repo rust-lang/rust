@@ -209,66 +209,10 @@ pub fn parse_raw_asm_args<'a>(
         if p.eat_keyword(exp!(Options)) {
             allow_templates = false;
 
-            p.expect(exp!(OpenParen))?;
-
-            let mut options = Vec::new();
-
-            while !p.eat(exp!(CloseParen)) {
-                const OPTIONS: [(ExpKeywordPair, ast::InlineAsmOptions);
-                    ast::InlineAsmOptions::COUNT] = [
-                    (exp!(Pure), ast::InlineAsmOptions::PURE),
-                    (exp!(Nomem), ast::InlineAsmOptions::NOMEM),
-                    (exp!(Readonly), ast::InlineAsmOptions::READONLY),
-                    (exp!(PreservesFlags), ast::InlineAsmOptions::PRESERVES_FLAGS),
-                    (exp!(Noreturn), ast::InlineAsmOptions::NORETURN),
-                    (exp!(Nostack), ast::InlineAsmOptions::NOSTACK),
-                    (exp!(MayUnwind), ast::InlineAsmOptions::MAY_UNWIND),
-                    (exp!(AttSyntax), ast::InlineAsmOptions::ATT_SYNTAX),
-                    (exp!(Raw), ast::InlineAsmOptions::RAW),
-                ];
-
-                'blk: {
-                    for (exp, option) in OPTIONS {
-                        let kw_matched = if asm_macro.is_supported_option(option) {
-                            p.eat_keyword(exp)
-                        } else {
-                            p.eat_keyword_noexpect(exp.kw)
-                        };
-
-                        if kw_matched {
-                            let span = p.prev_token.span;
-                            let full_span =
-                                if p.token == token::Comma { span.to(p.token.span) } else { span };
-
-                            if !asm_macro.is_supported_option(option) {
-                                // Tool-only output
-                                p.dcx().emit_err(errors::AsmUnsupportedOption {
-                                    span,
-                                    symbol: exp.kw,
-                                    full_span,
-                                    macro_name: asm_macro.macro_name(),
-                                });
-                            }
-
-                            options.push((exp.kw, option, span, full_span));
-                            break 'blk;
-                        }
-                    }
-
-                    return p.unexpected_any();
-                }
-
-                // Allow trailing commas
-                if p.eat(exp!(CloseParen)) {
-                    break;
-                }
-                p.expect(exp!(Comma))?;
-            }
-
             args.push(RawAsmArg {
-                span: span_start.to(p.prev_token.span),
                 attributes: ast::AttrVec::new(),
-                kind: RawAsmArgKind::Options(options),
+                kind: RawAsmArgKind::Options(parse_options(p, asm_macro)?),
+                span: span_start.to(p.prev_token.span),
             });
 
             continue;
@@ -579,12 +523,11 @@ fn try_set_option<'a>(
 
 fn parse_options<'a>(
     p: &mut Parser<'a>,
-    args: &mut AsmArgs,
     asm_macro: AsmMacro,
-) -> PResult<'a, ()> {
-    let span_start = p.prev_token.span;
-
+) -> PResult<'a, Vec<(Symbol, ast::InlineAsmOptions, Span, Span)>> {
     p.expect(exp!(OpenParen))?;
+
+    let mut options = Vec::new();
 
     while !p.eat(exp!(CloseParen)) {
         const OPTIONS: [(ExpKeywordPair, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
@@ -608,12 +551,26 @@ fn parse_options<'a>(
                 };
 
                 if kw_matched {
-                    try_set_option(p, args, asm_macro, exp.kw, option);
+                    let span = p.prev_token.span;
+                    let full_span =
+                        if p.token == token::Comma { span.to(p.token.span) } else { span };
+
+                    if !asm_macro.is_supported_option(option) {
+                        // Tool-only output
+                        p.dcx().emit_err(errors::AsmUnsupportedOption {
+                            span,
+                            symbol: exp.kw,
+                            full_span,
+                            macro_name: asm_macro.macro_name(),
+                        });
+                    }
+
+                    options.push((exp.kw, option, span, full_span));
                     break 'blk;
                 }
             }
 
-            return p.unexpected();
+            return p.unexpected_any();
         }
 
         // Allow trailing commas
@@ -623,10 +580,7 @@ fn parse_options<'a>(
         p.expect(exp!(Comma))?;
     }
 
-    let new_span = span_start.to(p.prev_token.span);
-    args.options_spans.push(new_span);
-
-    Ok(())
+    Ok(options)
 }
 
 fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>> {
