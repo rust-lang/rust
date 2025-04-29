@@ -265,6 +265,17 @@ impl<'tcx> MainThreadState<'tcx> {
                 // Deal with our thread-local memory. We do *not* want to actually free it, instead we consider TLS
                 // to be like a global `static`, so that all memory reached by it is considered to "not leak".
                 this.terminate_active_thread(TlsAllocAction::Leak)?;
+
+                // Machine cleanup. Only do this if all threads have terminated; threads that are still running
+                // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
+                if this.have_all_terminated() {
+                    // Even if all threads have terminated, we have to beware of data races since some threads
+                    // might not have joined the main thread (https://github.com/rust-lang/miri/issues/2020,
+                    // https://github.com/rust-lang/miri/issues/2508).
+                    this.allow_data_races_all_threads_done();
+                    EnvVars::cleanup(this).expect("error during env var cleanup");
+                }
+
                 // Stop interpreter loop.
                 throw_machine_stop!(TerminationInfo::Exit { code: exit_code, leak_check: true });
             }
@@ -466,16 +477,6 @@ pub fn eval_entry<'tcx>(
     let (return_code, leak_check) = report_error(&ecx, err)?;
 
     // If we get here there was no fatal error.
-
-    // Machine cleanup. Only do this if all threads have terminated; threads that are still running
-    // might cause Stacked Borrows errors (https://github.com/rust-lang/miri/issues/2396).
-    if ecx.have_all_terminated() {
-        // Even if all threads have terminated, we have to beware of data races since some threads
-        // might not have joined the main thread (https://github.com/rust-lang/miri/issues/2020,
-        // https://github.com/rust-lang/miri/issues/2508).
-        ecx.allow_data_races_all_threads_done();
-        EnvVars::cleanup(&mut ecx).expect("error during env var cleanup");
-    }
 
     // Possibly check for memory leaks.
     if leak_check && !ignore_leaks {
