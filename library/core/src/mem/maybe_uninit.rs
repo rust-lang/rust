@@ -276,6 +276,9 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// may not be preserved in `MaybeUninit<U>`, and so `transmute(u)` may produce a `T` with
 /// uninitialized bytes in these positions. This is an active area of discussion, and this code
 /// may become sound in the future.
+///
+/// Note that, so long as every byte position which is initialized in `T` is also initialized
+/// in `U`, then the preceding `identity` example *is* sound.
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
