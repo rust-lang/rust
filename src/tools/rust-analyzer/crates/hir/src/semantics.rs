@@ -25,7 +25,6 @@ use hir_expand::{
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, InRealFile},
-    hygiene::SyntaxContextExt as _,
     inert_attr_macro::find_builtin_attr_idx,
     mod_path::{ModPath, PathKind},
     name::AsName,

@@ -18,10 +18,7 @@ use crate::{
     cfg_process,
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
-    hygiene::{
-        SyntaxContextExt as _, span_with_call_site_ctxt, span_with_def_site_ctxt,
-        span_with_mixed_site_ctxt,
-    },
+    hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
     proc_macro::{CrateProcMacros, CustomProcMacroExpander, ProcMacros},
     span_map::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
     tt,
