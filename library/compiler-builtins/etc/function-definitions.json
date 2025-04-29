@@ -343,6 +343,7 @@
     "fma": {
         "sources": [
             "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs"
         ],
         "type": "f64"
@@ -350,6 +351,7 @@
     "fmaf": {
         "sources": [
             "libm/src/math/arch/aarch64.rs",
+            "libm/src/math/arch/x86/fma.rs",
             "libm/src/math/fma.rs"
         ],
         "type": "f32"

@@ -19,7 +19,10 @@ pub(crate) fn fmaf16(_x: f16, _y: f16, _z: f16) -> f16 {
 pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
     select_implementation! {
         name: fmaf,
-        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
+        use_arch: any(
+            all(target_arch = "aarch64", target_feature = "neon"),
+            target_feature = "sse2",
+        ),
         args: x, y, z,
     }
 
@@ -33,7 +36,10 @@ pub fn fmaf(x: f32, y: f32, z: f32) -> f32 {
 pub fn fma(x: f64, y: f64, z: f64) -> f64 {
     select_implementation! {
         name: fma,
-        use_arch: all(target_arch = "aarch64", target_feature = "neon"),
+        use_arch: any(
+            all(target_arch = "aarch64", target_feature = "neon"),
+            target_feature = "sse2",
+        ),
         args: x, y, z,
     }
 
