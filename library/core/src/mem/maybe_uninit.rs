@@ -281,6 +281,15 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// Note that, so long as every byte position which is initialized in `T` is also initialized
 /// in `U`, then the preceding `identity` example *is* sound.
+///
+/// # Provenance
+///
+/// `MaybeUninit` values may contain [pointer provenance][provenance]. Concretely, for any
+/// pointer type, `P`, which contains provenance, transmuting `p: P` to
+/// `MaybeUninit<[u8; size_of::<P>]>` and then back to `P` will produce a value identical to
+/// `p`, including provenance.
+///
+/// [provenance]: ../ptr/index.html#provenance
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 // Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
