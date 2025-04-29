@@ -136,6 +136,19 @@ impl Handle {
         }
     }
 
+    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_>, offset: u64) -> io::Result<()> {
+        // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
+        let read = unsafe {
+            self.synchronous_read(cursor.as_mut().as_mut_ptr(), cursor.capacity(), Some(offset))
+        }?;
+
+        // SAFETY: `read` bytes were written to the initialized portion of the buffer
+        unsafe {
+            cursor.advance_unchecked(read);
+        }
+        Ok(())
+    }
+
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
         let mut me = self;
 
