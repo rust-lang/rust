@@ -31,8 +31,9 @@ We encourage new contributors to join our communication channels and introduce t
 To run specific tests, use appropriate flags such as:
 - `./y.sh test --test-libcore`
 - `./y.sh test --std-tests`
+- `cargo test -- <name of test>`
 
-Additional test running options:
+Additionally, you can run the tests of `libgccjit`:
 ```bash
 # libgccjit tests
 cd gcc-build/gcc
@@ -48,14 +49,14 @@ The project provides several environment variables for debugging:
 - `CG_GCCJIT_DUMP_MODULE`: Dumps a specific module
 - `CG_GCCJIT_DUMP_TO_FILE`: Creates C-like representation
 
-Full list of debugging options can be found in the README.
+Full list of debugging options can be found in the [README](/rust-lang/rustc_codegen_gcc#env-vars).
 
 ## Making Contributions
 
 ### Finding Issues to Work On
-1. Look for issues labeled with `good-first-issue` or `help-wanted`
+1. Look for issues labeled with [`good first issue`](/rust-lang/rustc_codegen_gcc/issues?q=is%3Aissue state%3Aopen label%3A"good first issue") or [`help wanted`](/rust-lang/rustc_codegen_gcc/issues?q=is%3Aissue state%3Aopen label%3A"help wanted")
 2. Check the [progress report](https://blog.antoyo.xyz/rustc_codegen_gcc-progress-report-34#state_of_rustc_codegen_gcc) for larger initiatives
-3. Consider improving documentation or investigate [failing tests](https://github.com/rust-lang/rustc_codegen_gcc/tree/master/tests)(except failing-ui-tests12.txt)
+3. Consider improving documentation or investigating [failing tests](https://github.com/rust-lang/rustc_codegen_gcc/tree/master/tests)(except `failing-ui-tests12.txt`)
 
 ### Pull Request Process
 1. Fork the repository and create a new branch
@@ -74,12 +75,12 @@ Full list of debugging options can be found in the README.
 - [Rustc Dev Guide](https://rustc-dev-guide.rust-lang.org/)
 - [GCC Internals Documentation](https://gcc.gnu.org/onlinedocs/gccint/)
 - Project-specific documentation in the `doc/` directory:
-  - [Common errors](./doc/errors.md)
-  - [Debugging GCC LTO](./doc/debugging-gcc-lto.md)
-  - [Debugging libgccjit](./doc/debugging-libgccjit.md)
-  - [Git subtree sync](./doc/subtree.md)
-  - [List of useful commands](./doc/tips.md)
-  - [Send a patch to GCC](./doc/sending-gcc-patch.md)
+  - [Common errors](/rust-lang/rustc_codegen_gcc/blob/master/doc/errors.md)
+  - [Debugging](/rust-lang/rustc_codegen_gcc/blob/master/doc/debugging.md)
+  - [Debugging libgccjit](/rust-lang/rustc_codegen_gcc/blob/master/doc/debugging-libgccjit.md)
+  - [Git subtree sync](/rust-lang/rustc_codegen_gcc/blob/master/doc/subtree.md)
+  - [List of useful commands](/rust-lang/rustc_codegen_gcc/blob/master/doc/tips.md)
+  - [Send a patch to GCC](/rust-lang/rustc_codegen_gcc/blob/master/doc/sending-gcc-patch.md)
 
 ## Getting Help
 

@@ -15,7 +15,8 @@ A secondary goal is to check if using the gcc backend will provide any run-time 
 ## Getting Started
 
 Note: **This requires a patched libgccjit in order to work.
-You need to use my [fork of gcc](https://github.com/antoyo/gcc) which already includes these patches.**
+You need to use my [fork of gcc](https://github.com/rust-lang/gcc) which already includes these patches.**
+The default configuration (see below in the [Quick start](#quick-start) section) will download a `libgccjit` built in the CI that already contains these patches, so you don't need to build this fork yourself if you use the default configuration.
 
 ### Dependencies
   - rustup: follow instructions on the [official website](https://rustup.rs)
@@ -53,7 +54,7 @@ to do a few more things.
 To build it (most of these instructions come from [here](https://gcc.gnu.org/onlinedocs/jit/internals/index.html), so don't hesitate to take a look there if you encounter an issue):
 
 ```bash
-$ git clone https://github.com/antoyo/gcc
+$ git clone https://github.com/rust-lang/gcc
 $ sudo apt install flex libmpfr-dev libgmp-dev libmpc3 libmpc-dev
 $ mkdir gcc-build gcc-install
 $ cd gcc-build
