@@ -347,15 +347,13 @@ fn validate_raw_asm_args<'a>(
 
                 for (symbol, option, span, full_span) in new_options {
                     if !asm_macro.is_supported_option(option) {
-                        /*
-                        // Tool-only output
-                        p.dcx().emit_err(errors::AsmUnsupportedOption {
+                        // Tool-only output.
+                        dcx.emit_err(errors::AsmUnsupportedOption {
                             span,
                             symbol,
                             full_span,
                             macro_name: asm_macro.macro_name(),
                         });
-                        */
                     } else if args.options.contains(option) {
                         // Tool-only output.
                         dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
@@ -499,16 +497,6 @@ fn parse_options<'a>(
                     let span = p.prev_token.span;
                     let full_span =
                         if p.token == token::Comma { span.to(p.token.span) } else { span };
-
-                    if !asm_macro.is_supported_option(option) {
-                        // Tool-only output.
-                        p.dcx().emit_err(errors::AsmUnsupportedOption {
-                            span,
-                            symbol: exp.kw,
-                            full_span,
-                            macro_name: asm_macro.macro_name(),
-                        });
-                    }
 
                     options.push((exp.kw, option, span, full_span));
                     break 'blk;
