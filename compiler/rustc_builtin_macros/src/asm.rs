@@ -18,15 +18,13 @@ use {rustc_ast as ast, rustc_parse_format as parse};
 use crate::errors;
 use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
-pub struct RawAsmArgs(Vec<RawAsmArg>);
-
 pub struct RawAsmArg {
     pub span: Span,
     pub attributes: ast::AttrVec,
     pub kind: RawAsmArgKind,
 }
 
-enum RawAsmArgKind {
+pub enum RawAsmArgKind {
     Template(P<ast::Expr>),
     Operand(Option<Symbol>, ast::InlineAsmOperand),
     Options(Vec<(Symbol, ast::InlineAsmOptions, Span, Span)>),
@@ -473,52 +471,6 @@ pub fn parse_asm_args<'a>(
     }
 
     Ok(args)
-}
-
-/// Report a duplicate option error.
-///
-/// This function must be called immediately after the option token is parsed.
-/// Otherwise, the suggestion will be incorrect.
-fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
-    // Tool-only output
-    let full_span = if p.token == token::Comma { span.to(p.token.span) } else { span };
-    p.dcx().emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
-}
-
-/// Report an invalid option error.
-///
-/// This function must be called immediately after the option token is parsed.
-/// Otherwise, the suggestion will be incorrect.
-fn err_unsupported_option(p: &Parser<'_>, asm_macro: AsmMacro, symbol: Symbol, span: Span) {
-    // Tool-only output
-    let full_span = if p.token == token::Comma { span.to(p.token.span) } else { span };
-    p.dcx().emit_err(errors::AsmUnsupportedOption {
-        span,
-        symbol,
-        full_span,
-        macro_name: asm_macro.macro_name(),
-    });
-}
-
-/// Try to set the provided option in the provided `AsmArgs`.
-/// If it is already set, report a duplicate option error.
-///
-/// This function must be called immediately after the option token is parsed.
-/// Otherwise, the error will not point to the correct spot.
-fn try_set_option<'a>(
-    p: &Parser<'a>,
-    args: &mut AsmArgs,
-    asm_macro: AsmMacro,
-    symbol: Symbol,
-    option: ast::InlineAsmOptions,
-) {
-    if !asm_macro.is_supported_option(option) {
-        err_unsupported_option(p, asm_macro, symbol, p.prev_token.span);
-    } else if args.options.contains(option) {
-        err_duplicate_option(p, symbol, p.prev_token.span);
-    } else {
-        args.options |= option;
-    }
 }
 
 fn parse_options<'a>(
