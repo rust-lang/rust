@@ -26,12 +26,12 @@ pub use pool::Pool;
 /// # Panics
 ///
 /// Panics if failed to spawn the thread.
-pub fn spawn<F, T>(intent: ThreadIntent, f: F) -> JoinHandle<T>
+pub fn spawn<F, T>(intent: ThreadIntent, name: String, f: F) -> JoinHandle<T>
 where
     F: (FnOnce() -> T) + Send + 'static,
     T: Send + 'static,
 {
-    Builder::new(intent).spawn(f).expect("failed to spawn thread")
+    Builder::new(intent, name).spawn(f).expect("failed to spawn thread")
 }
 
 pub struct Builder {
@@ -42,13 +42,8 @@ pub struct Builder {
 
 impl Builder {
     #[must_use]
-    pub fn new(intent: ThreadIntent) -> Self {
-        Self { intent, inner: jod_thread::Builder::new(), allow_leak: false }
-    }
-
-    #[must_use]
-    pub fn name(self, name: String) -> Self {
-        Self { inner: self.inner.name(name), ..self }
+    pub fn new(intent: ThreadIntent, name: impl Into<String>) -> Self {
+        Self { intent, inner: jod_thread::Builder::new().name(name.into()), allow_leak: false }
     }
 
     #[must_use]
