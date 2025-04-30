@@ -93,6 +93,17 @@ macro_rules! parallel {
         };
     }
 
+pub fn spawn(func: impl FnOnce() + DynSend + 'static) {
+    if mode::is_dyn_thread_safe() {
+        let func = FromDyn::from(func);
+        rayon_core::spawn(|| {
+            (func.into_inner())();
+        });
+    } else {
+        func()
+    }
+}
+
 // This function only works when `mode::is_dyn_thread_safe()`.
 pub fn scope<'scope, OP, R>(op: OP) -> R
 where
