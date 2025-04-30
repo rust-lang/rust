@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::is_normalizable;
 use clippy_utils::{eq_expr_value, path_to_local, sym};
 use rustc_abi::WrappingRange;
 use rustc_errors::Applicability;
@@ -84,8 +83,6 @@ pub(super) fn check<'tcx>(
         && path.ident.name == sym::then_some
         && is_local_with_projections(transmutable)
         && binops_with_local(cx, transmutable, receiver)
-        && is_normalizable(cx, cx.param_env, from_ty)
-        && is_normalizable(cx, cx.param_env, to_ty)
         // we only want to lint if the target type has a niche that is larger than the one of the source type
         // e.g. `u8` to `NonZero<u8>` should lint, but `NonZero<u8>` to `u8` should not
         && let Ok(from_layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(from_ty))

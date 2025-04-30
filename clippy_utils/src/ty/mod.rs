@@ -20,7 +20,7 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
-    GenericParamDefKind, IntTy, ParamEnv, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    GenericParamDefKind, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
@@ -357,56 +357,6 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         },
         _ => false,
     }
-}
-
-// FIXME: Per https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/infer/at/struct.At.html#method.normalize
-// this function can be removed once the `normalize` method does not panic when normalization does
-// not succeed
-/// Checks if `Ty` is normalizable. This function is useful
-/// to avoid crashes on `layout_of`.
-pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    is_normalizable_helper(cx, param_env, ty, 0, &mut FxHashMap::default())
-}
-
-fn is_normalizable_helper<'tcx>(
-    cx: &LateContext<'tcx>,
-    param_env: ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
-    depth: usize,
-    cache: &mut FxHashMap<Ty<'tcx>, bool>,
-) -> bool {
-    if let Some(&cached_result) = cache.get(&ty) {
-        return cached_result;
-    }
-    if !cx.tcx.recursion_limit().value_within_limit(depth) {
-        return false;
-    }
-    // Prevent recursive loops by answering `true` to recursive requests with the same
-    // type. This will be adjusted when the outermost call analyzes all the type
-    // components.
-    cache.insert(ty, true);
-    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
-    let cause = ObligationCause::dummy();
-    let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
-        match ty.kind() {
-            ty::Adt(def, args) => def.variants().iter().all(|variant| {
-                variant
-                    .fields
-                    .iter()
-                    .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, args), depth + 1, cache))
-            }),
-            _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
-                GenericArgKind::Type(inner_ty) if inner_ty != ty => {
-                    is_normalizable_helper(cx, param_env, inner_ty, depth + 1, cache)
-                },
-                _ => true, // if inner_ty == ty, we've already checked it
-            }),
-        }
-    } else {
-        false
-    };
-    cache.insert(ty, result);
-    result
 }
 
 /// Returns `true` if the given type is a non aggregate primitive (a `bool` or `char`, any
@@ -993,9 +943,6 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
 /// account the layout of type parameters.
 pub fn approx_ty_size<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> u64 {
     use rustc_middle::ty::layout::LayoutOf;
-    if !is_normalizable(cx, cx.param_env, ty) {
-        return 0;
-    }
     match (cx.layout_of(ty).map(|layout| layout.size.bytes()), ty.kind()) {
         (Ok(size), _) => size,
         (Err(_), ty::Tuple(list)) => list.iter().map(|t| approx_ty_size(cx, t)).sum(),
