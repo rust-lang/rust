@@ -20,10 +20,15 @@ pub(super) const TYPE_FIRST: TokenSet = paths::PATH_FIRST.union(TokenSet::new(&[
 
 pub(super) const TYPE_RECOVERY_SET: TokenSet = TokenSet::new(&[
     T![')'],
+    // test_err type_in_array_recover
+    // const _: [&];
+    T![']'],
+    T!['}'],
     T![>],
     T![,],
     // test_err struct_field_recover
     // struct S { f pub g: () }
+    // struct S { f: pub g: () }
     T![pub],
 ]);
 

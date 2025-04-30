@@ -46,7 +46,6 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T!['['],
         T![|],
         T![async],
-        T![box],
         T![break],
         T![const],
         T![continue],
@@ -68,7 +67,8 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         LIFETIME_IDENT,
     ]));
 
-pub(super) const EXPR_RECOVERY_SET: TokenSet = TokenSet::new(&[T![')'], T![']']]);
+pub(in crate::grammar) const EXPR_RECOVERY_SET: TokenSet =
+    TokenSet::new(&[T!['}'], T![')'], T![']'], T![,]]);
 
 pub(super) fn atom_expr(
     p: &mut Parser<'_>,
