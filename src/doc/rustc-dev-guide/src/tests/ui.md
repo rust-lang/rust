@@ -372,9 +372,9 @@ E.g. use `//@ dont-require-annotations: NOTE` to annotate notes selectively.
 Avoid using this directive for `ERROR`s and `WARN`ings, unless there's a serious reason, like
 target-dependent compiler output.
 
-Missing diagnostic kinds (`//~ message`) are currently accepted, but are being phased away.
-They will match any compiler output kind, but will not force exhaustive annotations for that kind.
-Prefer explicit kind and `//@ dont-require-annotations` to achieve the same effect.
+Some diagnostics are never required to be line-annotated, regardless of their kind or directives,
+for example secondary lines of multiline diagnostics,
+or ubiquitous diagnostics like `aborting due to N previous errors`.
 
 UI tests use the `-A unused` flag by default to ignore all unused warnings, as
 unused warnings are usually not the focus of a test. However, simple code
