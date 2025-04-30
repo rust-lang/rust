@@ -624,14 +624,21 @@ fn compare_outputs(
             };
 
             if !c.status.success() {
-                error!("Failed to run C program for intrinsic {}", intrinsic.name);
+                error!(
+                    "Failed to run C program for intrinsic {intrinsic}\nstdout: {stdout}\nstderr: {stderr}",
+                    intrinsic = intrinsic.name,
+                    stdout = std::str::from_utf8(&c.stdout).unwrap_or(""),
+                    stderr = std::str::from_utf8(&c.stderr).unwrap_or(""),
+                );
                 return Some(FailureReason::RunC(intrinsic.name.clone()));
             }
 
             if !rust.status.success() {
                 error!(
-                    "Failed to run rust program for intrinsic {}",
-                    intrinsic.name
+                    "Failed to run Rust program for intrinsic {intrinsic}\nstdout: {stdout}\nstderr: {stderr}",
+                    intrinsic = intrinsic.name,
+                    stdout = std::str::from_utf8(&rust.stdout).unwrap_or(""),
+                    stderr = std::str::from_utf8(&rust.stderr).unwrap_or(""),
                 );
                 return Some(FailureReason::RunRust(intrinsic.name.clone()));
             }
