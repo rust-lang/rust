@@ -87,14 +87,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let output = match result {
             None => {
-                // this will report an error since original_callee_ty is not a fn
-                self.confirm_builtin_call(
-                    call_expr,
-                    callee_expr,
-                    original_callee_ty,
-                    arg_exprs,
-                    expected,
-                )
+                // Check all of the arg expressions, but with no expectations
+                // since we don't have a signature to compare them to.
+                for arg in arg_exprs {
+                    self.check_expr(arg);
+                }
+
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
+                    && let [segment] = path.segments
+                {
+                    self.dcx().try_steal_modify_and_emit_err(
+                        segment.ident.span,
+                        StashKey::CallIntoMethod,
+                        |err| {
+                            // Try suggesting `foo(a)` -> `a.foo()` if possible.
+                            self.suggest_call_as_method(
+                                err, segment, arg_exprs, call_expr, expected,
+                            );
+                        },
+                    );
+                }
+
+                let guar = self.report_invalid_callee(call_expr, callee_expr, expr_ty, arg_exprs);
+                Ty::new_error(self.tcx, guar)
             }
 
             Some(CallStep::Builtin(callee_ty)) => {
@@ -461,32 +476,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 (fn_sig, Some(def_id))
             }
+
             // FIXME(const_trait_impl): these arms should error because we can't enforce them
             ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
-            _ => {
-                for arg in arg_exprs {
-                    self.check_expr(arg);
-                }
 
-                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
-                    && let [segment] = path.segments
-                {
-                    self.dcx().try_steal_modify_and_emit_err(
-                        segment.ident.span,
-                        StashKey::CallIntoMethod,
-                        |err| {
-                            // Try suggesting `foo(a)` -> `a.foo()` if possible.
-                            self.suggest_call_as_method(
-                                err, segment, arg_exprs, call_expr, expected,
-                            );
-                        },
-                    );
-                }
-
-                let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
-
-                return Ty::new_error(self.tcx, err);
-            }
+            _ => unreachable!(),
         };
 
         // Replace any late-bound regions that appear in the function
