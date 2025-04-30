@@ -173,7 +173,7 @@ impl<'tcx> NewPermission {
         pointee.is_unpin(*cx.tcx, cx.typing_env()).then_some(()).map(|()| {
             // Regular `Unpin` box, give it `noalias` but only a weak protector
             // because it is valid to deallocate it within the function.
-            let ty_is_freeze = ty.is_freeze(*cx.tcx, cx.typing_env());
+            let ty_is_freeze = pointee.is_freeze(*cx.tcx, cx.typing_env());
             let protected = kind == RetagKind::FnEntry;
             let initial_state = Permission::new_reserved(ty_is_freeze, protected);
             Self {
