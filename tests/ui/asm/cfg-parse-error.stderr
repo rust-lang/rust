@@ -1,0 +1,24 @@
+error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
+  --> $DIR/cfg-parse-error.rs:17:13
+   |
+LL |             a = out(reg) x,
+   |                            - expected one of 10 possible tokens
+LL |             "",
+   |             ^^ unexpected token
+
+error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
+  --> $DIR/cfg-parse-error.rs:27:13
+   |
+LL |             },
+   |               - expected one of 10 possible tokens
+LL |             "",
+   |             ^^ unexpected token
+
+error: expected token: `,`
+  --> $DIR/cfg-parse-error.rs:41:26
+   |
+LL |             a = out(reg) x,
+   |                          ^ expected `,`
+
+error: aborting due to 3 previous errors
+

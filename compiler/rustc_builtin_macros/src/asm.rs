@@ -10,18 +10,20 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::exp;
 use rustc_parse::parser::{ExpKeywordPair, Parser};
 use rustc_session::lint;
-use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, kw};
+use rustc_session::parse::feature_err;
+use rustc_span::{ErrorGuaranteed, InnerSpan, Span, Symbol, kw, sym};
 use rustc_target::asm::InlineAsmArch;
 use smallvec::smallvec;
 use {rustc_ast as ast, rustc_parse_format as parse};
 
-use crate::errors;
 use crate::util::{ExprToSpannedString, expr_to_spanned_string};
+use crate::{errors, fluent_generated as fluent};
 
 /// An argument to one of the `asm!` macros. The argument is syntactically valid, but is otherwise
 /// not validated at all.
 pub struct RawAsmArg {
     pub kind: RawAsmArgKind,
+    pub attributes: AsmAttrVec,
     pub span: Span,
 }
 
@@ -41,6 +43,48 @@ struct AsmArgs {
     pub clobber_abis: Vec<(Symbol, Span)>,
     options: ast::InlineAsmOptions,
     pub options_spans: Vec<Span>,
+}
+
+/// A parsed list of attributes that is not attached to any item.
+/// Used to check whether `asm!` arguments are configured out.
+pub struct AsmAttrVec(pub ast::AttrVec);
+
+impl AsmAttrVec {
+    fn parse<'a>(p: &mut Parser<'a>) -> PResult<'a, Self> {
+        let mut attributes = ast::AttrVec::new();
+        loop {
+            if p.token != token::Pound {
+                break;
+            }
+
+            let attr = p.parse_attribute(rustc_parse::parser::attr::InnerAttrPolicy::Permitted)?;
+            attributes.push(attr);
+        }
+
+        Ok(Self(attributes))
+    }
+}
+impl ast::HasAttrs for AsmAttrVec {
+    // Follows `ast::Expr`.
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = false;
+
+    fn attrs(&self) -> &[rustc_ast::Attribute] {
+        &self.0
+    }
+
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut rustc_ast::AttrVec)) {
+        f(&mut self.0)
+    }
+}
+
+impl ast::HasTokens for AsmAttrVec {
+    fn tokens(&self) -> Option<&rustc_ast::tokenstream::LazyAttrTokenStream> {
+        None
+    }
+
+    fn tokens_mut(&mut self) -> Option<&mut Option<rustc_ast::tokenstream::LazyAttrTokenStream>> {
+        None
+    }
 }
 
 /// Used for better error messages when operand types are used that are not
@@ -158,10 +202,12 @@ pub fn parse_raw_asm_args<'a>(
 
     let mut args = Vec::new();
 
+    let attributes = AsmAttrVec::parse(p)?;
     let first_template = p.parse_expr()?;
     args.push(RawAsmArg {
         span: first_template.span,
         kind: RawAsmArgKind::Template(first_template),
+        attributes,
     });
 
     let mut allow_templates = true;
@@ -180,6 +226,7 @@ pub fn parse_raw_asm_args<'a>(
             break;
         } // accept trailing commas
 
+        let attributes = AsmAttrVec::parse(p)?;
         let span_start = p.token.span;
 
         // Parse clobber_abi
@@ -189,6 +236,7 @@ pub fn parse_raw_asm_args<'a>(
             args.push(RawAsmArg {
                 kind: RawAsmArgKind::ClobberAbi(parse_clobber_abi(p)?),
                 span: span_start.to(p.prev_token.span),
+                attributes,
             });
 
             continue;
@@ -201,6 +249,7 @@ pub fn parse_raw_asm_args<'a>(
             args.push(RawAsmArg {
                 kind: RawAsmArgKind::Options(parse_options(p, asm_macro)?),
                 span: span_start.to(p.prev_token.span),
+                attributes,
             });
 
             continue;
@@ -223,6 +272,7 @@ pub fn parse_raw_asm_args<'a>(
             args.push(RawAsmArg {
                 span: span_start.to(p.prev_token.span),
                 kind: RawAsmArgKind::Operand(name, op),
+                attributes,
             });
         } else if allow_templates {
             let template = p.parse_expr()?;
@@ -244,7 +294,11 @@ pub fn parse_raw_asm_args<'a>(
                 }
             }
 
-            args.push(RawAsmArg { span: template.span, kind: RawAsmArgKind::Template(template) });
+            args.push(RawAsmArg {
+                span: template.span,
+                kind: RawAsmArgKind::Template(template),
+                attributes,
+            });
         } else {
             p.unexpected_any()?
         }
@@ -270,6 +324,13 @@ fn validate_raw_asm_args<'a>(
 ) -> PResult<'a, AsmArgs> {
     let dcx = ecx.dcx();
 
+    let strip_unconfigured = rustc_expand::config::StripUnconfigured {
+        sess: ecx.sess,
+        features: Some(ecx.ecfg.features),
+        config_tokens: false,
+        lint_node_id: ecx.current_expansion.lint_node_id,
+    };
+
     let mut args = AsmArgs {
         templates: vec![],
         operands: vec![],
@@ -283,6 +344,26 @@ fn validate_raw_asm_args<'a>(
     let mut allow_templates = true;
 
     for arg in raw_args {
+        for attr in arg.attributes.0.iter() {
+            match attr.name() {
+                Some(sym::cfg | sym::cfg_attr) => {
+                    if !ecx.ecfg.features.asm_cfg() {
+                        let span = attr.span();
+                        feature_err(ecx.sess, sym::asm_cfg, span, fluent::builtin_macros_asm_cfg)
+                            .emit();
+                    }
+                }
+                _ => {
+                    ecx.dcx().emit_err(errors::AsmAttributeNotSupported { span: attr.span() });
+                }
+            }
+        }
+
+        // Skip arguments that are configured out.
+        if ecx.ecfg.features.asm_cfg() && strip_unconfigured.configure(arg.attributes).is_none() {
+            continue;
+        }
+
         match arg.kind {
             RawAsmArgKind::Template(template) => {
                 // The error for the first template is delayed.
