@@ -314,7 +314,7 @@ mod union {
         let u = s.clone().union(t.clone(), new_state);
 
         let expected_u =
-            Dfa::from_edges(b, a, &[(b, 0, c), (b, 1, d), (d, 1, a), (d, 0, a), (c, 0, a)]);
+            Dfa::from_edges(b, a, &[(b, 0..=0, c), (b, 1..=1, d), (d, 0..=1, a), (c, 0..=0, a)]);
 
         assert_eq!(u, expected_u);
 
