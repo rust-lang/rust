@@ -410,6 +410,8 @@ fn test_next_down() {
     assert_f32_biteq!(nan2.next_down(), nan2);
 }
 
+// FIXME(#140515): mingw has an incorrect fma https://sourceforge.net/p/mingw-w64/bugs/848/
+#[cfg_attr(all(target_os = "windows", target_env = "gnu", not(target_abi = "llvm")), ignore)]
 #[test]
 fn test_mul_add() {
     let nan: f32 = f32::NAN;
