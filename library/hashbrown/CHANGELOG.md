@@ -9,31 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.15.3](https://github.com/rust-lang/hashbrown/compare/v0.15.2...v0.15.3) - 2025-04-29
 
-### Other
+### Added
 
-- Add release-plz for automated releases
-- Merge pull request #607 from ldm0/ldm_optimize
-- Remove "raw-entry" from "rustc-dep-of-std"
-- Merge pull request #615 from morrisonlevi/min-buckets
-- Drop FnMut trait bounds from ExtractIf data structures
-- Relax constraint in hash_map::EntryRef insertion methods K: From<&Q> to &Q: Into<K>
-- Merge pull request #610 from ldm0/ldm_lazy_static
-- Remove unnecessary lazy_static usage in bench.rs
-- Don't enable `allocator-api2/nightly` feature
-- Added Allocator template argument for rustc_iter
-- Merge pull request #604 from mumbleskates/msrv-badge
-- reflect updated msrv in the readme badge
-- Fix clippy lints
-- Merge pull request #590 from heiher/loong-gnu-ci
-- add support for loongarch64-unknown-linux-gnu
-# Change Log
+- SIMD implementation for LoongArch (#592, requires nightly)
 
-All notable changes to this project will be documented in this file.
+### Changed
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/)
-and this project adheres to [Semantic Versioning](https://semver.org/).
-
-## [Unreleased]
+- Optimized insertion path by avoiding an unnecessary `match_empty` (#607)
+- Increased minimum table size for small types (#615)
+- Dropped FnMut trait bounds from `ExtractIf` data structures (#616)
+- Relaxed constraint in `hash_map::EntryRef` insertion methods `K: From<&Q>` to &Q: `Into<K>` (#611)
+- Added allocator template argument for `rustc_iter` (#605)
+- The `allocator-api2/nightly` feature is no longer enabled by `hashbrown/nightly` (#606)
 
 ## [v0.15.2] - 2024-11-14
 
