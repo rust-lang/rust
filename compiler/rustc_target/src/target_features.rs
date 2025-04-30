@@ -507,7 +507,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("unaligned-vector-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &["zvl128b", "zve64d"]),
     ("za128rs", Unstable(sym::riscv_target_feature), &[]),
-    ("za64rs", Unstable(sym::riscv_target_feature), &[]),
+    ("za64rs", Unstable(sym::riscv_target_feature), &["za128rs"]), // Za64rs ⊃ Za128rs
     ("zaamo", Unstable(sym::riscv_target_feature), &[]),
     ("zabha", Unstable(sym::riscv_target_feature), &["zaamo"]),
     ("zacas", Unstable(sym::riscv_target_feature), &["zaamo"]),
