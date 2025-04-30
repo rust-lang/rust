@@ -485,12 +485,12 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(body, attrs, cb, ib);
             }
             ast::ExprKind::Loop(blk, opt_label, _) => {
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                let cb = self.cbox(0);
-                let ib = self.ibox(0);
                 self.word_nbsp("loop");
                 self.print_block_with_attrs(blk, attrs, cb, ib);
             }

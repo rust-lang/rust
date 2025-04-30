@@ -189,8 +189,7 @@ mod expressions {
             let _t =
                 match #[lang = "into_iter"](x) {
                     mut iter =>
-                        'a:
-                            loop {
+                        'a: loop {
                             match #[lang = "next"](&mut iter) {
                                 #[lang = "None"] {} => break,
                                 #[lang = "Some"] {  0: _ } => { }
