@@ -7,13 +7,13 @@ use rand::Rng;
 use rustc_abi::Size;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::mir;
-use rustc_middle::ty::{self, FloatTy, ScalarInt};
+use rustc_middle::ty::{self, FloatTy};
 use rustc_span::{Symbol, sym};
 
 use self::atomic::EvalContextExt as _;
 use self::helpers::{ToHost, ToSoft, check_intrinsic_arg_count};
 use self::simd::EvalContextExt as _;
-use crate::math::apply_random_float_error_ulp;
+use crate::math::apply_random_float_error_to_imm;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -472,27 +472,4 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(EmulateItemResult::NeedsReturn)
     }
-}
-
-/// Applies a random 16ULP floating point error to `val` and returns the new value.
-/// Will fail if `val` is not a floating point number.
-fn apply_random_float_error_to_imm<'tcx>(
-    ecx: &mut MiriInterpCx<'tcx>,
-    val: ImmTy<'tcx>,
-    ulp_exponent: u32,
-) -> InterpResult<'tcx, ImmTy<'tcx>> {
-    let scalar = val.to_scalar_int()?;
-    let res: ScalarInt = match val.layout.ty.kind() {
-        ty::Float(FloatTy::F16) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
-        ty::Float(FloatTy::F32) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
-        ty::Float(FloatTy::F64) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
-        ty::Float(FloatTy::F128) =>
-            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
-        _ => bug!("intrinsic called with non-float input type"),
-    };
-
-    interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
