@@ -34,7 +34,8 @@ impl<'tcx> AsmCodegenMethods<'tcx> for GlobalAsmContext<'_, 'tcx> {
     }
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
-        self.tcx.symbol_name(instance).name.to_owned()
+        let symbol_name = self.tcx.symbol_name(instance).name.to_owned();
+        if self.tcx.sess.target.is_like_darwin { format!("_{symbol_name}") } else { symbol_name }
     }
 }
 
