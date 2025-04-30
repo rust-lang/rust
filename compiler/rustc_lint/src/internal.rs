@@ -143,8 +143,7 @@ fn check_into_iter_stability<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
         return;
     };
     let fn_sig = cx.tcx.fn_sig(callee_def_id).instantiate_identity().skip_binder();
-    let (_, inputs) = fn_sig.inputs_and_output.as_slice().split_last().unwrap();
-    for (arg_index, &input) in inputs.iter().enumerate() {
+    for (arg_index, &input) in fn_sig.inputs().iter().enumerate() {
         let &ty::Param(ParamTy { index: param_index, .. }) = input.kind() else {
             continue;
         };
