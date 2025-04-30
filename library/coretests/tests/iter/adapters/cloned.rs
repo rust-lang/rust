@@ -31,7 +31,8 @@ fn test_cloned_side_effects() {
             .zip(&[1]);
         for _ in iter {}
     }
-    assert_eq!(count, 2);
+    // Zip documentation provides some leeway about side-effects
+    assert!([1, 2].iter().any(|v| *v == count));
 }
 
 #[test]
