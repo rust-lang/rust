@@ -570,6 +570,12 @@
 # Defaults to rust.debug-assertions value
 #debug-assertions-std = rust.debug-assertions (boolean)
 
+# Whether or not debug assertions are enabled for the tools built by bootstrap.
+# Overrides the `debug-assertions` option, if defined.
+#
+# Defaults to rust.debug-assertions value
+#debug-assertions-tools = rust.debug-assertions (boolean)
+
 # Whether or not to leave debug! and trace! calls in the rust binary.
 #
 # Defaults to rust.debug-assertions value
