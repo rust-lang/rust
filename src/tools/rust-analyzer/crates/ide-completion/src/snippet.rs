@@ -174,7 +174,7 @@ fn import_edits(ctx: &CompletionContext<'_>, requires: &[ModPath]) -> Option<Vec
             ctx.config.insert_use.prefix_kind,
             import_cfg,
         )?;
-        Some((path.len() > 1).then(|| LocatedImport::new(path.clone(), item, item)))
+        Some((path.len() > 1).then(|| LocatedImport::new_no_completion(path.clone(), item, item)))
     };
     let mut res = Vec::with_capacity(requires.len());
     for import in requires {

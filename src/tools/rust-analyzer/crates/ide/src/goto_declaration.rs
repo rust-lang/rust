@@ -1,13 +1,13 @@
 use hir::{AsAssocItem, Semantics};
 use ide_db::{
-    defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
+    defs::{Definition, NameClass, NameRefClass},
 };
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, T};
+use syntax::{AstNode, SyntaxKind::*, T, ast, match_ast};
 
 use crate::{
-    goto_definition::goto_definition, navigation_target::TryToNav, FilePosition, NavigationTarget,
-    RangeInfo,
+    FilePosition, NavigationTarget, RangeInfo, goto_definition::goto_definition,
+    navigation_target::TryToNav,
 };
 
 // Feature: Go to Declaration
@@ -32,7 +32,7 @@ pub(crate) fn goto_declaration(
         .descend_into_macros_no_opaque(original_token)
         .iter()
         .filter_map(|token| {
-            let parent = token.parent()?;
+            let parent = token.value.parent()?;
             let def = match_ast! {
                 match parent {
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
@@ -52,7 +52,7 @@ pub(crate) fn goto_declaration(
             };
             let assoc = match def? {
                 Definition::Module(module) => {
-                    return Some(NavigationTarget::from_module_to_decl(db, module))
+                    return Some(NavigationTarget::from_module_to_decl(db, module));
                 }
                 Definition::Const(c) => c.as_assoc_item(db),
                 Definition::TypeAlias(ta) => ta.as_assoc_item(db),
@@ -69,11 +69,7 @@ pub(crate) fn goto_declaration(
         .flatten()
         .collect();
 
-    if info.is_empty() {
-        goto_definition(db, position)
-    } else {
-        Some(RangeInfo::new(range, info))
-    }
+    if info.is_empty() { goto_definition(db, position) } else { Some(RangeInfo::new(range, info)) }
 }
 
 #[cfg(test)]

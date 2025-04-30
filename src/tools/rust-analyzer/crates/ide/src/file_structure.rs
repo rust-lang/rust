@@ -1,8 +1,8 @@
 use ide_db::SymbolKind;
 use syntax::{
+    AstNode, AstToken, NodeOrToken, SourceFile, SyntaxNode, SyntaxToken, TextRange, WalkEvent,
     ast::{self, HasAttrs, HasGenericParams, HasName},
-    match_ast, AstNode, AstToken, NodeOrToken, SourceFile, SyntaxNode, SyntaxToken, TextRange,
-    WalkEvent,
+    match_ast,
 };
 
 #[derive(Debug, Clone)]
@@ -250,7 +250,7 @@ fn structure_token(token: SyntaxToken) -> Option<StructureNode> {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
     use super::*;
 

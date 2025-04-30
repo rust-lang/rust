@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::IndentLevel, Comment, CommentPlacement, Whitespace},
     AstToken, Direction, SyntaxElement, TextRange,
+    ast::{self, Comment, CommentPlacement, Whitespace, edit::IndentLevel},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: comment_to_doc
 //
@@ -39,7 +39,7 @@ fn doc_to_comment(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     };
 
     acc.add(
-        AssistId("doc_to_comment", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("doc_to_comment"),
         "Replace doc comment with comment",
         target,
         |edit| {
@@ -86,7 +86,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
     };
 
     acc.add(
-        AssistId("comment_to_doc", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("comment_to_doc"),
         "Replace comment with doc comment",
         target,
         |edit| {

@@ -28,8 +28,8 @@ use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
-    imports::insert_use::{ImportGranularity, InsertUseConfig},
     FilePosition, RootDatabase, SnippetCap,
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
@@ -37,8 +37,8 @@ use test_fixture::ChangeFixture;
 use test_utils::assert_eq_text;
 
 use crate::{
-    resolve_completion_edits, CallableSnippets, CompletionConfig, CompletionFieldsToResolve,
-    CompletionItem, CompletionItemKind,
+    CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
+    CompletionItemKind, resolve_completion_edits,
 };
 
 /// Lots of basic item definitions
@@ -155,13 +155,14 @@ fn completion_list_with_config(
 pub(crate) fn position(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
 ) -> (RootDatabase, FilePosition) {
-    let change_fixture = ChangeFixture::parse(ra_fixture);
     let mut database = RootDatabase::default();
+    let change_fixture = ChangeFixture::parse(&database, ra_fixture);
     database.enable_proc_attr_macros();
     database.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
-    (database, FilePosition { file_id: file_id.file_id(), offset })
+    let position = FilePosition { file_id: file_id.file_id(&database), offset };
+    (database, position)
 }
 
 pub(crate) fn do_completion(code: &str, kind: CompletionItemKind) -> Vec<CompletionItem> {
@@ -246,7 +247,7 @@ pub(crate) fn check_edit_with_config(
         .filter(|it| it.lookup() == what)
         .collect_tuple()
         .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}"));
-    let mut actual = db.file_text(position.file_id).to_string();
+    let mut actual = db.file_text(position.file_id).text(&db).to_string();
 
     let mut combined_edit = completion.text_edit.clone();
 

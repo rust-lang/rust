@@ -1,6 +1,7 @@
 //! A standalone binary for `proc-macro-srv`.
 //! Driver for proc macro server
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
 #![allow(clippy::print_stderr)]
 
 #[cfg(feature = "in-rust-tree")]
@@ -14,7 +15,9 @@ use main_loop::run;
 fn main() -> std::io::Result<()> {
     let v = std::env::var("RUST_ANALYZER_INTERNALS_DO_NOT_USE");
     if v.is_err() {
-        eprintln!("This is an IDE implementation detail, you can use this tool by exporting RUST_ANALYZER_INTERNALS_DO_NOT_USE.");
+        eprintln!(
+            "This is an IDE implementation detail, you can use this tool by exporting RUST_ANALYZER_INTERNALS_DO_NOT_USE."
+        );
         eprintln!(
             "Note that this tool's API is highly unstable and may break without prior notice"
         );

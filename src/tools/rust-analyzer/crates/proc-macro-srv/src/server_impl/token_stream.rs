@@ -2,11 +2,18 @@
 
 use proc_macro::bridge;
 
-use crate::server_impl::{delim_to_external, literal_kind_to_external, TopSubtree};
+use crate::server_impl::{TopSubtree, delim_to_external, literal_kind_to_external};
 
 #[derive(Clone)]
 pub struct TokenStream<S> {
     pub(super) token_trees: Vec<tt::TokenTree<S>>,
+}
+
+// #[derive(Default)] would mean that `S: Default`.
+impl<S> Default for TokenStream<S> {
+    fn default() -> Self {
+        Self { token_trees: Default::default() }
+    }
 }
 
 impl<S: std::fmt::Debug + Copy> std::fmt::Debug for TokenStream<S> {
@@ -17,17 +24,7 @@ impl<S: std::fmt::Debug + Copy> std::fmt::Debug for TokenStream<S> {
     }
 }
 
-impl<S> Default for TokenStream<S> {
-    fn default() -> Self {
-        Self { token_trees: vec![] }
-    }
-}
-
 impl<S: Copy> TokenStream<S> {
-    pub(crate) fn new() -> Self {
-        TokenStream::default()
-    }
-
     pub(crate) fn with_subtree(subtree: TopSubtree<S>) -> Self {
         let delimiter_kind = subtree.top_subtree().delimiter.kind;
         let mut token_trees = subtree.0;
@@ -145,15 +142,17 @@ pub(super) mod token_stream_impls {
 }
 
 impl<S: Copy> TokenStreamBuilder<S> {
-    pub(super) fn new() -> TokenStreamBuilder<S> {
-        TokenStreamBuilder { acc: TokenStream::new() }
-    }
-
     pub(super) fn push(&mut self, stream: TokenStream<S>) {
         self.acc.token_trees.extend(stream.token_trees)
     }
 
     pub(super) fn build(self) -> TokenStream<S> {
         self.acc
+    }
+}
+
+impl<S: Copy> Default for TokenStreamBuilder<S> {
+    fn default() -> Self {
+        Self { acc: TokenStream::default() }
     }
 }

@@ -5,14 +5,14 @@ use anyhow::Context;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{toolchain_info::QueryConfig, utf8_stdout, ManifestPath, Sysroot};
+use crate::{ManifestPath, Sysroot, toolchain_info::QueryConfig, utf8_stdout};
 
 /// For cargo, runs `cargo -Zunstable-options config get build.target` to get the configured project target(s).
 /// For rustc, runs `rustc --print -vV` to get the host target.
 pub fn get(
     config: QueryConfig<'_>,
     target: Option<&str>,
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
 ) -> anyhow::Result<Vec<String>> {
     let _p = tracing::info_span!("target_tuple::get").entered();
     if let Some(target) = target {
@@ -32,12 +32,11 @@ pub fn get(
 }
 
 fn rustc_discover_host_tuple(
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     sysroot: &Sysroot,
     current_dir: &Path,
 ) -> anyhow::Result<String> {
-    let mut cmd = sysroot.tool(Tool::Rustc, current_dir);
-    cmd.envs(extra_env);
+    let mut cmd = sysroot.tool(Tool::Rustc, current_dir, extra_env);
     cmd.arg("-vV");
     let stdout = utf8_stdout(&mut cmd)
         .with_context(|| format!("unable to discover host platform via `{cmd:?}`"))?;
@@ -53,11 +52,10 @@ fn rustc_discover_host_tuple(
 
 fn cargo_config_build_target(
     cargo_toml: &ManifestPath,
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     sysroot: &Sysroot,
 ) -> Option<Vec<String>> {
-    let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
-    cmd.envs(extra_env);
+    let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
     cmd.current_dir(cargo_toml.parent()).env("RUSTC_BOOTSTRAP", "1");
     cmd.args(["-Z", "unstable-options", "config", "get", "build.target"]);
     // if successful we receive `build.target = "target-tuple"`

@@ -6,25 +6,27 @@ mod tests;
 
 use std::{iter, ops::ControlFlow};
 
+use base_db::RootQueryDb as _;
 use hir::{
-    DisplayTarget, HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution,
-    ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
+    DisplayTarget, HasAttrs, Local, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef,
+    Semantics, SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
-    base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
-    FxHashMap, FxHashSet, RootDatabase,
+    FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
+    helpers::is_editable_crate,
 };
 use syntax::{
-    ast::{self, AttrKind, NameOrNameRef},
-    match_ast, AstNode, Edition, SmolStr,
+    AstNode, Edition, SmolStr,
     SyntaxKind::{self, *},
-    SyntaxToken, TextRange, TextSize, T,
+    SyntaxToken, T, TextRange, TextSize,
+    ast::{self, AttrKind, NameOrNameRef},
+    match_ast,
 };
 
 use crate::{
-    config::AutoImportExclusionType,
-    context::analysis::{expand_and_analyze, AnalysisResult},
     CompletionConfig,
+    config::AutoImportExclusionType,
+    context::analysis::{AnalysisResult, expand_and_analyze},
 };
 
 const COMPLETION_MARKER: &str = "raCompletionMarker";
@@ -675,11 +677,7 @@ impl CompletionContext<'_> {
             };
         }
 
-        if self.is_doc_hidden(attrs, defining_crate) {
-            Visible::No
-        } else {
-            Visible::Yes
-        }
+        if self.is_doc_hidden(attrs, defining_crate) { Visible::No } else { Visible::Yes }
     }
 
     pub(crate) fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
@@ -706,15 +704,16 @@ impl<'a> CompletionContext<'a> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
 
-        let file_id = sema.attach_first_edition(file_id)?;
-        let original_file = sema.parse(file_id);
+        let editioned_file_id = sema.attach_first_edition(file_id)?;
+        let original_file = sema.parse(editioned_file_id);
 
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.
         let file_with_fake_ident = {
-            let parse = db.parse(file_id);
-            parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, file_id.edition()).tree()
+            let (_, edition) = editioned_file_id.unpack(db);
+            let parse = db.parse(editioned_file_id);
+            parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, edition).tree()
         };
 
         // always pick the token to the immediate left of the cursor, as that is what we are actually
@@ -794,15 +793,12 @@ impl<'a> CompletionContext<'a> {
             .exclude_traits
             .iter()
             .filter_map(|path| {
-                scope
-                    .resolve_mod_path(&ModPath::from_segments(
-                        hir::PathKind::Plain,
-                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
-                    ))
-                    .find_map(|it| match it {
+                hir::resolve_absolute_path(db, path.split("::").map(Symbol::intern)).find_map(
+                    |it| match it {
                         hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
                         _ => None,
-                    })
+                    },
+                )
             })
             .collect();
 
@@ -810,17 +806,14 @@ impl<'a> CompletionContext<'a> {
             .exclude_flyimport
             .iter()
             .flat_map(|(path, kind)| {
-                scope
-                    .resolve_mod_path(&ModPath::from_segments(
-                        hir::PathKind::Plain,
-                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
-                    ))
+                hir::resolve_absolute_path(db, path.split("::").map(Symbol::intern))
                     .map(|it| (it.into_module_def(), *kind))
             })
             .collect();
         exclude_flyimport
             .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
 
+        // FIXME: This should be part of `CompletionAnalysis` / `expand_and_analyze`
         let complete_semicolon = if config.add_semicolon_to_unit {
             let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
                 match_ast! {

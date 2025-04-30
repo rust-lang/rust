@@ -61,19 +61,19 @@
 
 use std::{rc::Rc, sync::Arc};
 
-use intern::{sym, Symbol};
-use smallvec::{smallvec, SmallVec};
+use intern::{Symbol, sym};
+use smallvec::{SmallVec, smallvec};
 use span::{Edition, Span};
 use tt::{
-    iter::{TtElement, TtIter},
     DelimSpan,
+    iter::{TtElement, TtIter},
 };
 
 use crate::{
+    ExpandError, ExpandErrorKind, MetaTemplate, ValueResult,
     expander::{Binding, Bindings, ExpandResult, Fragment},
     expect_fragment,
     parser::{ExprKind, MetaVarKind, Op, RepeatKind, Separator},
-    ExpandError, ExpandErrorKind, MetaTemplate, ValueResult,
 };
 
 impl<'a> Bindings<'a> {

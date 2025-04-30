@@ -4,7 +4,7 @@ use std::mem;
 
 use cfg::{CfgAtom, CfgExpr};
 use hir::sym;
-use ide::{Cancellable, CrateId, FileId, RunnableKind, TestId};
+use ide::{Cancellable, Crate, FileId, RunnableKind, TestId};
 use project_model::project_json::Runnable;
 use project_model::{CargoFeatures, ManifestPath, TargetKind};
 use rustc_hash::FxHashSet;
@@ -54,7 +54,7 @@ pub(crate) struct CargoTargetSpec {
     pub(crate) package: String,
     pub(crate) target: String,
     pub(crate) target_kind: TargetKind,
-    pub(crate) crate_id: CrateId,
+    pub(crate) crate_id: Crate,
     pub(crate) required_features: Vec<String>,
     pub(crate) features: FxHashSet<String>,
     pub(crate) sysroot_root: Option<vfs::AbsPathBuf>,
@@ -264,12 +264,13 @@ mod tests {
 
     use ide::Edition;
     use syntax::{
-        ast::{self, AstNode},
         SmolStr,
+        ast::{self, AstNode},
     };
     use syntax_bridge::{
-        dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
-        syntax_node_to_token_tree, DocCommentDesugarMode,
+        DocCommentDesugarMode,
+        dummy_test_span_utils::{DUMMY, DummyTestSpanMap},
+        syntax_node_to_token_tree,
     };
 
     fn check(cfg: &str, expected_features: &[&str]) {

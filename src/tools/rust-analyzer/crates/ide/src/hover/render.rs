@@ -3,34 +3,34 @@ use std::{env, mem, ops::Not};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
+    Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
+    db::ExpandDatabase,
 };
 use ide_db::{
-    base_db::SourceDatabase,
+    RootDatabase,
     defs::Definition,
     documentation::HasDocs,
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
     syntax_helpers::prettify_macro_expansion,
-    RootDatabase,
 };
 use itertools::Itertools;
 use rustc_apfloat::{
-    ieee::{Half as f16, Quad as f128},
     Float,
+    ieee::{Half as f16, Quad as f128},
 };
 use span::Edition;
 use stdx::format_to;
-use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxToken, T};
+use syntax::{AstNode, AstToken, Direction, SyntaxToken, T, algo, ast, match_ast};
 
 use crate::{
-    doc_links::{remove_links, rewrite_links},
-    hover::{notable_traits, walk_and_push_ty, SubstTyLen},
-    interpret::render_const_eval_error,
     HoverAction, HoverConfig, HoverResult, Markup, MemoryLayoutHoverConfig,
     MemoryLayoutHoverRenderKind,
+    doc_links::{remove_links, rewrite_links},
+    hover::{SubstTyLen, notable_traits, walk_and_push_ty},
+    interpret::render_const_eval_error,
 };
 
 pub(super) fn type_info_of(
@@ -346,11 +346,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
                 .is_some_and(|t| {
                     t.kind() == T![ident] && t.into_token().is_some_and(|t| t.text() == "clippy")
                 });
-            if is_clippy {
-                (true, CLIPPY_LINTS)
-            } else {
-                (false, DEFAULT_LINTS)
-            }
+            if is_clippy { (true, CLIPPY_LINTS) } else { (false, DEFAULT_LINTS) }
         }
         _ => return None,
     };
@@ -418,7 +414,7 @@ fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -
                             "{}::{}",
                             name.display(db, edition),
                             it.name(db).display(db, edition)
-                        ))
+                        ));
                     }
                     None => Some(it.name(db)),
                 }
@@ -436,7 +432,7 @@ fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -
                             "{}::{}",
                             name.display(db, edition),
                             it.name(db)?.display(db, edition)
-                        ))
+                        ));
                     }
                     None => it.name(db),
                 }
@@ -466,8 +462,7 @@ pub(super) fn path(
     item_name: Option<String>,
     edition: Edition,
 ) -> String {
-    let crate_name =
-        db.crate_graph()[module.krate().into()].display_name.as_ref().map(|it| it.to_string());
+    let crate_name = module.krate().display_name(db).as_ref().map(|it| it.to_string());
     let module_path = module
         .path_to_root(db)
         .into_iter()
@@ -482,7 +477,7 @@ pub(super) fn definition(
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     macro_arm: Option<u32>,
-    hovered_definition: bool,
+    render_extras: bool,
     subst_types: Option<&Vec<(Symbol, Type)>>,
     config: &HoverConfig,
     edition: Edition,
@@ -645,6 +640,12 @@ pub(super) fn definition(
         Definition::Local(it) => {
             render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
         }
+        Definition::SelfType(it) => render_memory_layout(
+            config.memory_layout,
+            || it.self_ty(db).layout(db),
+            |_| None,
+            |_| None,
+        ),
         _ => None,
     };
 
@@ -717,18 +718,17 @@ pub(super) fn definition(
             }
             _ => return None,
         };
-        let rendered_drop_glue = match drop_info.drop_glue {
-            DropGlue::None => "does not contain types with destructors (drop glue)",
-            DropGlue::DependOnParams => {
-                "may contain types with destructors (drop glue) depending on type parameters"
+        let rendered_drop_glue = if drop_info.has_dtor == Some(true) {
+            "impl Drop"
+        } else {
+            match drop_info.drop_glue {
+                DropGlue::HasDropGlue => "needs Drop",
+                DropGlue::None => "no Drop",
+                DropGlue::DependOnParams => "type param may need Drop",
             }
-            DropGlue::HasDropGlue => "contain types with destructors (drop glue)",
         };
-        Some(match drop_info.has_dtor {
-            Some(true) => format!("{}; has a destructor", rendered_drop_glue),
-            Some(false) => format!("{}; doesn't have a destructor", rendered_drop_glue),
-            None => rendered_drop_glue.to_owned(),
-        })
+
+        Some(rendered_drop_glue.to_owned())
     };
 
     let dyn_compatibility_info = || match def {
@@ -746,7 +746,7 @@ pub(super) fn definition(
     };
 
     let mut extra = String::new();
-    if hovered_definition {
+    if render_extras {
         if let Some(notable_traits) =
             render_notable_trait(db, notable_traits, edition, display_target)
         {
@@ -760,14 +760,17 @@ pub(super) fn definition(
         if let Some(layout_info) = layout_info() {
             extra.push_str("\n___\n");
             extra.push_str(&layout_info);
+            if let Some(drop_info) = drop_info() {
+                extra.push_str(", ");
+                extra.push_str(&drop_info)
+            }
+        } else if let Some(drop_info) = drop_info() {
+            extra.push_str("\n___\n");
+            extra.push_str(&drop_info);
         }
         if let Some(dyn_compatibility_info) = dyn_compatibility_info() {
             extra.push_str("\n___\n");
             extra.push_str(&dyn_compatibility_info);
-        }
-        if let Some(drop_info) = drop_info() {
-            extra.push_str("\n___\n");
-            extra.push_str(&drop_info);
         }
     }
     let mut desc = String::new();
@@ -906,9 +909,9 @@ fn render_notable_trait(
     let mut needs_impl_header = true;
     for (trait_, assoc_types) in notable_traits {
         desc.push_str(if mem::take(&mut needs_impl_header) {
-            "Implements notable traits: "
+            "Implements notable traits: `"
         } else {
-            ", "
+            "`, `"
         });
         format_to!(desc, "{}", trait_.name(db).display(db, edition));
         if !assoc_types.is_empty() {
@@ -928,7 +931,12 @@ fn render_notable_trait(
             desc.push('>');
         }
     }
-    desc.is_empty().not().then_some(desc)
+    if desc.is_empty() {
+        None
+    } else {
+        desc.push('`');
+        Some(desc)
+    }
 }
 
 fn type_info(
@@ -955,37 +963,12 @@ fn type_info(
     res.markup = if let Some(adjusted_ty) = adjusted {
         walk_and_push_ty(db, &adjusted_ty, &mut push_new_def);
 
-        let notable = {
-            let mut desc = String::new();
-            let mut needs_impl_header = true;
-            for (trait_, assoc_types) in notable_traits(db, &original) {
-                desc.push_str(if mem::take(&mut needs_impl_header) {
-                    "Implements Notable Traits: "
-                } else {
-                    ", "
-                });
-                format_to!(desc, "{}", trait_.name(db).display(db, edition));
-                if !assoc_types.is_empty() {
-                    desc.push('<');
-                    format_to!(
-                        desc,
-                        "{}",
-                        assoc_types.into_iter().format_with(", ", |(ty, name), f| {
-                            f(&name.display(db, edition))?;
-                            f(&" = ")?;
-                            match ty {
-                                Some(ty) => f(&ty.display(db, display_target)),
-                                None => f(&"?"),
-                            }
-                        })
-                    );
-                    desc.push('>');
-                }
-            }
-            if !desc.is_empty() {
-                desc.push('\n');
-            }
-            desc
+        let notable = if let Some(notable) =
+            render_notable_trait(db, &notable_traits(db, &original), edition, display_target)
+        {
+            format!("{notable}\n")
+        } else {
+            String::new()
         };
 
         let original = original.display(db, display_target).to_string();

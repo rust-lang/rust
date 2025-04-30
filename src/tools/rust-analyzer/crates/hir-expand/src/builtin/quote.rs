@@ -1,7 +1,7 @@
 //! A simplified version of quote-crate like quasi quote macro
 #![allow(clippy::crate_in_macro_def)]
 
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use span::Span;
 use syntax::ToSmolStr;
 use tt::IdentIsRaw;
@@ -9,7 +9,7 @@ use tt::IdentIsRaw;
 use crate::{name::Name, tt::TopSubtreeBuilder};
 
 pub(crate) fn dollar_crate(span: Span) -> tt::Ident<Span> {
-    tt::Ident { sym: sym::dollar_crate.clone(), span, is_raw: tt::IdentIsRaw::No }
+    tt::Ident { sym: sym::dollar_crate, span, is_raw: tt::IdentIsRaw::No }
 }
 
 // A helper macro quote macro
@@ -61,7 +61,7 @@ macro_rules! quote_impl__ {
         $crate::builtin::quote::__quote!($span $builder $($tail)*);
     };
 
-    ($span:ident $builder:ident ## $first:ident $($tail:tt)* ) => {{
+    ($span:ident $builder:ident # # $first:ident $($tail:tt)* ) => {{
         ::std::iter::IntoIterator::into_iter($first).for_each(|it| $crate::builtin::quote::ToTokenTree::to_tokens(it, $span, $builder));
         $crate::builtin::quote::__quote!($span $builder $($tail)*);
     }};
@@ -203,7 +203,7 @@ impl_to_to_tokentrees! {
     span: u32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
     span: usize => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
     span: i32 => self { crate::tt::Literal{symbol: Symbol::integer(self as _), span, kind: tt::LitKind::Integer, suffix: None } };
-    span: bool => self { crate::tt::Ident{sym: if self { sym::true_.clone() } else { sym::false_.clone() }, span, is_raw: tt::IdentIsRaw::No } };
+    span: bool => self { crate::tt::Ident{sym: if self { sym::true_ } else { sym::false_ }, span, is_raw: tt::IdentIsRaw::No } };
     _span: crate::tt::Leaf => self { self };
     _span: crate::tt::Literal => self { self };
     _span: crate::tt::Ident => self { self };
@@ -226,7 +226,7 @@ mod tests {
     use ::tt::IdentIsRaw;
     use expect_test::expect;
     use intern::Symbol;
-    use span::{Edition, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+    use span::{Edition, ROOT_ERASED_FILE_AST_ID, SpanAnchor, SyntaxContext};
     use syntax::{TextRange, TextSize};
 
     use super::quote;
@@ -240,7 +240,7 @@ mod tests {
             ),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContextId::root(Edition::CURRENT),
+        ctx: SyntaxContext::root(Edition::CURRENT),
     };
 
     #[test]
@@ -277,8 +277,8 @@ mod tests {
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{quoted:#?}");
         expect![[r#"
-            SUBTREE $$ 937550:0@0..0#2 937550:0@0..0#2
-              IDENT   hello 937550:0@0..0#2"#]]
+            SUBTREE $$ 937550:0@0..0#ROOT2024 937550:0@0..0#ROOT2024
+              IDENT   hello 937550:0@0..0#ROOT2024"#]]
         .assert_eq(&t);
     }
 
@@ -324,6 +324,9 @@ mod tests {
             }
         };
 
-        assert_eq!(quoted.to_string(), "impl Clone for Foo {fn clone (& self) -> Self {Self {name : self . name . clone () , id : self . id . clone () ,}}}");
+        assert_eq!(
+            quoted.to_string(),
+            "impl Clone for Foo {fn clone (& self) -> Self {Self {name : self . name . clone () , id : self . id . clone () ,}}}"
+        );
     }
 }

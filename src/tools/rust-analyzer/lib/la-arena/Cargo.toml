@@ -6,8 +6,8 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/la-arena"
 documentation = "https://docs.rs/la-arena"
 categories = ["data-structures", "memory-management", "rust-patterns"]
-edition = "2021"
-rust-version = "1.56"
+edition = "2024"
+rust-version = "1.85"
 
 [lints]
 workspace = true

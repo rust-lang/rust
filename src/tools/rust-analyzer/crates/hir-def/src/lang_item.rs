@@ -3,13 +3,13 @@
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
 use hir_expand::name::Name;
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
 use triomphe::Arc;
 
 use crate::{
-    db::DefDatabase, path::Path, AdtId, AssocItemId, AttrDefId, CrateId, EnumId, EnumVariantId,
-    FunctionId, ImplId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, expr_store::path::Path,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -96,7 +96,7 @@ impl LangItems {
     /// Salsa query. This will look for lang items in a specific crate.
     pub(crate) fn crate_lang_items_query(
         db: &dyn DefDatabase,
-        krate: CrateId,
+        krate: Crate,
     ) -> Option<Arc<LangItems>> {
         let _p = tracing::info_span!("crate_lang_items_query").entered();
 
@@ -107,7 +107,7 @@ impl LangItems {
         for (_, module_data) in crate_def_map.modules() {
             for impl_def in module_data.scope.impls() {
                 lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDef);
-                for &(_, assoc) in db.impl_data(impl_def).items.iter() {
+                for &(_, assoc) in db.impl_items(impl_def).items.iter() {
                     match assoc {
                         AssocItemId::FunctionId(f) => {
                             lang_items.collect_lang_item(db, f, LangItemTarget::Function)
@@ -124,7 +124,7 @@ impl LangItems {
                 match def {
                     ModuleDefId::TraitId(trait_) => {
                         lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
-                        db.trait_data(trait_).items.iter().for_each(
+                        db.trait_items(trait_).items.iter().for_each(
                             |&(_, assoc_id)| match assoc_id {
                                 AssocItemId::FunctionId(f) => {
                                     lang_items.collect_lang_item(db, f, LangItemTarget::Function);
@@ -140,7 +140,7 @@ impl LangItems {
                     }
                     ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                         lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
-                        crate_def_map.enum_definitions[&e].iter().for_each(|&id| {
+                        db.enum_variants(e).variants.iter().for_each(|&(id, _)| {
                             lang_items.collect_lang_item(db, id, LangItemTarget::EnumVariant);
                         });
                     }
@@ -164,18 +164,14 @@ impl LangItems {
             }
         }
 
-        if lang_items.items.is_empty() {
-            None
-        } else {
-            Some(Arc::new(lang_items))
-        }
+        if lang_items.items.is_empty() { None } else { Some(Arc::new(lang_items)) }
     }
 
     /// Salsa query. Look for a lang item, starting from the specified crate and recursively
     /// traversing its dependencies.
     pub(crate) fn lang_item_query(
         db: &dyn DefDatabase,
-        start_crate: CrateId,
+        start_crate: Crate,
         item: LangItem,
     ) -> Option<LangItemTarget> {
         let _p = tracing::info_span!("lang_item_query").entered();
@@ -184,10 +180,7 @@ impl LangItems {
         {
             return Some(target);
         }
-        db.crate_graph()[start_crate]
-            .dependencies
-            .iter()
-            .find_map(|dep| db.lang_item(dep.crate_id, item))
+        start_crate.data(db).dependencies.iter().find_map(|dep| db.lang_item(dep.crate_id, item))
     }
 
     fn collect_lang_item<T>(
@@ -209,19 +202,14 @@ pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangIte
     db.attrs(item).lang_item()
 }
 
-pub(crate) fn notable_traits_in_deps(
-    db: &dyn DefDatabase,
-    krate: CrateId,
-) -> Arc<[Arc<[TraitId]>]> {
+pub(crate) fn notable_traits_in_deps(db: &dyn DefDatabase, krate: Crate) -> Arc<[Arc<[TraitId]>]> {
     let _p = tracing::info_span!("notable_traits_in_deps", ?krate).entered();
-    let crate_graph = db.crate_graph();
-
     Arc::from_iter(
-        crate_graph.transitive_deps(krate).filter_map(|krate| db.crate_notable_traits(krate)),
+        db.transitive_deps(krate).into_iter().filter_map(|krate| db.crate_notable_traits(krate)),
     )
 }
 
-pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: CrateId) -> Option<Arc<[TraitId]>> {
+pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Arc<[TraitId]>> {
     let _p = tracing::info_span!("crate_notable_traits", ?krate).entered();
 
     let mut traits = Vec::new();
@@ -238,11 +226,7 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: CrateId) -> Opti
         }
     }
 
-    if traits.is_empty() {
-        None
-    } else {
-        Some(traits.into_iter().collect())
-    }
+    if traits.is_empty() { None } else { Some(traits.into_iter().collect()) }
 }
 
 pub enum GenericRequirement {
@@ -290,17 +274,12 @@ impl LangItem {
         Self::from_symbol(name.symbol())
     }
 
-    pub fn path(&self, db: &dyn DefDatabase, start_crate: CrateId) -> Option<Path> {
+    pub fn path(&self, db: &dyn DefDatabase, start_crate: Crate) -> Option<Path> {
         let t = db.lang_item(start_crate, *self)?;
         Some(Path::LangItem(t, None))
     }
 
-    pub fn ty_rel_path(
-        &self,
-        db: &dyn DefDatabase,
-        start_crate: CrateId,
-        seg: Name,
-    ) -> Option<Path> {
+    pub fn ty_rel_path(&self, db: &dyn DefDatabase, start_crate: Crate, seg: Name) -> Option<Path> {
         let t = db.lang_item(start_crate, *self)?;
         Some(Path::LangItem(t, Some(seg)))
     }
@@ -366,6 +345,7 @@ language_item_table! {
     IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
+    UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
     VaList,                  sym::va_list,             va_list,                    Target::Struct,         GenericRequirement::None;
 
     Deref,                   sym::deref,               deref_trait,                Target::Trait,          GenericRequirement::Exact(0);

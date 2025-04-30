@@ -15,9 +15,19 @@ pub enum Edition {
 impl Edition {
     pub const DEFAULT: Edition = Edition::Edition2015;
     pub const LATEST: Edition = Edition::Edition2024;
-    pub const CURRENT: Edition = Edition::Edition2021;
+    pub const CURRENT: Edition = Edition::Edition2024;
     /// The current latest stable edition, note this is usually not the right choice in code.
-    pub const CURRENT_FIXME: Edition = Edition::Edition2021;
+    pub const CURRENT_FIXME: Edition = Edition::Edition2024;
+
+    pub fn from_u32(u32: u32) -> Edition {
+        match u32 {
+            0 => Edition::Edition2015,
+            1 => Edition::Edition2018,
+            2 => Edition::Edition2021,
+            3 => Edition::Edition2024,
+            _ => panic!("invalid edition"),
+        }
+    }
 
     pub fn at_least_2024(self) -> bool {
         self >= Edition::Edition2024
@@ -29,6 +39,15 @@ impl Edition {
 
     pub fn at_least_2018(self) -> bool {
         self >= Edition::Edition2018
+    }
+
+    pub fn number(&self) -> usize {
+        match self {
+            Edition::Edition2015 => 2015,
+            Edition::Edition2018 => 2018,
+            Edition::Edition2021 => 2021,
+            Edition::Edition2024 => 2024,
+        }
     }
 
     pub fn iter() -> impl Iterator<Item = Edition> {

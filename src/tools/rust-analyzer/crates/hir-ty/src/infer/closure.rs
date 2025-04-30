@@ -1,49 +1,148 @@
 //! Inference of closure parameter types based on the closure's expected type.
 
-use std::{cmp, convert::Infallible, mem};
+use std::{cmp, convert::Infallible, mem, ops::ControlFlow};
 
 use chalk_ir::{
-    cast::Cast,
-    fold::{FallibleTypeFolder, TypeFoldable},
     BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind,
+    cast::Cast,
+    fold::{FallibleTypeFolder, Shift, TypeFoldable},
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
 };
 use either::Either;
 use hir_def::{
-    data::adt::VariantData,
-    hir::{
-        Array, AsmOperand, BinaryOp, BindingId, CaptureBy, Expr, ExprId, ExprOrPatId, Pat, PatId,
-        Statement, UnaryOp,
-    },
-    lang_item::LangItem,
-    path::Path,
-    resolver::ValueNs,
     DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
+    expr_store::path::Path,
+    hir::{
+        Array, AsmOperand, BinaryOp, BindingId, CaptureBy, ClosureKind, Expr, ExprId, ExprOrPatId,
+        Pat, PatId, Statement, UnaryOp,
+    },
+    item_tree::FieldsShape,
+    lang_item::LangItem,
+    resolver::ValueNs,
 };
+use hir_def::{Lookup, type_ref::TypeRefId};
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_hash::FxHashMap;
-use smallvec::{smallvec, SmallVec};
+use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::{SmallVec, smallvec};
 use stdx::{format_to, never};
 use syntax::utils::is_raw_identifier;
 
 use crate::{
-    db::{HirDatabase, InternedClosure},
-    error_lifetime, from_chalk_trait_id, from_placeholder_idx,
+    Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
+    DynTyExt, FnAbi, FnPointer, FnSig, GenericArg, Interner, OpaqueTy, ProjectionTy,
+    ProjectionTyExt, Substitution, Ty, TyBuilder, TyExt, WhereClause,
+    db::{HirDatabase, InternedClosure, InternedCoroutine},
+    error_lifetime, from_assoc_type_id, from_chalk_trait_id, from_placeholder_idx,
     generics::Generics,
-    infer::coerce::CoerceNever,
+    infer::{BreakableKind, CoerceMany, Diverges, coerce::CoerceNever},
     make_binders,
     mir::{BorrowKind, MirSpan, MutBorrowKind, ProjectionElem},
     to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, elaborate_clause_supertraits},
-    Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
-    DynTyExt, FnAbi, FnPointer, FnSig, Interner, OpaqueTy, ProjectionTyExt, Substitution, Ty,
-    TyExt, WhereClause,
 };
 
 use super::{Expectation, InferenceContext};
 
+#[derive(Debug)]
+pub(super) struct ClosureSignature {
+    pub(super) ret_ty: Ty,
+    pub(super) expected_sig: FnPointer,
+}
+
 impl InferenceContext<'_> {
+    pub(super) fn infer_closure(
+        &mut self,
+        body: &ExprId,
+        args: &[PatId],
+        ret_type: &Option<TypeRefId>,
+        arg_types: &[Option<TypeRefId>],
+        closure_kind: ClosureKind,
+        tgt_expr: ExprId,
+        expected: &Expectation,
+    ) -> Ty {
+        assert_eq!(args.len(), arg_types.len());
+
+        let (expected_sig, expected_kind) = match expected.to_option(&mut self.table) {
+            Some(expected_ty) => self.deduce_closure_signature(&expected_ty, closure_kind),
+            None => (None, None),
+        };
+
+        let ClosureSignature { expected_sig: bound_sig, ret_ty: body_ret_ty } =
+            self.sig_of_closure(body, ret_type, arg_types, closure_kind, expected_sig);
+        let bound_sig = self.normalize_associated_types_in(bound_sig);
+        let sig_ty = TyKind::Function(bound_sig.clone()).intern(Interner);
+
+        let (id, ty, resume_yield_tys) = match closure_kind {
+            ClosureKind::Coroutine(_) => {
+                let sig_tys = bound_sig.substitution.0.as_slice(Interner);
+                // FIXME: report error when there are more than 1 parameter.
+                let resume_ty = match sig_tys.first() {
+                    // When `sig_tys.len() == 1` the first type is the return type, not the
+                    // first parameter type.
+                    Some(ty) if sig_tys.len() > 1 => ty.assert_ty_ref(Interner).clone(),
+                    _ => self.result.standard_types.unit.clone(),
+                };
+                let yield_ty = self.table.new_type_var();
+
+                let subst = TyBuilder::subst_for_coroutine(self.db, self.owner)
+                    .push(resume_ty.clone())
+                    .push(yield_ty.clone())
+                    .push(body_ret_ty.clone())
+                    .build();
+
+                let coroutine_id =
+                    self.db.intern_coroutine(InternedCoroutine(self.owner, tgt_expr)).into();
+                let coroutine_ty = TyKind::Coroutine(coroutine_id, subst).intern(Interner);
+
+                (None, coroutine_ty, Some((resume_ty, yield_ty)))
+            }
+            ClosureKind::Closure | ClosureKind::Async => {
+                let closure_id =
+                    self.db.intern_closure(InternedClosure(self.owner, tgt_expr)).into();
+                let closure_ty = TyKind::Closure(
+                    closure_id,
+                    TyBuilder::subst_for_closure(self.db, self.owner, sig_ty.clone()),
+                )
+                .intern(Interner);
+                self.deferred_closures.entry(closure_id).or_default();
+                self.add_current_closure_dependency(closure_id);
+                (Some(closure_id), closure_ty, None)
+            }
+        };
+
+        // Eagerly try to relate the closure type with the expected
+        // type, otherwise we often won't have enough information to
+        // infer the body.
+        self.deduce_closure_type_from_expectations(tgt_expr, &ty, &sig_ty, expected, expected_kind);
+
+        // Now go through the argument patterns
+        for (arg_pat, arg_ty) in args.iter().zip(bound_sig.substitution.0.as_slice(Interner).iter())
+        {
+            self.infer_top_pat(*arg_pat, arg_ty.assert_ty_ref(Interner), None);
+        }
+
+        // FIXME: lift these out into a struct
+        let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
+        let prev_closure = mem::replace(&mut self.current_closure, id);
+        let prev_ret_ty = mem::replace(&mut self.return_ty, body_ret_ty.clone());
+        let prev_ret_coercion = self.return_coercion.replace(CoerceMany::new(body_ret_ty.clone()));
+        let prev_resume_yield_tys = mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
+
+        self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
+            this.infer_return(*body);
+        });
+
+        self.diverges = prev_diverges;
+        self.return_ty = prev_ret_ty;
+        self.return_coercion = prev_ret_coercion;
+        self.current_closure = prev_closure;
+        self.resume_yield_tys = prev_resume_yield_tys;
+
+        self.table.normalize_associated_types_in(ty)
+    }
+
     // This function handles both closures and coroutines.
     pub(super) fn deduce_closure_type_from_expectations(
         &mut self,
@@ -51,19 +150,21 @@ impl InferenceContext<'_> {
         closure_ty: &Ty,
         sig_ty: &Ty,
         expectation: &Expectation,
+        expected_kind: Option<FnTrait>,
     ) {
         let expected_ty = match expectation.to_option(&mut self.table) {
             Some(ty) => ty,
             None => return,
         };
 
-        if let TyKind::Closure(closure_id, _) = closure_ty.kind(Interner) {
-            if let Some(closure_kind) = self.deduce_closure_kind_from_expectations(&expected_ty) {
+        match (closure_ty.kind(Interner), expected_kind) {
+            (TyKind::Closure(closure_id, _), Some(closure_kind)) => {
                 self.result
                     .closure_info
                     .entry(*closure_id)
                     .or_insert_with(|| (Vec::new(), closure_kind));
             }
+            _ => {}
         }
 
         // Deduction from where-clauses in scope, as well as fn-pointer coercion are handled here.
@@ -86,63 +187,153 @@ impl InferenceContext<'_> {
 
     // Closure kind deductions are mostly from `rustc_hir_typeck/src/closure.rs`.
     // Might need to port closure sig deductions too.
-    fn deduce_closure_kind_from_expectations(&mut self, expected_ty: &Ty) -> Option<FnTrait> {
+    pub(super) fn deduce_closure_signature(
+        &mut self,
+        expected_ty: &Ty,
+        closure_kind: ClosureKind,
+    ) -> (Option<FnSubst<Interner>>, Option<FnTrait>) {
         match expected_ty.kind(Interner) {
             TyKind::Alias(AliasTy::Opaque(OpaqueTy { .. })) | TyKind::OpaqueType(..) => {
-                let clauses = expected_ty
-                    .impl_trait_bounds(self.db)
-                    .into_iter()
-                    .flatten()
-                    .map(|b| b.into_value_and_skipped_binders().0);
-                self.deduce_closure_kind_from_predicate_clauses(clauses)
+                let clauses = expected_ty.impl_trait_bounds(self.db).into_iter().flatten().map(
+                    |b: chalk_ir::Binders<chalk_ir::WhereClause<Interner>>| {
+                        b.into_value_and_skipped_binders().0
+                    },
+                );
+                self.deduce_closure_kind_from_predicate_clauses(expected_ty, clauses, closure_kind)
             }
-            TyKind::Dyn(dyn_ty) => dyn_ty.principal_id().and_then(|trait_id| {
-                self.fn_trait_kind_from_trait_id(from_chalk_trait_id(trait_id))
-            }),
+            TyKind::Dyn(dyn_ty) => {
+                let sig =
+                    dyn_ty.bounds.skip_binders().as_slice(Interner).iter().find_map(|bound| {
+                        if let WhereClause::AliasEq(AliasEq {
+                            alias: AliasTy::Projection(projection_ty),
+                            ty: projected_ty,
+                        }) = bound.skip_binders()
+                        {
+                            if let Some(sig) = self.deduce_sig_from_projection(
+                                closure_kind,
+                                projection_ty,
+                                projected_ty,
+                            ) {
+                                return Some(sig);
+                            }
+                        }
+                        None
+                    });
+
+                let kind = dyn_ty.principal().and_then(|principal_trait_ref| {
+                    self.fn_trait_kind_from_trait_id(from_chalk_trait_id(
+                        principal_trait_ref.skip_binders().skip_binders().trait_id,
+                    ))
+                });
+
+                (sig, kind)
+            }
             TyKind::InferenceVar(ty, chalk_ir::TyVariableKind::General) => {
                 let clauses = self.clauses_for_self_ty(*ty);
-                self.deduce_closure_kind_from_predicate_clauses(clauses.into_iter())
+                self.deduce_closure_kind_from_predicate_clauses(
+                    expected_ty,
+                    clauses.into_iter(),
+                    closure_kind,
+                )
             }
-            TyKind::Function(_) => Some(FnTrait::Fn),
-            _ => None,
+            TyKind::Function(fn_ptr) => match closure_kind {
+                ClosureKind::Closure => (Some(fn_ptr.substitution.clone()), Some(FnTrait::Fn)),
+                ClosureKind::Async | ClosureKind::Coroutine(_) => (None, None),
+            },
+            _ => (None, None),
         }
     }
 
     fn deduce_closure_kind_from_predicate_clauses(
         &self,
+        expected_ty: &Ty,
         clauses: impl DoubleEndedIterator<Item = WhereClause>,
-    ) -> Option<FnTrait> {
+        closure_kind: ClosureKind,
+    ) -> (Option<FnSubst<Interner>>, Option<FnTrait>) {
+        let mut expected_sig = None;
         let mut expected_kind = None;
 
         for clause in elaborate_clause_supertraits(self.db, clauses.rev()) {
+            if expected_sig.is_none() {
+                if let WhereClause::AliasEq(AliasEq {
+                    alias: AliasTy::Projection(projection),
+                    ty,
+                }) = &clause
+                {
+                    let inferred_sig =
+                        self.deduce_sig_from_projection(closure_kind, projection, ty);
+                    // Make sure that we didn't infer a signature that mentions itself.
+                    // This can happen when we elaborate certain supertrait bounds that
+                    // mention projections containing the `Self` type. See rust-lang/rust#105401.
+                    struct MentionsTy<'a> {
+                        expected_ty: &'a Ty,
+                    }
+                    impl TypeVisitor<Interner> for MentionsTy<'_> {
+                        type BreakTy = ();
+
+                        fn interner(&self) -> Interner {
+                            Interner
+                        }
+
+                        fn as_dyn(
+                            &mut self,
+                        ) -> &mut dyn TypeVisitor<Interner, BreakTy = Self::BreakTy>
+                        {
+                            self
+                        }
+
+                        fn visit_ty(
+                            &mut self,
+                            t: &Ty,
+                            db: chalk_ir::DebruijnIndex,
+                        ) -> ControlFlow<()> {
+                            if t == self.expected_ty {
+                                ControlFlow::Break(())
+                            } else {
+                                t.super_visit_with(self, db)
+                            }
+                        }
+                    }
+                    if inferred_sig
+                        .visit_with(
+                            &mut MentionsTy { expected_ty },
+                            chalk_ir::DebruijnIndex::INNERMOST,
+                        )
+                        .is_continue()
+                    {
+                        expected_sig = inferred_sig;
+                    }
+                }
+            }
+
             let trait_id = match clause {
                 WhereClause::AliasEq(AliasEq {
                     alias: AliasTy::Projection(projection), ..
-                }) => Some(projection.trait_(self.db)),
-                WhereClause::Implemented(trait_ref) => {
-                    Some(from_chalk_trait_id(trait_ref.trait_id))
-                }
-                _ => None,
+                }) => projection.trait_(self.db),
+                WhereClause::Implemented(trait_ref) => from_chalk_trait_id(trait_ref.trait_id),
+                _ => continue,
             };
-            if let Some(closure_kind) =
-                trait_id.and_then(|trait_id| self.fn_trait_kind_from_trait_id(trait_id))
-            {
-                // `FnX`'s variants order is opposite from rustc, so use `cmp::max` instead of `cmp::min`
-                expected_kind = Some(
-                    expected_kind
-                        .map_or_else(|| closure_kind, |current| cmp::max(current, closure_kind)),
-                );
+            if let Some(closure_kind) = self.fn_trait_kind_from_trait_id(trait_id) {
+                // always use the closure kind that is more permissive.
+                match (expected_kind, closure_kind) {
+                    (None, _) => expected_kind = Some(closure_kind),
+                    (Some(FnTrait::FnMut), FnTrait::Fn) => expected_kind = Some(FnTrait::Fn),
+                    (Some(FnTrait::FnOnce), FnTrait::Fn | FnTrait::FnMut) => {
+                        expected_kind = Some(closure_kind)
+                    }
+                    _ => {}
+                }
             }
         }
 
-        expected_kind
+        (expected_sig, expected_kind)
     }
 
     fn deduce_sig_from_dyn_ty(&self, dyn_ty: &DynTy) -> Option<FnPointer> {
         // Search for a predicate like `<$self as FnX<Args>>::Output == Ret`
 
         let fn_traits: SmallVec<[ChalkTraitId; 3]> =
-            utils::fn_traits(self.db.upcast(), self.owner.module(self.db.upcast()).krate())
+            utils::fn_traits(self.db, self.owner.module(self.db).krate())
                 .map(to_chalk_trait_id)
                 .collect();
 
@@ -153,7 +344,8 @@ impl InferenceContext<'_> {
             if let WhereClause::AliasEq(AliasEq { alias: AliasTy::Projection(projection), ty }) =
                 bound.skip_binders()
             {
-                let assoc_data = self.db.associated_ty_data(projection.associated_ty_id);
+                let assoc_data =
+                    self.db.associated_ty_data(from_assoc_type_id(projection.associated_ty_id));
                 if !fn_traits.contains(&assoc_data.trait_id) {
                     return None;
                 }
@@ -185,8 +377,175 @@ impl InferenceContext<'_> {
         None
     }
 
+    fn deduce_sig_from_projection(
+        &self,
+        closure_kind: ClosureKind,
+        projection_ty: &ProjectionTy,
+        projected_ty: &Ty,
+    ) -> Option<FnSubst<Interner>> {
+        let container =
+            from_assoc_type_id(projection_ty.associated_ty_id).lookup(self.db).container;
+        let trait_ = match container {
+            hir_def::ItemContainerId::TraitId(trait_) => trait_,
+            _ => return None,
+        };
+
+        // For now, we only do signature deduction based off of the `Fn` and `AsyncFn` traits,
+        // for closures and async closures, respectively.
+        match closure_kind {
+            ClosureKind::Closure | ClosureKind::Async
+                if self.fn_trait_kind_from_trait_id(trait_).is_some() =>
+            {
+                self.extract_sig_from_projection(projection_ty, projected_ty)
+            }
+            _ => None,
+        }
+    }
+
+    fn extract_sig_from_projection(
+        &self,
+        projection_ty: &ProjectionTy,
+        projected_ty: &Ty,
+    ) -> Option<FnSubst<Interner>> {
+        let arg_param_ty = projection_ty.substitution.as_slice(Interner)[1].assert_ty_ref(Interner);
+
+        let TyKind::Tuple(_, input_tys) = arg_param_ty.kind(Interner) else {
+            return None;
+        };
+
+        let ret_param_ty = projected_ty;
+
+        Some(FnSubst(Substitution::from_iter(
+            Interner,
+            input_tys.iter(Interner).map(|t| t.cast(Interner)).chain(Some(GenericArg::new(
+                Interner,
+                chalk_ir::GenericArgData::Ty(ret_param_ty.clone()),
+            ))),
+        )))
+    }
+
     fn fn_trait_kind_from_trait_id(&self, trait_id: hir_def::TraitId) -> Option<FnTrait> {
         FnTrait::from_lang_item(self.db.lang_attr(trait_id.into())?)
+    }
+
+    fn supplied_sig_of_closure(
+        &mut self,
+        body: &ExprId,
+        ret_type: &Option<TypeRefId>,
+        arg_types: &[Option<TypeRefId>],
+        closure_kind: ClosureKind,
+    ) -> ClosureSignature {
+        let mut sig_tys = Vec::with_capacity(arg_types.len() + 1);
+
+        // collect explicitly written argument types
+        for arg_type in arg_types.iter() {
+            let arg_ty = match arg_type {
+                // FIXME: I think rustc actually lowers closure params with `LifetimeElisionKind::AnonymousCreateParameter`
+                // (but the return type with infer).
+                Some(type_ref) => self.make_body_ty(*type_ref),
+                None => self.table.new_type_var(),
+            };
+            sig_tys.push(arg_ty);
+        }
+
+        // add return type
+        let ret_ty = match ret_type {
+            Some(type_ref) => self.make_body_ty(*type_ref),
+            None => self.table.new_type_var(),
+        };
+        if let ClosureKind::Async = closure_kind {
+            sig_tys.push(self.lower_async_block_type_impl_trait(ret_ty.clone(), *body));
+        } else {
+            sig_tys.push(ret_ty.clone());
+        }
+
+        let expected_sig = FnPointer {
+            num_binders: 0,
+            sig: FnSig { abi: FnAbi::RustCall, safety: chalk_ir::Safety::Safe, variadic: false },
+            substitution: FnSubst(
+                Substitution::from_iter(Interner, sig_tys.iter().cloned()).shifted_in(Interner),
+            ),
+        };
+
+        ClosureSignature { ret_ty, expected_sig }
+    }
+
+    /// The return type is the signature of the closure, and the return type
+    /// *as represented inside the body* (so, for async closures, the `Output` ty)
+    pub(super) fn sig_of_closure(
+        &mut self,
+        body: &ExprId,
+        ret_type: &Option<TypeRefId>,
+        arg_types: &[Option<TypeRefId>],
+        closure_kind: ClosureKind,
+        expected_sig: Option<FnSubst<Interner>>,
+    ) -> ClosureSignature {
+        if let Some(e) = expected_sig {
+            self.sig_of_closure_with_expectation(body, ret_type, arg_types, closure_kind, e)
+        } else {
+            self.sig_of_closure_no_expectation(body, ret_type, arg_types, closure_kind)
+        }
+    }
+
+    fn sig_of_closure_no_expectation(
+        &mut self,
+        body: &ExprId,
+        ret_type: &Option<TypeRefId>,
+        arg_types: &[Option<TypeRefId>],
+        closure_kind: ClosureKind,
+    ) -> ClosureSignature {
+        self.supplied_sig_of_closure(body, ret_type, arg_types, closure_kind)
+    }
+
+    fn sig_of_closure_with_expectation(
+        &mut self,
+        body: &ExprId,
+        ret_type: &Option<TypeRefId>,
+        arg_types: &[Option<TypeRefId>],
+        closure_kind: ClosureKind,
+        expected_sig: FnSubst<Interner>,
+    ) -> ClosureSignature {
+        let expected_sig = FnPointer {
+            num_binders: 0,
+            sig: FnSig { abi: FnAbi::RustCall, safety: chalk_ir::Safety::Safe, variadic: false },
+            substitution: expected_sig,
+        };
+
+        // If the expected signature does not match the actual arg types,
+        // then just return the expected signature
+        if expected_sig.substitution.0.len(Interner) != arg_types.len() + 1 {
+            let ret_ty = match ret_type {
+                Some(type_ref) => self.make_body_ty(*type_ref),
+                None => self.table.new_type_var(),
+            };
+            return ClosureSignature { expected_sig, ret_ty };
+        }
+
+        self.merge_supplied_sig_with_expectation(
+            body,
+            ret_type,
+            arg_types,
+            closure_kind,
+            expected_sig,
+        )
+    }
+
+    fn merge_supplied_sig_with_expectation(
+        &mut self,
+        body: &ExprId,
+        ret_type: &Option<TypeRefId>,
+        arg_types: &[Option<TypeRefId>],
+        closure_kind: ClosureKind,
+        expected_sig: FnPointer,
+    ) -> ClosureSignature {
+        let supplied_sig = self.supplied_sig_of_closure(body, ret_type, arg_types, closure_kind);
+
+        let snapshot = self.table.snapshot();
+        if !self.table.unify(&expected_sig.substitution, &supplied_sig.expected_sig.substitution) {
+            self.table.rollback_to(snapshot);
+        }
+
+        supplied_sig
     }
 }
 
@@ -208,7 +567,7 @@ impl HirPlace {
                 |_, _, _| {
                     unreachable!("Closure field only happens in MIR");
                 },
-                ctx.owner.module(ctx.db.upcast()).krate(),
+                ctx.owner.module(ctx.db).krate(),
             );
         }
         ty
@@ -223,7 +582,7 @@ impl HirPlace {
             kind: MutBorrowKind::Default | MutBorrowKind::TwoPhasedBorrow,
         }) = current_capture
         {
-            if self.projections[len..].iter().any(|it| *it == ProjectionElem::Deref) {
+            if self.projections[len..].contains(&ProjectionElem::Deref) {
                 current_capture =
                     CaptureKind::ByRef(BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture });
             }
@@ -282,18 +641,20 @@ impl CapturedItem {
             match proj {
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    match &*f.parent.variant_data(db.upcast()) {
-                        VariantData::Record { fields, .. } => {
+                    let variant_data = f.parent.variant_data(db);
+                    match variant_data.shape {
+                        FieldsShape::Record => {
                             result.push('_');
-                            result.push_str(fields[f.local_id].name.as_str())
+                            result.push_str(variant_data.fields()[f.local_id].name.as_str())
                         }
-                        VariantData::Tuple { fields, .. } => {
-                            let index = fields.iter().position(|it| it.0 == f.local_id);
+                        FieldsShape::Tuple => {
+                            let index =
+                                variant_data.fields().iter().position(|it| it.0 == f.local_id);
                             if let Some(index) = index {
                                 format_to!(result, "_{index}");
                             }
                         }
-                        VariantData::Unit => {}
+                        FieldsShape::Unit => {}
                     }
                 }
                 ProjectionElem::Field(Either::Right(f)) => format_to!(result, "_{}", f.index),
@@ -307,7 +668,7 @@ impl CapturedItem {
                 }
             }
         }
-        if is_raw_identifier(&result, db.crate_graph()[owner.module(db.upcast()).krate()].edition) {
+        if is_raw_identifier(&result, owner.module(db).krate().data(db).edition) {
             result.insert_str(0, "r#");
         }
         result
@@ -315,27 +676,31 @@ impl CapturedItem {
 
     pub fn display_place_source_code(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
-        let krate = owner.krate(db.upcast());
-        let edition = db.crate_graph()[krate].edition;
-        let mut result = body[self.place.local].name.display(db.upcast(), edition).to_string();
+        let krate = owner.krate(db);
+        let edition = krate.data(db).edition;
+        let mut result = body[self.place.local].name.display(db, edition).to_string();
         for proj in &self.place.projections {
             match proj {
                 // In source code autoderef kicks in.
                 ProjectionElem::Deref => {}
                 ProjectionElem::Field(Either::Left(f)) => {
-                    let variant_data = f.parent.variant_data(db.upcast());
-                    match &*variant_data {
-                        VariantData::Record { fields, .. } => format_to!(
+                    let variant_data = f.parent.variant_data(db);
+                    match variant_data.shape {
+                        FieldsShape::Record => format_to!(
                             result,
                             ".{}",
-                            fields[f.local_id].name.display(db.upcast(), edition)
+                            variant_data.fields()[f.local_id].name.display(db, edition)
                         ),
-                        VariantData::Tuple { fields, .. } => format_to!(
+                        FieldsShape::Tuple => format_to!(
                             result,
                             ".{}",
-                            fields.iter().position(|it| it.0 == f.local_id).unwrap_or_default()
+                            variant_data
+                                .fields()
+                                .iter()
+                                .position(|it| it.0 == f.local_id)
+                                .unwrap_or_default()
                         ),
-                        VariantData::Unit => {}
+                        FieldsShape::Unit => {}
                     }
                 }
                 ProjectionElem::Field(Either::Right(f)) => {
@@ -367,9 +732,9 @@ impl CapturedItem {
 
     pub fn display_place(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
-        let krate = owner.krate(db.upcast());
-        let edition = db.crate_graph()[krate].edition;
-        let mut result = body[self.place.local].name.display(db.upcast(), edition).to_string();
+        let krate = owner.krate(db);
+        let edition = krate.data(db).edition;
+        let mut result = body[self.place.local].name.display(db, edition).to_string();
         let mut field_need_paren = false;
         for proj in &self.place.projections {
             match proj {
@@ -381,17 +746,18 @@ impl CapturedItem {
                     if field_need_paren {
                         result = format!("({result})");
                     }
-                    let variant_data = f.parent.variant_data(db.upcast());
-                    let field = match &*variant_data {
-                        VariantData::Record { fields, .. } => {
-                            fields[f.local_id].name.as_str().to_owned()
+                    let variant_data = f.parent.variant_data(db);
+                    let field = match variant_data.shape {
+                        FieldsShape::Record => {
+                            variant_data.fields()[f.local_id].name.as_str().to_owned()
                         }
-                        VariantData::Tuple { fields, .. } => fields
+                        FieldsShape::Tuple => variant_data
+                            .fields()
                             .iter()
                             .position(|it| it.0 == f.local_id)
                             .unwrap_or_default()
                             .to_string(),
-                        VariantData::Unit => "[missing field]".to_owned(),
+                        FieldsShape::Unit => "[missing field]".to_owned(),
                     };
                     result = format!("{result}.{field}");
                     field_need_paren = false;
@@ -493,10 +859,7 @@ impl CapturedItemWithoutTy {
                     Ok(BoundVar::new(outer_binder, idx).to_ty(Interner))
                 }
             }
-            let Some(generics) = ctx.generics() else {
-                return Binders::empty(Interner, ty);
-            };
-            let filler = &mut Filler { db: ctx.db, generics };
+            let filler = &mut Filler { db: ctx.db, generics: ctx.generics() };
             let result = ty.clone().try_fold_with(filler, DebruijnIndex::INNERMOST).unwrap_or(ty);
             make_binders(ctx.db, filler.generics, result)
         }
@@ -506,8 +869,8 @@ impl CapturedItemWithoutTy {
 impl InferenceContext<'_> {
     fn place_of_expr(&mut self, tgt_expr: ExprId) -> Option<HirPlace> {
         let r = self.place_of_expr_without_adjust(tgt_expr)?;
-        let default = vec![];
-        let adjustments = self.result.expr_adjustments.get(&tgt_expr).unwrap_or(&default);
+        let adjustments =
+            self.result.expr_adjustments.get(&tgt_expr).map(|it| &**it).unwrap_or_default();
         apply_adjusts_to_place(&mut self.current_capture_span_stack, r, adjustments)
     }
 
@@ -517,10 +880,8 @@ impl InferenceContext<'_> {
             return None;
         }
         let hygiene = self.body.expr_or_pat_path_hygiene(id);
-        let result = self
-            .resolver
-            .resolve_path_in_value_ns_fully(self.db.upcast(), path, hygiene)
-            .and_then(|result| match result {
+        self.resolver.resolve_path_in_value_ns_fully(self.db, path, hygiene).and_then(|result| {
+            match result {
                 ValueNs::LocalBinding(binding) => {
                     let mir_span = match id {
                         ExprOrPatId::ExprId(id) => MirSpan::ExprId(id),
@@ -530,8 +891,8 @@ impl InferenceContext<'_> {
                     Some(HirPlace { local: binding, projections: Vec::new() })
                 }
                 _ => None,
-            });
-        result
+            }
+        })
     }
 
     /// Changes `current_capture_span_stack` to contain the stack of spans for this expr.
@@ -540,7 +901,7 @@ impl InferenceContext<'_> {
         match &self.body[tgt_expr] {
             Expr::Path(p) => {
                 let resolver_guard =
-                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
+                    self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
                 let result = self.path_place(p, tgt_expr.into());
                 self.resolver.reset_to_guard(resolver_guard);
                 return result;
@@ -815,8 +1176,8 @@ impl InferenceContext<'_> {
                         {
                             if let Some(deref_fn) = self
                                 .db
-                                .trait_data(deref_trait)
-                                .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
+                                .trait_items(deref_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                             {
                                 break 'b deref_fn == f;
                             }
@@ -902,7 +1263,7 @@ impl InferenceContext<'_> {
             &Expr::Assignment { target, value } => {
                 self.walk_expr(value);
                 let resolver_guard =
-                    self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, tgt_expr);
+                    self.resolver.update_to_inner_scope(self.db, self.owner, tgt_expr);
                 match self.place_of_expr(value) {
                     Some(rhs_place) => {
                         self.inside_assignment = true;
@@ -961,9 +1322,9 @@ impl InferenceContext<'_> {
             | Pat::Or(_) => (),
             Pat::TupleStruct { .. } | Pat::Record { .. } => {
                 if let Some(variant) = self.result.variant_resolution_for_pat(p) {
-                    let adt = variant.adt_id(self.db.upcast());
+                    let adt = variant.adt_id(self.db);
                     let is_multivariant = match adt {
-                        hir_def::AdtId::EnumId(e) => self.db.enum_data(e).variants.len() != 1,
+                        hir_def::AdtId::EnumId(e) => self.db.enum_variants(e).variants.len() != 1,
                         _ => false,
                     };
                     if is_multivariant {
@@ -1052,7 +1413,7 @@ impl InferenceContext<'_> {
                     |_, _, _| {
                         unreachable!("Closure field only happens in MIR");
                     },
-                    self.owner.module(self.db.upcast()).krate(),
+                    self.owner.module(self.db).krate(),
                 );
                 if ty.as_raw_ptr().is_some() || ty.is_union() {
                     capture.kind = CaptureKind::ByRef(BorrowKind::Shared);
@@ -1159,7 +1520,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.struct_data(s).variant_data;
+                            let vd = &*self.db.variant_fields(s.into());
                             for field_pat in args.iter() {
                                 let arg = field_pat.pat;
                                 let Some(local_id) = vd.field(&field_pat.name) else {
@@ -1211,7 +1572,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.struct_data(s).variant_data;
+                            let vd = &*self.db.variant_fields(s.into());
                             let (al, ar) =
                                 args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                             let fields = vd.fields().iter();
@@ -1340,7 +1701,7 @@ impl InferenceContext<'_> {
             for (derefed_callee, callee_ty, params, expr) in exprs {
                 if let &Expr::Call { callee, .. } = &self.body[expr] {
                     let mut adjustments =
-                        self.result.expr_adjustments.remove(&callee).unwrap_or_default();
+                        self.result.expr_adjustments.remove(&callee).unwrap_or_default().into_vec();
                     self.write_fn_trait_method_resolution(
                         kind,
                         &derefed_callee,
@@ -1349,7 +1710,7 @@ impl InferenceContext<'_> {
                         &params,
                         expr,
                     );
-                    self.result.expr_adjustments.insert(callee, adjustments);
+                    self.result.expr_adjustments.insert(callee, adjustments.into_boxed_slice());
                 }
             }
         }
@@ -1387,7 +1748,41 @@ impl InferenceContext<'_> {
                 }
             }
         }
+        assert!(deferred_closures.is_empty(), "we should have analyzed all closures");
         result
+    }
+
+    pub(super) fn add_current_closure_dependency(&mut self, dep: ClosureId) {
+        if let Some(c) = self.current_closure {
+            if !dep_creates_cycle(&self.closure_dependencies, &mut FxHashSet::default(), c, dep) {
+                self.closure_dependencies.entry(c).or_default().push(dep);
+            }
+        }
+
+        fn dep_creates_cycle(
+            closure_dependencies: &FxHashMap<ClosureId, Vec<ClosureId>>,
+            visited: &mut FxHashSet<ClosureId>,
+            from: ClosureId,
+            to: ClosureId,
+        ) -> bool {
+            if !visited.insert(from) {
+                return false;
+            }
+
+            if from == to {
+                return true;
+            }
+
+            if let Some(deps) = closure_dependencies.get(&to) {
+                for dep in deps {
+                    if dep_creates_cycle(closure_dependencies, visited, from, *dep) {
+                        return true;
+                    }
+                }
+            }
+
+            false
+        }
     }
 }
 

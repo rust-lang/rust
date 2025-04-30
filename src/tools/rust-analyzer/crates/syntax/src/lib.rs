@@ -54,11 +54,11 @@ pub use crate::{
 };
 pub use parser::{Edition, SyntaxKind, T};
 pub use rowan::{
-    api::Preorder, Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize,
-    TokenAtOffset, WalkEvent,
+    Direction, GreenNode, NodeOrToken, SyntaxText, TextRange, TextSize, TokenAtOffset, WalkEvent,
+    api::Preorder,
 };
 pub use rustc_literal_escaper as unescape;
-pub use smol_str::{format_smolstr, SmolStr, SmolStrBuilder, ToSmolStr};
+pub use smol_str::{SmolStr, SmolStrBuilder, ToSmolStr, format_smolstr};
 
 /// `Parse` is the result of the parsing: a syntax tree and a collection of
 /// errors.

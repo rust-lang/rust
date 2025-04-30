@@ -5,21 +5,21 @@ use std::{
 
 use either::Either;
 use hir::{
-    sym, ClosureStyle, DisplayTarget, HasVisibility, HirDisplay, HirDisplayError, HirWrite,
-    ModuleDef, ModuleDefId, Semantics,
+    ClosureStyle, DisplayTarget, EditionedFileId, HasVisibility, HirDisplay, HirDisplayError,
+    HirWrite, ModuleDef, ModuleDefId, Semantics, sym,
 };
-use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
-use ide_db::{text_edit::TextEdit, FxHashSet};
+use ide_db::{FileRange, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder};
+use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
-use smallvec::{smallvec, SmallVec};
-use span::EditionedFileId;
+use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use syntax::{
+    SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
     ast::{self, AstNode, HasGenericParams},
-    format_smolstr, match_ast, SmolStr, SyntaxNode, TextRange, TextSize, WalkEvent,
+    format_smolstr, match_ast,
 };
 
-use crate::{navigation_target::TryToNav, FileId};
+use crate::{FileId, navigation_target::TryToNav};
 
 mod adjustment;
 mod bind_pat;
@@ -85,7 +85,7 @@ pub(crate) fn inlay_hints(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
     let file = sema.parse(file_id);
     let file = file.syntax();
 
@@ -136,7 +136,7 @@ pub(crate) fn inlay_hints_resolve(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
     let file = sema.parse(file_id);
     let file = file.syntax();
 
@@ -207,7 +207,11 @@ fn hints(
     file_id: EditionedFileId,
     node: SyntaxNode,
 ) {
-    let display_target = sema.first_crate_or_default(file_id.file_id()).to_display_target(sema.db);
+    let file_id = file_id.editioned_file_id(sema.db);
+    let Some(krate) = sema.first_crate(file_id.file_id()) else {
+        return;
+    };
+    let display_target = krate.to_display_target(sema.db);
     closing_brace::hints(hints, sema, config, file_id, display_target, node.clone());
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
         generic_param::hints(hints, famous_defs, config, any_has_generic_args);
@@ -219,12 +223,12 @@ fn hints(
                 chaining::hints(hints, famous_defs, config, display_target, &expr);
                 adjustment::hints(hints, famous_defs, config, display_target, &expr);
                 match expr {
-                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it)),
+                    ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
-                        param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
+                        param_name::hints(hints, famous_defs, config, ast::Expr::from(it))
                     }
                     ast::Expr::ClosureExpr(it) => {
-                        closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
+                        closure_captures::hints(hints, famous_defs, config, it.clone());
                         closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, file_id,  it),
@@ -793,7 +797,7 @@ fn hint_iterator(
 
     if ty.impls_trait(db, iter_trait, &[]) {
         let assoc_type_item = iter_trait.items(db).into_iter().find_map(|item| match item {
-            hir::AssocItem::TypeAlias(alias) if alias.name(db) == sym::Item.clone() => Some(alias),
+            hir::AssocItem::TypeAlias(alias) if alias.name(db) == sym::Item => Some(alias),
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, &[], assoc_type_item) {
@@ -809,7 +813,8 @@ fn ty_to_text_edit(
     config: &InlayHintsConfig,
     node_for_hint: &SyntaxNode,
     ty: &hir::Type,
-    offset_to_insert: TextSize,
+    offset_to_insert_ty: TextSize,
+    additional_edits: &dyn Fn(&mut TextEditBuilder),
     prefix: impl Into<String>,
 ) -> Option<LazyProperty<TextEdit>> {
     // FIXME: Limit the length and bail out on excess somehow?
@@ -818,8 +823,11 @@ fn ty_to_text_edit(
         .and_then(|scope| ty.display_source_code(scope.db, scope.module().into(), false).ok())?;
     Some(config.lazy_text_edit(|| {
         let mut builder = TextEdit::builder();
-        builder.insert(offset_to_insert, prefix.into());
-        builder.insert(offset_to_insert, rendered);
+        builder.insert(offset_to_insert_ty, prefix.into());
+        builder.insert(offset_to_insert_ty, rendered);
+
+        additional_edits(&mut builder);
+
         builder.finish()
     }))
 }
@@ -836,9 +844,9 @@ mod tests {
     use itertools::Itertools;
     use test_utils::extract_annotations;
 
-    use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
     use crate::DiscriminantHints;
-    use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
+    use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
+    use crate::{LifetimeElisionHints, fixture, inlay_hints::InlayHintsConfig};
 
     use super::{ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve};
 
@@ -992,6 +1000,53 @@ fn foo() {
 #[proc_macros::issue_18898]
 fn foo() {
     let
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn closure_dependency_cycle_no_panic() {
+        check(
+            r#"
+fn foo() {
+    let closure;
+     // ^^^^^^^ impl Fn()
+    closure = || {
+        closure();
+    };
+}
+
+fn bar() {
+    let closure1;
+     // ^^^^^^^^ impl Fn()
+    let closure2;
+     // ^^^^^^^^ impl Fn()
+    closure1 = || {
+        closure2();
+    };
+    closure2 = || {
+        closure1();
+    };
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn regression_19610() {
+        check(
+            r#"
+trait Trait {
+    type Assoc;
+}
+struct Foo<A>(A);
+impl<A: Trait<Assoc = impl Trait>> Foo<A> {
+    fn foo<'a, 'b>(_: &'a [i32], _: &'b [i32]) {}
+}
+
+fn bar() {
+    Foo::foo(&[1], &[2]);
 }
 "#,
         );

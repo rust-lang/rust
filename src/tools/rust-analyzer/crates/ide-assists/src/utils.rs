@@ -2,29 +2,29 @@
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
-    db::{ExpandDatabase, HirDatabase},
     DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
     Semantics,
+    db::{ExpandDatabase, HirDatabase},
 };
 use ide_db::{
+    RootDatabase,
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
-    RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
+    AstNode, AstToken, Direction, NodeOrToken, SourceFile,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, T, TextRange, TextSize, WalkEvent,
     ast::{
-        self,
+        self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
         edit_in_place::{AttrsOwnerEdit, Indent, Removable},
         make,
         syntax_factory::SyntaxFactory,
-        HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
-    ted, AstNode, AstToken, Direction, NodeOrToken, SourceFile,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, WalkEvent, T,
+    ted,
 };
 
 use crate::assist_context::{AssistContext, SourceChangeBuilder};
@@ -82,11 +82,7 @@ pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
     fn_def.attrs().find_map(|attr| {
         let path = attr.path()?;
         let text = path.syntax().text().to_string();
-        if text.starts_with("test") || text.ends_with("test") {
-            Some(attr)
-        } else {
-            None
-        }
+        if text.starts_with("test") || text.ends_with("test") { Some(attr) } else { None }
     })
 }
 
@@ -216,6 +212,7 @@ pub fn add_trait_assoc_items_to_impl(
     });
 
     let assoc_item_list = impl_.get_or_create_assoc_item_list();
+
     let mut first_item = None;
     for item in items {
         first_item.get_or_insert_with(|| item.clone());
@@ -333,7 +330,11 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
                 T![>] => T![<=],
                 T![>=] => T![<],
                 // Parenthesize other expressions before prefixing `!`
-                _ => return Some(make::expr_prefix(T![!], make::expr_paren(expr.clone())).into()),
+                _ => {
+                    return Some(
+                        make::expr_prefix(T![!], make::expr_paren(expr.clone()).into()).into(),
+                    );
+                }
             };
             ted::replace(op_token, make::token(rev_token));
             Some(bin.into())
@@ -350,7 +351,7 @@ fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
                 "is_err" => "is_ok",
                 _ => return None,
             };
-            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list))
+            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list).into())
         }
         ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
             ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
@@ -498,11 +499,7 @@ pub(crate) fn find_struct_impl(
         };
         let not_trait_impl = blk.trait_(db).is_none();
 
-        if !(same_ty && not_trait_impl) {
-            None
-        } else {
-            Some(impl_blk)
-        }
+        if !(same_ty && not_trait_impl) { None } else { Some(impl_blk) }
     });
 
     if let Some(ref impl_blk) = block {
@@ -859,6 +856,7 @@ impl ReferenceConversion {
                     make::expr_ref(expr, false)
                 } else {
                     make::expr_method_call(expr, make::name_ref("as_ref"), make::arg_list([]))
+                        .into()
                 }
             }
         }
@@ -1026,6 +1024,20 @@ fn test_required_hashes() {
     assert_eq!(0, required_hashes("#abc"));
     assert_eq!(3, required_hashes("#ab\"##c"));
     assert_eq!(5, required_hashes("#ab\"##\"####c"));
+}
+
+/// Calculate the string literal suffix length
+pub(crate) fn string_suffix(s: &str) -> Option<&str> {
+    s.rfind(['"', '\'', '#']).map(|i| &s[i + 1..])
+}
+#[test]
+fn test_string_suffix() {
+    assert_eq!(Some(""), string_suffix(r#""abc""#));
+    assert_eq!(Some(""), string_suffix(r#""""#));
+    assert_eq!(Some("a"), string_suffix(r#"""a"#));
+    assert_eq!(Some("i32"), string_suffix(r#"""i32"#));
+    assert_eq!(Some("i32"), string_suffix(r#"r""i32"#));
+    assert_eq!(Some("i32"), string_suffix(r##"r#""#i32"##));
 }
 
 /// Replaces the record expression, handling field shorthands including inside macros.

@@ -9,7 +9,7 @@ use std::fmt;
 
 use rustc_hash::FxHashSet;
 
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;
@@ -31,7 +31,7 @@ pub struct CfgOptions {
 
 impl Default for CfgOptions {
     fn default() -> Self {
-        Self { enabled: FxHashSet::from_iter([CfgAtom::Flag(sym::true_.clone())]) }
+        Self { enabled: FxHashSet::from_iter([CfgAtom::Flag(sym::true_)]) }
     }
 }
 
@@ -103,6 +103,17 @@ impl CfgOptions {
             CfgAtom::KeyValue { key, value } if cfg_key == key.as_str() => Some(value),
             _ => None,
         })
+    }
+
+    pub fn to_hashable(&self) -> HashableCfgOptions {
+        let mut enabled = self.enabled.iter().cloned().collect::<Box<[_]>>();
+        enabled.sort_unstable();
+        HashableCfgOptions { _enabled: enabled }
+    }
+
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.enabled.shrink_to_fit();
     }
 }
 
@@ -255,4 +266,10 @@ impl fmt::Display for InactiveReason {
 
         Ok(())
     }
+}
+
+/// A `CfgOptions` that implements `Hash`, for the sake of hashing only.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct HashableCfgOptions {
+    _enabled: Box<[CfgAtom]>,
 }
