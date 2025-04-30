@@ -101,7 +101,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
 pub use crate::collect::suggest_impl_trait;
@@ -216,9 +216,15 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
                 check::maybe_check_static_with_link_section(tcx, item_def_id);
             }
             DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
-                let instance = ty::Instance::new_raw(item_def_id.into(), ty::GenericArgs::empty());
-                let cid = GlobalId { instance, promoted: None };
                 let typing_env = ty::TypingEnv::fully_monomorphized();
+                let instance = ty::Instance::expect_resolve(
+                    tcx,
+                    typing_env,
+                    item_def_id.into(),
+                    ty::GenericArgs::empty(),
+                    DUMMY_SP,
+                );
+                let cid = GlobalId { instance, promoted: None };
                 tcx.ensure_ok().eval_to_const_value_raw(typing_env.as_query_input(cid));
             }
             _ => (),

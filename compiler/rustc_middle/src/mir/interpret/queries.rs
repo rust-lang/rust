@@ -1,3 +1,5 @@
+use std::assert_matches::debug_assert_matches;
+
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_session::lint;
@@ -18,14 +20,18 @@ impl<'tcx> TyCtxt<'tcx> {
     /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) -> EvalToConstValueResult<'tcx> {
+        debug_assert_matches!(
+            self.def_kind(def_id),
+            DefKind::Const | DefKind::AnonConst | DefKind::InlineConst
+        );
         // In some situations def_id will have generic parameters within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
         // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
-        let instance = ty::Instance::new_raw(def_id, args);
-        let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
+        let instance = ty::Instance::expect_resolve(self, typing_env, def_id, args, DUMMY_SP);
+        let cid = GlobalId { instance, promoted: None };
         self.const_eval_global_id(typing_env, cid, DUMMY_SP)
     }
 
@@ -34,14 +40,18 @@ impl<'tcx> TyCtxt<'tcx> {
     /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly_to_alloc(self, def_id: DefId) -> EvalToAllocationRawResult<'tcx> {
+        debug_assert_matches!(
+            self.def_kind(def_id),
+            DefKind::Const | DefKind::AnonConst | DefKind::InlineConst
+        );
         // In some situations def_id will have generic parameters within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
         // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
-        let instance = ty::Instance::new_raw(def_id, args);
-        let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
+        let instance = ty::Instance::expect_resolve(self, typing_env, def_id, args, DUMMY_SP);
+        let cid = GlobalId { instance, promoted: None };
         let inputs = self.erase_regions(typing_env.as_query_input(cid));
         self.eval_to_allocation_raw(inputs)
     }
@@ -203,14 +213,24 @@ impl<'tcx> TyCtxtEnsureOk<'tcx> {
     /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.
     #[instrument(skip(self), level = "debug")]
     pub fn const_eval_poly(self, def_id: DefId) {
+        debug_assert_matches!(
+            self.tcx.def_kind(def_id),
+            DefKind::Const | DefKind::AnonConst | DefKind::InlineConst
+        );
         // In some situations def_id will have generic parameters within scope, but they aren't allowed
         // to be used. So we can't use `Instance::mono`, instead we feed unresolved generic parameters
         // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self.tcx, def_id);
-        let instance = ty::Instance::new_raw(def_id, self.tcx.erase_regions(args));
-        let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self.tcx, def_id);
+        let instance = ty::Instance::expect_resolve(
+            self.tcx,
+            typing_env,
+            def_id,
+            self.tcx.erase_regions(args),
+            DUMMY_SP,
+        );
+        let cid = GlobalId { instance, promoted: None };
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
         let inputs = self.tcx.erase_regions(typing_env.as_query_input(cid));

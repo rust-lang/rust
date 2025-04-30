@@ -263,12 +263,12 @@ impl<'tcx> NonCopyConst<'tcx> {
     fn is_value_unfrozen_poly(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<'tcx>) -> bool {
         let def_id = body_id.hir_id.owner.to_def_id();
         let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
-        let instance = ty::Instance::new_raw(def_id, args);
+        let typing_env = ty::TypingEnv::post_analysis(cx.tcx, def_id);
+        let instance = ty::Instance::expect_resolve(self.tcx,typing_env,def_id, args, DUMMY_SP);
         let cid = GlobalId {
             instance,
             promoted: None,
         };
-        let typing_env = ty::TypingEnv::post_analysis(cx.tcx, def_id);
         let result = cx.tcx.const_eval_global_id_for_typeck(typing_env, cid, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
