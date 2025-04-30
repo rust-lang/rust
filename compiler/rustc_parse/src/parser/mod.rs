@@ -58,13 +58,62 @@ mod tokenstream {
 }
 
 bitflags::bitflags! {
+    /// Restrictions applied while parsing.
+    ///
+    /// The parser maintains a bitset of restrictions it will honor while
+    /// parsing. This is essentially used as a way of tracking state of what
+    /// is being parsed and to change behavior based on that.
     #[derive(Clone, Copy, Debug)]
     struct Restrictions: u8 {
+        /// Restricts expressions for use in statement position.
+        ///
+        /// When expressions are used in various places, like statements or
+        /// match arms, this is used to stop parsing once certain tokens are
+        /// reached.
+        ///
+        /// For example, `if true {} & 1` with `STMT_EXPR` in effect is parsed
+        /// as two separate expression statements (`if` and a reference to 1).
+        /// Otherwise it is parsed as a bitwise AND where `if` is on the left
+        /// and 1 is on the right.
         const STMT_EXPR         = 1 << 0;
+        /// Do not allow struct literals.
+        ///
+        /// There are several places in the grammar where we don't want to
+        /// allow struct literals because they can require lookahead, or
+        /// otherwise could be ambiguous or cause confusion. For example,
+        /// `if Foo {} {}` isn't clear if it is `Foo{}` struct literal, or
+        /// just `Foo` is the condition, followed by a consequent block,
+        /// followed by an empty block.
+        ///
+        /// See [RFC 92](https://rust-lang.github.io/rfcs/0092-struct-grammar.html).
         const NO_STRUCT_LITERAL = 1 << 1;
+        /// Used to provide better error messages for const generic arguments.
+        ///
+        /// An un-braced const generic argument is limited to a very small
+        /// subset of expressions. This is used to detect the situation where
+        /// an expression outside of that subset is used, and to suggest to
+        /// wrap the expression in braces.
         const CONST_EXPR        = 1 << 2;
+        /// Allows `let` expressions.
+        ///
+        /// `let pattern = scrutinee` is parsed as an expression, but it is
+        /// only allowed in let chains (`if` and `while` conditions).
+        /// Otherwise it is not an expression (note that `let` in statement
+        /// positions is treated as a `StmtKind::Let` statement, which has a
+        /// slightly different grammar).
         const ALLOW_LET         = 1 << 3;
+        /// Used to detect a missing `=>` in a match guard.
+        ///
+        /// This is used for error handling in a match guard to give a better
+        /// error message if the `=>` is missing. It is set when parsing the
+        /// guard expression.
         const IN_IF_GUARD       = 1 << 4;
+        /// Used to detect the incorrect use of expressions in patterns.
+        ///
+        /// This is used for error handling while parsing a pattern. During
+        /// error recovery, this will be set to try to parse the pattern as an
+        /// expression, but halts parsing the expression when reaching certain
+        /// tokens like `=`.
         const IS_PAT            = 1 << 5;
     }
 }
