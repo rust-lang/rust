@@ -173,32 +173,32 @@ mod expressions {
     fn expr_for_loop() {
         let x;
         {
-                let _t =
-                    match #[lang = "into_iter"](x) {
-                            mut iter =>
-                                loop {
-                                        match #[lang = "next"](&mut iter) {
-                                                #[lang = "None"] {} => break,
-                                                #[lang = "Some"] {  0: _ } => { }
-                                            }
-                                    },
-                        };
-                _t
-            };
+            let _t =
+                match #[lang = "into_iter"](x) {
+                    mut iter =>
+                        loop {
+                            match #[lang = "next"](&mut iter) {
+                                #[lang = "None"] {} => break,
+                                #[lang = "Some"] {  0: _ } => { }
+                            }
+                        },
+                };
+            _t
+        };
         {
-                let _t =
-                    match #[lang = "into_iter"](x) {
-                            mut iter =>
-                                'a:
-                                    loop {
-                                        match #[lang = "next"](&mut iter) {
-                                                #[lang = "None"] {} => break,
-                                                #[lang = "Some"] {  0: _ } => { }
-                                            }
-                                    },
-                        };
-                _t
-            }
+            let _t =
+                match #[lang = "into_iter"](x) {
+                    mut iter =>
+                        'a:
+                            loop {
+                            match #[lang = "next"](&mut iter) {
+                                #[lang = "None"] {} => break,
+                                #[lang = "Some"] {  0: _ } => { }
+                            }
+                        },
+                };
+            _t
+        }
     }
 
     /// ExprKind::Loop
@@ -383,12 +383,11 @@ mod expressions {
     fn expr_try() {
         let expr;
         match #[lang = "branch"](expr) {
-                #[lang = "Break"] {  0: residual } =>
-                    #[allow(unreachable_code)]
-                    return #[lang = "from_residual"](residual),
-                #[lang = "Continue"] {  0: val } => #[allow(unreachable_code)]
-                    val,
-            };
+            #[lang = "Break"] {  0: residual } => #[allow(unreachable_code)]
+                return #[lang = "from_residual"](residual),
+            #[lang = "Continue"] {  0: val } => #[allow(unreachable_code)]
+                val,
+        };
     }
     /// ExprKind::Yield
     fn expr_yield() { yield (); yield true; }

@@ -1503,7 +1503,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::DropTemps(init) => {
                 // Print `{`:
-                let cb = self.cbox(INDENT_UNIT);
+                let cb = self.cbox(0);
                 let ib = self.ibox(0);
                 self.bopen(ib);
 
@@ -1530,12 +1530,14 @@ impl<'a> State<'a> {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                let (cb, ib) = self.head("loop");
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
+                self.word_nbsp("loop");
                 self.print_block(blk, cb, ib);
             }
             hir::ExprKind::Match(expr, arms, _) => {
-                let cb = self.cbox(INDENT_UNIT);
-                let ib = self.ibox(INDENT_UNIT);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(expr);
                 self.space();
