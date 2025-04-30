@@ -2,19 +2,19 @@ use std::iter::successors;
 
 use either::Either;
 use ide_db::{
+    RootDatabase,
     defs::NameClass,
     syntax_helpers::node_ext::{is_pattern_cond, single_let},
     ty_filter::TryEnum,
-    RootDatabase,
 };
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory, HasName},
-    AstNode, TextRange, T,
+    AstNode, T, TextRange,
+    ast::{self, HasName, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
+    AssistContext, AssistId, Assists,
     utils::{does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block},
-    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: replace_if_let_with_match
@@ -101,11 +101,11 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
     let let_ = if pat_seen { " let" } else { "" };
 
     acc.add(
-        AssistId("replace_if_let_with_match", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_if_let_with_match"),
         format!("Replace if{let_} with match"),
         available_range,
         move |builder| {
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let match_expr = {
                 let else_arm = make_else_arm(ctx, &make, else_block, &cond_bodies);
                 let make_match_arm = |(pat, body): (_, ast::BlockExpr)| {
@@ -142,7 +142,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
             let mut editor = builder.make_editor(if_expr.syntax());
             editor.replace(if_expr.syntax(), expr.syntax());
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -249,11 +249,11 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         _ => " let",
     };
     acc.add(
-        AssistId("replace_match_with_if_let", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_match_with_if_let"),
         format!("Replace match with if{let_}"),
         match_expr.syntax().text_range(),
         move |builder| {
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let make_block_expr = |expr: ast::Expr| {
                 // Blocks with modifiers (unsafe, async, etc.) are parsed as BlockExpr, but are
                 // formatted without enclosing braces. If we encounter such block exprs,
@@ -291,7 +291,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
             let mut editor = builder.make_editor(match_expr.syntax());
             editor.replace(match_expr.syntax(), if_let_expr.syntax());
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

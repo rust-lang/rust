@@ -12,6 +12,7 @@ pub(crate) struct KindsSrc {
     pub(crate) literals: &'static [&'static str],
     pub(crate) tokens: &'static [&'static str],
     pub(crate) nodes: &'static [&'static str],
+    pub(crate) _enums: &'static [&'static str],
     pub(crate) edition_dependent_keywords: &'static [(&'static str, Edition)],
 }
 
@@ -206,13 +207,21 @@ pub(crate) fn generate_kind_src(
     let nodes = nodes
         .iter()
         .map(|it| &it.name)
-        .chain(enums.iter().map(|it| &it.name))
         .map(|it| to_upper_snake_case(it))
         .map(String::leak)
         .map(|it| &*it)
         .collect();
     let nodes = Vec::leak(nodes);
     nodes.sort();
+    let enums = enums
+        .iter()
+        .map(|it| &it.name)
+        .map(|it| to_upper_snake_case(it))
+        .map(String::leak)
+        .map(|it| &*it)
+        .collect();
+    let enums = Vec::leak(enums);
+    enums.sort();
     let keywords = Vec::leak(keywords);
     let contextual_keywords = Vec::leak(contextual_keywords);
     let edition_dependent_keywords = Vec::leak(edition_dependent_keywords);
@@ -224,6 +233,7 @@ pub(crate) fn generate_kind_src(
     KindsSrc {
         punct: PUNCT,
         nodes,
+        _enums: enums,
         keywords,
         contextual_keywords,
         edition_dependent_keywords,

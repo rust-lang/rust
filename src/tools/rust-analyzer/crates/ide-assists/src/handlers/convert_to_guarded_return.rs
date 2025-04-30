@@ -5,20 +5,21 @@ use ide_db::{
     ty_filter::TryEnum,
 };
 use syntax::{
+    AstNode,
+    SyntaxKind::{FN, FOR_EXPR, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
+    T,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    ted, AstNode,
-    SyntaxKind::{FN, FOR_EXPR, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
-    T,
+    ted,
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression_legacy,
-    AssistId, AssistKind,
 };
 
 // Assist: convert_to_guarded_return
@@ -127,7 +128,7 @@ fn if_expr_to_guarded_return(
 
     let target = if_expr.syntax().text_range();
     acc.add(
-        AssistId("convert_to_guarded_return", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_to_guarded_return"),
         "Convert to guarded return",
         target,
         |edit| {
@@ -209,7 +210,7 @@ fn let_stmt_to_guarded_return(
     };
 
     acc.add(
-        AssistId("convert_to_guarded_return", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_to_guarded_return"),
         "Convert to guarded return",
         target,
         |edit| {

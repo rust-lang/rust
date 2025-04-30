@@ -7,9 +7,9 @@ mod derive_macro;
 mod fn_macro;
 
 pub use self::{
-    attr_macro::{find_builtin_attr, pseudo_derive_attr_expansion, BuiltinAttrExpander},
-    derive_macro::{find_builtin_derive, BuiltinDeriveExpander},
+    attr_macro::{BuiltinAttrExpander, find_builtin_attr, pseudo_derive_attr_expansion},
+    derive_macro::{BuiltinDeriveExpander, find_builtin_derive},
     fn_macro::{
-        find_builtin_macro, include_input_to_file_id, BuiltinFnLikeExpander, EagerExpander,
+        BuiltinFnLikeExpander, EagerExpander, find_builtin_macro, include_input_to_file_id,
     },
 };

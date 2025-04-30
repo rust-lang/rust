@@ -3,24 +3,24 @@
 use std::iter::repeat_with;
 
 use hir_def::{
-    expr_store::Body,
-    hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
-    path::Path,
     HasModule,
+    expr_store::{Body, path::Path},
+    hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
 };
 use hir_expand::name::Name;
 use stdx::TupleExt;
 
 use crate::{
+    DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
+    TyBuilder, TyExt, TyKind,
     consteval::{self, try_const_usize, usize_const},
     infer::{
-        coerce::CoerceNever, expr::ExprIsRead, BindingMode, Expectation, InferenceContext,
-        TypeMismatch,
+        BindingMode, Expectation, InferenceContext, TypeMismatch, coerce::CoerceNever,
+        expr::ExprIsRead,
     },
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar,
-    Substitution, Ty, TyBuilder, TyExt, TyKind,
+    static_lifetime,
 };
 
 impl InferenceContext<'_> {
@@ -38,7 +38,7 @@ impl InferenceContext<'_> {
         decl: Option<DeclContext>,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(id.into(), path, true);
-        let var_data = def.map(|it| it.variant_data(self.db.upcast()));
+        let var_data = def.map(|it| it.variant_data(self.db));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -60,7 +60,7 @@ impl InferenceContext<'_> {
             _ if subs.is_empty() => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db.upcast());
+                let variant_data = def.variant_data(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let (pre, post) = match ellipsis {
@@ -79,7 +79,7 @@ impl InferenceContext<'_> {
                         match variant_data.field(&Name::new_tuple_field(i)) {
                             Some(local_id) => {
                                 if !visibilities[local_id]
-                                    .is_visible_from(self.db.upcast(), self.resolver.module())
+                                    .is_visible_from(self.db, self.resolver.module())
                                 {
                                     // FIXME(DIAGNOSE): private tuple field
                                 }
@@ -129,7 +129,7 @@ impl InferenceContext<'_> {
             _ if subs.len() == 0 => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db.upcast());
+                let variant_data = def.variant_data(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let substs = ty.as_adt().map(TupleExt::tail);
@@ -139,7 +139,7 @@ impl InferenceContext<'_> {
                         match variant_data.field(&name) {
                             Some(local_id) => {
                                 if !visibilities[local_id]
-                                    .is_visible_from(self.db.upcast(), self.resolver.module())
+                                    .is_visible_from(self.db, self.resolver.module())
                                 {
                                     self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                         field: inner.into(),
@@ -594,8 +594,7 @@ impl InferenceContext<'_> {
         }
 
         let len = before.len() + suffix.len();
-        let size =
-            consteval::usize_const(self.db, Some(len as u128), self.owner.krate(self.db.upcast()));
+        let size = consteval::usize_const(self.db, Some(len as u128), self.owner.krate(self.db));
 
         let elem_ty = self.table.new_type_var();
         let array_ty = TyKind::Array(elem_ty.clone(), size).intern(Interner);

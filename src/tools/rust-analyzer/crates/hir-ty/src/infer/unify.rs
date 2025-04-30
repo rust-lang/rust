@@ -1,15 +1,15 @@
 //! Unification and canonicalization logic.
 
-use std::{fmt, iter, mem};
+use std::{fmt, mem};
 
 use chalk_ir::{
-    cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
-    IntTy, TyVariableKind, UniverseIndex,
+    CanonicalVarKind, FloatTy, IntTy, TyVariableKind, UniverseIndex, cast::Cast,
+    fold::TypeFoldable, interner::HasInterner, zip::Zip,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
-use hir_def::{lang_item::LangItem, AdtId};
+use hir_def::{AdtId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashMap;
@@ -18,12 +18,12 @@ use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
+    AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue, DebruijnIndex, DomainGoal,
+    GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment, InferenceVar, Interner,
+    Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
     consteval::unknown_const, db::HirDatabase, fold_generic_args, fold_tys_and_consts,
-    to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
-    DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
-    InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar,
-    Solution, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind,
-    WhereClause,
+    to_chalk_trait_id, traits::FnTrait,
 };
 
 impl InferenceContext<'_> {
@@ -364,6 +364,64 @@ impl<'a> InferenceTable<'a> {
         )
     }
 
+    /// Works almost same as [`Self::normalize_associated_types_in`], but this also resolves shallow
+    /// the inference variables
+    pub(crate) fn eagerly_normalize_and_resolve_shallow_in<T>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+    {
+        fn eagerly_resolve_ty<const N: usize>(
+            table: &mut InferenceTable<'_>,
+            ty: Ty,
+            mut tys: SmallVec<[Ty; N]>,
+        ) -> Ty {
+            if tys.contains(&ty) {
+                return ty;
+            }
+            tys.push(ty.clone());
+
+            match ty.kind(Interner) {
+                TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                    let ty = table.normalize_projection_ty(proj_ty.clone());
+                    eagerly_resolve_ty(table, ty, tys)
+                }
+                TyKind::InferenceVar(..) => {
+                    let ty = table.resolve_ty_shallow(&ty);
+                    eagerly_resolve_ty(table, ty, tys)
+                }
+                _ => ty,
+            }
+        }
+
+        fold_tys_and_consts(
+            ty,
+            |e, _| match e {
+                Either::Left(ty) => {
+                    Either::Left(eagerly_resolve_ty::<8>(self, ty, SmallVec::new()))
+                }
+                Either::Right(c) => Either::Right(match &c.data(Interner).value {
+                    chalk_ir::ConstValue::Concrete(cc) => match &cc.interned {
+                        crate::ConstScalar::UnevaluatedConst(c_id, subst) => {
+                            // FIXME: same as `normalize_associated_types_in`
+                            if subst.len(Interner) == 0 {
+                                if let Ok(eval) = self.db.const_eval(*c_id, subst.clone(), None) {
+                                    eval
+                                } else {
+                                    unknown_const(c.data(Interner).ty.clone())
+                                }
+                            } else {
+                                unknown_const(c.data(Interner).ty.clone())
+                            }
+                        }
+                        _ => c,
+                    },
+                    _ => c,
+                }),
+            },
+            DebruijnIndex::INNERMOST,
+        )
+    }
+
     pub(crate) fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
         let var = self.new_type_var();
         let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
@@ -386,7 +444,7 @@ impl<'a> InferenceTable<'a> {
     }
     fn extend_type_variable_table(&mut self, to_index: usize) {
         let count = to_index - self.type_variable_table.len() + 1;
-        self.type_variable_table.extend(iter::repeat(TypeVariableFlags::default()).take(count));
+        self.type_variable_table.extend(std::iter::repeat_n(TypeVariableFlags::default(), count));
     }
 
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
@@ -795,13 +853,13 @@ impl<'a> InferenceTable<'a> {
         num_args: usize,
     ) -> Option<(FnTrait, Vec<Ty>, Ty)> {
         for (fn_trait_name, output_assoc_name, subtraits) in [
-            (FnTrait::FnOnce, sym::Output.clone(), &[FnTrait::Fn, FnTrait::FnMut][..]),
-            (FnTrait::AsyncFnMut, sym::CallRefFuture.clone(), &[FnTrait::AsyncFn]),
-            (FnTrait::AsyncFnOnce, sym::CallOnceFuture.clone(), &[]),
+            (FnTrait::FnOnce, sym::Output, &[FnTrait::Fn, FnTrait::FnMut][..]),
+            (FnTrait::AsyncFnMut, sym::CallRefFuture, &[FnTrait::AsyncFn]),
+            (FnTrait::AsyncFnOnce, sym::CallOnceFuture, &[]),
         ] {
             let krate = self.trait_env.krate;
             let fn_trait = fn_trait_name.get_id(self.db, krate)?;
-            let trait_data = self.db.trait_data(fn_trait);
+            let trait_data = self.db.trait_items(fn_trait);
             let output_assoc_type =
                 trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
 
@@ -890,11 +948,7 @@ impl<'a> InferenceTable<'a> {
             TyKind::Error => self.new_type_var(),
             TyKind::InferenceVar(..) => {
                 let ty_resolved = self.resolve_ty_shallow(&ty);
-                if ty_resolved.is_unknown() {
-                    self.new_type_var()
-                } else {
-                    ty
-                }
+                if ty_resolved.is_unknown() { self.new_type_var() } else { ty }
             }
             _ => ty,
         }
@@ -922,15 +976,33 @@ impl<'a> InferenceTable<'a> {
 
     /// Check if given type is `Sized` or not
     pub(crate) fn is_sized(&mut self, ty: &Ty) -> bool {
+        fn short_circuit_trivial_tys(ty: &Ty) -> Option<bool> {
+            match ty.kind(Interner) {
+                TyKind::Scalar(..)
+                | TyKind::Ref(..)
+                | TyKind::Raw(..)
+                | TyKind::Never
+                | TyKind::FnDef(..)
+                | TyKind::Array(..)
+                | TyKind::Function(..) => Some(true),
+                TyKind::Slice(..) | TyKind::Str | TyKind::Dyn(..) => Some(false),
+                _ => None,
+            }
+        }
+
         let mut ty = ty.clone();
+        ty = self.eagerly_normalize_and_resolve_shallow_in(ty);
+        if let Some(sized) = short_circuit_trivial_tys(&ty) {
+            return sized;
+        }
+
         {
             let mut structs = SmallVec::<[_; 8]>::new();
             // Must use a loop here and not recursion because otherwise users will conduct completely
             // artificial examples of structs that have themselves as the tail field and complain r-a crashes.
             while let Some((AdtId::StructId(id), subst)) = ty.as_adt() {
-                let struct_data = self.db.struct_data(id);
-                if let Some((last_field, _)) = struct_data.variant_data.fields().iter().next_back()
-                {
+                let struct_data = self.db.variant_fields(id.into());
+                if let Some((last_field, _)) = struct_data.fields().iter().next_back() {
                     let last_field_ty = self.db.field_types(id.into())[last_field]
                         .clone()
                         .substitute(Interner, subst);
@@ -942,24 +1014,14 @@ impl<'a> InferenceTable<'a> {
                     // Structs can have DST as its last field and such cases are not handled
                     // as unsized by the chalk, so we do this manually.
                     ty = last_field_ty;
+                    ty = self.eagerly_normalize_and_resolve_shallow_in(ty);
+                    if let Some(sized) = short_circuit_trivial_tys(&ty) {
+                        return sized;
+                    }
                 } else {
                     break;
                 };
             }
-        }
-
-        // Early return for some obvious types
-        if matches!(
-            ty.kind(Interner),
-            TyKind::Scalar(..)
-                | TyKind::Ref(..)
-                | TyKind::Raw(..)
-                | TyKind::Never
-                | TyKind::FnDef(..)
-                | TyKind::Array(..)
-                | TyKind::Function(_)
-        ) {
-            return true;
         }
 
         let Some(sized) = self
@@ -1032,7 +1094,7 @@ mod resolve {
                     .assert_ty_ref(Interner)
                     .clone();
             }
-            let result = if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
+            if let Some(known_ty) = self.table.var_unification_table.probe_var(var) {
                 // known_ty may contain other variables that are known by now
                 self.var_stack.push(var);
                 let result = known_ty.fold_with(self, outer_binder);
@@ -1043,8 +1105,7 @@ mod resolve {
                 (self.fallback)(var, VariableKind::Ty(kind), default, outer_binder)
                     .assert_ty_ref(Interner)
                     .clone()
-            };
-            result
+            }
         }
 
         fn fold_inference_const(

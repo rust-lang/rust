@@ -3,25 +3,26 @@ use std::iter;
 use either::Either;
 use hir::{HasCrate, Module, ModuleDef, Name, Variant};
 use ide_db::{
+    FxHashSet, RootDatabase,
     defs::Definition,
     helpers::mod_path_to_ast,
-    imports::insert_use::{insert_use, ImportScope, InsertUseConfig},
+    imports::insert_use::{ImportScope, InsertUseConfig, insert_use},
     path_transform::PathTransform,
     search::FileReference,
-    FxHashSet, RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
-        HasName, HasVisibility,
-    },
-    match_ast, ted, Edition, SyntaxElement,
+    Edition, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, T,
+    ast::{
+        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::IndentLevel,
+        edit_in_place::Indent, make,
+    },
+    match_ast, ted,
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -54,7 +55,7 @@ pub(crate) fn extract_struct_from_enum_variant(
     let enum_hir = ctx.sema.to_def(&enum_ast)?;
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("extract_struct_from_enum_variant", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("extract_struct_from_enum_variant"),
         "Extract struct from enum variant",
         target,
         |builder| {
@@ -73,7 +74,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     def_file_references = Some(references);
                     continue;
                 }
-                builder.edit_file(file_id.file_id());
+                builder.edit_file(file_id.file_id(ctx.db()));
                 let processed = process_references(
                     ctx,
                     builder,
@@ -86,7 +87,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     apply_references(ctx.config.insert_use, path, node, import, edition)
                 });
             }
-            builder.edit_file(ctx.file_id());
+            builder.edit_file(ctx.vfs_file_id());
 
             let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {

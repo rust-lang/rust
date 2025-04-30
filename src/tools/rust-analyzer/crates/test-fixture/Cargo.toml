@@ -18,6 +18,8 @@ rustc-hash.workspace = true
 span.workspace = true
 stdx.workspace = true
 intern.workspace = true
+triomphe.workspace = true
+paths.workspace = true
 
 [lints]
 workspace = true

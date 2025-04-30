@@ -440,6 +440,30 @@ fn main() {
 }
 
 #[test]
+fn doctest_convert_for_loop_to_while_let() {
+    check_doc_test(
+        "convert_for_loop_to_while_let",
+        r#####"
+fn main() {
+    let x = vec![1, 2, 3];
+    for$0 v in x {
+        let y = v * 2;
+    };
+}
+"#####,
+        r#####"
+fn main() {
+    let x = vec![1, 2, 3];
+    let mut tmp = x.into_iter();
+    while let Some(v) = tmp.next() {
+        let y = v * 2;
+    };
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_convert_for_loop_with_for_each() {
     check_doc_test(
         "convert_for_loop_with_for_each",
@@ -2719,6 +2743,25 @@ fn main() {
         r#####"
 fn main() {
     _ = 2 + 2;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_remove_underscore_from_used_variables() {
+    check_doc_test(
+        "remove_underscore_from_used_variables",
+        r#####"
+fn main() {
+    let mut _$0foo = 1;
+    _foo = 2;
+}
+"#####,
+        r#####"
+fn main() {
+    let mut foo = 1;
+    foo = 2;
 }
 "#####,
     )

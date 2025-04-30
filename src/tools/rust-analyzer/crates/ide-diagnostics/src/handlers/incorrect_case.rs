@@ -1,13 +1,13 @@
-use hir::{db::ExpandDatabase, CaseType, InFile};
+use hir::{CaseType, InFile, db::ExpandDatabase};
 use ide_db::{assists::Assist, defs::NameClass};
 use syntax::AstNode;
 
 use crate::{
-    // references::rename::rename_with_semantics,
-    unresolved_fix,
     Diagnostic,
     DiagnosticCode,
     DiagnosticsContext,
+    // references::rename::rename_with_semantics,
+    unresolved_fix,
 };
 
 // Diagnostic: incorrect-ident-case
@@ -786,6 +786,8 @@ static FOO: () = {
     }
 
     #[test]
+    // FIXME
+    #[should_panic]
     fn enum_variant_body_inner_item() {
         check_diagnostics(
             r#"

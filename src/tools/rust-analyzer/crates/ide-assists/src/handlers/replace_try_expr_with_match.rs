@@ -1,16 +1,13 @@
 use std::iter;
 
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    ty_filter::TryEnum,
-};
+use ide_db::{assists::AssistId, ty_filter::TryEnum};
 use syntax::{
+    AstNode, T,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    AstNode, T,
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -48,7 +45,7 @@ pub(crate) fn replace_try_expr_with_match(
 
     let target = qm_kw_parent.syntax().text_range();
     acc.add(
-        AssistId("replace_try_expr_with_match", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_try_expr_with_match"),
         "Replace try expression with match",
         target,
         |edit| {
@@ -64,10 +61,13 @@ pub(crate) fn replace_try_expr_with_match(
                 TryEnum::Option => {
                     make::expr_return(Some(make::expr_path(make::ext::ident_path("None"))))
                 }
-                TryEnum::Result => make::expr_return(Some(make::expr_call(
-                    make::expr_path(make::ext::ident_path("Err")),
-                    make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
-                ))),
+                TryEnum::Result => make::expr_return(Some(
+                    make::expr_call(
+                        make::expr_path(make::ext::ident_path("Err")),
+                        make::arg_list(iter::once(make::expr_path(make::ext::ident_path("err")))),
+                    )
+                    .into(),
+                )),
             };
 
             let happy_arm = make::match_arm(

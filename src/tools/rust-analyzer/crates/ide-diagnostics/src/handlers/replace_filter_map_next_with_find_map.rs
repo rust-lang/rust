@@ -1,12 +1,12 @@
-use hir::{db::ExpandDatabase, HirFileIdExt, InFile};
+use hir::{InFile, db::ExpandDatabase};
 use ide_db::source_change::SourceChange;
 use ide_db::text_edit::TextEdit;
 use syntax::{
-    ast::{self, HasArgList},
     AstNode, TextRange,
+    ast::{self, HasArgList},
 };
 
-use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: replace-filter-map-next-with-find-map
 //
@@ -43,7 +43,8 @@ fn fixes(
 
     let edit = TextEdit::replace(range_to_replace, replacement);
 
-    let source_change = SourceChange::from_text_edit(d.file.original_file(ctx.sema.db), edit);
+    let source_change =
+        SourceChange::from_text_edit(d.file.original_file(ctx.sema.db).file_id(ctx.sema.db), edit);
 
     Some(vec![fix(
         "replace_with_find_map",
@@ -56,8 +57,8 @@ fn fixes(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics_with_config, check_fix},
         DiagnosticsConfig,
+        tests::{check_diagnostics_with_config, check_fix},
     };
 
     #[track_caller]

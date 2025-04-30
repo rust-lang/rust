@@ -4,16 +4,16 @@
 //! tests. This module also implements a couple of magic tricks, like renaming
 //! `self` and to `self` (to switch between associated function and method).
 
-use hir::{AsAssocItem, HirFileIdExt, InFile, Semantics};
+use hir::{AsAssocItem, InFile, Semantics};
 use ide_db::{
-    defs::{Definition, NameClass, NameRefClass},
-    rename::{bail, format_err, source_edit_from_references, IdentifierKind},
-    source_change::SourceChangeBuilder,
     FileId, FileRange, RootDatabase,
+    defs::{Definition, NameClass, NameRefClass},
+    rename::{IdentifierKind, bail, format_err, source_edit_from_references},
+    source_change::SourceChangeBuilder,
 };
 use itertools::Itertools;
 use stdx::{always, never};
-use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize};
+use syntax::{AstNode, SyntaxKind, SyntaxNode, TextRange, TextSize, ast};
 
 use ide_db::text_edit::TextEdit;
 
@@ -120,7 +120,7 @@ pub(crate) fn rename(
                 source_change.extend(usages.references.get_mut(&file_id).iter().map(|refs| {
                     (
                         position.file_id,
-                        source_edit_from_references(refs, def, new_name, file_id.edition()),
+                        source_edit_from_references(refs, def, new_name, file_id.edition(db)),
                     )
                 }));
 
@@ -297,7 +297,7 @@ fn find_definitions(
                 // remove duplicates, comparing `Definition`s
                 Ok(v.into_iter()
                     .unique_by(|&(.., def)| def)
-                    .map(|(a, b, c)| (a.into(), b, c))
+                    .map(|(a, b, c)| (a.into_file_id(sema.db), b, c))
                     .collect::<Vec<_>>()
                     .into_iter())
             }
@@ -368,10 +368,13 @@ fn rename_to_self(
     let usages = def.usages(sema).all();
     let mut source_change = SourceChange::default();
     source_change.extend(usages.iter().map(|(file_id, references)| {
-        (file_id.into(), source_edit_from_references(references, def, "self", file_id.edition()))
+        (
+            file_id.file_id(sema.db),
+            source_edit_from_references(references, def, "self", file_id.edition(sema.db)),
+        )
     }));
     source_change.insert_source_edit(
-        file_id.original_file(sema.db),
+        file_id.original_file(sema.db).file_id(sema.db),
         TextEdit::replace(param_source.syntax().text_range(), String::from(self_param)),
     );
     Ok(source_change)
@@ -402,9 +405,12 @@ fn rename_self_to_param(
         bail!("Cannot rename reference to `_` as it is being referenced multiple times");
     }
     let mut source_change = SourceChange::default();
-    source_change.insert_source_edit(file_id.original_file(sema.db), edit);
+    source_change.insert_source_edit(file_id.original_file(sema.db).file_id(sema.db), edit);
     source_change.extend(usages.iter().map(|(file_id, references)| {
-        (file_id.into(), source_edit_from_references(references, def, new_name, file_id.edition()))
+        (
+            file_id.file_id(sema.db),
+            source_edit_from_references(references, def, new_name, file_id.edition(sema.db)),
+        )
     }));
     Ok(source_change)
 }
@@ -443,7 +449,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use ide_db::source_change::SourceChange;
     use ide_db::text_edit::TextEdit;
     use itertools::Itertools;
@@ -509,10 +515,9 @@ mod tests {
         let found_conflicts = source_change
             .source_file_edits
             .iter()
+            .filter(|(_, (edit, _))| edit.change_annotation().is_some())
             .flat_map(|(file_id, (edit, _))| {
-                edit.into_iter()
-                    .filter(|edit| edit.annotation.is_some())
-                    .map(move |edit| (*file_id, edit.delete))
+                edit.into_iter().map(move |edit| (*file_id, edit.delete))
             })
             .sorted_unstable_by_key(|(file_id, range)| (*file_id, range.start()))
             .collect_vec();
@@ -1081,7 +1086,6 @@ mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1129,7 +1133,6 @@ use crate::foo$0::FooContent;
                             Indel {
                                 insert: "quux",
                                 delete: 8..11,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1141,7 +1144,6 @@ use crate::foo$0::FooContent;
                             Indel {
                                 insert: "quux",
                                 delete: 11..14,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1183,7 +1185,6 @@ mod fo$0o;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1232,7 +1233,6 @@ mod outer { mod fo$0o; }
                             Indel {
                                 insert: "bar",
                                 delete: 16..19,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1304,7 +1304,6 @@ pub mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 27..30,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1316,7 +1315,6 @@ pub mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 8..11,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1372,7 +1370,6 @@ mod quux;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1506,12 +1503,10 @@ pub fn baz() {}
                             Indel {
                                 insert: "r#fn",
                                 delete: 4..7,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "r#fn",
                                 delete: 22..25,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1576,12 +1571,10 @@ pub fn baz() {}
                             Indel {
                                 insert: "foo",
                                 delete: 4..8,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "foo",
                                 delete: 23..27,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1643,7 +1636,6 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 7..10,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1655,7 +1647,6 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1685,7 +1676,6 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 7..10,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1697,7 +1687,6 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1727,7 +1716,6 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 7..10,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1739,7 +1727,6 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1776,12 +1763,10 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 7..10,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "abc",
                                 delete: 32..35,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1793,7 +1778,6 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 18..23,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1827,12 +1811,10 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 7..12,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "abc",
                                 delete: 34..39,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1844,7 +1826,6 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),

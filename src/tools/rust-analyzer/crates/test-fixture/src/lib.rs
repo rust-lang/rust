@@ -1,12 +1,14 @@
 //! A set of high-level utility fixture methods to use in tests.
-use std::{iter, mem, str::FromStr, sync};
+use std::{mem, str::FromStr, sync};
 
 use base_db::{
-    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, CrateWorkspaceData, Dependency,
-    Env, FileChange, FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
+    Crate, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
+    DependencyBuilder, Env, FileChange, FileSet, LangCrateOrigin, SourceDatabase, SourceRoot,
+    Version, VfsPath, salsa,
 };
 use cfg::CfgOptions;
 use hir_expand::{
+    EditionedFileId, FileRange,
     change::ChangeWithProcMacros,
     db::ExpandDatabase,
     files::FilePosition,
@@ -15,26 +17,27 @@ use hir_expand::{
     },
     quote,
     tt::{Leaf, TokenTree, TopSubtree, TopSubtreeBuilder, TtElement, TtIter},
-    FileRange,
 };
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
+use paths::AbsPathBuf;
 use rustc_hash::FxHashMap;
-use span::{Edition, EditionedFileId, FileId, Span};
+use span::{Edition, FileId, Span};
 use stdx::itertools::Itertools;
 use test_utils::{
-    extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
-    ESCAPED_CURSOR_MARKER,
+    CURSOR_MARKER, ESCAPED_CURSOR_MARKER, Fixture, FixtureWithProjectMeta, RangeOrOffset,
+    extract_range_or_offset,
 };
+use triomphe::Arc;
 
 pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 
-pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
+pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
     #[track_caller]
     fn with_single_file(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (Self, EditionedFileId) {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
         assert_eq!(fixture.files.len(), 1, "Multiple file found in the fixture");
         (db, fixture.files[0])
@@ -44,8 +47,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     fn with_many_files(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (Self, Vec<EditionedFileId>) {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
         assert!(fixture.file_position.is_none());
         (db, fixture.files)
@@ -53,8 +56,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
 
     #[track_caller]
     fn with_files(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> Self {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
         assert!(fixture.file_position.is_none());
         db
@@ -65,8 +68,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         proc_macros: Vec<(String, ProcMacro)>,
     ) -> Self {
-        let fixture = ChangeFixture::parse_with_proc_macros(ra_fixture, proc_macros);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse_with_proc_macros(&db, ra_fixture, proc_macros);
         fixture.change.apply(&mut db);
         assert!(fixture.file_position.is_none());
         db
@@ -90,8 +93,8 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     fn with_range_or_offset(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
     ) -> (Self, EditionedFileId, RangeOrOffset) {
-        let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
+        let fixture = ChangeFixture::parse(&db, ra_fixture);
         fixture.change.apply(&mut db);
 
         let (file_id, range_or_offset) = fixture
@@ -100,18 +103,12 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
         (db, file_id, range_or_offset)
     }
 
-    fn test_crate(&self) -> CrateId {
-        let crate_graph = self.crate_graph();
-        let mut it = crate_graph.iter();
-        let mut res = it.next().unwrap();
-        while crate_graph[res].origin.is_lang() {
-            res = it.next().unwrap();
-        }
-        res
+    fn test_crate(&self) -> Crate {
+        self.all_crates().iter().copied().find(|&krate| !krate.data(self).origin.is_lang()).unwrap()
     }
 }
 
-impl<DB: ExpandDatabase + SourceRootDatabase + Default + 'static> WithFixture for DB {}
+impl<DB: ExpandDatabase + SourceDatabase + Default + 'static> WithFixture for DB {}
 
 pub struct ChangeFixture {
     pub file_position: Option<(EditionedFileId, RangeOrOffset)>,
@@ -122,11 +119,15 @@ pub struct ChangeFixture {
 const SOURCE_ROOT_PREFIX: &str = "/";
 
 impl ChangeFixture {
-    pub fn parse(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> ChangeFixture {
-        Self::parse_with_proc_macros(ra_fixture, Vec::new())
+    pub fn parse(
+        db: &dyn salsa::Database,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> ChangeFixture {
+        Self::parse_with_proc_macros(db, ra_fixture, Vec::new())
     }
 
     pub fn parse_with_proc_macros(
+        db: &dyn salsa::Database,
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         mut proc_macro_defs: Vec<(String, ProcMacro)>,
     ) -> ChangeFixture {
@@ -142,13 +143,14 @@ impl ChangeFixture {
             let channel = toolchain.as_deref().unwrap_or("stable");
             Version::parse(&format!("1.76.0-{channel}")).unwrap()
         });
-        let mut source_change = FileChange::new();
+        let mut source_change = FileChange::default();
 
         let mut files = Vec::new();
-        let mut crate_graph = CrateGraph::default();
+        let mut crate_graph = CrateGraphBuilder::default();
         let mut crates = FxHashMap::default();
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
+        let mut default_edition = Edition::CURRENT;
         let mut default_cfg = CfgOptions::default();
         let mut default_env = Env::from_iter([(
             String::from("__ra_is_test_fixture"),
@@ -161,6 +163,12 @@ impl ChangeFixture {
         let mut roots = Vec::new();
 
         let mut file_position = None;
+
+        let crate_ws_data =
+            Arc::new(CrateWorkspaceData { data_layout: target_data_layout, toolchain });
+
+        // FIXME: This is less than ideal
+        let proc_macro_cwd = Arc::new(AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()));
 
         for entry in fixture {
             let mut range_or_offset = None;
@@ -180,7 +188,7 @@ impl ChangeFixture {
             let meta = FileMeta::from_fixture(entry, current_source_root_kind);
             if let Some(range_or_offset) = range_or_offset {
                 file_position =
-                    Some((EditionedFileId::new(file_id, meta.edition), range_or_offset));
+                    Some((EditionedFileId::new(db, file_id, meta.edition), range_or_offset));
             }
 
             assert!(meta.path.starts_with(SOURCE_ROOT_PREFIX));
@@ -208,12 +216,13 @@ impl ChangeFixture {
                     meta.edition,
                     Some(crate_name.clone().into()),
                     version,
-                    From::from(meta.cfg.clone()),
-                    Some(From::from(meta.cfg)),
+                    meta.cfg.clone(),
+                    Some(meta.cfg),
                     meta.env,
                     origin,
                     false,
-                    None,
+                    proc_macro_cwd.clone(),
+                    crate_ws_data.clone(),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none(), "multiple crates with same name: {crate_name}");
@@ -228,6 +237,7 @@ impl ChangeFixture {
             } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
+                default_edition = meta.edition;
                 default_cfg.extend(meta.cfg.into_iter());
                 default_env.extend_from_other(&meta.env);
             }
@@ -235,7 +245,7 @@ impl ChangeFixture {
             source_change.change_file(file_id, Some(text));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
-            files.push(EditionedFileId::new(file_id, meta.edition));
+            files.push(EditionedFileId::new(db, file_id, meta.edition));
             file_id = FileId::from_raw(file_id.index() + 1);
         }
 
@@ -244,23 +254,27 @@ impl ChangeFixture {
                 .expect("missing default crate root, specify a main.rs or lib.rs");
             crate_graph.add_crate_root(
                 crate_root,
-                Edition::CURRENT,
+                default_edition,
                 Some(CrateName::new("ra_test_fixture").unwrap().into()),
                 None,
-                From::from(default_cfg.clone()),
-                Some(From::from(default_cfg)),
+                default_cfg.clone(),
+                Some(default_cfg),
                 default_env,
                 CrateOrigin::Local { repo: None, name: None },
                 false,
-                None,
+                proc_macro_cwd.clone(),
+                crate_ws_data.clone(),
             );
         } else {
             for (from, to, prelude) in crate_deps {
                 let from_id = crates[&from];
                 let to_id = crates[&to];
-                let sysroot = crate_graph[to_id].origin.is_lang();
+                let sysroot = crate_graph[to_id].basic.origin.is_lang();
                 crate_graph
-                    .add_dep(from_id, Dependency::with_prelude(to.clone(), to_id, prelude, sysroot))
+                    .add_dep(
+                        from_id,
+                        DependencyBuilder::with_prelude(to.clone(), to_id, prelude, sysroot),
+                    )
                     .unwrap();
             }
         }
@@ -275,7 +289,7 @@ impl ChangeFixture {
 
             source_change.change_file(core_file, Some(mini_core.source_code()));
 
-            let all_crates = crate_graph.crates_in_topological_order();
+            let all_crates = crate_graph.iter().collect::<Vec<_>>();
 
             let core_crate = crate_graph.add_crate_root(
                 core_file,
@@ -290,14 +304,15 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 false,
-                None,
+                proc_macro_cwd.clone(),
+                crate_ws_data.clone(),
             );
 
             for krate in all_crates {
                 crate_graph
                     .add_dep(
                         krate,
-                        Dependency::with_prelude(
+                        DependencyBuilder::with_prelude(
                             CrateName::new("core").unwrap(),
                             core_crate,
                             true,
@@ -323,7 +338,7 @@ impl ChangeFixture {
 
             source_change.change_file(proc_lib_file, Some(source));
 
-            let all_crates = crate_graph.crates_in_topological_order();
+            let all_crates = crate_graph.iter().collect::<Vec<_>>();
 
             let proc_macros_crate = crate_graph.add_crate_root(
                 proc_lib_file,
@@ -338,7 +353,8 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Local { repo: None, name: None },
                 true,
-                None,
+                proc_macro_cwd.clone(),
+                crate_ws_data,
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));
 
@@ -346,7 +362,10 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         krate,
-                        Dependency::new(CrateName::new("proc_macros").unwrap(), proc_macros_crate),
+                        DependencyBuilder::new(
+                            CrateName::new("proc_macros").unwrap(),
+                            proc_macros_crate,
+                        ),
                     )
                     .unwrap();
             }
@@ -358,19 +377,9 @@ impl ChangeFixture {
         };
         roots.push(root);
 
-        let mut change =
-            ChangeWithProcMacros { source_change, proc_macros: Some(proc_macros.build()) };
+        let mut change = ChangeWithProcMacros { source_change, proc_macros: Some(proc_macros) };
 
         change.source_change.set_roots(roots);
-        change.source_change.set_ws_data(
-            crate_graph
-                .iter()
-                .zip(iter::repeat(From::from(CrateWorkspaceData {
-                    data_layout: target_data_layout,
-                    toolchain,
-                })))
-                .collect(),
-        );
         change.source_change.set_crate_graph(crate_graph);
 
         ChangeFixture { file_position, files, change }
@@ -649,9 +658,13 @@ impl ProcMacroExpander for IdentityProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         Ok(subtree.clone())
+    }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }
 
@@ -667,7 +680,7 @@ impl ProcMacroExpander for Issue18089ProcMacroExpander {
         _: Span,
         call_site: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let tt::TokenTree::Leaf(macro_name) = &subtree.0[2] else {
             return Err(ProcMacroExpansionError::Panic("incorrect input".to_owned()));
@@ -684,6 +697,10 @@ impl ProcMacroExpander for Issue18089ProcMacroExpander {
             #subtree
         })
     }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
+    }
 }
 
 // Pastes the attribute input as its output
@@ -698,11 +715,15 @@ impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
+    }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }
 
@@ -717,7 +738,7 @@ impl ProcMacroExpander for Issue18840ProcMacroExpander {
         def_site: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         // Input:
         // ```
@@ -735,6 +756,10 @@ impl ProcMacroExpander for Issue18840ProcMacroExpander {
         top_subtree_delimiter_mut.close = def_site;
         Ok(result)
     }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
+    }
 }
 
 #[derive(Debug)]
@@ -748,7 +773,7 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         fn traverse(builder: &mut TopSubtreeBuilder, iter: TtIter<'_>) {
             for tt in iter.collect_vec().into_iter().rev() {
@@ -766,6 +791,10 @@ impl ProcMacroExpander for MirrorProcMacroExpander {
         traverse(&mut builder, input.iter());
         Ok(builder.build())
     }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
+    }
 }
 
 // Replaces every literal with an empty string literal and every identifier with its first letter,
@@ -782,7 +811,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let mut result = input.0.clone();
         for it in &mut result {
@@ -806,6 +835,10 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
             }
         }
     }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
+    }
 }
 
 // Reads ident type within string quotes, for issue #17479.
@@ -820,7 +853,7 @@ impl ProcMacroExpander for Issue17479ProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let TokenTree::Leaf(Leaf::Literal(lit)) = &subtree.0[1] else {
             return Err(ProcMacroExpansionError::Panic("incorrect Input".into()));
@@ -830,6 +863,10 @@ impl ProcMacroExpander for Issue17479ProcMacroExpander {
         Ok(quote! { span =>
             #symbol()
         })
+    }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }
 
@@ -845,7 +882,7 @@ impl ProcMacroExpander for Issue18898ProcMacroExpander {
         def_site: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let span = subtree
             .token_trees()
@@ -882,6 +919,10 @@ impl ProcMacroExpander for Issue18898ProcMacroExpander {
             }
         })
     }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
+    }
 }
 
 // Reads ident type within string quotes, for issue #17479.
@@ -896,7 +937,7 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         for tt in subtree.token_trees().flat_tokens() {
             if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {
@@ -908,5 +949,9 @@ impl ProcMacroExpander for DisallowCfgProcMacroExpander {
             }
         }
         Ok(subtree.clone())
+    }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }

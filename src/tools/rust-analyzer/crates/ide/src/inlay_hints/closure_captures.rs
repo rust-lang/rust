@@ -3,8 +3,7 @@
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::famous_defs::FamousDefs;
 use ide_db::text_edit::{TextRange, TextSize};
-use span::EditionedFileId;
-use stdx::{never, TupleExt};
+use stdx::{TupleExt, never};
 use syntax::ast::{self, AstNode};
 
 use crate::{
@@ -15,7 +14,6 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    _file_id: EditionedFileId,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
     if !config.closure_capture_hints {
@@ -75,10 +73,12 @@ pub(super) fn hints(
                 // force cache the source file, otherwise sema lookup will potentially panic
                 _ = sema.parse_or_expand(source.file());
                 source.name().and_then(|name| {
-                    name.syntax()
-                        .original_file_range_opt(sema.db)
-                        .map(TupleExt::head)
-                        .map(Into::into)
+                    name.syntax().original_file_range_opt(sema.db).map(TupleExt::head).map(
+                        |frange| ide_db::FileRange {
+                            file_id: frange.file_id.file_id(sema.db),
+                            range: frange.range,
+                        },
+                    )
                 })
             }),
             tooltip: None,
@@ -96,8 +96,8 @@ pub(super) fn hints(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[test]

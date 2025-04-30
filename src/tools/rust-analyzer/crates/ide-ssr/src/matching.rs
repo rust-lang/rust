@@ -2,16 +2,16 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
+    SsrMatches,
     parsing::{Constraint, NodeKind, Placeholder, Var},
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
-    SsrMatches,
 };
 use hir::{FileRange, ImportPathConfig, Semantics};
-use ide_db::{base_db::SourceDatabase, FxHashMap};
+use ide_db::{FxHashMap, base_db::RootQueryDb};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
-    ast::{self, AstNode, AstToken, HasGenericArgs},
     SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, AstToken, HasGenericArgs},
 };
 
 // Creates a match error. If we're currently attempting to match some code that we thought we were
@@ -627,11 +627,10 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
             })?
             .original;
         let krate = self.sema.scope(expr.syntax()).map(|it| it.krate()).unwrap_or_else(|| {
-            hir::Crate::from(
-                *self.sema.db.crate_graph().crates_in_topological_order().last().unwrap(),
-            )
+            hir::Crate::from(*self.sema.db.all_crates().last().expect("no crate graph present"))
         });
-        let res = code_type
+
+        code_type
             .autoderef(self.sema.db)
             .enumerate()
             .find(|(_, deref_code_type)| pattern_type == deref_code_type)
@@ -644,8 +643,7 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                     pattern_type.display(self.sema.db, display_target),
                     code_type.display(self.sema.db, display_target)
                 )
-            });
-        res
+            })
     }
 
     fn get_placeholder_for_node(&self, node: &SyntaxNode) -> Option<&Placeholder> {
@@ -808,10 +806,20 @@ mod tests {
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
         let (db, position, selections) = crate::tests::single_file(input);
+        let position = ide_db::FilePosition {
+            file_id: position.file_id.file_id(&db),
+            offset: position.offset,
+        };
         let mut match_finder = MatchFinder::in_context(
             &db,
-            position.into(),
-            selections.into_iter().map(Into::into).collect(),
+            position,
+            selections
+                .into_iter()
+                .map(|frange| ide_db::FileRange {
+                    file_id: frange.file_id.file_id(&db),
+                    range: frange.range,
+                })
+                .collect(),
         )
         .unwrap();
         match_finder.add_rule(rule).unwrap();
@@ -822,7 +830,7 @@ mod tests {
 
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
-        let edit = &edits[&position.file_id.into()];
+        let edit = &edits[&position.file_id];
         let mut after = input.to_owned();
         edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");

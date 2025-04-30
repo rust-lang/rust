@@ -52,12 +52,12 @@ pub use crate::{
     anchored_path::{AnchoredPath, AnchoredPathBuf},
     vfs_path::VfsPath,
 };
-use indexmap::{map::Entry, IndexMap};
+use indexmap::{IndexMap, map::Entry};
 pub use paths::{AbsPath, AbsPathBuf};
 
 use rustc_hash::FxHasher;
 use stdx::hash_once;
-use tracing::{span, Level};
+use tracing::{Level, span};
 
 /// Handle to a file in [`Vfs`]
 ///

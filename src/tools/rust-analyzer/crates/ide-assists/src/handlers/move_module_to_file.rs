@@ -1,16 +1,16 @@
 use std::iter;
 
 use ast::edit::IndentLevel;
-use hir::{sym, HasAttrs};
+use hir::{HasAttrs, sym};
 use ide_db::base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, HasName},
     AstNode, SmolStr, TextRange,
+    ast::{self, HasName, edit::AstNodeEdit},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: move_module_to_file
 //
@@ -45,7 +45,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     let parent_module = module_def.parent(ctx.db())?;
 
     acc.add(
-        AssistId("move_module_to_file", AssistKind::RefactorExtract),
+        AssistId::refactor_extract("move_module_to_file"),
         "Extract module to file",
         target,
         |builder| {
@@ -57,7 +57,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                         if !parent_module.is_mod_rs(db)
                             && parent_module
                                 .attrs(db)
-                                .by_key(&sym::path)
+                                .by_key(sym::path)
                                 .string_value_unescape()
                                 .is_none() =>
                     {
@@ -104,7 +104,7 @@ pub(crate) fn move_module_to_file(acc: &mut Assists, ctx: &AssistContext<'_>) ->
                 buf,
             );
 
-            let dst = AnchoredPathBuf { anchor: ctx.file_id().into(), path };
+            let dst = AnchoredPathBuf { anchor: ctx.vfs_file_id(), path };
             builder.create_file(dst, contents);
         },
     )

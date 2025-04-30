@@ -1,9 +1,9 @@
 use hir::db::ExpandDatabase;
 use ide_db::source_change::SourceChange;
 use ide_db::text_edit::TextEdit;
-use syntax::{ast, AstNode, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, T};
+use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, T, ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: need-mut
 //
@@ -39,7 +39,7 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
         Some(vec![fix(
             "add_mut",
             "Change it to be mutable",
-            SourceChange::from_text_edit(file_id, edit),
+            SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit),
             use_range,
         )])
     })();
@@ -82,7 +82,7 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Op
         Some(vec![fix(
             "remove_mut",
             "Remove unnecessary `mut`",
-            SourceChange::from_text_edit(file_id, edit),
+            SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit),
             use_range,
         )])
     })();
@@ -1258,7 +1258,7 @@ fn foo(mut foo: Foo) {
 
 pub struct A {}
 pub unsafe fn foo(a: *mut A) {
-    let mut b = || -> *mut A { &mut *a };
+    let mut b = || -> *mut A { unsafe { &mut *a } };
       //^^^^^ 💡 warn: variable does not need to be mutable
     let _ = b();
 }

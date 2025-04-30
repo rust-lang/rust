@@ -1,10 +1,10 @@
 //! Utilities for formatting macro expanded nodes until we get a proper formatter.
 use syntax::{
-    ast::make,
-    ted::{self, Position},
     NodeOrToken,
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxToken, WalkEvent, T,
+    SyntaxNode, SyntaxToken, T, WalkEvent,
+    ast::make,
+    ted::{self, Position},
 };
 
 /// Renders a [`SyntaxNode`] with whitespace inserted between tokens that require them.

@@ -14,7 +14,7 @@ use std::{
 
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::FxHasher;
-use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ast};
 
 /// See crates\hir-expand\src\ast_id_map.rs
 /// This is a type erased FileAstId.
@@ -132,7 +132,7 @@ pub struct AstIdMap {
     /// Maps stable id to unstable ptr.
     arena: Arena<SyntaxNodePtr>,
     /// Reverse: map ptr to id.
-    map: hashbrown::HashMap<Idx<SyntaxNodePtr>, (), ()>,
+    map: hashbrown::HashTable<Idx<SyntaxNodePtr>>,
 }
 
 impl fmt::Debug for AstIdMap {
@@ -169,13 +169,13 @@ impl AstIdMap {
                 TreeOrder::DepthFirst
             }
         });
-        res.map = hashbrown::HashMap::with_capacity_and_hasher(res.arena.len(), ());
+        res.map = hashbrown::HashTable::with_capacity(res.arena.len());
         for (idx, ptr) in res.arena.iter() {
             let hash = hash_ptr(ptr);
-            match res.map.raw_entry_mut().from_hash(hash, |idx2| *idx2 == idx) {
-                hashbrown::hash_map::RawEntryMut::Occupied(_) => unreachable!(),
-                hashbrown::hash_map::RawEntryMut::Vacant(entry) => {
-                    entry.insert_with_hasher(hash, idx, (), |&idx| hash_ptr(&res.arena[idx]));
+            match res.map.entry(hash, |&idx2| idx2 == idx, |&idx| hash_ptr(&res.arena[idx])) {
+                hashbrown::hash_table::Entry::Occupied(_) => unreachable!(),
+                hashbrown::hash_table::Entry::Vacant(entry) => {
+                    entry.insert(idx);
                 }
             }
         }
@@ -196,8 +196,8 @@ impl AstIdMap {
     pub fn ast_id_for_ptr<N: AstIdNode>(&self, ptr: AstPtr<N>) -> FileAstId<N> {
         let ptr = ptr.syntax_node_ptr();
         let hash = hash_ptr(&ptr);
-        match self.map.raw_entry().from_hash(hash, |&idx| self.arena[idx] == ptr) {
-            Some((&raw, &())) => FileAstId {
+        match self.map.find(hash, |&idx| self.arena[idx] == ptr) {
+            Some(&raw) => FileAstId {
                 raw: ErasedFileAstId(raw.into_raw().into_u32()),
                 covariant: PhantomData,
             },
@@ -221,8 +221,8 @@ impl AstIdMap {
     fn erased_ast_id(&self, item: &SyntaxNode) -> ErasedFileAstId {
         let ptr = SyntaxNodePtr::new(item);
         let hash = hash_ptr(&ptr);
-        match self.map.raw_entry().from_hash(hash, |&idx| self.arena[idx] == ptr) {
-            Some((&idx, &())) => ErasedFileAstId(idx.into_raw().into_u32()),
+        match self.map.find(hash, |&idx| self.arena[idx] == ptr) {
+            Some(&idx) => ErasedFileAstId(idx.into_raw().into_u32()),
             None => panic!(
                 "Can't find {:?} in AstIdMap:\n{:?}\n source text: {}",
                 item,

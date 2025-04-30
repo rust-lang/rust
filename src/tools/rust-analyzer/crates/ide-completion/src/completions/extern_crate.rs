@@ -1,10 +1,10 @@
 //! Completion for extern crates
 
 use hir::Name;
-use ide_db::{documentation::HasDocs, SymbolKind};
+use ide_db::{SymbolKind, documentation::HasDocs};
 use syntax::ToSmolStr;
 
-use crate::{context::CompletionContext, CompletionItem, CompletionItemKind};
+use crate::{CompletionItem, CompletionItemKind, context::CompletionContext};
 
 use super::Completions;
 

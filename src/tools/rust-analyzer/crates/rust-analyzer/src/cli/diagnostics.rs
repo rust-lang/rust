@@ -4,10 +4,10 @@
 use project_model::{CargoConfig, RustLibSource};
 use rustc_hash::FxHashSet;
 
-use hir::{db::HirDatabase, sym, Crate, HirFileIdExt, Module};
+use hir::{Crate, Module, db::HirDatabase, sym};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
-use ide_db::{base_db::SourceRootDatabase, LineIndexDatabase};
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use ide_db::{LineIndexDatabase, base_db::SourceDatabase};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 
 use crate::cli::flags;
 
@@ -51,8 +51,8 @@ impl flags::Diagnostics {
 
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.into());
-            let source_root = db.source_root(source_root);
+            let source_root = db.file_source_root(file_id.file_id(db)).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             !source_root.is_library
         });
 
@@ -63,13 +63,13 @@ impl flags::Diagnostics {
                     module.krate().display_name(db).as_deref().unwrap_or(&sym::unknown).to_owned();
                 println!(
                     "processing crate: {crate_name}, module: {}",
-                    _vfs.file_path(file_id.into())
+                    _vfs.file_path(file_id.file_id(db))
                 );
                 for diagnostic in analysis
                     .full_diagnostics(
                         &DiagnosticsConfig::test_sample(),
                         AssistResolveStrategy::None,
-                        file_id.into(),
+                        file_id.file_id(db),
                     )
                     .unwrap()
                 {

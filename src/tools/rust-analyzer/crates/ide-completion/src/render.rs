@@ -10,17 +10,19 @@ pub(crate) mod type_alias;
 pub(crate) mod union_literal;
 pub(crate) mod variant;
 
-use hir::{sym, AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
+use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type, sym};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
+    RootDatabase, SnippetCap, SymbolKind,
     documentation::{Documentation, HasDocs},
     helpers::item_name,
     imports::import_assets::LocatedImport,
-    RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{ast, format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr};
+use syntax::{AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr, ast, format_smolstr};
 
 use crate::{
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
+    CompletionRelevance,
     context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{
@@ -28,8 +30,6 @@ use crate::{
         literal::render_variant_lit,
         macro_::{render_macro, render_macro_pat},
     },
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
-    CompletionRelevance,
 };
 /// Interface for data and methods required for items rendering.
 #[derive(Debug, Clone)]
@@ -92,7 +92,7 @@ impl<'a> RenderContext<'a> {
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
         let attrs = def.attrs(self.db());
-        attrs.by_key(&sym::deprecated).exists()
+        attrs.by_key(sym::deprecated).exists()
     }
 
     fn is_deprecated_assoc_item(&self, as_assoc_item: impl AsAssocItem) -> bool {
@@ -334,7 +334,7 @@ pub(crate) fn render_expr(
             continue;
         };
 
-        item.add_import(LocatedImport::new(path, trait_item, trait_item));
+        item.add_import(LocatedImport::new_no_completion(path, trait_item, trait_item));
     }
 
     Some(item)
@@ -683,14 +683,14 @@ fn path_ref_match(
 mod tests {
     use std::cmp;
 
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use ide_db::SymbolKind;
     use itertools::Itertools;
 
     use crate::{
-        item::CompletionRelevanceTypeMatch,
-        tests::{check_edit, do_completion, get_all_items, TEST_CONFIG},
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
+        item::CompletionRelevanceTypeMatch,
+        tests::{TEST_CONFIG, check_edit, do_completion, get_all_items},
     };
 
     #[track_caller]
@@ -1264,6 +1264,53 @@ fn main() { fo$0 }
                         ),
                         source_range: 68..70,
                         delete: 68..70,
+                        insert: "main();$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "main",
+                        detail: "fn()",
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn fn_detail_includes_variadics() {
+        check(
+            r#"
+unsafe extern "C" fn foo(a: u32, b: u32, ...) {}
+
+fn main() { fo$0 }
+"#,
+            SymbolKind::Function,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "foo(…)",
+                        detail_left: None,
+                        detail_right: Some(
+                            "unsafe fn(u32, u32, ...)",
+                        ),
+                        source_range: 62..64,
+                        delete: 62..64,
+                        insert: "foo(${1:a}, ${2:b});$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "foo",
+                        detail: "unsafe fn(u32, u32, ...)",
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "main()",
+                        detail_left: None,
+                        detail_right: Some(
+                            "fn()",
+                        ),
+                        source_range: 62..64,
+                        delete: 62..64,
                         insert: "main();$0",
                         kind: SymbolKind(
                             Function,
@@ -2042,8 +2089,8 @@ fn f() { A { bar: b$0 }; }
             expect![[r#"
                 fn bar() fn() -> u8 [type+name]
                 fn baz() fn() -> u8 [type]
-                ex bar()  [type]
                 ex baz()  [type]
+                ex bar()  [type]
                 st A A []
                 fn f() fn() []
             "#]],
@@ -2773,14 +2820,13 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                 Indel {
                                     insert: "(",
                                     delete: 107..107,
-                                    annotation: None,
                                 },
                                 Indel {
                                     insert: "qux)()",
                                     delete: 109..110,
-                                    annotation: None,
                                 },
                             ],
+                            annotation: None,
                         },
                         kind: SymbolKind(
                             Field,
@@ -2960,6 +3006,7 @@ fn main() {
                 sn refm &mut expr []
                 sn deref *expr []
                 sn unsafe unsafe {} []
+                sn const const {} []
                 sn match match expr {} []
                 sn box Box::new(expr) []
                 sn dbg dbg!(expr) []
@@ -2990,6 +3037,7 @@ fn main() {
                 sn refm &mut expr []
                 sn deref *expr []
                 sn unsafe unsafe {} []
+                sn const const {} []
                 sn match match expr {} []
                 sn box Box::new(expr) []
                 sn dbg dbg!(expr) []
