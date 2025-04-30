@@ -1213,7 +1213,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 debug!("pick_all_method: step={:?}", step);
                 // skip types that are from a type error or that would require dereferencing
                 // a raw pointer
-                !step.self_ty.references_error() && !step.from_unsafe_deref
+                !step.self_ty.value.references_error() && !step.from_unsafe_deref
             })
             .find_map(|step| {
                 let InferOk { value: self_ty, obligations: _ } = self
