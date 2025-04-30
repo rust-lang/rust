@@ -260,11 +260,14 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
             }
 
             ty::Projection if !data.has_escaping_bound_vars() => {
-                // This branch is *mostly* just an optimization: when we don't
-                // have escaping bound vars, we don't need to replace them with
-                // placeholders (see branch below). *Also*, we know that we can
-                // register an obligation to *later* project, since we know
-                // there won't be bound vars there.
+                // When we don't have escaping bound vars we can normalize ambig aliases
+                // to inference variables (done in `normalize_projection_ty`). This would
+                // be wrong if there were escaping bound vars as even if we instantiated
+                // the bound vars with placeholders, we wouldn't be able to map them back
+                // after normalization succeeded.
+                //
+                // Also, as an optimization: when we don't have escaping bound vars, we don't
+                // need to replace them with placeholders (see branch below).
                 let data = data.fold_with(self);
                 let normalized_ty = project::normalize_projection_ty(
                     self.selcx,
