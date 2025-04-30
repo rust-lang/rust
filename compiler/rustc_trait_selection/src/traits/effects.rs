@@ -4,10 +4,10 @@ use rustc_infer::traits::{
     ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
 };
 use rustc_middle::span_bug;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, TypingMode};
-use rustc_type_ir::elaborate::elaborate;
-use rustc_type_ir::solve::NoSolution;
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
