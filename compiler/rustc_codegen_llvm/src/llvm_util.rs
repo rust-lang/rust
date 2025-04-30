@@ -273,6 +273,12 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
         // Filter out features that are not supported by the current LLVM version
+        ("loongarch64", "div32" | "lam-bh" | "lamcas" | "ld-seq-sa" | "scq")
+            if get_version().0 < 20 =>
+        {
+            None
+        }
+        // Filter out features that are not supported by the current LLVM version
         ("riscv32" | "riscv64", "zacas") if get_version().0 < 20 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => {
