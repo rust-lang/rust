@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
 #![cfg_attr(target_has_atomic = "128", feature(integer_atomics))]
 #![cfg_attr(test, feature(cfg_match))]
 #![feature(alloc_layout_extra)]
@@ -17,6 +18,7 @@
 #![feature(const_eval_select)]
 #![feature(const_swap_nonoverlapping)]
 #![feature(const_trait_impl)]
+#![feature(core_float_math)]
 #![feature(core_intrinsics)]
 #![feature(core_intrinsics_fallbacks)]
 #![feature(core_io_borrowed_buf)]
@@ -29,6 +31,10 @@
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]
 #![feature(extern_types)]
+#![feature(f128)]
+#![feature(f16)]
+#![feature(float_algebraic)]
+#![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
@@ -145,6 +151,7 @@ mod cmp;
 mod const_ptr;
 mod convert;
 mod ffi;
+mod floats;
 mod fmt;
 mod future;
 mod hash;
