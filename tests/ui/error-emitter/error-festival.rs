@@ -1,3 +1,5 @@
+//! Check that if there are a lot of errors we truncate the list of errors appropriately
+
 enum Question {
     Yes,
     No,
