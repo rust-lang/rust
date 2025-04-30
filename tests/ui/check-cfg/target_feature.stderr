@@ -329,7 +329,14 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zfinx`
 `zhinx`
 `zhinxmin`
+`zic64b`
+`zicbom`
+`zicbop`
 `zicboz`
+`ziccamoa`
+`ziccif`
+`zicclsm`
+`ziccrse`
 `zicntr`
 `zicond`
 `zicsr`
