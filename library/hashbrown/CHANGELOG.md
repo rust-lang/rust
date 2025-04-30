@@ -1,11 +1,26 @@
-# Change Log
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/)
-and this project adheres to [Semantic Versioning](https://semver.org/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.15.3](https://github.com/rust-lang/hashbrown/compare/v0.15.2...v0.15.3) - 2025-04-29
+
+### Added
+
+- SIMD implementation for LoongArch (#592, requires nightly)
+
+### Changed
+
+- Optimized insertion path by avoiding an unnecessary `match_empty` (#607)
+- Increased minimum table size for small types (#615)
+- Dropped FnMut trait bounds from `ExtractIf` data structures (#616)
+- Relaxed constraint in `hash_map::EntryRef` insertion methods `K: From<&Q>` to &Q: `Into<K>` (#611)
+- Added allocator template argument for `rustc_iter` (#605)
+- The `allocator-api2/nightly` feature is no longer enabled by `hashbrown/nightly` (#606)
 
 ## [v0.15.2] - 2024-11-14
 
