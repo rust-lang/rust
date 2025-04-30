@@ -12,7 +12,6 @@ type bits = u64;
 /// `Tokens` doesn't include whitespace and comments. Main input to the parser.
 ///
 /// Struct of arrays internally, but this shouldn't really matter.
-#[derive(Default)]
 pub struct Input {
     kind: Vec<SyntaxKind>,
     joint: Vec<bits>,
@@ -21,6 +20,14 @@ pub struct Input {
 
 /// `pub` impl used by callers to create `Tokens`.
 impl Input {
+    #[inline]
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            kind: Vec::with_capacity(capacity),
+            joint: Vec::with_capacity(capacity / size_of::<bits>()),
+            contextual_kind: Vec::with_capacity(capacity),
+        }
+    }
     #[inline]
     pub fn push(&mut self, kind: SyntaxKind) {
         self.push_impl(kind, SyntaxKind::EOF)

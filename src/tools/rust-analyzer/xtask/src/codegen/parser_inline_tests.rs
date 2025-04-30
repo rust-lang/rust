@@ -13,7 +13,7 @@ use anyhow::Result;
 use itertools::Itertools as _;
 
 use crate::{
-    codegen::{ensure_file_contents, reformat, CommentBlock},
+    codegen::{CommentBlock, ensure_file_contents, reformat},
     project_root,
     util::list_rust_files,
 };

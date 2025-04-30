@@ -3,28 +3,26 @@
 use std::ops::ControlFlow;
 
 use chalk_ir::{
+    DebruijnIndex,
     cast::Cast,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-    DebruijnIndex,
 };
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
-    data::TraitFlags, lang_item::LangItem, AssocItemId, ConstId, FunctionId, GenericDefId,
-    HasModule, TraitId, TypeAliasId,
+    AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
+    lang_item::LangItem, signatures::TraitFlags,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
 use crate::{
-    all_super_traits,
+    AliasEq, AliasTy, Binders, BoundVar, CallableSig, GoalData, ImplTraitId, Interner, OpaqueTyId,
+    ProjectionTyExt, Solution, Substitution, TraitRef, Ty, TyKind, WhereClause, all_super_traits,
     db::HirDatabase,
     from_assoc_type_id, from_chalk_trait_id,
     generics::{generics, trait_self_param_idx},
-    lower::callable_item_sig,
-    to_assoc_type_id, to_chalk_trait_id,
+    to_chalk_trait_id,
     utils::elaborate_clause_supertraits,
-    AliasEq, AliasTy, Binders, BoundVar, CallableSig, GoalData, ImplTraitId, Interner, OpaqueTyId,
-    ProjectionTyExt, Solution, Substitution, TraitRef, Ty, TyKind, WhereClause,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -54,7 +52,7 @@ pub fn dyn_compatibility(
     db: &dyn HirDatabase,
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
-    for super_trait in all_super_traits(db.upcast(), trait_).into_iter().skip(1).rev() {
+    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
         if db.dyn_compatibility_of_trait(super_trait).is_some() {
             return Some(DynCompatibilityViolation::HasNonCompatibleSuperTrait(super_trait));
         }
@@ -71,7 +69,7 @@ pub fn dyn_compatibility_with_callback<F>(
 where
     F: FnMut(DynCompatibilityViolation) -> ControlFlow<()>,
 {
-    for super_trait in all_super_traits(db.upcast(), trait_).into_iter().skip(1).rev() {
+    for super_trait in all_super_traits(db, trait_).into_iter().skip(1).rev() {
         if db.dyn_compatibility_of_trait(super_trait).is_some() {
             cb(DynCompatibilityViolation::HasNonCompatibleSuperTrait(trait_))?;
         }
@@ -103,7 +101,7 @@ where
 
     // rustc checks for non-lifetime binders here, but we don't support HRTB yet
 
-    let trait_data = db.trait_data(trait_);
+    let trait_data = db.trait_items(trait_);
     for (_, assoc_item) in &trait_data.items {
         dyn_compatibility_violation_for_assoc_item(db, trait_, *assoc_item, cb)?;
     }
@@ -116,7 +114,7 @@ pub fn dyn_compatibility_of_trait_query(
     trait_: TraitId,
 ) -> Option<DynCompatibilityViolation> {
     let mut res = None;
-    let _ = dyn_compatibility_of_trait_with_callback(db, trait_, &mut |osv| {
+    _ = dyn_compatibility_of_trait_with_callback(db, trait_, &mut |osv| {
         res = Some(osv);
         ControlFlow::Break(())
     });
@@ -125,12 +123,12 @@ pub fn dyn_compatibility_of_trait_query(
 }
 
 fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
-    let krate = def.module(db.upcast()).krate();
+    let krate = def.module(db).krate();
     let Some(sized) = db.lang_item(krate, LangItem::Sized).and_then(|l| l.as_trait()) else {
         return false;
     };
 
-    let Some(trait_self_param_idx) = trait_self_param_idx(db.upcast(), def) else {
+    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
         return false;
     };
 
@@ -166,14 +164,13 @@ fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
 
 // Same as the above, `predicates_reference_self`
 fn bounds_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
-    let trait_data = db.trait_data(trait_);
+    let trait_data = db.trait_items(trait_);
     trait_data
         .items
         .iter()
         .filter_map(|(_, it)| match *it {
             AssocItemId::TypeAliasId(id) => {
-                let assoc_ty_id = to_assoc_type_id(id);
-                let assoc_ty_data = db.associated_ty_data(assoc_ty_id);
+                let assoc_ty_data = db.associated_ty_data(id);
                 Some(assoc_ty_data)
             }
             _ => None,
@@ -256,7 +253,7 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
     outer_binder: DebruijnIndex,
     allow_self_projection: AllowSelfProjection,
 ) -> bool {
-    let Some(trait_self_param_idx) = trait_self_param_idx(db.upcast(), def) else {
+    let Some(trait_self_param_idx) = trait_self_param_idx(db, def) else {
         return false;
     };
     struct IllegalSelfTypeVisitor<'a> {
@@ -290,8 +287,7 @@ fn contains_illegal_self_type_reference<T: TypeVisitable<Interner>>(
                     AllowSelfProjection::Yes => {
                         let trait_ = proj.trait_(self.db);
                         if self.super_traits.is_none() {
-                            self.super_traits =
-                                Some(all_super_traits(self.db.upcast(), self.trait_));
+                            self.super_traits = Some(all_super_traits(self.db, self.trait_));
                         }
                         if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
                             ControlFlow::Continue(())
@@ -347,7 +343,7 @@ where
             })
         }
         AssocItemId::TypeAliasId(it) => {
-            let def_map = db.crate_def_map(trait_.krate(db.upcast()));
+            let def_map = db.crate_def_map(trait_.krate(db));
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {
@@ -371,7 +367,7 @@ fn virtual_call_violations_for_method<F>(
 where
     F: FnMut(MethodViolationCode) -> ControlFlow<()>,
 {
-    let func_data = db.function_data(func);
+    let func_data = db.function_signature(func);
     if !func_data.has_self_param() {
         cb(MethodViolationCode::StaticMethod)?;
     }
@@ -380,7 +376,7 @@ where
         cb(MethodViolationCode::AsyncFn)?;
     }
 
-    let sig = callable_item_sig(db, func.into());
+    let sig = db.callable_item_signature(func.into());
     if sig.skip_binders().params().iter().skip(1).any(|ty| {
         contains_illegal_self_type_reference(
             db,
@@ -421,7 +417,7 @@ where
     }
 
     let predicates = &*db.generic_predicates_without_parent(func.into());
-    let trait_self_idx = trait_self_param_idx(db.upcast(), func.into());
+    let trait_self_idx = trait_self_param_idx(db, func.into());
     for pred in predicates {
         let pred = pred.skip_binders().skip_binders();
 
@@ -431,8 +427,8 @@ where
 
         // Allow `impl AutoTrait` predicates
         if let WhereClause::Implemented(TraitRef { trait_id, substitution }) = pred {
-            let trait_data = db.trait_data(from_chalk_trait_id(*trait_id));
-            if trait_data.flags.contains(TraitFlags::IS_AUTO)
+            let trait_data = db.trait_signature(from_chalk_trait_id(*trait_id));
+            if trait_data.flags.contains(TraitFlags::AUTO)
                 && substitution
                     .as_slice(Interner)
                     .first()
@@ -468,7 +464,7 @@ fn receiver_is_dispatchable(
     func: FunctionId,
     sig: &Binders<CallableSig>,
 ) -> bool {
-    let Some(trait_self_idx) = trait_self_param_idx(db.upcast(), func.into()) else {
+    let Some(trait_self_idx) = trait_self_param_idx(db, func.into()) else {
         return false;
     };
 
@@ -486,14 +482,14 @@ fn receiver_is_dispatchable(
         return true;
     }
 
-    let placeholder_subst = generics(db.upcast(), func.into()).placeholder_subst(db);
+    let placeholder_subst = generics(db, func.into()).placeholder_subst(db);
 
     let substituted_sig = sig.clone().substitute(Interner, &placeholder_subst);
     let Some(receiver_ty) = substituted_sig.params().first() else {
         return false;
     };
 
-    let krate = func.module(db.upcast()).krate();
+    let krate = func.module(db).krate();
     let traits = (
         db.lang_item(krate, LangItem::Unsize).and_then(|it| it.as_trait()),
         db.lang_item(krate, LangItem::DispatchFromDyn).and_then(|it| it.as_trait()),
@@ -552,20 +548,16 @@ fn receiver_is_dispatchable(
 }
 
 fn receiver_for_self_ty(db: &dyn HirDatabase, func: FunctionId, ty: Ty) -> Option<Ty> {
-    let generics = generics(db.upcast(), func.into());
-    let trait_self_idx = trait_self_param_idx(db.upcast(), func.into())?;
+    let generics = generics(db, func.into());
+    let trait_self_idx = trait_self_param_idx(db, func.into())?;
     let subst = generics.placeholder_subst(db);
     let subst = Substitution::from_iter(
         Interner,
         subst.iter(Interner).enumerate().map(|(idx, arg)| {
-            if idx == trait_self_idx {
-                ty.clone().cast(Interner)
-            } else {
-                arg.clone()
-            }
+            if idx == trait_self_idx { ty.clone().cast(Interner) } else { arg.clone() }
         }),
     );
-    let sig = callable_item_sig(db, func.into());
+    let sig = db.callable_item_signature(func.into());
     let sig = sig.substitute(Interner, &subst);
     sig.params_and_return.first().cloned()
 }
@@ -597,7 +589,7 @@ fn contains_illegal_impl_trait_in_trait(
 
     let ret = sig.skip_binders().ret();
     let mut visitor = OpaqueTypeCollector(FxHashSet::default());
-    let _ = ret.visit_with(visitor.as_dyn(), DebruijnIndex::INNERMOST);
+    _ = ret.visit_with(visitor.as_dyn(), DebruijnIndex::INNERMOST);
 
     // Since we haven't implemented RPITIT in proper way like rustc yet,
     // just check whether `ret` contains RPIT for now

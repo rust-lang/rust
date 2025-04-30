@@ -16,14 +16,14 @@ use ide::{
     FilePosition, TextSize,
 };
 use ide_db::{
-    imports::insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use project_model::CargoConfig;
 use test_utils::project_root;
 use vfs::{AbsPathBuf, VfsPath};
 
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 
 #[track_caller]
 fn file_id(vfs: &vfs::Vfs, path: &VfsPath) -> vfs::FileId {
@@ -86,7 +86,7 @@ fn integrated_highlighting_benchmark() {
             "self.data.cargo_buildScripts_rebuildOnSave",
             "self. data. cargo_buildScripts_rebuildOnSave",
         );
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
     }
@@ -149,7 +149,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
                 + "sel".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -200,7 +200,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", ";sel;\ndb.struct_data(self.id)")
                 + ";sel".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -250,7 +250,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
                 + "self.".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -367,7 +367,7 @@ fn integrated_diagnostics_benchmark() {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         patch(&mut text, "db.struct_data(self.id)", "();\ndb.struct_data(self.id)");
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
     };

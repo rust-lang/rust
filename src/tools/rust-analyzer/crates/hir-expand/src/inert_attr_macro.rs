@@ -562,7 +562,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     BuiltinAttribute {
-        // name: sym::rustc_diagnostic_item.clone(),
+        // name: sym::rustc_diagnostic_item,
         name: "rustc_diagnostic_item",
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
         // only_local: false,
@@ -571,7 +571,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         // duplicates: ErrorFollowing,
         // gate: Gated(
             // Stability::Unstable,
-            // sym::rustc_attrs.clone(),
+            // sym::rustc_attrs,
             // "diagnostic items compiler internal support for linting",
             // cfg_fn!(rustc_attrs),
         // ),

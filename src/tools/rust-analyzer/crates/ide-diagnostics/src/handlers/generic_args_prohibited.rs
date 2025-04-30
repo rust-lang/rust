@@ -3,9 +3,9 @@ use hir::GenericArgsProhibitedReason;
 use ide_db::assists::Assist;
 use ide_db::source_change::SourceChange;
 use ide_db::text_edit::TextEdit;
-use syntax::{ast, AstNode, TextRange};
+use syntax::{AstNode, TextRange, ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: generic-args-prohibited
 //
@@ -36,6 +36,7 @@ fn describe_reason(reason: GenericArgsProhibitedReason) -> String {
         }
         GenericArgsProhibitedReason::Const => "constants",
         GenericArgsProhibitedReason::Static => "statics",
+        GenericArgsProhibitedReason::LocalVariable => "local variables",
     };
     format!("generic arguments are not allowed on {kind}")
 }
@@ -63,7 +64,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::GenericArgsProhibited) -> Option
     Some(vec![fix(
         "remove_generic_args",
         "Remove these generics",
-        SourceChange::from_text_edit(file_id, TextEdit::delete(range)),
+        SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), TextEdit::delete(range)),
         syntax.syntax().text_range(),
     )])
 }
@@ -320,7 +321,7 @@ trait E<A: foo::<()>::Trait>
                // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
 }
 
-impl<A: foo::<()>::Trait> E for ()
+impl<A: foo::<()>::Trait> E<()> for ()
         // ^^^^^^ 💡 error: generic arguments are not allowed on modules
     where bool<i32>: foo::Trait
            // ^^^^^ 💡 error: generic arguments are not allowed on builtin types
@@ -518,16 +519,29 @@ fn baz() {
     }
 
     #[test]
-    fn const_and_static() {
+    fn const_param_and_static() {
         check_diagnostics(
             r#"
 const CONST: i32 = 0;
 static STATIC: i32 = 0;
-fn baz() {
-    let _ = CONST::<()>;
-              // ^^^^^^ 💡 error: generic arguments are not allowed on constants
+fn baz<const CONST_PARAM: usize>() {
+    let _ = CONST_PARAM::<()>;
+                    // ^^^^^^ 💡 error: generic arguments are not allowed on constants
     let _ = STATIC::<()>;
                // ^^^^^^ 💡 error: generic arguments are not allowed on statics
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn local_variable() {
+        check_diagnostics(
+            r#"
+fn baz() {
+    let x = 1;
+    let _ = x::<()>;
+          // ^^^^^^ 💡 error: generic arguments are not allowed on local variables
 }
         "#,
         );

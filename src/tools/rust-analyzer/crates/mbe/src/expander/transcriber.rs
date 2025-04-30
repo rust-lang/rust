@@ -1,14 +1,14 @@
 //! Transcriber takes a template, like `fn $ident() {}`, a set of bindings like
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use span::{Edition, Span};
-use tt::{iter::TtElement, Delimiter, TopSubtreeBuilder};
+use tt::{Delimiter, TopSubtreeBuilder, iter::TtElement};
 
 use crate::{
+    ExpandError, ExpandErrorKind, ExpandResult, MetaTemplate,
     expander::{Binding, Bindings, Fragment},
     parser::{ConcatMetaVarExprElem, MetaVarKind, Op, RepeatKind, Separator},
-    ExpandError, ExpandErrorKind, ExpandResult, MetaTemplate,
 };
 
 impl<'t> Bindings<'t> {
@@ -80,7 +80,7 @@ impl<'t> Bindings<'t> {
                     | MetaVarKind::Expr(_)
                     | MetaVarKind::Ident => {
                         builder.push(tt::Leaf::Ident(tt::Ident {
-                            sym: sym::missing.clone(),
+                            sym: sym::missing,
                             span,
                             is_raw: tt::IdentIsRaw::No,
                         }));
@@ -93,7 +93,7 @@ impl<'t> Bindings<'t> {
                                 spacing: tt::Spacing::Joint,
                             }),
                             tt::Leaf::Ident(tt::Ident {
-                                sym: sym::missing.clone(),
+                                sym: sym::missing,
                                 span,
                                 is_raw: tt::IdentIsRaw::No,
                             }),
@@ -101,7 +101,7 @@ impl<'t> Bindings<'t> {
                     }
                     MetaVarKind::Literal => {
                         builder.push(tt::Leaf::Ident(tt::Ident {
-                            sym: sym::missing.clone(),
+                            sym: sym::missing,
                             span,
                             is_raw: tt::IdentIsRaw::No,
                         }));
@@ -210,8 +210,11 @@ fn expand_subtree(
             }
             Op::Ignore { name, id } => {
                 // Expand the variable, but ignore the result. This registers the repetition count.
-                // FIXME: Any emitted errors are dropped.
-                let _ = ctx.bindings.get_fragment(name, *id, &mut ctx.nesting, marker);
+                let e = ctx.bindings.get_fragment(name, *id, &mut ctx.nesting, marker).err();
+                // FIXME: The error gets dropped if there were any previous errors.
+                // This should be reworked in a way where the errors can be combined
+                // and reported rather than storing the first error encountered.
+                err = err.or(e);
             }
             Op::Index { depth } => {
                 let index =
@@ -239,9 +242,7 @@ fn expand_subtree(
                 let mut binding = match ctx.bindings.get(name, ctx.call_site) {
                     Ok(b) => b,
                     Err(e) => {
-                        if err.is_none() {
-                            err = Some(e);
-                        }
+                        err = err.or(Some(e));
                         continue;
                     }
                 };
@@ -331,7 +332,10 @@ fn expand_subtree(
                                 }
                                 _ => {
                                     if err.is_none() {
-                                        err = Some(ExpandError::binding_error(var.span, "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`"))
+                                        err = Some(ExpandError::binding_error(
+                                            var.span,
+                                            "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`",
+                                        ))
                                     }
                                     continue;
                                 }
@@ -386,8 +390,13 @@ fn expand_var(
     match ctx.bindings.get_fragment(v, id, &mut ctx.nesting, marker) {
         Ok(fragment) => {
             match fragment {
-                Fragment::Tokens(tt) => builder.extend_with_tt(tt.strip_invisible()),
-                Fragment::TokensOwned(tt) => builder.extend_with_tt(tt.view().strip_invisible()),
+                // rustc spacing is not like ours. Ours is like proc macros', it dictates how puncts will actually be joined.
+                // rustc uses them mostly for pretty printing. So we have to deviate a bit from what rustc does here.
+                // Basically, a metavariable can never be joined with whatever after it.
+                Fragment::Tokens(tt) => builder.extend_with_tt_alone(tt.strip_invisible()),
+                Fragment::TokensOwned(tt) => {
+                    builder.extend_with_tt_alone(tt.view().strip_invisible())
+                }
                 Fragment::Expr(sub) => {
                     let sub = sub.strip_invisible();
                     let mut span = id;
@@ -399,7 +408,7 @@ fn expand_var(
                     if wrap_in_parens {
                         builder.open(tt::DelimiterKind::Parenthesis, span);
                     }
-                    builder.extend_with_tt(sub);
+                    builder.extend_with_tt_alone(sub);
                     if wrap_in_parens {
                         builder.close(span);
                     }

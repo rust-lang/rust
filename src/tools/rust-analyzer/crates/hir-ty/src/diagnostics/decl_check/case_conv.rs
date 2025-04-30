@@ -97,7 +97,7 @@ fn is_snake_case<F: Fn(char) -> bool>(ident: &str, wrong_case: F) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
     fn check<F: Fn(&str) -> Option<String>>(fun: F, input: &str, expect: Expect) {
         // `None` is translated to empty string, meaning that there is nothing to fix.

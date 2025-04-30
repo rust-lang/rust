@@ -1,8 +1,8 @@
 use ide_db::syntax_helpers::suggest_name;
 use itertools::Itertools;
-use syntax::ast::{self, syntax_factory::SyntaxFactory, AstNode, HasGenericParams, HasName};
+use syntax::ast::{self, AstNode, HasGenericParams, HasName, syntax_factory::SyntaxFactory};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: introduce_named_type_parameter
 //
@@ -24,10 +24,10 @@ pub(crate) fn introduce_named_type_parameter(
     let fn_ = param.syntax().ancestors().nth(2).and_then(ast::Fn::cast)?;
     let type_bound_list = impl_trait_type.type_bound_list()?;
 
-    let make = SyntaxFactory::new();
+    let make = SyntaxFactory::with_mappings();
     let target = fn_.syntax().text_range();
     acc.add(
-        AssistId("introduce_named_type_parameter", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("introduce_named_type_parameter"),
         "Replace impl trait with type parameter",
         target,
         |builder| {
@@ -59,7 +59,7 @@ pub(crate) fn introduce_named_type_parameter(
             }
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

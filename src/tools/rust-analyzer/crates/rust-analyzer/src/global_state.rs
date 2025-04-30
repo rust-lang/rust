@@ -5,14 +5,13 @@
 
 use std::{ops::Not as _, time::Instant};
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabase, SourceRootDatabase};
+use ide_db::base_db::{Crate, ProcMacroPaths, SourceDatabase};
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
-use nohash_hasher::IntMap;
 use parking_lot::{
     MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
     RwLockWriteGuard,
@@ -20,7 +19,7 @@ use parking_lot::{
 use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
-use tracing::{span, trace, Level};
+use tracing::{Level, span, trace};
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 
@@ -117,7 +116,7 @@ pub(crate) struct GlobalState {
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
-    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
+    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_done: bool,
@@ -158,7 +157,7 @@ pub(crate) struct GlobalState {
     // op queues
     pub(crate) fetch_workspaces_queue: OpQueue<FetchWorkspaceRequest, FetchWorkspaceResponse>,
     pub(crate) fetch_build_data_queue: OpQueue<(), FetchBuildDataResponse>,
-    pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
+    pub(crate) fetch_proc_macros_queue: OpQueue<(ChangeWithProcMacros, Vec<ProcMacroPaths>), bool>,
     pub(crate) prime_caches_queue: OpQueue,
     pub(crate) discover_workspace_queue: OpQueue,
 
@@ -181,7 +180,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
-    vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
+    vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     // used to signal semantic highlighting to fall back to syntax based highlighting until
     // proc-macros have been loaded
@@ -265,7 +264,7 @@ impl GlobalState {
             discover_sender,
             discover_receiver,
 
-            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
+            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), Default::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
             vfs_span: None,
@@ -300,7 +299,7 @@ impl GlobalState {
             FxHashMap::default();
 
         let (change, modified_rust_files, workspace_structure_change) = {
-            let mut change = ChangeWithProcMacros::new();
+            let mut change = ChangeWithProcMacros::default();
             let mut guard = self.vfs.write();
             let changed_files = guard.0.take_changes();
             if changed_files.is_empty() {
@@ -426,43 +425,48 @@ impl GlobalState {
                     tracing::info!(%vfs_path, ?change_kind, "Processing rust-analyzer.toml changes");
                     if vfs_path.as_path() == user_config_abs_path {
                         tracing::info!(%vfs_path, ?change_kind, "Use config rust-analyzer.toml changes");
-                        change.change_user_config(Some(db.file_text(file_id)));
-                        continue;
+                        change.change_user_config(Some(db.file_text(file_id).text(db)));
                     }
 
                     // If change has been made to a ratoml file that
                     // belongs to a non-local source root, we will ignore it.
-                    let sr_id = db.file_source_root(file_id);
-                    let sr = db.source_root(sr_id);
+                    let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                    let source_root = db.source_root(source_root_id).source_root(db);
 
-                    if !sr.is_library {
+                    if !source_root.is_library {
                         let entry = if workspace_ratoml_paths.contains(&vfs_path) {
-                            tracing::info!(%vfs_path, ?sr_id, "workspace rust-analyzer.toml changes");
+                            tracing::info!(%vfs_path, ?source_root_id, "workspace rust-analyzer.toml changes");
                             change.change_workspace_ratoml(
-                                sr_id,
+                                source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id)),
+                                Some(db.file_text(file_id).text(db)),
                             )
                         } else {
-                            tracing::info!(%vfs_path, ?sr_id, "crate rust-analyzer.toml changes");
+                            tracing::info!(%vfs_path, ?source_root_id, "crate rust-analyzer.toml changes");
                             change.change_ratoml(
-                                sr_id,
+                                source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id)),
+                                Some(db.file_text(file_id).text(db)),
                             )
                         };
 
                         if let Some((kind, old_path, old_text)) = entry {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
-                                tracing::error!("Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
+                                tracing::error!(
+                                    "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect."
+                                );
                                 // Put the old one back in.
                                 match kind {
                                     RatomlFileKind::Crate => {
-                                        change.change_ratoml(sr_id, old_path, old_text);
+                                        change.change_ratoml(source_root_id, old_path, old_text);
                                     }
                                     RatomlFileKind::Workspace => {
-                                        change.change_workspace_ratoml(sr_id, old_path, old_text);
+                                        change.change_workspace_ratoml(
+                                            source_root_id,
+                                            old_path,
+                                            old_text,
+                                        );
                                     }
                                 }
                             }
@@ -711,7 +715,7 @@ impl GlobalStateSnapshot {
         self.vfs_read().file_path(file_id).clone()
     }
 
-    pub(crate) fn target_spec_for_crate(&self, crate_id: CrateId) -> Option<TargetSpec> {
+    pub(crate) fn target_spec_for_crate(&self, crate_id: Crate) -> Option<TargetSpec> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
         let path = self.vfs_read().file_path(file_id).clone();
         let path = path.as_path()?;

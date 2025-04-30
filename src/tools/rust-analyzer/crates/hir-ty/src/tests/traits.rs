@@ -4213,7 +4213,7 @@ fn g<'a, T: 'a>(v: impl Trait<Assoc<T> = &'a T>) {
     let a = v.get::<T>();
       //^ &'a T
     let a = v.get::<()>();
-      //^ Trait::Assoc<(), impl Trait<Assoc<T> = &'a T>>
+      //^ Trait::Assoc<impl Trait<Assoc<T> = &'a T>, ()>
 }
 fn h<'a>(v: impl Trait<Assoc<i32> = &'a i32> + Trait<Assoc<i64> = &'a i64>) {
     let a = v.get::<i32>();
@@ -4280,7 +4280,7 @@ where
     let a = t.get::<isize>();
       //^ usize
     let a = t.get::<()>();
-      //^ Trait::Assoc<(), T>
+      //^ Trait::Assoc<T, ()>
 }
 
     "#,

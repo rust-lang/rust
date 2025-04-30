@@ -2,9 +2,9 @@ use std::fmt;
 
 use hir::{DisplayTarget, Field, HirDisplay, Layout, Semantics, Type};
 use ide_db::{
+    RootDatabase,
     defs::Definition,
     helpers::{get_definition, pick_best_token},
-    RootDatabase,
 };
 use syntax::{AstNode, SyntaxKind};
 
@@ -83,7 +83,7 @@ pub(crate) fn view_memory_layout(
 ) -> Option<RecursiveMemoryLayout> {
     let sema = Semantics::new(db);
     let file = sema.parse_guess_edition(position.file_id);
-    let display_target = sema.first_crate_or_default(position.file_id).to_display_target(db);
+    let display_target = sema.first_crate(position.file_id)?.to_display_target(db);
     let token =
         pick_best_token(file.syntax().token_at_offset(position.offset), |kind| match kind {
             SyntaxKind::IDENT => 3,

@@ -19,8 +19,8 @@ pub struct SyntaxFactory {
 
 impl SyntaxFactory {
     /// Creates a new [`SyntaxFactory`], generating mappings between input nodes and generated nodes.
-    pub fn new() -> Self {
-        Self { mappings: Some(RefCell::new(SyntaxMapping::new())) }
+    pub fn with_mappings() -> Self {
+        Self { mappings: Some(RefCell::new(SyntaxMapping::default())) }
     }
 
     /// Creates a [`SyntaxFactory`] without generating mappings.

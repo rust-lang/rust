@@ -284,6 +284,7 @@ fn bar() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop

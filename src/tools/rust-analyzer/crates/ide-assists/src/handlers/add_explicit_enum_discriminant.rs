@@ -1,10 +1,6 @@
 use hir::Semantics;
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    source_change::SourceChangeBuilder,
-    RootDatabase,
-};
-use syntax::{ast, AstNode};
+use ide_db::{RootDatabase, assists::AssistId, source_change::SourceChangeBuilder};
+use syntax::{AstNode, ast};
 
 use crate::{AssistContext, Assists};
 
@@ -53,7 +49,7 @@ pub(crate) fn add_explicit_enum_discriminant(
     }
 
     acc.add(
-        AssistId("add_explicit_enum_discriminant", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("add_explicit_enum_discriminant"),
         "Add explicit enum discriminants",
         enum_node.syntax().text_range(),
         |builder| {

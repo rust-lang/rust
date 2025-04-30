@@ -5,7 +5,7 @@ use std::ops::{Bound, Range};
 use intern::Symbol;
 use proc_macro::bridge::{self, server};
 
-use crate::server_impl::{literal_kind_to_internal, token_stream::TokenStreamBuilder, TopSubtree};
+use crate::server_impl::{TopSubtree, literal_kind_to_internal, token_stream::TokenStreamBuilder};
 mod tt {
     pub use span::TokenId;
 
@@ -187,7 +187,7 @@ impl server::TokenStream for TokenIdServer {
         base: Option<Self::TokenStream>,
         trees: Vec<bridge::TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::new();
+        let mut builder = TokenStreamBuilder::default();
         if let Some(base) = base {
             builder.push(base);
         }
@@ -202,7 +202,7 @@ impl server::TokenStream for TokenIdServer {
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
     ) -> Self::TokenStream {
-        let mut builder = TokenStreamBuilder::new();
+        let mut builder = TokenStreamBuilder::default();
         if let Some(base) = base {
             builder.push(base);
         }

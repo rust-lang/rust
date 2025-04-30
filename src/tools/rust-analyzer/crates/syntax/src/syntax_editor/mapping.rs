@@ -20,10 +20,6 @@ pub struct SyntaxMapping {
 }
 
 impl SyntaxMapping {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Like [`SyntaxMapping::upmap_child`] but for syntax elements.
     pub fn upmap_child_element(
         &self,

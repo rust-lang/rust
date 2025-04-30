@@ -8,6 +8,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+publish = false
 
 [dependencies]
 proc-macro-srv.workspace = true

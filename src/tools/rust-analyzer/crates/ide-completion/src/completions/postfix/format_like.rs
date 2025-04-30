@@ -17,15 +17,15 @@
 // ![Format String Completion](https://user-images.githubusercontent.com/48062697/113020656-b560f500-917a-11eb-87de-02991f61beb8.gif)
 
 use ide_db::{
-    syntax_helpers::format_string_exprs::{parse_format_exprs, with_placeholders, Arg},
     SnippetCap,
+    syntax_helpers::format_string_exprs::{Arg, parse_format_exprs, with_placeholders},
 };
-use syntax::{ast, AstToken};
+use syntax::{AstToken, ast};
 
 use crate::{
+    Completions,
     completions::postfix::{build_postfix_snippet_builder, escape_snippet_bits},
     context::CompletionContext,
-    Completions,
 };
 
 /// Mapping ("postfix completion item" => "macro to use")

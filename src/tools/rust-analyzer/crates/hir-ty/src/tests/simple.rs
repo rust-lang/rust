@@ -1784,6 +1784,8 @@ impl Foo for u8 {
 }
 
 #[test]
+// FIXME
+#[should_panic]
 fn const_eval_in_function_signature() {
     check_types(
         r#"

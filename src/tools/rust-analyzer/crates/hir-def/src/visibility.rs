@@ -2,80 +2,19 @@
 
 use std::iter;
 
-use intern::Interned;
+use hir_expand::Lookup;
 use la_arena::ArenaMap;
-use span::SyntaxContextId;
-use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
+    ConstId, FunctionId, HasModule, ItemContainerId, ItemLoc, ItemTreeLoc, LocalFieldId,
+    LocalModuleId, ModuleId, TraitId, TypeAliasId, VariantId,
     db::DefDatabase,
     nameres::DefMap,
-    path::{ModPath, PathKind},
-    resolver::HasResolver,
-    ConstId, FunctionId, HasModule, LocalFieldId, LocalModuleId, ModuleId, VariantId,
+    resolver::{HasResolver, Resolver},
 };
 
-/// Visibility of an item, not yet resolved.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RawVisibility {
-    /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
-    /// equivalent to `pub(self)`.
-    Module(Interned<ModPath>, VisibilityExplicitness),
-    /// `pub`.
-    Public,
-}
-
-impl RawVisibility {
-    pub(crate) fn private() -> RawVisibility {
-        RawVisibility::Module(
-            Interned::new(ModPath::from_kind(PathKind::SELF)),
-            VisibilityExplicitness::Implicit,
-        )
-    }
-
-    pub(crate) fn from_ast(
-        db: &dyn DefDatabase,
-        node: Option<ast::Visibility>,
-        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
-    ) -> RawVisibility {
-        let node = match node {
-            None => return RawVisibility::private(),
-            Some(node) => node,
-        };
-        Self::from_ast_with_span_map(db, node, span_for_range)
-    }
-
-    fn from_ast_with_span_map(
-        db: &dyn DefDatabase,
-        node: ast::Visibility,
-        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
-    ) -> RawVisibility {
-        let path = match node.kind() {
-            ast::VisibilityKind::In(path) => {
-                let path = ModPath::from_src(db.upcast(), path, span_for_range);
-                match path {
-                    None => return RawVisibility::private(),
-                    Some(path) => path,
-                }
-            }
-            ast::VisibilityKind::PubCrate => ModPath::from_kind(PathKind::Crate),
-            ast::VisibilityKind::PubSuper => ModPath::from_kind(PathKind::Super(1)),
-            ast::VisibilityKind::PubSelf => ModPath::from_kind(PathKind::SELF),
-            ast::VisibilityKind::Pub => return RawVisibility::Public,
-        };
-        RawVisibility::Module(Interned::new(path), VisibilityExplicitness::Explicit)
-    }
-
-    pub fn resolve(
-        &self,
-        db: &dyn DefDatabase,
-        resolver: &crate::resolver::Resolver,
-    ) -> Visibility {
-        // we fall back to public visibility (i.e. fail open) if the path can't be resolved
-        resolver.resolve_visibility(db, self).unwrap_or(Visibility::Public)
-    }
-}
+pub use crate::item_tree::{RawVisibility, VisibilityExplicitness};
 
 /// Visibility of an item, with the path resolved.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -87,6 +26,15 @@ pub enum Visibility {
 }
 
 impl Visibility {
+    pub fn resolve(
+        db: &dyn DefDatabase,
+        resolver: &crate::resolver::Resolver,
+        raw_vis: &RawVisibility,
+    ) -> Self {
+        // we fall back to public visibility (i.e. fail open) if the path can't be resolved
+        resolver.resolve_visibility(db, raw_vis).unwrap_or(Visibility::Public)
+    }
+
     pub(crate) fn is_visible_from_other_crate(self) -> bool {
         matches!(self, Visibility::Public)
     }
@@ -254,30 +202,20 @@ impl Visibility {
     }
 }
 
-/// Whether the item was imported through an explicit `pub(crate) use` or just a `use` without
-/// visibility.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum VisibilityExplicitness {
-    Explicit,
-    Implicit,
-}
-
-impl VisibilityExplicitness {
-    pub fn is_explicit(&self) -> bool {
-        matches!(self, Self::Explicit)
-    }
-}
-
 /// Resolve visibility of all specific fields of a struct or union variant.
 pub(crate) fn field_visibilities_query(
     db: &dyn DefDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalFieldId, Visibility>> {
-    let var_data = variant_id.variant_data(db);
+    let variant_fields = db.variant_fields(variant_id);
+    let fields = variant_fields.fields();
+    if fields.is_empty() {
+        return Arc::default();
+    }
     let resolver = variant_id.module(db).resolver(db);
     let mut res = ArenaMap::default();
-    for (field_id, field_data) in var_data.fields().iter() {
-        res.insert(field_id, field_data.visibility.resolve(db, &resolver));
+    for (field_id, field_data) in fields.iter() {
+        res.insert(field_id, Visibility::resolve(db, &resolver, &field_data.visibility));
     }
     Arc::new(res)
 }
@@ -285,11 +223,43 @@ pub(crate) fn field_visibilities_query(
 /// Resolve visibility of a function.
 pub(crate) fn function_visibility_query(db: &dyn DefDatabase, def: FunctionId) -> Visibility {
     let resolver = def.resolver(db);
-    db.function_data(def).visibility.resolve(db, &resolver)
+    let loc = def.lookup(db);
+    let tree = loc.item_tree_id().item_tree(db);
+    if let ItemContainerId::TraitId(trait_id) = loc.container {
+        trait_vis(db, &resolver, trait_id)
+    } else {
+        Visibility::resolve(db, &resolver, &tree[tree[loc.id.value].visibility])
+    }
 }
 
 /// Resolve visibility of a const.
 pub(crate) fn const_visibility_query(db: &dyn DefDatabase, def: ConstId) -> Visibility {
     let resolver = def.resolver(db);
-    db.const_data(def).visibility.resolve(db, &resolver)
+    let loc = def.lookup(db);
+    let tree = loc.item_tree_id().item_tree(db);
+    if let ItemContainerId::TraitId(trait_id) = loc.container {
+        trait_vis(db, &resolver, trait_id)
+    } else {
+        Visibility::resolve(db, &resolver, &tree[tree[loc.id.value].visibility])
+    }
+}
+
+/// Resolve visibility of a type alias.
+pub(crate) fn type_alias_visibility_query(db: &dyn DefDatabase, def: TypeAliasId) -> Visibility {
+    let resolver = def.resolver(db);
+    let loc = def.lookup(db);
+    let tree = loc.item_tree_id().item_tree(db);
+    if let ItemContainerId::TraitId(trait_id) = loc.container {
+        trait_vis(db, &resolver, trait_id)
+    } else {
+        Visibility::resolve(db, &resolver, &tree[tree[loc.id.value].visibility])
+    }
+}
+
+#[inline]
+fn trait_vis(db: &dyn DefDatabase, resolver: &Resolver, trait_id: TraitId) -> Visibility {
+    let ItemLoc { id: tree_id, .. } = trait_id.lookup(db);
+    let item_tree = tree_id.item_tree(db);
+    let tr_def = &item_tree[tree_id.value];
+    Visibility::resolve(db, resolver, &item_tree[tr_def.visibility])
 }

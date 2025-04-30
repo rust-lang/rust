@@ -12,20 +12,18 @@ rust-version.workspace = true
 [lib]
 
 [dependencies]
-cov-mark = "2.0.0-pre.1"
+cov-mark = "2.0.0"
 itertools.workspace = true
-triomphe.workspace = true
-nohash-hasher.workspace = true
 
 # local deps
 hir.workspace = true
 ide-db.workspace = true
 parser.workspace = true
-stdx.workspace = true
 syntax.workspace = true
 
 [dev-dependencies]
-expect-test = "1.4.0"
+expect-test = "1.5.1"
+triomphe.workspace = true
 
 # local deps
 test-utils.workspace = true

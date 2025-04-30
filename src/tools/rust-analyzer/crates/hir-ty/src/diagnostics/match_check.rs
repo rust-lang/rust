@@ -11,19 +11,21 @@ pub(crate) mod pat_analysis;
 
 use chalk_ir::Mutability;
 use hir_def::{
-    data::adt::VariantData, expr_store::Body, hir::PatId, AdtId, EnumVariantId, LocalFieldId,
-    VariantId,
+    AdtId, EnumVariantId, LocalFieldId, Lookup, VariantId,
+    expr_store::{Body, path::Path},
+    hir::PatId,
+    item_tree::FieldsShape,
 };
 use hir_expand::name::Name;
 use span::Edition;
 use stdx::{always, never};
 
 use crate::{
+    InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
     db::HirDatabase,
     display::{HirDisplay, HirDisplayError, HirFormatter},
     infer::BindingMode,
     lang_items::is_box,
-    InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
 };
 
 use self::pat_util::EnumerateAndAdjustIterator;
@@ -155,7 +157,7 @@ impl<'a> PatCtxt<'a> {
                     (BindingMode::Ref(_), _) => {
                         never!(
                             "`ref {}` has wrong type {:?}",
-                            name.display(self.db.upcast(), Edition::LATEST),
+                            name.display(self.db, Edition::LATEST),
                             ty
                         );
                         self.errors.push(PatternError::UnexpectedType);
@@ -167,13 +169,13 @@ impl<'a> PatCtxt<'a> {
             }
 
             hir_def::hir::Pat::TupleStruct { ref args, ellipsis, .. } if variant.is_some() => {
-                let expected_len = variant.unwrap().variant_data(self.db.upcast()).fields().len();
+                let expected_len = variant.unwrap().variant_data(self.db).fields().len();
                 let subpatterns = self.lower_tuple_subpats(args, expected_len, ellipsis);
                 self.lower_variant_or_leaf(pat, ty, subpatterns)
             }
 
             hir_def::hir::Pat::Record { ref args, .. } if variant.is_some() => {
-                let variant_data = variant.unwrap().variant_data(self.db.upcast());
+                let variant_data = variant.unwrap().variant_data(self.db);
                 let subpatterns = args
                     .iter()
                     .map(|field| {
@@ -242,7 +244,7 @@ impl<'a> PatCtxt<'a> {
         ty: &Ty,
         subpatterns: Vec<FieldPat>,
     ) -> PatKind {
-        let kind = match self.infer.variant_resolution_for_pat(pat) {
+        match self.infer.variant_resolution_for_pat(pat) {
             Some(variant_id) => {
                 if let VariantId::EnumVariantId(enum_variant) = variant_id {
                     let substs = match ty.kind(Interner) {
@@ -266,11 +268,10 @@ impl<'a> PatCtxt<'a> {
                 self.errors.push(PatternError::UnresolvedVariant);
                 PatKind::Wild
             }
-        };
-        kind
+        }
     }
 
-    fn lower_path(&mut self, pat: PatId, _path: &hir_def::path::Path) -> Pat {
+    fn lower_path(&mut self, pat: PatId, _path: &Path) -> Pat {
         let ty = &self.infer[pat];
 
         let pat_from_kind = |kind| Pat { ty: ty.clone(), kind: Box::new(kind) };
@@ -303,7 +304,7 @@ impl HirDisplay for Pat {
             PatKind::Wild => write!(f, "_"),
             PatKind::Never => write!(f, "!"),
             PatKind::Binding { name, subpattern } => {
-                write!(f, "{}", name.display(f.db.upcast(), f.edition()))?;
+                write!(f, "{}", name.display(f.db, f.edition()))?;
                 if let Some(subpattern) = subpattern {
                     write!(f, " @ ")?;
                     subpattern.hir_fmt(f)?;
@@ -323,26 +324,29 @@ impl HirDisplay for Pat {
                 if let Some(variant) = variant {
                     match variant {
                         VariantId::EnumVariantId(v) => {
+                            let loc = v.lookup(f.db);
                             write!(
                                 f,
                                 "{}",
-                                f.db.enum_variant_data(v).name.display(f.db.upcast(), f.edition())
+                                f.db.enum_variants(loc.parent).variants[loc.index as usize]
+                                    .1
+                                    .display(f.db, f.edition())
                             )?;
                         }
                         VariantId::StructId(s) => write!(
                             f,
                             "{}",
-                            f.db.struct_data(s).name.display(f.db.upcast(), f.edition())
+                            f.db.struct_signature(s).name.display(f.db, f.edition())
                         )?,
                         VariantId::UnionId(u) => write!(
                             f,
                             "{}",
-                            f.db.union_data(u).name.display(f.db.upcast(), f.edition())
+                            f.db.union_signature(u).name.display(f.db, f.edition())
                         )?,
                     };
 
-                    let variant_data = variant.variant_data(f.db.upcast());
-                    if let VariantData::Record { fields: rec_fields, .. } = &*variant_data {
+                    let variant_data = variant.variant_data(f.db);
+                    if variant_data.shape == FieldsShape::Record {
                         write!(f, " {{ ")?;
 
                         let mut printed = 0;
@@ -351,20 +355,20 @@ impl HirDisplay for Pat {
                             .filter(|p| !matches!(*p.pattern.kind, PatKind::Wild))
                             .map(|p| {
                                 printed += 1;
-                                WriteWith(move |f| {
+                                WriteWith(|f| {
                                     write!(
                                         f,
                                         "{}: ",
-                                        rec_fields[p.field]
+                                        variant_data.fields()[p.field]
                                             .name
-                                            .display(f.db.upcast(), f.edition())
+                                            .display(f.db, f.edition())
                                     )?;
                                     p.pattern.hir_fmt(f)
                                 })
                             });
                         f.write_joined(subpats, ", ")?;
 
-                        if printed < rec_fields.len() {
+                        if printed < variant_data.fields().len() {
                             write!(f, "{}..", if printed > 0 { ", " } else { "" })?;
                         }
 
@@ -372,8 +376,8 @@ impl HirDisplay for Pat {
                     }
                 }
 
-                let num_fields = variant
-                    .map_or(subpatterns.len(), |v| v.variant_data(f.db.upcast()).fields().len());
+                let num_fields =
+                    variant.map_or(subpatterns.len(), |v| v.variant_data(f.db).fields().len());
                 if num_fields != 0 || variant.is_none() {
                     write!(f, "(")?;
                     let subpats = (0..num_fields).map(|i| {
