@@ -276,6 +276,14 @@ pub trait Machine<'tcx>: Sized {
         F2::NAN
     }
 
+    /// Apply non-determinism to float operations that do not return a precise result.
+    fn apply_float_nondet(
+        _ecx: &mut InterpCx<'tcx, Self>,
+        val: ImmTy<'tcx, Self::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
+        interp_ok(val)
+    }
+
     /// Determines the result of `min`/`max` on floats when the arguments are equal.
     fn equal_float_min_max<F: Float>(_ecx: &InterpCx<'tcx, Self>, a: F, _b: F) -> F {
         // By default, we pick the left argument.

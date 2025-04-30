@@ -724,6 +724,9 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
     let destruct_def_id = cx.require_lang_item(TraitSolverLangItem::Destruct);
 
     match self_ty.kind() {
+        // `ManuallyDrop` is trivially `~const Destruct` as we do not run any drop glue on it.
+        ty::Adt(adt_def, _) if adt_def.is_manually_drop() => Ok(vec![]),
+
         // An ADT is `~const Destruct` only if all of the fields are,
         // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
         ty::Adt(adt_def, args) => {

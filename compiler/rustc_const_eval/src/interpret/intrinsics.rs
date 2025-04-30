@@ -183,8 +183,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let res = self.binary_op(op, &a, &b)?;
                 // `binary_op` already called `generate_nan` if needed.
-
-                // FIXME: Miri should add some non-determinism to the result here to catch any dependences on exact computations. This has previously been done, but the behaviour was removed as part of constification.
+                let res = M::apply_float_nondet(self, res)?;
                 self.write_immediate(*res, dest)?;
             }
 
