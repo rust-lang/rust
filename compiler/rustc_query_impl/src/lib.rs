@@ -234,7 +234,7 @@ pub fn query_system<'a>(
     }
 }
 
-rustc_middle::rustc_query_append! { define_queries! }
+rustc_middle::rustc_with_all_queries! { define_queries! }
 
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings = alloc_self_profile_query_strings;
