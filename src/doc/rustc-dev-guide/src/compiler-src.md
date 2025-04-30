@@ -86,8 +86,12 @@ something like this:
 [`Span`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [main]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/fn.main.html
 
-You can see the exact dependencies by reading the [`Cargo.toml`] for the various
-crates, just like a normal Rust crate.
+You can see the exact dependencies by running `cargo tree`,
+just like you would for any other Rust package:
+
+```console
+cargo tree --package rustc_driver
+```
 
 One final thing: [`src/llvm-project`] is a submodule for our fork of LLVM.
 During bootstrapping, LLVM is built and the [`compiler/rustc_llvm`] crate
