@@ -13,9 +13,9 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, EarlyBinder, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
+    elaborate,
 };
 use rustc_span::Span;
-use rustc_type_ir::elaborate;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 

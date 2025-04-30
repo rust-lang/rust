@@ -50,6 +50,7 @@ use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
+pub use rustc_type_ir::data_structures::DelayedSet;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
