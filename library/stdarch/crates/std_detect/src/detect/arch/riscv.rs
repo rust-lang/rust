@@ -22,6 +22,19 @@ features! {
     ///
     /// [ISA manual]: https://riscv.org/specifications/ratified/
     ///
+    /// # Platform-specific/agnostic Behavior and Availability
+    ///
+    /// Runtime detection depends on the platform-specific feature detection
+    /// facility and its availability per feature is
+    /// highly platform/version-specific.
+    ///
+    /// Still, a best-effort attempt is performed to enable subset/dependent
+    /// features if a superset feature is enabled regardless of the platform.
+    /// For instance, if the A extension (`"a"`) is enabled, its subsets (the
+    /// Zalrsc and Zaamo extensions; `"zalrsc"` and `"zaamo"`) are also enabled.
+    /// Likewise, if the F extension (`"f"`) is enabled, one of its dependencies
+    /// (the Zicsr extension `"zicsr"`) is also enabled.
+    ///
     /// # Unprivileged Specification
     ///
     /// The supported ratified RISC-V instruction sets are as follows:
@@ -122,7 +135,9 @@ features! {
     /// corresponding unaligned memory access is reasonably fast.
     ///
     /// * `"unaligned-scalar-mem"`
+    ///   * Runtime detection requires Linux kernel version 6.4 or later.
     /// * `"unaligned-vector-mem"`
+    ///   * Runtime detection requires Linux kernel version 6.13 or later.
     #[stable(feature = "riscv_ratified", since = "1.78.0")]
 
     @FEATURE: #[unstable(feature = "stdarch_riscv_feature_detection", issue = "111192")] rv32i: "rv32i";
