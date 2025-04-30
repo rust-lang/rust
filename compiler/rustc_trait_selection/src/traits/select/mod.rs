@@ -28,10 +28,9 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
-    TypingMode, Upcast,
+    TypingMode, Upcast, elaborate,
 };
 use rustc_span::{Symbol, sym};
-use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;

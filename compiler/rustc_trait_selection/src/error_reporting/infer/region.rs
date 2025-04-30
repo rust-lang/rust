@@ -11,9 +11,10 @@ use rustc_hir::{self as hir, ParamName};
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _};
+use rustc_middle::ty::{
+    self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
+};
 use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw};
-use rustc_type_ir::Upcast as _;
 use tracing::{debug, instrument};
 
 use super::ObligationCauseAsDiagArg;

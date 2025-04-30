@@ -7,11 +7,11 @@ use rustc_infer::traits::{
     self, MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation, SelectionError,
 };
+use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_next_trait_solver::solve::{GenerateProofTree, SolverDelegateEvalExt as _};
-use rustc_type_ir::solve::NoSolution;
 use tracing::{instrument, trace};
 
 use crate::solve::delegate::SolverDelegate;
