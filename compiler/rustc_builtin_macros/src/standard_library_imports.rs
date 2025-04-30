@@ -43,7 +43,7 @@ pub fn inject(
 
     let item = cx.item(
         span,
-        thin_vec![cx.attr_word(sym::macro_use, span)],
+        ast::AttrVec::new(),
         ast::ItemKind::ExternCrate(None, Ident::new(name, ident_span)),
     );
 
