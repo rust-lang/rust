@@ -80,6 +80,10 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+#[allow(dead_code)] // Not used in all configurations.
+#[cfg(test)]
+mod test_helpers;
+
 use core::any::Any;
 
 use event::{CompletedTest, TestEvent};
