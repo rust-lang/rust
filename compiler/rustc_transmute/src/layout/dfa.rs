@@ -1,5 +1,5 @@
 use std::fmt;
-use std::ops::RangeInclusive;
+use std::iter::Peekable;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use super::{Byte, Ref, Tree, Uninhabited};
@@ -211,15 +211,15 @@ where
             let b_transitions =
                 b_src.and_then(|b_src| b.transitions.get(&b_src)).unwrap_or(&empty_transitions);
 
-            let byte_transitions =
-                a_transitions.byte_transitions.union(&b_transitions.byte_transitions);
+            let byte_transitions = a_transitions.byte_transitions.union(
+                &b_transitions.byte_transitions,
+                |a_dst, b_dst| {
+                    assert!(a_dst.is_some() || b_dst.is_some());
 
-            let byte_transitions = byte_transitions.map_states(|(a_dst, b_dst)| {
-                assert!(a_dst.is_some() || b_dst.is_some());
-
-                queue.enqueue(a_dst, b_dst);
-                mapped((a_dst, b_dst))
-            });
+                    queue.enqueue(a_dst, b_dst);
+                    mapped((a_dst, b_dst))
+                },
+            );
 
             let ref_transitions =
                 a_transitions.ref_transitions.keys().chain(b_transitions.ref_transitions.keys());
@@ -243,18 +243,6 @@ where
         }
 
         Self { transitions, start, accept }
-    }
-
-    pub(crate) fn states_from(
-        &self,
-        state: State,
-        src_validity: RangeInclusive<u8>,
-    ) -> impl Iterator<Item = (Byte, State)> {
-        self.transitions
-            .get(&state)
-            .map(move |t| t.byte_transitions.states_from(src_validity))
-            .into_iter()
-            .flatten()
     }
 
     pub(crate) fn get_uninit_edge_dst(&self, state: State) -> Option<State> {
@@ -334,95 +322,31 @@ where
 
 use edge_set::EdgeSet;
 mod edge_set {
-    use std::cmp;
-
-    use run::*;
-    use smallvec::{SmallVec, smallvec};
+    use smallvec::SmallVec;
 
     use super::*;
-    mod run {
-        use std::ops::{Range, RangeInclusive};
 
-        use super::*;
-        use crate::layout::Byte;
-
-        /// A logical set of edges.
-        ///
-        /// A `Run` encodes one edge for every byte value in `start..=end`
-        /// pointing to `dst`.
-        #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-        pub(super) struct Run<S> {
-            // `start` and `end` are both inclusive (ie, closed) bounds, as this
-            // is required in order to be able to store 0..=255. We provide
-            // setters and getters which operate on closed/open ranges, which
-            // are more intuitive and easier for performing offset math.
-            start: u8,
-            end: u8,
-            pub(super) dst: S,
-        }
-
-        impl<S> Run<S> {
-            pub(super) fn new(range: RangeInclusive<u8>, dst: S) -> Self {
-                Self { start: *range.start(), end: *range.end(), dst }
-            }
-
-            pub(super) fn from_inclusive_exclusive(range: Range<u16>, dst: S) -> Self {
-                Self {
-                    start: range.start.try_into().unwrap(),
-                    end: (range.end - 1).try_into().unwrap(),
-                    dst,
-                }
-            }
-
-            pub(super) fn contains(&self, idx: u16) -> bool {
-                idx >= u16::from(self.start) && idx <= u16::from(self.end)
-            }
-
-            pub(super) fn as_inclusive_exclusive(&self) -> (u16, u16) {
-                (u16::from(self.start), u16::from(self.end) + 1)
-            }
-
-            pub(super) fn as_byte(&self) -> Byte {
-                Byte::new(self.start..=self.end)
-            }
-
-            pub(super) fn map_state<SS>(self, f: impl FnOnce(S) -> SS) -> Run<SS> {
-                let Run { start, end, dst } = self;
-                Run { start, end, dst: f(dst) }
-            }
-
-            /// Produces a new `Run` whose lower bound is the greater of
-            /// `self`'s existing lower bound and `lower_bound`.
-            pub(super) fn clamp_lower(self, lower_bound: u8) -> Self {
-                let Run { start, end, dst } = self;
-                Run { start: cmp::max(start, lower_bound), end, dst }
-            }
-        }
-    }
-
-    /// The set of outbound byte edges associated with a DFA node (not including
-    /// reference edges).
+    /// The set of outbound byte edges associated with a DFA node.
     #[derive(Eq, PartialEq, Clone, Debug)]
     pub(super) struct EdgeSet<S = State> {
-        // A sequence of runs stored in ascending order. Since the graph is a
-        // DFA, these must be non-overlapping with one another.
-        runs: SmallVec<[Run<S>; 1]>,
-        // The edge labeled with the uninit byte, if any.
+        // A sequence of byte edges with contiguous byte values and a common
+        // destination is stored as a single run.
         //
-        // FIXME(@joshlf): Make `State` a `NonZero` so that this is NPO'd.
-        uninit: Option<S>,
+        // Runs are non-empty, non-overlapping, and stored in ascending order.
+        runs: SmallVec<[(Byte, S); 1]>,
     }
 
     impl<S> EdgeSet<S> {
-        pub(crate) fn new(byte: Byte, dst: S) -> Self {
-            match byte.range() {
-                Some(range) => Self { runs: smallvec![Run::new(range, dst)], uninit: None },
-                None => Self { runs: SmallVec::new(), uninit: Some(dst) },
+        pub(crate) fn new(range: Byte, dst: S) -> Self {
+            let mut this = Self { runs: SmallVec::new() };
+            if !range.is_empty() {
+                this.runs.push((range, dst));
             }
+            this
         }
 
         pub(crate) fn empty() -> Self {
-            Self { runs: SmallVec::new(), uninit: None }
+            Self { runs: SmallVec::new() }
         }
 
         #[cfg(test)]
@@ -431,43 +355,23 @@ mod edge_set {
             S: Ord,
         {
             edges.sort();
-            Self {
-                runs: edges
-                    .into_iter()
-                    .map(|(byte, state)| Run::new(byte.range().unwrap(), state))
-                    .collect(),
-                uninit: None,
-            }
+            Self { runs: edges.into() }
         }
 
         pub(crate) fn iter(&self) -> impl Iterator<Item = (Byte, S)>
         where
             S: Copy,
         {
-            self.uninit
-                .map(|dst| (Byte::uninit(), dst))
-                .into_iter()
-                .chain(self.runs.iter().map(|run| (run.as_byte(), run.dst)))
-        }
-
-        pub(crate) fn states_from(
-            &self,
-            byte: RangeInclusive<u8>,
-        ) -> impl Iterator<Item = (Byte, S)>
-        where
-            S: Copy,
-        {
-            // FIXME(@joshlf): Optimize this. A manual scan over `self.runs` may
-            // permit us to more efficiently discard runs which will not be
-            // produced by this iterator.
-            self.iter().filter(move |(o, _)| Byte::new(byte.clone()).transmutable_into(&o))
+            self.runs.iter().copied()
         }
 
         pub(crate) fn get_uninit_edge_dst(&self) -> Option<S>
         where
             S: Copy,
         {
-            self.uninit
+            // Uninit is ordered last.
+            let &(range, dst) = self.runs.last()?;
+            if range.contains_uninit() { Some(dst) } else { None }
         }
 
         pub(crate) fn map_states<SS>(self, mut f: impl FnMut(S) -> SS) -> EdgeSet<SS> {
@@ -478,95 +382,106 @@ mod edge_set {
                 // allocates the correct number of elements once up-front [1].
                 //
                 // [1] https://doc.rust-lang.org/1.85.0/src/alloc/vec/spec_from_iter_nested.rs.html#47
-                runs: self.runs.into_iter().map(|run| run.map_state(&mut f)).collect(),
-                uninit: self.uninit.map(f),
+                runs: self.runs.into_iter().map(|(b, s)| (b, f(s))).collect(),
             }
         }
 
         /// Unions two edge sets together.
         ///
         /// If `u = a.union(b)`, then for each byte value, `u` will have an edge
-        /// with that byte value and with the destination `(Some(_), None)`,
-        /// `(None, Some(_))`, or `(Some(_), Some(_))` depending on whether `a`,
+        /// with that byte value and with the destination `join(Some(_), None)`,
+        /// `join(None, Some(_))`, or `join(Some(_), Some(_))` depending on whether `a`,
         /// `b`, or both have an edge with that byte value.
         ///
         /// If neither `a` nor `b` have an edge with a particular byte value,
         /// then no edge with that value will be present in `u`.
-        pub(crate) fn union(&self, other: &Self) -> EdgeSet<(Option<S>, Option<S>)>
+        pub(crate) fn union(
+            &self,
+            other: &Self,
+            mut join: impl FnMut(Option<S>, Option<S>) -> S,
+        ) -> EdgeSet<S>
         where
             S: Copy,
         {
-            let uninit = match (self.uninit, other.uninit) {
-                (None, None) => None,
-                (s, o) => Some((s, o)),
-            };
-
-            let mut runs = SmallVec::new();
-
-            // Iterate over `self.runs` and `other.runs` simultaneously,
-            // advancing `idx` as we go. At each step, we advance `idx` as far
-            // as we can without crossing a run boundary in either `self.runs`
-            // or `other.runs`.
-
-            // INVARIANT: `idx < s[0].end && idx < o[0].end`.
-            let (mut s, mut o) = (self.runs.as_slice(), other.runs.as_slice());
-            let mut idx = 0u16;
-            while let (Some((s_run, s_rest)), Some((o_run, o_rest))) =
-                (s.split_first(), o.split_first())
-            {
-                let (s_start, s_end) = s_run.as_inclusive_exclusive();
-                let (o_start, o_end) = o_run.as_inclusive_exclusive();
-
-                // Compute `end` as the end of the current run (which starts
-                // with `idx`).
-                let (end, dst) = match (s_run.contains(idx), o_run.contains(idx)) {
-                    // `idx` is in an existing run in both `s` and `o`, so `end`
-                    // is equal to the smallest of the two ends of those runs.
-                    (true, true) => (cmp::min(s_end, o_end), (Some(s_run.dst), Some(o_run.dst))),
-                    // `idx` is in an existing run in `s`, but not in any run in
-                    // `o`. `end` is either the end of the `s` run or the
-                    // beginning of the next `o` run, whichever comes first.
-                    (true, false) => (cmp::min(s_end, o_start), (Some(s_run.dst), None)),
-                    // The inverse of the previous case.
-                    (false, true) => (cmp::min(s_start, o_end), (None, Some(o_run.dst))),
-                    // `idx` is not in a run in either `s` or `o`, so advance it
-                    // to the beginning of the next run.
-                    (false, false) => {
-                        idx = cmp::min(s_start, o_start);
-                        continue;
-                    }
-                };
-
-                // FIXME(@joshlf): If this is contiguous with the previous run
-                // and has the same `dst`, just merge it into that run rather
-                // than adding a new one.
-                runs.push(Run::from_inclusive_exclusive(idx..end, dst));
-                idx = end;
-
-                if idx >= s_end {
-                    s = s_rest;
-                }
-                if idx >= o_end {
-                    o = o_rest;
-                }
-            }
-
-            // At this point, either `s` or `o` have been exhausted, so the
-            // remaining elements in the other slice are guaranteed to be
-            // non-overlapping. We can add all remaining runs to `runs` with no
-            // further processing.
-            if let Ok(idx) = u8::try_from(idx) {
-                let (slc, map) = if !s.is_empty() {
-                    let map: fn(_) -> _ = |st| (Some(st), None);
-                    (s, map)
-                } else {
-                    let map: fn(_) -> _ = |st| (None, Some(st));
-                    (o, map)
-                };
-                runs.extend(slc.iter().map(|run| run.clamp_lower(idx).map_state(map)));
-            }
-
-            EdgeSet { runs, uninit }
+            let xs = self.runs.iter().copied();
+            let ys = other.runs.iter().copied();
+            // FIXME(@joshlf): Merge contiguous runs with common destination.
+            EdgeSet { runs: union(xs, ys).map(|(range, (x, y))| (range, join(x, y))).collect() }
         }
+    }
+}
+
+/// Merges two sorted sequences into one sorted sequence.
+pub(crate) fn union<S: Copy, X: Iterator<Item = (Byte, S)>, Y: Iterator<Item = (Byte, S)>>(
+    xs: X,
+    ys: Y,
+) -> UnionIter<X, Y> {
+    UnionIter { xs: xs.peekable(), ys: ys.peekable() }
+}
+
+pub(crate) struct UnionIter<X: Iterator, Y: Iterator> {
+    xs: Peekable<X>,
+    ys: Peekable<Y>,
+}
+
+// FIXME(jswrenn) we'd likely benefit from specializing try_fold here.
+impl<S: Copy, X: Iterator<Item = (Byte, S)>, Y: Iterator<Item = (Byte, S)>> Iterator
+    for UnionIter<X, Y>
+{
+    type Item = (Byte, (Option<S>, Option<S>));
+
+    fn next(&mut self) -> Option<Self::Item> {
+        use std::cmp::{self, Ordering};
+
+        let ret;
+        match (self.xs.peek_mut(), self.ys.peek_mut()) {
+            (None, None) => {
+                ret = None;
+            }
+            (Some(x), None) => {
+                ret = Some((x.0, (Some(x.1), None)));
+                self.xs.next();
+            }
+            (None, Some(y)) => {
+                ret = Some((y.0, (None, Some(y.1))));
+                self.ys.next();
+            }
+            (Some(x), Some(y)) => {
+                let start;
+                let end;
+                let dst;
+                match x.0.start.cmp(&y.0.start) {
+                    Ordering::Less => {
+                        start = x.0.start;
+                        end = cmp::min(x.0.end, y.0.start);
+                        dst = (Some(x.1), None);
+                    }
+                    Ordering::Greater => {
+                        start = y.0.start;
+                        end = cmp::min(x.0.start, y.0.end);
+                        dst = (None, Some(y.1));
+                    }
+                    Ordering::Equal => {
+                        start = x.0.start;
+                        end = cmp::min(x.0.end, y.0.end);
+                        dst = (Some(x.1), Some(y.1));
+                    }
+                }
+                ret = Some((Byte { start, end }, dst));
+                if start == x.0.start {
+                    x.0.start = end;
+                }
+                if start == y.0.start {
+                    y.0.start = end;
+                }
+                if x.0.is_empty() {
+                    self.xs.next();
+                }
+                if y.0.is_empty() {
+                    self.ys.next();
+                }
+            }
+        }
+        ret
     }
 }
