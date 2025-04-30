@@ -753,6 +753,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     providers.env_var_os = env_var_os;
     limits::provide(providers);
     proc_macro_decls::provide(providers);
+    rustc_expand::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
     rustc_borrowck::provide(providers);

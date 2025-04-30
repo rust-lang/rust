@@ -2,6 +2,7 @@ use std::ffi::OsStr;
 use std::intrinsics::transmute_unchecked;
 use std::mem::MaybeUninit;
 
+use rustc_ast::tokenstream::TokenStream;
 use rustc_span::ErrorGuaranteed;
 
 use crate::query::CyclePlaceholder;
@@ -169,6 +170,10 @@ impl EraseType for Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop> {
 
 impl EraseType for Result<ty::EarlyBinder<'_, Ty<'_>>, CyclePlaceholder> {
     type Result = [u8; size_of::<Result<ty::EarlyBinder<'static, Ty<'_>>, CyclePlaceholder>>()];
+}
+
+impl EraseType for Result<&'_ TokenStream, ()> {
+    type Result = [u8; size_of::<Result<&'static TokenStream, ()>>()];
 }
 
 impl<T> EraseType for Option<&'_ T> {
