@@ -1137,65 +1137,88 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // but found 0" it's confusing, because it looks like there
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
-    if trait_params != impl_params {
-        let span = tcx
-            .hir_get_generics(impl_m.def_id.expect_local())
-            .expect("expected impl item to have generics or else we can't compare them")
-            .span;
+    if trait_params == impl_params {
+        return Ok(());
+    }
 
-        let mut generics_span = None;
-        let mut bounds_span = vec![];
-        let mut where_span = None;
-        if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
-            && let Some(trait_generics) = trait_node.generics()
-        {
-            generics_span = Some(trait_generics.span);
-            // FIXME: we could potentially look at the impl's bounds to not point at bounds that
-            // *are* present in the impl.
-            for p in trait_generics.predicates {
-                if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
-                    for b in pred.bounds {
+    let span = tcx
+        .hir_get_generics(impl_m.def_id.expect_local())
+        .expect("expected impl item to have generics or else we can't compare them")
+        .span;
+
+    let mut generics_span = None;
+    let mut bounds_span = vec![];
+    let mut where_span = None;
+
+    if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
+        && let Some(trait_generics) = trait_node.generics()
+    {
+        generics_span = Some(trait_generics.span);
+        // FIXME: we could potentially look at the impl's bounds to not point at bounds that
+        // *are* present in the impl.
+        for p in trait_generics.predicates {
+            match p.kind {
+                hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
+                    bounds,
+                    ..
+                })
+                | hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
+                    bounds,
+                    ..
+                }) => {
+                    for b in *bounds {
                         if let hir::GenericBound::Outlives(lt) = b {
                             bounds_span.push(lt.ident.span);
                         }
                     }
                 }
+                _ => {}
             }
-            if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
-                && let Some(impl_generics) = impl_node.generics()
-            {
-                let mut impl_bounds = 0;
-                for p in impl_generics.predicates {
-                    if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
-                        for b in pred.bounds {
+        }
+        if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
+            && let Some(impl_generics) = impl_node.generics()
+        {
+            let mut impl_bounds = 0;
+            for p in impl_generics.predicates {
+                match p.kind {
+                    hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
+                        bounds,
+                        ..
+                    })
+                    | hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
+                        bounds,
+                        ..
+                    }) => {
+                        for b in *bounds {
                             if let hir::GenericBound::Outlives(_) = b {
                                 impl_bounds += 1;
                             }
                         }
                     }
-                }
-                if impl_bounds == bounds_span.len() {
-                    bounds_span = vec![];
-                } else if impl_generics.has_where_clause_predicates {
-                    where_span = Some(impl_generics.where_clause_span);
+                    _ => {}
                 }
             }
+            if impl_bounds == bounds_span.len() {
+                bounds_span = vec![];
+            } else if impl_generics.has_where_clause_predicates {
+                where_span = Some(impl_generics.where_clause_span);
+            }
         }
-        let reported = tcx
-            .dcx()
-            .create_err(LifetimesOrBoundsMismatchOnTrait {
-                span,
-                item_kind: impl_m.descr(),
-                ident: impl_m.ident(tcx),
-                generics_span,
-                bounds_span,
-                where_span,
-            })
-            .emit_unless(delay);
-        return Err(reported);
     }
 
-    Ok(())
+    let reported = tcx
+        .dcx()
+        .create_err(LifetimesOrBoundsMismatchOnTrait {
+            span,
+            item_kind: impl_m.descr(),
+            ident: impl_m.ident(tcx),
+            generics_span,
+            bounds_span,
+            where_span,
+        })
+        .emit_unless(delay);
+
+    Err(reported)
 }
 
 #[instrument(level = "debug", skip(infcx))]

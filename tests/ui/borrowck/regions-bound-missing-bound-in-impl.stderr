@@ -11,7 +11,10 @@ error[E0195]: lifetime parameters or bounds on method `has_bound` do not match t
   --> $DIR/regions-bound-missing-bound-in-impl.rs:23:17
    |
 LL |     fn has_bound<'b:'a>(self, b: Inv<'b>);
-   |                 ------- lifetimes in impl do not match this method in trait
+   |                 -------
+   |                 |   |
+   |                 |   this bound might be missing in the impl
+   |                 lifetimes in impl do not match this method in trait
 ...
 LL |     fn has_bound<'b>(self, b: Inv<'b>) {
    |                 ^^^^ lifetimes do not match method in trait
@@ -58,7 +61,11 @@ error[E0195]: lifetime parameters or bounds on method `wrong_bound2` do not matc
   --> $DIR/regions-bound-missing-bound-in-impl.rs:42:20
    |
 LL |     fn wrong_bound2<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
-   |                    ---------------- lifetimes in impl do not match this method in trait
+   |                    ----------------
+   |                    |         |  |
+   |                    |         |  this bound might be missing in the impl
+   |                    |         this bound might be missing in the impl
+   |                    lifetimes in impl do not match this method in trait
 ...
 LL |     fn wrong_bound2(self, b: Inv, c: Inv, d: Inv) {
    |                    ^ lifetimes do not match method in trait

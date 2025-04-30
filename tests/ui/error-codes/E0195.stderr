@@ -2,7 +2,10 @@ error[E0195]: lifetime parameters or bounds on associated function `bar` do not 
   --> $DIR/E0195.rs:9:11
    |
 LL |     fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
-   |           ---------- lifetimes in impl do not match this associated function in trait
+   |           ----------
+   |           |      |
+   |           |      this bound might be missing in the impl
+   |           lifetimes in impl do not match this associated function in trait
 ...
 LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) {
    |           ^^^^^^^ lifetimes do not match associated function in trait

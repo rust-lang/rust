@@ -8,6 +8,7 @@ struct Foo;
 impl Trait for Foo {
     fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
     //~^ NOTE lifetimes do not match associated function in trait
+    //~| NOTE this bound might be missing in the impl
     }
 }
 
