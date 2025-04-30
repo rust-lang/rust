@@ -6,6 +6,6 @@ fn main() {
         let b = Box::new(42);
         &*b as *const i32
     };
-    let x = unsafe { p.offset(42) }; //~ ERROR: /out-of-bounds pointer arithmetic: .* has been freed/
+    let x = unsafe { p.offset(42) }; //~ ERROR: /in-bounds pointer arithmetic failed: .* has been freed/
     panic!("this should never print: {:?}", x);
 }
