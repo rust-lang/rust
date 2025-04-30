@@ -400,16 +400,23 @@ mod r#ref {
     fn should_permit_identity_transmutation() {
         type Tree = crate::layout::Tree<Def, [(); 1]>;
 
-        let layout = Tree::Seq(vec![Tree::byte(0x00), Tree::Ref([()])]);
+        for validity in [false, true] {
+            let layout = Tree::Seq(vec![Tree::byte(0x00), Tree::Ref([()])]);
 
-        let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
-            layout.clone(),
-            layout,
-            Assume::default(),
-            UltraMinimal::default(),
-        )
-        .answer();
-        assert_eq!(answer, Answer::If(crate::Condition::IfTransmutable { src: [()], dst: [()] }));
+            let assume = Assume { validity, ..Assume::default() };
+
+            let answer = crate::maybe_transmutable::MaybeTransmutableQuery::new(
+                layout.clone(),
+                layout,
+                assume,
+                UltraMinimal::default(),
+            )
+            .answer();
+            assert_eq!(
+                answer,
+                Answer::If(crate::Condition::IfTransmutable { src: [()], dst: [()] })
+            );
+        }
     }
 }
 
