@@ -9,7 +9,6 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir::intravisit::{self, InferKind, Visitor};
 use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_infer::traits::solve::Goal;
-use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
@@ -513,15 +512,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         self.typeck_results.user_provided_types_mut().extend(
             fcx_typeck_results.user_provided_types().items().map(|(local_id, c_ty)| {
                 let hir_id = HirId { owner: common_hir_owner, local_id };
-
-                if cfg!(debug_assertions) && c_ty.has_infer() {
-                    span_bug!(
-                        hir_id.to_span(self.fcx.tcx),
-                        "writeback: `{:?}` has inference variables",
-                        c_ty
-                    );
-                };
-
                 (hir_id, *c_ty)
             }),
         );
@@ -532,17 +522,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
 
         self.typeck_results.user_provided_sigs.extend_unord(
-            fcx_typeck_results.user_provided_sigs.items().map(|(&def_id, c_sig)| {
-                if cfg!(debug_assertions) && c_sig.has_infer() {
-                    span_bug!(
-                        self.fcx.tcx.def_span(def_id),
-                        "writeback: `{:?}` has inference variables",
-                        c_sig
-                    );
-                };
-
-                (def_id, *c_sig)
-            }),
+            fcx_typeck_results.user_provided_sigs.items().map(|(def_id, c_sig)| (*def_id, *c_sig)),
         );
     }
 
