@@ -47,7 +47,7 @@ use crate::{
 
 use super::{
     AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError, MirSpan,
-    Operand, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
+    Operand, OperandKind, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
     TerminatorKind, UnOp, return_slot,
 };
 
@@ -856,10 +856,10 @@ impl Evaluator<'_> {
     }
 
     fn operand_ty(&self, o: &Operand, locals: &Locals) -> Result<Ty> {
-        Ok(match o {
-            Operand::Copy(p) | Operand::Move(p) => self.place_ty(p, locals)?,
-            Operand::Constant(c) => c.data(Interner).ty.clone(),
-            &Operand::Static(s) => {
+        Ok(match &o.kind {
+            OperandKind::Copy(p) | OperandKind::Move(p) => self.place_ty(p, locals)?,
+            OperandKind::Constant(c) => c.data(Interner).ty.clone(),
+            &OperandKind::Static(s) => {
                 let ty = self.db.infer(s.into())[self.db.body(s.into()).body_expr].clone();
                 TyKind::Ref(Mutability::Not, static_lifetime(), ty).intern(Interner)
             }
@@ -1873,16 +1873,16 @@ impl Evaluator<'_> {
     }
 
     fn eval_operand(&mut self, it: &Operand, locals: &mut Locals) -> Result<Interval> {
-        Ok(match it {
-            Operand::Copy(p) | Operand::Move(p) => {
+        Ok(match &it.kind {
+            OperandKind::Copy(p) | OperandKind::Move(p) => {
                 locals.drop_flags.remove_place(p, &locals.body.projection_store);
                 self.eval_place(p, locals)?
             }
-            Operand::Static(st) => {
+            OperandKind::Static(st) => {
                 let addr = self.eval_static(*st, locals)?;
                 Interval::new(addr, self.ptr_size())
             }
-            Operand::Constant(konst) => self.allocate_const_in_heap(locals, konst)?,
+            OperandKind::Constant(konst) => self.allocate_const_in_heap(locals, konst)?,
         })
     }
 

@@ -18,7 +18,22 @@ pub(crate) fn moved_out_of_ref(ctx: &DiagnosticsContext<'_>, d: &hir::MovedOutOf
 mod tests {
     use crate::tests::check_diagnostics;
 
-    // FIXME: spans are broken
+    #[test]
+    fn operand_field_span_respected() {
+        check_diagnostics(
+            r#"
+struct NotCopy;
+struct S {
+    field: NotCopy,
+}
+
+fn f(s: &S) -> S {
+    S { field: s.field }
+             //^^^^^^^ error: cannot move `NotCopy` out of reference
+}
+            "#,
+        );
+    }
 
     #[test]
     fn move_by_explicit_deref() {
@@ -85,7 +100,7 @@ fn consume<T>(_: X<T>) {
 fn main() {
     let a = &X(Y);
     consume(*a);
-  //^^^^^^^^^^^ error: cannot move `X<Y>` out of reference
+          //^^ error: cannot move `X<Y>` out of reference
     let a = &X(5);
     consume(*a);
 }
