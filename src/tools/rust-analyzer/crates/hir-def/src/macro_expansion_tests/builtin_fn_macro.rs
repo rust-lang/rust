@@ -285,8 +285,6 @@ fn main() {
     /* parse error: expected expression */
 builtin #format_args (x = );
     /* parse error: expected expression */
-/* parse error: expected R_PAREN */
-/* parse error: expected expression, item or let statement */
 builtin #format_args (x = , x = 2);
     /* parse error: expected expression */
 builtin #format_args ("{}", x = );

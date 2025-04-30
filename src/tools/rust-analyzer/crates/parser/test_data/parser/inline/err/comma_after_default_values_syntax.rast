@@ -23,8 +23,7 @@ SOURCE_FILE
               L_CURLY "{"
               WHITESPACE " "
               DOT2 ".."
-              ERROR
-                COMMA ","
+              COMMA ","
               WHITESPACE " "
               R_CURLY "}"
           SEMICOLON ";"
@@ -39,8 +38,7 @@ SOURCE_FILE
             L_CURLY "{"
             WHITESPACE " "
             DOT2 ".."
-            ERROR
-              COMMA ","
+            COMMA ","
             WHITESPACE " "
             RECORD_EXPR_FIELD
               NAME_REF
@@ -55,5 +53,6 @@ SOURCE_FILE
         R_CURLY "}"
   WHITESPACE "\n"
 error 21: expected expression
+error 21: cannot use a comma after the base struct
 error 36: expected expression
-error 37: expected COMMA
+error 36: cannot use a comma after the base struct

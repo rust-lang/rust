@@ -81,7 +81,7 @@ fn path_for_qualifier(
 }
 
 const EXPR_PATH_SEGMENT_RECOVERY_SET: TokenSet =
-    items::ITEM_RECOVERY_SET.union(TokenSet::new(&[T![')'], T![,], T![let]]));
+    expressions::EXPR_RECOVERY_SET.union(items::ITEM_RECOVERY_SET);
 const TYPE_PATH_SEGMENT_RECOVERY_SET: TokenSet = types::TYPE_RECOVERY_SET;
 
 fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) -> Option<CompletedMarker> {
