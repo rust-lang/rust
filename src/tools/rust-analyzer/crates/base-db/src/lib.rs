@@ -387,10 +387,8 @@ fn relevant_crates(db: &dyn RootQueryDb, file_id: FileId) -> Arc<[Crate]> {
 }
 
 #[must_use]
-pub struct DbPanicContext {
-    // prevent arbitrary construction
-    _priv: (),
-}
+#[non_exhaustive]
+pub struct DbPanicContext;
 
 impl Drop for DbPanicContext {
     fn drop(&mut self) {
@@ -404,18 +402,18 @@ impl DbPanicContext {
         fn set_hook() {
             let default_hook = panic::take_hook();
             panic::set_hook(Box::new(move |panic_info| {
+                default_hook(panic_info);
+                if let Some(backtrace) = salsa::Backtrace::capture() {
+                    eprintln!("{backtrace:#}");
+                }
                 DbPanicContext::with_ctx(|ctx| {
                     if !ctx.is_empty() {
-                        eprintln!("Panic context:");
-                        for frame in ctx.iter() {
-                            eprintln!("> {frame}\n");
+                        eprintln!("additional context:");
+                        for (idx, frame) in ctx.iter().enumerate() {
+                            eprintln!("{idx:>4}: {frame}\n");
                         }
                     }
                 });
-                if let Some(backtrace) = salsa::Backtrace::capture() {
-                    eprintln!("{backtrace}");
-                }
-                default_hook(panic_info);
             }));
         }
 
@@ -423,7 +421,7 @@ impl DbPanicContext {
         SET_HOOK.call_once(set_hook);
 
         Self::with_ctx(|ctx| ctx.push(frame));
-        DbPanicContext { _priv: () }
+        DbPanicContext
     }
 
     fn with_ctx(f: impl FnOnce(&mut Vec<String>)) {
