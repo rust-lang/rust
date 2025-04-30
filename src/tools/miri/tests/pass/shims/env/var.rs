@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 use std::{env, thread};
 
 fn main() {

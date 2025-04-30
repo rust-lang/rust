@@ -1,6 +1,6 @@
 //@ignore-target: windows # No pthreads on Windows
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 // Joining itself is undefined behavior.
 

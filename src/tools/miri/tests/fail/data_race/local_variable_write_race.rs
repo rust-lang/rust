@@ -1,4 +1,4 @@
-//@compile-flags:-Zmiri-fixed-schedule -Zmiri-disable-weak-memory-emulation
+//@compile-flags:-Zmiri-deterministic-concurrency
 use std::sync::atomic::Ordering::*;
 use std::sync::atomic::*;
 

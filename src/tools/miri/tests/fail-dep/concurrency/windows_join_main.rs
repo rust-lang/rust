@@ -1,6 +1,6 @@
 //@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 
 // On windows, joining main is not UB, but it will block a thread forever.

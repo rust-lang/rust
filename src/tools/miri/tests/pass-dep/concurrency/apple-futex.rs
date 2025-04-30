@@ -1,5 +1,5 @@
 //@only-target: darwin
-//@compile-flags: -Zmiri-fixed-schedule
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::time::{Duration, Instant};
 use std::{io, ptr, thread};

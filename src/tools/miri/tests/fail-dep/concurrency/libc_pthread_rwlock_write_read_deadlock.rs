@@ -1,5 +1,7 @@
 //@ignore-target: windows # No pthreads on Windows
 //@error-in-other-file: deadlock
+// We are making scheduler assumptions here.
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::cell::UnsafeCell;
 use std::sync::Arc;
