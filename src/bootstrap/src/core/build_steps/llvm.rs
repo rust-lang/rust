@@ -903,6 +903,14 @@ impl Step for Enzyme {
         ),
     )]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
+        // FIXME: This can be removed once we start shipping the CMake files needed by Enzyme
+        // to build against a standalone LLVM binary.
+        // For now, Enzyme must be built with the in-tree LLVM and shared LLVM (`llvm.link-shared = true`), not one downloaded from CI.
+        if builder.config.llvm_from_ci || !builder.config.llvm_link_shared() {
+            panic!(
+                "Enzyme must be built with an in-tree LLVM and requires `llvm.link-shared = true`.Set `llvm.download-ci-llvm = false` and `llvm.link-shared = true` to build Enzyme."
+            );
+        }
         builder.require_submodule(
             "src/tools/enzyme",
             Some("The Enzyme sources are required for autodiff."),
@@ -970,6 +978,7 @@ impl Step for Enzyme {
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
+            // Enzyme must be built against this exact LLVM build — mixing versions breaks compatibility.
             .define("LLVM_DIR", builder.llvm_out(target));
 
         cfg.build();
