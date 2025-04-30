@@ -157,7 +157,7 @@ fn make_dummy_instance<'tcx>(tcx: TyCtxt<'tcx>, local_def_id: LocalDefId) -> ty:
     let def_id = local_def_id.to_def_id();
 
     // Make a dummy instance that fills in all generics with placeholders.
-    ty::Instance::new(
+    ty::Instance::new_raw(
         def_id,
         ty::GenericArgs::for_item(tcx, def_id, |param, _| {
             if let ty::GenericParamDefKind::Lifetime = param.kind {

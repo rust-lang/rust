@@ -613,7 +613,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             _ => {
                 debug!("unknown intrinsic '{}' -- falling back to default body", name);
                 // Call the fallback body instead of generating the intrinsic code
-                return Err(ty::Instance::new(instance.def_id(), instance.args));
+                return Err(ty::Instance::new_raw(instance.def_id(), instance.args));
             }
         };
 

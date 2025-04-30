@@ -399,7 +399,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
 
             // Fall back to default body
-            _ => return Err(Instance::new(instance.def_id(), instance.args)),
+            _ => return Err(Instance::new_raw(instance.def_id(), instance.args)),
         };
 
         if !fn_abi.ret.is_ignore() {
