@@ -955,6 +955,23 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
     }
 
+    pub fn find_sup_as_registered_opaque(&self, ty_vid: TyVid) -> Option<ty::AliasTy<'tcx>> {
+        let ty_sub_vid = self.sub_root_var(ty_vid);
+        let opaques: Vec<_> = self.inner.borrow_mut().opaque_types().iter_opaque_types().collect();
+        opaques
+            .into_iter()
+            .find(|(_, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind()
+                    && self.sub_root_var(hidden_vid) == ty_sub_vid
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|(key, _)| ty::AliasTy::new_from_args(self.tcx, key.def_id.to_def_id(), key.args))
+    }
+
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
