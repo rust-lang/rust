@@ -76,6 +76,7 @@ rm tests/ui/asm/aarch64/type-f16.rs
 rm tests/ui/float/conv-bits-runtime-const.rs
 rm tests/ui/consts/const-eval/float_methods.rs
 rm tests/ui/match/match-float.rs
+rm tests/ui/float/target-has-reliable-nightly-float.rs
 
 # optimization tests
 # ==================
@@ -144,6 +145,7 @@ rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 rm tests/ui/backtrace/synchronized-panic-handler.rs # missing needs-unwind annotation
 rm tests/ui/lint/non-snake-case/lint-non-snake-case-crate.rs # same
+rm tests/ui/async-await/async-drop/async-drop-initial.rs # same (rust-lang/rust#140493)
 rm -r tests/ui/codegen/equal-pointers-unequal # make incorrect assumptions about the location of stack variables
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
