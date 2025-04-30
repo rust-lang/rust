@@ -1,24 +1,36 @@
 //! Proc Macro Expander stuff
 
 use core::fmt;
+use std::any::Any;
 use std::{panic::RefUnwindSafe, sync};
 
-use base_db::{CrateId, Env};
+use base_db::{Crate, CrateBuilderId, CratesIdMap, Env};
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::Span;
+use triomphe::Arc;
 
-use crate::{db::ExpandDatabase, tt, ExpandError, ExpandErrorKind, ExpandResult};
+use crate::{ExpandError, ExpandErrorKind, ExpandResult, db::ExpandDatabase, tt};
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug, Hash)]
 pub enum ProcMacroKind {
     CustomDerive,
     Bang,
     Attr,
 }
 
+pub trait AsAny: Any {
+    fn as_any(&self) -> &dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 /// A proc-macro expander implementation.
-pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
+pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe + AsAny {
     /// Run the expander with the given input subtree, optional attribute input subtree (for
     /// [`ProcMacroKind::Attr`]), environment variables, and span information.
     fn expand(
@@ -29,9 +41,19 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
-        current_dir: Option<String>,
+        current_dir: String,
     ) -> Result<tt::TopSubtree, ProcMacroExpansionError>;
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool;
 }
+
+impl PartialEq for dyn ProcMacroExpander {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq_dyn(other)
+    }
+}
+
+impl Eq for dyn ProcMacroExpander {}
 
 #[derive(Debug)]
 pub enum ProcMacroExpansionError {
@@ -45,41 +67,70 @@ pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, (String, bool)>;
 type StoredProcMacroLoadResult = Result<Box<[ProcMacro]>, (Box<str>, bool)>;
 
 #[derive(Default, Debug)]
-pub struct ProcMacrosBuilder(FxHashMap<CrateId, StoredProcMacroLoadResult>);
+pub struct ProcMacrosBuilder(FxHashMap<CrateBuilderId, Arc<CrateProcMacros>>);
+
 impl ProcMacrosBuilder {
-    pub fn insert(&mut self, proc_macros_crate: CrateId, proc_macro: ProcMacroLoadResult) {
+    pub fn insert(
+        &mut self,
+        proc_macros_crate: CrateBuilderId,
+        mut proc_macro: ProcMacroLoadResult,
+    ) {
+        if let Ok(proc_macros) = &mut proc_macro {
+            // Sort proc macros to improve incrementality when only their order has changed (ideally the build system
+            // will not change their order, but just to be sure).
+            proc_macros.sort_unstable_by(|proc_macro, proc_macro2| {
+                (proc_macro.name.as_str(), proc_macro.kind)
+                    .cmp(&(proc_macro2.name.as_str(), proc_macro2.kind))
+            });
+        }
         self.0.insert(
             proc_macros_crate,
             match proc_macro {
-                Ok(it) => Ok(it.into_boxed_slice()),
-                Err((e, hard_err)) => Err((e.into_boxed_str(), hard_err)),
+                Ok(it) => Arc::new(CrateProcMacros(Ok(it.into_boxed_slice()))),
+                Err((e, hard_err)) => {
+                    Arc::new(CrateProcMacros(Err((e.into_boxed_str(), hard_err))))
+                }
             },
         );
     }
-    pub fn build(mut self) -> ProcMacros {
-        self.0.shrink_to_fit();
-        ProcMacros(self.0)
+
+    pub(crate) fn build(self, crates_id_map: &CratesIdMap) -> ProcMacros {
+        let mut map = self
+            .0
+            .into_iter()
+            .map(|(krate, proc_macro)| (crates_id_map[&krate], proc_macro))
+            .collect::<FxHashMap<_, _>>();
+        map.shrink_to_fit();
+        ProcMacros(map)
     }
 }
 
-#[derive(Default, Debug)]
-pub struct ProcMacros(FxHashMap<CrateId, StoredProcMacroLoadResult>);
-
-impl FromIterator<(CrateId, ProcMacroLoadResult)> for ProcMacros {
-    fn from_iter<T: IntoIterator<Item = (CrateId, ProcMacroLoadResult)>>(iter: T) -> Self {
+impl FromIterator<(CrateBuilderId, ProcMacroLoadResult)> for ProcMacrosBuilder {
+    fn from_iter<T: IntoIterator<Item = (CrateBuilderId, ProcMacroLoadResult)>>(iter: T) -> Self {
         let mut builder = ProcMacrosBuilder::default();
         for (k, v) in iter {
             builder.insert(k, v);
         }
-        builder.build()
+        builder
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct CrateProcMacros(StoredProcMacroLoadResult);
+
+#[derive(Default, Debug)]
+pub struct ProcMacros(FxHashMap<Crate, Arc<CrateProcMacros>>);
 impl ProcMacros {
-    fn get(&self, krate: CrateId, idx: u32, err_span: Span) -> Result<&ProcMacro, ExpandError> {
-        let proc_macros = match self.0.get(&krate) {
-            Some(Ok(proc_macros)) => proc_macros,
-            Some(Err(_)) | None => {
+    fn get(&self, krate: Crate) -> Option<Arc<CrateProcMacros>> {
+        self.0.get(&krate).cloned()
+    }
+}
+
+impl CrateProcMacros {
+    fn get(&self, idx: u32, err_span: Span) -> Result<&ProcMacro, ExpandError> {
+        let proc_macros = match &self.0 {
+            Ok(proc_macros) => proc_macros,
+            Err(_) => {
                 return Err(ExpandError::other(
                     err_span,
                     "internal error: no proc macros for crate",
@@ -98,18 +149,17 @@ impl ProcMacros {
         )
     }
 
-    pub fn get_error_for_crate(&self, krate: CrateId) -> Option<(&str, bool)> {
-        self.0.get(&krate).and_then(|it| it.as_ref().err()).map(|(e, hard_err)| (&**e, *hard_err))
+    pub fn get_error(&self) -> Option<(&str, bool)> {
+        self.0.as_ref().err().map(|(e, hard_err)| (&**e, *hard_err))
     }
 
     /// Fetch the [`CustomProcMacroExpander`]s and their corresponding names for the given crate.
-    pub fn for_crate(
+    pub fn list(
         &self,
-        krate: CrateId,
-        def_site_ctx: span::SyntaxContextId,
+        def_site_ctx: span::SyntaxContext,
     ) -> Option<Box<[(crate::name::Name, CustomProcMacroExpander, bool)]>> {
-        match self.0.get(&krate) {
-            Some(Ok(proc_macros)) => Some({
+        match &self.0 {
+            Ok(proc_macros) => Some(
                 proc_macros
                     .iter()
                     .enumerate()
@@ -117,15 +167,15 @@ impl ProcMacros {
                         let name = crate::name::Name::new_symbol(it.name.clone(), def_site_ctx);
                         (name, CustomProcMacroExpander::new(idx as u32), it.disabled)
                     })
-                    .collect()
-            }),
+                    .collect(),
+            ),
             _ => None,
         }
     }
 }
 
 /// A loaded proc-macro.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct ProcMacro {
     /// The name of the proc macro.
     pub name: Symbol,
@@ -135,6 +185,23 @@ pub struct ProcMacro {
     /// Whether this proc-macro is disabled for early name resolution. Notably, the
     /// [`Self::expander`] is still usable.
     pub disabled: bool,
+}
+
+// `#[derive(PartialEq)]` generates a strange "cannot move" error.
+impl PartialEq for ProcMacro {
+    fn eq(&self, other: &Self) -> bool {
+        let Self { name, kind, expander, disabled } = self;
+        let Self {
+            name: other_name,
+            kind: other_kind,
+            expander: other_expander,
+            disabled: other_disabled,
+        } = other;
+        name == other_name
+            && kind == other_kind
+            && expander == other_expander
+            && disabled == other_disabled
+    }
 }
 
 /// A custom proc-macro expander handle. This handle together with its crate resolves to a [`ProcMacro`]
@@ -186,8 +253,7 @@ impl CustomProcMacroExpander {
         self.proc_macro_id == Self::PROC_MACRO_ATTR_DISABLED
     }
 
-    /// The macro is explicitly disabled due to proc-macro attribute expansion being disabled.
-    pub fn as_expand_error(&self, def_crate: CrateId) -> Option<ExpandErrorKind> {
+    pub fn as_expand_error(&self, def_crate: Crate) -> Option<ExpandErrorKind> {
         match self.proc_macro_id {
             Self::PROC_MACRO_ATTR_DISABLED => Some(ExpandErrorKind::ProcMacroAttrExpansionDisabled),
             Self::DISABLED_ID => Some(ExpandErrorKind::MacroDisabled),
@@ -199,8 +265,8 @@ impl CustomProcMacroExpander {
     pub fn expand(
         self,
         db: &dyn ExpandDatabase,
-        def_crate: CrateId,
-        calling_crate: CrateId,
+        def_crate: Crate,
+        calling_crate: Crate,
         tt: &tt::TopSubtree,
         attr_arg: Option<&tt::TopSubtree>,
         def_site: Span,
@@ -221,8 +287,22 @@ impl CustomProcMacroExpander {
                 ExpandError::new(call_site, ExpandErrorKind::MacroDisabled),
             ),
             id => {
-                let proc_macros = db.proc_macros();
-                let proc_macro = match proc_macros.get(def_crate, id, call_site) {
+                let proc_macros = match db.proc_macros_for_crate(def_crate) {
+                    Some(it) => it,
+                    None => {
+                        return ExpandResult::new(
+                            tt::TopSubtree::empty(tt::DelimSpan {
+                                open: call_site,
+                                close: call_site,
+                            }),
+                            ExpandError::other(
+                                call_site,
+                                "internal error: no proc macros for crate",
+                            ),
+                        );
+                    }
+                };
+                let proc_macro = match proc_macros.get(id, call_site) {
                     Ok(proc_macro) => proc_macro,
                     Err(e) => {
                         return ExpandResult::new(
@@ -231,15 +311,14 @@ impl CustomProcMacroExpander {
                                 close: call_site,
                             }),
                             e,
-                        )
+                        );
                     }
                 };
 
-                let krate_graph = db.crate_graph();
                 // Proc macros have access to the environment variables of the invoking crate.
-                let env = &krate_graph[calling_crate].env;
-                let current_dir =
-                    krate_graph[calling_crate].proc_macro_cwd.as_deref().map(ToString::to_string);
+                let env = calling_crate.env(db);
+                // FIXME: Can we avoid the string allocation here?
+                let current_dir = calling_crate.data(db).proc_macro_cwd.to_string();
 
                 match proc_macro.expander.expand(
                     tt,
@@ -277,4 +356,11 @@ impl CustomProcMacroExpander {
             }
         }
     }
+}
+
+pub(crate) fn proc_macros_for_crate(
+    db: &dyn ExpandDatabase,
+    krate: Crate,
+) -> Option<Arc<CrateProcMacros>> {
+    db.proc_macros().get(krate)
 }

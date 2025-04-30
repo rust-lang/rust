@@ -5,7 +5,7 @@ use std::{
 
 use log::debug;
 
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 
 use crate::Message;
 
@@ -40,7 +40,7 @@ pub(crate) fn stdio_transport() -> (Sender<Message>, Receiver<Message>, IoThread
 
                 debug!("sending message {:#?}", msg);
                 if let Err(e) = reader_sender.send(msg) {
-                    return Err(io::Error::new(io::ErrorKind::Other, e));
+                    return Err(io::Error::other(e));
                 }
 
                 if is_exit {

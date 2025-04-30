@@ -10,7 +10,7 @@ use rayon::prelude::*;
 use stdx::format_to_acc;
 use test_utils::{bench, bench_fixture, project_root};
 
-use crate::{ast, fuzz, AstNode, SourceFile, SyntaxError};
+use crate::{AstNode, SourceFile, SyntaxError, ast, fuzz};
 
 #[test]
 fn parse_smoke_test() {

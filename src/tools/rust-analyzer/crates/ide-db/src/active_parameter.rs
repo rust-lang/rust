@@ -3,9 +3,11 @@
 use either::Either;
 use hir::{InFile, Semantics, Type};
 use parser::T;
+use span::TextSize;
 use syntax::{
+    AstNode, NodeOrToken, SyntaxToken,
     ast::{self, AstChildren, HasArgList, HasAttrs, HasName},
-    match_ast, AstNode, NodeOrToken, SyntaxToken,
+    match_ast,
 };
 
 use crate::RootDatabase;
@@ -20,7 +22,24 @@ impl ActiveParameter {
     /// Returns information about the call argument this token is part of.
     pub fn at_token(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> Option<Self> {
         let (signature, active_parameter) = callable_for_token(sema, token)?;
+        Self::from_signature_and_active_parameter(sema, signature, active_parameter)
+    }
 
+    /// Returns information about the call argument this token is part of.
+    pub fn at_arg(
+        sema: &Semantics<'_, RootDatabase>,
+        list: ast::ArgList,
+        at: TextSize,
+    ) -> Option<Self> {
+        let (signature, active_parameter) = callable_for_arg_list(sema, list, at)?;
+        Self::from_signature_and_active_parameter(sema, signature, active_parameter)
+    }
+
+    fn from_signature_and_active_parameter(
+        sema: &Semantics<'_, RootDatabase>,
+        signature: hir::Callable,
+        active_parameter: Option<usize>,
+    ) -> Option<Self> {
         let idx = active_parameter?;
         let mut params = signature.params();
         if idx >= params.len() {
@@ -48,20 +67,32 @@ pub fn callable_for_token(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
 ) -> Option<(hir::Callable, Option<usize>)> {
+    let offset = token.text_range().start();
     // Find the calling expression and its NameRef
     let parent = token.parent()?;
-    let calling_node = parent.ancestors().filter_map(ast::CallableExpr::cast).find(|it| {
-        it.arg_list()
-            .is_some_and(|it| it.syntax().text_range().contains(token.text_range().start()))
-    })?;
+    let calling_node = parent
+        .ancestors()
+        .filter_map(ast::CallableExpr::cast)
+        .find(|it| it.arg_list().is_some_and(|it| it.syntax().text_range().contains(offset)))?;
 
-    callable_for_node(sema, &calling_node, &token)
+    callable_for_node(sema, &calling_node, offset)
+}
+
+/// Returns a [`hir::Callable`] this token is a part of and its argument index of said callable.
+pub fn callable_for_arg_list(
+    sema: &Semantics<'_, RootDatabase>,
+    arg_list: ast::ArgList,
+    at: TextSize,
+) -> Option<(hir::Callable, Option<usize>)> {
+    debug_assert!(arg_list.syntax().text_range().contains(at));
+    let callable = arg_list.syntax().parent().and_then(ast::CallableExpr::cast)?;
+    callable_for_node(sema, &callable, at)
 }
 
 pub fn callable_for_node(
     sema: &Semantics<'_, RootDatabase>,
     calling_node: &ast::CallableExpr,
-    token: &SyntaxToken,
+    offset: TextSize,
 ) -> Option<(hir::Callable, Option<usize>)> {
     let callable = match calling_node {
         ast::CallableExpr::Call(call) => sema.resolve_expr_as_callable(&call.expr()?),
@@ -73,7 +104,7 @@ pub fn callable_for_node(
             .children_with_tokens()
             .filter_map(NodeOrToken::into_token)
             .filter(|t| t.kind() == T![,])
-            .take_while(|t| t.text_range().start() <= token.text_range().start())
+            .take_while(|t| t.text_range().start() <= offset)
             .count()
     });
     Some((callable, active_param))

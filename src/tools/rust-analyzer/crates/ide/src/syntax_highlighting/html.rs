@@ -1,21 +1,20 @@
 //! Renders a bit of code as HTML.
 
-use hir::Semantics;
+use hir::{EditionedFileId, Semantics};
 use oorandom::Rand32;
-use span::EditionedFileId;
 use stdx::format_to;
 use syntax::AstNode;
 
 use crate::{
-    syntax_highlighting::{highlight, HighlightConfig},
     FileId, RootDatabase,
+    syntax_highlighting::{HighlightConfig, highlight},
 };
 
 pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
     let file = sema.parse(file_id);
     let file = file.syntax();
     fn rainbowify(seed: u64) -> String {
@@ -40,7 +39,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
             macro_bang: true,
             syntactic_name_ref_highlighting: false,
         },
-        file_id.into(),
+        file_id.file_id(db),
         None,
     );
     let text = file.to_string();

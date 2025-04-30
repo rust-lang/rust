@@ -4,11 +4,12 @@ use ide_db::{
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
 };
 use syntax::{
-    ast::{self, syntax_factory::SyntaxFactory, HasArgList, HasGenericArgs},
-    match_ast, AstNode, NodeOrToken, SyntaxKind,
+    AstNode, NodeOrToken, SyntaxKind,
+    ast::{self, HasArgList, HasGenericArgs, syntax_factory::SyntaxFactory},
+    match_ast,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unwrap_option_return_type
 //
@@ -66,7 +67,7 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     acc.add(kind.assist_id(), kind.label(), type_ref.syntax().text_range(), |builder| {
         let mut editor = builder.make_editor(&parent);
-        let make = SyntaxFactory::new();
+        let make = SyntaxFactory::with_mappings();
 
         let mut exprs_to_unwrap = Vec::new();
         let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_unwrap, e);
@@ -168,7 +169,7 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         }
 
         editor.add_mappings(make.finish_with_mappings());
-        builder.add_file_edits(ctx.file_id(), editor);
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
@@ -186,7 +187,7 @@ impl UnwrapperKind {
             UnwrapperKind::Result => "unwrap_result_return_type",
         };
 
-        AssistId(s, AssistKind::RefactorRewrite)
+        AssistId::refactor_rewrite(s)
     }
 
     fn label(&self) -> &'static str {

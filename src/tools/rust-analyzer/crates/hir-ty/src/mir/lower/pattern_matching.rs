@@ -1,19 +1,19 @@
 //! MIR lowering for patterns
 
-use hir_def::{hir::ExprId, AssocItemId};
+use hir_def::{AssocItemId, hir::ExprId, signatures::VariantFields};
 
 use crate::{
+    BindingMode,
     mir::{
+        LocalId, MutBorrowKind,
         lower::{
             BasicBlockId, BinOp, BindingId, BorrowKind, Either, Expr, FieldId, Idx, Interner,
             MemoryMap, MirLowerCtx, MirLowerError, MirSpan, Mutability, Operand, Pat, PatId, Place,
             PlaceElem, ProjectionElem, RecordFieldPat, ResolveValueResult, Result, Rvalue,
             Substitution, SwitchTargets, TerminatorKind, TupleFieldId, TupleId, TyBuilder, TyKind,
-            ValueNs, VariantData, VariantId,
+            ValueNs, VariantId,
         },
-        LocalId, MutBorrowKind,
     },
-    BindingMode,
 };
 
 macro_rules! not_supported {
@@ -139,7 +139,7 @@ impl MirLowerCtx<'_> {
                     _ => {
                         return Err(MirLowerError::TypeError(
                             "non tuple type matched with tuple pattern",
-                        ))
+                        ));
                     }
                 };
                 self.pattern_match_tuple_like(
@@ -350,17 +350,12 @@ impl MirLowerCtx<'_> {
                 )?,
                 None => {
                     let unresolved_name = || {
-                        MirLowerError::unresolved_path(
-                            self.db,
-                            p,
-                            self.display_target(),
-                            &self.body.types,
-                        )
+                        MirLowerError::unresolved_path(self.db, p, self.display_target(), self.body)
                     };
                     let hygiene = self.body.pat_path_hygiene(pattern);
                     let pr = self
                         .resolver
-                        .resolve_path_in_value_ns(self.db.upcast(), p, hygiene)
+                        .resolve_path_in_value_ns(self.db, p, hygiene)
                         .ok_or_else(unresolved_name)?;
 
                     if let (
@@ -597,7 +592,7 @@ impl MirLowerCtx<'_> {
                 }
                 self.pattern_matching_variant_fields(
                     shape,
-                    &self.db.enum_variant_data(v).variant_data,
+                    &self.db.variant_fields(v.into()),
                     variant,
                     current,
                     current_else,
@@ -607,7 +602,7 @@ impl MirLowerCtx<'_> {
             }
             VariantId::StructId(s) => self.pattern_matching_variant_fields(
                 shape,
-                &self.db.struct_data(s).variant_data,
+                &self.db.variant_fields(s.into()),
                 variant,
                 current,
                 current_else,
@@ -615,7 +610,7 @@ impl MirLowerCtx<'_> {
                 mode,
             )?,
             VariantId::UnionId(_) => {
-                return Err(MirLowerError::TypeError("pattern matching on union"))
+                return Err(MirLowerError::TypeError("pattern matching on union"));
             }
         })
     }
@@ -623,7 +618,7 @@ impl MirLowerCtx<'_> {
     fn pattern_matching_variant_fields(
         &mut self,
         shape: AdtPatternShape<'_>,
-        variant_data: &VariantData,
+        variant_data: &VariantFields,
         v: VariantId,
         current: BasicBlockId,
         current_else: Option<BasicBlockId>,

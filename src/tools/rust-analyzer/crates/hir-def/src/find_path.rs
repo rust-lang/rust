@@ -2,21 +2,21 @@
 
 use std::{cell::Cell, cmp::Ordering, iter};
 
-use base_db::{CrateId, CrateOrigin, LangCrateOrigin};
+use base_db::{Crate, CrateOrigin, LangCrateOrigin};
 use hir_expand::{
-    name::{AsName, Name},
     Lookup,
+    mod_path::{ModPath, PathKind},
+    name::{AsName, Name},
 };
 use intern::sym;
 use rustc_hash::FxHashSet;
 
 use crate::{
+    ImportPathConfig, ModuleDefId, ModuleId,
     db::DefDatabase,
     item_scope::ItemInNs,
     nameres::DefMap,
-    path::{ModPath, PathKind},
     visibility::{Visibility, VisibilityExplicitness},
-    ImportPathConfig, ModuleDefId, ModuleId,
 };
 
 /// Find a path that can be used to refer to a certain item. This can depend on
@@ -50,7 +50,7 @@ pub fn find_path(
             prefix: prefix_kind,
             cfg,
             ignore_local_imports,
-            is_std_item: db.crate_graph()[item_module.krate()].origin.is_lang(),
+            is_std_item: item_module.krate().data(db).origin.is_lang(),
             from,
             from_def_map: &from.def_map(db),
             fuel: Cell::new(FIND_PATH_FUEL),
@@ -134,10 +134,11 @@ fn find_path_inner(ctx: &FindPathCtx<'_>, item: ItemInNs, max_len: usize) -> Opt
 
     if let Some(ModuleDefId::EnumVariantId(variant)) = item.as_module_def_id() {
         // - if the item is an enum variant, refer to it via the enum
-        if let Some(mut path) =
-            find_path_inner(ctx, ItemInNs::Types(variant.lookup(ctx.db).parent.into()), max_len)
-        {
-            path.push_segment(ctx.db.enum_variant_data(variant).name.clone());
+        let loc = variant.lookup(ctx.db);
+        if let Some(mut path) = find_path_inner(ctx, ItemInNs::Types(loc.parent.into()), max_len) {
+            path.push_segment(
+                ctx.db.enum_variants(loc.parent).variants[loc.index as usize].1.clone(),
+            );
             return Some(path);
         }
         // If this doesn't work, it seems we have no way of referring to the
@@ -174,9 +175,9 @@ fn find_path_for_module(
         }
         // - otherwise if the item is the crate root of a dependency crate, return the name from the extern prelude
 
-        let root_def_map = ctx.from.derive_crate_root().def_map(ctx.db);
+        let root_local_def_map = ctx.from.derive_crate_root().local_def_map(ctx.db).1;
         // rev here so we prefer looking at renamed extern decls first
-        for (name, (def_id, _extern_crate)) in root_def_map.extern_prelude().rev() {
+        for (name, (def_id, _extern_crate)) in root_local_def_map.extern_prelude().rev() {
             if crate_root != def_id {
                 continue;
             }
@@ -360,7 +361,7 @@ fn calculate_best_path(
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
         // that wants to import it here, but we always prefer to use the external path here.
 
-        ctx.db.crate_graph()[ctx.from.krate].dependencies.iter().for_each(|dep| {
+        ctx.from.krate.data(ctx.db).dependencies.iter().for_each(|dep| {
             find_in_dep(ctx, visited_modules, item, max_len, best_choice, dep.crate_id)
         });
     }
@@ -373,11 +374,10 @@ fn find_in_sysroot(
     max_len: usize,
     best_choice: &mut Option<Choice>,
 ) {
-    let crate_graph = ctx.db.crate_graph();
-    let dependencies = &crate_graph[ctx.from.krate].dependencies;
+    let dependencies = &ctx.from.krate.data(ctx.db).dependencies;
     let mut search = |lang, best_choice: &mut _| {
         if let Some(dep) = dependencies.iter().filter(|it| it.is_sysroot()).find(|dep| {
-            match crate_graph[dep.crate_id].origin {
+            match dep.crate_id.data(ctx.db).origin {
                 CrateOrigin::Lang(l) => l == lang,
                 _ => false,
             }
@@ -419,7 +419,7 @@ fn find_in_dep(
     item: ItemInNs,
     max_len: usize,
     best_choice: &mut Option<Choice>,
-    dep: CrateId,
+    dep: Crate,
 ) {
     let import_map = ctx.db.import_map(dep);
     let Some(import_info_for) = import_map.import_info_for(item) else {
@@ -652,7 +652,7 @@ fn find_local_import_locations(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use hir_expand::db::ExpandDatabase;
     use itertools::Itertools;
     use span::Edition;
@@ -688,9 +688,10 @@ mod tests {
         })
         .unwrap();
 
-        let def_map = module.def_map(&db);
+        let (def_map, local_def_map) = module.local_def_map(&db);
         let resolved = def_map
             .resolve_path(
+                &local_def_map,
                 &db,
                 module.local_id,
                 &mod_path,

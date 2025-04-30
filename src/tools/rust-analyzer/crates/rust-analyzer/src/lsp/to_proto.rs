@@ -6,7 +6,7 @@ use std::{
     sync::atomic::{AtomicU32, Ordering},
 };
 
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
     Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionFieldsToResolve,
     CompletionItem, CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange,
@@ -16,7 +16,7 @@ use ide::{
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
     UpdateTest,
 };
-use ide_db::{assists, rust_doc::format_docs, FxHasher};
+use ide_db::{FxHasher, assists, rust_doc::format_docs, source_change::ChangeAnnotationId};
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
@@ -28,11 +28,10 @@ use crate::{
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
     lsp::{
-        completion_item_hash,
+        LspError, completion_item_hash,
         ext::ShellRunnableArgs,
         semantic_tokens::{self, standard_fallback_type},
         utils::invalid_params_error,
-        LspError,
     },
     lsp_ext::{self, SnippetTextEdit},
     target_spec::{CargoTargetSpec, TargetSpec},
@@ -200,10 +199,10 @@ pub(crate) fn snippet_text_edit(
     line_index: &LineIndex,
     is_snippet: bool,
     indel: Indel,
+    annotation: Option<ChangeAnnotationId>,
     client_supports_annotations: bool,
 ) -> lsp_ext::SnippetTextEdit {
-    let annotation_id =
-        indel.annotation.filter(|_| client_supports_annotations).map(|it| it.to_string());
+    let annotation_id = annotation.filter(|_| client_supports_annotations).map(|it| it.to_string());
     let text_edit = text_edit(line_index, indel);
     let insert_text_format =
         if is_snippet { Some(lsp_types::InsertTextFormat::SNIPPET) } else { None };
@@ -228,10 +227,17 @@ pub(crate) fn snippet_text_edit_vec(
     text_edit: TextEdit,
     clients_support_annotations: bool,
 ) -> Vec<lsp_ext::SnippetTextEdit> {
+    let annotation = text_edit.change_annotation();
     text_edit
         .into_iter()
         .map(|indel| {
-            self::snippet_text_edit(line_index, is_snippet, indel, clients_support_annotations)
+            self::snippet_text_edit(
+                line_index,
+                is_snippet,
+                indel,
+                annotation,
+                clients_support_annotations,
+            )
         })
         .collect()
 }
@@ -740,7 +746,7 @@ pub(crate) fn semantic_tokens(
                 | HlTag::None
                     if highlight_range.highlight.mods.is_empty() =>
                 {
-                    continue
+                    continue;
                 }
                 _ => (),
             }
@@ -1082,6 +1088,7 @@ fn merge_text_and_snippet_edits(
 ) -> Vec<SnippetTextEdit> {
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
+    let annotation = edit.change_annotation();
     let text_edits = edit.into_iter();
     // offset to go from the final source location to the original source location
     let mut source_text_offset = 0i32;
@@ -1127,11 +1134,8 @@ fn merge_text_and_snippet_edits(
             edits.push(snippet_text_edit(
                 line_index,
                 true,
-                Indel {
-                    insert: format!("${snippet_index}"),
-                    delete: snippet_range,
-                    annotation: None,
-                },
+                Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+                annotation,
                 client_supports_annotations,
             ))
         }
@@ -1190,11 +1194,8 @@ fn merge_text_and_snippet_edits(
             edits.push(snippet_text_edit(
                 line_index,
                 true,
-                Indel {
-                    insert: new_text,
-                    delete: current_indel.delete,
-                    annotation: current_indel.annotation,
-                },
+                Indel { insert: new_text, delete: current_indel.delete },
+                annotation,
                 client_supports_annotations,
             ))
         } else {
@@ -1204,6 +1205,7 @@ fn merge_text_and_snippet_edits(
                 line_index,
                 false,
                 current_indel,
+                annotation,
                 client_supports_annotations,
             ));
         }
@@ -1230,7 +1232,8 @@ fn merge_text_and_snippet_edits(
         snippet_text_edit(
             line_index,
             true,
-            Indel { insert: format!("${snippet_index}"), delete: snippet_range, annotation: None },
+            Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+            annotation,
             client_supports_annotations,
         )
     }));
@@ -1251,8 +1254,17 @@ pub(crate) fn snippet_text_document_edit(
     let mut edits = if let Some(snippet_edit) = snippet_edit {
         merge_text_and_snippet_edits(&line_index, edit, snippet_edit, client_supports_annotations)
     } else {
+        let annotation = edit.change_annotation();
         edit.into_iter()
-            .map(|it| snippet_text_edit(&line_index, is_snippet, it, client_supports_annotations))
+            .map(|it| {
+                snippet_text_edit(
+                    &line_index,
+                    is_snippet,
+                    it,
+                    annotation,
+                    client_supports_annotations,
+                )
+            })
             .collect()
     };
 
@@ -1465,7 +1477,7 @@ pub(crate) fn call_hierarchy_item(
 
 pub(crate) fn code_action_kind(kind: AssistKind) -> lsp_types::CodeActionKind {
     match kind {
-        AssistKind::None | AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
+        AssistKind::Generate => lsp_types::CodeActionKind::EMPTY,
         AssistKind::QuickFix => lsp_types::CodeActionKind::QUICKFIX,
         AssistKind::Refactor => lsp_types::CodeActionKind::REFACTOR,
         AssistKind::RefactorExtract => lsp_types::CodeActionKind::REFACTOR_EXTRACT,
@@ -1502,7 +1514,12 @@ pub(crate) fn code_action(
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
         (None, Some((index, code_action_params, version))) => {
             res.data = Some(lsp_ext::CodeActionData {
-                id: format!("{}:{}:{index}", assist.id.0, assist.id.1.name()),
+                id: format!(
+                    "{}:{}:{index}:{}",
+                    assist.id.0,
+                    assist.id.1.name(),
+                    assist.id.2.map(|x| x.to_string()).unwrap_or("".to_owned())
+                ),
                 code_action_params,
                 version,
             });
@@ -1536,7 +1553,7 @@ pub(crate) fn runnable(
             );
 
             let cwd = match runnable.kind {
-                ide::RunnableKind::Bin { .. } => workspace_root.clone(),
+                ide::RunnableKind::Bin => workspace_root.clone(),
                 _ => spec.cargo_toml.parent().to_owned(),
             };
 
@@ -1927,19 +1944,11 @@ pub(crate) fn make_update_runnable(
 }
 
 pub(crate) fn implementation_title(count: usize) -> String {
-    if count == 1 {
-        "1 implementation".into()
-    } else {
-        format!("{count} implementations")
-    }
+    if count == 1 { "1 implementation".into() } else { format!("{count} implementations") }
 }
 
 pub(crate) fn reference_title(count: usize) -> String {
-    if count == 1 {
-        "1 reference".into()
-    } else {
-        format!("{count} references")
-    }
+    if count == 1 { "1 reference".into() } else { format!("{count} references") }
 }
 
 pub(crate) fn markup_content(
@@ -1962,7 +1971,7 @@ pub(crate) fn rename_error(err: RenameError) -> LspError {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use ide::{Analysis, FilePosition};
     use ide_db::source_change::Snippet;
     use test_utils::extract_offset;

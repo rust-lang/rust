@@ -1,6 +1,6 @@
 use syntax::{
+    SourceFile, SyntaxKind, T, TextSize,
     ast::{self, AstNode},
-    SourceFile, SyntaxKind, TextSize, T,
 };
 
 // Feature: Matching Brace

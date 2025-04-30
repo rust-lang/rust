@@ -5,7 +5,7 @@ use std::{fs, io::Write as _, ops::Not, process::Stdio};
 
 use anyhow::Context;
 
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
     FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
@@ -35,17 +35,15 @@ use crate::{
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
-    hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
-        completion_item_hash,
+        LspError, completion_item_hash,
         ext::{
             InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
             InternalTestingFetchConfigResponse,
         },
         from_proto, to_proto,
         utils::{all_edits_are_disjoint, invalid_params_error},
-        LspError,
     },
     lsp_ext::{
         self, CrateInfoResult, ExternalDocsPair, ExternalDocsResponse, FetchDependencyListParams,
@@ -196,18 +194,36 @@ pub(crate) fn handle_view_item_tree(
     Ok(res)
 }
 
-// cargo test requires the real package name which might contain hyphens but
-// the test identifier passed to this function is the namespace form where hyphens
-// are replaced with underscores so we have to reverse this and find the real package name
-fn find_package_name(namespace_root: &str, cargo: &CargoWorkspace) -> Option<String> {
-    cargo.packages().find_map(|p| {
-        let package_name = &cargo[p].name;
-        if package_name.replace('-', "_") == namespace_root {
-            Some(package_name.clone())
-        } else {
-            None
-        }
+// cargo test requires:
+// - the package is a member of the workspace
+// - the target in the package is not a build script (custom-build)
+// - the package name - the root of the test identifier supplied to this handler can be
+//   a package or a target inside a package.
+// - the target name - if the test identifier is a target, it's needed in addition to the
+//   package name to run the right test
+// - real names - the test identifier uses the namespace form where hyphens are replaced with
+//   underscores. cargo test requires the real name.
+// - the target kind e.g. bin or lib
+fn all_test_targets(cargo: &CargoWorkspace) -> impl Iterator<Item = TestTarget> {
+    cargo.packages().filter(|p| cargo[*p].is_member).flat_map(|p| {
+        let package = &cargo[p];
+        package.targets.iter().filter_map(|t| {
+            let target = &cargo[*t];
+            if target.kind == TargetKind::BuildScript {
+                None
+            } else {
+                Some(TestTarget {
+                    package: package.name.clone(),
+                    target: target.name.clone(),
+                    kind: target.kind,
+                })
+            }
+        })
     })
+}
+
+fn find_test_target(namespace_root: &str, cargo: &CargoWorkspace) -> Option<TestTarget> {
+    all_test_targets(cargo).find(|t| namespace_root == t.target.replace('-', "_"))
 }
 
 pub(crate) fn handle_run_test(
@@ -217,53 +233,41 @@ pub(crate) fn handle_run_test(
     if let Some(_session) = state.test_run_session.take() {
         state.send_notification::<lsp_ext::EndRunTest>(());
     }
-    // We detect the lowest common ancestor of all included tests, and
-    // run it. We ignore excluded tests for now, the client will handle
-    // it for us.
-    let lca = match params.include {
-        Some(tests) => tests
-            .into_iter()
-            .reduce(|x, y| {
-                let mut common_prefix = "".to_owned();
-                for (xc, yc) in x.chars().zip(y.chars()) {
-                    if xc != yc {
-                        break;
-                    }
-                    common_prefix.push(xc);
-                }
-                common_prefix
-            })
-            .unwrap_or_default(),
-        None => "".to_owned(),
-    };
-    let (namespace_root, test_path) = if lca.is_empty() {
-        (None, None)
-    } else if let Some((namespace_root, path)) = lca.split_once("::") {
-        (Some(namespace_root), Some(path))
-    } else {
-        (Some(lca.as_str()), None)
-    };
+
     let mut handles = vec![];
     for ws in &*state.workspaces {
         if let ProjectWorkspaceKind::Cargo { cargo, .. } = &ws.kind {
-            let test_target = if let Some(namespace_root) = namespace_root {
-                if let Some(package_name) = find_package_name(namespace_root, cargo) {
-                    TestTarget::Package(package_name)
-                } else {
-                    TestTarget::Workspace
-                }
-            } else {
-                TestTarget::Workspace
+            // need to deduplicate `include` to avoid redundant test runs
+            let tests = match params.include {
+                Some(ref include) => include
+                    .iter()
+                    .unique()
+                    .filter_map(|test| {
+                        let (root, remainder) = match test.split_once("::") {
+                            Some((root, remainder)) => (root.to_owned(), Some(remainder)),
+                            None => (test.clone(), None),
+                        };
+                        if let Some(target) = find_test_target(&root, cargo) {
+                            Some((target, remainder))
+                        } else {
+                            tracing::error!("Test target not found for: {test}");
+                            None
+                        }
+                    })
+                    .collect_vec(),
+                None => all_test_targets(cargo).map(|target| (target, None)).collect(),
             };
 
-            let handle = CargoTestHandle::new(
-                test_path,
-                state.config.cargo_test_options(None),
-                cargo.workspace_root(),
-                test_target,
-                state.test_run_sender.clone(),
-            )?;
-            handles.push(handle);
+            for (target, path) in tests {
+                let handle = CargoTestHandle::new(
+                    path,
+                    state.config.cargo_test_options(None),
+                    cargo.workspace_root(),
+                    target,
+                    state.test_run_sender.clone(),
+                )?;
+                handles.push(handle);
+            }
         }
     }
     // Each process send finished signal twice, once for stdout and once for stderr
@@ -287,9 +291,7 @@ pub(crate) fn handle_discover_test(
         }
         None => (snap.analysis.discover_test_roots()?, None),
     };
-    for t in &tests {
-        hack_recover_crate_name::insert_name(t.id.clone());
-    }
+
     Ok(lsp_ext::DiscoverTestResults {
         tests: tests
             .into_iter()
@@ -502,6 +504,7 @@ pub(crate) fn handle_document_diagnostics(
     if !snap.analysis.is_local_source_root(source_root)? {
         return Ok(empty_diagnostic_report());
     }
+    let source_root = snap.analysis.source_root_id(file_id)?;
     let config = snap.config.diagnostics(Some(source_root));
     if !config.enabled {
         return Ok(empty_diagnostic_report());
@@ -930,6 +933,18 @@ pub(crate) fn handle_parent_module(
     Ok(Some(res))
 }
 
+pub(crate) fn handle_child_modules(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::TextDocumentPositionParams,
+) -> anyhow::Result<Option<lsp_types::GotoDefinitionResponse>> {
+    let _p = tracing::info_span!("handle_child_modules").entered();
+    // locate child module by semantics
+    let position = try_default!(from_proto::file_position(&snap, params)?);
+    let navs = snap.analysis.child_modules(position)?;
+    let res = to_proto::goto_definition_response(&snap, None, navs)?;
+    Ok(Some(res))
+}
+
 pub(crate) fn handle_runnables(
     snap: GlobalStateSnapshot,
     params: lsp_ext::RunnablesParams,
@@ -1068,7 +1083,11 @@ pub(crate) fn handle_related_tests(
 
 pub(crate) fn handle_completion(
     snap: GlobalStateSnapshot,
-    lsp_types::CompletionParams { text_document_position, context,.. }: lsp_types::CompletionParams,
+    lsp_types::CompletionParams {
+        text_document_position,
+        context,
+        ..
+    }: lsp_types::CompletionParams,
 ) -> anyhow::Result<Option<lsp_types::CompletionResponse>> {
     let _p = tracing::info_span!("handle_completion").entered();
     let mut position =
@@ -1117,7 +1136,9 @@ pub(crate) fn handle_completion_resolve(
         .into());
     }
 
-    let Some(data) = original_completion.data.take() else { return Ok(original_completion) };
+    let Some(data) = original_completion.data.take() else {
+        return Ok(original_completion);
+    };
 
     let resolve_data: lsp_ext::CompletionResolveData = serde_json::from_value(data)?;
 
@@ -1446,7 +1467,7 @@ pub(crate) fn handle_code_action(
     // Fixes from `cargo check`.
     for fix in snap
         .check_fixes
-        .values()
+        .iter()
         .flat_map(|it| it.values())
         .filter_map(|it| it.get(&frange.file_id))
         .flatten()
@@ -1473,7 +1494,7 @@ pub(crate) fn handle_code_action_resolve(
 ) -> anyhow::Result<lsp_ext::CodeAction> {
     let _p = tracing::info_span!("handle_code_action_resolve").entered();
     let Some(params) = code_action.data.take() else {
-        return Err(invalid_params_error("code action without data".to_owned()).into());
+        return Ok(code_action);
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?
@@ -1500,7 +1521,7 @@ pub(crate) fn handle_code_action_resolve(
                 "Failed to parse action id string '{}': {e}",
                 params.id
             ))
-            .into())
+            .into());
         }
     };
 
@@ -1549,13 +1570,21 @@ pub(crate) fn handle_code_action_resolve(
 fn parse_action_id(action_id: &str) -> anyhow::Result<(usize, SingleResolve), String> {
     let id_parts = action_id.split(':').collect::<Vec<_>>();
     match id_parts.as_slice() {
-        [assist_id_string, assist_kind_string, index_string] => {
+        [assist_id_string, assist_kind_string, index_string, subtype_str] => {
             let assist_kind: AssistKind = assist_kind_string.parse()?;
             let index: usize = match index_string.parse() {
                 Ok(index) => index,
                 Err(e) => return Err(format!("Incorrect index string: {e}")),
             };
-            Ok((index, SingleResolve { assist_id: assist_id_string.to_string(), assist_kind }))
+            let assist_subtype = subtype_str.parse::<usize>().ok();
+            Ok((
+                index,
+                SingleResolve {
+                    assist_id: assist_id_string.to_string(),
+                    assist_kind,
+                    assist_subtype,
+                },
+            ))
         }
         _ => Err("Action id contains incorrect number of segments".to_owned()),
     }
@@ -1608,7 +1637,9 @@ pub(crate) fn handle_code_lens_resolve(
     snap: GlobalStateSnapshot,
     mut code_lens: CodeLens,
 ) -> anyhow::Result<CodeLens> {
-    let Some(data) = code_lens.data.take() else { return Ok(code_lens) };
+    let Some(data) = code_lens.data.take() else {
+        return Ok(code_lens);
+    };
     let resolve = serde_json::from_value::<lsp_ext::CodeLensResolveData>(data)?;
     let Some(annotation) = from_proto::annotation(&snap, code_lens.range, resolve)? else {
         return Ok(code_lens);
@@ -1662,11 +1693,13 @@ pub(crate) fn handle_ssr(
     params: lsp_ext::SsrParams,
 ) -> anyhow::Result<lsp_types::WorkspaceEdit> {
     let _p = tracing::info_span!("handle_ssr").entered();
-    let selections = try_default!(params
-        .selections
-        .iter()
-        .map(|range| from_proto::file_range(&snap, &params.position.text_document, *range))
-        .collect::<Result<Option<Vec<_>>, _>>()?);
+    let selections = try_default!(
+        params
+            .selections
+            .iter()
+            .map(|range| from_proto::file_range(&snap, &params.position.text_document, *range))
+            .collect::<Result<Option<Vec<_>>, _>>()?
+    );
     let position = try_default!(from_proto::file_position(&snap, params.position)?);
     let source_change = snap.analysis.structural_search_replace(
         &params.query,
@@ -1718,14 +1751,18 @@ pub(crate) fn handle_inlay_hints_resolve(
 ) -> anyhow::Result<InlayHint> {
     let _p = tracing::info_span!("handle_inlay_hints_resolve").entered();
 
-    let Some(data) = original_hint.data.take() else { return Ok(original_hint) };
+    let Some(data) = original_hint.data.take() else {
+        return Ok(original_hint);
+    };
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
     let file_id = FileId::from_raw(resolve_data.file_id);
     if resolve_data.version != snap.file_version(file_id) {
         tracing::warn!("Inlay hint resolve data is outdated");
         return Ok(original_hint);
     }
-    let Some(hash) = resolve_data.hash.parse().ok() else { return Ok(original_hint) };
+    let Some(hash) = resolve_data.hash.parse().ok() else {
+        return Ok(original_hint);
+    };
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
@@ -2264,11 +2301,7 @@ fn run_rustfmt(
     let current_dir = match text_document.uri.to_file_path() {
         Ok(mut path) => {
             // pop off file name
-            if path.pop() && path.is_dir() {
-                path
-            } else {
-                std::env::current_dir()?
-            }
+            if path.pop() && path.is_dir() { path } else { std::env::current_dir()? }
         }
         Err(_) => {
             tracing::error!(
@@ -2282,8 +2315,11 @@ fn run_rustfmt(
     let mut command = match snap.config.rustfmt(source_root_id) {
         RustfmtConfig::Rustfmt { extra_args, enable_range_formatting } => {
             // FIXME: Set RUSTUP_TOOLCHAIN
-            let mut cmd = toolchain::command(toolchain::Tool::Rustfmt.path(), current_dir);
-            cmd.envs(snap.config.extra_env(source_root_id));
+            let mut cmd = toolchain::command(
+                toolchain::Tool::Rustfmt.path(),
+                current_dir,
+                snap.config.extra_env(source_root_id),
+            );
             cmd.args(extra_args);
 
             if let Some(edition) = edition {
@@ -2325,6 +2361,7 @@ fn run_rustfmt(
         RustfmtConfig::CustomCommand { command, args } => {
             let cmd = Utf8PathBuf::from(&command);
             let target_spec = TargetSpec::for_file(snap, file_id)?;
+            let extra_env = snap.config.extra_env(source_root_id);
             let mut cmd = match target_spec {
                 Some(TargetSpec::Cargo(_)) => {
                     // approach: if the command name contains a path separator, join it with the project root.
@@ -2337,12 +2374,11 @@ fn run_rustfmt(
                     } else {
                         cmd
                     };
-                    toolchain::command(cmd_path, current_dir)
+                    toolchain::command(cmd_path, current_dir, extra_env)
                 }
-                _ => toolchain::command(cmd, current_dir),
+                _ => toolchain::command(cmd, current_dir, extra_env),
             };
 
-            cmd.envs(snap.config.extra_env(source_root_id));
             cmd.args(args);
             cmd
         }
@@ -2385,7 +2421,11 @@ fn run_rustfmt(
                 Ok(None)
             }
             // rustfmt panicked at lexing/parsing the file
-            Some(101) if !rustfmt_not_installed && captured_stderr.starts_with("error[") => {
+            Some(101)
+                if !rustfmt_not_installed
+                    && (captured_stderr.starts_with("error[")
+                        || captured_stderr.starts_with("error:")) =>
+            {
                 Ok(None)
             }
             _ => {

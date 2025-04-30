@@ -1,4 +1,4 @@
-use crate::{adjusted_display_range, Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticsContext, adjusted_display_range};
 
 // Diagnostic: await-outside-of-async
 //

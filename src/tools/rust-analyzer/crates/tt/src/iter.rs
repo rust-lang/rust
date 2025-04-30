@@ -6,7 +6,7 @@ use std::fmt;
 use arrayvec::ArrayVec;
 use intern::sym;
 
-use crate::{Ident, Leaf, Punct, Spacing, Subtree, TokenTree, TokenTreesView};
+use crate::{Ident, Leaf, MAX_GLUED_PUNCT_LEN, Punct, Spacing, Subtree, TokenTree, TokenTreesView};
 
 #[derive(Clone)]
 pub struct TtIter<'a, S> {
@@ -111,7 +111,7 @@ impl<'a, S: Copy> TtIter<'a, S> {
     ///
     /// This method currently may return a single quotation, which is part of lifetime ident and
     /// conceptually not a punct in the context of mbe. Callers should handle this.
-    pub fn expect_glued_punct(&mut self) -> Result<ArrayVec<Punct<S>, 3>, ()> {
+    pub fn expect_glued_punct(&mut self) -> Result<ArrayVec<Punct<S>, MAX_GLUED_PUNCT_LEN>, ()> {
         let TtElement::Leaf(&Leaf::Punct(first)) = self.next().ok_or(())? else {
             return Err(());
         };
@@ -145,7 +145,6 @@ impl<'a, S: Copy> TtIter<'a, S> {
             }
             ('-' | '!' | '*' | '/' | '&' | '%' | '^' | '+' | '<' | '=' | '>' | '|', '=', _)
             | ('-' | '=' | '>', '>', _)
-            | (_, _, Some(';'))
             | ('<', '-', _)
             | (':', ':', _)
             | ('.', '.', _)

@@ -162,9 +162,10 @@ fn test() {
 }
 
 #[test]
-fn expr_dont_match_inline_const() {
+fn expr_inline_const() {
     check(
         r#"
+//- /lib.rs edition:2021
 macro_rules! foo {
     ($e:expr) => { $e }
 }
@@ -180,6 +181,30 @@ macro_rules! foo {
 
 fn test() {
     /* error: no rule matches input tokens */missing;
+}
+"#]],
+    );
+    check(
+        r#"
+//- /lib.rs edition:2024
+macro_rules! foo {
+    ($e:expr) => { $e }
+}
+
+fn test() {
+    foo!(const { 3 });
+}
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($e:expr) => { $e }
+}
+
+fn test() {
+    (const {
+        3
+    }
+    );
 }
 "#]],
     );

@@ -3,12 +3,13 @@
 
 use crossbeam_channel::Sender;
 use paths::AbsPath;
+use project_model::TargetKind;
 use serde::Deserialize as _;
 use serde_derive::Deserialize;
 use toolchain::Tool;
 
 use crate::{
-    command::{CommandHandle, ParseFromLine},
+    command::{CargoParser, CommandHandle},
     flycheck::CargoOptions,
 };
 
@@ -25,9 +26,15 @@ pub(crate) enum TestState {
     },
 }
 
+#[derive(Debug)]
+pub(crate) struct CargoTestMessage {
+    pub target: TestTarget,
+    pub output: CargoTestOutput,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
-pub(crate) enum CargoTestMessage {
+pub(crate) enum CargoTestOutput {
     Test {
         name: String,
         #[serde(flatten)]
@@ -40,19 +47,33 @@ pub(crate) enum CargoTestMessage {
     },
 }
 
-impl ParseFromLine for CargoTestMessage {
-    fn from_line(line: &str, _: &mut String) -> Option<Self> {
+pub(crate) struct CargoTestOutputParser {
+    pub target: TestTarget,
+}
+
+impl CargoTestOutputParser {
+    pub(crate) fn new(test_target: &TestTarget) -> Self {
+        Self { target: test_target.clone() }
+    }
+}
+
+impl CargoParser<CargoTestMessage> for CargoTestOutputParser {
+    fn from_line(&self, line: &str, _error: &mut String) -> Option<CargoTestMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
-        if let Ok(message) = CargoTestMessage::deserialize(&mut deserializer) {
-            return Some(message);
-        }
 
-        Some(CargoTestMessage::Custom { text: line.to_owned() })
+        Some(CargoTestMessage {
+            target: self.target.clone(),
+            output: if let Ok(message) = CargoTestOutput::deserialize(&mut deserializer) {
+                message
+            } else {
+                CargoTestOutput::Custom { text: line.to_owned() }
+            },
+        })
     }
 
-    fn from_eof() -> Option<Self> {
-        Some(CargoTestMessage::Finished)
+    fn from_eof(&self) -> Option<CargoTestMessage> {
+        Some(CargoTestMessage { target: self.target.clone(), output: CargoTestOutput::Finished })
     }
 }
 
@@ -62,14 +83,14 @@ pub(crate) struct CargoTestHandle {
 }
 
 // Example of a cargo test command:
-// cargo test --workspace --no-fail-fast -- -Z unstable-options --format=json
-// or
-// cargo test --package my-package --no-fail-fast -- module::func -Z unstable-options --format=json
+//
+// cargo test --package my-package --bin my_bin --no-fail-fast -- module::func -Z unstable-options --format=json
 
-#[derive(Debug)]
-pub(crate) enum TestTarget {
-    Workspace,
-    Package(String),
+#[derive(Debug, Clone)]
+pub(crate) struct TestTarget {
+    pub package: String,
+    pub target: String,
+    pub kind: TargetKind,
 }
 
 impl CargoTestHandle {
@@ -80,19 +101,22 @@ impl CargoTestHandle {
         test_target: TestTarget,
         sender: Sender<CargoTestMessage>,
     ) -> std::io::Result<Self> {
-        let mut cmd = toolchain::command(Tool::Cargo.path(), root);
+        let mut cmd = toolchain::command(Tool::Cargo.path(), root, &options.extra_env);
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("test");
 
-        match &test_target {
-            TestTarget::Package(package) => {
-                cmd.arg("--package");
-                cmd.arg(package);
-            }
-            TestTarget::Workspace => {
-                cmd.arg("--workspace");
-            }
-        };
+        cmd.arg("--package");
+        cmd.arg(&test_target.package);
+
+        if let TargetKind::Lib { .. } = test_target.kind {
+            // no name required with lib because there can only be one lib target per package
+            cmd.arg("--lib");
+        } else if let Some(cargo_target) = test_target.kind.as_cargo_target() {
+            cmd.arg(format!("--{cargo_target}"));
+            cmd.arg(&test_target.target);
+        } else {
+            tracing::warn!("Running test for unknown cargo target {:?}", test_target.kind);
+        }
 
         // --no-fail-fast is needed to ensure that all requested tests will run
         cmd.arg("--no-fail-fast");
@@ -110,6 +134,8 @@ impl CargoTestHandle {
             cmd.arg(extra_arg);
         }
 
-        Ok(Self { _handle: CommandHandle::spawn(cmd, sender)? })
+        Ok(Self {
+            _handle: CommandHandle::spawn(cmd, CargoTestOutputParser::new(&test_target), sender)?,
+        })
     }
 }

@@ -3,7 +3,7 @@
 rust-analyzer is an ordinary Rust project, which is organized as a Cargo workspace, builds on stable and doesn't depend on C libraries.
 So, just
 
-```
+```bash
 $ cargo test
 ```
 
@@ -140,21 +140,24 @@ By default, log goes to stderr, but the stderr itself is processed by VS Code.
 `--log-file <PATH>` CLI argument allows logging to file.
 Setting the `RA_LOG_FILE=<PATH>` environment variable will also log to file, it will also override `--log-file`.
 
-To see stderr in the running VS Code instance, go to the "Output" tab of the panel and select `rust-analyzer`.
+To see the server stderr output in the running VS Code instance, go to the "Output" tab of the panel
+and select `rust-analyzer Language Server`.
 This shows `eprintln!` as well.
-Note that `stdout` is used for the actual protocol, so `println!` will break things.
+Note that `stdout` is used by LSP messages, so using `println!`—or anything that writes to `stdout`—will break rust-analyzer!
 
 To log all communication between the server and the client, there are two choices:
 
 * You can log on the server side, by running something like
 
-  ```
+  ```bash
   env RA_LOG=lsp_server=debug code .
   ```
 
 * You can log on the client side, by the `rust-analyzer: Toggle LSP Logs` command or enabling `"rust-analyzer.trace.server": "verbose"` workspace setting.
-  These logs are shown in a separate tab in the output and could be used with LSP inspector.
+  These logs are shown in a separate tab named `rust-analyzer LSP Trace` in the output and could be used with LSP inspector.
   Kudos to [@DJMcNab](https://github.com/DJMcNab) for setting this awesome infra up!
+
+Finally there are the logs of the VSCode extension itself which go into the `rust-analyzer Extension` output tab.
 
 There are also several VS Code commands which might be of interest:
 
@@ -180,7 +183,7 @@ There are also several VS Code commands which might be of interest:
 
 We have a built-in hierarchical profiler, you can enable it by using `RA_PROFILE` env-var:
 
-```
+```bash
 RA_PROFILE=*             // dump everything
 RA_PROFILE=foo|bar|baz   // enabled only selected entries
 RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
@@ -191,7 +194,7 @@ Some rust-analyzer contributors have `export RA_PROFILE='*>10'` in my shell prof
 For machine-readable JSON output, we have the `RA_PROFILE_JSON` env variable. We support
 filtering only by span name:
 
-```
+```bash
 RA_PROFILE=* // dump everything
 RA_PROFILE_JSON="vfs_load|parallel_prime_caches|discover_command" // dump selected spans
 ```
@@ -201,13 +204,13 @@ It is enabled by `RA_COUNT=1`.
 
 To measure time for from-scratch analysis, use something like this:
 
-```
+```bash
 $ cargo run --release -p rust-analyzer -- analysis-stats ../chalk/
 ```
 
 For measuring time of incremental analysis, use either of these:
 
-```
+```bash
 $ cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --highlight ../chalk/chalk-engine/src/logic.rs
 $ cargo run --release -p rust-analyzer -- analysis-bench ../chalk/ --complete ../chalk/chalk-engine/src/logic.rs:94:0
 ```
@@ -220,7 +223,7 @@ Release process is handled by `release`, `dist`, `publish-release-notes` and `pr
 
 `release` assumes that you have checkouts of `rust-analyzer`, `rust-analyzer.github.io`, and `rust-lang/rust` in the same directory:
 
-```
+```bash
 ./rust-analyzer
 ./rust-analyzer.github.io
 ./rust-rust-analyzer  # Note the name!

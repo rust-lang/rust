@@ -1,10 +1,11 @@
 use ide_db::famous_defs::FamousDefs;
 use syntax::{
+    AstNode,
     ast::{self, make},
-    ted, AstNode,
+    ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // FIXME: Generate proper `index_mut` method body refer to `index` method body may impossible due to the unpredictable case [#15581].
 // Here just leave the `index_mut` method body be same as `index` method body, user can modify it manually to meet their need.
@@ -101,7 +102,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let target = impl_def.syntax().text_range();
     acc.add(
-        AssistId("generate_mut_trait_impl", AssistKind::Generate),
+        AssistId::generate("generate_mut_trait_impl"),
         "Generate `IndexMut` impl from this `Index` trait",
         target,
         |edit| {

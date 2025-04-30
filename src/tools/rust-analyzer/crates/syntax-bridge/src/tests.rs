@@ -1,12 +1,13 @@
 use rustc_hash::FxHashMap;
 use span::Span;
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 use test_utils::extract_annotations;
-use tt::{buffer::Cursor, Leaf, Punct, Spacing};
+use tt::{Leaf, Punct, Spacing, buffer::Cursor};
 
 use crate::{
-    dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
-    syntax_node_to_token_tree, DocCommentDesugarMode,
+    DocCommentDesugarMode,
+    dummy_test_span_utils::{DUMMY, DummyTestSpanMap},
+    syntax_node_to_token_tree,
 };
 
 fn check_punct_spacing(fixture: &str) {

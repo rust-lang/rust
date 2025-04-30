@@ -5,8 +5,8 @@ use itertools::Itertools;
 use parser::T;
 use span::Edition;
 use syntax::{
-    ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
     AstNode, AstToken, Preorder, RustLanguage, WalkEvent,
+    ast::{self, HasLoopBody, MacroCall, PathSegmentKind, VisibilityKind},
 };
 
 pub fn expr_as_name_ref(expr: &ast::Expr) -> Option<ast::NameRef> {
@@ -121,7 +121,7 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
         match ast::Stmt::cast(node.clone()) {
             Some(ast::Stmt::LetStmt(l)) => {
                 if let Some(pat) = l.pat() {
-                    let _ = walk_pat(&pat, &mut |pat| {
+                    _ = walk_pat(&pat, &mut |pat| {
                         cb(pat);
                         ControlFlow::<(), ()>::Continue(())
                     });
@@ -159,7 +159,7 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
                     }
                 } else if let Some(pat) = ast::Pat::cast(node) {
                     preorder.skip_subtree();
-                    let _ = walk_pat(&pat, &mut |pat| {
+                    _ = walk_pat(&pat, &mut |pat| {
                         cb(pat);
                         ControlFlow::<(), ()>::Continue(())
                     });
@@ -484,7 +484,7 @@ pub fn parse_tt_as_comma_sep_paths(
             None => None,
             Some(tok) => Some(tok),
         });
-    let input_expressions = tokens.group_by(|tok| tok.kind() == T![,]);
+    let input_expressions = tokens.chunk_by(|tok| tok.kind() == T![,]);
     let paths = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))

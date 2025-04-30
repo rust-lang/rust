@@ -2,11 +2,7 @@
 
 use proc_macro::bridge;
 
-use libloading::Library;
-
-use crate::{
-    dylib::LoadProcMacroDylibError, server_impl::TopSubtree, ProcMacroKind, ProcMacroSrvSpan,
-};
+use crate::{ProcMacroKind, ProcMacroSrvSpan, server_impl::TopSubtree};
 
 #[repr(transparent)]
 pub(crate) struct ProcMacros([bridge::client::ProcMacro]);
@@ -18,28 +14,6 @@ impl From<bridge::PanicMessage> for crate::PanicMessage {
 }
 
 impl ProcMacros {
-    /// Load a new ABI.
-    ///
-    /// # Arguments
-    ///
-    /// *`lib` - The dynamic library containing the macro implementations
-    /// *`symbol_name` - The symbol name the macros can be found attributes
-    /// *`info` - RustCInfo about the compiler that was used to compile the
-    ///           macro crate. This is the information we use to figure out
-    ///           which ABI to return
-    pub(crate) fn from_lib<'l>(
-        lib: &'l Library,
-        symbol_name: String,
-        version_string: &str,
-    ) -> Result<&'l ProcMacros, LoadProcMacroDylibError> {
-        if version_string != crate::RUSTC_VERSION_STRING {
-            return Err(LoadProcMacroDylibError::AbiMismatch(version_string.to_owned()));
-        }
-        unsafe { lib.get::<&'l &'l ProcMacros>(symbol_name.as_bytes()) }
-            .map(|it| **it)
-            .map_err(Into::into)
-    }
-
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
@@ -52,7 +26,7 @@ impl ProcMacros {
         let parsed_body = crate::server_impl::TokenStream::with_subtree(macro_body);
 
         let parsed_attributes = attributes
-            .map_or_else(crate::server_impl::TokenStream::new, |attr| {
+            .map_or_else(crate::server_impl::TokenStream::default, |attr| {
                 crate::server_impl::TokenStream::with_subtree(attr)
             });
 

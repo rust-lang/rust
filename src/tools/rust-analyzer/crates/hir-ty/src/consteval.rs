@@ -1,27 +1,25 @@
 //! Constant evaluation details
 
-use base_db::{ra_salsa::Cycle, CrateId};
-use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
+use base_db::Crate;
+use chalk_ir::{BoundVar, DebruijnIndex, cast::Cast};
 use hir_def::{
-    expr_store::{Body, HygieneId},
+    EnumVariantId, GeneralConstId, HasModule as _, StaticId,
+    expr_store::{Body, HygieneId, path::Path},
     hir::{Expr, ExprId},
-    path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
-    ConstBlockLoc, EnumVariantId, GeneralConstId, HasModule as _, StaticId,
 };
 use hir_expand::Lookup;
 use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, display::DisplayTarget, generics::Generics, infer::InferenceContext,
-    lower::ParamLoweringMode, mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData,
-    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
-    TyBuilder,
+    Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution,
+    TraitEnvironment, Ty, TyBuilder, db::HirDatabase, display::DisplayTarget, generics::Generics,
+    infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
 };
 
-use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
+use super::mir::{MirEvalError, MirLowerError, interpret_mir, lower_to_mir, pad16};
 
 /// Extension trait for [`Const`]
 pub trait ConstExt {
@@ -96,11 +94,11 @@ pub(crate) fn path_to_const<'g>(
     resolver: &Resolver,
     path: &Path,
     mode: ParamLoweringMode,
-    args: impl FnOnce() -> Option<&'g Generics>,
+    args: impl FnOnce() -> &'g Generics,
     debruijn: DebruijnIndex,
     expected_ty: Ty,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path, HygieneId::ROOT) {
+    match resolver.resolve_path_in_value_ns_fully(db, path, HygieneId::ROOT) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let value = match mode {
@@ -109,7 +107,7 @@ pub(crate) fn path_to_const<'g>(
                 }
                 ParamLoweringMode::Variable => {
                     let args = args();
-                    match args.and_then(|args| args.type_or_const_param_idx(p.into())) {
+                    match args.type_or_const_param_idx(p.into()) {
                         Some(it) => ConstValue::BoundVar(BoundVar::new(debruijn, it)),
                         None => {
                             never!(
@@ -157,17 +155,17 @@ pub fn intern_const_ref(
     db: &dyn HirDatabase,
     value: &LiteralConstRef,
     ty: Ty,
-    krate: CrateId,
+    krate: Crate,
 ) -> Const {
-    let layout = db.layout_of_ty(ty.clone(), TraitEnvironment::empty(krate));
+    let layout = || db.layout_of_ty(ty.clone(), TraitEnvironment::empty(krate));
     let bytes = match value {
         LiteralConstRef::Int(i) => {
             // FIXME: We should handle failure of layout better.
-            let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
+            let size = layout().map(|it| it.size.bytes_usize()).unwrap_or(16);
             ConstScalar::Bytes(i.to_le_bytes()[0..size].into(), MemoryMap::default())
         }
         LiteralConstRef::UInt(i) => {
-            let size = layout.map(|it| it.size.bytes_usize()).unwrap_or(16);
+            let size = layout().map(|it| it.size.bytes_usize()).unwrap_or(16);
             ConstScalar::Bytes(i.to_le_bytes()[0..size].into(), MemoryMap::default())
         }
         LiteralConstRef::Bool(b) => ConstScalar::Bytes(Box::new([*b as u8]), MemoryMap::default()),
@@ -180,7 +178,7 @@ pub fn intern_const_ref(
 }
 
 /// Interns a possibly-unknown target usize
-pub fn usize_const(db: &dyn HirDatabase, value: Option<u128>, krate: CrateId) -> Const {
+pub fn usize_const(db: &dyn HirDatabase, value: Option<u128>, krate: Crate) -> Const {
     intern_const_ref(
         db,
         &value.map_or(LiteralConstRef::Unknown, LiteralConstRef::UInt),
@@ -221,28 +219,25 @@ pub fn try_const_isize(db: &dyn HirDatabase, c: &Const) -> Option<i128> {
     }
 }
 
-pub(crate) fn const_eval_recover(
+pub(crate) fn const_eval_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
-    _: &GeneralConstId,
-    _: &Substitution,
-    _: &Option<Arc<TraitEnvironment>>,
+    _: GeneralConstId,
+    _: Substitution,
+    _: Option<Arc<TraitEnvironment>>,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_static_recover(
+pub(crate) fn const_eval_static_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
-    _: &StaticId,
+    _: StaticId,
 ) -> Result<Const, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
 
-pub(crate) fn const_eval_discriminant_recover(
+pub(crate) fn const_eval_discriminant_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
-    _: &EnumVariantId,
+    _: EnumVariantId,
 ) -> Result<i128, ConstEvalError> {
     Err(ConstEvalError::MirLowerError(MirLowerError::Loop))
 }
@@ -258,21 +253,9 @@ pub(crate) fn const_eval_query(
             db.monomorphized_mir_body(c.into(), subst, db.trait_environment(c.into()))?
         }
         GeneralConstId::StaticId(s) => {
-            let krate = s.module(db.upcast()).krate();
+            let krate = s.module(db).krate();
             db.monomorphized_mir_body(s.into(), subst, TraitEnvironment::empty(krate))?
         }
-        GeneralConstId::ConstBlockId(c) => {
-            let ConstBlockLoc { parent, root } = db.lookup_intern_anonymous_const(c);
-            let body = db.body(parent);
-            let infer = db.infer(parent);
-            Arc::new(monomorphize_mir_body_bad(
-                db,
-                lower_to_mir(db, parent, &body, &infer, root)?,
-                subst,
-                db.trait_environment_for_body(parent),
-            )?)
-        }
-        GeneralConstId::InTypeConstId(c) => db.mir_body(c.into())?,
     };
     let c = interpret_mir(db, body, false, trait_env)?.0?;
     Ok(c)
@@ -297,13 +280,13 @@ pub(crate) fn const_eval_discriminant_variant(
 ) -> Result<i128, ConstEvalError> {
     let def = variant_id.into();
     let body = db.body(def);
-    let loc = variant_id.lookup(db.upcast());
+    let loc = variant_id.lookup(db);
     if body.exprs[body.body_expr] == Expr::Missing {
         let prev_idx = loc.index.checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {
                 1 + db.const_eval_discriminant(
-                    db.enum_data(loc.parent).variants[prev_idx as usize].0,
+                    db.enum_variants(loc.parent).variants[prev_idx as usize].0,
                 )?
             }
             _ => 0,
@@ -311,7 +294,7 @@ pub(crate) fn const_eval_discriminant_variant(
         return Ok(value);
     }
 
-    let repr = db.enum_data(loc.parent).repr;
+    let repr = db.enum_signature(loc.parent).repr;
     let is_signed = repr.and_then(|repr| repr.int).is_none_or(|int| int.is_signed());
 
     let mir_body = db.monomorphized_mir_body(

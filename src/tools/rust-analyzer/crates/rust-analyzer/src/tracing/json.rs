@@ -12,10 +12,10 @@ use std::{io::Write as _, marker::PhantomData, time::Instant};
 
 use ide_db::FxHashSet;
 use tracing::{
-    span::{Attributes, Id},
     Event, Subscriber,
+    span::{Attributes, Id},
 };
-use tracing_subscriber::{fmt::MakeWriter, layer::Context, registry::LookupSpan, Layer};
+use tracing_subscriber::{Layer, fmt::MakeWriter, layer::Context, registry::LookupSpan};
 
 struct JsonData {
     name: &'static str,

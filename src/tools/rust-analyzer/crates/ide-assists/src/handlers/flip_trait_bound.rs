@@ -1,10 +1,10 @@
 use syntax::{
+    Direction, T,
     algo::non_trivia_sibling,
     ast::{self, AstNode},
-    Direction, T,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_trait_bound
 //
@@ -29,14 +29,14 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let target = plus.text_range();
     acc.add(
-        AssistId("flip_trait_bound", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("flip_trait_bound"),
         "Flip trait bounds",
         target,
         |builder| {
             let mut editor = builder.make_editor(parent.syntax());
             editor.replace(before.clone(), after.clone());
             editor.replace(after, before);
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
