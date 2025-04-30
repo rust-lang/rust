@@ -14,7 +14,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -296,9 +296,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_tup_from_iter(self.tcx, arg_exprs.iter().map(|e| self.next_ty_var(e.span)))
             });
 
-            if let Some(ok) = self.lookup_method_in_trait(
+            if let Some(ok) = self.lookup_method_for_operator(
                 self.misc(call_expr.span),
-                Ident::with_dummy_span(method_name),
+                method_name,
                 trait_def_id,
                 adjusted_ty,
                 opt_input_type,

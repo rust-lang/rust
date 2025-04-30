@@ -12,7 +12,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
 use tracing::debug;
@@ -975,7 +975,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lhs_ty, opname, trait_did
         );
 
-        let opname = Ident::with_dummy_span(opname);
         let (opt_rhs_expr, opt_rhs_ty) = opt_rhs.unzip();
         let cause = self.cause(
             span,
@@ -990,7 +989,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let method =
-            self.lookup_method_in_trait(cause.clone(), opname, trait_did, lhs_ty, opt_rhs_ty);
+            self.lookup_method_for_operator(cause.clone(), opname, trait_did, lhs_ty, opt_rhs_ty);
         match method {
             Some(ok) => {
                 let method = self.register_infer_ok_obligations(ok);
