@@ -634,6 +634,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 false,
                 None,
                 *delim,
+                None,
                 tokens,
                 true,
                 span,
@@ -679,6 +680,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     false,
                     None,
                     *delim,
+                    Some(spacing.open),
                     tts,
                     convert_dollar_crate,
                     dspan.entire(),
@@ -735,6 +737,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         has_bang: bool,
         ident: Option<Ident>,
         delim: Delimiter,
+        open_spacing: Option<Spacing>,
         tts: &TokenStream,
         convert_dollar_crate: bool,
         span: Span,
@@ -758,16 +761,26 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     self.nbsp();
                 }
                 self.word("{");
-                if !tts.is_empty() {
+
+                // Respect `Alone`, if provided, and print a space. Unless the list is empty.
+                let open_space = (open_spacing == None || open_spacing == Some(Spacing::Alone))
+                    && !tts.is_empty();
+                if open_space {
                     self.space();
                 }
                 let ib = self.ibox(0);
                 self.print_tts(tts, convert_dollar_crate);
                 self.end(ib);
-                let empty = tts.is_empty();
-                self.bclose(span, empty, cb.unwrap());
+
+                // Use `open_space` for the spacing *before* the closing delim.
+                // Because spacing on delimiters is lost when going through
+                // proc macros, and otherwise we can end up with ugly cases
+                // like `{ x}`. Symmetry is better.
+                self.bclose(span, !open_space, cb.unwrap());
             }
             delim => {
+                // `open_spacing` is ignored. We never print spaces after
+                // non-brace opening delims or before non-brace closing delims.
                 let token_str = self.token_kind_to_string(&delim.as_open_token_kind());
                 self.word(token_str);
                 let ib = self.ibox(0);
@@ -797,6 +810,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             has_bang,
             Some(*ident),
             macro_def.body.delim,
+            None,
             &macro_def.body.tokens,
             true,
             sp,
@@ -844,9 +858,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.end(ib);
     }
 
-    fn bclose_maybe_open(&mut self, span: rustc_span::Span, empty: bool, cb: Option<BoxMarker>) {
+    fn bclose_maybe_open(&mut self, span: rustc_span::Span, no_space: bool, cb: Option<BoxMarker>) {
         let has_comment = self.maybe_print_comment(span.hi());
-        if !empty || has_comment {
+        if !no_space || has_comment {
             self.break_offset_if_not_bol(1, -INDENT_UNIT);
         }
         self.word("}");
@@ -855,9 +869,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn bclose(&mut self, span: rustc_span::Span, empty: bool, cb: BoxMarker) {
+    fn bclose(&mut self, span: rustc_span::Span, no_space: bool, cb: BoxMarker) {
         let cb = Some(cb);
-        self.bclose_maybe_open(span, empty, cb)
+        self.bclose_maybe_open(span, no_space, cb)
     }
 
     fn break_offset_if_not_bol(&mut self, n: usize, off: isize) {
@@ -1434,8 +1448,8 @@ impl<'a> State<'a> {
             }
         }
 
-        let empty = !has_attrs && blk.stmts.is_empty();
-        self.bclose_maybe_open(blk.span, empty, cb);
+        let no_space = !has_attrs && blk.stmts.is_empty();
+        self.bclose_maybe_open(blk.span, no_space, cb);
         self.ann.post(self, AnnNode::Block(blk))
     }
 
@@ -1482,6 +1496,7 @@ impl<'a> State<'a> {
             true,
             None,
             m.args.delim,
+            None,
             &m.args.tokens,
             true,
             m.span(),

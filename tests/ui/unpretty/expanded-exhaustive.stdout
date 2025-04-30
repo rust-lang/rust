@@ -505,7 +505,7 @@ mod items {
     mod item_mac_call { }
     /// ItemKind::MacroDef
     mod item_macro_def {
-        macro_rules! mac { () => { ... }; }
+        macro_rules! mac { () => {...}; }
         pub macro stringify { () => {} }
     }
     /// ItemKind::Delegation
