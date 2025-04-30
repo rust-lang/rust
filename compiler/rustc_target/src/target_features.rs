@@ -526,6 +526,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zcmop", Unstable(sym::riscv_target_feature), &["zca"]),
     ("zdinx", Unstable(sym::riscv_target_feature), &["zfinx"]),
     ("zfa", Unstable(sym::riscv_target_feature), &["f"]),
+    ("zfbfmin", Unstable(sym::riscv_target_feature), &["f"]), // and a subset of Zfhmin
     ("zfh", Unstable(sym::riscv_target_feature), &["zfhmin"]),
     ("zfhmin", Unstable(sym::riscv_target_feature), &["f"]),
     ("zfinx", Unstable(sym::riscv_target_feature), &["zicsr"]),
@@ -565,6 +566,8 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zve64d", Unstable(sym::riscv_target_feature), &["zve64f", "d"]),
     ("zve64f", Unstable(sym::riscv_target_feature), &["zve32f", "zve64x"]),
     ("zve64x", Unstable(sym::riscv_target_feature), &["zve32x", "zvl64b"]),
+    ("zvfbfmin", Unstable(sym::riscv_target_feature), &["zve32f"]),
+    ("zvfbfwma", Unstable(sym::riscv_target_feature), &["zfbfmin", "zvfbfmin"]),
     ("zvfh", Unstable(sym::riscv_target_feature), &["zvfhmin", "zve32f", "zfhmin"]), // Zvfh ⊃ Zvfhmin
     ("zvfhmin", Unstable(sym::riscv_target_feature), &["zve32f"]),
     ("zvkb", Unstable(sym::riscv_target_feature), &["zve32x"]),

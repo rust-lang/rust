@@ -324,6 +324,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zcmop`
 `zdinx`
 `zfa`
+`zfbfmin`
 `zfh`
 `zfhmin`
 `zfinx`
@@ -363,6 +364,8 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zve64d`
 `zve64f`
 `zve64x`
+`zvfbfmin`
+`zvfbfwma`
 `zvfh`
 `zvfhmin`
 `zvkb`
