@@ -15,14 +15,13 @@
 // FIXME: This is a mess that needs some untangling work
 use std::{iter, mem};
 
-use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
-use ide::CrateId;
+use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
-    base_db::{ra_salsa::Durability, CrateGraph, CrateWorkspaceData, ProcMacroPaths},
     FxHashMap,
+    base_db::{CrateGraphBuilder, ProcMacroPaths, salsa::Durability},
 };
 use itertools::Itertools;
-use load_cargo::{load_proc_macro, ProjectFolders};
+use load_cargo::{ProjectFolders, load_proc_macro};
 use lsp_types::FileSystemWatcher;
 use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
@@ -60,7 +59,7 @@ pub(crate) enum BuildDataProgress {
 pub(crate) enum ProcMacroProgress {
     Begin,
     Report(String),
-    End(ProcMacros),
+    End(ChangeWithProcMacros),
 }
 
 impl GlobalState {
@@ -142,6 +141,7 @@ impl GlobalState {
         if self.fetch_build_data_error().is_err() {
             status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
+            message.push_str("Please refer to the logs for more details on the errors.");
         }
         if let Some(err) = &self.config_errors {
             status.health |= lsp_ext::Health::Warning;
@@ -158,7 +158,7 @@ impl GlobalState {
         {
             status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to discover workspace.\n");
-            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/manual.html#rust-analyzer.linkedProjects) setting.\n\n");
+            message.push_str("Consider adding the `Cargo.toml` of the workspace to the [`linkedProjects`](https://rust-analyzer.github.io/book/configuration.html#linkedProjects) setting.\n\n");
         }
         if self.fetch_workspace_error().is_err() {
             status.health |= lsp_ext::Health::Error;
@@ -386,7 +386,12 @@ impl GlobalState {
         });
     }
 
-    pub(crate) fn fetch_proc_macros(&mut self, cause: Cause, paths: Vec<ProcMacroPaths>) {
+    pub(crate) fn fetch_proc_macros(
+        &mut self,
+        cause: Cause,
+        mut change: ChangeWithProcMacros,
+        paths: Vec<ProcMacroPaths>,
+    ) {
         info!(%cause, "will load proc macros");
         let ignored_proc_macros = self.config.ignored_proc_macros(None).clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
@@ -403,50 +408,36 @@ impl GlobalState {
             };
 
             let mut builder = ProcMacrosBuilder::default();
-            let chain = proc_macro_clients
+            let proc_macro_clients = proc_macro_clients
                 .iter()
                 .map(|res| res.as_ref().map_err(|e| e.to_string()))
                 .chain(iter::repeat_with(|| Err("proc-macro-srv is not running".into())));
-            for (client, paths) in chain.zip(paths) {
-                paths
-                    .into_iter()
-                    .map(move |(crate_id, res)| {
-                        (
-                            crate_id,
-                            res.map_or_else(
-                                |e| Err((e, true)),
-                                |(crate_name, path)| {
-                                    progress(path.to_string());
-                                    client.as_ref().map_err(|it| (it.clone(), true)).and_then(
-                                        |client| {
-                                            load_proc_macro(
-                                                client,
-                                                &path,
-                                                ignored_proc_macros
-                                                    .iter()
-                                                    .find_map(|(name, macros)| {
-                                                        eq_ignore_underscore(name, &crate_name)
-                                                            .then_some(&**macros)
-                                                    })
-                                                    .unwrap_or_default(),
-                                            )
-                                        },
-                                    )
-                                },
-                            ),
-                        )
-                    })
-                    .for_each(|(krate, res)| builder.insert(krate, res));
+            for (client, paths) in proc_macro_clients.zip(paths) {
+                for (crate_id, res) in paths.iter() {
+                    let expansion_res = match client {
+                        Ok(client) => match res {
+                            Ok((crate_name, path)) => {
+                                progress(path.to_string());
+                                let ignored_proc_macros = ignored_proc_macros
+                                    .iter()
+                                    .find_map(|(name, macros)| {
+                                        eq_ignore_underscore(name, crate_name).then_some(&**macros)
+                                    })
+                                    .unwrap_or_default();
+
+                                load_proc_macro(client, path, ignored_proc_macros)
+                            }
+                            Err(e) => Err((e.clone(), true)),
+                        },
+                        Err(ref e) => Err((e.clone(), true)),
+                    };
+                    builder.insert(*crate_id, expansion_res)
+                }
             }
 
-            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(builder.build()))).unwrap();
+            change.set_proc_macros(builder);
+            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(change))).unwrap();
         });
-    }
-
-    pub(crate) fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
-        let mut change = ChangeWithProcMacros::new();
-        change.set_proc_macros(proc_macros);
-        self.analysis_host.apply_change(change);
     }
 
     pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
@@ -458,11 +449,12 @@ impl GlobalState {
         else {
             return;
         };
+        let switching_from_empty_workspace = self.workspaces.is_empty();
 
-        info!(%cause, ?force_crate_graph_reload);
-        if self.fetch_workspace_error().is_err() && !self.workspaces.is_empty() {
+        info!(%cause, ?force_crate_graph_reload, %switching_from_empty_workspace);
+        if self.fetch_workspace_error().is_err() && !switching_from_empty_workspace {
             if *force_crate_graph_reload {
-                self.recreate_crate_graph(cause);
+                self.recreate_crate_graph(cause, false);
             }
             // It only makes sense to switch to a partially broken workspace
             // if we don't have any workspace at all yet.
@@ -479,36 +471,44 @@ impl GlobalState {
                 .all(|(l, r)| l.eq_ignore_build_data(r));
 
         if same_workspaces {
-            let (workspaces, build_scripts) = match self.fetch_build_data_queue.last_op_result() {
-                Some(FetchBuildDataResponse { workspaces, build_scripts }) => {
-                    (workspaces.clone(), build_scripts.as_slice())
+            if switching_from_empty_workspace {
+                // Switching from empty to empty is a no-op
+                return;
+            }
+            if let Some(FetchBuildDataResponse { workspaces, build_scripts }) =
+                self.fetch_build_data_queue.last_op_result()
+            {
+                if Arc::ptr_eq(workspaces, &self.workspaces) {
+                    info!("set build scripts to workspaces");
+
+                    let workspaces = workspaces
+                        .iter()
+                        .cloned()
+                        .zip(build_scripts)
+                        .map(|(mut ws, bs)| {
+                            ws.set_build_scripts(bs.as_ref().ok().cloned().unwrap_or_default());
+                            ws
+                        })
+                        .collect::<Vec<_>>();
+                    // Workspaces are the same, but we've updated build data.
+                    info!("same workspace, but new build data");
+                    self.workspaces = Arc::new(workspaces);
+                } else {
+                    info!("build scripts do not match the version of the active workspace");
+                    if *force_crate_graph_reload {
+                        self.recreate_crate_graph(cause, switching_from_empty_workspace);
+                    }
+
+                    // Current build scripts do not match the version of the active
+                    // workspace, so there's nothing for us to update.
+                    return;
                 }
-                None => (Default::default(), Default::default()),
-            };
-
-            if Arc::ptr_eq(&workspaces, &self.workspaces) {
-                info!("set build scripts to workspaces");
-
-                let workspaces = workspaces
-                    .iter()
-                    .cloned()
-                    .zip(build_scripts)
-                    .map(|(mut ws, bs)| {
-                        ws.set_build_scripts(bs.as_ref().ok().cloned().unwrap_or_default());
-                        ws
-                    })
-                    .collect::<Vec<_>>();
-                // Workspaces are the same, but we've updated build data.
-                info!("same workspace, but new build data");
-                self.workspaces = Arc::new(workspaces);
             } else {
-                info!("build scripts do not match the version of the active workspace");
                 if *force_crate_graph_reload {
-                    self.recreate_crate_graph(cause);
+                    self.recreate_crate_graph(cause, switching_from_empty_workspace);
                 }
 
-                // Current build scripts do not match the version of the active
-                // workspace, so there's nothing for us to update.
+                // No build scripts but unchanged workspaces, nothing to do here
                 return;
             }
         } else {
@@ -527,6 +527,13 @@ impl GlobalState {
             if self.config.run_build_scripts(None) {
                 self.build_deps_changed = false;
                 self.fetch_build_data_queue.request_op("workspace updated".to_owned(), ());
+
+                if !switching_from_empty_workspace {
+                    // `switch_workspaces()` will be called again when build scripts already run, which should
+                    // take a short time. If we update the workspace now we will invalidate proc macros and cfgs,
+                    // and then when build scripts complete we will invalidate them again.
+                    return;
+                }
             }
         }
 
@@ -629,7 +636,7 @@ impl GlobalState {
             Config::user_config_dir_path().as_deref(),
         );
 
-        if (self.proc_macro_clients.is_empty() || !same_workspaces)
+        if (self.proc_macro_clients.len() < self.workspaces.len() || !same_workspaces)
             && self.config.expand_proc_macros()
         {
             info!("Spawning proc-macro servers");
@@ -645,12 +652,14 @@ impl GlobalState {
                     | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, ..)), .. } => cargo
                         .env()
                         .into_iter()
-                        .chain(self.config.extra_env(None))
-                        .map(|(a, b)| (a.clone(), b.clone()))
+                        .map(|(k, v)| (k.clone(), Some(v.clone())))
+                        .chain(
+                            self.config.extra_env(None).iter().map(|(k, v)| (k.clone(), v.clone())),
+                        )
                         .chain(
                             ws.sysroot
                                 .root()
-                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), it.to_string())),
+                                .map(|it| ("RUSTUP_TOOLCHAIN".to_owned(), Some(it.to_string()))),
                         )
                         .collect(),
 
@@ -683,12 +692,12 @@ impl GlobalState {
         self.local_roots_parent_map = Arc::new(self.source_root_config.source_root_parent_map());
 
         info!(?cause, "recreating the crate graph");
-        self.recreate_crate_graph(cause);
+        self.recreate_crate_graph(cause, switching_from_empty_workspace);
 
         info!("did switch workspaces");
     }
 
-    fn recreate_crate_graph(&mut self, cause: String) {
+    fn recreate_crate_graph(&mut self, cause: String, initial_build: bool) {
         info!(?cause, "Building Crate Graph");
         self.report_progress(
             "Building CrateGraph",
@@ -710,7 +719,7 @@ impl GlobalState {
             })
             .collect();
 
-        let (crate_graph, proc_macro_paths, ws_data) = {
+        let (crate_graph, proc_macro_paths) = {
             // Create crate graph from all the workspaces
             let vfs = &self.vfs.read().0;
             let load = |path: &AbsPath| {
@@ -723,25 +732,33 @@ impl GlobalState {
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
         };
-        let mut change = ChangeWithProcMacros::new();
-        if self.config.expand_proc_macros() {
-            change.set_proc_macros(
-                crate_graph
-                    .iter()
-                    .map(|id| (id, Err(("proc-macro has not been built yet".to_owned(), true))))
-                    .collect(),
-            );
-            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
+        let mut change = ChangeWithProcMacros::default();
+        if initial_build || !self.config.expand_proc_macros() {
+            if self.config.expand_proc_macros() {
+                change.set_proc_macros(
+                    crate_graph
+                        .iter()
+                        .map(|id| (id, Err(("proc-macro has not been built yet".to_owned(), true))))
+                        .collect(),
+                );
+            } else {
+                change.set_proc_macros(
+                    crate_graph
+                        .iter()
+                        .map(|id| (id, Err(("proc-macro expansion is disabled".to_owned(), false))))
+                        .collect(),
+                );
+            }
+
+            change.set_crate_graph(crate_graph);
+            self.analysis_host.apply_change(change);
+
+            self.finish_loading_crate_graph();
         } else {
-            change.set_proc_macros(
-                crate_graph
-                    .iter()
-                    .map(|id| (id, Err(("proc-macro expansion is disabled".to_owned(), false))))
-                    .collect(),
-            );
+            change.set_crate_graph(crate_graph);
+            self.fetch_proc_macros_queue.request_op(cause, (change, proc_macro_paths));
         }
-        change.set_crate_graph(crate_graph, ws_data);
-        self.analysis_host.apply_change(change);
+
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::End,
@@ -749,7 +766,9 @@ impl GlobalState {
             None,
             None,
         );
+    }
 
+    pub(crate) fn finish_loading_crate_graph(&mut self) {
         self.process_changes();
         self.reload_flycheck();
     }
@@ -801,11 +820,7 @@ impl GlobalState {
             }
         }
 
-        if buf.is_empty() {
-            Ok(())
-        } else {
-            Err(buf)
-        }
+        if buf.is_empty() { Ok(()) } else { Err(buf) }
     }
 
     fn reload_flycheck(&mut self) {
@@ -880,28 +895,21 @@ impl GlobalState {
 // FIXME: Move this into load-cargo?
 pub fn ws_to_crate_graph(
     workspaces: &[ProjectWorkspace],
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     mut load: impl FnMut(&AbsPath) -> Option<vfs::FileId>,
-) -> (CrateGraph, Vec<ProcMacroPaths>, FxHashMap<CrateId, Arc<CrateWorkspaceData>>) {
-    let mut crate_graph = CrateGraph::default();
+) -> (CrateGraphBuilder, Vec<ProcMacroPaths>) {
+    let mut crate_graph = CrateGraphBuilder::default();
     let mut proc_macro_paths = Vec::default();
-    let mut ws_data = FxHashMap::default();
     for ws in workspaces {
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
-        let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
-        let mapping = crate_graph.extend(other, &mut crate_proc_macros);
-        // Populate the side tables for the newly merged crates
-        ws_data.extend(mapping.values().copied().zip(iter::repeat(Arc::new(CrateWorkspaceData {
-            toolchain: toolchain.clone(),
-            data_layout: target_layout.clone(),
-        }))));
+        crate_graph.extend(other, &mut crate_proc_macros);
         proc_macro_paths.push(crate_proc_macros);
     }
 
     crate_graph.shrink_to_fit();
     proc_macro_paths.shrink_to_fit();
-    (crate_graph, proc_macro_paths, ws_data)
+    (crate_graph, proc_macro_paths)
 }
 
 pub(crate) fn should_refresh_for_change(

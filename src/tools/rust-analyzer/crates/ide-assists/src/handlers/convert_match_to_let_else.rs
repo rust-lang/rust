@@ -1,12 +1,13 @@
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
+    AstNode, SyntaxNode,
     ast::{self, HasName, Name},
-    ted, AstNode, SyntaxNode,
+    ted,
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    AssistId, AssistKind,
 };
 
 // Assist: convert_match_to_let_else
@@ -54,7 +55,7 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
     let extracted_variable_positions = find_extracted_variable(ctx, &extracting_arm)?;
 
     acc.add(
-        AssistId("convert_match_to_let_else", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_match_to_let_else"),
         "Convert match to let-else",
         let_stmt.syntax().text_range(),
         |builder| {

@@ -2,11 +2,10 @@
 
 use std::{cmp, ops::Bound};
 
-use base_db::ra_salsa::Cycle;
 use hir_def::{
-    data::adt::VariantData,
-    layout::{Integer, ReprOptions, TargetDataLayout},
     AdtId, VariantId,
+    layout::{Integer, ReprOptions, TargetDataLayout},
+    signatures::{StructFlags, VariantFields},
 };
 use intern::sym;
 use rustc_index::IndexVec;
@@ -14,10 +13,9 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase,
-    lang_items::is_unsafe_cell,
-    layout::{field_ty, Layout, LayoutError},
     Substitution, TraitEnvironment,
+    db::HirDatabase,
+    layout::{Layout, LayoutError, field_ty},
 };
 
 use super::LayoutCx;
@@ -34,33 +32,37 @@ pub fn layout_of_adt_query(
     };
     let dl = &*target;
     let cx = LayoutCx::new(dl);
-    let handle_variant = |def: VariantId, var: &VariantData| {
+    let handle_variant = |def: VariantId, var: &VariantFields| {
         var.fields()
             .iter()
             .map(|(fd, _)| db.layout_of_ty(field_ty(db, def, fd, &subst), trait_env.clone()))
             .collect::<Result<Vec<_>, _>>()
     };
-    let (variants, repr) = match def {
+    let (variants, repr, is_special_no_niche) = match def {
         AdtId::StructId(s) => {
-            let data = db.struct_data(s);
+            let sig = db.struct_signature(s);
             let mut r = SmallVec::<[_; 1]>::new();
-            r.push(handle_variant(s.into(), &data.variant_data)?);
-            (r, data.repr.unwrap_or_default())
+            r.push(handle_variant(s.into(), &db.variant_fields(s.into()))?);
+            (
+                r,
+                sig.repr.unwrap_or_default(),
+                sig.flags.intersects(StructFlags::IS_UNSAFE_CELL | StructFlags::IS_UNSAFE_PINNED),
+            )
         }
         AdtId::UnionId(id) => {
-            let data = db.union_data(id);
+            let data = db.union_signature(id);
             let mut r = SmallVec::new();
-            r.push(handle_variant(id.into(), &data.variant_data)?);
-            (r, data.repr.unwrap_or_default())
+            r.push(handle_variant(id.into(), &db.variant_fields(id.into()))?);
+            (r, data.repr.unwrap_or_default(), false)
         }
         AdtId::EnumId(e) => {
-            let data = db.enum_data(e);
-            let r = data
+            let variants = db.enum_variants(e);
+            let r = variants
                 .variants
                 .iter()
-                .map(|&(v, _)| handle_variant(v.into(), &db.enum_variant_data(v).variant_data))
+                .map(|&(v, _)| handle_variant(v.into(), &db.variant_fields(v.into())))
                 .collect::<Result<SmallVec<_>, _>>()?;
-            (r, data.repr.unwrap_or_default())
+            (r, db.enum_signature(e).repr.unwrap_or_default(), false)
         }
     };
     let variants = variants
@@ -75,12 +77,12 @@ pub fn layout_of_adt_query(
             &repr,
             &variants,
             matches!(def, AdtId::EnumId(..)),
-            is_unsafe_cell(db, def),
+            is_special_no_niche,
             layout_scalar_valid_range(db, def),
             |min, max| repr_discr(dl, &repr, min, max).unwrap_or((Integer::I8, false)),
             variants.iter_enumerated().filter_map(|(id, _)| {
                 let AdtId::EnumId(e) = def else { return None };
-                let d = db.const_eval_discriminant(db.enum_data(e).variants[id.0].0).ok()?;
+                let d = db.const_eval_discriminant(db.enum_variants(e).variants[id.0].0).ok()?;
                 Some((id, d))
             }),
             // FIXME: The current code for niche-filling relies on variant indices
@@ -125,18 +127,14 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
         }
         Bound::Unbounded
     };
-    (
-        get(&sym::rustc_layout_scalar_valid_range_start),
-        get(&sym::rustc_layout_scalar_valid_range_end),
-    )
+    (get(sym::rustc_layout_scalar_valid_range_start), get(sym::rustc_layout_scalar_valid_range_end))
 }
 
-pub fn layout_of_adt_recover(
+pub(crate) fn layout_of_adt_cycle_result(
     _: &dyn HirDatabase,
-    _: &Cycle,
-    _: &AdtId,
-    _: &Substitution,
-    _: &Arc<TraitEnvironment>,
+    _: AdtId,
+    _: Substitution,
+    _: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }

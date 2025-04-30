@@ -8,8 +8,8 @@ pub struct NonEmptyVec<T> {
 
 impl<T> NonEmptyVec<T> {
     #[inline]
-    pub fn new(first: T) -> Self {
-        NonEmptyVec { first, rest: Vec::new() }
+    pub const fn new(first: T) -> Self {
+        Self { first, rest: Vec::new() }
     }
 
     #[inline]
@@ -24,7 +24,7 @@ impl<T> NonEmptyVec<T> {
 
     #[inline]
     pub fn push(&mut self, value: T) {
-        self.rest.push(value)
+        self.rest.push(value);
     }
 
     #[inline]

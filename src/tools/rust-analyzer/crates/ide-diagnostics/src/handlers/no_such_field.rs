@@ -1,13 +1,13 @@
 use either::Either;
-use hir::{db::ExpandDatabase, HasSource, HirDisplay, HirFileIdExt, Semantics, VariantId};
+use hir::{HasSource, HirDisplay, Semantics, VariantId, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
-use ide_db::{source_change::SourceChange, EditionedFileId, RootDatabase};
+use ide_db::{EditionedFileId, RootDatabase, source_change::SourceChange};
 use syntax::{
-    ast::{self, edit::IndentLevel, make},
     AstNode,
+    ast::{self, edit::IndentLevel, make},
 };
 
-use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: no-such-field
 //
@@ -108,7 +108,7 @@ fn missing_record_expr_field_fixes(
     }
 
     let source_change = SourceChange::from_text_edit(
-        def_file_id,
+        def_file_id.file_id(sema.db),
         TextEdit::insert(last_field_syntax.text_range().end(), new_field),
     );
 

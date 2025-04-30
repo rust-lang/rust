@@ -1,6 +1,6 @@
 use hir::GenericParam;
-use ide_db::{base_db::Upcast, defs::Definition, helpers::pick_best_token, RootDatabase};
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, SyntaxToken, T};
+use ide_db::{RootDatabase, defs::Definition, helpers::pick_best_token};
+use syntax::{AstNode, SyntaxKind::*, SyntaxToken, T, ast, match_ast};
 
 use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 
@@ -71,8 +71,8 @@ pub(crate) fn goto_type_definition(
     sema.descend_into_macros_no_opaque(token)
         .into_iter()
         .filter_map(|token| {
-            let ty = sema
-                .token_ancestors_with_macros(token)
+            sema
+                .token_ancestors_with_macros(token.value)
                 // When `token` is within a macro call, we can't determine its type. Don't continue
                 // this traversal because otherwise we'll end up returning the type of *that* macro
                 // call, which is not what we want in general.
@@ -87,7 +87,7 @@ pub(crate) fn goto_type_definition(
                             ast::Pat(it) => sema.type_of_pat(&it)?.original,
                             ast::SelfParam(it) => sema.type_of_self(&it)?,
                             ast::Type(it) => sema.resolve_type(&it)?,
-                            ast::RecordField(it) => sema.to_def(&it)?.ty(db.upcast()),
+                            ast::RecordField(it) => sema.to_def(&it)?.ty(db),
                             // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
                             ast::NameRef(it) => {
                                 if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
@@ -103,8 +103,7 @@ pub(crate) fn goto_type_definition(
                     };
 
                     Some(ty)
-                });
-            ty
+                })
         })
         .for_each(process_ty);
     Some(RangeInfo::new(range, res))

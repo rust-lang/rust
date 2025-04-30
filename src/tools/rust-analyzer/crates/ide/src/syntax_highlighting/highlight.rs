@@ -3,23 +3,23 @@
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{AsAssocItem, HasVisibility, MacroFileIdExt, Semantics};
+use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
+    FxHashMap, RootDatabase, SymbolKind,
     defs::{Definition, IdentClass, NameClass, NameRefClass},
     syntax_helpers::node_ext::walk_pat,
-    FxHashMap, RootDatabase, SymbolKind,
 };
 use span::Edition;
 use stdx::hash_once;
 use syntax::{
-    ast, match_ast, AstNode, AstPtr, AstToken, NodeOrToken,
+    AstNode, AstPtr, AstToken, NodeOrToken,
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxNodePtr, SyntaxToken, T,
+    SyntaxNode, SyntaxNodePtr, SyntaxToken, T, ast, match_ast,
 };
 
 use crate::{
-    syntax_highlighting::tags::{HlOperator, HlPunct},
     Highlight, HlMod, HlTag,
+    syntax_highlighting::tags::{HlOperator, HlPunct},
 };
 
 pub(super) fn token(
@@ -63,7 +63,7 @@ pub(super) fn token(
 
 pub(super) fn name_like(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
     syntactic_name_ref_highlighting: bool,
@@ -113,7 +113,8 @@ fn punctuation(
 ) -> Highlight {
     let operator_parent = token.parent();
     let parent_kind = operator_parent.as_ref().map_or(EOF, SyntaxNode::kind);
-    let h = match (kind, parent_kind) {
+
+    match (kind, parent_kind) {
         (T![?], TRY_EXPR) => HlTag::Operator(HlOperator::Other) | HlMod::ControlFlow,
         (T![&], BIN_EXPR) => HlOperator::Bitwise.into(),
         (T![&], REF_EXPR | REF_PAT) => HlTag::Operator(HlOperator::Other).into(),
@@ -143,11 +144,7 @@ fn punctuation(
             let ptr = operator_parent
                 .as_ref()
                 .and_then(|it| AstPtr::try_from_raw(SyntaxNodePtr::new(it)));
-            if ptr.is_some_and(is_unsafe_node) {
-                h | HlMod::Unsafe
-            } else {
-                h
-            }
+            if ptr.is_some_and(is_unsafe_node) { h | HlMod::Unsafe } else { h }
         }
         (T![-], PREFIX_EXPR) => {
             let prefix_expr =
@@ -223,11 +220,7 @@ fn punctuation(
                 let is_unsafe = is_unsafe_macro
                     || operator_parent
                         .and_then(|it| {
-                            if ast::ArgList::can_cast(it.kind()) {
-                                it.parent()
-                            } else {
-                                Some(it)
-                            }
+                            if ast::ArgList::can_cast(it.kind()) { it.parent() } else { Some(it) }
                         })
                         .and_then(|it| AstPtr::try_from_raw(SyntaxNodePtr::new(&it)))
                         .is_some_and(is_unsafe_node);
@@ -248,8 +241,7 @@ fn punctuation(
             _ => HlPunct::Other,
         }
         .into(),
-    };
-    h
+    }
 }
 
 fn keyword(token: SyntaxToken, kind: SyntaxKind) -> Highlight {
@@ -280,7 +272,7 @@ fn keyword(token: SyntaxToken, kind: SyntaxKind) -> Highlight {
 
 fn highlight_name_ref(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     binding_hash: &mut Option<u64>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
@@ -296,7 +288,7 @@ fn highlight_name_ref(
     let name_class = match NameRefClass::classify(sema, &name_ref) {
         Some(name_kind) => name_kind,
         None if syntactic_name_ref_highlighting => {
-            return highlight_name_ref_by_syntax(name_ref, sema, krate, is_unsafe_node)
+            return highlight_name_ref_by_syntax(name_ref, sema, krate, is_unsafe_node);
         }
         // FIXME: This is required for helper attributes used by proc-macros, as those do not map down
         // to anything when used.
@@ -409,9 +401,10 @@ fn highlight_name_ref(
         NameRefClass::ExternCrateShorthand { decl, krate: resolved_krate } => {
             let mut h = HlTag::Symbol(SymbolKind::Module).into();
 
-            if resolved_krate != krate {
-                h |= HlMod::Library
+            if krate.as_ref().is_some_and(|krate| resolved_krate != *krate) {
+                h |= HlMod::Library;
             }
+
             let is_public = decl.visibility(db) == hir::Visibility::Public;
             if is_public {
                 h |= HlMod::Public
@@ -439,7 +432,7 @@ fn highlight_name(
     bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     binding_hash: &mut Option<u64>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     name: ast::Name,
     edition: Edition,
 ) -> Highlight {
@@ -484,7 +477,7 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
 
 pub(super) fn highlight_def(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     def: Definition,
     edition: Edition,
     is_ref: bool,
@@ -668,7 +661,7 @@ pub(super) fn highlight_def(
     };
 
     let def_crate = def.krate(db);
-    let is_from_other_crate = def_crate != Some(krate);
+    let is_from_other_crate = def_crate != krate;
     let is_from_builtin_crate = def_crate.is_some_and(|def_crate| def_crate.is_builtin(db));
     let is_builtin = matches!(
         def,
@@ -689,7 +682,7 @@ pub(super) fn highlight_def(
 
 fn highlight_method_call_by_name_ref(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     name_ref: &ast::NameRef,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
 ) -> Option<Highlight> {
@@ -699,7 +692,7 @@ fn highlight_method_call_by_name_ref(
 
 fn highlight_method_call(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     method_call: &ast::MethodCallExpr,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
 ) -> Option<Highlight> {
@@ -726,7 +719,7 @@ fn highlight_method_call(
     }
 
     let def_crate = func.module(sema.db).krate();
-    let is_from_other_crate = def_crate != krate;
+    let is_from_other_crate = krate.as_ref().map_or(false, |krate| def_crate != *krate);
     let is_from_builtin_crate = def_crate.is_builtin(sema.db);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
 
@@ -799,7 +792,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
 fn highlight_name_ref_by_syntax(
     name: ast::NameRef,
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
 ) -> Highlight {
     let default = HlTag::UnresolvedReference;
@@ -818,12 +811,9 @@ fn highlight_name_ref_by_syntax(
             let h = HlTag::Symbol(SymbolKind::Field);
             let is_unsafe = ast::Expr::cast(parent)
                 .is_some_and(|it| is_unsafe_node(AstPtr::new(&it).wrap_left()));
-            if is_unsafe {
-                h | HlMod::Unsafe
-            } else {
-                h.into()
-            }
+            if is_unsafe { h | HlMod::Unsafe } else { h.into() }
         }
+        RECORD_EXPR_FIELD | RECORD_PAT_FIELD => HlTag::Symbol(SymbolKind::Field).into(),
         PATH_SEGMENT => {
             let name_based_fallback = || {
                 if name.text().chars().next().unwrap_or_default().is_uppercase() {
@@ -862,6 +852,8 @@ fn highlight_name_ref_by_syntax(
                 .into(),
             }
         }
+        ASSOC_TYPE_ARG => SymbolKind::TypeAlias.into(),
+        USE_BOUND_GENERIC_ARGS => SymbolKind::TypeParam.into(),
         _ => default.into(),
     }
 }

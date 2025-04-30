@@ -10,13 +10,14 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, HasGenericParams, HasName},
-    ted, AstNode, NodeOrToken, SyntaxNode,
+    AstNode, NodeOrToken, SyntaxNode,
+    ast::{self, HasGenericParams, HasName, make},
+    ted,
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    AssistId, AssistKind,
 };
 
 use super::inline_call::split_refs_and_uses;
@@ -59,7 +60,7 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
     // until this is ok
 
     acc.add(
-        AssistId("inline_type_alias_uses", AssistKind::RefactorInline),
+        AssistId::refactor_inline("inline_type_alias_uses"),
         "Inline type alias into all uses",
         name.syntax().text_range(),
         |builder| {
@@ -86,17 +87,17 @@ pub(crate) fn inline_type_alias_uses(acc: &mut Assists, ctx: &AssistContext<'_>)
                     builder.replace(target, replacement);
                 }
 
-                if file_id == ctx.file_id() {
+                if file_id == ctx.vfs_file_id() {
                     builder.delete(ast_alias.syntax().text_range());
                     definition_deleted = true;
                 }
             };
 
             for (file_id, refs) in usages.into_iter() {
-                inline_refs_for_file(file_id.file_id(), refs);
+                inline_refs_for_file(file_id.file_id(ctx.db()), refs);
             }
             if !definition_deleted {
-                builder.edit_file(ctx.file_id());
+                builder.edit_file(ctx.vfs_file_id());
                 builder.delete(ast_alias.syntax().text_range());
             }
         },
@@ -148,7 +149,7 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let target = alias_instance.syntax().text_range();
 
     acc.add(
-        AssistId("inline_type_alias", AssistKind::RefactorInline),
+        AssistId::refactor_inline("inline_type_alias"),
         "Inline type alias",
         target,
         |builder| builder.replace(target, replacement.to_text(&concrete_type)),

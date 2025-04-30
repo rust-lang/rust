@@ -1,19 +1,19 @@
 use hir::{HirDisplay, TypeInfo};
 use ide_db::{
     assists::GroupLabel,
-    syntax_helpers::{suggest_name, LexedStr},
+    syntax_helpers::{LexedStr, suggest_name},
 };
 use syntax::{
+    NodeOrToken, SyntaxKind, SyntaxNode, T,
     algo::ancestors_at_offset,
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, syntax_factory::SyntaxFactory,
-        AstNode,
+        self, AstNode, edit::IndentLevel, edit_in_place::Indent, make,
+        syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
-    NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{utils::is_body_const, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, utils::is_body_const};
 
 // Assist: extract_variable
 //
@@ -170,7 +170,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             |edit| {
                 let (var_name, expr_replace) = kind.get_name_and_expr(ctx, &to_extract);
 
-                let make = SyntaxFactory::new();
+                let make = SyntaxFactory::with_mappings();
                 let mut editor = edit.make_editor(&expr_replace);
 
                 let pat_name = make.name(&var_name);
@@ -263,7 +263,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 }
 
                 editor.add_mappings(make.finish_with_mappings());
-                edit.add_file_edits(ctx.file_id(), editor);
+                edit.add_file_edits(ctx.vfs_file_id(), editor);
                 edit.rename();
             },
         );
@@ -311,7 +311,7 @@ impl ExtractionKind {
             ExtractionKind::Static => "extract_static",
         };
 
-        AssistId(s, AssistKind::RefactorExtract)
+        AssistId::refactor_extract(s)
     }
 
     fn label(&self) -> &'static str {
@@ -378,7 +378,7 @@ fn get_literal_name(ctx: &AssistContext<'_>, expr: &ast::Expr) -> Option<String>
         return None;
     }
 
-    match LexedStr::single_token(ctx.file_id().edition(), &inner) {
+    match LexedStr::single_token(ctx.edition(), &inner) {
         Some((SyntaxKind::IDENT, None)) => Some(inner),
         _ => None,
     }

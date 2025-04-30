@@ -10,7 +10,9 @@
 
 use std::ops;
 
-use rustc_literal_escaper::{EscapeError, Mode, unescape_byte, unescape_char, unescape_mixed, unescape_unicode};
+use rustc_literal_escaper::{
+    EscapeError, Mode, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
+};
 
 use crate::{
     Edition,

@@ -1,14 +1,15 @@
 use hir::AsAssocItem;
 use ide_db::{
     helpers::mod_path_to_ast,
-    imports::insert_use::{insert_use, ImportScope},
+    imports::insert_use::{ImportScope, insert_use},
 };
 use syntax::{
-    ast::{self, make, HasGenericArgs},
-    match_ast, ted, AstNode, Edition, SyntaxNode,
+    AstNode, Edition, SyntaxNode,
+    ast::{self, HasGenericArgs, make},
+    match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: replace_qualified_name_with_use
 //
@@ -74,7 +75,7 @@ pub(crate) fn replace_qualified_name_with_use(
     let scope = ImportScope::find_insert_use_container(original_path.syntax(), &ctx.sema)?;
     let target = original_path.syntax().text_range();
     acc.add(
-        AssistId("replace_qualified_name_with_use", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_qualified_name_with_use"),
         "Replace qualified path with use",
         target,
         |builder| {

@@ -12,7 +12,7 @@ rust-version.workspace = true
 [lib]
 
 [dependencies]
-cov-mark = "2.0.0-pre.1"
+cov-mark = "2.0.0"
 arrayvec.workspace = true
 either.workspace = true
 itertools.workspace = true
@@ -25,7 +25,7 @@ dot.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
-rustc_apfloat = "0.2.0"
+rustc_apfloat = "0.2.2"
 
 # local deps
 cfg.workspace = true
@@ -46,7 +46,7 @@ hir.workspace = true
 toolchain.workspace = true
 
 [dev-dependencies]
-expect-test = "1.4.0"
+expect-test = "1.5.1"
 
 # local deps
 test-utils.workspace = true

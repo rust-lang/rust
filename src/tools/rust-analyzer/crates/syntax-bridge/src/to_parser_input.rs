@@ -12,7 +12,7 @@ pub fn to_parser_input<Ctx: Copy + fmt::Debug + PartialEq + Eq + Hash>(
     buffer: tt::TokenTreesView<'_, SpanData<Ctx>>,
     span_to_edition: &mut dyn FnMut(Ctx) -> Edition,
 ) -> parser::Input {
-    let mut res = parser::Input::default();
+    let mut res = parser::Input::with_capacity(buffer.len());
 
     let mut current = buffer.cursor();
     let mut syntax_context_to_edition_cache = FxHashMap::default();

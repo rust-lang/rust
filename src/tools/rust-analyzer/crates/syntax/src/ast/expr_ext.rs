@@ -3,15 +3,15 @@
 //! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
 use crate::{
-    ast::{
-        self,
-        operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
-        support, ArgList, AstChildren, AstNode, BlockExpr, ClosureExpr, Const, Expr, Fn,
-        FormatArgsArg, FormatArgsExpr, MacroDef, Static, TokenTree,
-    },
     AstToken,
     SyntaxKind::{self, *},
     SyntaxNode, SyntaxToken, T,
+    ast::{
+        self, ArgList, AstChildren, AstNode, BlockExpr, ClosureExpr, Const, Expr, Fn,
+        FormatArgsArg, FormatArgsExpr, MacroDef, Static, TokenTree,
+        operators::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp},
+        support,
+    },
 };
 
 use super::RangeItem;

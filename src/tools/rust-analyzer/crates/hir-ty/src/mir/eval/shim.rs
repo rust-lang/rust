@@ -10,19 +10,19 @@ use hir_def::{
     resolver::HasResolver,
 };
 use hir_expand::name::Name;
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use stdx::never;
 
 use crate::{
+    DropGlue,
     display::DisplayTarget,
     error_lifetime,
     mir::eval::{
-        pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
+        Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
         InternedClosure, Interner, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId,
         LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Substitution,
-        Ty, TyBuilder, TyExt,
+        Ty, TyBuilder, TyExt, pad16,
     },
-    DropGlue,
 };
 
 mod simd;
@@ -57,16 +57,16 @@ impl Evaluator<'_> {
             return Ok(false);
         }
 
-        let function_data = self.db.function_data(def);
+        let function_data = self.db.function_signature(def);
         let attrs = self.db.attrs(def.into());
-        let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists()
+        let is_intrinsic = attrs.by_key(sym::rustc_intrinsic).exists()
             // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
             || (match &function_data.abi {
                 Some(abi) => *abi == sym::rust_dash_intrinsic,
-                None => match def.lookup(self.db.upcast()).container {
+                None => match def.lookup(self.db).container {
                     hir_def::ItemContainerId::ExternBlockId(block) => {
-                        let id = block.lookup(self.db.upcast()).id;
-                        id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                        let id = block.lookup(self.db).id;
+                        id.item_tree(self.db)[id.value].abi.as_ref()
                             == Some(&sym::rust_dash_intrinsic)
                     }
                     _ => false,
@@ -82,13 +82,13 @@ impl Evaluator<'_> {
                 locals,
                 span,
                 !function_data.has_body()
-                    || attrs.by_key(&sym::rustc_intrinsic_must_be_overridden).exists(),
+                    || attrs.by_key(sym::rustc_intrinsic_must_be_overridden).exists(),
             );
         }
-        let is_extern_c = match def.lookup(self.db.upcast()).container {
+        let is_extern_c = match def.lookup(self.db).container {
             hir_def::ItemContainerId::ExternBlockId(block) => {
-                let id = block.lookup(self.db.upcast()).id;
-                id.item_tree(self.db.upcast())[id.value].abi.as_ref() == Some(&sym::C)
+                let id = block.lookup(self.db).id;
+                id.item_tree(self.db)[id.value].abi.as_ref() == Some(&sym::C)
             }
             _ => false,
         };
@@ -124,7 +124,7 @@ impl Evaluator<'_> {
             destination.write_from_bytes(self, &result)?;
             return Ok(true);
         }
-        if let ItemContainerId::TraitId(t) = def.lookup(self.db.upcast()).container {
+        if let ItemContainerId::TraitId(t) = def.lookup(self.db).container {
             if self.db.lang_attr(t.into()) == Some(LangItem::Clone) {
                 let [self_ty] = generic_args.as_slice(Interner) else {
                     not_supported!("wrong generic arg count for clone");
@@ -154,8 +154,7 @@ impl Evaluator<'_> {
     ) -> Result<Option<FunctionId>> {
         // `PanicFmt` is redirected to `ConstPanicFmt`
         if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
-            let resolver =
-                self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db.upcast());
+            let resolver = self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db);
 
             let Some(hir_def::lang_item::LangItemTarget::Function(const_panic_fmt)) =
                 self.db.lang_item(resolver.krate(), LangItem::ConstPanicFmt)
@@ -300,7 +299,7 @@ impl Evaluator<'_> {
         use LangItem::*;
         let attrs = self.db.attrs(def.into());
 
-        if attrs.by_key(&sym::rustc_const_panic_str).exists() {
+        if attrs.by_key(sym::rustc_const_panic_str).exists() {
             // `#[rustc_const_panic_str]` is treated like `lang = "begin_panic"` by rustc CTFE.
             return Some(LangItem::BeginPanic);
         }
@@ -569,7 +568,7 @@ impl Evaluator<'_> {
                     }
                     String::from_utf8_lossy(&name_buf)
                 };
-                let value = self.db.crate_graph()[self.crate_id].env.get(&name);
+                let value = self.crate_id.env(self.db).get(&name);
                 match value {
                     None => {
                         // Write null as fail
@@ -828,14 +827,14 @@ impl Evaluator<'_> {
                 };
                 let ty_name = match ty.display_source_code(
                     self.db,
-                    locals.body.owner.module(self.db.upcast()),
+                    locals.body.owner.module(self.db),
                     true,
                 ) {
                     Ok(ty_name) => ty_name,
                     // Fallback to human readable display in case of `Err`. Ideally we want to use `display_source_code` to
                     // render full paths.
                     Err(_) => {
-                        let krate = locals.body.owner.krate(self.db.upcast());
+                        let krate = locals.body.owner.krate(self.db);
                         ty.display(self.db, DisplayTarget::from_crate(self.db, krate)).to_string()
                     }
                 };
@@ -1261,8 +1260,8 @@ impl Evaluator<'_> {
                 if let Some(target) = self.db.lang_item(self.crate_id, LangItem::FnOnce) {
                     if let Some(def) = target.as_trait().and_then(|it| {
                         self.db
-                            .trait_data(it)
-                            .method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
+                            .trait_items(it)
+                            .method_by_name(&Name::new_symbol_root(sym::call_once))
                     }) {
                         self.exec_fn_trait(
                             def,
@@ -1357,7 +1356,7 @@ impl Evaluator<'_> {
                     _ => {
                         return Err(MirEvalError::InternalError(
                             "three_way_compare expects an integral type".into(),
-                        ))
+                        ));
                     }
                 };
                 let rhs = rhs.get(self)?;

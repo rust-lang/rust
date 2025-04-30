@@ -2,16 +2,15 @@
 //! supporting compile time declaration of symbols that will never be freed.
 
 use std::{
-    borrow::Borrow,
     fmt,
-    hash::{BuildHasherDefault, Hash, Hasher},
+    hash::{BuildHasher, BuildHasherDefault, Hash},
     mem::{self, ManuallyDrop},
     ptr::NonNull,
     sync::OnceLock,
 };
 
 use dashmap::{DashMap, SharedValue};
-use hashbrown::{hash_map::RawEntryMut, HashMap};
+use hashbrown::raw::RawTable;
 use rustc_hash::FxHasher;
 use triomphe::Arc;
 
@@ -127,31 +126,39 @@ impl fmt::Debug for Symbol {
 const _: () = assert!(size_of::<Symbol>() == size_of::<NonNull<()>>());
 const _: () = assert!(align_of::<Symbol>() == align_of::<NonNull<()>>());
 
-static MAP: OnceLock<DashMap<SymbolProxy, (), BuildHasherDefault<FxHasher>>> = OnceLock::new();
+type Map = DashMap<Symbol, (), BuildHasherDefault<FxHasher>>;
+static MAP: OnceLock<Map> = OnceLock::new();
 
 impl Symbol {
     pub fn intern(s: &str) -> Self {
-        let (mut shard, hash) = Self::select_shard(s);
+        let storage = MAP.get_or_init(symbols::prefill);
+        let (mut shard, hash) = Self::select_shard(storage, s);
         // Atomically,
         // - check if `obj` is already in the map
         //   - if so, copy out its entry, conditionally bumping the backing Arc and return it
         //   - if not, put it into a box and then into an Arc, insert it, bump the ref-count and return the copy
         // This needs to be atomic (locking the shard) to avoid races with other thread, which could
         // insert the same object between us looking it up and inserting it.
-        match shard.raw_entry_mut().from_key_hashed_nocheck(hash, s) {
-            RawEntryMut::Occupied(occ) => Self { repr: increase_arc_refcount(occ.key().0) },
-            RawEntryMut::Vacant(vac) => Self {
-                repr: increase_arc_refcount(
-                    vac.insert_hashed_nocheck(
-                        hash,
-                        SymbolProxy(TaggedArcPtr::arc(Arc::new(Box::<str>::from(s)))),
+        let bucket = match shard.find_or_find_insert_slot(
+            hash,
+            |(other, _)| other.as_str() == s,
+            |(x, _)| Self::hash(storage, x.as_str()),
+        ) {
+            Ok(bucket) => bucket,
+            // SAFETY: The slot came from `find_or_find_insert_slot()`, and the table wasn't modified since then.
+            Err(insert_slot) => unsafe {
+                shard.insert_in_slot(
+                    hash,
+                    insert_slot,
+                    (
+                        Symbol { repr: TaggedArcPtr::arc(Arc::new(Box::<str>::from(s))) },
                         SharedValue::new(()),
-                    )
-                    .0
-                     .0,
-                ),
+                    ),
+                )
             },
-        }
+        };
+        // SAFETY: We just retrieved/inserted this bucket.
+        unsafe { bucket.as_ref().0.clone() }
     }
 
     pub fn integer(i: usize) -> Self {
@@ -180,38 +187,34 @@ impl Symbol {
         symbols::__empty.clone()
     }
 
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.repr.as_str()
     }
 
     #[inline]
     fn select_shard(
+        storage: &'static Map,
         s: &str,
-    ) -> (
-        dashmap::RwLockWriteGuard<
-            'static,
-            HashMap<SymbolProxy, SharedValue<()>, BuildHasherDefault<FxHasher>>,
-        >,
-        u64,
-    ) {
-        let storage = MAP.get_or_init(symbols::prefill);
-        let hash = {
-            let mut hasher = std::hash::BuildHasher::build_hasher(storage.hasher());
-            s.hash(&mut hasher);
-            hasher.finish()
-        };
+    ) -> (dashmap::RwLockWriteGuard<'static, RawTable<(Symbol, SharedValue<()>)>>, u64) {
+        let hash = Self::hash(storage, s);
         let shard_idx = storage.determine_shard(hash as usize);
         let shard = &storage.shards()[shard_idx];
         (shard.write(), hash)
     }
 
+    #[inline]
+    fn hash(storage: &'static Map, s: &str) -> u64 {
+        storage.hasher().hash_one(s)
+    }
+
     #[cold]
     fn drop_slow(arc: &Arc<Box<str>>) {
-        let (mut shard, hash) = Self::select_shard(arc);
+        let storage = MAP.get_or_init(symbols::prefill);
+        let (mut shard, hash) = Self::select_shard(storage, arc);
 
         match Arc::count(arc) {
-            0 => unreachable!(),
-            1 => unreachable!(),
+            0 | 1 => unreachable!(),
             2 => (),
             _ => {
                 // Another thread has interned another copy
@@ -219,19 +222,17 @@ impl Symbol {
             }
         }
 
-        let ptr = match shard.raw_entry_mut().from_key_hashed_nocheck::<str>(hash, arc.as_ref()) {
-            RawEntryMut::Occupied(occ) => occ.remove_entry(),
-            RawEntryMut::Vacant(_) => unreachable!(),
-        }
-        .0
-         .0;
+        let s = &***arc;
+        let (ptr, _) = shard.remove_entry(hash, |(x, _)| x.as_str() == s).unwrap();
+        let ptr = ManuallyDrop::new(ptr);
         // SAFETY: We're dropping, we have ownership.
-        ManuallyDrop::into_inner(unsafe { ptr.try_as_arc_owned().unwrap() });
+        ManuallyDrop::into_inner(unsafe { ptr.repr.try_as_arc_owned().unwrap() });
         debug_assert_eq!(Arc::count(arc), 1);
 
         // Shrink the backing storage if the shard is less than 50% occupied.
         if shard.len() * 2 < shard.capacity() {
-            shard.shrink_to_fit();
+            let len = shard.len();
+            shard.shrink_to(len, |(x, _)| Self::hash(storage, x.as_str()));
         }
     }
 }
@@ -273,22 +274,6 @@ fn increase_arc_refcount(repr: TaggedArcPtr) -> TaggedArcPtr {
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.as_str().fmt(f)
-    }
-}
-
-// only exists so we can use `from_key_hashed_nocheck` with a &str
-#[derive(Debug, PartialEq, Eq)]
-struct SymbolProxy(TaggedArcPtr);
-
-impl Hash for SymbolProxy {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.as_str().hash(state);
-    }
-}
-
-impl Borrow<str> for SymbolProxy {
-    fn borrow(&self) -> &str {
-        self.0.as_str()
     }
 }
 

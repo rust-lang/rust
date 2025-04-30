@@ -1,7 +1,7 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
 use anyhow::format_err;
 use ide::{Annotation, AnnotationKind, AssistKind, LineCol};
-use ide_db::{line_index::WideLineCol, FileId, FilePosition, FileRange};
+use ide_db::{FileId, FilePosition, FileRange, line_index::WideLineCol};
 use paths::Utf8PathBuf;
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;
@@ -103,7 +103,6 @@ pub(crate) fn file_range_uri(
 
 pub(crate) fn assist_kind(kind: lsp_types::CodeActionKind) -> Option<AssistKind> {
     let assist_kind = match &kind {
-        k if k == &lsp_types::CodeActionKind::EMPTY => AssistKind::None,
         k if k == &lsp_types::CodeActionKind::QUICKFIX => AssistKind::QuickFix,
         k if k == &lsp_types::CodeActionKind::REFACTOR => AssistKind::Refactor,
         k if k == &lsp_types::CodeActionKind::REFACTOR_EXTRACT => AssistKind::RefactorExtract,

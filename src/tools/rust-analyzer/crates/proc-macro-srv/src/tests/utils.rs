@@ -1,10 +1,10 @@
 //! utils used in proc-macro tests
 
 use expect_test::Expect;
-use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId, TokenId};
+use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContext, TokenId};
 use tt::TextRange;
 
-use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
+use crate::{EnvSnapshot, ProcMacroSrv, dylib, proc_macro_test_dylib_path};
 
 fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
     crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(
@@ -17,7 +17,7 @@ fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStrea
 
 fn parse_string_spanned(
     anchor: SpanAnchor,
-    call_site: SyntaxContextId,
+    call_site: SyntaxContext,
     src: &str,
 ) -> crate::server_impl::TokenStream<Span> {
     crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(
@@ -81,7 +81,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(41)),
             ast_id: ErasedFileAstId::from_raw(1),
         },
-        ctx: SyntaxContextId::root(span::Edition::CURRENT),
+        ctx: SyntaxContext::root(span::Edition::CURRENT),
     };
     let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
@@ -89,7 +89,7 @@ fn assert_expand_impl(
             file_id: EditionedFileId::current_edition(FileId::from_raw(42)),
             ast_id: ErasedFileAstId::from_raw(2),
         },
-        ctx: SyntaxContextId::root(span::Edition::CURRENT),
+        ctx: SyntaxContext::root(span::Edition::CURRENT),
     };
     let mixed_site = call_site;
 

@@ -107,7 +107,7 @@ pub(crate) fn variant_list(p: &mut Parser<'_>) {
 }
 
 // test record_field_list
-// struct S { a: i32, b: f32 }
+// struct S { a: i32, b: f32, unsafe c: u8 }
 pub(crate) fn record_field_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
@@ -131,6 +131,7 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
         // struct S { #[attr] f: f32 }
         attributes::outer_attrs(p);
         opt_visibility(p, false);
+        p.eat(T![unsafe]);
         if p.at(IDENT) {
             name(p);
             p.expect(T![:]);

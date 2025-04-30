@@ -1,11 +1,11 @@
 use ide_db::{famous_defs::FamousDefs, traits::resolve_target_trait};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, HasGenericArgs, HasName},
+    ast::{self, AstNode, HasGenericArgs, HasName, make},
     ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: convert_from_to_tryfrom
 //
@@ -71,7 +71,7 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
     }
 
     acc.add(
-        AssistId("convert_from_to_tryfrom", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_from_to_tryfrom"),
         "Convert From to TryFrom",
         impl_.syntax().text_range(),
         |builder| {
@@ -128,6 +128,7 @@ fn wrap_ok(expr: ast::Expr) -> ast::Expr {
         make::expr_path(make::ext::ident_path("Ok")),
         make::arg_list(std::iter::once(expr)),
     )
+    .into()
 }
 
 #[cfg(test)]

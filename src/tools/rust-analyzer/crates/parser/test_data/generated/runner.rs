@@ -139,6 +139,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/const_trait_bound.rs");
     }
     #[test]
+    fn const_where_clause() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/const_where_clause.rs");
+    }
+    #[test]
     fn continue_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/continue_expr.rs"); }
     #[test]
     fn crate_path() { run_and_expect_no_errors("test_data/parser/inline/ok/crate_path.rs"); }
@@ -278,6 +282,8 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/generic_arg_bounds.rs");
     }
     #[test]
+    fn generic_const() { run_and_expect_no_errors("test_data/parser/inline/ok/generic_const.rs"); }
+    #[test]
     fn generic_param_attribute() {
         run_and_expect_no_errors("test_data/parser/inline/ok/generic_param_attribute.rs");
     }
@@ -414,6 +420,10 @@ mod ok {
     #[test]
     fn nocontentexpr_after_item() {
         run_and_expect_no_errors("test_data/parser/inline/ok/nocontentexpr_after_item.rs");
+    }
+    #[test]
+    fn offset_of_parens() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/offset_of_parens.rs");
     }
     #[test]
     fn or_pattern() { run_and_expect_no_errors("test_data/parser/inline/ok/or_pattern.rs"); }
@@ -745,7 +755,12 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/fn_pointer_type_missing_fn.rs");
     }
     #[test]
-    fn gen_fn() { run_and_expect_errors("test_data/parser/inline/err/gen_fn.rs"); }
+    fn gen_fn() {
+        run_and_expect_errors_with_edition(
+            "test_data/parser/inline/err/gen_fn.rs",
+            crate::Edition::Edition2021,
+        );
+    }
     #[test]
     fn generic_arg_list_recover() {
         run_and_expect_errors("test_data/parser/inline/err/generic_arg_list_recover.rs");
@@ -758,6 +773,8 @@ mod err {
     fn generic_param_list_recover() {
         run_and_expect_errors("test_data/parser/inline/err/generic_param_list_recover.rs");
     }
+    #[test]
+    fn generic_static() { run_and_expect_errors("test_data/parser/inline/err/generic_static.rs"); }
     #[test]
     fn impl_type() { run_and_expect_errors("test_data/parser/inline/err/impl_type.rs"); }
     #[test]
@@ -829,6 +846,10 @@ mod err {
     #[test]
     fn recover_from_missing_const_default() {
         run_and_expect_errors("test_data/parser/inline/err/recover_from_missing_const_default.rs");
+    }
+    #[test]
+    fn static_where_clause() {
+        run_and_expect_errors("test_data/parser/inline/err/static_where_clause.rs");
     }
     #[test]
     fn struct_field_recover() {

@@ -80,10 +80,11 @@ pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Matc
 
 use crate::{errors::bail, matching::MatchFailureReason};
 use hir::{FileRange, Semantics};
+use ide_db::symbol_index::SymbolsDatabase;
 use ide_db::text_edit::TextEdit;
-use ide_db::{base_db::SourceDatabase, EditionedFileId, FileId, FxHashMap, RootDatabase};
+use ide_db::{EditionedFileId, FileId, FxHashMap, RootDatabase, base_db::SourceDatabase};
 use resolving::ResolvedRule;
-use syntax::{ast, AstNode, SyntaxNode, TextRange};
+use syntax::{AstNode, SyntaxNode, TextRange, ast};
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]
@@ -126,7 +127,7 @@ impl<'db> MatchFinder<'db> {
         let sema = Semantics::new(db);
         let file_id = sema
             .attach_first_edition(lookup_context.file_id)
-            .unwrap_or_else(|| EditionedFileId::current_edition(lookup_context.file_id));
+            .unwrap_or_else(|| EditionedFileId::current_edition(db, lookup_context.file_id));
         let resolution_scope = resolving::ResolutionScope::new(
             &sema,
             hir::FilePosition { file_id, offset: lookup_context.offset },
@@ -137,10 +138,11 @@ impl<'db> MatchFinder<'db> {
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
     pub fn at_first_file(db: &'db ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
-        use ide_db::base_db::SourceRootDatabase;
-        use ide_db::symbol_index::SymbolsDatabase;
-        if let Some(first_file_id) =
-            db.local_roots().iter().next().and_then(|root| db.source_root(*root).iter().next())
+        if let Some(first_file_id) = db
+            .local_roots()
+            .iter()
+            .next()
+            .and_then(|root| db.source_root(*root).source_root(db).iter().next())
         {
             MatchFinder::in_context(
                 db,
@@ -171,7 +173,7 @@ impl<'db> MatchFinder<'db> {
         let mut matches_by_file = FxHashMap::default();
         for m in self.matches().matches {
             matches_by_file
-                .entry(m.range.file_id.file_id())
+                .entry(m.range.file_id.file_id(self.sema.db))
                 .or_insert_with(SsrMatches::default)
                 .matches
                 .push(m);
@@ -184,7 +186,7 @@ impl<'db> MatchFinder<'db> {
                     replacing::matches_to_edit(
                         self.sema.db,
                         &matches,
-                        &self.sema.db.file_text(file_id),
+                        &self.sema.db.file_text(file_id).text(self.sema.db),
                         &self.rules,
                     ),
                 )
@@ -225,7 +227,7 @@ impl<'db> MatchFinder<'db> {
     ) -> Vec<MatchDebugInfo> {
         let file = self.sema.parse(file_id);
         let mut res = Vec::new();
-        let file_text = self.sema.db.file_text(file_id.into());
+        let file_text = self.sema.db.file_text(file_id.file_id(self.sema.db)).text(self.sema.db);
         let mut remaining_text = &*file_text;
         let mut base = 0;
         let len = snippet.len() as u32;
