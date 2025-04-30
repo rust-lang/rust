@@ -534,26 +534,34 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
+    fn visit_opaque_types_next(&mut self) {
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for (&def_id, &hidden_type) in &fcx_typeck_results.concrete_opaque_types {
+            assert!(!hidden_type.has_infer());
+            self.typeck_results.concrete_opaque_types.insert(def_id, hidden_type);
+        }
+    }
+
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
+        if self.fcx.next_trait_solver() {
+            return self.visit_opaque_types_next();
+        }
+
         let tcx = self.tcx();
-        // We clone the opaques instead of stealing them here as they are still used for
-        // normalization in the next generation trait solver.
-        let opaque_types = self.fcx.infcx.clone_opaque_types();
+        let opaque_types = self.fcx.infcx.take_opaque_types();
         let num_entries = self.fcx.inner.borrow_mut().opaque_types().num_entries();
         let prev = self.fcx.checked_opaque_types_storage_entries.replace(Some(num_entries));
         debug_assert_eq!(prev, None);
         for (opaque_type_key, hidden_type) in opaque_types {
             let hidden_type = self.resolve(hidden_type, &hidden_type.span);
             let opaque_type_key = self.resolve(opaque_type_key, &hidden_type.span);
-
-            if !self.fcx.next_trait_solver() {
-                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                    && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                    && alias_ty.args == opaque_type_key.args
-                {
-                    continue;
-                }
+            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
+                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
+                && alias_ty.args == opaque_type_key.args
+            {
+                continue;
             }
 
             if let Err(err) = check_opaque_type_parameter_valid(

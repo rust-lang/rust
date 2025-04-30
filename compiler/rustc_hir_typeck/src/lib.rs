@@ -227,6 +227,10 @@ fn typeck_with_inspect<'tcx>(
 
     fcx.select_obligations_where_possible(|_| {});
 
+    if fcx.next_trait_solver() {
+        fcx.handle_opaque_type_uses_next();
+    }
+
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
     // This must be the last thing before `report_ambiguity_errors`.
