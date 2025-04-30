@@ -796,6 +796,13 @@ pub(crate) struct AsmRequiresTemplate {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_asm_attribute_not_supported)]
+pub(crate) struct AsmAttributeNotSupported {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_asm_expected_comma)]
 pub(crate) struct AsmExpectedComma {
     #[primary_span]
