@@ -376,7 +376,7 @@ where
         if self.tcx().features().async_drop()
             && self.elaborator.body().coroutine.is_some()
             && self.elaborator.allow_async_drops()
-            && !self.elaborator.body()[bb].is_cleanup
+            && !self.elaborator.patch_ref().block(self.elaborator.body(), bb).is_cleanup
             && drop_ty.needs_async_drop(self.tcx(), self.elaborator.typing_env())
         {
             self.build_async_drop(
