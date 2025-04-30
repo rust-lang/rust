@@ -133,7 +133,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         method: Result<MethodCallee<'tcx>, ErrorGuaranteed>,
         args_no_rcvr: &'tcx [hir::Expr<'tcx>],
-        tuple_arguments: TupleArgumentsFlag,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let has_error = match method {
@@ -147,11 +146,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             let err_output = Ty::new_error(self.tcx, guar);
 
-            let err_inputs = match tuple_arguments {
-                DontTupleArguments => err_inputs,
-                TupleArguments => vec![Ty::new_tup(self.tcx, &err_inputs)],
-            };
-
             self.check_argument_types(
                 sp,
                 expr,
@@ -160,7 +154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 NoExpectation,
                 args_no_rcvr,
                 false,
-                tuple_arguments,
+                TupleArgumentsFlag::DontTupleArguments,
                 method.ok().map(|method| method.def_id),
             );
             return err_output;
@@ -175,7 +169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected,
             args_no_rcvr,
             method.sig.c_variadic,
-            tuple_arguments,
+            TupleArgumentsFlag::DontTupleArguments,
             Some(method.def_id),
         );
 
