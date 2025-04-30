@@ -544,7 +544,7 @@ impl Span {
     ///
     /// This might not correspond to a valid file system path.
     /// It might be remapped, or might be an artificial path such as `"<macro expansion>"`.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_file", since = "CURRENT_RUSTC_VERSION")]
     pub fn file(&self) -> String {
         self.0.file()
     }
@@ -554,7 +554,7 @@ impl Span {
     /// This is the actual path on disk. It is unaffected by path remapping.
     ///
     /// This path should not be embedded in the output of the macro; prefer `file()` instead.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_span_file", since = "CURRENT_RUSTC_VERSION")]
     pub fn local_file(&self) -> Option<PathBuf> {
         self.0.local_file().map(|s| PathBuf::from(s))
     }
