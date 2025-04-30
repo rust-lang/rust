@@ -8,14 +8,14 @@ use std::sync::Arc;
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::{self as ast, AttrStyle, HasAttrs, StmtKind};
-use rustc_errors::ColorConfig;
 use rustc_errors::emitter::stderr_destination;
+use rustc_errors::{ColorConfig, DiagCtxtHandle};
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::{FileName, kw};
+use rustc_span::{FileName, Span, kw};
 use tracing::debug;
 
 use super::GlobalTestOptions;
@@ -61,6 +61,8 @@ impl DocTestBuilder {
         // If `test_id` is `None`, it means we're generating code for a code example "run" link.
         test_id: Option<String>,
         lang_str: Option<&LangString>,
+        dcx: Option<DiagCtxtHandle<'_>>,
+        span: Span,
     ) -> Self {
         let can_merge_doctests = can_merge_doctests
             && lang_str.is_some_and(|lang_str| {
@@ -69,7 +71,7 @@ impl DocTestBuilder {
 
         let result = rustc_driver::catch_fatal_errors(|| {
             rustc_span::create_session_if_not_set_then(edition, |_| {
-                parse_source(source, &crate_name)
+                parse_source(source, &crate_name, dcx, span)
             })
         });
 
@@ -289,7 +291,12 @@ fn reset_error_count(psess: &ParseSess) {
 
 const DOCTEST_CODE_WRAPPER: &str = "fn f(){";
 
-fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceInfo, ()> {
+fn parse_source(
+    source: &str,
+    crate_name: &Option<&str>,
+    parent_dcx: Option<DiagCtxtHandle<'_>>,
+    span: Span,
+) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
     use rustc_errors::emitter::{Emitter, HumanEmitter};
     use rustc_span::source_map::FilePathMapping;
@@ -466,8 +473,17 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 }
             }
             if has_non_items {
-                // FIXME: if `info.has_main_fn` is `true`, emit a warning here to mention that
-                // this code will not be called.
+                if info.has_main_fn
+                    && let Some(dcx) = parent_dcx
+                    && !span.is_dummy()
+                {
+                    dcx.span_warn(
+                        span,
+                        "the `main` function of this doctest won't be run as it contains \
+                         expressions at the top level, meaning that the whole doctest code will be \
+                         wrapped in a function",
+                    );
+                }
                 info.has_main_fn = false;
             }
             Ok(info)

@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use rustc_span::DUMMY_SP;
 use rustc_span::edition::DEFAULT_EDITION;
 
 use super::{DocTestBuilder, GlobalTestOptions};
@@ -18,6 +19,8 @@ fn make_test(
         false,
         test_id.map(|s| s.to_string()),
         None,
+        None,
+        DUMMY_SP,
     );
     let (code, line_offset) =
         doctest.generate_unique_doctest(test_code, dont_insert_main, opts, crate_name);

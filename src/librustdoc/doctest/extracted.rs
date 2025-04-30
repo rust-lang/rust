@@ -3,6 +3,7 @@
 //! This module contains the logic to extract doctests and output a JSON containing this
 //! information.
 
+use rustc_span::DUMMY_SP;
 use serde::Serialize;
 
 use super::{DocTestBuilder, ScrapedDocTest};
@@ -35,7 +36,7 @@ impl ExtractedDocTests {
     ) {
         let edition = scraped_test.edition(options);
 
-        let ScrapedDocTest { filename, line, langstr, text, name } = scraped_test;
+        let ScrapedDocTest { filename, line, langstr, text, name, .. } = scraped_test;
 
         let doctest = DocTestBuilder::new(
             &text,
@@ -44,6 +45,8 @@ impl ExtractedDocTests {
             false,
             None,
             Some(&langstr),
+            None,
+            DUMMY_SP,
         );
         let (full_test_code, size) = doctest.generate_unique_doctest(
             &text,

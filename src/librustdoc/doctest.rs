@@ -23,9 +23,9 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_session::config::{self, CrateType, ErrorOutputType, Input};
 use rustc_session::lint;
-use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
+use rustc_span::{FileName, Span};
 use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
@@ -239,7 +239,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
                 }
             } else {
                 let mut collector = CreateRunnableDocTests::new(options, opts);
-                tests.into_iter().for_each(|t| collector.add_test(t));
+                tests.into_iter().for_each(|t| collector.add_test(t, Some(compiler.sess.dcx())));
 
                 Ok(Some(collector))
             }
@@ -872,6 +872,7 @@ pub(crate) struct ScrapedDocTest {
     langstr: LangString,
     text: String,
     name: String,
+    span: Span,
 }
 
 impl ScrapedDocTest {
@@ -881,6 +882,7 @@ impl ScrapedDocTest {
         logical_path: Vec<String>,
         langstr: LangString,
         text: String,
+        span: Span,
     ) -> Self {
         let mut item_path = logical_path.join("::");
         item_path.retain(|c| c != ' ');
@@ -890,7 +892,7 @@ impl ScrapedDocTest {
         let name =
             format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly());
 
-        Self { filename, line, langstr, text, name }
+        Self { filename, line, langstr, text, name, span }
     }
     fn edition(&self, opts: &RustdocOptions) -> Edition {
         self.langstr.edition.unwrap_or(opts.edition)
@@ -946,7 +948,7 @@ impl CreateRunnableDocTests {
         }
     }
 
-    fn add_test(&mut self, scraped_test: ScrapedDocTest) {
+    fn add_test(&mut self, scraped_test: ScrapedDocTest, dcx: Option<DiagCtxtHandle<'_>>) {
         // For example `module/file.rs` would become `module_file_rs`
         let file = scraped_test
             .filename
@@ -977,6 +979,8 @@ impl CreateRunnableDocTests {
             self.can_merge_doctests,
             Some(test_id),
             Some(&scraped_test.langstr),
+            dcx,
+            scraped_test.span,
         );
         let is_standalone = !doctest.can_be_merged
             || scraped_test.langstr.compile_fail

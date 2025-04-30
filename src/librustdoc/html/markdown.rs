@@ -45,7 +45,7 @@ use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
 use rustc_resolve::rustdoc::may_be_doc_link;
 use rustc_span::edition::Edition;
-use rustc_span::{Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::{debug, trace};
 
 use crate::clean::RenderedLink;
@@ -303,7 +303,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 attrs: vec![],
                 args_file: PathBuf::new(),
             };
-            let doctest = doctest::DocTestBuilder::new(&test, krate, edition, false, None, None);
+            let doctest = doctest::DocTestBuilder::new(
+                &test, krate, edition, false, None, None, None, DUMMY_SP,
+            );
             let (test, _) = doctest.generate_unique_doctest(&test, false, &opts, krate);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
 
