@@ -2,7 +2,7 @@ use crate::io;
 use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
 use crate::sys_common::{FromInner, IntoInner};
 
-/// Create an anonymous pipe.
+/// Creates an anonymous pipe.
 ///
 /// # Behavior
 ///
@@ -108,7 +108,7 @@ impl IntoInner<AnonPipe> for PipeWriter {
 }
 
 impl PipeReader {
-    /// Create a new [`PipeReader`] instance that shares the same underlying file description.
+    /// Creates a new [`PipeReader`] instance that shares the same underlying file description.
     ///
     /// # Examples
     ///
@@ -167,7 +167,7 @@ impl PipeReader {
 }
 
 impl PipeWriter {
-    /// Create a new [`PipeWriter`] instance that shares the same underlying file description.
+    /// Creates a new [`PipeWriter`] instance that shares the same underlying file description.
     ///
     /// # Examples
     ///
