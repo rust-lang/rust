@@ -15,8 +15,8 @@ cfg_if! {
             ceil, ceilf, fabs, fabsf, floor, floorf, rint, rintf, sqrt, sqrtf, trunc, truncf,
         };
     } else if #[cfg(target_feature = "sse2")] {
-        mod i686;
-        pub use i686::{sqrt, sqrtf};
+        mod x86;
+        pub use x86::{sqrt, sqrtf};
     } else if #[cfg(all(
         any(target_arch = "aarch64", target_arch = "arm64ec"),
         target_feature = "neon"
