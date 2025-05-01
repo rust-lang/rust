@@ -12,7 +12,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
-use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty};
+use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, RegionVid, Ty};
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
@@ -149,8 +149,17 @@ pub enum ConstraintCategory<'tcx> {
     /// A constraint that doesn't correspond to anything the user sees.
     Internal,
 
-    /// An internal constraint derived from an illegal universe relation.
-    IllegalUniverse,
+    /// An internal constraint derived from an illegal placeholder relation
+    /// to this region. The arguments are a source -> drain of a path
+    /// that caused the problem, used when reporting errors.
+    IllegalPlaceholder(
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        RegionVid,
+        #[type_foldable(identity)]
+        #[type_visitable(ignore)]
+        RegionVid,
+    ),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
