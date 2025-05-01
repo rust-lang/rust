@@ -121,7 +121,7 @@
           StorageDead(_18);
           _16 = &_17;
           _15 = &(*_16);
-          _11 = Arguments::<'_>::new_v1::<3, 2>(move _12, move _15) -> [return: bb5, unwind unreachable];
+          _11 = core::fmt::rt::<impl Arguments<'_>>::new_v1::<3, 2>(move _12, move _15) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
