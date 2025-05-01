@@ -4,6 +4,7 @@ use std::cell::Cell;
 use std::env;
 use std::sync::Arc;
 
+use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
@@ -11,7 +12,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span, sym};
 
 use super::{DocTestVisitor, ScrapedDocTest};
 use crate::clean::{Attributes, extract_cfg_from_attrs};
@@ -22,6 +23,7 @@ struct RustCollector {
     tests: Vec<ScrapedDocTest>,
     cur_path: Vec<String>,
     position: Span,
+    global_crate_attrs: Vec<String>,
 }
 
 impl RustCollector {
@@ -75,6 +77,7 @@ impl DocTestVisitor for RustCollector {
             config,
             test,
             span,
+            self.global_crate_attrs.clone(),
         ));
     }
 
@@ -94,6 +97,7 @@ impl<'tcx> HirCollector<'tcx> {
             cur_path: vec![],
             position: DUMMY_SP,
             tests: vec![],
+            global_crate_attrs: Vec::new(),
         };
         Self { codes, tcx, collector }
     }
@@ -168,6 +172,40 @@ impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         self.tcx
+    }
+
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _s: Span, hir_id: hir::HirId) {
+        let attrs = self.tcx.hir_attrs(hir_id);
+
+        if !attrs.is_empty() {
+            // Try collecting `#![doc(test(attr(...)))]` from the attribute module
+            let old_len = self.collector.global_crate_attrs.len();
+            for doc_test_attrs in attrs
+                .iter()
+                .filter(|a| a.has_name(sym::doc))
+                .flat_map(|a| a.meta_item_list().unwrap_or_default())
+                .filter(|a| a.has_name(sym::test))
+            {
+                let Some(doc_test_attrs) = doc_test_attrs.meta_item_list() else { continue };
+                for attr in doc_test_attrs
+                    .iter()
+                    .filter(|a| a.has_name(sym::attr))
+                    .flat_map(|a| a.meta_item_list().unwrap_or_default())
+                    .map(|i| pprust::meta_list_item_to_string(i))
+                {
+                    // Add the additional attributes to the global_crate_attrs vector
+                    self.collector.global_crate_attrs.push(attr);
+                }
+            }
+
+            let r = intravisit::walk_mod(self, m);
+
+            // Restore global_crate_attrs to it's previous size/content
+            self.collector.global_crate_attrs.truncate(old_len);
+            r
+        } else {
+            intravisit::walk_mod(self, m)
+        }
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {

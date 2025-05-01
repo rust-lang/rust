@@ -45,8 +45,6 @@ pub(crate) struct GlobalTestOptions {
     /// Whether inserting extra indent spaces in code block,
     /// default is `false`, only `true` for generating code link of Rust playground
     pub(crate) insert_indent_space: bool,
-    /// Additional crate-level attributes to add to doctests.
-    pub(crate) attrs: Vec<String>,
     /// Path to file containing arguments for the invocation of rustc.
     pub(crate) args_file: PathBuf,
 }
@@ -371,12 +369,9 @@ fn scrape_test_config(
     attrs: &[hir::Attribute],
     args_file: PathBuf,
 ) -> GlobalTestOptions {
-    use rustc_ast_pretty::pprust;
-
     let mut opts = GlobalTestOptions {
         crate_name,
         no_crate_inject: false,
-        attrs: Vec::new(),
         insert_indent_space: false,
         args_file,
     };
@@ -393,13 +388,7 @@ fn scrape_test_config(
         if attr.has_name(sym::no_crate_inject) {
             opts.no_crate_inject = true;
         }
-        if attr.has_name(sym::attr)
-            && let Some(l) = attr.meta_item_list()
-        {
-            for item in l {
-                opts.attrs.push(pprust::meta_list_item_to_string(item));
-            }
-        }
+        // NOTE: `test(attr(..))` is handled when discovering the individual tests
     }
 
     opts
@@ -848,6 +837,7 @@ pub(crate) struct ScrapedDocTest {
     text: String,
     name: String,
     span: Span,
+    global_crate_attrs: Vec<String>,
 }
 
 impl ScrapedDocTest {
@@ -858,6 +848,7 @@ impl ScrapedDocTest {
         langstr: LangString,
         text: String,
         span: Span,
+        global_crate_attrs: Vec<String>,
     ) -> Self {
         let mut item_path = logical_path.join("::");
         item_path.retain(|c| c != ' ');
@@ -867,7 +858,7 @@ impl ScrapedDocTest {
         let name =
             format!("{} - {item_path}(line {line})", filename.prefer_remapped_unconditionaly());
 
-        Self { filename, line, langstr, text, name, span }
+        Self { filename, line, langstr, text, name, span, global_crate_attrs }
     }
     fn edition(&self, opts: &RustdocOptions) -> Edition {
         self.langstr.edition.unwrap_or(opts.edition)
@@ -949,6 +940,7 @@ impl CreateRunnableDocTests {
         let edition = scraped_test.edition(&self.rustdoc_options);
         let doctest = BuildDocTestBuilder::new(&scraped_test.text)
             .crate_name(&self.opts.crate_name)
+            .global_crate_attrs(scraped_test.global_crate_attrs.clone())
             .edition(edition)
             .can_merge_doctests(self.can_merge_doctests)
             .test_id(test_id)
