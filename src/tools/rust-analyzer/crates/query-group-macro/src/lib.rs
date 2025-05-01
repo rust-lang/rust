@@ -210,7 +210,7 @@ pub(crate) fn query_group_impl(
                 .into_iter()
                 .filter(|fn_arg| matches!(fn_arg, FnArg::Typed(_)))
                 .map(|fn_arg| match fn_arg {
-                    FnArg::Typed(pat_type) => pat_type.clone(),
+                    FnArg::Typed(pat_type) => pat_type,
                     FnArg::Receiver(_) => unreachable!("this should have been filtered out"),
                 })
                 .collect::<Vec<syn::PatType>>();

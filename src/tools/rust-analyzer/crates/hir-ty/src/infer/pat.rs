@@ -435,7 +435,7 @@ impl InferenceContext<'_> {
         decl: Option<DeclContext>,
     ) -> Ty {
         let (expectation_type, expectation_lt) = match expected.as_reference() {
-            Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime.clone()),
+            Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime),
             None => {
                 let inner_ty = self.table.new_type_var();
                 let inner_lt = self.table.new_lifetime_var();
@@ -597,7 +597,7 @@ impl InferenceContext<'_> {
         let size = consteval::usize_const(self.db, Some(len as u128), self.owner.krate(self.db));
 
         let elem_ty = self.table.new_type_var();
-        let array_ty = TyKind::Array(elem_ty.clone(), size).intern(Interner);
+        let array_ty = TyKind::Array(elem_ty, size).intern(Interner);
         Some(array_ty)
     }
 

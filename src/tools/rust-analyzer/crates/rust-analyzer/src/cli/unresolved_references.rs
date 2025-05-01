@@ -30,7 +30,7 @@ impl flags::UnresolvedReferences {
         let root =
             vfs::AbsPathBuf::assert_utf8(std::env::current_dir()?.join(&self.path)).normalize();
         let config = crate::config::Config::new(
-            root.clone(),
+            root,
             lsp_types::ClientCapabilities::default(),
             vec![],
             None,

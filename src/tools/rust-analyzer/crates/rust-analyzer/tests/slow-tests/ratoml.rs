@@ -82,11 +82,8 @@ impl RatomlTest {
         }
 
         Url::parse(
-            format!(
-                "file://{}",
-                path.into_string().to_owned().replace("C:\\", "/c:/").replace('\\', "/")
-            )
-            .as_str(),
+            format!("file://{}", path.into_string().replace("C:\\", "/c:/").replace('\\', "/"))
+                .as_str(),
         )
         .unwrap()
     }

@@ -116,7 +116,7 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
             (Some(attr), Some(ident))
                 if attr.simple_name().map(|v| v.eq("derive")).unwrap_or_default() =>
             {
-                Some(attempt_get_derive(attr.clone(), ident))
+                Some(attempt_get_derive(attr, ident))
             }
 
             (Some(attr), _) => Some(WrapUnwrapOption::WrapAttr(attr)),
@@ -128,7 +128,7 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
             NodeOrToken::Node(node) => ast::Attr::cast(node).map(WrapUnwrapOption::WrapAttr),
             NodeOrToken::Token(ident) if ident.kind() == syntax::T![ident] => {
                 let attr = ident.parent_ancestors().find_map(ast::Attr::cast)?;
-                Some(attempt_get_derive(attr.clone(), ident))
+                Some(attempt_get_derive(attr, ident))
             }
             _ => None,
         }
@@ -233,7 +233,7 @@ fn wrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>, attr: ast::Attr) ->
         if let Some(meta) = attr.meta() {
             if let (Some(eq), Some(expr)) = (meta.eq_token(), meta.expr()) {
                 raw_tokens.push(NodeOrToken::Token(make::tokens::whitespace(" ")));
-                raw_tokens.push(NodeOrToken::Token(eq.clone()));
+                raw_tokens.push(NodeOrToken::Token(eq));
                 raw_tokens.push(NodeOrToken::Token(make::tokens::whitespace(" ")));
 
                 expr.syntax().descendants_with_tokens().for_each(|it| {

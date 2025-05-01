@@ -1183,7 +1183,7 @@ impl ConfigChange {
         source_root_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
     ) {
         assert!(self.source_map_change.is_none());
-        self.source_map_change = Some(source_root_map.clone());
+        self.source_map_change = Some(source_root_map);
     }
 }
 

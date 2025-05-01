@@ -195,7 +195,7 @@ fn remove_unnecessary_wrapper(
     let db = ctx.sema.db;
     let root = db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let expr = ctx.sema.original_ast_node(expr.clone())?;
+    let expr = ctx.sema.original_ast_node(expr)?;
 
     let Expr::CallExpr(call_expr) = expr else {
         return None;

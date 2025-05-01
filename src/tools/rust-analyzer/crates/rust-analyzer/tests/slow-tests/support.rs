@@ -202,7 +202,7 @@ impl Project<'_> {
         }
 
         let mut config = Config::new(
-            tmp_dir_path.clone(),
+            tmp_dir_path,
             lsp_types::ClientCapabilities {
                 workspace: Some(lsp_types::WorkspaceClientCapabilities {
                     did_change_watched_files: Some(

@@ -80,7 +80,7 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
             let from_fn_name = builder.make_mut(from_fn_name);
             let tail_expr = builder.make_mut(tail_expr);
             let return_exprs = return_exprs.map(|r| builder.make_mut(r)).collect_vec();
-            let associated_items = builder.make_mut(associated_items).clone();
+            let associated_items = builder.make_mut(associated_items);
 
             ted::replace(
                 trait_ty.syntax(),

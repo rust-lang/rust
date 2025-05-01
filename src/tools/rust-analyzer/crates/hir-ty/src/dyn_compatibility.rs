@@ -515,7 +515,7 @@ fn receiver_is_dispatchable(
         trait_id: to_chalk_trait_id(trait_),
         substitution: Substitution::from_iter(
             Interner,
-            std::iter::once(unsized_self_ty.clone().cast(Interner))
+            std::iter::once(unsized_self_ty.cast(Interner))
                 .chain(placeholder_subst.iter(Interner).skip(1).cloned()),
         ),
     });

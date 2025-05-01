@@ -196,7 +196,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
             // Wrap all tails in `Some(...)`
             let none_path = mapless_make.expr_path(mapless_make.ident_path("None"));
             let some_path = mapless_make.expr_path(mapless_make.ident_path("Some"));
-            for_each_tail_expr(&ast::Expr::BlockExpr(closure_body.clone()), &mut |e| {
+            for_each_tail_expr(&ast::Expr::BlockExpr(closure_body), &mut |e| {
                 let e = match e {
                     ast::Expr::BreakExpr(e) => e.expr(),
                     ast::Expr::ReturnExpr(e) => e.expr(),

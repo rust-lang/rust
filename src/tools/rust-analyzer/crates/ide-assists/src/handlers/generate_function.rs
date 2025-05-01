@@ -392,14 +392,14 @@ impl FunctionBuilder {
                 // Focus the return type if there is one
                 match ret_type {
                     Some(ret_type) => {
-                        edit.add_placeholder_snippet(cap, ret_type.clone());
+                        edit.add_placeholder_snippet(cap, ret_type);
                     }
                     None => {
-                        edit.add_placeholder_snippet(cap, tail_expr.clone());
+                        edit.add_placeholder_snippet(cap, tail_expr);
                     }
                 }
             } else {
-                edit.add_placeholder_snippet(cap, tail_expr.clone());
+                edit.add_placeholder_snippet(cap, tail_expr);
             }
         }
 

@@ -270,7 +270,7 @@ impl GenericParamsCollector {
         let self_ = Name::new_symbol_root(sym::Self_);
         let idx = self.type_or_consts.alloc(
             TypeParamData {
-                name: Some(self_.clone()),
+                name: Some(self_),
                 default: None,
                 provenance: TypeParamProvenance::TraitSelf,
             }

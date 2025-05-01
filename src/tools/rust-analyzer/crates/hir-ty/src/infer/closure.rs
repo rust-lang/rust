@@ -127,7 +127,7 @@ impl InferenceContext<'_> {
         let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
         let prev_closure = mem::replace(&mut self.current_closure, id);
         let prev_ret_ty = mem::replace(&mut self.return_ty, body_ret_ty.clone());
-        let prev_ret_coercion = self.return_coercion.replace(CoerceMany::new(body_ret_ty.clone()));
+        let prev_ret_coercion = self.return_coercion.replace(CoerceMany::new(body_ret_ty));
         let prev_resume_yield_tys = mem::replace(&mut self.resume_yield_tys, resume_yield_tys);
 
         self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {

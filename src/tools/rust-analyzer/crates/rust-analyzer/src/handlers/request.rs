@@ -2210,7 +2210,7 @@ fn runnable_action_links(
         let label = update_test.label();
         if let Some(r) = to_proto::make_update_runnable(&r, update_test) {
             let update_command = to_proto::command::run_single(&r, label.unwrap().as_str());
-            group.commands.push(to_command_link(update_command, r.label.clone()));
+            group.commands.push(to_command_link(update_command, r.label));
         }
     }
 
