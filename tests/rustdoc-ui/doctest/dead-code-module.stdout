@@ -1,0 +1,29 @@
+
+running 1 test
+test $DIR/dead-code-module.rs - my_mod::f (line 14) - compile ... FAILED
+
+failures:
+
+---- $DIR/dead-code-module.rs - my_mod::f (line 14) stdout ----
+error: trait `T` is never used
+  --> $DIR/dead-code-module.rs:15:7
+   |
+LL | trait T { fn f(); }
+   |       ^
+   |
+note: the lint level is defined here
+  --> $DIR/dead-code-module.rs:13:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: `#[deny(dead_code)]` implied by `#[deny(warnings)]`
+
+error: aborting due to 1 previous error
+
+Couldn't compile the test.
+
+failures:
+    $DIR/dead-code-module.rs - my_mod::f (line 14)
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
