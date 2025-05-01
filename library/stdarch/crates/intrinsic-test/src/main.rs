@@ -594,29 +594,17 @@ fn compare_outputs(
                 ))
                 .output();
 
-            let rust = if target != "aarch64_be-unknown-linux-gnu" {
-                Command::new("sh")
-                    .current_dir("rust_programs")
-                    .arg("-c")
-                    .arg(format!(
+            let rust = Command::new("sh")
+                .current_dir("rust_programs")
+                .arg("-c")
+                .arg(format!(
                         "cargo {toolchain} run --target {target} --bin {intrinsic} --release",
                         intrinsic = intrinsic.name,
                         toolchain = toolchain,
                         target = target
-                    ))
-                    .env("RUSTFLAGS", "-Cdebuginfo=0")
-                    .output()
-            } else {
-                Command::new("sh")
-                    .arg("-c")
-                    .arg(format!(
-                        "{runner} ./rust_programs/target/{target}/release/{intrinsic}",
-                        runner = runner,
-                        target = target,
-                        intrinsic = intrinsic.name,
-                    ))
-                    .output()
-            };
+                ))
+                .env("RUSTFLAGS", "-Cdebuginfo=0")
+                .output();
 
             let (c, rust) = match (c, rust) {
                 (Ok(c), Ok(rust)) => (c, rust),

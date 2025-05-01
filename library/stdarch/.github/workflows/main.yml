@@ -56,8 +56,7 @@ jobs:
           os: ubuntu-latest
         - tuple: aarch64-unknown-linux-gnu
           os: ubuntu-latest
-        - target:
-          tuple: aarch64_be-unknown-linux-gnu
+        - tuple: aarch64_be-unknown-linux-gnu
           os: ubuntu-latest
         - tuple: riscv64gc-unknown-linux-gnu
           os: ubuntu-latest
