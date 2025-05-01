@@ -1252,7 +1252,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             let bang_span = attr.span().lo() + BytePos(1);
             let sugg = (attr.style() == AttrStyle::Outer
                 && self.tcx.hir_get_parent_item(hir_id) == CRATE_OWNER_ID)
-                .then_some(errors::AttrCrateLevelOnlySugg {
+                .then_some(errors::AttrCrateLevelSugg {
                     attr: attr.span().with_lo(bang_span).with_hi(bang_span),
                 });
             self.tcx.emit_node_span_lint(
@@ -1266,13 +1266,50 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         true
     }
 
-    /// Checks that `doc(test(...))` attribute contains only valid attributes. Returns `true` if
-    /// valid.
-    fn check_test_attr(&self, meta: &MetaItemInner, hir_id: HirId) {
+    /// Checks that an attribute is used at module level. Returns `true` if valid.
+    fn check_attr_mod_level(
+        &self,
+        attr: &Attribute,
+        meta: &MetaItemInner,
+        hir_id: HirId,
+        target: Target,
+    ) -> bool {
+        if target != Target::Mod {
+            // insert a bang between `#` and `[...`
+            let bang_span = attr.span().lo() + BytePos(1);
+            let sugg = (attr.style() == AttrStyle::Outer
+                && self.tcx.hir_get_parent_item(hir_id) == CRATE_OWNER_ID)
+                .then_some(errors::AttrCrateLevelSugg {
+                    attr: attr.span().with_lo(bang_span).with_hi(bang_span),
+                });
+            self.tcx.emit_node_span_lint(
+                INVALID_DOC_ATTRIBUTES,
+                hir_id,
+                meta.span(),
+                errors::AttrModLevelOnly { sugg },
+            );
+            return false;
+        }
+        true
+    }
+
+    /// Checks that `doc(test(...))` attribute contains only valid attributes and are at the right place.
+    fn check_test_attr(
+        &self,
+        attr: &Attribute,
+        meta: &MetaItemInner,
+        hir_id: HirId,
+        target: Target,
+    ) {
         if let Some(metas) = meta.meta_item_list() {
             for i_meta in metas {
                 match (i_meta.name(), i_meta.meta_item()) {
-                    (Some(sym::attr | sym::no_crate_inject), _) => {}
+                    (Some(sym::attr), _) => {
+                        self.check_attr_mod_level(attr, meta, hir_id, target);
+                    }
+                    (Some(sym::no_crate_inject), _) => {
+                        self.check_attr_crate_level(attr, meta, hir_id);
+                    }
                     (_, Some(m)) => {
                         self.tcx.emit_node_span_lint(
                             INVALID_DOC_ATTRIBUTES,
@@ -1359,9 +1396,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
 
                         Some(sym::test) => {
-                            if self.check_attr_crate_level(attr, meta, hir_id) {
-                                self.check_test_attr(meta, hir_id);
-                            }
+                            self.check_test_attr(attr, meta, hir_id, target);
                         }
 
                         Some(
