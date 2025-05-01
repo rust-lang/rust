@@ -156,9 +156,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn register_hidden_type_in_storage(
         &self,
         opaque_type_key: ty::OpaqueTypeKey<'tcx>,
-        hidden_ty: <Self::Interner as ty::Interner>::Ty,
-        span: <Self::Interner as ty::Interner>::Span,
-    ) -> Option<<Self::Interner as ty::Interner>::Ty> {
+        hidden_ty: <Self::Interner as rustc_type_ir::Interner>::Ty,
+        span: <Self::Interner as rustc_type_ir::Interner>::Span,
+    ) -> Option<<Self::Interner as rustc_type_ir::Interner>::Ty> {
         self.0.register_hidden_type_in_storage(
             opaque_type_key,
             ty::OpaqueHiddenType { span, ty: hidden_ty },
