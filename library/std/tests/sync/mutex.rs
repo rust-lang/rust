@@ -409,13 +409,13 @@ fn panic_while_mapping_unlocked_poison() {
 
     let _ = panic::catch_unwind(|| {
         let guard = lock.lock().unwrap();
-        let _guard = MutexGuard::try_map::<(), _>(guard, |_| panic!());
+        let _guard = MutexGuard::filter_map::<(), _>(guard, |_| panic!());
     });
 
     match lock.try_lock() {
-        Ok(_) => panic!("panicking in a MutexGuard::try_map closure should poison the Mutex"),
+        Ok(_) => panic!("panicking in a MutexGuard::filter_map closure should poison the Mutex"),
         Err(TryLockError::WouldBlock) => {
-            panic!("panicking in a MutexGuard::try_map closure should unlock the mutex")
+            panic!("panicking in a MutexGuard::filter_map closure should unlock the mutex")
         }
         Err(TryLockError::Poisoned(_)) => {}
     }
@@ -437,13 +437,15 @@ fn panic_while_mapping_unlocked_poison() {
     let _ = panic::catch_unwind(|| {
         let guard = lock.lock().unwrap();
         let guard = MutexGuard::map::<(), _>(guard, |val| val);
-        let _guard = MappedMutexGuard::try_map::<(), _>(guard, |_| panic!());
+        let _guard = MappedMutexGuard::filter_map::<(), _>(guard, |_| panic!());
     });
 
     match lock.try_lock() {
-        Ok(_) => panic!("panicking in a MappedMutexGuard::try_map closure should poison the Mutex"),
+        Ok(_) => {
+            panic!("panicking in a MappedMutexGuard::filter_map closure should poison the Mutex")
+        }
         Err(TryLockError::WouldBlock) => {
-            panic!("panicking in a MappedMutexGuard::try_map closure should unlock the mutex")
+            panic!("panicking in a MappedMutexGuard::filter_map closure should unlock the mutex")
         }
         Err(TryLockError::Poisoned(_)) => {}
     }
