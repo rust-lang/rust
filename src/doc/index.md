@@ -52,7 +52,7 @@ All of these books are managed by the Rust Organization, but other unofficial
 documentation resources are included here as well!
 
 If you're just looking for the standard library reference, here it is:
-[Rust API documentation](std/index.html)
+[Rust API documentation](../tools/rustfmt/docs/index.html)
 
 
 ## Learning Rust
