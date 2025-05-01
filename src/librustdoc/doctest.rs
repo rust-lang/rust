@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::{panic, str};
 
-pub(crate) use make::DocTestBuilder;
+pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -972,16 +972,14 @@ impl CreateRunnableDocTests {
         );
 
         let edition = scraped_test.edition(&self.rustdoc_options);
-        let doctest = DocTestBuilder::new(
-            &scraped_test.text,
-            Some(&self.opts.crate_name),
-            edition,
-            self.can_merge_doctests,
-            Some(test_id),
-            Some(&scraped_test.langstr),
-            dcx,
-            scraped_test.span,
-        );
+        let doctest = BuildDocTestBuilder::new(&scraped_test.text)
+            .crate_name(&self.opts.crate_name)
+            .edition(edition)
+            .can_merge_doctests(self.can_merge_doctests)
+            .test_id(test_id)
+            .lang_str(&scraped_test.langstr)
+            .span(scraped_test.span)
+            .build(dcx);
         let is_standalone = !doctest.can_be_merged
             || scraped_test.langstr.compile_fail
             || scraped_test.langstr.test_harness

@@ -12,10 +12,10 @@ use rustc_errors::emitter::stderr_destination;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
+use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::{FileName, Span, kw};
+use rustc_span::{DUMMY_SP, FileName, Span, kw};
 use tracing::debug;
 
 use super::GlobalTestOptions;
@@ -35,35 +35,78 @@ struct ParseSourceInfo {
     maybe_crate_attrs: String,
 }
 
-/// This struct contains information about the doctest itself which is then used to generate
-/// doctest source code appropriately.
-pub(crate) struct DocTestBuilder {
-    pub(crate) supports_color: bool,
-    pub(crate) already_has_extern_crate: bool,
-    pub(crate) has_main_fn: bool,
-    pub(crate) crate_attrs: String,
-    /// If this is a merged doctest, it will be put into `everything_else`, otherwise it will
-    /// put into `crate_attrs`.
-    pub(crate) maybe_crate_attrs: String,
-    pub(crate) crates: String,
-    pub(crate) everything_else: String,
-    pub(crate) test_id: Option<String>,
-    pub(crate) invalid_ast: bool,
-    pub(crate) can_be_merged: bool,
+/// Builder type for `DocTestBuilder`.
+pub(crate) struct BuildDocTestBuilder<'a> {
+    source: &'a str,
+    crate_name: Option<&'a str>,
+    edition: Edition,
+    can_merge_doctests: bool,
+    // If `test_id` is `None`, it means we're generating code for a code example "run" link.
+    test_id: Option<String>,
+    lang_str: Option<&'a LangString>,
+    span: Span,
 }
 
-impl DocTestBuilder {
-    pub(crate) fn new(
-        source: &str,
-        crate_name: Option<&str>,
-        edition: Edition,
-        can_merge_doctests: bool,
-        // If `test_id` is `None`, it means we're generating code for a code example "run" link.
-        test_id: Option<String>,
-        lang_str: Option<&LangString>,
-        dcx: Option<DiagCtxtHandle<'_>>,
-        span: Span,
-    ) -> Self {
+impl<'a> BuildDocTestBuilder<'a> {
+    pub(crate) fn new(source: &'a str) -> Self {
+        Self {
+            source,
+            crate_name: None,
+            edition: DEFAULT_EDITION,
+            can_merge_doctests: false,
+            test_id: None,
+            lang_str: None,
+            span: DUMMY_SP,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn crate_name(mut self, crate_name: &'a str) -> Self {
+        self.crate_name = Some(crate_name);
+        self
+    }
+
+    #[inline]
+    pub(crate) fn can_merge_doctests(mut self, can_merge_doctests: bool) -> Self {
+        self.can_merge_doctests = can_merge_doctests;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn test_id(mut self, test_id: String) -> Self {
+        self.test_id = Some(test_id);
+        self
+    }
+
+    #[inline]
+    pub(crate) fn lang_str(mut self, lang_str: &'a LangString) -> Self {
+        self.lang_str = Some(lang_str);
+        self
+    }
+
+    #[inline]
+    pub(crate) fn span(mut self, span: Span) -> Self {
+        self.span = span;
+        self
+    }
+
+    #[inline]
+    pub(crate) fn edition(mut self, edition: Edition) -> Self {
+        self.edition = edition;
+        self
+    }
+
+    pub(crate) fn build(self, dcx: Option<DiagCtxtHandle<'_>>) -> DocTestBuilder {
+        let BuildDocTestBuilder {
+            source,
+            crate_name,
+            edition,
+            can_merge_doctests,
+            // If `test_id` is `None`, it means we're generating code for a code example "run" link.
+            test_id,
+            lang_str,
+            span,
+        } = self;
         let can_merge_doctests = can_merge_doctests
             && lang_str.is_some_and(|lang_str| {
                 !lang_str.compile_fail && !lang_str.test_harness && !lang_str.standalone_crate
@@ -89,7 +132,7 @@ impl DocTestBuilder {
         else {
             // If the AST returned an error, we don't want this doctest to be merged with the
             // others.
-            return Self::invalid(
+            return DocTestBuilder::invalid(
                 String::new(),
                 String::new(),
                 String::new(),
@@ -109,7 +152,7 @@ impl DocTestBuilder {
             // If this is a merged doctest and a defined macro uses `$crate`, then the path will
             // not work, so better not put it into merged doctests.
             && !(has_macro_def && everything_else.contains("$crate"));
-        Self {
+        DocTestBuilder {
             supports_color,
             has_main_fn,
             crate_attrs,
@@ -122,7 +165,26 @@ impl DocTestBuilder {
             can_be_merged,
         }
     }
+}
 
+/// This struct contains information about the doctest itself which is then used to generate
+/// doctest source code appropriately.
+pub(crate) struct DocTestBuilder {
+    pub(crate) supports_color: bool,
+    pub(crate) already_has_extern_crate: bool,
+    pub(crate) has_main_fn: bool,
+    pub(crate) crate_attrs: String,
+    /// If this is a merged doctest, it will be put into `everything_else`, otherwise it will
+    /// put into `crate_attrs`.
+    pub(crate) maybe_crate_attrs: String,
+    pub(crate) crates: String,
+    pub(crate) everything_else: String,
+    pub(crate) test_id: Option<String>,
+    pub(crate) invalid_ast: bool,
+    pub(crate) can_be_merged: bool,
+}
+
+impl DocTestBuilder {
     fn invalid(
         crate_attrs: String,
         maybe_crate_attrs: String,
