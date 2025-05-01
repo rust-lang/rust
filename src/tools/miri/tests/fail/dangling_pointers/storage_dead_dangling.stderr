@@ -1,8 +1,8 @@
-error: Undefined Behavior: out-of-bounds pointer use: expected a pointer to 4 bytes of memory, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
+error: Undefined Behavior: pointer not dereferenceable: pointer must be dereferenceable for 4 bytes, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
   --> tests/fail/dangling_pointers/storage_dead_dangling.rs:LL:CC
    |
 LL |     let _ref = unsafe { &mut *(LEAK as *mut i32) };
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: expected a pointer to 4 bytes of memory, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^ pointer not dereferenceable: pointer must be dereferenceable for 4 bytes, but got $HEX[noalloc] which is a dangling pointer (it has no provenance)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

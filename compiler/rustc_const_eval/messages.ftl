@@ -12,6 +12,27 @@ const_eval_already_reported =
 const_eval_assume_false =
     `assume` called with `false`
 
+const_eval_bad_pointer_op = {$operation ->
+  [MemoryAccess] memory access failed
+  [InboundsPointerArithmetic] in-bounds pointer arithmetic failed
+  *[Dereferenceable] pointer not dereferenceable
+}
+const_eval_bad_pointer_op_attempting = {const_eval_bad_pointer_op}: {$operation ->
+    [MemoryAccess] attempting to access {$inbounds_size ->
+            [1] 1 byte
+            *[x] {$inbounds_size} bytes
+        }
+    [InboundsPointerArithmetic] attempting to offset pointer by {$inbounds_size ->
+            [1] 1 byte
+            *[x] {$inbounds_size} bytes
+        }
+    *[Dereferenceable] pointer must {$inbounds_size ->
+            [0] point to some allocation
+            [1] be dereferenceable for 1 byte
+            *[x] be dereferenceable for {$inbounds_size} bytes
+        }
+    }
+
 const_eval_bounds_check_failed =
     indexing out of bounds: the len is {$len} but the index is {$index}
 const_eval_call_nonzero_intrinsic =
@@ -39,9 +60,9 @@ const_eval_copy_nonoverlapping_overlapping =
     `copy_nonoverlapping` called on overlapping ranges
 
 const_eval_dangling_int_pointer =
-    {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got {$pointer} which is a dangling pointer (it has no provenance)
+    {const_eval_bad_pointer_op_attempting}, but got {$pointer} which is a dangling pointer (it has no provenance)
 const_eval_dangling_null_pointer =
-    {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got a null pointer
+    {const_eval_bad_pointer_op_attempting}, but got null pointer
 
 const_eval_dangling_ptr_in_final = encountered dangling pointer in final value of {const_eval_intern_kind}
 const_eval_dead_local =
@@ -77,21 +98,6 @@ const_eval_error = {$error_kind ->
 const_eval_exact_div_has_remainder =
     exact_div: {$a} cannot be divided by {$b} without remainder
 
-const_eval_expected_inbounds_pointer =
-    expected a pointer to {$inbounds_size_abs ->
-        [0] some allocation
-        *[x] {$inbounds_size_is_neg ->
-            [false] {$inbounds_size_abs ->
-                    [1] 1 byte of memory
-                    *[x] {$inbounds_size_abs} bytes of memory
-                }
-            *[true] the end of {$inbounds_size_abs ->
-                    [1] 1 byte of memory
-                    *[x] {$inbounds_size_abs} bytes of memory
-                }
-        }
-    }
-
 const_eval_extern_static =
     cannot access extern static `{$did}`
 const_eval_extern_type_field = `extern type` field does not have a known offset
@@ -111,7 +117,6 @@ const_eval_frame_note_inner = inside {$where_ ->
 
 const_eval_frame_note_last = the failure occurred here
 
-const_eval_in_bounds_test = out-of-bounds pointer use
 const_eval_incompatible_calling_conventions =
     calling a function with calling convention {$callee_conv} using calling convention {$caller_conv}
 
@@ -206,7 +211,6 @@ const_eval_long_running =
 
 const_eval_max_num_nodes_in_const = maximum number of nodes exceeded in constant {$global_const_id}
 
-const_eval_memory_access_test = memory access failed
 const_eval_memory_exhausted =
     tried to allocate more memory than available to compiler
 
@@ -287,8 +291,6 @@ const_eval_offset_from_out_of_bounds =
     `{$name}` called on two different pointers where the memory range between them is not in-bounds of an allocation
 const_eval_offset_from_overflow =
     `{$name}` called when first pointer is too far ahead of second
-const_eval_offset_from_test =
-    out-of-bounds `offset_from` origin
 const_eval_offset_from_underflow =
     `{$name}` called when first pointer is too far before second
 const_eval_offset_from_unsigned_overflow =
@@ -312,27 +314,25 @@ const_eval_partial_pointer_overwrite =
     unable to overwrite parts of a pointer in memory at {$ptr}
 const_eval_pointer_arithmetic_overflow =
     overflowing pointer arithmetic: the total offset in bytes does not fit in an `isize`
-const_eval_pointer_arithmetic_test = out-of-bounds pointer arithmetic
+
 const_eval_pointer_out_of_bounds =
-    {$bad_pointer_message}: {const_eval_expected_inbounds_pointer}, but got {$pointer} {$ptr_offset_is_neg ->
-        [true] which points to before the beginning of the allocation
-        *[false] {$inbounds_size_is_neg ->
-            [true] {$ptr_offset_abs ->
-                [0] which is at the beginning of the allocation
-                *[other] which does not have enough space to the beginning of the allocation
-            }
-            *[false] {$alloc_size_minus_ptr_offset ->
-                [0] which is at or beyond the end of the allocation of size {$alloc_size ->
+    {const_eval_bad_pointer_op_attempting}, but got {$pointer} which {$inbounds_size_is_neg ->
+        [false] {$alloc_size_minus_ptr_offset ->
+                [0] is at or beyond the end of the allocation of size {$alloc_size ->
                     [1] 1 byte
                     *[x] {$alloc_size} bytes
                 }
-                [1] which is only 1 byte from the end of the allocation
-                *[x] which is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
+                [1] is only 1 byte from the end of the allocation
+                *[x] is only {$alloc_size_minus_ptr_offset} bytes from the end of the allocation
             }
-        }
+        *[true] {$ptr_offset_abs ->
+                [0] is at the beginning of the allocation
+                *[other] is only {$ptr_offset_abs} bytes from the beginning of the allocation
+            }
     }
+
 const_eval_pointer_use_after_free =
-    {$bad_pointer_message}: {$alloc_id} has been freed, so this pointer is dangling
+    {const_eval_bad_pointer_op}: {$alloc_id} has been freed, so this pointer is dangling
 const_eval_ptr_as_bytes_1 =
     this code performed an operation that depends on the underlying bytes representing a pointer
 const_eval_ptr_as_bytes_2 =
