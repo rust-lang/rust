@@ -8,7 +8,9 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, ExprKind, Lit, Node, Path, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
+use rustc_span::{Symbol, sym};
 use std::ops::ControlFlow;
 
 use super::UNNECESSARY_CAST;
@@ -142,6 +144,33 @@ pub(super) fn check<'tcx>(
     }
 
     if cast_from.kind() == cast_to.kind() && !expr.span.in_external_macro(cx.sess().source_map()) {
+        enum MaybeParenOrBlock {
+            Paren,
+            Block,
+            Nothing,
+        }
+
+        fn is_borrow_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+            matches!(expr.kind, ExprKind::AddrOf(..))
+                || cx
+                    .typeck_results()
+                    .expr_adjustments(expr)
+                    .first()
+                    .is_some_and(|adj| matches!(adj.kind, Adjust::Borrow(_)))
+        }
+
+        fn is_in_allowed_macro(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+            const ALLOWED_MACROS: &[Symbol] = &[
+                sym::format_args_macro,
+                sym::assert_eq_macro,
+                sym::debug_assert_eq_macro,
+                sym::assert_ne_macro,
+                sym::debug_assert_ne_macro,
+            ];
+            matches!(expr.span.ctxt().outer_expn_data().macro_def_id, Some(def_id) if 
+                cx.tcx.get_diagnostic_name(def_id).is_some_and(|sym| ALLOWED_MACROS.contains(&sym)))
+        }
+
         if let Some(id) = path_to_local(cast_expr)
             && !cx.tcx.hir_span(id).eq_ctxt(cast_expr.span)
         {
@@ -150,15 +179,15 @@ pub(super) fn check<'tcx>(
             return false;
         }
 
-        // If the whole cast expression is a unary expression (`(*x as T)`) or an addressof
-        // expression (`(&x as T)`), then not surrounding the suggestion into a block risks us
-        // changing the precedence of operators if the cast expression is followed by an operation
-        // with higher precedence than the unary operator (`(*x as T).foo()` would become
-        // `*x.foo()`, which changes what the `*` applies on).
-        // The same is true if the expression encompassing the cast expression is a unary
-        // expression or an addressof expression.
-        let needs_block = matches!(cast_expr.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..))
-            || get_parent_expr(cx, expr).is_some_and(|e| matches!(e.kind, ExprKind::Unary(..) | ExprKind::AddrOf(..)));
+        // Changing `&(x as i32)` to `&x` would change the meaning of the code because the previous creates
+        // a reference to the temporary while the latter creates a reference to the original value.
+        let surrounding = match cx.tcx.parent_hir_node(expr.hir_id) {
+            Node::Expr(parent) if is_borrow_expr(cx, parent) && !is_in_allowed_macro(cx, parent) => {
+                MaybeParenOrBlock::Block
+            },
+            Node::Expr(parent) if cast_expr.precedence() < parent.precedence() => MaybeParenOrBlock::Paren,
+            _ => MaybeParenOrBlock::Nothing,
+        };
 
         span_lint_and_sugg(
             cx,
@@ -166,10 +195,10 @@ pub(super) fn check<'tcx>(
             expr.span,
             format!("casting to the same type is unnecessary (`{cast_from}` -> `{cast_to}`)"),
             "try",
-            if needs_block {
-                format!("{{ {cast_str} }}")
-            } else {
-                cast_str
+            match surrounding {
+                MaybeParenOrBlock::Paren => format!("({cast_str})"),
+                MaybeParenOrBlock::Block => format!("{{ {cast_str} }}"),
+                MaybeParenOrBlock::Nothing => cast_str,
             },
             Applicability::MachineApplicable,
         );

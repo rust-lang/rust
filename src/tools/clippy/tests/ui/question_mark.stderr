@@ -198,7 +198,7 @@ LL | |     }
    | |_____^ help: replace it with: `func_returning_result()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:390:13
+  --> tests/ui/question_mark.rs:395:13
    |
 LL | /             if a.is_none() {
 LL | |
@@ -208,7 +208,7 @@ LL | |             }
    | |_____________^ help: replace it with: `a?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:451:5
+  --> tests/ui/question_mark.rs:456:5
    |
 LL | /     let Some(v) = bar.foo.owned.clone() else {
 LL | |         return None;
@@ -216,7 +216,7 @@ LL | |     };
    | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:466:5
+  --> tests/ui/question_mark.rs:471:5
    |
 LL | /     let Some(ref x) = foo.opt_x else {
 LL | |         return None;
@@ -224,7 +224,7 @@ LL | |     };
    | |______^ help: replace it with: `let x = foo.opt_x.as_ref()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:476:5
+  --> tests/ui/question_mark.rs:481:5
    |
 LL | /     let Some(ref mut x) = foo.opt_x else {
 LL | |         return None;
@@ -232,7 +232,7 @@ LL | |     };
    | |______^ help: replace it with: `let x = foo.opt_x.as_mut()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:487:5
+  --> tests/ui/question_mark.rs:492:5
    |
 LL | /     let Some(ref x @ ref y) = foo.opt_x else {
 LL | |         return None;
@@ -240,7 +240,7 @@ LL | |     };
    | |______^ help: replace it with: `let x @ y = foo.opt_x.as_ref()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:491:5
+  --> tests/ui/question_mark.rs:496:5
    |
 LL | /     let Some(ref x @ WrapperStructWithString(_)) = bar else {
 LL | |         return None;
@@ -248,7 +248,7 @@ LL | |     };
    | |______^ help: replace it with: `let x @ &WrapperStructWithString(_) = bar.as_ref()?;`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:495:5
+  --> tests/ui/question_mark.rs:500:5
    |
 LL | /     let Some(ref mut x @ WrapperStructWithString(_)) = bar else {
 LL | |         return None;
@@ -256,7 +256,7 @@ LL | |     };
    | |______^ help: replace it with: `let x @ &mut WrapperStructWithString(_) = bar.as_mut()?;`
 
 error: this block may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:517:5
+  --> tests/ui/question_mark.rs:522:5
    |
 LL | /     if arg.is_none() {
 LL | |
@@ -265,7 +265,7 @@ LL | |     }
    | |_____^ help: replace it with: `arg?;`
 
 error: this `match` expression can be replaced with `?`
-  --> tests/ui/question_mark.rs:521:15
+  --> tests/ui/question_mark.rs:526:15
    |
 LL |       let val = match arg {
    |  _______________^
@@ -276,7 +276,7 @@ LL | |     };
    | |_____^ help: try instead: `arg?`
 
 error: this `let...else` may be rewritten with the `?` operator
-  --> tests/ui/question_mark.rs:531:5
+  --> tests/ui/question_mark.rs:536:5
    |
 LL | /     let Some(a) = *a else {
 LL | |         return None;

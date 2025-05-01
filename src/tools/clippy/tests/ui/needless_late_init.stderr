@@ -276,7 +276,7 @@ LL ~     };
    |
 
 error: unneeded late initialization
-  --> tests/ui/needless_late_init.rs:302:5
+  --> tests/ui/needless_late_init.rs:300:5
    |
 LL |     let r;
    |     ^^^^^^ created here

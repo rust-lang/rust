@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::is_in_test;
 use clippy_utils::macros::{FormatArgsStorage, MacroCall, format_arg_removal_span, root_macro_call_first_node};
 use clippy_utils::source::{SpanRangeExt, expand_past_previous_comma};
+use clippy_utils::{is_in_test, sym};
 use rustc_ast::token::LitKind;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgs, FormatArgsPiece, FormatOptions, FormatPlaceholder,
@@ -12,7 +12,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, Span, sym};
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -359,7 +359,7 @@ fn is_debug_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
 }
 
 fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &MacroCall, name: &str) {
-    let Some(FormatArgsPiece::Literal(last)) = format_args.template.last() else {
+    let Some(&FormatArgsPiece::Literal(last)) = format_args.template.last() else {
         return;
     };
 
@@ -401,7 +401,7 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &Ma
                     return;
                 };
 
-                if format_args.template.len() == 1 && last.as_str() == "\n" {
+                if format_args.template.len() == 1 && last == sym::LF {
                     // print!("\n"), write!(f, "\n")
 
                     diag.multipart_suggestion(
@@ -427,9 +427,7 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &Ma
 }
 
 fn check_empty_string(cx: &LateContext<'_>, format_args: &FormatArgs, macro_call: &MacroCall, name: &str) {
-    if let [FormatArgsPiece::Literal(literal)] = &format_args.template[..]
-        && literal.as_str() == "\n"
-    {
+    if let [FormatArgsPiece::Literal(sym::LF)] = &format_args.template[..] {
         let mut span = format_args.span;
 
         let lint = if name == "writeln" {

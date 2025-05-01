@@ -103,3 +103,39 @@ fn main() {
 
     external!({ if let 2 = $a {} });
 }
+
+mod issue8710 {
+    fn str_ref(cs: &[char]) {
+        if let Some('i') = cs.iter().next() {
+            //~^ equatable_if_let
+        } else {
+            todo!();
+        }
+    }
+
+    fn i32_ref(cs: &[i32]) {
+        if let Some(1) = cs.iter().next() {
+            //~^ equatable_if_let
+        } else {
+            todo!();
+        }
+    }
+
+    fn enum_ref() {
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+        enum MyEnum {
+            A(i32),
+            B,
+        }
+
+        fn get_enum() -> Option<&'static MyEnum> {
+            todo!()
+        }
+
+        if let Some(MyEnum::B) = get_enum() {
+            //~^ equatable_if_let
+        } else {
+            todo!();
+        }
+    }
+}

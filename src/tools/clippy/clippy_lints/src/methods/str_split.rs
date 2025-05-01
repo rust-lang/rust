@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::sym;
 use clippy_utils::visitors::is_const_evaluatable;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -19,7 +20,7 @@ pub(super) fn check<'a>(cx: &LateContext<'a>, expr: &'_ Expr<'_>, split_recv: &'
         && !is_const_evaluatable(cx, trim_recv)
         && let ExprKind::Lit(split_lit) = split_arg.kind
         && (matches!(split_lit.node, LitKind::Char('\n'))
-            || matches!(split_lit.node, LitKind::Str(sym, _) if (sym.as_str() == "\n" || sym.as_str() == "\r\n")))
+            || matches!(split_lit.node, LitKind::Str(sym::LF | sym::CRLF, _)))
     {
         let mut app = Applicability::MaybeIncorrect;
         span_lint_and_sugg(

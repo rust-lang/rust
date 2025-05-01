@@ -1,4 +1,6 @@
-
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
@@ -118,5 +120,27 @@ mod issue9949 {
     fn main() {
         #[doc = "documentation"]
         ()
+    }
+}
+
+mod issue14577 {
+    trait Unit {}
+    impl Unit for () {}
+
+    fn run<R: Unit>(f: impl FnOnce() -> R) {
+        f();
+    }
+
+    #[allow(dependency_on_unit_never_type_fallback)]
+    fn bar() {
+        run(|| -> () { todo!() }); 
+        //~[edition2021]^ unused_unit
+    }
+
+    struct UnitStruct;
+    impl UnitStruct {
+        fn apply<F: for<'c> Fn(&'c mut Self)>(&mut self, f: F) {
+            todo!()
+        }
     }
 }
