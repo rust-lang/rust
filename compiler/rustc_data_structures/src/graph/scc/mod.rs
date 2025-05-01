@@ -10,10 +10,11 @@
 
 use std::assert_matches::debug_assert_matches;
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::ops::Range;
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
@@ -48,6 +49,25 @@ pub trait Annotation: Debug + Copy {
     }
 }
 
+/// An accumulator for annotations.
+pub trait Annotations<N: Idx> {
+    type Ann: Annotation;
+    type SccIdx: Idx + Ord;
+
+    fn new(&self, element: N) -> Self::Ann;
+    fn annotate_scc(&mut self, scc: Self::SccIdx, annotation: Self::Ann);
+}
+
+/// The nil annotation accumulator, which does nothing.
+struct NoAnnotations<S: Idx + Ord>(PhantomData<S>);
+
+impl<N: Idx, S: Idx + Ord> Annotations<N> for NoAnnotations<S> {
+    type SccIdx = S;
+    type Ann = ();
+    fn new(&self, _element: N) {}
+    fn annotate_scc(&mut self, _scc: S, _annotation: ()) {}
+}
+
 /// The empty annotation, which does nothing.
 impl Annotation for () {
     fn merge_reached(self, _other: Self) -> Self {
@@ -62,23 +82,20 @@ impl Annotation for () {
 /// the index type for the graph nodes and `S` is the index type for
 /// the SCCs. We can map from each node to the SCC that it
 /// participates in, and we also have the successors of each SCC.
-pub struct Sccs<N: Idx, S: Idx, A: Annotation = ()> {
+pub struct Sccs<N: Idx, S: Idx> {
     /// For each node, what is the SCC index of the SCC to which it
     /// belongs.
     scc_indices: IndexVec<N, S>,
 
     /// Data about all the SCCs.
-    scc_data: SccData<S, A>,
+    scc_data: SccData<S>,
 }
 
 /// Information about an invidividual SCC node.
-struct SccDetails<A: Annotation> {
+struct SccDetails {
     /// For this SCC, the range of `all_successors` where its
     /// successors can be found.
     range: Range<usize>,
-
-    /// User-specified metadata about the SCC.
-    annotation: A,
 }
 
 // The name of this struct should discourage you from making it public and leaking
@@ -87,10 +104,10 @@ struct SccDetails<A: Annotation> {
 // is difficult when it's publicly inspectable.
 //
 // Obey the law of Demeter!
-struct SccData<S: Idx, A: Annotation> {
+struct SccData<S: Idx> {
     /// Maps SCC indices to their metadata, including
     /// offsets into `all_successors`.
-    scc_details: IndexVec<S, SccDetails<A>>,
+    scc_details: IndexVec<S, SccDetails>,
 
     /// Contains the successors for all the Sccs, concatenated. The
     /// range of indices corresponding to a given SCC is found in its
@@ -98,24 +115,18 @@ struct SccData<S: Idx, A: Annotation> {
     all_successors: Vec<S>,
 }
 
-impl<N: Idx, S: Idx + Ord> Sccs<N, S, ()> {
+impl<N: Idx, S: Idx + Ord> Sccs<N, S> {
     /// Compute SCCs without annotations.
     pub fn new(graph: &impl Successors<Node = N>) -> Self {
-        Self::new_with_annotation(graph, |_| ())
+        Self::new_with_annotation(graph, &mut NoAnnotations(PhantomData::<S>))
     }
-}
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> Sccs<N, S, A> {
     /// Compute SCCs and annotate them with a user-supplied annotation
-    pub fn new_with_annotation<F: Fn(N) -> A>(
+    pub fn new_with_annotation<A: Annotations<N, SccIdx = S>>(
         graph: &impl Successors<Node = N>,
-        to_annotation: F,
+        annotations: &mut A,
     ) -> Self {
-        SccsConstruction::construct(graph, to_annotation)
-    }
-
-    pub fn annotation(&self, scc: S) -> A {
-        self.scc_data.annotation(scc)
+        SccsConstruction::construct(graph, annotations)
     }
 
     pub fn scc_indices(&self) -> &IndexSlice<N, S> {
@@ -160,7 +171,7 @@ impl<N: Idx, S: Idx + Ord, A: Annotation> Sccs<N, S, A> {
     }
 }
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> DirectedGraph for Sccs<N, S, A> {
+impl<N: Idx, S: Idx + Ord> DirectedGraph for Sccs<N, S> {
     type Node = S;
 
     fn num_nodes(&self) -> usize {
@@ -168,19 +179,19 @@ impl<N: Idx, S: Idx + Ord, A: Annotation> DirectedGraph for Sccs<N, S, A> {
     }
 }
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> NumEdges for Sccs<N, S, A> {
+impl<N: Idx, S: Idx + Ord> NumEdges for Sccs<N, S> {
     fn num_edges(&self) -> usize {
         self.scc_data.all_successors.len()
     }
 }
 
-impl<N: Idx, S: Idx + Ord, A: Annotation> Successors for Sccs<N, S, A> {
+impl<N: Idx, S: Idx + Ord> Successors for Sccs<N, S> {
     fn successors(&self, node: S) -> impl Iterator<Item = Self::Node> {
         self.successors(node).iter().cloned()
     }
 }
 
-impl<S: Idx, A: Annotation> SccData<S, A> {
+impl<S: Idx> SccData<S> {
     /// Number of SCCs,
     fn len(&self) -> usize {
         self.scc_details.len()
@@ -192,9 +203,8 @@ impl<S: Idx, A: Annotation> SccData<S, A> {
     }
 
     /// Creates a new SCC with `successors` as its successors and
-    /// the maximum weight of its internal nodes `scc_max_weight` and
     /// returns the resulting index.
-    fn create_scc(&mut self, successors: impl IntoIterator<Item = S>, annotation: A) -> S {
+    fn create_scc(&mut self, successors: impl IntoIterator<Item = S>) -> S {
         // Store the successors on `scc_successors_vec`, remembering
         // the range of indices.
         let all_successors_start = self.all_successors.len();
@@ -202,35 +212,28 @@ impl<S: Idx, A: Annotation> SccData<S, A> {
         let all_successors_end = self.all_successors.len();
 
         debug!(
-            "create_scc({:?}) successors={:?}, annotation={:?}",
+            "create_scc({:?}) successors={:?}",
             self.len(),
             &self.all_successors[all_successors_start..all_successors_end],
-            annotation
         );
 
         let range = all_successors_start..all_successors_end;
-        let metadata = SccDetails { range, annotation };
+        let metadata = SccDetails { range };
         self.scc_details.push(metadata)
-    }
-
-    fn annotation(&self, scc: S) -> A {
-        self.scc_details[scc].annotation
     }
 }
 
-struct SccsConstruction<'c, G, S, A, F>
+struct SccsConstruction<'c, 'a, G, A>
 where
     G: DirectedGraph + Successors,
-    S: Idx,
-    A: Annotation,
-    F: Fn(G::Node) -> A,
+    A: Annotations<G::Node>,
 {
     graph: &'c G,
 
     /// The state of each node; used during walk to record the stack
     /// and after walk to record what cycle each node ended up being
     /// in.
-    node_states: IndexVec<G::Node, NodeState<G::Node, S, A>>,
+    node_states: IndexVec<G::Node, NodeState<G::Node, A::SccIdx, A::Ann>>,
 
     /// The stack of nodes that we are visiting as part of the DFS.
     node_stack: Vec<G::Node>,
@@ -239,23 +242,21 @@ where
     /// position in this stack, and when we encounter a successor SCC,
     /// we push it on the stack. When we complete an SCC, we can pop
     /// everything off the stack that was found along the way.
-    successors_stack: Vec<S>,
+    successors_stack: Vec<A::SccIdx>,
 
     /// A set used to strip duplicates. As we accumulate successors
     /// into the successors_stack, we sometimes get duplicate entries.
     /// We use this set to remove those -- we also keep its storage
     /// around between successors to amortize memory allocation costs.
-    duplicate_set: FxHashSet<S>,
+    duplicate_set: FxHashSet<A::SccIdx>,
 
-    scc_data: SccData<S, A>,
+    scc_data: SccData<A::SccIdx>,
 
-    /// A function that constructs an initial SCC annotation
-    /// out of a single node.
-    to_annotation: F,
+    annotations: &'a mut A,
 }
 
 #[derive(Copy, Clone, Debug)]
-enum NodeState<N, S, A> {
+enum NodeState<N, S, A: Annotation> {
     /// This node has not yet been visited as part of the DFS.
     ///
     /// After SCC construction is complete, this state ought to be
@@ -286,7 +287,7 @@ enum NodeState<N, S, A> {
 
 /// The state of walking a given node.
 #[derive(Copy, Clone, Debug)]
-enum WalkReturn<S, A> {
+enum WalkReturn<S, A: Annotation> {
     /// The walk found a cycle, but the entire component is not known to have
     /// been fully walked yet. We only know the minimum depth of  this
     /// component in a minimum spanning tree of the graph. This component
@@ -299,12 +300,10 @@ enum WalkReturn<S, A> {
     Complete { scc_index: S, annotation: A },
 }
 
-impl<'c, G, S, A, F> SccsConstruction<'c, G, S, A, F>
+impl<'c, 'a, G, A> SccsConstruction<'c, 'a, G, A>
 where
     G: DirectedGraph + Successors,
-    S: Idx,
-    F: Fn(G::Node) -> A,
-    A: Annotation,
+    A: Annotations<G::Node>,
 {
     /// Identifies SCCs in the graph `G` and computes the resulting
     /// DAG. This uses a variant of [Tarjan's
@@ -320,7 +319,7 @@ where
     /// Additionally, we keep track of a current annotation of the SCC.
     ///
     /// [wikipedia]: https://bit.ly/2EZIx84
-    fn construct(graph: &'c G, to_annotation: F) -> Sccs<G::Node, S, A> {
+    fn construct(graph: &'c G, annotations: &'a mut A) -> Sccs<G::Node, A::SccIdx> {
         let num_nodes = graph.num_nodes();
 
         let mut this = Self {
@@ -330,7 +329,7 @@ where
             successors_stack: Vec::new(),
             scc_data: SccData { scc_details: IndexVec::new(), all_successors: Vec::new() },
             duplicate_set: FxHashSet::default(),
-            to_annotation,
+            annotations,
         };
 
         let scc_indices = graph
@@ -346,7 +345,7 @@ where
         Sccs { scc_indices, scc_data: this.scc_data }
     }
 
-    fn start_walk_from(&mut self, node: G::Node) -> WalkReturn<S, A> {
+    fn start_walk_from(&mut self, node: G::Node) -> WalkReturn<A::SccIdx, A::Ann> {
         self.inspect_node(node).unwrap_or_else(|| self.walk_unvisited_node(node))
     }
 
@@ -362,7 +361,7 @@ where
     /// Otherwise, we are looking at a node that has already been
     /// completely visited. We therefore return `WalkReturn::Complete`
     /// with its associated SCC index.
-    fn inspect_node(&mut self, node: G::Node) -> Option<WalkReturn<S, A>> {
+    fn inspect_node(&mut self, node: G::Node) -> Option<WalkReturn<A::SccIdx, A::Ann>> {
         Some(match self.find_state(node) {
             NodeState::InCycle { scc_index, annotation } => {
                 WalkReturn::Complete { scc_index, annotation }
@@ -385,7 +384,7 @@ where
     /// of `r2` (and updates `r` to reflect current result). This is
     /// basically the "find" part of a standard union-find algorithm
     /// (with path compression).
-    fn find_state(&mut self, mut node: G::Node) -> NodeState<G::Node, S, A> {
+    fn find_state(&mut self, mut node: G::Node) -> NodeState<G::Node, A::SccIdx, A::Ann> {
         // To avoid recursion we temporarily reuse the `parent` of each
         // InCycleWith link to encode a downwards link while compressing
         // the path. After we have found the root or deepest node being
@@ -408,7 +407,7 @@ where
         // a potentially derived version of the root state for non-root nodes in the chain.
         let (root_state, assigned_state) = {
             loop {
-                debug!("find_state(r = {node:?} in state {:?})", self.node_states[node]);
+                trace!("find_state(r = {node:?} in state {:?})", self.node_states[node]);
                 match self.node_states[node] {
                     // This must have been the first and only state since it is unexplored*;
                     // no update needed! * Unless there is a bug :')
@@ -482,7 +481,7 @@ where
             if previous_node == node {
                 return root_state;
             }
-            debug!("Compressing {node:?} down to {previous_node:?} with state {assigned_state:?}");
+            trace!("Compressing {node:?} down to {previous_node:?} with state {assigned_state:?}");
 
             // Update to previous node in the link.
             match self.node_states[previous_node] {
@@ -507,9 +506,9 @@ where
     /// Call this method when `inspect_node` has returned `None`. Having the
     /// caller decide avoids mutual recursion between the two methods and allows
     /// us to maintain an allocated stack for nodes on the path between calls.
-    #[instrument(skip(self, initial), level = "debug")]
-    fn walk_unvisited_node(&mut self, initial: G::Node) -> WalkReturn<S, A> {
-        debug!("Walk unvisited node: {initial:?}");
+    #[instrument(skip(self, initial), level = "trace")]
+    fn walk_unvisited_node(&mut self, initial: G::Node) -> WalkReturn<A::SccIdx, A::Ann> {
+        trace!("Walk unvisited node: {initial:?}");
         struct VisitingNodeFrame<G: DirectedGraph, Successors, A> {
             node: G::Node,
             successors: Option<Successors>,
@@ -537,7 +536,7 @@ where
             successors_len: 0,
             min_cycle_root: initial,
             successor_node: initial,
-            current_component_annotation: (self.to_annotation)(initial),
+            current_component_annotation: self.annotations.new(initial),
         }];
 
         let mut return_value = None;
@@ -556,11 +555,7 @@ where
             let node = *node;
             let depth = *depth;
 
-            // node is definitely in the current component, add it to the annotation.
-            if node != initial {
-                current_component_annotation.update_scc((self.to_annotation)(node));
-            }
-            debug!(
+            trace!(
                 "Visiting {node:?} at depth {depth:?}, annotation: {current_component_annotation:?}"
             );
 
@@ -568,7 +563,7 @@ where
                 Some(successors) => successors,
                 None => {
                     // This None marks that we still have the initialize this node's frame.
-                    debug!(?depth, ?node);
+                    trace!(?depth, ?node);
 
                     debug_assert_matches!(self.node_states[node], NodeState::NotVisited);
 
@@ -598,7 +593,7 @@ where
                 return_value.take().into_iter().map(|walk| (*successor_node, Some(walk)));
 
             let successor_walk = successors.map(|successor_node| {
-                debug!(?node, ?successor_node);
+                trace!(?node, ?successor_node);
                 (successor_node, self.inspect_node(successor_node))
             });
             for (successor_node, walk) in returned_walk.chain(successor_walk) {
@@ -609,13 +604,13 @@ where
                         min_depth: successor_min_depth,
                         annotation: successor_annotation,
                     }) => {
-                        debug!(
+                        trace!(
                             "Cycle found from {node:?}, minimum depth: {successor_min_depth:?}, annotation: {successor_annotation:?}"
                         );
                         // Track the minimum depth we can reach.
                         assert!(successor_min_depth <= depth);
                         if successor_min_depth < *min_depth {
-                            debug!(?node, ?successor_min_depth);
+                            trace!(?node, ?successor_min_depth);
                             *min_depth = successor_min_depth;
                             *min_cycle_root = successor_node;
                         }
@@ -627,20 +622,20 @@ where
                         scc_index: successor_scc_index,
                         annotation: successor_annotation,
                     }) => {
-                        debug!(
+                        trace!(
                             "Complete; {node:?} is root of complete-visited SCC idx {successor_scc_index:?} with annotation {successor_annotation:?}"
                         );
                         // Push the completed SCC indices onto
                         // the `successors_stack` for later.
-                        debug!(?node, ?successor_scc_index);
+                        trace!(?node, ?successor_scc_index);
                         successors_stack.push(successor_scc_index);
                         current_component_annotation.update_reachable(successor_annotation);
                     }
                     // `node` has no more (direct) successors; search recursively.
                     None => {
                         let depth = depth + 1;
-                        debug!("Recursing down into {successor_node:?} at depth {depth:?}");
-                        debug!(?depth, ?successor_node);
+                        trace!("Recursing down into {successor_node:?} at depth {depth:?}");
+                        trace!(?depth, ?successor_node);
                         // Remember which node the return value will come from.
                         frame.successor_node = successor_node;
                         // Start a new stack frame, then step into it.
@@ -652,14 +647,14 @@ where
                             min_depth: depth,
                             min_cycle_root: successor_node,
                             successor_node,
-                            current_component_annotation: (self.to_annotation)(successor_node),
+                            current_component_annotation: self.annotations.new(successor_node),
                         });
                         continue 'recurse;
                     }
                 }
             }
 
-            debug!("Finished walk from {node:?} with annotation: {current_component_annotation:?}");
+            trace!("Finished walk from {node:?} with annotation: {current_component_annotation:?}");
 
             // Completed walk, remove `node` from the stack.
             let r = self.node_stack.pop();
@@ -691,8 +686,9 @@ where
 
                 debug!("Creating SCC rooted in {node:?} with successor {:?}", frame.successor_node);
 
-                let scc_index =
-                    self.scc_data.create_scc(deduplicated_successors, current_component_annotation);
+                let scc_index = self.scc_data.create_scc(deduplicated_successors);
+
+                self.annotations.annotate_scc(scc_index, current_component_annotation);
 
                 self.node_states[node] =
                     NodeState::InCycle { scc_index, annotation: current_component_annotation };
