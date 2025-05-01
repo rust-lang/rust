@@ -10,7 +10,6 @@ use std::{fmt, iter, slice};
 use itertools::Either;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use super::old_dense_bit_set::DenseBitSet as OldDenseBitSet;
 use super::{
     BitRelations, CHUNK_WORDS, Chunk, ChunkedBitSet, WORD_BITS, Word, word_index_and_mask,
 };
@@ -781,7 +780,6 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for DenseBitSet<T> {
 impl<S: Encoder, T> Encodable<S> for DenseBitSet<T> {
     #[inline(never)] // FIXME: For profiling purposes
     fn encode(&self, s: &mut S) {
-        /* FIXME: This is new incompatable encoding
         // The encoding is as follows:
         //
         // The `inline` and `empty_unallocated` variants are encoded as a single `Word`. Here, we
@@ -810,21 +808,12 @@ impl<S: Encoder, T> Encodable<S> for DenseBitSet<T> {
             debug_assert!(word >> WORD_BITS - 2 != 0, "the 2 most significant bits must not be 0");
             word.encode(s);
         }
-        */
-
-        // Old compatable encoding.
-        let mut old_set = OldDenseBitSet::<usize>::new_empty(self.capacity());
-        for x in self.iter_usizes() {
-            old_set.insert(x);
-        }
-        old_set.encode(s);
     }
 }
 
 impl<D: Decoder, T> Decodable<D> for DenseBitSet<T> {
     #[inline(never)] // FIXME: For profiling purposes
     fn decode(d: &mut D) -> Self {
-        /* FIXME: This is new incompatable decoding.
         // First we read one `Word` and check the variant.
         let word = Word::decode(d);
         if word >> WORD_BITS - 2 == 0x0 {
@@ -853,15 +842,6 @@ impl<D: Decoder, T> Decodable<D> for DenseBitSet<T> {
             // and the union is `repr(C)`.
             Self { inline: word }
         }
-        */
-
-        // Old compatable decoding.
-        let old_set = OldDenseBitSet::<usize>::decode(d);
-        let mut set = Self::new_empty(old_set.domain_size());
-        for x in old_set.iter() {
-            set.insert_usize(x);
-        }
-        set
     }
 }
 
