@@ -1,7 +1,12 @@
 
-running 2 tests
-test $DIR/dead-code-module-2.rs - my_mod::f (line 16) - compile ... FAILED
+running 1 test
 test $DIR/dead-code-module-2.rs - g (line 24) - compile ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+
+
+running 1 test
+test $DIR/dead-code-module-2.rs - my_mod::f (line 16) - compile ... FAILED
 
 failures:
 
@@ -26,5 +31,5 @@ Couldn't compile the test.
 failures:
     $DIR/dead-code-module-2.rs - my_mod::f (line 16)
 
-test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in $TIME
 

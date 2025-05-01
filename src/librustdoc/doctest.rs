@@ -5,6 +5,7 @@ mod runner;
 mod rust;
 
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
@@ -14,7 +15,7 @@ use std::{panic, str};
 
 pub(crate) use make::{BuildDocTestBuilder, DocTestBuilder};
 pub(crate) use markdown::test as test_markdown;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHasher, FxIndexMap, FxIndexSet};
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagCtxtHandle};
 use rustc_hir as hir;
@@ -281,7 +282,7 @@ pub(crate) fn run_tests(
     rustdoc_options: &Arc<RustdocOptions>,
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
-    mergeable_tests: FxIndexMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
+    mergeable_tests: FxIndexMap<MergeableTestKey, Vec<(DocTestBuilder, ScrapedDocTest)>>,
     // We pass this argument so we can drop it manually before using `exit`.
     mut temp_dir: Option<TempDir>,
 ) {
@@ -296,7 +297,7 @@ pub(crate) fn run_tests(
     let mut ran_edition_tests = 0;
     let target_str = rustdoc_options.target.to_string();
 
-    for (edition, mut doctests) in mergeable_tests {
+    for (MergeableTestKey { edition, global_crate_attrs_hash }, mut doctests) in mergeable_tests {
         if doctests.is_empty() {
             continue;
         }
@@ -306,8 +307,8 @@ pub(crate) fn run_tests(
 
         let rustdoc_test_options = IndividualTestOptions::new(
             rustdoc_options,
-            &Some(format!("merged_doctest_{edition}")),
-            PathBuf::from(format!("doctest_{edition}.rs")),
+            &Some(format!("merged_doctest_{edition}_{global_crate_attrs_hash}")),
+            PathBuf::from(format!("doctest_{edition}_{global_crate_attrs_hash}.rs")),
         );
 
         for (doctest, scraped_test) in &doctests {
@@ -887,9 +888,15 @@ pub(crate) trait DocTestVisitor {
     fn visit_header(&mut self, _name: &str, _level: u32) {}
 }
 
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub(crate) struct MergeableTestKey {
+    edition: Edition,
+    global_crate_attrs_hash: u64,
+}
+
 struct CreateRunnableDocTests {
     standalone_tests: Vec<test::TestDescAndFn>,
-    mergeable_tests: FxIndexMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
+    mergeable_tests: FxIndexMap<MergeableTestKey, Vec<(DocTestBuilder, ScrapedDocTest)>>,
 
     rustdoc_options: Arc<RustdocOptions>,
     opts: GlobalTestOptions,
@@ -957,7 +964,17 @@ impl CreateRunnableDocTests {
             let test_desc = self.generate_test_desc_and_fn(doctest, scraped_test);
             self.standalone_tests.push(test_desc);
         } else {
-            self.mergeable_tests.entry(edition).or_default().push((doctest, scraped_test));
+            self.mergeable_tests
+                .entry(MergeableTestKey {
+                    edition,
+                    global_crate_attrs_hash: {
+                        let mut hasher = FxHasher::default();
+                        scraped_test.global_crate_attrs.hash(&mut hasher);
+                        hasher.finish()
+                    },
+                })
+                .or_default()
+                .push((doctest, scraped_test));
         }
     }
 
