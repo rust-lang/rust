@@ -102,6 +102,9 @@ impl Stability {
 // check whether they're named already elsewhere in rust
 // e.g. in stdarch and whether the given name matches LLVM's
 // if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted.
+// Additionally, if the feature is not available in older version of LLVM supported by the current
+// rust, the same function must be updated to filter out these features to avoid triggering
+// warnings.
 //
 // Also note that all target features listed here must be purely additive: for target_feature 1.1 to
 // be sound, we can never allow features like `+soft-float` (on x86) to be controlled on a
