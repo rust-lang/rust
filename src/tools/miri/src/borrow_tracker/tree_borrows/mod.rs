@@ -123,6 +123,10 @@ struct NewPermission {
     /// Whether this pointer is part of the arguments of a function call.
     /// `protector` is `Some(_)` for all pointers marked `noalias`.
     protector: Option<ProtectorKind>,
+    /// Whether a read should be performed on a retag.  This should be `false`
+    /// for `Cell` because this could cause data races when using thread-safe
+    /// data types like `Mutex<T>`.
+    initial_read: bool,
 }
 
 impl<'tcx> NewPermission {
@@ -141,18 +145,19 @@ impl<'tcx> NewPermission {
         // To eliminate the case of Protected Reserved IM we override interior mutability
         // in the case of a protected reference: protected references are always considered
         // "freeze" in their reservation phase.
-        let initial_state = match mutability {
-            Mutability::Mut if ty_is_unpin => Permission::new_reserved(ty_is_freeze, is_protected),
-            Mutability::Not if ty_is_freeze => Permission::new_frozen(),
+        let (initial_state, initial_read) = match mutability {
+            Mutability::Mut if ty_is_unpin =>
+                (Permission::new_reserved(ty_is_freeze, is_protected), true),
+            Mutability::Not if ty_is_freeze => (Permission::new_frozen(), true),
+            Mutability::Not if !ty_is_freeze => (Permission::new_cell(), false),
             // Raw pointers never enter this function so they are not handled.
             // However raw pointers are not the only pointers that take the parent
-            // tag, this also happens for `!Unpin` `&mut`s and interior mutable
-            // `&`s, which are excluded above.
+            // tag, this also happens for `!Unpin` `&mut`s, which are excluded above.
             _ => return None,
         };
 
         let protector = is_protected.then_some(ProtectorKind::StrongProtector);
-        Some(Self { zero_size: false, initial_state, protector })
+        Some(Self { zero_size: false, initial_state, protector, initial_read })
     }
 
     /// Compute permission for `Box`-like type (`Box` always, and also `Unique` if enabled).
@@ -175,6 +180,7 @@ impl<'tcx> NewPermission {
                 zero_size,
                 initial_state,
                 protector: protected.then_some(ProtectorKind::WeakProtector),
+                initial_read: true,
             }
         })
     }
@@ -289,13 +295,15 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let mut tree_borrows = alloc_extra.borrow_tracker_tb().borrow_mut();
 
         // All reborrows incur a (possibly zero-sized) read access to the parent
-        tree_borrows.perform_access(
-            orig_tag,
-            Some((range, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
-            this.machine.borrow_tracker.as_ref().unwrap(),
-            alloc_id,
-            this.machine.current_span(),
-        )?;
+        if new_perm.initial_read {
+            tree_borrows.perform_access(
+                orig_tag,
+                Some((range, AccessKind::Read, diagnostics::AccessCause::Reborrow)),
+                this.machine.borrow_tracker.as_ref().unwrap(),
+                alloc_id,
+                this.machine.current_span(),
+            )?;
+        }
         // Record the parent-child pair in the tree.
         tree_borrows.new_child(
             orig_tag,
@@ -308,7 +316,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         drop(tree_borrows);
 
         // Also inform the data race model (but only if any bytes are actually affected).
-        if range.size.bytes() > 0 {
+        if range.size.bytes() > 0 && new_perm.initial_read {
             if let Some(data_race) = alloc_extra.data_race.as_ref() {
                 data_race.read(
                     alloc_id,
@@ -535,6 +543,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             initial_state: Permission::new_reserved(ty_is_freeze, /* protected */ true),
             zero_size: false,
             protector: Some(ProtectorKind::StrongProtector),
+            initial_read: true,
         };
         this.tb_retag_place(place, new_perm)
     }

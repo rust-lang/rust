@@ -6,16 +6,16 @@ mod utils;
 
 use std::cell::UnsafeCell;
 
-// UnsafeCells use the parent tag, so it is possible to use them with
+// UnsafeCells use the `Cell` state, so it is possible to use them with
 // few restrictions when only among themselves.
 fn main() {
     unsafe {
         let data = &mut UnsafeCell::new(0u8);
-        name!(data.get(), "data");
+        name!(data as *mut _, "data");
         let x = &*data;
-        name!(x.get(), "x");
+        name!(x as *const _, "x");
         let y = &*data;
-        name!(y.get(), "y");
+        name!(y as *const _, "y");
         let alloc_id = alloc_id!(data.get());
         print_state!(alloc_id);
         // y and x tolerate alternating Writes

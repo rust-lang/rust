@@ -103,7 +103,12 @@ fn unsafe_cell_invalidate() {
     let raw1 = &mut x as *mut _;
     let ref1 = unsafe { &mut *raw1 };
     let raw2 = ref1 as *mut _;
-    // Now the borrow stack is: raw1, ref2, raw2.
+    // Now the borrow tree is:
+    //
+    // Act x
+    // Res `- raw1
+    // Res    `- ref1, raw2
+    //
     // So using raw1 invalidates raw2.
     f(unsafe { mem::transmute(raw2) }, raw1);
 }
@@ -140,7 +145,7 @@ fn refcell_basic() {
     }
 }
 
-// Adding a Stacked Borrows protector for `Ref` would break this
+// Adding a protector for `Ref` would break this
 fn ref_protector() {
     fn break_it(rc: &RefCell<i32>, r: Ref<'_, i32>) {
         // `r` has a shared reference, it is passed in as argument and hence
