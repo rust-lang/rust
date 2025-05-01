@@ -813,12 +813,9 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     body
 }
 
-use rustc_middle::mir::NullOp;
-use rustc_middle::mir::Location;
-use rustc_middle::ty::TypeFlags;
-use rustc_middle::mir::visit::TyContext;
-use rustc_middle::ty::Ty;
-use rustc_middle::mir::visit::Visitor;
+use rustc_middle::mir::visit::{TyContext, Visitor};
+use rustc_middle::mir::{Location, NullOp};
+use rustc_middle::ty::{Ty, TypeFlags};
 
 struct MonoCompatVisitor {
     contains_alias: bool,
