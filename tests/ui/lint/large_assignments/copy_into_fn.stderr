@@ -12,18 +12,18 @@ LL | #![deny(large_assignments)]
    |         ^^^^^^^^^^^^^^^^^
 
 error: moving 9999 bytes
-  --> $DIR/copy_into_fn.rs:17:20
+  --> $DIR/copy_into_fn.rs:17:15
    |
 LL |     many_args(Data([0; 9999]), true, Data([0; 9999]));
-   |                    ^^^^^^^^^ value moved from here
+   |               ^^^^^^^^^^^^^^^ value moved from here
    |
    = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 error: moving 9999 bytes
-  --> $DIR/copy_into_fn.rs:17:43
+  --> $DIR/copy_into_fn.rs:17:38
    |
 LL |     many_args(Data([0; 9999]), true, Data([0; 9999]));
-   |                                           ^^^^^^^^^ value moved from here
+   |                                      ^^^^^^^^^^^^^^^ value moved from here
    |
    = note: The current maximum size is 1000, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 

@@ -90,65 +90,98 @@ fn operands(_1: u8) -> () {
     bb0: {
         _2 = [_1; 10];
         _4 = 0_usize;
-        _5 = true;
-        _3 = _1;
-        _8 = (9_usize, false);
-        _7 = 9_usize;
-        _9 = true;
-        _6 = _1;
-        _11 = &_3;
-        _12 = &_6;
-        _10 = (_11, _12);
-        _13 = _11;
-        _14 = _12;
-        _16 = _1;
-        _17 = _1;
-        _15 = true;
-        _21 = &_3;
-        _22 = _1;
-        _24 = &_22;
-        _25 = &_3;
-        _23 = (_24, _25);
-        _26 = _24;
-        _27 = _25;
-        _29 = _1;
-        _30 = _1;
-        _28 = true;
-        _34 = (_1, _1);
-        _35 = _1;
-        _36 = _1;
-        _38 = &_35;
-        _39 = &_36;
-        _37 = (_38, _39);
-        _40 = _38;
-        _41 = _39;
-        _43 = _1;
-        _44 = _1;
-        _42 = true;
-        _50 = &_2;
-        _49 = move _50 as &[u8];
-        _48 = 10_usize;
-        _52 = &_48;
-        _51 = std::mem::size_of_val::<usize>(_52) -> [return: bb1, unwind unreachable];
+        _5 = Lt(_4, 10_usize);
+        assert(move _5, "index out of bounds: the length is {} but the index is {}", 10_usize, _4) -> [success: bb1, unwind unreachable];
     }
     bb1: {
-        _54 = &_48;
-        _55 = &_51;
-        _53 = (_54, _55);
-        _56 = _54;
-        _57 = _55;
-        _59 = 10_usize;
-        _60 = _51;
-        _58 = Eq(10_usize, _51);
-        switchInt(move _58) -> [0: bb3, otherwise: bb2];
+        _3 = _2[_4];
+        _8 = CheckedSub(10_usize, 1_usize);
+        assert(!move (_8.1: bool), "attempt to compute `{} - {}`, which would overflow", 10_usize, 1_usize) -> [success: bb2, unwind unreachable];
     }
     bb2: {
-        return;
+        _7 = move (_8.0: usize);
+        _9 = Lt(_7, 10_usize);
+        assert(move _9, "index out of bounds: the length is {} but the index is {}", 10_usize, _7) -> [success: bb3, unwind unreachable];
     }
     bb3: {
+        _6 = _2[_7];
+        _11 = &_3;
+        _12 = &_6;
+        _10 = (move _11, move _12);
+        _13 = (_10.0: &u8);
+        _14 = (_10.1: &u8);
+        _16 = (*_13);
+        _17 = (*_14);
+        _15 = Eq(move _16, move _17);
+        switchInt(move _15) -> [0: bb5, otherwise: bb4];
+    }
+    bb4: {
+        _21 = &_3;
+        _22 = (*_21);
+        _24 = &_22;
+        _25 = &_3;
+        _23 = (move _24, move _25);
+        _26 = (_23.0: &u8);
+        _27 = (_23.1: &u8);
+        _29 = (*_26);
+        _30 = (*_27);
+        _28 = Eq(move _29, move _30);
+        switchInt(move _28) -> [0: bb7, otherwise: bb6];
+    }
+    bb5: {
+        _18 = core::panicking::AssertKind::Eq;
+        _20 = std::option::Option::None;
+        _19 = core::panicking::assert_failed::<u8, u8>(move _18, _13, _14, move _20) -> unwind unreachable;
+    }
+    bb6: {
+        _34 = (_3, _6);
+        _35 = (_34.0: u8);
+        _36 = (_34.0: u8);
+        _38 = &_35;
+        _39 = &_36;
+        _37 = (move _38, move _39);
+        _40 = (_37.0: &u8);
+        _41 = (_37.1: &u8);
+        _43 = (*_40);
+        _44 = (*_41);
+        _42 = Eq(move _43, move _44);
+        switchInt(move _42) -> [0: bb9, otherwise: bb8];
+    }
+    bb7: {
+        _31 = core::panicking::AssertKind::Eq;
+        _33 = std::option::Option::None;
+        _32 = core::panicking::assert_failed::<u8, u8>(move _31, _26, _27, move _33) -> unwind unreachable;
+    }
+    bb8: {
+        _50 = &_2;
+        _49 = move _50 as &[u8];
+        _48 = PtrMetadata(move _49);
+        _52 = &_48;
+        _51 = std::mem::size_of_val::<usize>(_52) -> [return: bb10, unwind unreachable];
+    }
+    bb9: {
+        _45 = core::panicking::AssertKind::Eq;
+        _47 = std::option::Option::None;
+        _46 = core::panicking::assert_failed::<u8, u8>(move _45, _40, _41, move _47) -> unwind unreachable;
+    }
+    bb10: {
+        _54 = &_48;
+        _55 = &_51;
+        _53 = (move _54, move _55);
+        _56 = (_53.0: &usize);
+        _57 = (_53.1: &usize);
+        _59 = (*_56);
+        _60 = (*_57);
+        _58 = Eq(move _59, move _60);
+        switchInt(move _58) -> [0: bb12, otherwise: bb11];
+    }
+    bb11: {
+        return;
+    }
+    bb12: {
         _61 = core::panicking::AssertKind::Eq;
         _63 = std::option::Option::None;
-        _62 = core::panicking::assert_failed::<usize, usize>(core::panicking::AssertKind::Eq, _54, _55, move _63) -> unwind unreachable;
+        _62 = core::panicking::assert_failed::<usize, usize>(move _61, _56, _57, move _63) -> unwind unreachable;
     }
 }
 fn operands::{constant#0}() -> usize {
@@ -169,9 +202,9 @@ fn more_operands() -> [Ctors; 3] {
     debug struct_like => _3;
     debug tup_like => _4;
     bb0: {
-        _1 = Dummy {{ c: 'a', i: i32::MIN }};
+        _1 = Dummy('a', core::num::<impl i32>::MIN);
         _2 = Ctors::Unit;
-        _3 = Ctors::StructLike(Dummy {{ c: 'a', i: i32::MIN }});
+        _3 = Ctors::StructLike(move _1);
         _4 = Ctors::TupLike(false);
         _0 = [move _2, move _3, move _4];
         return;

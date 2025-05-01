@@ -25,10 +25,11 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexVec;
+use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
-    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
-    SourceInfo, Statement, StatementKind, TerminatorKind,
+    Location, MirPhase, NullOp, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
+    START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
@@ -793,13 +794,13 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
     run_optimization_passes(tcx, &mut body);
 
-    let mut vis = MonoCompatVisitor { contains_alias: false, contains_ubcheck: false };
+    let mut vis = MonoCompatVisitor { contains_ubcheck: false };
     vis.visit_body(&body);
 
     // If the MIR is already monomorphic, we can transform it to codegen MIR right away.
     if !tcx.generics_of(did).requires_monomorphization(tcx)
         && !vis.contains_ubcheck
-        && !vis.contains_alias
+        && !body.has_aliases()
     {
         let instance = Instance::mono(tcx, did.into());
         body = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -807,35 +808,23 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
             ty::TypingEnv::fully_monomorphized(),
             ty::EarlyBinder::bind(body),
         );
-        transform_to_codegen_mir(tcx, &mut body);
+
+        // Monomoprhizing this body didn't reveal any new information that is useful for
+        // optimizations, so we just run passes that make the MIR ready for codegen backends.
+        pm::run_passes_no_validate(tcx, &mut body, &[&add_call_guards::CriticalCallEdges], None);
     }
 
     body
 }
 
-use rustc_middle::mir::visit::{TyContext, Visitor};
-use rustc_middle::mir::{Location, NullOp};
-use rustc_middle::ty::{Ty, TypeFlags};
-
 // FIXME: This visitor looks for properties of MIR that would forbid using optimized MIR as codegen
 // MIR.
-// Currently, it looks for NullOp::UbChecks because that must be resolved at codegen, and also for
-// type projections because those are the only way I've found to realize that we are generating MIR
-// for a body with an unsatisafiable predicate. Such bodies cannot be normalized, so we must not
-// try to create codegen MIR for them.
+// Currently, it looks for NullOp::UbChecks because that must be resolved at codegen.
 struct MonoCompatVisitor {
-    contains_alias: bool,
     contains_ubcheck: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
-    fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
-        debug!("{:?} {:?}", ty, ty.flags());
-        if ty.has_aliases() || ty.flags().contains(TypeFlags::HAS_TY_PROJECTION) {
-            self.contains_alias = true;
-        }
-    }
-
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::NullaryOp(NullOp::UbChecks, _) = rvalue {
             self.contains_ubcheck = true;
@@ -847,13 +836,13 @@ impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
 pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &'tcx Body<'tcx> {
     let body = tcx.instance_mir(instance.def);
 
-    let mut vis = MonoCompatVisitor { contains_alias: false, contains_ubcheck: false };
+    let mut vis = MonoCompatVisitor { contains_ubcheck: false };
     vis.visit_body(&body);
 
     // MIR for monomorphic defs has already been fully optimized in optimized_mir.
     let body = if instance.args.non_erasable_generics().next().is_some()
         || vis.contains_ubcheck
-        || vis.contains_alias
+        || body.has_aliases()
     {
         let mut body = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
