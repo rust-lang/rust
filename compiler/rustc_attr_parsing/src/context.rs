@@ -28,7 +28,7 @@ macro_rules! attribute_groups {
     ) => {
         type Accepts = BTreeMap<
             &'static [Symbol],
-            Vec<Box<dyn Send + Sync + Fn(&AcceptContext<'_>, &ArgParser<'_>)>>
+            Box<dyn Send + Sync + Fn(&AcceptContext<'_>, &ArgParser<'_>)>
         >;
         type Finalizes = Vec<
             Box<dyn Send + Sync + Fn(&FinalizeContext<'_>) -> Option<AttributeKind>>
@@ -43,11 +43,12 @@ macro_rules! attribute_groups {
                     };
 
                     for (k, v) in <$names>::ATTRIBUTES {
-                        accepts.entry(*k).or_default().push(Box::new(|cx, args| {
+                        let old = accepts.insert(*k, Box::new(|cx, args| {
                             STATE_OBJECT.with_borrow_mut(|s| {
                                 v(s, cx, args)
                             })
                         }));
+                        assert!(old.is_none());
                     }
 
                     finalizes.push(Box::new(|cx| {
@@ -267,15 +268,11 @@ impl<'sess> AttributeParser<'sess> {
                     let (path, args) = parser.deconstruct();
                     let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
 
-                    if let Some(accepts) = ATTRIBUTE_MAPPING.0.get(parts.as_slice()) {
-                        for f in accepts {
-                            let cx = AcceptContext {
-                                group_cx: &group_cx,
-                                attr_span: lower_span(attr.span),
-                            };
+                    if let Some(accept) = ATTRIBUTE_MAPPING.0.get(parts.as_slice()) {
+                        let cx =
+                            AcceptContext { group_cx: &group_cx, attr_span: lower_span(attr.span) };
 
-                            f(&cx, &args)
-                        }
+                        accept(&cx, &args)
                     } else {
                         // if we're here, we must be compiling a tool attribute... Or someone forgot to
                         // parse their fancy new attribute. Let's warn them in any case. If you are that
