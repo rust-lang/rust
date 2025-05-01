@@ -2,7 +2,9 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::source::{SpanRangeExt, snippet_with_context};
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{fulfill_or_allowed, get_item_name, get_parent_as_impl, is_trait_method, peel_ref_operators, sym};
+use clippy_utils::{
+    fulfill_or_allowed, get_parent_as_impl, is_trait_method, parent_item_name, peel_ref_operators, sym,
+};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -533,9 +535,7 @@ fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>
 
     if let (&ExprKind::MethodCall(method_path, receiver, [], _), ExprKind::Lit(lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
-        if let Some(name) = get_item_name(cx, method)
-            && name.as_str() == "is_empty"
-        {
+        if parent_item_name(cx, method) == Some(sym::is_empty) {
             return;
         }
 

@@ -4,6 +4,7 @@ use clippy_utils::{fn_def_id, get_enclosing_block, path_to_local_id};
 use rustc_ast::Mutability;
 use rustc_ast::visit::visit_opt;
 use rustc_errors::Applicability;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{Visitor, walk_block, walk_expr, walk_local};
 use rustc_hir::{Expr, ExprKind, HirId, LetStmt, Node, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -68,6 +69,7 @@ impl<'tcx> LateLintPass<'tcx> for ZombieProcesses {
                     let mut vis = WaitFinder {
                         cx,
                         local_id,
+                        body_id: cx.tcx.hir_enclosing_body_owner(expr.hir_id),
                         state: VisitorState::WalkUpToLocal,
                         early_return: None,
                         missing_wait_branch: None,
@@ -129,6 +131,7 @@ struct MaybeWait(Span);
 struct WaitFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     local_id: HirId,
+    body_id: LocalDefId,
     state: VisitorState,
     early_return: Option<Span>,
     // When joining two if branches where one of them doesn't call `wait()`, stores its span for more targeted help
@@ -186,7 +189,7 @@ impl<'tcx> Visitor<'tcx> for WaitFinder<'_, 'tcx> {
             }
         } else {
             match ex.kind {
-                ExprKind::Ret(e) => {
+                ExprKind::Ret(e) if self.cx.tcx.hir_enclosing_body_owner(ex.hir_id) == self.body_id => {
                     visit_opt!(self, visit_expr, e);
                     if self.early_return.is_none() {
                         self.early_return = Some(ex.span);

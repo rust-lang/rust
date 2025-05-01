@@ -3,13 +3,12 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
-use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id};
+use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id, sym};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::sym;
 
 use super::{UNNECESSARY_FILTER_MAP, UNNECESSARY_FIND_MAP};
 
@@ -95,7 +94,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             (true, true)
         },
         hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
-            if segment.ident.name.as_str() == "then_some"
+            if segment.ident.name == sym::then_some
                 && cx.typeck_results().expr_ty(recv).is_bool()
                 && path_to_local_id(arg, arg_id)
             {

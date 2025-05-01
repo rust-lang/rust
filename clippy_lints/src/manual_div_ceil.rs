@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::{SpanlessEq, sym};
 use rustc_ast::{BinOpKind, LitIntType, LitKind, UnOp};
@@ -199,9 +199,9 @@ fn build_suggestion(
     } else {
         format!("{dividend_sugg_str}{type_suffix}")
     };
-    let divisor_snippet = snippet_with_applicability(cx, rhs.span.source_callsite(), "..", applicability);
+    let divisor_snippet = snippet_with_context(cx, rhs.span, expr.span.ctxt(), "..", applicability);
 
-    let sugg = format!("{suggestion_before_div_ceil}.div_ceil({divisor_snippet})");
+    let sugg = format!("{suggestion_before_div_ceil}.div_ceil({})", divisor_snippet.0);
 
     span_lint_and_sugg(
         cx,

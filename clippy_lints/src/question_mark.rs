@@ -10,7 +10,7 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
     eq_expr_value, higher, is_else_clause, is_in_const_context, is_lint_allowed, is_path_lang_item, is_res_lang_ctor,
     pat_and_expr_can_be_question_mark, path_res, path_to_local, path_to_local_id, peel_blocks, peel_blocks_with_stmt,
-    span_contains_cfg, span_contains_comment,
+    span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -22,15 +22,14 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for expressions that could be replaced by the question mark operator.
+    /// Checks for expressions that could be replaced by the `?` operator.
     ///
     /// ### Why is this bad?
-    /// Question mark usage is more idiomatic.
+    /// Using the `?` operator is shorter and more idiomatic.
     ///
     /// ### Example
     /// ```ignore
@@ -47,7 +46,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub QUESTION_MARK,
     style,
-    "checks for expressions that could be replaced by the question mark operator"
+    "checks for expressions that could be replaced by the `?` operator"
 }
 
 pub struct QuestionMark {
@@ -207,8 +206,8 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
             is_type_diagnostic_item(cx, caller_ty, smbl)
                 && expr_return_none_or_err(smbl, cx, if_then, caller, None)
                 && match smbl {
-                    sym::Option => call_sym.as_str() == "is_none",
-                    sym::Result => call_sym.as_str() == "is_err",
+                    sym::Option => call_sym == sym::is_none,
+                    sym::Result => call_sym == sym::is_err,
                     _ => false,
                 }
         },
@@ -280,7 +279,7 @@ fn expr_return_none_or_err(
 /// }
 /// ```
 ///
-/// If it matches, it will suggest to use the question mark operator instead
+/// If it matches, it will suggest to use the `?` operator instead
 fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
     if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
         && !is_else_clause(cx.tcx, expr)
