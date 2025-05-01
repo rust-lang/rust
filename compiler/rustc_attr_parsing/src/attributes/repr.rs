@@ -21,7 +21,7 @@ pub(crate) struct ReprParser;
 
 impl CombineAttributeParser for ReprParser {
     type Item = (ReprAttr, Span);
-    const PATH: &'static [rustc_span::Symbol] = &[sym::repr];
+    const PATH: Symbol = sym::repr;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Repr;
 
     fn extend<'a>(

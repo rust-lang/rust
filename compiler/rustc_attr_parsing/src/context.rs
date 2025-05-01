@@ -27,7 +27,7 @@ macro_rules! attribute_groups {
         pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
         type Accepts = BTreeMap<
-            &'static [Symbol],
+            Symbol,
             Vec<Box<dyn Send + Sync + Fn(&AcceptContext<'_>, &ArgParser<'_>)>>
         >;
         type Finalizes = Vec<
@@ -267,7 +267,9 @@ impl<'sess> AttributeParser<'sess> {
                     let (path, args) = parser.deconstruct();
                     let parts = path.segments().map(|i| i.name).collect::<Vec<_>>();
 
-                    if let Some(accepts) = ATTRIBUTE_MAPPING.0.get(parts.as_slice()) {
+                    if let [part] = &parts[..]
+                        && let Some(accepts) = ATTRIBUTE_MAPPING.0.get(part)
+                    {
                         for f in accepts {
                             let cx = AcceptContext {
                                 group_cx: &group_cx,

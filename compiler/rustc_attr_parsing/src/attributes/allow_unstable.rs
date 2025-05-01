@@ -10,7 +10,7 @@ use crate::session_diagnostics;
 
 pub(crate) struct AllowInternalUnstableParser;
 impl CombineAttributeParser for AllowInternalUnstableParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::allow_internal_unstable];
+    const PATH: Symbol = sym::allow_internal_unstable;
     type Item = (Symbol, Span);
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowInternalUnstable;
 
@@ -18,13 +18,13 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
         cx: &'a AcceptContext<'a>,
         args: &'a ArgParser<'a>,
     ) -> impl IntoIterator<Item = Self::Item> + 'a {
-        parse_unstable(cx, args, Self::PATH[0]).into_iter().zip(iter::repeat(cx.attr_span))
+        parse_unstable(cx, args, Self::PATH).into_iter().zip(iter::repeat(cx.attr_span))
     }
 }
 
 pub(crate) struct AllowConstFnUnstableParser;
 impl CombineAttributeParser for AllowConstFnUnstableParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_allow_const_fn_unstable];
+    const PATH: Symbol = sym::rustc_allow_const_fn_unstable;
     type Item = Symbol;
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::AllowConstFnUnstable;
 
@@ -32,7 +32,7 @@ impl CombineAttributeParser for AllowConstFnUnstableParser {
         cx: &'a AcceptContext<'a>,
         args: &'a ArgParser<'a>,
     ) -> impl IntoIterator<Item = Self::Item> + 'a {
-        parse_unstable(cx, args, Self::PATH[0])
+        parse_unstable(cx, args, Self::PATH)
     }
 }
 
