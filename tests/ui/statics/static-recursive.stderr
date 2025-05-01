@@ -1,4 +1,4 @@
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-recursive.rs:3:36
    |
 LL | static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
@@ -12,7 +12,7 @@ help: use `&raw const` instead to create a raw pointer
 LL | static mut S: *const u8 = unsafe { &raw const S as *const *const u8 as *const u8 };
    |                                     +++++++++
 
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-recursive.rs:19:20
    |
 LL |         assert_eq!(S, *(S as *const *const u8));

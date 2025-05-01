@@ -15,10 +15,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{DefineOpaqueTypes, HigherRankedType, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, Upcast, elaborate};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
-use rustc_type_ir::elaborate;
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 

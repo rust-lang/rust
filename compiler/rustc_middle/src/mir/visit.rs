@@ -353,16 +353,20 @@ macro_rules! make_mir_visitor {
                             coroutine_closure_def_id: _def_id,
                             receiver_by_ref: _,
                         }
-                        | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, None)
                         | ty::InstanceKind::DropGlue(_def_id, None) => {}
 
                         ty::InstanceKind::FnPtrShim(_def_id, ty)
                         | ty::InstanceKind::DropGlue(_def_id, Some(ty))
                         | ty::InstanceKind::CloneShim(_def_id, ty)
                         | ty::InstanceKind::FnPtrAddrShim(_def_id, ty)
-                        | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, Some(ty)) => {
+                        | ty::InstanceKind::AsyncDropGlue(_def_id, ty)
+                        | ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, ty) => {
                             // FIXME(eddyb) use a better `TyContext` here.
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
+                        }
+                        ty::InstanceKind::FutureDropPollShim(_def_id, proxy_ty, impl_ty) => {
+                            self.visit_ty($(& $mutability)? *proxy_ty, TyContext::Location(location));
+                            self.visit_ty($(& $mutability)? *impl_ty, TyContext::Location(location));
                         }
                     }
                     self.visit_args(callee_args, location);
@@ -521,7 +525,14 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(discr, location);
                     }
 
-                    TerminatorKind::Drop { place, target: _, unwind: _, replace: _ } => {
+                    TerminatorKind::Drop {
+                        place,
+                        target: _,
+                        unwind: _,
+                        replace: _,
+                        drop: _,
+                        async_fut: _,
+                    } => {
                         self.visit_place(
                             place,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
@@ -634,7 +645,7 @@ macro_rules! make_mir_visitor {
                     OverflowNeg(op) | DivisionByZero(op) | RemainderByZero(op) => {
                         self.visit_operand(op, location);
                     }
-                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference | ResumedAfterDrop(_) => {
                         // Nothing to visit
                     }
                     MisalignedPointerDereference { required, found } => {

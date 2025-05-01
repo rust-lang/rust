@@ -23,6 +23,13 @@ impl<'tcx> Flags for Pattern<'tcx> {
                 FlagComputation::for_const_kind(&start.kind()).flags
                     | FlagComputation::for_const_kind(&end.kind()).flags
             }
+            ty::PatternKind::Or(pats) => {
+                let mut flags = pats[0].flags();
+                for pat in pats[1..].iter() {
+                    flags |= pat.flags();
+                }
+                flags
+            }
         }
     }
 
@@ -30,6 +37,13 @@ impl<'tcx> Flags for Pattern<'tcx> {
         match &**self {
             ty::PatternKind::Range { start, end } => {
                 start.outer_exclusive_binder().max(end.outer_exclusive_binder())
+            }
+            ty::PatternKind::Or(pats) => {
+                let mut idx = pats[0].outer_exclusive_binder();
+                for pat in pats[1..].iter() {
+                    idx = idx.max(pat.outer_exclusive_binder());
+                }
+                idx
             }
         }
     }
@@ -76,6 +90,19 @@ impl<'tcx> IrPrint<PatternKind<'tcx>> for TyCtxt<'tcx> {
                 }
 
                 write!(f, "..={end}")
+            }
+            PatternKind::Or(patterns) => {
+                write!(f, "(")?;
+                let mut first = true;
+                for pat in patterns {
+                    if first {
+                        first = false
+                    } else {
+                        write!(f, " | ")?;
+                    }
+                    write!(f, "{pat:?}")?;
+                }
+                write!(f, ")")
             }
         }
     }

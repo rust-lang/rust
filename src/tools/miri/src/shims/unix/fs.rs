@@ -502,7 +502,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(fd)?))
     }
 
-    fn lseek64(&mut self, fd_num: i32, offset: i128, whence: i32) -> InterpResult<'tcx, Scalar> {
+    fn lseek64(
+        &mut self,
+        fd_num: i32,
+        offset: i128,
+        whence: i32,
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
         // Isolation check is done via `FileDescription` trait.
@@ -510,7 +516,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let seek_from = if whence == this.eval_libc_i32("SEEK_SET") {
             if offset < 0 {
                 // Negative offsets return `EINVAL`.
-                return this.set_last_error_and_return_i64(LibcError("EINVAL"));
+                return this.set_last_error_and_return(LibcError("EINVAL"), dest);
             } else {
                 SeekFrom::Start(u64::try_from(offset).unwrap())
             }
@@ -519,19 +525,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if whence == this.eval_libc_i32("SEEK_END") {
             SeekFrom::End(i64::try_from(offset).unwrap())
         } else {
-            return this.set_last_error_and_return_i64(LibcError("EINVAL"));
+            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
         };
 
         let communicate = this.machine.communicate();
 
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return this.set_last_error_and_return_i64(LibcError("EBADF"));
+            return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
         let result = fd.seek(communicate, seek_from)?.map(|offset| i64::try_from(offset).unwrap());
         drop(fd);
 
         let result = this.try_unwrap_io_result(result)?;
-        interp_ok(Scalar::from_i64(result))
+        this.write_int(result, dest)?;
+        interp_ok(())
     }
 
     fn unlink(&mut self, path_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {

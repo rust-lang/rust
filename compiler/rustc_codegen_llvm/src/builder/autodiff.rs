@@ -361,6 +361,11 @@ fn generate_enzyme_call<'ll>(
         let attr = llvm::AttributeKind::NoInline.create_attr(cx.llcx);
         attributes::apply_to_llfn(ad_fn, Function, &[attr]);
 
+        // We add a made-up attribute just such that we can recognize it after AD to update
+        // (no)-inline attributes. We'll then also remove this attribute.
+        let enzyme_marker_attr = llvm::CreateAttrString(cx.llcx, "enzyme_marker");
+        attributes::apply_to_llfn(outer_fn, Function, &[enzyme_marker_attr]);
+
         // first, remove all calls from fnc
         let entry = llvm::LLVMGetFirstBasicBlock(outer_fn);
         let br = llvm::LLVMRustGetTerminator(entry);

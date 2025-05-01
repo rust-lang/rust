@@ -11,7 +11,7 @@ use crate::io::{
     self, BorrowedCursor, BufReader, IoSlice, IoSliceMut, LineWriter, Lines, SpecReadByte,
 };
 use crate::panic::{RefUnwindSafe, UnwindSafe};
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantLock, ReentrantLockGuard};
 use crate::sys::stdio;
 use crate::thread::AccessError;
@@ -37,7 +37,7 @@ thread_local! {
 /// have a consistent order between set_output_capture and print_to *within
 /// the same thread*. Within the same thread, things always have a perfectly
 /// consistent order. So Ordering::Relaxed is fine.
-static OUTPUT_CAPTURE_USED: AtomicBool = AtomicBool::new(false);
+static OUTPUT_CAPTURE_USED: Atomic<bool> = AtomicBool::new(false);
 
 /// A handle to a raw instance of the standard input stream of this process.
 ///

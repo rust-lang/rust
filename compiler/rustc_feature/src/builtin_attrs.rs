@@ -40,6 +40,26 @@ const GATED_CFGS: &[GatedCfg] = &[
     // this is consistent with naming of the compiler flag it's for
     (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
     (sym::emscripten_wasm_eh, sym::cfg_emscripten_wasm_eh, Features::cfg_emscripten_wasm_eh),
+    (
+        sym::target_has_reliable_f16,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f16_math,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f128,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
+    (
+        sym::target_has_reliable_f128_math,
+        sym::cfg_target_has_reliable_f16_f128,
+        Features::cfg_target_has_reliable_f16_f128,
+    ),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -917,6 +937,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
         EncodeCrossCrate::Yes,
         "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
+    ),
+    rustc_attr!(
+        rustc_no_implicit_autorefs, AttributeType::Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_no_implicit_autorefs]` is used to mark functions for which an autoref to the dereference of a raw pointer should not be used as an argument."
     ),
     rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, EncodeCrossCrate::No,

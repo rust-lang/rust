@@ -95,12 +95,6 @@ pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     ))
 }
 
-/// Parses a string, returns a crate.
-pub(crate) fn string_to_crate(source_str: String) -> ast::Crate {
-    let psess = psess();
-    with_error_checking_parse(source_str, &psess, |p| p.parse_crate_mod())
-}
-
 /// Does the given string match the pattern? whitespace in the first string
 /// may be deleted or replaced with other whitespace to match the pattern.
 /// This function is relatively Unicode-ignorant; fortunately, the careful design

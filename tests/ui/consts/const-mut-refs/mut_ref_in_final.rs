@@ -1,6 +1,7 @@
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "( 0x[0-9a-f][0-9a-f] │)? ([0-9a-f][0-9a-f] |__ |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> " HEX_DUMP"
 //@ normalize-stderr: "HEX_DUMP\s*\n\s*HEX_DUMP" -> "HEX_DUMP"
+//@ dont-require-annotations: NOTE
 
 use std::cell::UnsafeCell;
 use std::mem;
@@ -25,7 +26,7 @@ const B4: Option<&mut i32> = helper(&mut 42); //~ ERROR temporary value dropped 
 // Not ok, since it points to read-only memory.
 const IMMUT_MUT_REF: &mut u16 = unsafe { mem::transmute(&13) };
 //~^ ERROR undefined behavior to use this value
-//~| pointing to read-only memory
+//~| NOTE pointing to read-only memory
 
 // Ok, because no references to mutable data exist here, since the `{}` moves
 // its value and then takes a reference to that.

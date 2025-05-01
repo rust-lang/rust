@@ -1,3 +1,5 @@
+#![allow(dangerous_implicit_autorefs)]
+
 use std::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use std::mem::{self, MaybeUninit};
 

@@ -236,7 +236,7 @@ LL |     if result.is_ok() {
 LL |         result.as_mut().unwrap();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: creating a shared reference to mutable static is discouraged
+error: creating a shared reference to mutable static
   --> tests/ui/checked_unwrap/simple_conditionals.rs:183:12
    |
 LL |         if X.is_some() {

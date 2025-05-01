@@ -89,9 +89,9 @@ pub struct ReentrantLock<T: ?Sized> {
 
 cfg_if!(
     if #[cfg(target_has_atomic = "64")] {
-        use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
+        use crate::sync::atomic::{Atomic, AtomicU64, Ordering::Relaxed};
 
-        struct Tid(AtomicU64);
+        struct Tid(Atomic<u64>);
 
         impl Tid {
             const fn new() -> Self {
@@ -120,6 +120,7 @@ cfg_if!(
         }
 
         use crate::sync::atomic::{
+            Atomic,
             AtomicUsize,
             Ordering,
         };
@@ -137,7 +138,7 @@ cfg_if!(
             // the current thread, or by a thread that has terminated before
             // the current thread was created. In either case, no further
             // synchronization is needed (as per <https://github.com/rust-lang/miri/issues/3450>)
-            tls_addr: AtomicUsize,
+            tls_addr: Atomic<usize>,
             tid: UnsafeCell<u64>,
         }
 

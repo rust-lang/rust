@@ -58,11 +58,17 @@ pub(super) fn mangle<'tcx>(
         ty::InstanceKind::ConstructCoroutineInClosureShim { receiver_by_ref: false, .. } => {
             Some("by_ref")
         }
-
+        ty::InstanceKind::FutureDropPollShim(_, _, _) => Some("drop"),
         _ => None,
     };
 
-    if let Some(shim_kind) = shim_kind {
+    if let ty::InstanceKind::AsyncDropGlue(_, ty) = instance.def {
+        let ty::Coroutine(_, cor_args) = ty.kind() else {
+            bug!();
+        };
+        let drop_ty = cor_args.first().unwrap().expect_ty();
+        cx.print_def_path(def_id, tcx.mk_args(&[GenericArg::from(drop_ty)])).unwrap()
+    } else if let Some(shim_kind) = shim_kind {
         cx.path_append_ns(|cx| cx.print_def_path(def_id, args), 'S', 0, shim_kind).unwrap()
     } else {
         cx.print_def_path(def_id, args).unwrap()
@@ -246,6 +252,22 @@ impl<'tcx> SymbolMangler<'tcx> {
         self.binders.pop();
 
         Ok(())
+    }
+
+    fn print_pat(&mut self, pat: ty::Pattern<'tcx>) -> Result<(), std::fmt::Error> {
+        Ok(match *pat {
+            ty::PatternKind::Range { start, end } => {
+                let consts = [start, end];
+                for ct in consts {
+                    Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct).print(self)?;
+                }
+            }
+            ty::PatternKind::Or(patterns) => {
+                for pat in patterns {
+                    self.print_pat(pat)?;
+                }
+            }
+        })
     }
 }
 
@@ -463,20 +485,14 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 ty.print(self)?;
             }
 
-            ty::Pat(ty, pat) => match *pat {
-                ty::PatternKind::Range { start, end } => {
-                    let consts = [start, end];
-                    // HACK: Represent as tuple until we have something better.
-                    // HACK: constants are used in arrays, even if the types don't match.
-                    self.push("T");
-                    ty.print(self)?;
-                    for ct in consts {
-                        Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct)
-                            .print(self)?;
-                    }
-                    self.push("E");
-                }
-            },
+            ty::Pat(ty, pat) => {
+                // HACK: Represent as tuple until we have something better.
+                // HACK: constants are used in arrays, even if the types don't match.
+                self.push("T");
+                ty.print(self)?;
+                self.print_pat(pat)?;
+                self.push("E");
+            }
 
             ty::Array(ty, len) => {
                 self.push("A");

@@ -19,6 +19,7 @@
 #![feature(iter_intersperse)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 use std::cell::{Cell, RefCell};

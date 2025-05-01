@@ -1,0 +1,6 @@
+Foo::new() : 7
+Foo::drop() : 7
+Middle
+Foo::new() : 10
+Foo::async drop() : 10
+Done

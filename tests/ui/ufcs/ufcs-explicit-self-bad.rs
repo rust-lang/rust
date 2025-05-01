@@ -1,13 +1,13 @@
+//@ dont-require-annotations: NOTE
+
 struct Foo {
     f: isize,
 }
 
-
-
 impl Foo {
     fn foo(self: isize, x: isize) -> isize {
         //~^ ERROR invalid `self` parameter type
-        self.f + x //~ ERROR: doesn't have fields
+        self.f + x //~ ERROR doesn't have fields
     }
 }
 
@@ -39,13 +39,13 @@ impl<'a, T> SomeTrait for &'a Bar<T> {
     //~| ERROR has an incompatible type for trait
     fn dummy3(self: &&Bar<T>) {}
     //~^ ERROR mismatched `self` parameter type
-    //~| expected reference `&'a Bar<_>`
-    //~| found reference `&Bar<_>`
-    //~| lifetime mismatch
+    //~| NOTE expected reference `&'a Bar<_>`
+    //~| NOTE found reference `&Bar<_>`
+    //~| NOTE lifetime mismatch
     //~| ERROR mismatched `self` parameter type
-    //~| expected reference `&'a Bar<_>`
-    //~| found reference `&Bar<_>`
-    //~| lifetime mismatch
+    //~| NOTE expected reference `&'a Bar<_>`
+    //~| NOTE found reference `&Bar<_>`
+    //~| NOTE lifetime mismatch
 }
 
 fn main() {

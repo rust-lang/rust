@@ -4,7 +4,6 @@
 
 use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
-use std::iter;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
@@ -19,7 +18,7 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::walk::TypeWalker;
 use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, TypeVisitableExt, elaborate};
 use tracing::instrument;
-use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
+use ty::util::IntTypeExt;
 
 use super::GenericParamDefKind;
 use crate::infer::canonical::Canonical;
@@ -78,8 +77,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
     #[inline]
     fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
-        FIRST_VARIANT
-            ..tcx.coroutine_layout(def_id, tcx.types.unit).unwrap().variant_fields.next_index()
+        FIRST_VARIANT..tcx.coroutine_layout(def_id, self.args).unwrap().variant_fields.next_index()
     }
 
     /// The discriminant for the given variant. Panics if the `variant_index` is
@@ -139,10 +137,14 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
     ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>>> {
-        let layout = tcx.coroutine_layout(def_id, self.kind_ty()).unwrap();
+        let layout = tcx.coroutine_layout(def_id, self.args).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
-                ty::EarlyBinder::bind(layout.field_tys[*field].ty).instantiate(tcx, self.args)
+                if tcx.is_async_drop_in_place_coroutine(def_id) {
+                    layout.field_tys[*field].ty
+                } else {
+                    ty::EarlyBinder::bind(layout.field_tys[*field].ty).instantiate(tcx, self.args)
+                }
             })
         })
     }
@@ -489,7 +491,7 @@ impl<'tcx> Ty<'tcx> {
             (kind, tcx.def_kind(alias_ty.def_id)),
             (ty::Opaque, DefKind::OpaqueTy)
                 | (ty::Projection | ty::Inherent, DefKind::AssocTy)
-                | (ty::Weak, DefKind::TyAlias)
+                | (ty::Free, DefKind::TyAlias)
         );
         Ty::new(tcx, Alias(kind, alias_ty))
     }
@@ -1046,10 +1048,6 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         self.discriminant_ty(interner)
     }
 
-    fn async_destructor_ty(self, interner: TyCtxt<'tcx>) -> Ty<'tcx> {
-        self.async_destructor_ty(interner)
-    }
-
     fn has_unsafe_fields(self) -> bool {
         Ty::has_unsafe_fields(self)
     }
@@ -1419,6 +1417,34 @@ impl<'tcx> Ty<'tcx> {
         cf.is_break()
     }
 
+    /// Returns the deepest `async_drop_in_place::{closure}` implementation.
+    ///
+    /// `async_drop_in_place<T>::{closure}`, when T is a coroutine, is a proxy-impl
+    /// to call async drop poll from impl coroutine.
+    pub fn find_async_drop_impl_coroutine<F: FnMut(Ty<'tcx>)>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        mut f: F,
+    ) -> Ty<'tcx> {
+        assert!(self.is_coroutine());
+        let mut cor_ty = self;
+        let mut ty = cor_ty;
+        loop {
+            if let ty::Coroutine(def_id, args) = ty.kind() {
+                cor_ty = ty;
+                f(ty);
+                if tcx.is_async_drop_in_place_coroutine(*def_id) {
+                    ty = args.first().unwrap().expect_ty();
+                    continue;
+                } else {
+                    return cor_ty;
+                }
+            } else {
+                return cor_ty;
+            }
+        }
+    }
+
     /// Returns the type and mutability of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
@@ -1558,125 +1584,6 @@ impl<'tcx> Ty<'tcx> {
                 bug!("`discriminant_ty` applied to unexpected type: {:?}", self)
             }
         }
-    }
-
-    /// Returns the type of the async destructor of this type.
-    pub fn async_destructor_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self.async_drop_glue_morphology(tcx) {
-            AsyncDropGlueMorphology::Noop => {
-                return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop)
-                    .instantiate_identity();
-            }
-            AsyncDropGlueMorphology::DeferredDropInPlace => {
-                let drop_in_place =
-                    Ty::async_destructor_combinator(tcx, LangItem::AsyncDropDeferredDropInPlace)
-                        .instantiate(tcx, &[self.into()]);
-                return Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
-                    .instantiate(tcx, &[drop_in_place.into()]);
-            }
-            AsyncDropGlueMorphology::Custom => (),
-        }
-
-        match *self.kind() {
-            ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
-                let assoc_items = tcx
-                    .associated_item_def_ids(tcx.require_lang_item(LangItem::AsyncDestruct, None));
-                Ty::new_projection(tcx, assoc_items[0], [self])
-            }
-
-            ty::Array(elem_ty, _) | ty::Slice(elem_ty) => {
-                let dtor = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropSlice)
-                    .instantiate(tcx, &[elem_ty.into()]);
-                Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
-                    .instantiate(tcx, &[dtor.into()])
-            }
-
-            ty::Adt(adt_def, args) if adt_def.is_enum() || adt_def.is_struct() => self
-                .adt_async_destructor_ty(
-                    tcx,
-                    adt_def.variants().iter().map(|v| v.fields.iter().map(|f| f.ty(tcx, args))),
-                ),
-            ty::Tuple(tys) => self.adt_async_destructor_ty(tcx, iter::once(tys)),
-            ty::Closure(_, args) => {
-                self.adt_async_destructor_ty(tcx, iter::once(args.as_closure().upvar_tys()))
-            }
-            ty::CoroutineClosure(_, args) => self
-                .adt_async_destructor_ty(tcx, iter::once(args.as_coroutine_closure().upvar_tys())),
-
-            ty::Adt(adt_def, _) => {
-                assert!(adt_def.is_union());
-
-                let surface_drop = self.surface_async_dropper_ty(tcx).unwrap();
-
-                Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
-                    .instantiate(tcx, &[surface_drop.into()])
-            }
-
-            ty::Bound(..)
-            | ty::Foreign(_)
-            | ty::Placeholder(_)
-            | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`async_destructor_ty` applied to unexpected type: {self:?}")
-            }
-
-            _ => bug!("`async_destructor_ty` is not yet implemented for type: {self:?}"),
-        }
-    }
-
-    fn adt_async_destructor_ty<I>(self, tcx: TyCtxt<'tcx>, variants: I) -> Ty<'tcx>
-    where
-        I: Iterator + ExactSizeIterator,
-        I::Item: IntoIterator<Item = Ty<'tcx>>,
-    {
-        debug_assert_eq!(self.async_drop_glue_morphology(tcx), AsyncDropGlueMorphology::Custom);
-
-        let defer = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropDefer);
-        let chain = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain);
-
-        let noop =
-            Ty::async_destructor_combinator(tcx, LangItem::AsyncDropNoop).instantiate_identity();
-        let either = Ty::async_destructor_combinator(tcx, LangItem::AsyncDropEither);
-
-        let variants_dtor = variants
-            .into_iter()
-            .map(|variant| {
-                variant
-                    .into_iter()
-                    .map(|ty| defer.instantiate(tcx, &[ty.into()]))
-                    .reduce(|acc, next| chain.instantiate(tcx, &[acc.into(), next.into()]))
-                    .unwrap_or(noop)
-            })
-            .reduce(|other, matched| {
-                either.instantiate(tcx, &[other.into(), matched.into(), self.into()])
-            })
-            .unwrap();
-
-        let dtor = if let Some(dropper_ty) = self.surface_async_dropper_ty(tcx) {
-            Ty::async_destructor_combinator(tcx, LangItem::AsyncDropChain)
-                .instantiate(tcx, &[dropper_ty.into(), variants_dtor.into()])
-        } else {
-            variants_dtor
-        };
-
-        Ty::async_destructor_combinator(tcx, LangItem::AsyncDropFuse)
-            .instantiate(tcx, &[dtor.into()])
-    }
-
-    fn surface_async_dropper_ty(self, tcx: TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
-        let adt_def = self.ty_adt_def()?;
-        let dropper = adt_def
-            .async_destructor(tcx)
-            .map(|_| LangItem::SurfaceAsyncDropInPlace)
-            .or_else(|| adt_def.destructor(tcx).map(|_| LangItem::AsyncDropSurfaceDropInPlace))?;
-        Some(Ty::async_destructor_combinator(tcx, dropper).instantiate(tcx, &[self.into()]))
-    }
-
-    fn async_destructor_combinator(
-        tcx: TyCtxt<'tcx>,
-        lang_item: LangItem,
-    ) -> ty::EarlyBinder<'tcx, Ty<'tcx>> {
-        tcx.fn_sig(tcx.require_lang_item(lang_item, None))
-            .map_bound(|fn_sig| fn_sig.output().no_bound_vars().unwrap())
     }
 
     /// Returns the type of metadata for (potentially wide) pointers to this type,
@@ -2016,6 +1923,13 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_c_void(self, tcx: TyCtxt<'_>) -> bool {
         match self.kind() {
             ty::Adt(adt, _) => tcx.is_lang_item(adt.did(), LangItem::CVoid),
+            _ => false,
+        }
+    }
+
+    pub fn is_async_drop_in_place_coroutine(self, tcx: TyCtxt<'_>) -> bool {
+        match self.kind() {
+            ty::Coroutine(def, ..) => tcx.is_async_drop_in_place_coroutine(*def),
             _ => false,
         }
     }

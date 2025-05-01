@@ -675,9 +675,7 @@ impl<'test> TestCx<'test> {
             "check_expected_errors: expected_errors={:?} proc_res.status={:?}",
             expected_errors, proc_res.status
         );
-        if proc_res.status.success()
-            && expected_errors.iter().any(|x| x.kind == Some(ErrorKind::Error))
-        {
+        if proc_res.status.success() && expected_errors.iter().any(|x| x.kind == ErrorKind::Error) {
             self.fatal_proc_rec("process did not return an error status", proc_res);
         }
 
@@ -709,7 +707,7 @@ impl<'test> TestCx<'test> {
         // if one of them actually occurs in the test.
         let expected_kinds: HashSet<_> = [ErrorKind::Error, ErrorKind::Warning]
             .into_iter()
-            .chain(expected_errors.iter().filter_map(|e| e.kind))
+            .chain(expected_errors.iter().map(|e| e.kind))
             .collect();
 
         // Parse the JSON output from the compiler and extract out the messages.
@@ -723,8 +721,7 @@ impl<'test> TestCx<'test> {
                 expected_errors.iter().enumerate().position(|(index, expected_error)| {
                     !found[index]
                         && actual_error.line_num == expected_error.line_num
-                        && (expected_error.kind.is_none()
-                            || actual_error.kind == expected_error.kind)
+                        && actual_error.kind == expected_error.kind
                         && actual_error.msg.contains(&expected_error.msg)
                 });
 
@@ -737,19 +734,14 @@ impl<'test> TestCx<'test> {
 
                 None => {
                     if actual_error.require_annotation
-                        && actual_error.kind.map_or(false, |kind| {
-                            expected_kinds.contains(&kind)
-                                && !self.props.dont_require_annotations.contains(&kind)
-                        })
+                        && expected_kinds.contains(&actual_error.kind)
+                        && !self.props.dont_require_annotations.contains(&actual_error.kind)
                     {
                         self.error(&format!(
                             "{}:{}: unexpected {}: '{}'",
                             file_name,
                             actual_error.line_num_str(),
-                            actual_error
-                                .kind
-                                .as_ref()
-                                .map_or(String::from("message"), |k| k.to_string()),
+                            actual_error.kind,
                             actual_error.msg
                         ));
                         unexpected.push(actual_error);
@@ -766,7 +758,7 @@ impl<'test> TestCx<'test> {
                     "{}:{}: expected {} not found: {}",
                     file_name,
                     expected_error.line_num_str(),
-                    expected_error.kind.as_ref().map_or("message".into(), |k| k.to_string()),
+                    expected_error.kind,
                     expected_error.msg
                 ));
                 not_found.push(expected_error);

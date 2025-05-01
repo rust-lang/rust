@@ -56,7 +56,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
-            ty::Alias(ty::Weak, _) => bug!("type_name: unexpected weak projection"),
+            ty::Alias(ty::Free, _) => bug!("type_name: unexpected free alias"),
             ty::Alias(ty::Inherent, _) => bug!("type_name: unexpected inherent projection"),
             ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),
         }

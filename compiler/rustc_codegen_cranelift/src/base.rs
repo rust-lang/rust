@@ -8,8 +8,6 @@ use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_index::IndexVec;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::InlineAsmMacro;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv};
@@ -18,7 +16,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
 use crate::enable_verifier;
-use crate::inline_asm::codegen_naked_asm;
 use crate::prelude::*;
 use crate::pretty_clif::CommentWriter;
 
@@ -37,7 +34,7 @@ pub(crate) fn codegen_fn<'tcx>(
     cached_func: Function,
     module: &mut dyn Module,
     instance: Instance<'tcx>,
-) -> Option<CodegenedFunction> {
+) -> CodegenedFunction {
     debug_assert!(!instance.args.has_infer());
 
     let symbol_name = tcx.symbol_name(instance).name.to_string();
@@ -53,38 +50,6 @@ pub(crate) fn codegen_fn<'tcx>(
         });
         String::from_utf8_lossy(&buf).into_owned()
     });
-
-    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
-        assert_eq!(mir.basic_blocks.len(), 1);
-        assert!(mir.basic_blocks[START_BLOCK].statements.is_empty());
-
-        match &mir.basic_blocks[START_BLOCK].terminator().kind {
-            TerminatorKind::InlineAsm {
-                asm_macro: InlineAsmMacro::NakedAsm,
-                template,
-                operands,
-                options,
-                line_spans: _,
-                targets: _,
-                unwind: _,
-            } => {
-                codegen_naked_asm(
-                    tcx,
-                    cx,
-                    module,
-                    instance,
-                    mir.basic_blocks[START_BLOCK].terminator().source_info.span,
-                    &symbol_name,
-                    template,
-                    operands,
-                    *options,
-                );
-            }
-            _ => unreachable!(),
-        }
-
-        return None;
-    }
 
     // Declare function
     let sig = get_function_sig(tcx, module.target_config().default_call_conv, instance);
@@ -166,7 +131,7 @@ pub(crate) fn codegen_fn<'tcx>(
     // Verify function
     verify_func(tcx, &clif_comments, &func);
 
-    Some(CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx })
+    CodegenedFunction { symbol_name, func_id, func, clif_comments, func_debug_cx }
 }
 
 pub(crate) fn compile_fn(
@@ -565,7 +530,11 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
             | TerminatorKind::CoroutineDrop => {
                 bug!("shouldn't exist at codegen {:?}", bb_data.terminator());
             }
-            TerminatorKind::Drop { place, target, unwind: _, replace: _ } => {
+            TerminatorKind::Drop { place, target, unwind: _, replace: _, drop, async_fut } => {
+                assert!(
+                    async_fut.is_none() && drop.is_none(),
+                    "Async Drop must be expanded or reset to sync before codegen"
+                );
                 let drop_place = codegen_place(fx, *place);
                 crate::abi::codegen_drop(fx, source_info, drop_place, *target);
             }

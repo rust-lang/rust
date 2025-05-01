@@ -448,9 +448,9 @@ dependencies = [
 
 [[package]]
 name = "unwinding"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51f06a05848f650946acef3bf525fe96612226b61f74ae23ffa4e98bfbb8ab3c"
+checksum = "8393f2782b6060a807337ff353780c1ca15206f9ba2424df18cb6e733bd7b345"
 dependencies = [
  "compiler_builtins",
  "gimli",

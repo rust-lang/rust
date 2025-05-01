@@ -11,10 +11,10 @@ fn fun_to_string(
     generics: &ast::Generics,
 ) -> String {
     to_string(|s| {
-        s.head("");
+        let (cb, ib) = s.head("");
         s.print_fn(decl, header, Some(ident), generics);
-        s.end(); // Close the head box.
-        s.end(); // Close the outer box.
+        s.end(ib);
+        s.end(cb);
     })
 }
 

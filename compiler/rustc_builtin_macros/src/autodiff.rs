@@ -323,9 +323,9 @@ mod llvm_enzyme {
             Spacing::Joint,
         )];
         let never_arg = ast::DelimArgs {
-            dspan: ast::tokenstream::DelimSpan::from_single(span),
+            dspan: DelimSpan::from_single(span),
             delim: ast::token::Delimiter::Parenthesis,
-            tokens: ast::tokenstream::TokenStream::from_iter(ts2),
+            tokens: TokenStream::from_iter(ts2),
         };
         let inline_item = ast::AttrItem {
             unsafety: ast::Safety::Default,

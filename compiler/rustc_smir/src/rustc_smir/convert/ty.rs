@@ -16,7 +16,7 @@ impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
             ty::Projection => stable_mir::ty::AliasKind::Projection,
             ty::Inherent => stable_mir::ty::AliasKind::Inherent,
             ty::Opaque => stable_mir::ty::AliasKind::Opaque,
-            ty::Weak => stable_mir::ty::AliasKind::Weak,
+            ty::Free => stable_mir::ty::AliasKind::Free,
         }
     }
 }
@@ -412,6 +412,7 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
                 end: Some(end.stable(tables)),
                 include_end: true,
             },
+            ty::PatternKind::Or(_) => todo!(),
         }
     }
 }
@@ -813,6 +814,8 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             | ty::InstanceKind::DropGlue(..)
             | ty::InstanceKind::CloneShim(..)
             | ty::InstanceKind::FnPtrShim(..)
+            | ty::InstanceKind::FutureDropPollShim(..)
+            | ty::InstanceKind::AsyncDropGlue(..)
             | ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
                 stable_mir::mir::mono::InstanceKind::Shim
             }

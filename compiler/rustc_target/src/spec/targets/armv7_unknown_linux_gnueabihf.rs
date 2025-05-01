@@ -22,6 +22,7 @@ pub(crate) fn target() -> Target {
             features: "+v7,+vfp3,-d32,+thumb2,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),
+            llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
             ..base::linux_gnu::opts()
         },
     }

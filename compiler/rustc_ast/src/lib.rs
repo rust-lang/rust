@@ -12,6 +12,7 @@
     test(attr(deny(warnings)))
 )]
 #![doc(rust_logo)]
+#![feature(array_windows)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -19,6 +20,7 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 pub mod util {
