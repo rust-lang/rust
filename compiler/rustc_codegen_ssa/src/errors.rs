@@ -1316,3 +1316,7 @@ pub(crate) struct XcrunSdkPathWarning {
     pub sdk_name: &'static str,
     pub stderr: String,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_aarch64_softfloat_neon)]
+pub(crate) struct Aarch64SoftfloatNeon;
