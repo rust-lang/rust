@@ -141,6 +141,11 @@ But if you include this:
 
 it will not.
 
+## At the module level
+
+These forms of the `#[doc]` attribute are used on individual modules, to control how
+they are documented.
+
 ### `test(attr(...))`
 
 This form of the `doc` attribute allows you to add arbitrary attributes to all your doctests. For
@@ -148,6 +153,20 @@ example, if you want your doctests to fail if they have dead code, you could add
 
 ```rust,no_run
 #![doc(test(attr(deny(dead_code))))]
+
+mod my_mod {
+    #![doc(test(attr(allow(dead_code))))] // but allow `dead_code` for this module
+}
+```
+
+`test(attr(..))` attributes are appended to the parent module's, they do not replace the current
+list of attributes. In the previous example, both attributes would be present:
+
+```rust,no_run
+// For every doctest in `my_mod`
+
+#![deny(dead_code)] // from the crate-root
+#![allow(dead_code)] // from `my_mod`
 ```
 
 ## At the item level

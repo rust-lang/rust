@@ -1890,12 +1890,20 @@ pub(crate) struct UnusedVarTryIgnoreSugg {
 #[note]
 pub(crate) struct AttrCrateLevelOnly {
     #[subdiagnostic]
-    pub sugg: Option<AttrCrateLevelOnlySugg>,
+    pub sugg: Option<AttrCrateLevelSugg>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(passes_attr_mod_level)]
+#[note]
+pub(crate) struct AttrModLevelOnly {
+    #[subdiagnostic]
+    pub sugg: Option<AttrCrateLevelSugg>,
 }
 
 #[derive(Subdiagnostic)]
 #[suggestion(passes_suggestion, applicability = "maybe-incorrect", code = "!", style = "verbose")]
-pub(crate) struct AttrCrateLevelOnlySugg {
+pub(crate) struct AttrCrateLevelSugg {
     #[primary_span]
     pub attr: Span,
 }

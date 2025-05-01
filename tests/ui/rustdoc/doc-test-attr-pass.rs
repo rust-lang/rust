@@ -6,4 +6,8 @@
 #![doc(test(attr(deny(warnings))))]
 #![doc(test())]
 
+mod test {
+    #![doc(test(attr(allow(warnings))))]
+}
+
 pub fn foo() {}
