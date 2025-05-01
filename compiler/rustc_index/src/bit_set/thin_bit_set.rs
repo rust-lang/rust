@@ -353,7 +353,7 @@ impl<T> ThinBitSet<T> {
 
             debug_assert!(domain_size <= Self::INLINE_CAPACITY);
 
-            *self_word |= !other_word & !(Word::MAX >> domain_size);
+            *self_word |= !other_word & Word::MAX.unbounded_shr((WORD_BITS - domain_size) as u32);
         } else if other.is_empty_unallocated() {
             self.insert_all(domain_size);
         } else {
@@ -1271,7 +1271,7 @@ mod tests {
 
     use super::super::CHUNK_BITS;
     use super::*;
-    use crate::bit_set::DenseBitSet;
+    use crate::IndexVec;
 
     /// A very simple pseudo random generator using linear xorshift.
     ///
@@ -1446,9 +1446,9 @@ mod tests {
         const TEST_ITERATIONS: u32 = 512;
 
         let mut set_1 = ThinBitSet::<usize>::new_empty(domain_size);
-        let mut set_1_reference = DenseBitSet::<usize>::new_empty(domain_size);
+        let mut set_1_reference = IndexVec::<usize, bool>::from_elem_n(false, domain_size);
         let mut set_2 = ThinBitSet::<usize>::new_empty(domain_size);
-        let mut set_2_reference = DenseBitSet::<usize>::new_empty(domain_size);
+        let mut set_2_reference = IndexVec::<usize, bool>::from_elem_n(false, domain_size);
 
         let hasher = BuildHasherDefault::<DefaultHasher>::new();
 
@@ -1467,9 +1467,11 @@ mod tests {
                     let elem = rng.next() % domain_size;
                     // Choose set to insert into.
                     if rng.next_bool() {
-                        assert_eq!(set_1.insert(elem), set_1_reference.insert(elem));
+                        assert_eq!(!set_1.contains(elem), set_1.insert(elem));
+                        set_1_reference[elem] = true;
                     } else {
-                        assert_eq!(set_2.insert(elem), set_2_reference.insert(elem));
+                        assert_eq!(!set_2.contains(elem), set_2.insert(elem));
+                        set_2_reference[elem] = true;
                     }
                 }
                 20..40 => {
@@ -1482,20 +1484,28 @@ mod tests {
                     // Choose set to insert into.
                     if rng.next_bool() {
                         set_1.insert_range_inclusive(range.clone());
-                        set_1_reference.insert_range_inclusive(range);
+                        for i in range {
+                            set_1_reference[i] = true;
+                        }
                     } else {
                         set_2.insert_range_inclusive(range.clone());
-                        set_2_reference.insert_range_inclusive(range);
+                        for i in range {
+                            set_2_reference[i] = true;
+                        }
                     }
                 }
                 40..50 => {
                     // Test insert_all().
                     if rng.next_bool() {
                         set_1.insert_all(domain_size);
-                        set_1_reference.insert_all(domain_size);
+                        for x in set_1_reference.iter_mut() {
+                            *x = true;
+                        }
                     } else {
                         set_2.insert_all(domain_size);
-                        set_2_reference.insert_all(domain_size);
+                        for x in set_2_reference.iter_mut() {
+                            *x = true;
+                        }
                     }
                 }
                 50..70 => {
@@ -1506,49 +1516,81 @@ mod tests {
                     let elem = rng.next() % domain_size;
                     // Choose set to remove into.
                     if rng.next_bool() {
-                        assert_eq!(set_1.remove(elem), set_1_reference.remove(elem));
+                        assert_eq!(set_1.contains(elem), set_1.remove(elem),);
+                        set_1_reference[elem] = false;
                     } else {
-                        assert_eq!(set_2.remove(elem), set_2_reference.remove(elem));
+                        assert_eq!(set_2.contains(elem), set_2.remove(elem),);
+                        set_2_reference[elem] = false;
                     }
                 }
                 70..76 => {
                     // Union
-                    assert_eq!(set_1.union(&set_2), set_1_reference.union(&set_2_reference));
+                    let old_set_1 = set_1.clone();
+                    let changed = set_1.union(&set_2);
+                    assert_eq!(changed, old_set_1 != set_1);
+
+                    // Adjust the reference sets.
+                    for (x, val) in set_2_reference.iter_enumerated() {
+                        set_1_reference[x] |= val;
+                    }
                 }
                 76..82 => {
                     // Intersection
-                    assert_eq!(
-                        set_1.intersect(&set_2),
-                        set_1_reference.intersect(&set_2_reference)
-                    );
+                    let old_set_1 = set_1.clone();
+                    let changed = set_1.intersect(&set_2);
+                    assert_eq!(changed, old_set_1 != set_1);
+
+                    // Adjust the reference sets.
+                    for (x, val) in set_2_reference.iter_enumerated() {
+                        set_1_reference[x] &= val;
+                    }
                 }
                 82..88 => {
                     // Subtraction
-                    assert_eq!(set_1.subtract(&set_2), set_1_reference.subtract(&set_2_reference));
+                    let old_set_1 = set_1.clone();
+                    let changed = set_1.subtract(&set_2);
+                    assert_eq!(changed, old_set_1 != set_1);
+
+                    // Adjust the reference sets.
+                    for (x, val) in set_2_reference.iter_enumerated() {
+                        set_1_reference[x] &= !val;
+                    }
                 }
                 88..94 => {
                     // Union_not
                     set_1.union_not(&set_2, domain_size);
-                    set_1_reference.union_not(&set_2_reference, domain_size);
+
+                    // Adjust the reference sets.
+                    for (x, val) in set_2_reference.iter_enumerated() {
+                        set_1_reference[x] |= !val;
+                    }
                 }
                 94..97 => {
                     // Clear
                     if rng.next_bool() {
                         set_1.clear();
-                        set_1_reference.clear();
+                        for x in set_1_reference.iter_mut() {
+                            *x = false;
+                        }
                     } else {
                         set_2.clear();
-                        set_2_reference.clear();
+                        for x in set_2_reference.iter_mut() {
+                            *x = false;
+                        }
                     }
                 }
                 97..100 => {
                     // Test new_filled().
                     if rng.next_bool() {
                         set_1 = ThinBitSet::new_filled(domain_size);
-                        set_1_reference = DenseBitSet::new_filled(domain_size);
+                        for x in set_1_reference.iter_mut() {
+                            *x = true;
+                        }
                     } else {
                         set_2 = ThinBitSet::new_filled(domain_size);
-                        set_2_reference = DenseBitSet::new_filled(domain_size);
+                        for x in set_2_reference.iter_mut() {
+                            *x = true;
+                        }
                     }
                 }
                 _ => unreachable!(),
@@ -1556,16 +1598,24 @@ mod tests {
 
             // Check the contains function.
             for i in 0..domain_size {
-                assert_eq!(set_1.contains(i), set_1_reference.contains(i));
-                assert_eq!(set_2.contains(i), set_2_reference.contains(i));
+                assert_eq!(set_1.contains(i), set_1_reference[i]);
+                assert_eq!(set_2.contains(i), set_2_reference[i]);
             }
 
             // Check iter function.
-            assert!(set_1.iter().eq(set_1_reference.iter()),);
-            assert!(set_2.iter().eq(set_2_reference.iter()));
+            assert!(
+                set_1
+                    .iter()
+                    .eq(set_1_reference.iter_enumerated().filter(|&(_, &v)| v).map(|(x, _)| x))
+            );
+            assert!(
+                set_2
+                    .iter()
+                    .eq(set_2_reference.iter_enumerated().filter(|&(_, &v)| v).map(|(x, _)| x))
+            );
 
             // Check the superset relation.
-            assert_eq!(set_1.superset(&set_2), set_1_reference.superset(&set_2_reference));
+            assert_eq!(set_1.superset(&set_2), set_2.iter().all(|x| set_1.contains(x)));
 
             // Check the `==` operator.
             assert_eq!(set_1 == set_2, set_1_reference == set_2_reference);
@@ -1577,19 +1627,19 @@ mod tests {
             }
 
             // Check the count function.
-            assert_eq!(set_1.count(), set_1_reference.count());
-            assert_eq!(set_2.count(), set_2_reference.count());
+            assert_eq!(set_1.count(), set_1_reference.iter().filter(|&&x| x).count());
+            assert_eq!(set_2.count(), set_2_reference.iter().filter(|&&x| x).count());
 
             // Check `last_set_in()`.
             if domain_size > 0 {
                 let range = rng.sample_range(domain_size - 1);
                 assert_eq!(
                     set_1.last_set_in(range.clone()),
-                    set_1_reference.last_set_in(range.clone())
+                    range.clone().filter(|&i| set_1.contains(i)).last()
                 );
                 assert_eq!(
                     set_2.last_set_in(range.clone()),
-                    set_2_reference.last_set_in(range.clone())
+                    range.filter(|&i| set_2.contains(i)).last()
                 );
             }
 
