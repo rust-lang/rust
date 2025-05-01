@@ -512,8 +512,13 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 #endif
   }
 
+#if LLVM_VERSION_GE(21, 0)
+  TargetMachine *TM = TheTarget->createTargetMachine(Trip, CPU, Feature,
+                                                     Options, RM, CM, OptLevel);
+#else
   TargetMachine *TM = TheTarget->createTargetMachine(
       Trip.getTriple(), CPU, Feature, Options, RM, CM, OptLevel);
+#endif
   return wrap(TM);
 }
 
