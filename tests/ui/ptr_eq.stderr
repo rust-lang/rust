@@ -31,5 +31,11 @@ error: use `std::ptr::eq` when comparing raw pointers
 LL |     let _ = mac!(cast a) as *const _ == mac!(cast b) as *const _;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(mac!(cast a), mac!(cast b))`
 
-error: aborting due to 5 previous errors
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:65:13
+   |
+LL |     let _ = mac!(cast a) as *const _ == mac!(cast b) as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(mac!(cast a), mac!(cast b))`
+
+error: aborting due to 6 previous errors
 

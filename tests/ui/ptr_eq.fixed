@@ -60,4 +60,8 @@ fn main() {
     // Do not peel the content of macros
     let _ = std::ptr::eq(mac!(cast a), mac!(cast b));
     //~^ ptr_eq
+
+    // Do not peel the content of macros
+    let _ = std::ptr::eq(mac!(cast a), mac!(cast b));
+    //~^ ptr_eq
 }

@@ -60,4 +60,8 @@ fn main() {
     // Do not peel the content of macros
     let _ = mac!(cast a) as *const _ == mac!(cast b) as *const _;
     //~^ ptr_eq
+
+    // Do not peel the content of macros
+    let _ = mac!(cast a) as *const _ == mac!(cast b) as *const _;
+    //~^ ptr_eq
 }

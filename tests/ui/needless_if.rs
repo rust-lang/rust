@@ -46,9 +46,7 @@ fn main() {
     if let true = true
         && true
     {}
-    if true
-        && let true = true
-    {}
+    if true && let true = true {}
     // Can lint nested `if let`s
     if {
         //~^ needless_if

@@ -1,7 +1,7 @@
 #![no_std]
 #![feature(lang_items)]
 #![warn(clippy::transmute_int_to_char)]
-#![allow(clippy::missing_transmute_annotations)]
+#![allow(clippy::missing_transmute_annotations, unnecessary_transmutes)]
 
 use core::panic::PanicInfo;
 
