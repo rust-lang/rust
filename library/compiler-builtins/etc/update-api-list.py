@@ -123,7 +123,9 @@ class Crate:
 
         # A lot of the `arch` module is often configured out so doesn't show up in docs. Use
         # string matching as a fallback.
-        for fname in glob("libm/src/math/arch/**.rs", root_dir=ROOT_DIR):
+        for fname in glob(
+            "libm/src/math/arch/**/*.rs", root_dir=ROOT_DIR, recursive=True
+        ):
             contents = (ROOT_DIR.joinpath(fname)).read_text()
 
             for name in self.public_functions:
