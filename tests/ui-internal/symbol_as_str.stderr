@@ -1,0 +1,76 @@
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str.rs:9:5
+   |
+LL |     s.as_str() == "f32";
+   |     ^^^^^^^^^^
+   |
+   = note: `-D clippy::symbol-as-str` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::symbol_as_str)]`
+help: use the preinterned symbol
+   |
+LL -     s.as_str() == "f32";
+LL +     s == sym::f32;
+   |
+
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str.rs:11:5
+   |
+LL |     s.as_str() == "proc-macro";
+   |     ^^^^^^^^^^
+   |
+help: use the preinterned symbol
+   |
+LL -     s.as_str() == "proc-macro";
+LL +     s == sym::proc_dash_macro;
+   |
+
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str.rs:13:5
+   |
+LL |     s.as_str() == "self";
+   |     ^^^^^^^^^^
+   |
+help: use the preinterned symbol
+   |
+LL -     s.as_str() == "self";
+LL +     s == kw::SelfLower;
+   |
+
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str.rs:15:5
+   |
+LL |     s.as_str() == "msrv";
+   |     ^^^^^^^^^^
+   |
+help: use the preinterned symbol
+   |
+LL -     s.as_str() == "msrv";
+LL +     s == sym::msrv;
+   |
+
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str.rs:17:5
+   |
+LL |     s.as_str() == "Cargo.toml";
+   |     ^^^^^^^^^^
+   |
+help: use the preinterned symbol
+   |
+LL -     s.as_str() == "Cargo.toml";
+LL +     s == sym::Cargo_toml;
+   |
+
+error: converting a Symbol to a string
+  --> tests/ui-internal/symbol_as_str.rs:19:14
+   |
+LL |     "get" == s.as_str();
+   |              ^^^^^^^^^^
+   |
+help: use the preinterned symbol
+   |
+LL -     "get" == s.as_str();
+LL +     sym::get == s;
+   |
+
+error: aborting due to 6 previous errors
+

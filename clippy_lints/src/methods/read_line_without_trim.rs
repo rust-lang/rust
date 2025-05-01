@@ -1,17 +1,16 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_local_use_after_expr;
+use clippy_utils::{get_parent_expr, sym};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::sym;
 
 use super::READ_LINE_WITHOUT_TRIM;
 
@@ -44,7 +43,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
             if let Some(parent) = get_parent_expr(cx, expr) {
                 let data = if let ExprKind::MethodCall(segment, recv, args, span) = parent.kind {
                     if args.is_empty()
-                        && segment.ident.name.as_str() == "parse"
+                        && segment.ident.name == sym::parse
                         && let parse_result_ty = cx.typeck_results().expr_ty(parent)
                         && is_type_diagnostic_item(cx, parse_result_ty, sym::Result)
                         && let ty::Adt(_, substs) = parse_result_ty.kind()
@@ -58,7 +57,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
                             "calling `.parse()` on a string without trimming the trailing newline character",
                             "checking",
                         ))
-                    } else if segment.ident.name.as_str() == "ends_with"
+                    } else if segment.ident.name == sym::ends_with
                         && recv.span == expr.span
                         && let [arg] = args
                         && expr_is_string_literal_without_trailing_newline(arg)
