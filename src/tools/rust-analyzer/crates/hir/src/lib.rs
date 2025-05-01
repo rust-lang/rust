@@ -3685,24 +3685,16 @@ impl GenericDef {
         }
 
         let source_map = match def {
-            GenericDefId::AdtId(AdtId::EnumId(it)) => {
-                db.enum_signature_with_source_map(it).1.clone()
-            }
-            GenericDefId::AdtId(AdtId::StructId(it)) => {
-                db.struct_signature_with_source_map(it).1.clone()
-            }
-            GenericDefId::AdtId(AdtId::UnionId(it)) => {
-                db.union_signature_with_source_map(it).1.clone()
-            }
+            GenericDefId::AdtId(AdtId::EnumId(it)) => db.enum_signature_with_source_map(it).1,
+            GenericDefId::AdtId(AdtId::StructId(it)) => db.struct_signature_with_source_map(it).1,
+            GenericDefId::AdtId(AdtId::UnionId(it)) => db.union_signature_with_source_map(it).1,
             GenericDefId::ConstId(_) => return,
-            GenericDefId::FunctionId(it) => db.function_signature_with_source_map(it).1.clone(),
-            GenericDefId::ImplId(it) => db.impl_signature_with_source_map(it).1.clone(),
+            GenericDefId::FunctionId(it) => db.function_signature_with_source_map(it).1,
+            GenericDefId::ImplId(it) => db.impl_signature_with_source_map(it).1,
             GenericDefId::StaticId(_) => return,
-            GenericDefId::TraitAliasId(it) => {
-                db.trait_alias_signature_with_source_map(it).1.clone()
-            }
-            GenericDefId::TraitId(it) => db.trait_signature_with_source_map(it).1.clone(),
-            GenericDefId::TypeAliasId(it) => db.type_alias_signature_with_source_map(it).1.clone(),
+            GenericDefId::TraitAliasId(it) => db.trait_alias_signature_with_source_map(it).1,
+            GenericDefId::TraitId(it) => db.trait_signature_with_source_map(it).1,
+            GenericDefId::TypeAliasId(it) => db.type_alias_signature_with_source_map(it).1,
         };
 
         expr_store_diagnostics(db, acc, &source_map);
@@ -3802,7 +3794,7 @@ impl GenericSubstitution {
         container_params
             .chain(self_params)
             .filter_map(|(ty, name)| {
-                Some((name?.symbol().clone(), Type { ty: ty.clone(), env: self.env.clone() }))
+                Some((name?.symbol().clone(), Type { ty, env: self.env.clone() }))
             })
             .collect()
     }

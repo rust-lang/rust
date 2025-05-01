@@ -1370,7 +1370,7 @@ fn detached_file_to_crate_graph(
         Edition::CURRENT,
         display_name.clone(),
         None,
-        cfg_options.clone(),
+        cfg_options,
         None,
         Env::default(),
         CrateOrigin::Local {

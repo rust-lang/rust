@@ -1431,7 +1431,7 @@ impl SourceAnalyzer {
     }
 
     fn ty_of_expr(&self, expr: ast::Expr) -> Option<&Ty> {
-        self.infer()?.type_of_expr_or_pat(self.expr_id(expr.clone())?)
+        self.infer()?.type_of_expr_or_pat(self.expr_id(expr)?)
     }
 }
 

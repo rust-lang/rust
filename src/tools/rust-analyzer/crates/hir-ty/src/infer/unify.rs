@@ -1029,7 +1029,7 @@ impl<'a> InferenceTable<'a> {
         };
         let sized_pred = WhereClause::Implemented(TraitRef {
             trait_id: to_chalk_trait_id(sized),
-            substitution: Substitution::from1(Interner, ty.clone()),
+            substitution: Substitution::from1(Interner, ty),
         });
         let goal = GoalData::DomainGoal(chalk_ir::DomainGoal::Holds(sized_pred)).intern(Interner);
         matches!(self.try_obligation(goal), Some(Solution::Unique(_)))

@@ -320,7 +320,7 @@ impl Attr {
     ) -> impl IntoIterator<Item = Self> {
         let is_cfg_attr = self.path.as_ident().is_some_and(|name| *name == sym::cfg_attr);
         if !is_cfg_attr {
-            return smallvec![self.clone()];
+            return smallvec![self];
         }
 
         let subtree = match self.token_tree_value() {

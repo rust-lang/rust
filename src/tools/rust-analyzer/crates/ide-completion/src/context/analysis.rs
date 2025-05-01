@@ -387,11 +387,7 @@ fn expand(
 
     match (
         sema.expand_macro_call(&actual_macro_call),
-        sema.speculative_expand_macro_call(
-            &actual_macro_call,
-            &speculative_args,
-            fake_ident_token.clone(),
-        ),
+        sema.speculative_expand_macro_call(&actual_macro_call, &speculative_args, fake_ident_token),
     ) {
         // successful expansions
         (Some(actual_expansion), Some((fake_expansion, fake_mapped_tokens))) => {
