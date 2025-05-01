@@ -1,25 +1,26 @@
 use std::iter;
 
 use either::Either;
-use hir::{HasSource, HirFileIdExt, ModuleSource};
+use hir::{HasSource, ModuleSource};
 use ide_db::{
-    assists::{AssistId, AssistKind},
+    FileId, FxHashMap, FxHashSet,
+    assists::AssistId,
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
-    FileId, FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::{
-    algo::find_node_at_range,
-    ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make, HasVisibility,
-    },
-    match_ast, ted, AstNode,
+    AstNode,
     SyntaxKind::{self, WHITESPACE},
     SyntaxNode, TextRange, TextSize,
+    algo::find_node_at_range,
+    ast::{
+        self, HasVisibility,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
+    match_ast, ted,
 };
 
 use crate::{AssistContext, Assists};
@@ -90,7 +91,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let old_item_indent = module.body_items[0].indent_level();
 
     acc.add(
-        AssistId("extract_module", AssistKind::RefactorExtract),
+        AssistId::refactor_extract("extract_module"),
         "Extract Module",
         module.text_range,
         |builder| {
@@ -112,7 +113,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             let (usages_to_be_processed, record_fields, use_stmts_to_be_inserted) =
                 module.get_usages_and_record_fields(ctx);
 
-            builder.edit_file(ctx.file_id());
+            builder.edit_file(ctx.vfs_file_id());
             use_stmts_to_be_inserted.into_iter().for_each(|(_, use_stmt)| {
                 builder.insert(ctx.selection_trimmed().end(), format!("\n{use_stmt}"));
             });
@@ -124,7 +125,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
             let mut usages_to_be_processed_for_cur_file = vec![];
             for (file_id, usages) in usages_to_be_processed {
-                if file_id == ctx.file_id() {
+                if file_id == ctx.vfs_file_id() {
                     usages_to_be_processed_for_cur_file = usages;
                     continue;
                 }
@@ -134,7 +135,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 }
             }
 
-            builder.edit_file(ctx.file_id());
+            builder.edit_file(ctx.vfs_file_id());
             for (text_range, usage) in usages_to_be_processed_for_cur_file {
                 builder.replace(text_range, usage);
             }
@@ -363,7 +364,7 @@ impl Module {
 
                 None
             });
-            refs_in_files.entry(file_id.file_id()).or_default().extend(usages);
+            refs_in_files.entry(file_id.file_id(ctx.db())).or_default().extend(usages);
         }
     }
 
@@ -457,6 +458,7 @@ impl Module {
         let selection_range = ctx.selection_trimmed();
         let file_id = ctx.file_id();
         let usage_res = def.usages(&ctx.sema).in_scope(&SearchScope::single_file(file_id)).all();
+
         let file = ctx.sema.parse(file_id);
 
         // track uses which does not exists in `Use`
@@ -483,7 +485,7 @@ impl Module {
             ctx,
             curr_parent_module,
             selection_range,
-            file_id.file_id(),
+            file_id.file_id(ctx.db()),
         );
 
         // Find use stmt that use def in current file
@@ -670,7 +672,7 @@ fn check_def_in_mod_and_out_sel(
                 let have_same_parent = if let Some(ast_module) = &curr_parent_module {
                     ctx.sema.to_module_def(ast_module).is_some_and(|it| it == $x.module(ctx.db()))
                 } else {
-                    source.file_id.original_file(ctx.db()) == curr_file_id
+                    source.file_id.original_file(ctx.db()).file_id(ctx.db()) == curr_file_id
                 };
 
                 let in_sel = !selection_range.contains_range(source.value.syntax().text_range());
@@ -686,7 +688,7 @@ fn check_def_in_mod_and_out_sel(
                 (Some(ast_module), Some(hir_module)) => {
                     ctx.sema.to_module_def(ast_module).is_some_and(|it| it == hir_module)
                 }
-                _ => source.file_id.original_file(ctx.db()) == curr_file_id,
+                _ => source.file_id.original_file(ctx.db()).file_id(ctx.db()) == curr_file_id,
             };
 
             if have_same_parent {
@@ -1159,8 +1161,8 @@ mod modname {
     }
 
     #[test]
-    fn test_extract_module_for_impl_not_having_corresponding_adt_in_selection_and_not_in_same_mod_but_with_super(
-    ) {
+    fn test_extract_module_for_impl_not_having_corresponding_adt_in_selection_and_not_in_same_mod_but_with_super()
+     {
         check_assist(
             extract_module,
             r"

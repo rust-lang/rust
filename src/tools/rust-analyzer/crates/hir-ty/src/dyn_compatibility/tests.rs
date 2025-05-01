@@ -33,15 +33,18 @@ fn check_dyn_compatibility<'a>(
         expected.into_iter().map(|(id, osvs)| (id, FxHashSet::from_iter(osvs))).collect();
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     for (trait_id, name) in file_ids.into_iter().flat_map(|file_id| {
-        let module_id = db.module_for_file(file_id);
+        let module_id = db.module_for_file(file_id.file_id(&db));
         let def_map = module_id.def_map(&db);
         let scope = &def_map[module_id.local_id].scope;
         scope
             .declarations()
             .filter_map(|def| {
                 if let hir_def::ModuleDefId::TraitId(trait_id) = def {
-                    let name =
-                        db.trait_data(trait_id).name.display_no_db(file_id.edition()).to_smolstr();
+                    let name = db
+                        .trait_signature(trait_id)
+                        .name
+                        .display_no_db(file_id.edition(&db))
+                        .to_smolstr();
                     Some((trait_id, name))
                 } else {
                     None
@@ -53,7 +56,7 @@ fn check_dyn_compatibility<'a>(
             continue;
         };
         let mut osvs = FxHashSet::default();
-        let _ = dyn_compatibility_with_callback(&db, trait_id, &mut |osv| {
+        _ = dyn_compatibility_with_callback(&db, trait_id, &mut |osv| {
             osvs.insert(match osv {
                 DynCompatibilityViolation::SizedSelf => SizedSelf,
                 DynCompatibilityViolation::SelfReferential => SelfReferential,

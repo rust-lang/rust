@@ -39,8 +39,6 @@ pub fn parse_expr(psess: &ParseSess, source_code: &str) -> Option<P<Expr>> {
 struct Normalize;
 
 impl MutVisitor for Normalize {
-    const VISIT_TOKENS: bool = true;
-
     fn visit_id(&mut self, id: &mut NodeId) {
         *id = DUMMY_NODE_ID;
     }

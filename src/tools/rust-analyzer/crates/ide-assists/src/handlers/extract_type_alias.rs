@@ -1,11 +1,11 @@
 use either::Either;
 use ide_db::syntax_helpers::node_ext::walk_ty;
 use syntax::{
-    ast::{self, edit::IndentLevel, make, AstNode, HasGenericArgs, HasGenericParams, HasName},
+    ast::{self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel, make},
     syntax_editor,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: extract_type_alias
 //
@@ -40,7 +40,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let target = ty.syntax().text_range();
 
     acc.add(
-        AssistId("extract_type_alias", AssistKind::RefactorExtract),
+        AssistId::refactor_extract("extract_type_alias"),
         "Extract type as type alias",
         target,
         |builder| {
@@ -87,7 +87,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 ],
             );
 
-            builder.add_file_edits(ctx.file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), edit);
         },
     )
 }

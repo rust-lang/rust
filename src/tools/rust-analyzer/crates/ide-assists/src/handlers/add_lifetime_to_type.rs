@@ -1,6 +1,6 @@
 use syntax::ast::{self, AstNode, HasGenericParams, HasName};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_lifetime_to_type
 //
@@ -37,31 +37,26 @@ pub(crate) fn add_lifetime_to_type(acc: &mut Assists, ctx: &AssistContext<'_>) -
     let ref_types = fetch_borrowed_types(&node)?;
     let target = node.syntax().text_range();
 
-    acc.add(
-        AssistId("add_lifetime_to_type", AssistKind::Generate),
-        "Add lifetime",
-        target,
-        |builder| {
-            match node.generic_param_list() {
-                Some(gen_param) => {
-                    if let Some(left_angle) = gen_param.l_angle_token() {
-                        builder.insert(left_angle.text_range().end(), "'a, ");
-                    }
-                }
-                None => {
-                    if let Some(name) = node.name() {
-                        builder.insert(name.syntax().text_range().end(), "<'a>");
-                    }
+    acc.add(AssistId::generate("add_lifetime_to_type"), "Add lifetime", target, |builder| {
+        match node.generic_param_list() {
+            Some(gen_param) => {
+                if let Some(left_angle) = gen_param.l_angle_token() {
+                    builder.insert(left_angle.text_range().end(), "'a, ");
                 }
             }
+            None => {
+                if let Some(name) = node.name() {
+                    builder.insert(name.syntax().text_range().end(), "<'a>");
+                }
+            }
+        }
 
-            for ref_type in ref_types {
-                if let Some(amp_token) = ref_type.amp_token() {
-                    builder.insert(amp_token.text_range().end(), "'a ");
-                }
+        for ref_type in ref_types {
+            if let Some(amp_token) = ref_type.amp_token() {
+                builder.insert(amp_token.text_range().end(), "'a ");
             }
-        },
-    )
+        }
+    })
 }
 
 fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<ast::RefType>> {
@@ -99,11 +94,7 @@ fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<ast::RefType>> {
         }
     };
 
-    if ref_types.is_empty() {
-        None
-    } else {
-        Some(ref_types)
-    }
+    if ref_types.is_empty() { None } else { Some(ref_types) }
 }
 
 fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast::RefType>> {
@@ -134,11 +125,7 @@ fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast
             .collect(),
     };
 
-    if ref_types.is_empty() {
-        None
-    } else {
-        Some(ref_types)
-    }
+    if ref_types.is_empty() { None } else { Some(ref_types) }
 }
 
 #[cfg(test)]

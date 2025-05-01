@@ -1,21 +1,21 @@
-use hir::{sym, AsAssocItem, Semantics};
+use hir::{AsAssocItem, Semantics, sym};
 use ide_db::{
+    RootDatabase,
     famous_defs::FamousDefs,
     syntax_helpers::node_ext::{
         block_as_lone_tail, for_each_tail_expr, is_pattern_cond, preorder_expr,
     },
-    RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, syntax_factory::SyntaxFactory, HasArgList},
-    syntax_editor::SyntaxEditor,
     AstNode, SyntaxNode,
+    ast::{self, HasArgList, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    syntax_editor::SyntaxEditor,
 };
 
 use crate::{
+    AssistContext, AssistId, Assists,
     utils::{invert_boolean_expression, unwrap_trivial_block},
-    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: convert_if_to_bool_then
@@ -73,7 +73,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let target = expr.syntax().text_range();
     acc.add(
-        AssistId("convert_if_to_bool_then", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_if_to_bool_then"),
         "Convert `if` expression to `bool::then` call",
         target,
         |builder| {
@@ -98,7 +98,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
             let closure_body = ast::Expr::cast(edit.new_root().clone()).unwrap();
 
             let mut editor = builder.make_editor(expr.syntax());
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let closure_body = match closure_body {
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
@@ -135,7 +135,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
             editor.replace(expr.syntax(), mcall.syntax());
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -181,7 +181,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let target = mcall.syntax().text_range();
     acc.add(
-        AssistId("convert_bool_then_to_if", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_bool_then_to_if"),
         "Convert `bool::then` call to `if`",
         target,
         |builder| {
@@ -216,7 +216,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
             let closure_body = ast::BlockExpr::cast(edit.new_root().clone()).unwrap();
 
             let mut editor = builder.make_editor(mcall.syntax());
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
 
             let cond = match &receiver {
                 ast::Expr::ParenExpr(expr) => expr.expr().unwrap_or(receiver),
@@ -233,7 +233,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
             editor.replace(mcall.syntax().clone(), if_expr.syntax().clone());
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -245,7 +245,7 @@ fn option_variants(
     let fam = FamousDefs(sema, sema.scope(expr)?.krate());
     let option_variants = fam.core_option_Option()?.variants(sema.db);
     match &*option_variants {
-        &[variant0, variant1] => Some(if variant0.name(sema.db) == sym::None.clone() {
+        &[variant0, variant1] => Some(if variant0.name(sema.db) == sym::None {
             (variant0, variant1)
         } else {
             (variant1, variant0)

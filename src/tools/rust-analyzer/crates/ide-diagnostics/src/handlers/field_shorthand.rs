@@ -1,27 +1,30 @@
 //! Suggests shortening `Foo { field: field }` to `Foo { field }` in both
 //! expressions and patterns.
 
+use ide_db::RootDatabase;
 use ide_db::text_edit::TextEdit;
-use ide_db::{source_change::SourceChange, EditionedFileId, FileRange};
-use syntax::{ast, match_ast, AstNode, SyntaxNode};
+use ide_db::{EditionedFileId, FileRange, source_change::SourceChange};
+use syntax::{AstNode, SyntaxNode, ast, match_ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode};
+use crate::{Diagnostic, DiagnosticCode, fix};
 
 pub(crate) fn field_shorthand(
+    db: &RootDatabase,
     acc: &mut Vec<Diagnostic>,
     file_id: EditionedFileId,
     node: &SyntaxNode,
 ) {
     match_ast! {
         match node {
-            ast::RecordExpr(it) => check_expr_field_shorthand(acc, file_id, it),
-            ast::RecordPat(it) => check_pat_field_shorthand(acc, file_id, it),
+            ast::RecordExpr(it) => check_expr_field_shorthand(db, acc, file_id, it),
+            ast::RecordPat(it) => check_pat_field_shorthand(db, acc, file_id, it),
             _ => ()
         }
     };
 }
 
 fn check_expr_field_shorthand(
+    db: &RootDatabase,
     acc: &mut Vec<Diagnostic>,
     file_id: EditionedFileId,
     record_expr: ast::RecordExpr,
@@ -49,16 +52,17 @@ fn check_expr_field_shorthand(
         let edit = edit_builder.finish();
 
         let field_range = record_field.syntax().text_range();
+        let vfs_file_id = file_id.file_id(db);
         acc.push(
             Diagnostic::new(
                 DiagnosticCode::Clippy("redundant_field_names"),
                 "Shorthand struct initialization",
-                FileRange { file_id: file_id.into(), range: field_range },
+                FileRange { file_id: vfs_file_id, range: field_range },
             )
             .with_fixes(Some(vec![fix(
                 "use_expr_field_shorthand",
                 "Use struct shorthand initialization",
-                SourceChange::from_text_edit(file_id, edit),
+                SourceChange::from_text_edit(vfs_file_id, edit),
                 field_range,
             )])),
         );
@@ -66,6 +70,7 @@ fn check_expr_field_shorthand(
 }
 
 fn check_pat_field_shorthand(
+    db: &RootDatabase,
     acc: &mut Vec<Diagnostic>,
     file_id: EditionedFileId,
     record_pat: ast::RecordPat,
@@ -93,16 +98,17 @@ fn check_pat_field_shorthand(
         let edit = edit_builder.finish();
 
         let field_range = record_pat_field.syntax().text_range();
+        let vfs_file_id = file_id.file_id(db);
         acc.push(
             Diagnostic::new(
                 DiagnosticCode::Clippy("redundant_field_names"),
                 "Shorthand struct pattern",
-                FileRange { file_id: file_id.into(), range: field_range },
+                FileRange { file_id: vfs_file_id, range: field_range },
             )
             .with_fixes(Some(vec![fix(
                 "use_pat_field_shorthand",
                 "Use struct field shorthand",
-                SourceChange::from_text_edit(file_id, edit),
+                SourceChange::from_text_edit(vfs_file_id, edit),
                 field_range,
             )])),
         );

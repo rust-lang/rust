@@ -1,9 +1,9 @@
 use syntax::{
-    ast::{edit::AstNodeEdit, make, AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat},
     SyntaxKind::WHITESPACE,
+    ast::{AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: move_guard_to_arm_body
 //
@@ -49,7 +49,7 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let target = guard.syntax().text_range();
     acc.add(
-        AssistId("move_guard_to_arm_body", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("move_guard_to_arm_body"),
         "Move guard to arm body",
         target,
         |edit| {
@@ -118,7 +118,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
     let (conds_blocks, tail) = parse_if_chain(if_expr)?;
 
     acc.add(
-        AssistId("move_arm_cond_to_match_guard", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("move_arm_cond_to_match_guard"),
         "Move condition to match guard",
         replace_node.text_range(),
         |edit| {

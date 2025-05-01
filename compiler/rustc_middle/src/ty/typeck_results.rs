@@ -716,6 +716,8 @@ pub type CanonicalUserTypeAnnotations<'tcx> =
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub user_ty: Box<CanonicalUserType<'tcx>>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,

@@ -5,13 +5,12 @@ use itertools::{EitherOrBoth, Itertools};
 use parser::T;
 use stdx::is_upper_snake_case;
 use syntax::{
-    algo,
+    Direction, SyntaxElement, algo,
     ast::{
-        self, edit_in_place::Removable, make, AstNode, HasAttrs, HasName, HasVisibility,
-        PathSegmentKind,
+        self, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind, edit_in_place::Removable,
+        make,
     },
     ted::{self, Position},
-    Direction, SyntaxElement,
 };
 
 use crate::syntax_helpers::node_ext::vis_eq;
@@ -191,7 +190,7 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                     && !use_trees.is_empty()
                     && rhs_t.use_tree_list().is_some() =>
             {
-                return None
+                return None;
             }
             Err(insert_idx) => {
                 use_trees.insert(insert_idx, rhs_t.clone());

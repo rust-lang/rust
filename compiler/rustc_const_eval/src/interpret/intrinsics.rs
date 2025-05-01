@@ -61,16 +61,21 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ensure_monomorphic_enough(tcx, tp_ty)?;
             ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128())
         }
-        sym::variant_count => match tp_ty.kind() {
+        sym::variant_count => match match tp_ty.kind() {
+            // Pattern types have the same number of variants as their base type.
+            // Even if we restrict e.g. which variants are valid, the variants are essentially just uninhabited.
+            // And `Result<(), !>` still has two variants according to `variant_count`.
+            ty::Pat(base, _) => *base,
+            _ => tp_ty,
+        }
+        .kind()
+        {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.
             ty::Adt(adt, _) => ConstValue::from_target_usize(adt.variants().len() as u64, &tcx),
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
                 throw_inval!(TooGeneric)
             }
-            ty::Pat(_, pat) => match **pat {
-                ty::PatternKind::Range { .. } => ConstValue::from_target_usize(0u64, &tcx),
-                // Future pattern kinds may have more variants
-            },
+            ty::Pat(..) => unreachable!(),
             ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool
             | ty::Char
@@ -178,8 +183,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let res = self.binary_op(op, &a, &b)?;
                 // `binary_op` already called `generate_nan` if needed.
-
-                // FIXME: Miri should add some non-determinism to the result here to catch any dependences on exact computations. This has previously been done, but the behaviour was removed as part of constification.
+                let res = M::apply_float_nondet(self, res)?;
                 self.write_immediate(*res, dest)?;
             }
 

@@ -4,7 +4,7 @@
 use std::{fmt, io, process::Command, time::Duration};
 
 use cargo_metadata::PackageId;
-use crossbeam_channel::{select_biased, unbounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, select_biased, unbounded};
 use ide_db::FxHashSet;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashMap;
@@ -17,7 +17,7 @@ pub(crate) use cargo_metadata::diagnostic::{
 use toolchain::Tool;
 use triomphe::Arc;
 
-use crate::command::{CommandHandle, ParseFromLine};
+use crate::command::{CargoParser, CommandHandle};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) enum InvocationStrategy {
@@ -35,7 +35,7 @@ pub(crate) struct CargoOptions {
     pub(crate) features: Vec<String>,
     pub(crate) extra_args: Vec<String>,
     pub(crate) extra_test_bin_args: Vec<String>,
-    pub(crate) extra_env: FxHashMap<String, String>,
+    pub(crate) extra_env: FxHashMap<String, Option<String>>,
     pub(crate) target_dir: Option<Utf8PathBuf>,
 }
 
@@ -69,7 +69,6 @@ impl CargoOptions {
         if let Some(target_dir) = &self.target_dir {
             cmd.arg("--target-dir").arg(target_dir);
         }
-        cmd.envs(&self.extra_env);
     }
 }
 
@@ -83,7 +82,7 @@ pub(crate) enum FlycheckConfig {
     CustomCommand {
         command: String,
         args: Vec<String>,
-        extra_env: FxHashMap<String, String>,
+        extra_env: FxHashMap<String, Option<String>>,
         invocation_strategy: InvocationStrategy,
     },
 }
@@ -329,7 +328,7 @@ impl FlycheckActor {
 
                     tracing::debug!(?command, "will restart flycheck");
                     let (sender, receiver) = unbounded();
-                    match CommandHandle::spawn(command, sender) {
+                    match CommandHandle::spawn(command, CargoCheckParser, sender) {
                         Ok(command_handle) => {
                             tracing::debug!(command = formatted_command, "did restart flycheck");
                             self.command_handle = Some(command_handle);
@@ -401,7 +400,9 @@ impl FlycheckActor {
                             package_id = package_id.as_ref().map(|it| &it.repr),
                             "diagnostic received"
                         );
-                        self.diagnostics_received = DiagnosticsReceived::Yes;
+                        if self.diagnostics_received == DiagnosticsReceived::No {
+                            self.diagnostics_received = DiagnosticsReceived::Yes;
+                        }
                         if let Some(package_id) = &package_id {
                             if self.diagnostics_cleared_for.insert(package_id.clone()) {
                                 tracing::trace!(
@@ -466,7 +467,8 @@ impl FlycheckActor {
     ) -> Option<Command> {
         match &self.config {
             FlycheckConfig::CargoCommand { command, options, ansi_color_output } => {
-                let mut cmd = toolchain::command(Tool::Cargo.path(), &*self.root);
+                let mut cmd =
+                    toolchain::command(Tool::Cargo.path(), &*self.root, &options.extra_env);
                 if let Some(sysroot_root) = &self.sysroot_root {
                     cmd.env("RUSTUP_TOOLCHAIN", AsRef::<std::path::Path>::as_ref(sysroot_root));
                 }
@@ -514,8 +516,7 @@ impl FlycheckActor {
                         &*self.root
                     }
                 };
-                let mut cmd = toolchain::command(command, root);
-                cmd.envs(extra_env);
+                let mut cmd = toolchain::command(command, root, extra_env);
 
                 // If the custom command has a $saved_file placeholder, and
                 // we're saving a file, replace the placeholder in the arguments.
@@ -556,8 +557,10 @@ enum CargoCheckMessage {
     Diagnostic { diagnostic: Diagnostic, package_id: Option<Arc<PackageId>> },
 }
 
-impl ParseFromLine for CargoCheckMessage {
-    fn from_line(line: &str, error: &mut String) -> Option<Self> {
+struct CargoCheckParser;
+
+impl CargoParser<CargoCheckMessage> for CargoCheckParser {
+    fn from_line(&self, line: &str, error: &mut String) -> Option<CargoCheckMessage> {
         let mut deserializer = serde_json::Deserializer::from_str(line);
         deserializer.disable_recursion_limit();
         if let Ok(message) = JsonMessage::deserialize(&mut deserializer) {
@@ -586,7 +589,7 @@ impl ParseFromLine for CargoCheckMessage {
         None
     }
 
-    fn from_eof() -> Option<Self> {
+    fn from_eof(&self) -> Option<CargoCheckMessage> {
         None
     }
 }

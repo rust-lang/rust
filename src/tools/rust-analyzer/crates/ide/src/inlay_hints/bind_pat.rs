@@ -4,7 +4,7 @@
 //! let _x /* i32 */= f(4, 4);
 //! ```
 use hir::{DisplayTarget, Semantics};
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use itertools::Itertools;
 use syntax::{
@@ -13,8 +13,8 @@ use syntax::{
 };
 
 use crate::{
-    inlay_hints::{closure_has_block_body, label_of_ty, ty_to_text_edit},
     InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind,
+    inlay_hints::{closure_has_block_body, label_of_ty, ty_to_text_edit},
 };
 
 pub(super) fn hints(
@@ -87,6 +87,7 @@ pub(super) fn hints(
                 .as_ref()
                 .map_or_else(|| pat.syntax().text_range(), |t| t.text_range())
                 .end(),
+            &|_| (),
             if colon_token.is_some() { "" } else { ": " },
         )
     } else {
@@ -181,10 +182,10 @@ mod tests {
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
-    use crate::{fixture, inlay_hints::InlayHintsConfig, ClosureReturnTypeHints};
+    use crate::{ClosureReturnTypeHints, fixture, inlay_hints::InlayHintsConfig};
 
     use crate::inlay_hints::tests::{
-        check, check_edit, check_no_edit, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
+        DISABLED_CONFIG, TEST_CONFIG, check, check_edit, check_no_edit, check_with_config,
     };
 
     #[track_caller]
@@ -861,28 +862,6 @@ fn main() {
         check_with_config(
             InlayHintsConfig {
                 type_hints: true,
-                closure_style: ClosureStyle::ClosureWithId,
-                ..DISABLED_CONFIG
-            },
-            r#"
-//- minicore: fn
-fn main() {
-    let x = || 2;
-      //^ {closure#0}
-    let y = |t: i32| x() + t;
-      //^ {closure#1}
-    let mut t = 5;
-          //^ i32
-    let z = |k: i32| { t += k; };
-      //^ {closure#2}
-    let p = (y, z);
-      //^ ({closure#1}, {closure#2})
-}
-            "#,
-        );
-        check_with_config(
-            InlayHintsConfig {
-                type_hints: true,
                 closure_style: ClosureStyle::Hide,
                 ..DISABLED_CONFIG
             },
@@ -1140,12 +1119,11 @@ fn test() {
 
     #[test]
     fn no_edit_for_closure_return_without_body_block() {
-        // We can lift this limitation; see FIXME in closure_ret module.
         let config = InlayHintsConfig {
             closure_return_type_hints: ClosureReturnTypeHints::Always,
             ..TEST_CONFIG
         };
-        check_no_edit(
+        check_edit(
             config,
             r#"
 struct S<T>(T);
@@ -1154,6 +1132,13 @@ fn test() {
     let f = |a: S<usize>| S(a);
 }
 "#,
+            expect![[r#"
+            struct S<T>(T);
+            fn test() {
+                let f = || -> i32 { 3 };
+                let f = |a: S<usize>| -> S<S<usize>> { S(a) };
+            }
+            "#]],
         );
     }
 

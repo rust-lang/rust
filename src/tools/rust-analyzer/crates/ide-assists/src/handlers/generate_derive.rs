@@ -1,9 +1,9 @@
 use syntax::{
-    ast::{self, edit_in_place::AttrsOwnerEdit, make, AstNode, HasAttrs},
     T,
+    ast::{self, AstNode, HasAttrs, edit_in_place::AttrsOwnerEdit, make},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: generate_derive
 //
@@ -39,7 +39,7 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
         Some(tt) => Some(tt.right_delimiter_token()?),
     };
 
-    acc.add(AssistId("generate_derive", AssistKind::Generate), "Add `#[derive]`", target, |edit| {
+    acc.add(AssistId::generate("generate_derive"), "Add `#[derive]`", target, |edit| {
         match derive_attr {
             None => {
                 let derive = make::attr_outer(make::meta_token_tree(

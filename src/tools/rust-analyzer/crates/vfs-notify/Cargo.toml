@@ -13,7 +13,7 @@ rust-version.workspace = true
 
 [dependencies]
 tracing.workspace = true
-walkdir = "2.3.2"
+walkdir = "2.5.0"
 crossbeam-channel.workspace = true
 notify = "8.0.0"
 rayon = "1.10.0"

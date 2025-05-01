@@ -1,18 +1,19 @@
 use std::iter;
 
-use expect_test::{expect, Expect};
+use expect_test::{Expect, expect};
 use hir::Semantics;
 use ide_db::{
+    FilePosition, FileRange, RootDatabase,
     defs::Definition,
     documentation::{Documentation, HasDocs},
-    FilePosition, FileRange, RootDatabase,
 };
 use itertools::Itertools;
-use syntax::{ast, match_ast, AstNode, SyntaxNode};
+use syntax::{AstNode, SyntaxNode, ast, match_ast};
 
 use crate::{
+    TryToNav,
     doc_links::{extract_definitions_from_docs, resolve_doc_path_for_def, rewrite_links},
-    fixture, TryToNav,
+    fixture,
 };
 
 fn check_external_docs(
@@ -43,7 +44,7 @@ fn check_external_docs(
 
 fn check_rewrite(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
-    let sema = &Semantics::new(&*analysis.db);
+    let sema = &Semantics::new(&analysis.db);
     let (cursor_def, docs) = def_under_cursor(sema, &position);
     let res = rewrite_links(sema.db, docs.as_str(), cursor_def);
     expect.assert_eq(&res)
@@ -54,7 +55,7 @@ fn check_doc_links(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
 
     let (analysis, position, mut expected) = fixture::annotations(ra_fixture);
     expected.sort_by_key(key_fn);
-    let sema = &Semantics::new(&*analysis.db);
+    let sema = &Semantics::new(&analysis.db);
     let (cursor_def, docs) = def_under_cursor(sema, &position);
     let defs = extract_definitions_from_docs(&docs);
     let actual: Vec<_> = defs
@@ -683,7 +684,9 @@ fn rewrite_intra_doc_link_with_anchor() {
         //! $0[PartialEq#derivable]
         fn main() {}
         "#,
-        expect!["[PartialEq#derivable](https://doc.rust-lang.org/stable/core/cmp/trait.PartialEq.html#derivable)"],
+        expect![
+            "[PartialEq#derivable](https://doc.rust-lang.org/stable/core/cmp/trait.PartialEq.html#derivable)"
+        ],
     );
 }
 

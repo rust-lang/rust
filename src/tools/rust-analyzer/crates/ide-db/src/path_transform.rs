@@ -7,8 +7,9 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use span::Edition;
 use syntax::{
-    ast::{self, make, AstNode, HasGenericArgs},
-    ted, NodeOrToken, SyntaxNode,
+    NodeOrToken, SyntaxNode,
+    ast::{self, AstNode, HasGenericArgs, make},
+    ted,
 };
 
 #[derive(Default)]
@@ -209,7 +210,7 @@ impl<'a> PathTransform<'a> {
             .flat_map(|it| it.lifetime_params(db))
             .zip(self.substs.lifetimes.clone())
             .filter_map(|(k, v)| {
-                Some((k.name(db).display(db.upcast(), target_edition).to_string(), v.lifetime()?))
+                Some((k.name(db).display(db, target_edition).to_string(), v.lifetime()?))
             })
             .collect();
         let ctx = Ctx {
@@ -324,7 +325,7 @@ impl Ctx<'_> {
                                 allow_unstable: true,
                             };
                             let found_path = self.target_module.find_path(
-                                self.source_scope.db.upcast(),
+                                self.source_scope.db,
                                 hir::ModuleDef::Trait(trait_ref),
                                 cfg,
                             )?;
@@ -383,8 +384,7 @@ impl Ctx<'_> {
                     prefer_absolute: false,
                     allow_unstable: true,
                 };
-                let found_path =
-                    self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
+                let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
                 let res = mod_path_to_ast(&found_path, self.target_edition).clone_for_update();
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
                     if let Some(segment) = res.segment() {
@@ -424,7 +424,7 @@ impl Ctx<'_> {
                             allow_unstable: true,
                         };
                         let found_path = self.target_module.find_path(
-                            self.source_scope.db.upcast(),
+                            self.source_scope.db,
                             ModuleDef::from(adt),
                             cfg,
                         )?;

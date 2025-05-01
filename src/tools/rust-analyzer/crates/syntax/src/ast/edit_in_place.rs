@@ -5,12 +5,12 @@ use std::iter::{empty, once, successors};
 use parser::{SyntaxKind, T};
 
 use crate::{
-    algo::{self, neighbor},
-    ast::{self, edit::IndentLevel, make, HasGenericArgs, HasGenericParams},
-    ted::{self, Position},
     AstNode, AstToken, Direction, SyntaxElement,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
+    algo::{self, neighbor},
+    ast::{self, HasGenericArgs, HasGenericParams, edit::IndentLevel, make},
+    ted::{self, Position},
 };
 
 use super::{GenericParam, HasArgList, HasName};

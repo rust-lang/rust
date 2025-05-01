@@ -14,9 +14,8 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode, elaborate};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;

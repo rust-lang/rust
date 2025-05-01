@@ -85,7 +85,7 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
     }
 
     fn process_list(&mut self) -> anyhow::Result<()> {
-        let mut nesting = ListNesting::new();
+        let mut nesting = ListNesting::default();
         while let Some(line) = self.iter.peek() {
             let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
 
@@ -385,10 +385,6 @@ fn parse_media_block<'a>(line: &'a str, prefix: &str) -> Option<(&'a str, &'a st
 struct ListNesting(Vec<ListMarker>);
 
 impl ListNesting {
-    fn new() -> Self {
-        Self(Vec::<ListMarker>::with_capacity(6))
-    }
-
     fn current(&mut self) -> Option<&ListMarker> {
         self.0.last()
     }
@@ -414,6 +410,12 @@ impl ListNesting {
             Some(marker) => marker.in_markdown(),
         };
         (marker, indent)
+    }
+}
+
+impl Default for ListNesting {
+    fn default() -> Self {
+        Self(Vec::<ListMarker>::with_capacity(6))
     }
 }
 

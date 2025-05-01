@@ -7,14 +7,20 @@ pub(crate) struct TopologicSortIterBuilder<T> {
     nodes: FxHashMap<T, Entry<T>>,
 }
 
+// this implementation has different bounds on T than would be implied by #[derive(Default)]
+impl<T> Default for TopologicSortIterBuilder<T>
+where
+    T: Copy + Eq + PartialEq + Hash,
+{
+    fn default() -> Self {
+        Self { nodes: Default::default() }
+    }
+}
+
 impl<T> TopologicSortIterBuilder<T>
 where
     T: Copy + Eq + PartialEq + Hash,
 {
-    fn new() -> Self {
-        Self { nodes: Default::default() }
-    }
-
     fn get_or_create_entry(&mut self, item: T) -> &mut Entry<T> {
         self.nodes.entry(item).or_default()
     }
@@ -54,7 +60,7 @@ where
     T: Copy + Eq + PartialEq + Hash,
 {
     pub(crate) fn builder() -> TopologicSortIterBuilder<T> {
-        TopologicSortIterBuilder::new()
+        TopologicSortIterBuilder::default()
     }
 
     pub(crate) fn pending(&self) -> usize {

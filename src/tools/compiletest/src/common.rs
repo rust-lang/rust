@@ -413,14 +413,6 @@ pub struct Config {
     /// cross-compilation scenarios that do not otherwise want/need to `-Zbuild-std`. Used in e.g.
     /// ABI tests.
     pub minicore_path: Utf8PathBuf,
-
-    /// If true, disable the "new" executor, and use the older libtest-based
-    /// executor to run tests instead. This is a temporary fallback, to make
-    /// manual comparative testing easier if bugs are found in the new executor.
-    ///
-    /// FIXME(Zalathar): Eventually remove this flag and remove the libtest
-    /// dependency.
-    pub no_new_executor: bool,
 }
 
 impl Config {

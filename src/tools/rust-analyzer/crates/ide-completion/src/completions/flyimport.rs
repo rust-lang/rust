@@ -5,16 +5,16 @@ use ide_db::imports::{
     insert_use::ImportScope,
 };
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode};
+use syntax::{AstNode, SyntaxNode, ast};
 
 use crate::{
+    Completions,
     config::AutoImportExclusionType,
     context::{
         CompletionContext, DotAccess, PathCompletionCtx, PathKind, PatternContext, Qualified,
         TypeLocation,
     },
-    render::{render_resolution_with_import, render_resolution_with_import_pat, RenderContext},
-    Completions,
+    render::{RenderContext, render_resolution_with_import, render_resolution_with_import_pat},
 };
 
 // Feature: Completion With Autoimport
@@ -268,19 +268,7 @@ fn import_on_the_fly(
                 && !ctx.is_item_hidden(original_item)
                 && ctx.check_stability(original_item.attrs(ctx.db).as_deref())
         })
-        .filter(|import| {
-            let def = import.item_to_import.into_module_def();
-            if let Some(&kind) = ctx.exclude_flyimport.get(&def) {
-                if kind == AutoImportExclusionType::Always {
-                    return false;
-                }
-                let method_imported = import.item_to_import != import.original_item;
-                if method_imported {
-                    return false;
-                }
-            }
-            true
-        })
+        .filter(|import| filter_excluded_flyimport(ctx, import))
         .sorted_by(|a, b| {
             let key = |import_path| {
                 (
@@ -366,24 +354,7 @@ fn import_on_the_fly_method(
             !ctx.is_item_hidden(&import.item_to_import)
                 && !ctx.is_item_hidden(&import.original_item)
         })
-        .filter(|import| {
-            let def = import.item_to_import.into_module_def();
-            if let Some(&kind) = ctx.exclude_flyimport.get(&def) {
-                if kind == AutoImportExclusionType::Always {
-                    return false;
-                }
-                let method_imported = import.item_to_import != import.original_item;
-                if method_imported {
-                    return false;
-                }
-            }
-
-            if let ModuleDef::Trait(_) = import.item_to_import.into_module_def() {
-                !ctx.exclude_flyimport.contains_key(&def)
-            } else {
-                true
-            }
-        })
+        .filter(|import| filter_excluded_flyimport(ctx, import))
         .sorted_by(|a, b| {
             let key = |import_path| {
                 (
@@ -401,14 +372,32 @@ fn import_on_the_fly_method(
     Some(())
 }
 
+fn filter_excluded_flyimport(ctx: &CompletionContext<'_>, import: &LocatedImport) -> bool {
+    let def = import.item_to_import.into_module_def();
+    let is_exclude_flyimport = ctx.exclude_flyimport.get(&def).copied();
+
+    if matches!(is_exclude_flyimport, Some(AutoImportExclusionType::Always))
+        || !import.complete_in_flyimport.0
+    {
+        return false;
+    }
+    let method_imported = import.item_to_import != import.original_item;
+    if method_imported
+        && (is_exclude_flyimport.is_some()
+            || ctx.exclude_flyimport.contains_key(&import.original_item.into_module_def()))
+    {
+        // If this is a method, exclude it either if it was excluded itself (which may not be caught above,
+        // because `item_to_import` is the trait), or if its trait was excluded. We don't need to check
+        // the attributes here, since they pass from trait to methods on import map construction.
+        return false;
+    }
+    true
+}
+
 fn import_name(ctx: &CompletionContext<'_>) -> String {
     let token_kind = ctx.token.kind();
 
-    if token_kind.is_any_identifier() {
-        ctx.token.to_string()
-    } else {
-        String::new()
-    }
+    if token_kind.is_any_identifier() { ctx.token.to_string() } else { String::new() }
 }
 
 fn import_assets_for_path(

@@ -1,13 +1,13 @@
 //! Name resolution for expressions.
-use hir_expand::{name::Name, MacroDefId};
+use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 use triomphe::Arc;
 
 use crate::{
+    BlockId, DefWithBodyId,
     db::DefDatabase,
     expr_store::{Body, ExpressionStore, HygieneId},
     hir::{Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement},
-    BlockId, ConstBlockId, DefWithBodyId,
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -53,9 +53,7 @@ pub struct ScopeData {
 impl ExprScopes {
     pub(crate) fn expr_scopes_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<ExprScopes> {
         let body = db.body(def);
-        let mut scopes = ExprScopes::new_body(&body, |const_block| {
-            db.lookup_intern_anonymous_const(const_block).root
-        });
+        let mut scopes = ExprScopes::new_body(&body);
         scopes.shrink_to_fit();
         Arc::new(scopes)
     }
@@ -104,10 +102,7 @@ fn empty_entries(idx: usize) -> IdxRange<ScopeEntry> {
 }
 
 impl ExprScopes {
-    fn new_body(
-        body: &Body,
-        resolve_const_block: impl (Fn(ConstBlockId) -> ExprId) + Copy,
-    ) -> ExprScopes {
+    fn new_body(body: &Body) -> ExprScopes {
         let mut scopes = ExprScopes {
             scopes: Arena::default(),
             scope_entries: Arena::default(),
@@ -118,7 +113,7 @@ impl ExprScopes {
             scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
         scopes.add_params_bindings(body, root, &body.params);
-        compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root, resolve_const_block);
+        compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
         scopes
     }
 
@@ -221,23 +216,22 @@ fn compute_block_scopes(
     store: &ExpressionStore,
     scopes: &mut ExprScopes,
     scope: &mut ScopeId,
-    resolve_const_block: impl (Fn(ConstBlockId) -> ExprId) + Copy,
 ) {
     for stmt in statements {
         match stmt {
             Statement::Let { pat, initializer, else_branch, .. } => {
                 if let Some(expr) = initializer {
-                    compute_expr_scopes(*expr, store, scopes, scope, resolve_const_block);
+                    compute_expr_scopes(*expr, store, scopes, scope);
                 }
                 if let Some(expr) = else_branch {
-                    compute_expr_scopes(*expr, store, scopes, scope, resolve_const_block);
+                    compute_expr_scopes(*expr, store, scopes, scope);
                 }
 
                 *scope = scopes.new_scope(*scope);
                 scopes.add_pat_bindings(store, *scope, *pat);
             }
             Statement::Expr { expr, .. } => {
-                compute_expr_scopes(*expr, store, scopes, scope, resolve_const_block);
+                compute_expr_scopes(*expr, store, scopes, scope);
             }
             Statement::Item(Item::MacroDef(macro_id)) => {
                 *scope = scopes.new_macro_def_scope(*scope, macro_id.clone());
@@ -246,7 +240,7 @@ fn compute_block_scopes(
         }
     }
     if let Some(expr) = tail {
-        compute_expr_scopes(expr, store, scopes, scope, resolve_const_block);
+        compute_expr_scopes(expr, store, scopes, scope);
     }
 }
 
@@ -255,13 +249,12 @@ fn compute_expr_scopes(
     store: &ExpressionStore,
     scopes: &mut ExprScopes,
     scope: &mut ScopeId,
-    resolve_const_block: impl (Fn(ConstBlockId) -> ExprId) + Copy,
 ) {
     let make_label =
         |label: &Option<LabelId>| label.map(|label| (label, store.labels[label].name.clone()));
 
     let compute_expr_scopes = |scopes: &mut ExprScopes, expr: ExprId, scope: &mut ScopeId| {
-        compute_expr_scopes(expr, store, scopes, scope, resolve_const_block)
+        compute_expr_scopes(expr, store, scopes, scope)
     };
 
     scopes.set_scope(expr, *scope);
@@ -271,18 +264,18 @@ fn compute_expr_scopes(
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
             scopes.set_scope(expr, scope);
-            compute_block_scopes(statements, *tail, store, scopes, &mut scope, resolve_const_block);
+            compute_block_scopes(statements, *tail, store, scopes, &mut scope);
         }
         Expr::Const(id) => {
             let mut scope = scopes.root_scope();
-            compute_expr_scopes(scopes, resolve_const_block(*id), &mut scope);
+            compute_expr_scopes(scopes, *id, &mut scope);
         }
         Expr::Unsafe { id, statements, tail } | Expr::Async { id, statements, tail } => {
             let mut scope = scopes.new_block_scope(*scope, *id, None);
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
             scopes.set_scope(expr, scope);
-            compute_block_scopes(statements, *tail, store, scopes, &mut scope, resolve_const_block);
+            compute_block_scopes(statements, *tail, store, scopes, &mut scope);
         }
         Expr::Loop { body: body_expr, label } => {
             let mut scope = scopes.new_labeled_scope(*scope, make_label(label));
@@ -324,20 +317,20 @@ fn compute_expr_scopes(
 
 #[cfg(test)]
 mod tests {
-    use base_db::SourceDatabase;
-    use hir_expand::{name::AsName, InFile};
+    use base_db::RootQueryDb;
+    use hir_expand::{InFile, name::AsName};
     use span::FileId;
-    use syntax::{algo::find_node_at_offset, ast, AstNode};
+    use syntax::{AstNode, algo::find_node_at_offset, ast};
     use test_fixture::WithFixture;
     use test_utils::{assert_eq_text, extract_offset};
 
-    use crate::{db::DefDatabase, test_db::TestDB, FunctionId, ModuleDefId};
+    use crate::{FunctionId, ModuleDefId, db::DefDatabase, test_db::TestDB};
 
     fn find_function(db: &TestDB, file_id: FileId) -> FunctionId {
         let krate = db.test_crate();
         let crate_def_map = db.crate_def_map(krate);
 
-        let module = crate_def_map.modules_for_file(file_id).next().unwrap();
+        let module = crate_def_map.modules_for_file(db, file_id).next().unwrap();
         let (_, def) = crate_def_map[module].scope.entries().next().unwrap();
         match def.take_values().unwrap() {
             ModuleDefId::FunctionId(it) => it,
@@ -357,18 +350,20 @@ mod tests {
         };
 
         let (db, position) = TestDB::with_position(&code);
-        let file_id = position.file_id;
+        let editioned_file_id = position.file_id;
         let offset = position.offset;
 
-        let file_syntax = db.parse(file_id).syntax_node();
+        let (file_id, _) = editioned_file_id.unpack(&db);
+
+        let file_syntax = db.parse(editioned_file_id).syntax_node();
         let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
-        let function = find_function(&db, file_id.file_id());
+        let function = find_function(&db, file_id);
 
         let scopes = db.expr_scopes(function.into());
         let (_body, source_map) = db.body_with_source_map(function.into());
 
         let expr_id = source_map
-            .node_expr(InFile { file_id: file_id.into(), value: &marker.into() })
+            .node_expr(InFile { file_id: editioned_file_id.into(), value: &marker.into() })
             .unwrap()
             .as_expr()
             .unwrap();
@@ -511,15 +506,17 @@ fn foo() {
 
     fn do_check_local_name(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_offset: u32) {
         let (db, position) = TestDB::with_position(ra_fixture);
-        let file_id = position.file_id;
+        let editioned_file_id = position.file_id;
         let offset = position.offset;
 
-        let file = db.parse(file_id).ok().unwrap();
+        let (file_id, _) = editioned_file_id.unpack(&db);
+
+        let file = db.parse(editioned_file_id).ok().unwrap();
         let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
             .expect("failed to find a name at the target offset");
         let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset).unwrap();
 
-        let function = find_function(&db, file_id.file_id());
+        let function = find_function(&db, file_id);
 
         let scopes = db.expr_scopes(function.into());
         let (_, source_map) = db.body_with_source_map(function.into());
@@ -527,7 +524,7 @@ fn foo() {
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
             let expr_id = source_map
-                .node_expr(InFile { file_id: file_id.into(), value: &expr_ast })
+                .node_expr(InFile { file_id: editioned_file_id.into(), value: &expr_ast })
                 .unwrap()
                 .as_expr()
                 .unwrap();

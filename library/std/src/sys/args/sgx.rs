@@ -1,6 +1,8 @@
 #![allow(fuzzy_provenance_casts)] // FIXME: this module systematically confuses pointers and integers
 
 use crate::ffi::OsString;
+use crate::num::NonZero;
+use crate::ops::Try;
 use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sys::os_str::Buf;
 use crate::sys::pal::abi::usercalls::alloc;
@@ -28,35 +30,81 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
 
 pub fn args() -> Args {
     let args = unsafe { (ARGS.load(Ordering::Relaxed) as *const ArgsStore).as_ref() };
-    if let Some(args) = args { Args(args.iter()) } else { Args([].iter()) }
+    let slice = args.map(|args| args.as_slice()).unwrap_or(&[]);
+    Args { iter: slice.iter() }
 }
 
-pub struct Args(slice::Iter<'static, OsString>);
+pub struct Args {
+    iter: slice::Iter<'static, OsString>,
+}
 
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.as_slice().fmt(f)
+        self.iter.as_slice().fmt(f)
     }
 }
 
 impl Iterator for Args {
     type Item = OsString;
-    fn next(&mut self) -> Option<OsString> {
-        self.0.next().cloned()
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
-    }
-}
 
-impl ExactSizeIterator for Args {
-    fn len(&self) -> usize {
-        self.0.len()
+    fn next(&mut self) -> Option<OsString> {
+        self.iter.next().cloned()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.len()
+    }
+
+    fn last(self) -> Option<OsString> {
+        self.iter.last().cloned()
+    }
+
+    #[inline]
+    fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.iter.advance_by(n)
+    }
+
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        self.iter.by_ref().cloned().try_fold(init, f)
+    }
+
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.iter.cloned().fold(init, f)
     }
 }
 
 impl DoubleEndedIterator for Args {
     fn next_back(&mut self) -> Option<OsString> {
-        self.0.next_back().cloned()
+        self.iter.next_back().cloned()
+    }
+
+    #[inline]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.iter.advance_back_by(n)
+    }
+}
+
+impl ExactSizeIterator for Args {
+    #[inline]
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
     }
 }

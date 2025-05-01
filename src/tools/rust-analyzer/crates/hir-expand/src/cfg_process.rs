@@ -1,28 +1,28 @@
 //! Processes out #[cfg] and #[cfg_attr] attributes from the input for the derive macro
 use std::iter::Peekable;
 
-use base_db::CrateId;
+use base_db::Crate;
 use cfg::{CfgAtom, CfgExpr};
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, Attr, HasAttrs, Meta, TokenTree, VariantList},
     AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T,
+    ast::{self, Attr, HasAttrs, Meta, TokenTree, VariantList},
 };
 use tracing::{debug, warn};
 
-use crate::{db::ExpandDatabase, proc_macro::ProcMacroKind, MacroCallLoc, MacroDefKind};
+use crate::{MacroCallLoc, MacroDefKind, db::ExpandDatabase, proc_macro::ProcMacroKind};
 
-fn check_cfg(db: &dyn ExpandDatabase, attr: &Attr, krate: CrateId) -> Option<bool> {
+fn check_cfg(db: &dyn ExpandDatabase, attr: &Attr, krate: Crate) -> Option<bool> {
     if !attr.simple_name().as_deref().map(|v| v == "cfg")? {
         return None;
     }
     let cfg = parse_from_attr_token_tree(&attr.meta()?.token_tree()?)?;
-    let enabled = db.crate_graph()[krate].cfg_options.check(&cfg) != Some(false);
+    let enabled = krate.cfg_options(db).check(&cfg) != Some(false);
     Some(enabled)
 }
 
-fn check_cfg_attr(db: &dyn ExpandDatabase, attr: &Attr, krate: CrateId) -> Option<bool> {
+fn check_cfg_attr(db: &dyn ExpandDatabase, attr: &Attr, krate: Crate) -> Option<bool> {
     if !attr.simple_name().as_deref().map(|v| v == "cfg_attr")? {
         return None;
     }
@@ -32,17 +32,17 @@ fn check_cfg_attr(db: &dyn ExpandDatabase, attr: &Attr, krate: CrateId) -> Optio
 pub fn check_cfg_attr_value(
     db: &dyn ExpandDatabase,
     attr: &TokenTree,
-    krate: CrateId,
+    krate: Crate,
 ) -> Option<bool> {
     let cfg_expr = parse_from_attr_token_tree(attr)?;
-    let enabled = db.crate_graph()[krate].cfg_options.check(&cfg_expr) != Some(false);
+    let enabled = krate.cfg_options(db).check(&cfg_expr) != Some(false);
     Some(enabled)
 }
 
 fn process_has_attrs_with_possible_comma<I: HasAttrs>(
     db: &dyn ExpandDatabase,
     items: impl Iterator<Item = I>,
-    krate: CrateId,
+    krate: Crate,
     remove: &mut FxHashSet<SyntaxElement>,
 ) -> Option<()> {
     for item in items {
@@ -144,7 +144,7 @@ fn remove_possible_comma(item: &impl AstNode, res: &mut FxHashSet<SyntaxElement>
 fn process_enum(
     db: &dyn ExpandDatabase,
     variants: VariantList,
-    krate: CrateId,
+    krate: Crate,
     remove: &mut FxHashSet<SyntaxElement>,
 ) -> Option<()> {
     'variant: for variant in variants.variants() {
@@ -344,8 +344,8 @@ where
 #[cfg(test)]
 mod tests {
     use cfg::DnfExpr;
-    use expect_test::{expect, Expect};
-    use syntax::{ast::Attr, AstNode, SourceFile};
+    use expect_test::{Expect, expect};
+    use syntax::{AstNode, SourceFile, ast::Attr};
 
     use crate::cfg_process::parse_from_attr_token_tree;
 

@@ -6,61 +6,61 @@ pub(crate) mod tree;
 pub(crate) use tree::Tree;
 
 pub(crate) mod dfa;
-pub(crate) use dfa::Dfa;
+pub(crate) use dfa::{Dfa, union};
 
 #[derive(Debug)]
 pub(crate) struct Uninhabited;
 
-/// A range of byte values, or the uninit byte.
+/// A range of byte values (including an uninit byte value).
 #[derive(Hash, Eq, PartialEq, Ord, PartialOrd, Clone, Copy)]
 pub(crate) struct Byte {
-    // An inclusive-inclusive range. We use this instead of `RangeInclusive`
-    // because `RangeInclusive: !Copy`.
+    // An inclusive-exclusive range. We use this instead of `Range` because `Range: !Copy`.
     //
-    // `None` means uninit.
-    //
-    // FIXME(@joshlf): Optimize this representation. Some pairs of values (where
-    // `lo > hi`) are illegal, and we could use these to represent `None`.
-    range: Option<(u8, u8)>,
+    // Uninit byte value is represented by 256.
+    pub(crate) start: u16,
+    pub(crate) end: u16,
 }
 
 impl Byte {
+    const UNINIT: u16 = 256;
+
+    #[inline]
     fn new(range: RangeInclusive<u8>) -> Self {
-        Self { range: Some((*range.start(), *range.end())) }
+        let start: u16 = (*range.start()).into();
+        let end: u16 = (*range.end()).into();
+        Byte { start, end: end + 1 }
     }
 
+    #[inline]
     fn from_val(val: u8) -> Self {
-        Self { range: Some((val, val)) }
+        let val: u16 = val.into();
+        Byte { start: val, end: val + 1 }
     }
 
-    pub(crate) fn uninit() -> Byte {
-        Byte { range: None }
+    #[inline]
+    fn uninit() -> Byte {
+        Byte { start: 0, end: Self::UNINIT + 1 }
     }
 
-    /// Returns `None` if `self` is the uninit byte.
-    pub(crate) fn range(&self) -> Option<RangeInclusive<u8>> {
-        self.range.map(|(lo, hi)| lo..=hi)
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.start == self.end
     }
 
-    /// Are any of the values in `self` transmutable into `other`?
-    ///
-    /// Note two special cases: An uninit byte is only transmutable into another
-    /// uninit byte. Any byte is transmutable into an uninit byte.
-    pub(crate) fn transmutable_into(&self, other: &Byte) -> bool {
-        match (self.range, other.range) {
-            (None, None) => true,
-            (None, Some(_)) => false,
-            (Some(_), None) => true,
-            (Some((slo, shi)), Some((olo, ohi))) => slo <= ohi && olo <= shi,
-        }
+    #[inline]
+    fn contains_uninit(&self) -> bool {
+        self.start <= Self::UNINIT && Self::UNINIT < self.end
     }
 }
 
 impl fmt::Debug for Byte {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.range {
-            None => write!(f, "uninit"),
-            Some((lo, hi)) => write!(f, "{lo}..={hi}"),
+        if self.start == Self::UNINIT && self.end == Self::UNINIT + 1 {
+            write!(f, "uninit")
+        } else if self.start <= Self::UNINIT && self.end == Self::UNINIT + 1 {
+            write!(f, "{}..{}|uninit", self.start, self.end - 1)
+        } else {
+            write!(f, "{}..{}", self.start, self.end)
         }
     }
 }
@@ -72,6 +72,7 @@ impl From<RangeInclusive<u8>> for Byte {
 }
 
 impl From<u8> for Byte {
+    #[inline]
     fn from(src: u8) -> Self {
         Self::from_val(src)
     }

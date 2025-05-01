@@ -5,7 +5,7 @@
 //! assists if we are allowed to.
 
 use hir::ImportPathConfig;
-use ide_db::{imports::insert_use::InsertUseConfig, SnippetCap};
+use ide_db::{SnippetCap, imports::insert_use::InsertUseConfig};
 
 use crate::AssistKind;
 

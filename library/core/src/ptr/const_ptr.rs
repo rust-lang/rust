@@ -484,8 +484,9 @@ impl<T: ?Sized> *const T {
     ///
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
-    /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
-    /// be used to read or write other allocated objects.
+    /// The resulting pointer "remembers" the [allocated object] that `self` points to
+    /// (this is called "[Provenance](ptr/index.html#provenance)").
+    /// The pointer must not be used to read or write other allocated objects.
     ///
     /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still

@@ -87,6 +87,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
     let mut mixed_export_name_no_mangle_lint_state = MixedExportNameAndNoMangleState::default();
+    let mut no_mangle_span = None;
 
     for attr in attrs.iter() {
         // In some cases, attribute are only valid on functions, but it's the `check_attr`
@@ -139,6 +140,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
             sym::naked => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
             sym::no_mangle => {
+                no_mangle_span = Some(attr.span());
                 if tcx.opt_item_name(did.to_def_id()).is_some() {
                     codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
                     mixed_export_name_no_mangle_lint_state.track_no_mangle(
@@ -620,6 +622,34 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
     }
     check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
+
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+        && codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+    {
+        let lang_item =
+            lang_items::extract(attrs).map_or(None, |(name, _span)| LangItem::from_name(name));
+        let mut err = tcx
+            .dcx()
+            .struct_span_err(
+                no_mangle_span.unwrap_or_default(),
+                "`#[no_mangle]` cannot be used on internal language items",
+            )
+            .with_note("Rustc requires this item to have a specific mangled name.")
+            .with_span_label(tcx.def_span(did), "should be the internal language item");
+        if let Some(lang_item) = lang_item {
+            if let Some(link_name) = lang_item.link_name() {
+                err = err
+                    .with_note("If you are trying to prevent mangling to ease debugging, many")
+                    .with_note(format!(
+                        "debuggers support a command such as `rbreak {link_name}` to"
+                    ))
+                    .with_note(format!(
+                        "match `.*{link_name}.*` instead of `break {link_name}` on a specific name"
+                    ))
+            }
+        }
+        err.emit();
+    }
 
     // Any linkage to LLVM intrinsics for now forcibly marks them all as never
     // unwinds since LLVM sometimes can't handle codegen which `invoke`s

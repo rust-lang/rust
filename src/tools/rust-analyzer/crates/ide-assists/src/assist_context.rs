@@ -1,17 +1,16 @@
 //! See [`AssistContext`].
 
-use hir::{FileRange, Semantics};
-use ide_db::EditionedFileId;
-use ide_db::{label::Label, FileId, RootDatabase};
+use hir::{EditionedFileId, FileRange, Semantics};
+use ide_db::{FileId, RootDatabase, label::Label};
 use syntax::Edition;
 use syntax::{
-    algo::{self, find_node_at_offset, find_node_at_range},
     AstNode, AstToken, Direction, SourceFile, SyntaxElement, SyntaxKind, SyntaxToken, TextRange,
     TextSize, TokenAtOffset,
+    algo::{self, find_node_at_offset, find_node_at_range},
 };
 
 use crate::{
-    assist_config::AssistConfig, Assist, AssistId, AssistKind, AssistResolveStrategy, GroupLabel,
+    Assist, AssistId, AssistKind, AssistResolveStrategy, GroupLabel, assist_config::AssistConfig,
 };
 
 pub(crate) use ide_db::source_change::{SourceChangeBuilder, TreeMutator};
@@ -105,12 +104,16 @@ impl<'a> AssistContext<'a> {
         self.frange.range.start()
     }
 
+    pub(crate) fn vfs_file_id(&self) -> FileId {
+        self.frange.file_id.file_id(self.db())
+    }
+
     pub(crate) fn file_id(&self) -> EditionedFileId {
         self.frange.file_id
     }
 
     pub(crate) fn edition(&self) -> Edition {
-        self.frange.file_id.edition()
+        self.frange.file_id.edition(self.db())
     }
 
     pub(crate) fn has_empty_selection(&self) -> bool {
@@ -165,7 +168,7 @@ impl Assists {
     pub(crate) fn new(ctx: &AssistContext<'_>, resolve: AssistResolveStrategy) -> Assists {
         Assists {
             resolve,
-            file: ctx.frange.file_id.file_id(),
+            file: ctx.frange.file_id.file_id(ctx.db()),
             buf: Vec::new(),
             allowed: ctx.config.allowed.clone(),
         }

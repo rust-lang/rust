@@ -1,6 +1,5 @@
 use std::mem;
 
-use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{
     self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
 };
@@ -29,10 +28,8 @@ use crate::mbe::{self, KleeneOp, MetaVarExpr};
 // A Marker adds the given mark to the syntax context.
 struct Marker(LocalExpnId, Transparency, FxHashMap<SyntaxContext, SyntaxContext>);
 
-impl MutVisitor for Marker {
-    const VISIT_TOKENS: bool = true;
-
-    fn visit_span(&mut self, span: &mut Span) {
+impl Marker {
+    fn mark_span(&mut self, span: &mut Span) {
         // `apply_mark` is a relatively expensive operation, both due to taking hygiene lock, and
         // by itself. All tokens in a macro body typically have the same syntactic context, unless
         // it's some advanced case with macro-generated macros. So if we cache the marked version
@@ -292,7 +289,7 @@ pub(super) fn transcribe<'a>(
 
                         // Emit as a token stream within `Delimiter::Invisible` to maintain
                         // parsing priorities.
-                        marker.visit_span(&mut sp);
+                        marker.mark_span(&mut sp);
                         with_metavar_spans(|mspans| mspans.insert(mk_span, sp));
                         // Both the open delim and close delim get the same span, which covers the
                         // `$foo` in the decl macro RHS.
@@ -312,13 +309,13 @@ pub(super) fn transcribe<'a>(
                             maybe_use_metavar_location(psess, &stack, sp, tt, &mut marker)
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
-                            marker.visit_span(&mut sp);
+                            marker.mark_span(&mut sp);
                             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
-                            marker.visit_span(&mut sp);
+                            marker.mark_span(&mut sp);
                             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
@@ -400,8 +397,8 @@ pub(super) fn transcribe<'a>(
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
-                    marker.visit_span(&mut sp);
-                    marker.visit_ident(&mut original_ident);
+                    marker.mark_span(&mut sp);
+                    marker.mark_span(&mut original_ident.span);
                     result.push(TokenTree::token_joint_hidden(token::Dollar, sp));
                     result.push(TokenTree::Token(
                         Token::from_ast_ident(original_ident),
@@ -430,16 +427,19 @@ pub(super) fn transcribe<'a>(
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
             &mbe::TokenTree::Delimited(mut span, ref spacing, ref delimited) => {
-                mut_visit::visit_delim_span(&mut marker, &mut span);
+                marker.mark_span(&mut span.open);
+                marker.mark_span(&mut span.close);
                 stack.push(Frame::new_delimited(delimited, span, *spacing));
                 result_stack.push(mem::take(&mut result));
             }
 
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
-            mbe::TokenTree::Token(token) => {
-                let mut token = *token;
-                mut_visit::visit_token(&mut marker, &mut token);
+            &mbe::TokenTree::Token(mut token) => {
+                marker.mark_span(&mut token.span);
+                if let token::NtIdent(ident, _) | token::NtLifetime(ident, _) = &mut token.kind {
+                    marker.mark_span(&mut ident.span);
+                }
                 let tt = TokenTree::Token(token, Spacing::Alone);
                 result.push(tt);
             }
@@ -504,7 +504,7 @@ fn maybe_use_metavar_location(
         return orig_tt.clone();
     }
 
-    marker.visit_span(&mut metavar_span);
+    marker.mark_span(&mut metavar_span);
     let no_collision = match orig_tt {
         TokenTree::Token(token, ..) => {
             with_metavar_spans(|mspans| mspans.insert(token.span, metavar_span))
@@ -774,7 +774,7 @@ fn transcribe_metavar_expr<'a>(
 ) -> PResult<'a, ()> {
     let mut visited_span = || {
         let mut span = sp.entire();
-        marker.visit_span(&mut span);
+        marker.mark_span(&mut span);
         span
     };
     match *expr {

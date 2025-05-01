@@ -1,10 +1,9 @@
 #![crate_name = "compiletest"]
-// Needed by the libtest-based test executor.
-#![feature(test)]
 // Needed by the "new" test executor that does not depend on libtest.
+// FIXME(Zalathar): We should be able to get rid of `internal_output_capture`,
+// by having `runtest` manually capture all of its println-like output instead.
+// That would result in compiletest being written entirely in stable Rust!
 #![feature(internal_output_capture)]
-
-extern crate test;
 
 #[cfg(test)]
 mod tests;
@@ -448,8 +447,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
         diff_command: matches.opt_str("compiletest-diff-tool"),
 
         minicore_path: opt_path(matches, "minicore-path"),
-
-        no_new_executor: matches.opt_present("no-new-executor"),
     }
 }
 
@@ -576,12 +573,10 @@ pub fn run_tests(config: Arc<Config>) {
     // Delegate to the executor to filter and run the big list of test structures
     // created during test discovery. When the executor decides to run a test,
     // it will return control to the rest of compiletest by calling `runtest::run`.
-    let res = if !config.no_new_executor {
-        Ok(executor::run_tests(&config, tests))
-    } else {
-        // FIXME(Zalathar): Eventually remove the libtest executor entirely.
-        crate::executor::libtest::execute_tests(&config, tests)
-    };
+    // FIXME(Zalathar): Once we're confident that we won't need to revert the
+    // removal of the libtest-based executor, remove this Result and other
+    // remnants of the old executor.
+    let res: io::Result<bool> = Ok(executor::run_tests(&config, tests));
 
     // Check the outcome reported by libtest.
     match res {

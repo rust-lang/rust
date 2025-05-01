@@ -1,10 +1,10 @@
 use ide_db::imports::insert_use::ImportScope;
 use syntax::{
-    ast::{self, prec::ExprPrecedence, AstNode, HasArgList},
     TextRange,
+    ast::{self, AstNode, HasArgList, prec::ExprPrecedence},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unqualify_method_call
 //
@@ -69,7 +69,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
     );
 
     acc.add(
-        AssistId("unqualify_method_call", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("unqualify_method_call"),
         "Unqualify method call",
         call.syntax().text_range(),
         |edit| {

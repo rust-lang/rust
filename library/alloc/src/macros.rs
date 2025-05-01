@@ -105,8 +105,7 @@ macro_rules! vec {
 macro_rules! format {
     ($($arg:tt)*) => {
         $crate::__export::must_use({
-            let res = $crate::fmt::format($crate::__export::format_args!($($arg)*));
-            res
+            $crate::fmt::format($crate::__export::format_args!($($arg)*))
         })
     }
 }

@@ -25,18 +25,23 @@
 
 mod handlers {
     pub(crate) mod await_outside_of_async;
+    pub(crate) mod bad_rtn;
     pub(crate) mod break_outside_of_loop;
+    pub(crate) mod elided_lifetimes_in_path;
     pub(crate) mod expected_function;
     pub(crate) mod generic_args_prohibited;
     pub(crate) mod inactive_code;
     pub(crate) mod incoherent_impl;
     pub(crate) mod incorrect_case;
+    pub(crate) mod incorrect_generics_len;
+    pub(crate) mod incorrect_generics_order;
     pub(crate) mod invalid_cast;
     pub(crate) mod invalid_derive_target;
     pub(crate) mod macro_error;
     pub(crate) mod malformed_derive;
     pub(crate) mod mismatched_arg_count;
     pub(crate) mod missing_fields;
+    pub(crate) mod missing_lifetime;
     pub(crate) mod missing_match_arms;
     pub(crate) mod missing_unsafe;
     pub(crate) mod moved_out_of_ref;
@@ -82,23 +87,23 @@ use std::{collections::hash_map, iter, sync::LazyLock};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, DisplayTarget, HirFileId, InFile,
-    Semantics,
+    Crate, DisplayTarget, HirFileId, InFile, Semantics, db::ExpandDatabase,
+    diagnostics::AnyDiagnostic,
 };
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
-    base_db::{ReleaseChannel, SourceDatabase},
-    generated::lints::{Lint, LintGroup, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, DEFAULT_LINT_GROUPS},
+    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
+    assists::{Assist, AssistId, AssistResolveStrategy},
+    base_db::{ReleaseChannel, RootQueryDb as _},
+    generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
     label::Label,
     source_change::SourceChange,
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
 };
 use itertools::Itertools;
 use syntax::{
+    AstPtr, Edition, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, T, TextRange,
     ast::{self, AstNode, HasAttrs},
-    AstPtr, Edition, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
 
 // FIXME: Make this an enum
@@ -127,7 +132,7 @@ impl DiagnosticCode {
                 format!("https://rust-lang.github.io/rust-clippy/master/#/{e}")
             }
             DiagnosticCode::Ra(e, _) => {
-                format!("https://rust-analyzer.github.io/manual.html#{e}")
+                format!("https://rust-analyzer.github.io/book/diagnostics.html#{e}")
             }
         }
     }
@@ -301,8 +306,11 @@ impl DiagnosticsContext<'_> {
                 }
             }
         })()
+        .map(|frange| ide_db::FileRange {
+            file_id: frange.file_id.file_id(self.sema.db),
+            range: frange.range,
+        })
         .unwrap_or_else(|| sema.diagnostics_display_range(*node))
-        .into()
     }
 }
 
@@ -319,13 +327,14 @@ pub fn syntax_diagnostics(
     }
 
     let sema = Semantics::new(db);
-    let file_id = sema
+    let editioned_file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+
+    let (file_id, _) = editioned_file_id.unpack(db);
 
     // [#3434] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
-    db.parse_errors(file_id)
-        .as_deref()
+    db.parse_errors(editioned_file_id)
         .into_iter()
         .flatten()
         .take(128)
@@ -333,7 +342,7 @@ pub fn syntax_diagnostics(
             Diagnostic::new(
                 DiagnosticCode::SyntaxError,
                 format!("Syntax Error: {err}"),
-                FileRange { file_id: file_id.into(), range: err.range() },
+                FileRange { file_id, range: err.range() },
             )
         })
         .collect()
@@ -349,26 +358,28 @@ pub fn semantic_diagnostics(
 ) -> Vec<Diagnostic> {
     let _p = tracing::info_span!("semantic_diagnostics").entered();
     let sema = Semantics::new(db);
-    let file_id = sema
+    let editioned_file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
+
+    let (file_id, edition) = editioned_file_id.unpack(db);
     let mut res = Vec::new();
 
-    let parse = sema.parse(file_id);
+    let parse = sema.parse(editioned_file_id);
 
     // FIXME: This iterates the entire file which is a rather expensive operation.
     // We should implement these differently in some form?
     // Salsa caching + incremental re-parse would be better here
     for node in parse.syntax().descendants() {
-        handlers::useless_braces::useless_braces(&mut res, file_id, &node);
-        handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
+        handlers::useless_braces::useless_braces(db, &mut res, editioned_file_id, &node);
+        handlers::field_shorthand::field_shorthand(db, &mut res, editioned_file_id, &node);
         handlers::json_is_not_rust::json_in_items(
             &sema,
             &mut res,
-            file_id,
+            editioned_file_id,
             &node,
             config,
-            file_id.edition(),
+            edition,
         );
     }
 
@@ -378,29 +389,32 @@ pub fn semantic_diagnostics(
         module.and_then(|m| db.toolchain_channel(m.krate().into())),
         Some(ReleaseChannel::Nightly) | None
     );
-    let krate = module.map(|module| module.krate()).unwrap_or_else(|| {
-        (*db.crate_graph().crates_in_topological_order().last().unwrap()).into()
-    });
-    let display_target = krate.to_display_target(db);
-    let ctx = DiagnosticsContext {
-        config,
-        sema,
-        resolve,
-        edition: file_id.edition(),
-        is_nightly,
-        display_target,
+
+    let krate = match module {
+        Some(module) => module.krate(),
+        None => {
+            match db.all_crates().last() {
+                Some(last) => (*last).into(),
+                // short-circuit, return an empty vec of diagnostics
+                None => return vec![],
+            }
+        }
     };
+    let display_target = krate.to_display_target(db);
+    let ctx = DiagnosticsContext { config, sema, resolve, edition, is_nightly, display_target };
 
     let mut diags = Vec::new();
     match module {
         // A bunch of parse errors in a file indicate some bigger structural parse changes in the
         // file, so we skip semantic diagnostics so we can show these faster.
         Some(m) => {
-            if db.parse_errors(file_id).as_deref().is_none_or(|es| es.len() < 16) {
+            if db.parse_errors(editioned_file_id).is_none_or(|es| es.len() < 16) {
                 m.diagnostics(db, &mut diags, config.style_lints);
             }
         }
-        None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, file_id.file_id()),
+        None => {
+            handlers::unlinked_file::unlinked_file(&ctx, &mut res, editioned_file_id.file_id(db))
+        }
     }
 
     for diag in diags {
@@ -488,6 +502,11 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::ParenthesizedGenericArgsWithoutFnTrait(d) => {
                 handlers::parenthesized_generic_args_without_fn_trait::parenthesized_generic_args_without_fn_trait(&ctx, &d)
             }
+            AnyDiagnostic::BadRtn(d) => handlers::bad_rtn::bad_rtn(&ctx, &d),
+            AnyDiagnostic::IncorrectGenericsLen(d) => handlers::incorrect_generics_len::incorrect_generics_len(&ctx, &d),
+            AnyDiagnostic::IncorrectGenericsOrder(d) => handlers::incorrect_generics_order::incorrect_generics_order(&ctx, &d),
+            AnyDiagnostic::MissingLifetime(d) => handlers::missing_lifetime::missing_lifetime(&ctx, &d),
+            AnyDiagnostic::ElidedLifetimesInPath(d) => handlers::elided_lifetimes_in_path::elided_lifetimes_in_path(&ctx, &d),
         };
         res.push(d)
     }
@@ -517,7 +536,7 @@ pub fn semantic_diagnostics(
         &mut FxHashMap::default(),
         &mut lints,
         &mut Vec::new(),
-        file_id.edition(),
+        editioned_file_id.edition(db),
     );
 
     res.retain(|d| d.severity != Severity::Allow);
@@ -559,9 +578,8 @@ fn handle_diag_from_macros(
     let span_map = sema.db.expansion_span_map(macro_file);
     let mut spans = span_map.spans_for_range(node.text_range());
     if spans.any(|span| {
-        sema.db.lookup_intern_syntax_context(span.ctx).outer_expn.is_some_and(|expansion| {
-            let macro_call =
-                sema.db.lookup_intern_macro_call(expansion.as_macro_file().macro_call_id);
+        span.ctx.outer_expn(sema.db).is_some_and(|expansion| {
+            let macro_call = sema.db.lookup_intern_macro_call(expansion.into());
             // We don't want to show diagnostics for non-local macros at all, but proc macros authors
             // seem to rely on being able to emit non-warning-free code, so we don't want to show warnings
             // for them even when the proc macro comes from the same workspace (in rustc that's not a
@@ -767,9 +785,9 @@ fn fill_lint_attrs(
                     }
                 });
 
-                let all_matching_groups = lint_groups(&diag.code, edition)
-                    .iter()
-                    .filter_map(|lint_group| cached.get(lint_group));
+                let lints = lint_groups(&diag.code, edition);
+                let all_matching_groups =
+                    lints.iter().filter_map(|lint_group| cached.get(lint_group));
                 let cached_severity =
                     all_matching_groups.min_by_key(|it| it.depth).map(|it| it.severity);
 
@@ -977,7 +995,7 @@ fn fix(id: &'static str, label: &str, source_change: SourceChange, target: TextR
 fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
     assert!(!id.contains(' '));
     Assist {
-        id: AssistId(id, AssistKind::QuickFix),
+        id: AssistId::quick_fix(id),
         label: Label::new(label.to_owned()),
         group: None,
         target,
@@ -993,8 +1011,8 @@ fn adjusted_display_range<N: AstNode>(
 ) -> FileRange {
     let source_file = ctx.sema.parse_or_expand(diag_ptr.file_id);
     let node = diag_ptr.value.to_node(&source_file);
-    diag_ptr
+    let hir::FileRange { file_id, range } = diag_ptr
         .with_value(adj(node).unwrap_or_else(|| diag_ptr.value.text_range()))
-        .original_node_file_range_rooted(ctx.sema.db)
-        .into()
+        .original_node_file_range_rooted(ctx.sema.db);
+    ide_db::FileRange { file_id: file_id.file_id(ctx.sema.db), range }
 }

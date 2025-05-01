@@ -3,13 +3,13 @@
 use either::Either;
 use hir_expand::InFile;
 use la_arena::ArenaMap;
-use syntax::{ast, AstNode, AstPtr};
+use syntax::{AstNode, AstPtr, ast};
 
 use crate::{
-    db::DefDatabase,
-    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
     GenericDefId, ItemTreeLoc, LocalFieldId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
     UseId, VariantId,
+    db::DefDatabase,
+    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
 };
 
 pub trait HasSource {
@@ -131,7 +131,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 item_tree = lookup.id.item_tree(db);
                 (
                     lookup.source(db).map(|it| it.kind()),
-                    FieldParent::Variant(lookup.id.value),
+                    FieldParent::EnumVariant(lookup.id.value),
                     lookup.parent.lookup(db).container,
                 )
             }
@@ -158,7 +158,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
         let mut map = ArenaMap::new();
         match &src.value {
             ast::StructKind::Tuple(fl) => {
-                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let cfg_options = container.krate.cfg_options(db);
                 let mut idx = 0;
                 for (i, fd) in fl.fields().enumerate() {
                     let attrs = item_tree.attrs(
@@ -177,7 +177,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 }
             }
             ast::StructKind::Record(fl) => {
-                let cfg_options = &db.crate_graph()[container.krate].cfg_options;
+                let cfg_options = container.krate.cfg_options(db);
                 let mut idx = 0;
                 for (i, fd) in fl.fields().enumerate() {
                     let attrs = item_tree.attrs(

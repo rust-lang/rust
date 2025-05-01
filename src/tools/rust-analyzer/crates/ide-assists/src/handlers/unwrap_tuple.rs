@@ -1,9 +1,9 @@
 use syntax::{
-    ast::{self, edit::AstNodeEdit},
     AstNode, T,
+    ast::{self, edit::AstNodeEdit},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unwrap_tuple
 //
@@ -56,7 +56,7 @@ pub(crate) fn unwrap_tuple(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let parent = let_kw.parent()?;
 
     acc.add(
-        AssistId("unwrap_tuple", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("unwrap_tuple"),
         "Unwrap tuple",
         let_kw.text_range(),
         |edit| {

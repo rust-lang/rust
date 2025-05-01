@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use crate::{
     flags::{self, CodegenType},
@@ -21,7 +21,7 @@ impl flags::Codegen {
     pub(crate) fn run(self, _sh: &Shell) -> anyhow::Result<()> {
         match self.codegen_type.unwrap_or_default() {
             flags::CodegenType::All => {
-                diagnostics_docs::generate(self.check);
+                grammar::generate(self.check);
                 assists_doc_tests::generate(self.check);
                 parser_inline_tests::generate(self.check);
                 feature_docs::generate(self.check)

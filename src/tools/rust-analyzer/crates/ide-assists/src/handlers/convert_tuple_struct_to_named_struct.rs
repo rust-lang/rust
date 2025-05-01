@@ -1,11 +1,12 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
+    SyntaxKind, SyntaxNode,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
-    match_ast, ted, SyntaxKind, SyntaxNode,
+    match_ast, ted,
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: convert_tuple_struct_to_named_struct
 //
@@ -64,7 +65,7 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
     let target = strukt.as_ref().either(|s| s.syntax(), |v| v.syntax()).text_range();
 
     acc.add(
-        AssistId("convert_tuple_struct_to_named_struct", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_tuple_struct_to_named_struct"),
         "Convert to named struct",
         target,
         |edit| {
@@ -94,7 +95,7 @@ fn edit_struct_def(
     let record_fields = ast::make::record_field_list(record_fields);
     let tuple_fields_text_range = tuple_fields.syntax().text_range();
 
-    edit.edit_file(ctx.file_id());
+    edit.edit_file(ctx.vfs_file_id());
 
     if let Either::Left(strukt) = strukt {
         if let Some(w) = strukt.where_clause() {
@@ -141,7 +142,7 @@ fn edit_struct_references(
             match node {
                 ast::TupleStructPat(tuple_struct_pat) => {
                     let file_range = ctx.sema.original_range_opt(&node)?;
-                    edit.edit_file(file_range.file_id);
+                    edit.edit_file(file_range.file_id.file_id(ctx.db()));
                     edit.replace(
                         file_range.range,
                         ast::make::record_pat_with_fields(
@@ -196,7 +197,7 @@ fn edit_struct_references(
     };
 
     for (file_id, refs) in usages {
-        edit.edit_file(file_id.file_id());
+        edit.edit_file(file_id.file_id(ctx.db()));
         for r in refs {
             for node in r.name.syntax().ancestors() {
                 if edit_node(edit, node).is_some() {
@@ -221,7 +222,7 @@ fn edit_field_references(
         let def = Definition::Field(field);
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
-            edit.edit_file(file_id.file_id());
+            edit.edit_file(file_id.file_id(ctx.db()));
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
                     edit.replace(ctx.sema.original_range(name_ref.syntax()).range, name.text());

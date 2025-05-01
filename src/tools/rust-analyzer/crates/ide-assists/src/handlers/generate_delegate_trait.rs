@@ -5,25 +5,25 @@ use crate::{
     utils::convert_param_list_to_arg_list,
 };
 use either::Either;
-use hir::{db::HirDatabase, HasVisibility};
+use hir::{HasVisibility, db::HirDatabase};
 use ide_db::{
+    FxHashMap, FxHashSet,
     assists::{AssistId, GroupLabel},
     path_transform::PathTransform,
     syntax_helpers::suggest_name,
-    FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
 use syntax::{
+    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
     ast::{
-        self,
-        edit::{self, AstNodeEdit},
-        edit_in_place::AttrsOwnerEdit,
-        make, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
+        self, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
         HasGenericParams, HasName, HasTypeBounds, HasVisibility as astHasVisibility, Path,
         WherePred,
+        edit::{self, AstNodeEdit},
+        edit_in_place::AttrsOwnerEdit,
+        make,
     },
     ted::{self, Position},
-    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
 };
 
 // Assist: generate_delegate_trait
@@ -124,7 +124,7 @@ impl Field {
     ) -> Option<Field> {
         let db = ctx.sema.db;
 
-        let module = ctx.sema.file_to_module_def(ctx.file_id())?;
+        let module = ctx.sema.file_to_module_def(ctx.vfs_file_id())?;
         let edition = module.krate().edition(ctx.db());
 
         let (name, range, ty) = match f {
@@ -201,7 +201,7 @@ impl Struct {
     pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
         let db = ctx.db();
 
-        for delegee in &field.impls {
+        for (index, delegee) in field.impls.iter().enumerate() {
             let trait_ = match delegee {
                 Delegee::Bound(b) => b,
                 Delegee::Impls(i, _) => i,
@@ -229,7 +229,11 @@ impl Struct {
 
             acc.add_group(
                 &GroupLabel(format!("Generate delegate trait impls for field `{}`", field.name)),
-                AssistId("generate_delegate_trait", ide_db::assists::AssistKind::Generate),
+                AssistId(
+                    "generate_delegate_trait",
+                    ide_db::assists::AssistKind::Generate,
+                    Some(index),
+                ),
                 format!("Generate delegate trait impl `{}` for `{}`", signature, field.name),
                 field.range,
                 |builder| {
@@ -747,7 +751,7 @@ fn func_assoc_item(
     }
     .clone_for_update();
 
-    let body = make::block_expr(vec![], Some(call)).clone_for_update();
+    let body = make::block_expr(vec![], Some(call.into())).clone_for_update();
     let func = make::fn_(
         item.visibility(),
         item.name()?,

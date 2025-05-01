@@ -1585,23 +1585,6 @@ type Member<U> = ConstGen<U, N>;
 }
 
 #[test]
-fn cfgd_out_self_param() {
-    cov_mark::check!(cfgd_out_self_param);
-    check_no_mismatches(
-        r#"
-struct S;
-impl S {
-    fn f(#[cfg(never)] &self) {}
-}
-
-fn f(s: S) {
-    s.f();
-}
-"#,
-    );
-}
-
-#[test]
 fn tuple_struct_pattern_with_unmatched_args_crash() {
     check_infer(
         r#"
