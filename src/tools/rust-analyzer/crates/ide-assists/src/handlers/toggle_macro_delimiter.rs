@@ -1,7 +1,8 @@
-use ide_db::assists::{AssistId, AssistKind};
+use ide_db::assists::AssistId;
 use syntax::{
+    AstNode, T,
     ast::{self, make},
-    ted, AstNode, T,
+    ted,
 };
 
 use crate::{AssistContext, Assists};
@@ -62,7 +63,7 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
     };
 
     acc.add(
-        AssistId("toggle_macro_delimiter", AssistKind::Refactor),
+        AssistId::refactor("toggle_macro_delimiter"),
         match token {
             MacroDelims::LPar | MacroDelims::RPar => "Replace delimiters with braces",
             MacroDelims::LBra | MacroDelims::RBra => "Replace delimiters with parentheses",

@@ -7,8 +7,9 @@ use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use stdx::to_lower_snake_case;
 use syntax::{
+    AstNode, Edition, SmolStr, SmolStrBuilder, ToSmolStr,
     ast::{self, HasName},
-    match_ast, AstNode, Edition, SmolStr, SmolStrBuilder, ToSmolStr,
+    match_ast,
 };
 
 use crate::RootDatabase;
@@ -82,7 +83,7 @@ const USELESS_METHODS: &[&str] = &[
 ///
 /// ```
 /// # use ide_db::syntax_helpers::suggest_name::NameGenerator;
-/// let mut generator = NameGenerator::new();
+/// let mut generator = NameGenerator::default();
 /// assert_eq!(generator.suggest_name("a"), "a");
 /// assert_eq!(generator.suggest_name("a"), "a1");
 ///
@@ -95,21 +96,16 @@ pub struct NameGenerator {
 }
 
 impl NameGenerator {
-    /// Create a new empty generator
-    pub fn new() -> Self {
-        Self { pool: FxHashMap::default() }
-    }
-
     /// Create a new generator with existing names. When suggesting a name, it will
     /// avoid conflicts with existing names.
     pub fn new_with_names<'a>(existing_names: impl Iterator<Item = &'a str>) -> Self {
-        let mut generator = Self::new();
+        let mut generator = Self::default();
         existing_names.for_each(|name| generator.insert(name));
         generator
     }
 
     pub fn new_from_scope_locals(scope: Option<SemanticsScope<'_>>) -> Self {
-        let mut generator = Self::new();
+        let mut generator = Self::default();
         if let Some(scope) = scope {
             scope.process_all_names(&mut |name, scope| {
                 if let hir::ScopeDef::Local(_) = scope {
@@ -457,9 +453,10 @@ mod tests {
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected: &str) {
         let (db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture);
         let frange = FileRange { file_id, range: range_or_offset.into() };
-
         let sema = Semantics::new(&db);
+
         let source_file = sema.parse(frange.file_id);
+
         let element = source_file.syntax().covering_element(frange.range);
         let expr =
             element.ancestors().find_map(ast::Expr::cast).expect("selection is not an expression");
@@ -468,7 +465,7 @@ mod tests {
             frange.range,
             "selection is not an expression(yet contained in one)"
         );
-        let name = NameGenerator::new().for_variable(&expr, &sema);
+        let name = NameGenerator::default().for_variable(&expr, &sema);
         assert_eq!(&name, expected);
     }
 
@@ -1115,7 +1112,7 @@ fn main() {
 
     #[test]
     fn conflicts_with_existing_names() {
-        let mut generator = NameGenerator::new();
+        let mut generator = NameGenerator::default();
         assert_eq!(generator.suggest_name("a"), "a");
         assert_eq!(generator.suggest_name("a"), "a1");
         assert_eq!(generator.suggest_name("a"), "a2");

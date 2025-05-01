@@ -200,8 +200,8 @@ fn test_should_panic_bad_message() {
     }
     let expected = "foobar";
     let failed_msg = r#"panic did not contain expected string
-      panic message: `"an error message"`,
- expected substring: `"foobar"`"#;
+      panic message: "an error message"
+ expected substring: "foobar""#;
     let desc = TestDescAndFn {
         desc: TestDesc {
             name: StaticTestName("whatever"),
@@ -238,7 +238,7 @@ fn test_should_panic_non_string_message_type() {
     let failed_msg = format!(
         r#"expected panic with string value,
  found non-string value: `{:?}`
-     expected substring: `"foobar"`"#,
+     expected substring: "foobar""#,
         TypeId::of::<i32>()
     );
     let desc = TestDescAndFn {

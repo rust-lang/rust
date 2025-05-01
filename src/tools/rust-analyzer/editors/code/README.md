@@ -15,19 +15,19 @@ It is recommended over and replaces `rust-lang.rust`.
 - apply suggestions from errors
 - ... and many more, check out the [manual] to see them all
 
-[code completion]: https://rust-analyzer.github.io/manual.html#magic-completions
-[imports insertion]: https://rust-analyzer.github.io/manual.html#completion-with-autoimport
-[definition]: https://rust-analyzer.github.io/manual.html#go-to-definition
-[implementation]: https://rust-analyzer.github.io/manual.html#go-to-implementation
-[type definition]: https://rust-analyzer.github.io/manual.html#go-to-type-definition
-[find all references]: https://rust-analyzer.github.io/manual.html#find-all-references
-[workspace symbol search]: https://rust-analyzer.github.io/manual.html#workspace-symbol
-[symbol renaming]: https://rust-analyzer.github.io/manual.html#rename
-[types and documentation on hover]: https://rust-analyzer.github.io/manual.html#hover
-[inlay hints]: https://rust-analyzer.github.io/manual.html#inlay-hints
-[semantic syntax highlighting]: https://rust-analyzer.github.io/manual.html#semantic-syntax-highlighting
-[assists (code actions)]: https://rust-analyzer.github.io/manual.html#assists-code-actions
-[manual]: https://rust-analyzer.github.io/manual.html
+[code completion]: https://rust-analyzer.github.io/book/features.html#magic-completions
+[imports insertion]: https://rust-analyzer.github.io/book/features.html#completion-with-autoimport
+[definition]: https://rust-analyzer.github.io/book/features.html#go-to-definition
+[implementation]: https://rust-analyzer.github.io/book/features.html#go-to-implementation
+[type definition]: https://rust-analyzer.github.io/book/features.html#go-to-type-definition
+[find all references]: https://rust-analyzer.github.io/book/features.html#find-all-references
+[workspace symbol search]: https://rust-analyzer.github.io/book/features.html#workspace-symbol
+[symbol renaming]: https://rust-analyzer.github.io/book/features.html#rename
+[types and documentation on hover]: https://rust-analyzer.github.io/book/features.html#hover
+[inlay hints]: https://rust-analyzer.github.io/book/features.html#inlay-hints
+[semantic syntax highlighting]: https://rust-analyzer.github.io/book/features.html#semantic-syntax-highlighting
+[assists (code actions)]: https://rust-analyzer.github.io/book/assists.html
+[manual]: https://rust-analyzer.github.io/book/features.html
 
 ## Quick start
 
@@ -41,7 +41,7 @@ It is recommended over and replaces `rust-lang.rust`.
 
 This extension provides configurations through VSCode's configuration settings. All configurations are under `rust-analyzer.*`.
 
-See [the manual](https://rust-analyzer.github.io/manual.html#vs-code-2) for more information on VSCode specific configurations.
+See [the manual](https://rust-analyzer.github.io/book/editor_features.html#vs-code) for more information on VSCode specific configurations.
 
 ## Communication
 

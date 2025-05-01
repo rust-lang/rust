@@ -1,22 +1,22 @@
 //! Various extensions traits for Chalk types.
 
 use chalk_ir::{
-    cast::Cast, FloatTy, IntTy, Mutability, Scalar, TyVariableKind, TypeOutlives, UintTy,
+    FloatTy, IntTy, Mutability, Scalar, TyVariableKind, TypeOutlives, UintTy, cast::Cast,
 };
 use hir_def::{
+    DefWithBodyId, FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
-    generics::TypeOrConstParamData,
+    hir::generics::{TypeOrConstParamData, TypeParamProvenance},
     lang_item::LangItem,
     type_ref::Rawness,
-    DefWithBodyId, FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
 
 use crate::{
-    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst, AdtId,
-    AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, ClosureId,
-    DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
+    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds,
+    ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
     QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
+    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
+    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst,
 };
 
 pub trait TyExt {
@@ -191,7 +191,7 @@ impl TyExt for Ty {
         match *self.kind(Interner) {
             TyKind::Adt(AdtId(adt), ..) => Some(adt.into()),
             TyKind::FnDef(callable, ..) => Some(GenericDefId::from_callable(
-                db.upcast(),
+                db,
                 db.lookup_intern_callable_def(callable.into()),
             )),
             TyKind::AssociatedType(type_alias, ..) => Some(from_assoc_type_id(type_alias).into()),
@@ -250,7 +250,7 @@ impl TyExt for Ty {
             TyKind::OpaqueType(opaque_ty_id, subst) => {
                 match db.lookup_intern_impl_trait_id((*opaque_ty_id).into()) {
                     ImplTraitId::AsyncBlockTypeImplTrait(def, _expr) => {
-                        let krate = def.module(db.upcast()).krate();
+                        let krate = def.module(db).krate();
                         if let Some(future_trait) =
                             db.lang_item(krate, LangItem::Future).and_then(|item| item.as_trait())
                         {
@@ -314,7 +314,7 @@ impl TyExt for Ty {
                 let param_data = &generic_params[id.local_id];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
-                        hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
+                        TypeParamProvenance::ArgumentImplTrait => {
                             let substs = TyBuilder::placeholder_subst(db, id.parent);
                             let predicates = db
                                 .generic_predicates(id.parent)
@@ -348,17 +348,12 @@ impl TyExt for Ty {
 
     fn associated_type_parent_trait(&self, db: &dyn HirDatabase) -> Option<TraitId> {
         match self.kind(Interner) {
-            TyKind::AssociatedType(id, ..) => {
-                match from_assoc_type_id(*id).lookup(db.upcast()).container {
-                    ItemContainerId::TraitId(trait_id) => Some(trait_id),
-                    _ => None,
-                }
-            }
+            TyKind::AssociatedType(id, ..) => match from_assoc_type_id(*id).lookup(db).container {
+                ItemContainerId::TraitId(trait_id) => Some(trait_id),
+                _ => None,
+            },
             TyKind::Alias(AliasTy::Projection(projection_ty)) => {
-                match from_assoc_type_id(projection_ty.associated_ty_id)
-                    .lookup(db.upcast())
-                    .container
-                {
+                match from_assoc_type_id(projection_ty.associated_ty_id).lookup(db).container {
                     ItemContainerId::TraitId(trait_id) => Some(trait_id),
                     _ => None,
                 }
@@ -368,7 +363,7 @@ impl TyExt for Ty {
     }
 
     fn is_copy(self, db: &dyn HirDatabase, owner: DefWithBodyId) -> bool {
-        let crate_id = owner.module(db.upcast()).krate();
+        let crate_id = owner.module(db).krate();
         let Some(copy_trait) = db.lang_item(crate_id, LangItem::Copy).and_then(|it| it.as_trait())
         else {
             return false;
@@ -422,16 +417,15 @@ pub trait ProjectionTyExt {
 impl ProjectionTyExt for ProjectionTy {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
         // FIXME: something like `Split` trait from chalk-solve might be nice.
-        let generics = generics(db.upcast(), from_assoc_type_id(self.associated_ty_id).into());
-        let substitution = Substitution::from_iter(
-            Interner,
-            self.substitution.iter(Interner).skip(generics.len_self()),
-        );
+        let generics = generics(db, from_assoc_type_id(self.associated_ty_id).into());
+        let parent_len = generics.parent_generics().map_or(0, |g| g.len_self());
+        let substitution =
+            Substitution::from_iter(Interner, self.substitution.iter(Interner).take(parent_len));
         TraitRef { trait_id: to_chalk_trait_id(self.trait_(db)), substitution }
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
-        match from_assoc_type_id(self.associated_ty_id).lookup(db.upcast()).container {
+        match from_assoc_type_id(self.associated_ty_id).lookup(db).container {
             ItemContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }

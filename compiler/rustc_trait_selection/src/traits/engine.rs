@@ -14,8 +14,8 @@ use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::relate::Relate;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast, Variance};
-use rustc_type_ir::relate::Relate;
 
 use super::{FromSolverError, FulfillmentContext, ScrubbedTraitError, TraitEngine};
 use crate::error_reporting::InferCtxtErrorExt;

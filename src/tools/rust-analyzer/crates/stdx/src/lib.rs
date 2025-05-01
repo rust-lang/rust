@@ -12,13 +12,12 @@ pub mod non_empty_vec;
 pub mod panic_context;
 pub mod process;
 pub mod rand;
-pub mod thin_vec;
 pub mod thread;
 
 pub use itertools;
 
 #[inline(always)]
-pub fn is_ci() -> bool {
+pub const fn is_ci() -> bool {
     option_env!("CI").is_some()
 }
 
@@ -27,14 +26,14 @@ pub fn hash_once<Hasher: std::hash::Hasher + Default>(thing: impl std::hash::Has
 }
 
 #[must_use]
-#[allow(clippy::print_stderr)]
+#[expect(clippy::print_stderr, reason = "only visible to developers")]
 pub fn timeit(label: &'static str) -> impl Drop {
     let start = Instant::now();
-    defer(move || eprintln!("{}: {:.2?}", label, start.elapsed()))
+    defer(move || eprintln!("{}: {:.2}", label, start.elapsed().as_nanos()))
 }
 
 /// Prints backtrace to stderr, useful for debugging.
-#[allow(clippy::print_stderr)]
+#[expect(clippy::print_stderr, reason = "only visible to developers")]
 pub fn print_backtrace() {
     #[cfg(feature = "backtrace")]
     eprintln!("{:?}", backtrace::Backtrace::new());
@@ -127,6 +126,7 @@ where
 }
 
 // Taken from rustc.
+#[must_use]
 pub fn to_camel_case(ident: &str) -> String {
     ident
         .trim_matches('_')
@@ -157,7 +157,7 @@ pub fn to_camel_case(ident: &str) -> String {
 
             camel_cased_component
         })
-        .fold((String::new(), None), |(acc, prev): (_, Option<String>), next| {
+        .fold((String::new(), None), |(mut acc, prev): (_, Option<String>), next| {
             // separate two components with an underscore if their boundary cannot
             // be distinguished using an uppercase/lowercase case distinction
             let join = prev
@@ -167,16 +167,20 @@ pub fn to_camel_case(ident: &str) -> String {
                     Some(!char_has_case(l) && !char_has_case(f))
                 })
                 .unwrap_or(false);
-            (acc + if join { "_" } else { "" } + &next, Some(next))
+            acc.push_str(if join { "_" } else { "" });
+            acc.push_str(&next);
+            (acc, Some(next))
         })
         .0
 }
 
 // Taken from rustc.
-pub fn char_has_case(c: char) -> bool {
+#[must_use]
+pub const fn char_has_case(c: char) -> bool {
     c.is_lowercase() || c.is_uppercase()
 }
 
+#[must_use]
 pub fn is_upper_snake_case(s: &str) -> bool {
     s.chars().all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
 }
@@ -189,6 +193,7 @@ pub fn replace(buf: &mut String, from: char, to: &str) {
     *buf = buf.replace(from, to);
 }
 
+#[must_use]
 pub fn trim_indent(mut text: &str) -> String {
     if text.starts_with('\n') {
         text = &text[1..];
@@ -202,11 +207,7 @@ pub fn trim_indent(mut text: &str) -> String {
     text.split_inclusive('\n')
         .map(
             |line| {
-                if line.len() <= indent {
-                    line.trim_start_matches(' ')
-                } else {
-                    &line[indent..]
-                }
+                if line.len() <= indent { line.trim_start_matches(' ') } else { &line[indent..] }
             },
         )
         .collect()
@@ -254,8 +255,8 @@ impl ops::DerefMut for JodChild {
 
 impl Drop for JodChild {
     fn drop(&mut self) {
-        let _ = self.0.kill();
-        let _ = self.0.wait();
+        _ = self.0.kill();
+        _ = self.0.wait();
     }
 }
 
@@ -264,12 +265,11 @@ impl JodChild {
         command.spawn().map(Self)
     }
 
+    #[must_use]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn into_inner(self) -> std::process::Child {
-        if cfg!(target_arch = "wasm32") {
-            panic!("no processes on wasm");
-        }
         // SAFETY: repr transparent, except on WASM
-        unsafe { std::mem::transmute::<JodChild, std::process::Child>(self) }
+        unsafe { std::mem::transmute::<Self, std::process::Child>(self) }
     }
 }
 

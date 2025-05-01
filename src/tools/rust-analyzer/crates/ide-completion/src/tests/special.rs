@@ -1,14 +1,14 @@
 //! Tests that don't fit into a specific category.
 
-use expect_test::{expect, Expect};
+use expect_test::{Expect, expect};
 use ide_db::SymbolKind;
 
 use crate::{
-    tests::{
-        check, check_edit, check_no_kw, check_with_trigger_character, do_completion_with_config,
-        TEST_CONFIG,
-    },
     CompletionItemKind,
+    tests::{
+        TEST_CONFIG, check, check_edit, check_no_kw, check_with_trigger_character,
+        do_completion_with_config,
+    },
 };
 
 #[test]
@@ -105,7 +105,7 @@ mod macros {
 fn completes_std_prelude_if_core_is_defined() {
     check_no_kw(
         r#"
-//- /main.rs crate:main deps:core,std
+//- /main.rs crate:main deps:core,std edition:2021
 fn foo() { let x: $0 }
 
 //- /core/lib.rs crate:core
@@ -1008,6 +1008,7 @@ fn here_we_go() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1059,6 +1060,7 @@ fn here_we_go() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1146,6 +1148,7 @@ fn here_we_go() {
             me baz() (alias qux) fn(&self) -> u8
             sn box                Box::new(expr)
             sn call               function(expr)
+            sn const                    const {}
             sn dbg                    dbg!(expr)
             sn dbgr                  dbg!(&expr)
             sn deref                       *expr
@@ -1183,6 +1186,7 @@ fn bar() { qu$0 }
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop
@@ -1264,6 +1268,7 @@ fn here_we_go() {
             md foo
             st Bar (alias Qux) (use foo::Bar) Bar
             bt u32                            u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -1439,6 +1444,7 @@ fn foo() {
             kw if
             kw if let
             kw impl
+            kw impl for
             kw let
             kw letm
             kw loop

@@ -9,7 +9,7 @@ use libloading::Library;
 use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
-use crate::{proc_macros::ProcMacros, server_impl::TopSubtree, ProcMacroKind, ProcMacroSrvSpan};
+use crate::{ProcMacroKind, ProcMacroSrvSpan, proc_macros::ProcMacros, server_impl::TopSubtree};
 
 /// Loads dynamic library in platform dependent manner.
 ///
@@ -21,13 +21,32 @@ use crate::{proc_macros::ProcMacros, server_impl::TopSubtree, ProcMacroKind, Pro
 /// [here](https://github.com/fedochet/rust-proc-macro-panic-inside-panic-expample/issues/1)
 ///
 /// It seems that on Windows that behaviour is default, so we do nothing in that case.
+///
+/// # Safety
+///
+/// The caller is responsible for ensuring that the path is valid proc-macro library
 #[cfg(windows)]
-fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
+unsafe fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
+    // SAFETY: The caller is responsible for ensuring that the path is valid proc-macro library
     unsafe { Library::new(file) }
 }
 
+/// Loads dynamic library in platform dependent manner.
+///
+/// For unix, you have to use RTLD_DEEPBIND flag to escape problems described
+/// [here](https://github.com/fedochet/rust-proc-macro-panic-inside-panic-expample)
+/// and [here](https://github.com/rust-lang/rust/issues/60593).
+///
+/// Usage of RTLD_DEEPBIND
+/// [here](https://github.com/fedochet/rust-proc-macro-panic-inside-panic-expample/issues/1)
+///
+/// It seems that on Windows that behaviour is default, so we do nothing in that case.
+///
+/// # Safety
+///
+/// The caller is responsible for ensuring that the path is valid proc-macro library
 #[cfg(unix)]
-fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
+unsafe fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
     // not defined by POSIX, different values on mips vs other targets
     #[cfg(target_env = "gnu")]
     use libc::RTLD_DEEPBIND;
@@ -39,6 +58,7 @@ fn load_library(file: &Utf8Path) -> Result<Library, libloading::Error> {
     #[cfg(not(target_env = "gnu"))]
     const RTLD_DEEPBIND: std::os::raw::c_int = 0x0;
 
+    // SAFETY: The caller is responsible for ensuring that the path is valid proc-macro library
     unsafe { UnixLibrary::open(Some(file), RTLD_NOW | RTLD_DEEPBIND).map(|lib| lib.into()) }
 }
 
@@ -84,26 +104,32 @@ struct ProcMacroLibrary {
 impl ProcMacroLibrary {
     fn open(path: &Utf8Path) -> Result<Self, LoadProcMacroDylibError> {
         let file = fs::File::open(path)?;
+        #[allow(clippy::undocumented_unsafe_blocks)] // FIXME
         let file = unsafe { memmap2::Mmap::map(&file) }?;
         let obj = object::File::parse(&*file)
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
         let version_info = version::read_dylib_info(&obj)?;
+        if version_info.version_string != crate::RUSTC_VERSION_STRING {
+            return Err(LoadProcMacroDylibError::AbiMismatch(version_info.version_string));
+        }
+
         let symbol_name =
             find_registrar_symbol(&obj).map_err(invalid_data_err)?.ok_or_else(|| {
                 invalid_data_err(format!("Cannot find registrar symbol in file {path}"))
             })?;
 
-        let lib = load_library(path).map_err(invalid_data_err)?;
-        let proc_macros = unsafe {
-            // SAFETY: We extend the lifetime here to avoid referential borrow problems
-            // We never reveal proc_macros to the outside and drop it before _lib
-            std::mem::transmute::<&ProcMacros, &'static ProcMacros>(ProcMacros::from_lib(
-                &lib,
-                symbol_name,
-                &version_info.version_string,
-            )?)
-        };
-        Ok(ProcMacroLibrary { _lib: lib, proc_macros })
+        // SAFETY: We have verified the validity of the dylib as a proc-macro library
+        let lib = unsafe { load_library(path) }.map_err(invalid_data_err)?;
+        // SAFETY: We have verified the validity of the dylib as a proc-macro library
+        // The 'static lifetime is a lie, it's actually the lifetime of the library but unavoidable
+        // due to self-referentiality
+        // But we make sure that we do not drop it before the symbol is dropped
+        let proc_macros =
+            unsafe { lib.get::<&'static &'static ProcMacros>(symbol_name.as_bytes()) };
+        match proc_macros {
+            Ok(proc_macros) => Ok(ProcMacroLibrary { proc_macros: *proc_macros, _lib: lib }),
+            Err(e) => Err(e.into()),
+        }
     }
 }
 

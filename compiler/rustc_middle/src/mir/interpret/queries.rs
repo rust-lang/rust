@@ -115,15 +115,16 @@ impl<'tcx> TyCtxt<'tcx> {
                     // @lcnr believes that successfully evaluating even though there are
                     // used generic parameters is a bug of evaluation, so checking for it
                     // here does feel somewhat sensible.
-                    if !self.features().generic_const_exprs() && ct.args.has_non_region_param() {
-                        let def_kind = self.def_kind(instance.def_id());
-                        assert!(
-                            matches!(
-                                def_kind,
-                                DefKind::InlineConst | DefKind::AnonConst | DefKind::AssocConst
-                            ),
-                            "{cid:?} is {def_kind:?}",
-                        );
+                    if !self.features().generic_const_exprs()
+                        && ct.args.has_non_region_param()
+                        // We only FCW for anon consts as repeat expr counts with anon consts are the only place
+                        // that we have a back compat hack for. We don't need to check this is a const argument
+                        // as only anon consts as const args should get evaluated "for the type system".
+                        //
+                        // If we don't *only* FCW anon consts we can wind up incorrectly FCW'ing uses of assoc
+                        // consts in pattern positions. #140447
+                        && self.def_kind(instance.def_id()) == DefKind::AnonConst
+                    {
                         let mir_body = self.mir_for_ctfe(instance.def_id());
                         if mir_body.is_polymorphic {
                             let Some(local_def_id) = ct.def.as_local() else { return };

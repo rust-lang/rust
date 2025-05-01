@@ -14,9 +14,8 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode, elaborate};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -78,9 +77,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::DiscriminantKind) {
                 // `DiscriminantKind` is automatically implemented for every type.
-                candidates.vec.push(BuiltinCandidate { has_nested: false });
-            } else if tcx.is_lang_item(def_id, LangItem::AsyncDestruct) {
-                // `AsyncDestruct` is automatically implemented for every type.
                 candidates.vec.push(BuiltinCandidate { has_nested: false });
             } else if tcx.is_lang_item(def_id, LangItem::PointeeTrait) {
                 // `Pointee` is automatically implemented for every type.
@@ -728,7 +724,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 ty::Param(..)
-                | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
+                | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
                 | ty::Placeholder(..)
                 | ty::Bound(..) => {
                     // In these cases, we don't know what the actual

@@ -4,14 +4,14 @@ use std::iter;
 
 use hir::Semantics;
 use ide_db::{
+    FileRange, FxIndexMap, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     search::FileReference,
-    FileRange, FxIndexMap, RootDatabase,
 };
-use syntax::{ast, AstNode, SyntaxKind::IDENT};
+use syntax::{AstNode, SyntaxKind::IDENT, ast};
 
-use crate::{goto_definition, FilePosition, NavigationTarget, RangeInfo, TryToNav};
+use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav, goto_definition};
 
 #[derive(Debug, Clone)]
 pub struct CallItem {
@@ -76,9 +76,9 @@ pub(crate) fn incoming_calls(
                 }
 
                 let range = sema.original_range(name.syntax());
-                calls.add(nav.call_site, range.into());
+                calls.add(nav.call_site, range.into_file_id(db));
                 if let Some(other) = nav.def_site {
-                    calls.add(other, range.into());
+                    calls.add(other, range.into_file_id(db));
                 }
             }
         }
@@ -143,7 +143,7 @@ pub(crate) fn outgoing_calls(
             Some(nav_target.into_iter().zip(iter::repeat(range)))
         })
         .flatten()
-        .for_each(|(nav, range)| calls.add(nav, range.into()));
+        .for_each(|(nav, range)| calls.add(nav, range.into_file_id(db)));
 
     Some(calls.into_items())
 }
@@ -165,7 +165,7 @@ impl CallLocations {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use ide_db::FilePosition;
     use itertools::Itertools;
 

@@ -20,6 +20,7 @@ pub(crate) fn target() -> Target {
             max_atomic_width: Some(32),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             has_thumb_interworking: true,
+            llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
             ..base::linux_gnu::opts()
         },
     }

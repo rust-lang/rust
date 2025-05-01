@@ -7,7 +7,7 @@ The tracking issue for this feature is: [#87121]
 ------------------------
 
 > **Note**: This feature is incomplete. In the future, it is meant to supersede
-> [`box_patterns`](./box-patterns.md) and [`string_deref_patterns`](./string-deref-patterns.md).
+> [`box_patterns`] and [`string_deref_patterns`].
 
 This feature permits pattern matching on [smart pointers in the standard library] through their
 `Deref` target types, either implicitly or with explicit `deref!(_)` patterns (the syntax of which
@@ -54,6 +54,17 @@ if let [b] = &mut *v {
 assert_eq!(v, [Box::new(Some(2))]);
 ```
 
+Like [`box_patterns`], deref patterns may move out of boxes:
+
+```rust
+# #![feature(deref_patterns)]
+# #![allow(incomplete_features)]
+struct NoCopy;
+// Match exhaustiveness analysis is not yet implemented.
+let deref!(x) = Box::new(NoCopy) else { unreachable!() };
+drop::<NoCopy>(x);
+```
+
 Additionally, when `deref_patterns` is enabled, string literal patterns may be written where `str`
 is expected. Likewise, byte string literal patterns may be written where `[u8]` or `[u8; _]` is
 expected. This lets them be used in `deref!(_)` patterns:
@@ -75,4 +86,6 @@ match *"test" {
 
 Implicit deref pattern syntax is not yet supported for string or byte string literals.
 
+[`box_patterns`]: ./box-patterns.md
+[`string_deref_patterns`]: ./string-deref-patterns.md
 [smart pointers in the standard library]: https://doc.rust-lang.org/std/ops/trait.DerefPure.html#implementors

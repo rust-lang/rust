@@ -4,28 +4,29 @@ use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, sym, symbols::FxIndexSet, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate,
-    HasSource, HirFileIdExt, ModPath, Name, PathKind, Semantics, Symbol,
+    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, ModPath, Name, PathKind, Semantics,
+    Symbol, db::HirDatabase, sym, symbols::FxIndexSet,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
-    base_db::SourceDatabase,
+    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
+    base_db::RootQueryDb,
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
 use span::{Edition, TextSize};
 use stdx::format_to;
 use syntax::{
+    SmolStr, SyntaxNode, ToSmolStr,
     ast::{self, AstNode},
-    format_smolstr, SmolStr, SyntaxNode, ToSmolStr,
+    format_smolstr,
 };
 
-use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
+use crate::{FileId, NavigationTarget, ToNav, TryToNav, references};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Runnable {
@@ -284,8 +285,10 @@ fn find_related_tests_in_module(
 
     let file_id = mod_source.file_id.original_file(sema.db);
     let mod_scope = SearchScope::file_range(hir::FileRange { file_id, range: mod_source.value });
-    let fn_pos =
-        FilePosition { file_id: file_id.into(), offset: fn_name.syntax().text_range().start() };
+    let fn_pos = FilePosition {
+        file_id: file_id.file_id(sema.db),
+        offset: fn_name.syntax().text_range().start(),
+    };
     find_related_tests(sema, syntax, fn_pos, Some(mod_scope), tests)
 }
 
@@ -499,7 +502,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
     let krate = def.krate(db);
     let edition = krate.map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     let display_target = krate
-        .unwrap_or_else(|| (*db.crate_graph().crates_in_topological_order().last().unwrap()).into())
+        .unwrap_or_else(|| (*db.all_crates().last().expect("no crate graph present")).into())
         .to_display_target(db);
     if !has_runnable_doc_test(&attrs) {
         return None;
@@ -752,7 +755,7 @@ impl UpdateTest {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
     use crate::fixture;
 
@@ -1209,13 +1212,13 @@ impl Foo {
             r#"
 //- /lib.rs
 $0
-macro_rules! gen {
+macro_rules! generate {
     () => {
         #[test]
         fn foo_test() {}
     }
 }
-macro_rules! gen2 {
+macro_rules! generate2 {
     () => {
         mod tests2 {
             #[test]
@@ -1223,25 +1226,25 @@ macro_rules! gen2 {
         }
     }
 }
-macro_rules! gen_main {
+macro_rules! generate_main {
     () => {
         fn main() {}
     }
 }
 mod tests {
-    gen!();
+    generate!();
 }
-gen2!();
-gen_main!();
+generate2!();
+generate_main!();
 "#,
             expect![[r#"
                 [
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..315, name: \"\", kind: Module })",
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 267..292, focus_range: 271..276, name: \"tests\", kind: Module, description: \"mod tests\" })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 283..290, name: \"foo_test\", kind: Function })",
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"foo_test2\", kind: Function }, true)",
-                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 302..314, name: \"main\", kind: Function })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..345, name: \"\", kind: Module })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 282..312, focus_range: 286..291, name: \"tests\", kind: Module, description: \"mod tests\" })",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 298..310, name: \"foo_test\", kind: Function })",
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 313..326, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 313..326, name: \"foo_test2\", kind: Function }, true)",
+                    "(Bin, NavigationTarget { file_id: FileId(0), full_range: 327..344, name: \"main\", kind: Function })",
                 ]
             "#]],
         );

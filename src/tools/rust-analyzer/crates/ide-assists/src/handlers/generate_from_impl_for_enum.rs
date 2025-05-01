@@ -1,9 +1,7 @@
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode, HasName};
 
-use crate::{
-    utils::generate_trait_impl_text_intransitive, AssistContext, AssistId, AssistKind, Assists,
-};
+use crate::{AssistContext, AssistId, Assists, utils::generate_trait_impl_text_intransitive};
 
 // Assist: generate_from_impl_for_enum
 //
@@ -53,7 +51,7 @@ pub(crate) fn generate_from_impl_for_enum(
 
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("generate_from_impl_for_enum", AssistKind::Generate),
+        AssistId::generate("generate_from_impl_for_enum"),
         "Generate `From` impl for this enum variant",
         target,
         |edit| {
@@ -92,11 +90,7 @@ fn existing_from_impl(
 
     let wrapped_type = variant.fields(sema.db).first()?.ty(sema.db);
 
-    if enum_type.impls_trait(sema.db, from_trait, &[wrapped_type]) {
-        Some(())
-    } else {
-        None
-    }
+    if enum_type.impls_trait(sema.db, from_trait, &[wrapped_type]) { Some(()) } else { None }
 }
 
 #[cfg(test)]

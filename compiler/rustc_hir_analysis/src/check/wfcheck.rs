@@ -2019,7 +2019,7 @@ fn check_variances_for_type_defn<'tcx>(
         ItemKind::TyAlias(..) => {
             assert!(
                 tcx.type_alias_is_lazy(item.owner_id),
-                "should not be computing variance of non-weak type alias"
+                "should not be computing variance of non-free type alias"
             );
         }
         kind => span_bug!(item.span, "cannot compute the variances of {kind:?}"),
@@ -2251,7 +2251,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsProbablyCyclical<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<(), ()> {
         let def_id = match ty.kind() {
             ty::Adt(adt_def, _) => Some(adt_def.did()),
-            ty::Alias(ty::Weak, alias_ty) => Some(alias_ty.def_id),
+            ty::Alias(ty::Free, alias_ty) => Some(alias_ty.def_id),
             _ => None,
         };
         if let Some(def_id) = def_id {

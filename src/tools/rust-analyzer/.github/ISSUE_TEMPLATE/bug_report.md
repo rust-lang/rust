@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 <!--
-Troubleshooting guide: https://rust-analyzer.github.io/manual.html#troubleshooting
+Troubleshooting guide: https://rust-analyzer.github.io/book/troubleshooting.html
 Forum for questions: https://users.rust-lang.org/c/ide/14
 
 Before submitting, please make sure that you're not running into one of these known issues:
@@ -28,7 +28,7 @@ Otherwise please try to provide information which will help us to fix the issue 
 
 **repository link (if public, optional)**: (eg. [rust-analyzer](https://github.com/rust-lang/rust-analyzer))
 
-**code snippet to reproduce**: 
+**code snippet to reproduce**:
 ```rust
 // add your code here
 

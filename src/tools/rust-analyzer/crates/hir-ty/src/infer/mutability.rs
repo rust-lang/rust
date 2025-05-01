@@ -1,7 +1,7 @@
 //! Finds if an expression is an immutable context or a mutable context, which is used in selecting
 //! between `Deref` and `DerefMut` or `Index` and `IndexMut` or similar.
 
-use chalk_ir::{cast::Cast, Mutability};
+use chalk_ir::{Mutability, cast::Cast};
 use hir_def::{
     hir::{
         Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement,
@@ -13,9 +13,9 @@ use hir_expand::name::Name;
 use intern::sym;
 
 use crate::{
-    infer::{expr::ExprIsRead, Expectation, InferenceContext},
-    lower::lower_to_chalk_mutability,
     Adjust, Adjustment, AutoBorrow, Interner, OverloadedDeref, TyBuilder, TyKind,
+    infer::{Expectation, InferenceContext, expr::ExprIsRead},
+    lower::lower_to_chalk_mutability,
 };
 
 impl InferenceContext<'_> {
@@ -69,8 +69,7 @@ impl InferenceContext<'_> {
                 }
             }
             Expr::Const(id) => {
-                let loc = self.db.lookup_intern_anonymous_const(*id);
-                self.infer_mut_expr(loc.root, Mutability::Not);
+                self.infer_mut_expr(*id, Mutability::Not);
             }
             Expr::Let { pat, expr } => self.infer_mut_expr(*expr, self.pat_bound_mutability(*pat)),
             Expr::Block { id: _, statements, tail, label: _ }
@@ -134,8 +133,8 @@ impl InferenceContext<'_> {
                         {
                             if let Some(index_fn) = self
                                 .db
-                                .trait_data(index_trait)
-                                .method_by_name(&Name::new_symbol_root(sym::index_mut.clone()))
+                                .trait_items(index_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::index_mut))
                             {
                                 *f = index_fn;
                                 let mut base_ty = None;
@@ -201,8 +200,8 @@ impl InferenceContext<'_> {
                                 mutability = Mutability::Not;
                             } else if let Some(deref_fn) = self
                                 .db
-                                .trait_data(deref_trait)
-                                .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
+                                .trait_items(deref_trait)
+                                .method_by_name(&Name::new_symbol_root(sym::deref_mut))
                             {
                                 *f = deref_fn;
                             }

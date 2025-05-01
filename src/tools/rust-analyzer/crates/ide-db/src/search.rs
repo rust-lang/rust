@@ -7,28 +7,28 @@
 use std::mem;
 use std::{cell::LazyCell, cmp::Reverse};
 
-use base_db::{ra_salsa::Database, SourceDatabase, SourceRootDatabase};
+use base_db::{RootQueryDb, SourceDatabase};
 use either::Either;
 use hir::{
-    sym, Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer,
-    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
-    ModuleSource, PathResolution, Semantics, Visibility,
+    Adt, AsAssocItem, DefWithBody, EditionedFileId, FileRange, FileRangeWrapper, HasAttrs,
+    HasContainer, HasSource, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
+    ModuleSource, PathResolution, Semantics, Visibility, sym,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::EditionedFileId;
+use salsa::Database;
 use syntax::{
+    AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize, ToSmolStr,
     ast::{self, HasName, Rename},
-    match_ast, AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize,
-    ToSmolStr,
+    match_ast,
 };
 use triomphe::Arc;
 
 use crate::{
+    RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     traits::{as_trait_assoc_def, convert_to_def_in_trait},
-    RootDatabase,
 };
 
 #[derive(Debug, Default, Clone)]
@@ -161,13 +161,15 @@ impl SearchScope {
     fn crate_graph(db: &RootDatabase) -> SearchScope {
         let mut entries = FxHashMap::default();
 
-        let graph = db.crate_graph();
-        for krate in graph.iter() {
-            let root_file = graph[krate].root_file_id;
-            let source_root_id = db.file_source_root(root_file);
-            let source_root = db.source_root(source_root_id);
+        let all_crates = db.all_crates();
+        for &krate in all_crates.iter() {
+            let crate_data = krate.data(db);
+            let source_root = db.file_source_root(crate_data.root_file_id).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             entries.extend(
-                source_root.iter().map(|id| (EditionedFileId::new(id, graph[krate].edition), None)),
+                source_root
+                    .iter()
+                    .map(|id| (EditionedFileId::new(db, id, crate_data.edition), None)),
             );
         }
         SearchScope { entries }
@@ -178,10 +180,13 @@ impl SearchScope {
         let mut entries = FxHashMap::default();
         for rev_dep in of.transitive_reverse_dependencies(db) {
             let root_file = rev_dep.root_file(db);
-            let source_root_id = db.file_source_root(root_file);
-            let source_root = db.source_root(source_root_id);
+
+            let source_root = db.file_source_root(root_file).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             entries.extend(
-                source_root.iter().map(|id| (EditionedFileId::new(id, rev_dep.edition(db)), None)),
+                source_root
+                    .iter()
+                    .map(|id| (EditionedFileId::new(db, id, rev_dep.edition(db)), None)),
             );
         }
         SearchScope { entries }
@@ -190,12 +195,13 @@ impl SearchScope {
     /// Build a search scope spanning the given crate.
     fn krate(db: &RootDatabase, of: hir::Crate) -> SearchScope {
         let root_file = of.root_file(db);
-        let source_root_id = db.file_source_root(root_file);
-        let source_root = db.source_root(source_root_id);
+
+        let source_root_id = db.file_source_root(root_file).source_root_id(db);
+        let source_root = db.source_root(source_root_id).source_root(db);
         SearchScope {
             entries: source_root
                 .iter()
-                .map(|id| (EditionedFileId::new(id, of.edition(db)), None))
+                .map(|id| (EditionedFileId::new(db, id, of.edition(db)), None))
                 .collect(),
         }
     }
@@ -308,8 +314,6 @@ impl Definition {
                 DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
-                // FIXME: implement
-                DefWithBody::InTypeConst(_) => return SearchScope::empty(),
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -325,8 +329,6 @@ impl Definition {
                 DefWithBody::Const(c) => c.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Static(s) => s.source(db).map(|src| src.syntax().cloned()),
                 DefWithBody::Variant(v) => v.source(db).map(|src| src.syntax().cloned()),
-                // FIXME: implement
-                DefWithBody::InTypeConst(_) => return SearchScope::empty(),
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -367,7 +369,7 @@ impl Definition {
         if let Definition::Macro(macro_def) = self {
             return match macro_def.kind(db) {
                 hir::MacroKind::Declarative => {
-                    if macro_def.attrs(db).by_key(&sym::macro_export).exists() {
+                    if macro_def.attrs(db).by_key(sym::macro_export).exists() {
                         SearchScope::reverse_dependencies(db, module.krate())
                     } else {
                         SearchScope::krate(db, module.krate())
@@ -483,7 +485,7 @@ impl<'a> FindUsages<'a> {
         scope: &'b SearchScope,
     ) -> impl Iterator<Item = (Arc<str>, EditionedFileId, TextRange)> + 'b {
         scope.entries.iter().map(|(&file_id, &search_range)| {
-            let text = db.file_text(file_id.file_id());
+            let text = db.file_text(file_id.file_id(db)).text(db);
             let search_range =
                 search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
@@ -853,7 +855,10 @@ impl<'a> FindUsages<'a> {
                 name,
                 is_possibly_self.into_iter().map(|position| {
                     (
-                        self.sema.db.file_text(position.file_id.file_id()),
+                        self.sema
+                            .db
+                            .file_text(position.file_id.file_id(self.sema.db))
+                            .text(self.sema.db),
                         position.file_id,
                         position.range,
                     )
@@ -947,7 +952,6 @@ impl<'a> FindUsages<'a> {
         let include_self_kw_refs =
             self.include_self_kw_refs.as_ref().map(|ty| (ty, Finder::new("Self")));
         for (text, file_id, search_range) in Self::scope_files(sema.db, &search_scope) {
-            self.sema.db.unwind_if_cancelled();
             let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
             // Search for occurrences of the items name
@@ -1001,7 +1005,8 @@ impl<'a> FindUsages<'a> {
             let finder = &Finder::new("super");
 
             for (text, file_id, search_range) in Self::scope_files(sema.db, &scope) {
-                self.sema.db.unwind_if_cancelled();
+                self.sema.db.unwind_if_revision_cancelled();
+
                 let tree = LazyCell::new(move || sema.parse(file_id).syntax().clone());
 
                 for offset in Self::match_indices(&text, finder, search_range) {
@@ -1050,7 +1055,8 @@ impl<'a> FindUsages<'a> {
                     return;
                 };
 
-                let text = sema.db.file_text(file_id.file_id());
+                let file_text = sema.db.file_text(file_id.file_id(self.sema.db));
+                let text = file_text.text(sema.db);
                 let search_range =
                     search_range.unwrap_or_else(|| TextRange::up_to(TextSize::of(&*text)));
 
@@ -1279,7 +1285,7 @@ impl<'a> FindUsages<'a> {
                         if convert_to_def_in_trait(self.sema.db, def)
                             != convert_to_def_in_trait(self.sema.db, self.def) =>
                     {
-                        return false
+                        return false;
                     }
                     (Some(_), Definition::TypeAlias(_)) => {}
                     // We looking at an assoc item of a trait definition, so reference all the

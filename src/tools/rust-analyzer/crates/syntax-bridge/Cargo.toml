@@ -13,7 +13,6 @@ rust-version.workspace = true
 
 [dependencies]
 rustc-hash.workspace = true
-tracing.workspace = true
 
 # local deps
 syntax.workspace = true

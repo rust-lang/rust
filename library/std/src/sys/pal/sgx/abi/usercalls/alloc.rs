@@ -675,7 +675,7 @@ where
 
     /// Obtain the number of elements in this user slice.
     pub fn len(&self) -> usize {
-        unsafe { (*self.0.get()).len() }
+        unsafe { self.0.get().len() }
     }
 
     /// Copies the value from user memory and appends it to `dest`.

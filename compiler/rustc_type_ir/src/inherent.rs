@@ -151,7 +151,6 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn discriminant_ty(self, interner: I) -> I::Ty;
 
-    fn async_destructor_ty(self, interner: I) -> I::Ty;
     fn is_known_rigid(self) -> bool {
         self.kind().is_known_rigid()
     }

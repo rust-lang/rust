@@ -1,4 +1,4 @@
-warning: creating a mutable reference to mutable static is discouraged
+warning: creating a mutable reference to mutable static
   --> $DIR/const_let_assign2.rs:18:24
    |
 LL |     let ptr = unsafe { &mut BB };

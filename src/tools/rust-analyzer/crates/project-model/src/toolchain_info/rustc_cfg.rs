@@ -11,7 +11,7 @@ use crate::{toolchain_info::QueryConfig, utf8_stdout};
 pub fn get(
     config: QueryConfig<'_>,
     target: Option<&str>,
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
 ) -> Vec<CfgAtom> {
     let _p = tracing::info_span!("rustc_cfg::get").entered();
 
@@ -58,14 +58,13 @@ pub fn get(
 
 fn rustc_print_cfg(
     target: Option<&str>,
-    extra_env: &FxHashMap<String, String>,
+    extra_env: &FxHashMap<String, Option<String>>,
     config: QueryConfig<'_>,
 ) -> anyhow::Result<String> {
     const RUSTC_ARGS: [&str; 2] = ["--print", "cfg"];
     let (sysroot, current_dir) = match config {
         QueryConfig::Cargo(sysroot, cargo_toml) => {
-            let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent());
-            cmd.envs(extra_env);
+            let mut cmd = sysroot.tool(Tool::Cargo, cargo_toml.parent(), extra_env);
             cmd.args(["rustc", "-Z", "unstable-options"]).args(RUSTC_ARGS);
             if let Some(target) = target {
                 cmd.args(["--target", target]);
@@ -86,8 +85,7 @@ fn rustc_print_cfg(
         QueryConfig::Rustc(sysroot, current_dir) => (sysroot, current_dir),
     };
 
-    let mut cmd = sysroot.tool(Tool::Rustc, current_dir);
-    cmd.envs(extra_env);
+    let mut cmd = sysroot.tool(Tool::Rustc, current_dir, extra_env);
     cmd.args(RUSTC_ARGS);
     cmd.arg("-O");
     if let Some(target) = target {

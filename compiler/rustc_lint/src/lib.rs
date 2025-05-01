@@ -36,6 +36,7 @@
 
 mod async_closures;
 mod async_fn_in_trait;
+mod autorefs;
 pub mod builtin;
 mod context;
 mod dangling;
@@ -83,6 +84,7 @@ mod utils;
 
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
+use autorefs::*;
 use builtin::*;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
@@ -200,6 +202,7 @@ late_lint_methods!(
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
             InvalidReferenceCasting: InvalidReferenceCasting,
+            ImplicitAutorefs: ImplicitAutorefs,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             UnitBindings: UnitBindings,

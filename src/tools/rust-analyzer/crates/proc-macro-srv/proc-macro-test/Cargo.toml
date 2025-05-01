@@ -3,10 +3,10 @@ name = "proc-macro-test"
 version = "0.0.0"
 publish = false
 
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [lib]
 
 [build-dependencies]
-cargo_metadata = "0.18.1"
+cargo_metadata = "0.19.2"

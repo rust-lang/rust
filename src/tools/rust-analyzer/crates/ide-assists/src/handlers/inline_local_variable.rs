@@ -1,17 +1,17 @@
 use hir::{PathResolution, Semantics};
 use ide_db::{
+    EditionedFileId, RootDatabase,
     defs::Definition,
     search::{FileReference, FileReferenceNode, UsageSearchResult},
-    EditionedFileId, RootDatabase,
 };
 use syntax::{
-    ast::{self, syntax_factory::SyntaxFactory, AstNode, AstToken, HasName},
     SyntaxElement, TextRange,
+    ast::{self, AstNode, AstToken, HasName, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    AssistId, AssistKind,
 };
 
 // Assist: inline_local_variable
@@ -74,7 +74,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
     };
 
     acc.add(
-        AssistId("inline_local_variable", AssistKind::RefactorInline),
+        AssistId::refactor_inline("inline_local_variable"),
         "Inline variable",
         target.text_range(),
         move |builder| {
@@ -91,7 +91,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 }
             }
 
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
 
             for (name, should_wrap) in wrap_in_parens {
                 let replacement = if should_wrap {
@@ -110,7 +110,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

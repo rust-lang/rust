@@ -1365,7 +1365,12 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules, size_t num_modules,
   // Convert the preserved symbols set from string to GUID, this is then needed
   // for internalization.
   for (size_t i = 0; i < num_symbols; i++) {
+#if LLVM_VERSION_GE(21, 0)
+    auto GUID =
+        GlobalValue::getGUIDAssumingExternalLinkage(preserved_symbols[i]);
+#else
     auto GUID = GlobalValue::getGUID(preserved_symbols[i]);
+#endif
     Ret->GUIDPreservedSymbols.insert(GUID);
   }
 
@@ -1685,11 +1690,11 @@ extern "C" void LLVMRustComputeLTOCacheKey(RustStringRef KeyOut,
   // Based on the 'InProcessThinBackend' constructor in LLVM
 #if LLVM_VERSION_GE(21, 0)
   for (auto &Name : Data->Index.cfiFunctionDefs().symbols())
-    CfiFunctionDefs.insert(
-        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
+    CfiFunctionDefs.insert(GlobalValue::getGUIDAssumingExternalLinkage(
+        GlobalValue::dropLLVMManglingEscape(Name)));
   for (auto &Name : Data->Index.cfiFunctionDecls().symbols())
-    CfiFunctionDecls.insert(
-        GlobalValue::getGUID(GlobalValue::dropLLVMManglingEscape(Name)));
+    CfiFunctionDecls.insert(GlobalValue::getGUIDAssumingExternalLinkage(
+        GlobalValue::dropLLVMManglingEscape(Name)));
 #else
   for (auto &Name : Data->Index.cfiFunctionDefs())
     CfiFunctionDefs.insert(

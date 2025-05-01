@@ -1,5 +1,6 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
-#![cfg(reliable_f16)]
+#![cfg(not(bootstrap))]
+#![cfg(target_has_reliable_f16)]
 
 use std::f16::consts;
 use std::num::FpCategory as Fp;
@@ -57,29 +58,40 @@ fn test_num_f16() {
     crate::test_num(10f16, 2f16);
 }
 
+// FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
+// the intrinsics.
+
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_min_nan() {
     assert_eq!(f16::NAN.min(2.0), 2.0);
     assert_eq!(2.0f16.min(f16::NAN), 2.0);
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_max_nan() {
     assert_eq!(f16::NAN.max(2.0), 2.0);
     assert_eq!(2.0f16.max(f16::NAN), 2.0);
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_minimum() {
     assert!(f16::NAN.minimum(2.0).is_nan());
     assert!(2.0f16.minimum(f16::NAN).is_nan());
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_maximum() {
     assert!(f16::NAN.maximum(2.0).is_nan());
     assert!(2.0f16.maximum(f16::NAN).is_nan());
@@ -236,7 +248,9 @@ fn test_classify() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_floor() {
     assert_approx_eq!(1.0f16.floor(), 1.0f16, TOL_0);
     assert_approx_eq!(1.3f16.floor(), 1.0f16, TOL_0);
@@ -251,7 +265,9 @@ fn test_floor() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_ceil() {
     assert_approx_eq!(1.0f16.ceil(), 1.0f16, TOL_0);
     assert_approx_eq!(1.3f16.ceil(), 2.0f16, TOL_0);
@@ -266,7 +282,9 @@ fn test_ceil() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_round() {
     assert_approx_eq!(2.5f16.round(), 3.0f16, TOL_0);
     assert_approx_eq!(1.0f16.round(), 1.0f16, TOL_0);
@@ -282,7 +300,9 @@ fn test_round() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_round_ties_even() {
     assert_approx_eq!(2.5f16.round_ties_even(), 2.0f16, TOL_0);
     assert_approx_eq!(1.0f16.round_ties_even(), 1.0f16, TOL_0);
@@ -298,7 +318,9 @@ fn test_round_ties_even() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_trunc() {
     assert_approx_eq!(1.0f16.trunc(), 1.0f16, TOL_0);
     assert_approx_eq!(1.3f16.trunc(), 1.0f16, TOL_0);
@@ -313,7 +335,9 @@ fn test_trunc() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_fract() {
     assert_approx_eq!(1.0f16.fract(), 0.0f16, TOL_0);
     assert_approx_eq!(1.3f16.fract(), 0.3f16, TOL_0);
@@ -328,7 +352,9 @@ fn test_fract() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_abs() {
     assert_eq!(f16::INFINITY.abs(), f16::INFINITY);
     assert_eq!(1f16.abs(), 1f16);
@@ -428,7 +454,9 @@ fn test_next_down() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_mul_add() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -445,7 +473,9 @@ fn test_mul_add() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_recip() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -461,7 +491,9 @@ fn test_recip() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_powi() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -476,7 +508,9 @@ fn test_powi() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_powf() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -493,7 +527,9 @@ fn test_powf() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_sqrt_domain() {
     assert!(f16::NAN.sqrt().is_nan());
     assert!(f16::NEG_INFINITY.sqrt().is_nan());
@@ -505,7 +541,9 @@ fn test_sqrt_domain() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_exp() {
     assert_eq!(1.0, 0.0f16.exp());
     assert_approx_eq!(2.718282, 1.0f16.exp(), TOL_0);
@@ -520,7 +558,9 @@ fn test_exp() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_exp2() {
     assert_eq!(32.0, 5.0f16.exp2());
     assert_eq!(1.0, 0.0f16.exp2());
@@ -534,7 +574,9 @@ fn test_exp2() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_ln() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -550,7 +592,9 @@ fn test_ln() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_log() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -569,7 +613,9 @@ fn test_log() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_log2() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -586,7 +632,9 @@ fn test_log2() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_log10() {
     let nan: f16 = f16::NAN;
     let inf: f16 = f16::INFINITY;
@@ -634,7 +682,9 @@ fn test_to_radians() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_asinh() {
     assert_eq!(0.0f16.asinh(), 0.0f16);
     assert_eq!((-0.0f16).asinh(), -0.0f16);
@@ -659,7 +709,9 @@ fn test_asinh() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_acosh() {
     assert_eq!(1.0f16.acosh(), 0.0f16);
     assert!(0.999f16.acosh().is_nan());
@@ -678,7 +730,9 @@ fn test_acosh() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_atanh() {
     assert_eq!(0.0f16.atanh(), 0.0f16);
     assert_eq!((-0.0f16).atanh(), -0.0f16);
@@ -698,7 +752,9 @@ fn test_atanh() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_gamma() {
     // precision can differ among platforms
     assert_approx_eq!(1.0f16.gamma(), 1.0f16, TOL_0);
@@ -719,7 +775,9 @@ fn test_gamma() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_ln_gamma() {
     assert_approx_eq!(1.0f16.ln_gamma().0, 0.0f16, TOL_0);
     assert_eq!(1.0f16.ln_gamma().1, 1);
@@ -752,7 +810,9 @@ fn test_real_consts() {
     assert_approx_eq!(frac_1_pi, 1f16 / pi, TOL_0);
     assert_approx_eq!(frac_2_pi, 2f16 / pi, TOL_0);
 
-    #[cfg(reliable_f16_math)]
+    #[cfg(not(miri))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16_math)]
     {
         let frac_2_sqrtpi: f16 = consts::FRAC_2_SQRT_PI;
         let sqrt2: f16 = consts::SQRT_2;
@@ -813,7 +873,9 @@ fn test_clamp_max_is_nan() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16_math)]
 fn test_total_cmp() {
     use core::cmp::Ordering;
 

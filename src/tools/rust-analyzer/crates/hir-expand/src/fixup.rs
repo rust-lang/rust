@@ -4,13 +4,14 @@
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{
-    ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, FIXUP_ERASED_FILE_AST_ID_MARKER,
-    ROOT_ERASED_FILE_AST_ID,
+    ErasedFileAstId, FIXUP_ERASED_FILE_AST_ID_MARKER, ROOT_ERASED_FILE_AST_ID, Span, SpanAnchor,
+    SyntaxContext,
 };
 use stdx::never;
 use syntax::{
+    SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
     ast::{self, AstNode, HasLoopBody},
-    match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
+    match_ast,
 };
 use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
@@ -81,7 +82,7 @@ pub(crate) fn fixup_syntax(
             original.push(original_tree);
             let span = span_map.span_for_range(node_range);
             let replacement = Leaf::Ident(Ident {
-                sym: sym::__ra_fixup.clone(),
+                sym: sym::__ra_fixup,
                 span: Span {
                     range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
                     anchor: SpanAnchor { ast_id: FIXUP_DUMMY_AST_ID, ..span.anchor },
@@ -101,7 +102,7 @@ pub(crate) fn fixup_syntax(
                         // incomplete field access: some_expr.|
                         append.insert(node.clone().into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -140,7 +141,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(if_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -170,7 +171,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(while_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -216,7 +217,7 @@ pub(crate) fn fixup_syntax(
                         };
                         append.insert(match_token.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             }),
@@ -245,9 +246,9 @@ pub(crate) fn fixup_syntax(
                     };
 
                     let [pat, in_token, iter] = [
-                         sym::underscore.clone(),
-                         sym::in_.clone(),
-                         sym::__ra_fixup.clone(),
+                         sym::underscore,
+                         sym::in_,
+                         sym::__ra_fixup,
                     ].map(|sym|
                         Leaf::Ident(Ident {
                             sym,
@@ -283,7 +284,7 @@ pub(crate) fn fixup_syntax(
                         if it.name_ref().is_some() && it.expr().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    sym: sym::__ra_fixup.clone(),
+                                    sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -296,7 +297,7 @@ pub(crate) fn fixup_syntax(
                         if it.segment().is_none() {
                             append.insert(colon.into(), vec![
                                 Leaf::Ident(Ident {
-                                    sym: sym::__ra_fixup.clone(),
+                                    sym: sym::__ra_fixup,
                                     span: fake_span(node_range),
                                     is_raw: tt::IdentIsRaw::No
                                 })
@@ -308,7 +309,7 @@ pub(crate) fn fixup_syntax(
                     if it.body().is_none() {
                         append.insert(node.into(), vec![
                             Leaf::Ident(Ident {
-                                sym: sym::__ra_fixup.clone(),
+                                sym: sym::__ra_fixup,
                                 span: fake_span(node_range),
                                 is_raw: tt::IdentIsRaw::No
                             })
@@ -353,7 +354,7 @@ pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInf
         let span = |file_id| Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-            ctx: SyntaxContextId::root(span::Edition::Edition2015),
+            ctx: SyntaxContext::root(span::Edition::Edition2015),
         };
         delimiter.open = span(delimiter.open.anchor.file_id);
         delimiter.close = span(delimiter.close.anchor.file_id);
@@ -465,7 +466,7 @@ fn reverse_fixups_(tt: &mut TopSubtree, undo_info: &[TopSubtree]) {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use span::{Edition, EditionedFileId, FileId};
     use syntax::TextRange;
     use syntax_bridge::DocCommentDesugarMode;

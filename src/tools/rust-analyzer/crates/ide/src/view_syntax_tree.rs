@@ -1,13 +1,13 @@
 use hir::Semantics;
 use ide_db::{
-    line_index::{LineCol, LineIndex},
     FileId, LineIndexDatabase, RootDatabase,
+    line_index::{LineCol, LineIndex},
 };
 use span::{TextRange, TextSize};
 use stdx::format_to;
 use syntax::{
-    ast::{self, IsString},
     AstNode, AstToken, NodeOrToken, SourceFile, SyntaxNode, SyntaxToken, WalkEvent,
+    ast::{self, IsString},
 };
 use triomphe::Arc;
 

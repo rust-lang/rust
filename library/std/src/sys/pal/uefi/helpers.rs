@@ -22,7 +22,7 @@ use crate::os::uefi::{self};
 use crate::path::Path;
 use crate::ptr::NonNull;
 use crate::slice;
-use crate::sync::atomic::{AtomicPtr, Ordering};
+use crate::sync::atomic::{Atomic, AtomicPtr, Ordering};
 use crate::sys_common::wstr::WStrUnits;
 
 type BootInstallMultipleProtocolInterfaces =
@@ -157,7 +157,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         Ok(path)
     }
 
-    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+    static LAST_VALID_HANDLE: Atomic<*mut crate::ffi::c_void> =
         AtomicPtr::new(crate::ptr::null_mut());
 
     if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
@@ -269,7 +269,7 @@ impl OwnedDevicePath {
                 .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "invalid Device Path"))
         }
 
-        static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+        static LAST_VALID_HANDLE: Atomic<*mut crate::ffi::c_void> =
             AtomicPtr::new(crate::ptr::null_mut());
 
         if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {
@@ -606,7 +606,7 @@ pub(crate) fn os_string_to_raw(s: &OsStr) -> Option<Box<[r_efi::efi::Char16]>> {
 }
 
 pub(crate) fn open_shell() -> Option<NonNull<shell::Protocol>> {
-    static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
+    static LAST_VALID_HANDLE: Atomic<*mut crate::ffi::c_void> =
         AtomicPtr::new(crate::ptr::null_mut());
 
     if let Some(handle) = NonNull::new(LAST_VALID_HANDLE.load(Ordering::Acquire)) {

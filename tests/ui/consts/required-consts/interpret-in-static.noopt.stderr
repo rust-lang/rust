@@ -5,7 +5,7 @@ LL |     const C: () = panic!();
    |                   ^^^^^^^^ evaluation panicked: explicit panic
 
 note: erroneous constant encountered
-  --> $DIR/interpret-in-static.rs:16:9
+  --> $DIR/interpret-in-static.rs:17:9
    |
 LL |         Fail::<i32>::C;
    |         ^^^^^^^^^^^^^^

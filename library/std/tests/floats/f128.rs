@@ -1,9 +1,12 @@
 // FIXME(f16_f128): only tested on platforms that have symbols and aren't buggy
-#![cfg(reliable_f128)]
+#![cfg(not(bootstrap))]
+#![cfg(target_has_reliable_f128)]
 
 use std::f128::consts;
 use std::num::FpCategory as Fp;
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 use std::ops::Rem;
 use std::ops::{Add, Div, Mul, Sub};
 
@@ -19,7 +22,9 @@ const TOL: f128 = 1e-12;
 
 /// Tolerances for math that is allowed to be imprecise, usually due to multiple chained
 /// operations.
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 const TOL_IMPR: f128 = 1e-10;
 
 /// Smallest number
@@ -66,8 +71,13 @@ fn test_num_f128() {
     assert_eq!(ten.div(two), ten / two);
 }
 
+// FIXME(f16_f128,miri): many of these have to be disabled since miri does not yet support
+// the intrinsics.
+
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_num_f128_rem() {
     let ten = 10f128;
     let two = 2f128;
@@ -75,28 +85,36 @@ fn test_num_f128_rem() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_min_nan() {
     assert_eq!(f128::NAN.min(2.0), 2.0);
     assert_eq!(2.0f128.min(f128::NAN), 2.0);
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_max_nan() {
     assert_eq!(f128::NAN.max(2.0), 2.0);
     assert_eq!(2.0f128.max(f128::NAN), 2.0);
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_minimum() {
     assert!(f128::NAN.minimum(2.0).is_nan());
     assert!(2.0f128.minimum(f128::NAN).is_nan());
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_maximum() {
     assert!(f128::NAN.maximum(2.0).is_nan());
     assert!(2.0f128.maximum(f128::NAN).is_nan());
@@ -253,7 +271,9 @@ fn test_classify() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_floor() {
     assert_approx_eq!(1.0f128.floor(), 1.0f128, TOL_PRECISE);
     assert_approx_eq!(1.3f128.floor(), 1.0f128, TOL_PRECISE);
@@ -268,7 +288,9 @@ fn test_floor() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_ceil() {
     assert_approx_eq!(1.0f128.ceil(), 1.0f128, TOL_PRECISE);
     assert_approx_eq!(1.3f128.ceil(), 2.0f128, TOL_PRECISE);
@@ -283,7 +305,9 @@ fn test_ceil() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_round() {
     assert_approx_eq!(2.5f128.round(), 3.0f128, TOL_PRECISE);
     assert_approx_eq!(1.0f128.round(), 1.0f128, TOL_PRECISE);
@@ -299,7 +323,9 @@ fn test_round() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_round_ties_even() {
     assert_approx_eq!(2.5f128.round_ties_even(), 2.0f128, TOL_PRECISE);
     assert_approx_eq!(1.0f128.round_ties_even(), 1.0f128, TOL_PRECISE);
@@ -315,7 +341,9 @@ fn test_round_ties_even() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_trunc() {
     assert_approx_eq!(1.0f128.trunc(), 1.0f128, TOL_PRECISE);
     assert_approx_eq!(1.3f128.trunc(), 1.0f128, TOL_PRECISE);
@@ -330,7 +358,9 @@ fn test_trunc() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_fract() {
     assert_approx_eq!(1.0f128.fract(), 0.0f128, TOL_PRECISE);
     assert_approx_eq!(1.3f128.fract(), 0.3f128, TOL_PRECISE);
@@ -345,7 +375,9 @@ fn test_fract() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_abs() {
     assert_eq!(f128::INFINITY.abs(), f128::INFINITY);
     assert_eq!(1f128.abs(), 1f128);
@@ -445,7 +477,9 @@ fn test_next_down() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_mul_add() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -462,7 +496,9 @@ fn test_mul_add() {
 }
 
 #[test]
-#[cfg(reliable_f16_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_recip() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -484,7 +520,9 @@ fn test_recip() {
 // Many math functions allow for less accurate results, so the next tolerance up is used
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_powi() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -499,7 +537,9 @@ fn test_powi() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_powf() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -516,7 +556,9 @@ fn test_powf() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_sqrt_domain() {
     assert!(f128::NAN.sqrt().is_nan());
     assert!(f128::NEG_INFINITY.sqrt().is_nan());
@@ -528,7 +570,9 @@ fn test_sqrt_domain() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_exp() {
     assert_eq!(1.0, 0.0f128.exp());
     assert_approx_eq!(consts::E, 1.0f128.exp(), TOL);
@@ -543,7 +587,9 @@ fn test_exp() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_exp2() {
     assert_eq!(32.0, 5.0f128.exp2());
     assert_eq!(1.0, 0.0f128.exp2());
@@ -557,7 +603,9 @@ fn test_exp2() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_ln() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -573,7 +621,9 @@ fn test_ln() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_log() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -592,7 +642,9 @@ fn test_log() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_log2() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -609,7 +661,9 @@ fn test_log2() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_log10() {
     let nan: f128 = f128::NAN;
     let inf: f128 = f128::INFINITY;
@@ -659,7 +713,9 @@ fn test_to_radians() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_asinh() {
     // Lower accuracy results are allowed, use increased tolerances
     assert_eq!(0.0f128.asinh(), 0.0f128);
@@ -690,7 +746,9 @@ fn test_asinh() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_acosh() {
     assert_eq!(1.0f128.acosh(), 0.0f128);
     assert!(0.999f128.acosh().is_nan());
@@ -709,7 +767,9 @@ fn test_acosh() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_atanh() {
     assert_eq!(0.0f128.atanh(), 0.0f128);
     assert_eq!((-0.0f128).atanh(), -0.0f128);
@@ -729,7 +789,9 @@ fn test_atanh() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_gamma() {
     // precision can differ among platforms
     assert_approx_eq!(1.0f128.gamma(), 1.0f128, TOL_IMPR);
@@ -750,7 +812,9 @@ fn test_gamma() {
 }
 
 #[test]
-#[cfg(reliable_f128_math)]
+#[cfg(not(miri))]
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f128_math)]
 fn test_ln_gamma() {
     assert_approx_eq!(1.0f128.ln_gamma().0, 0.0f128, TOL_IMPR);
     assert_eq!(1.0f128.ln_gamma().1, 1);
@@ -781,7 +845,9 @@ fn test_real_consts() {
     assert_approx_eq!(frac_1_pi, 1f128 / pi, TOL_PRECISE);
     assert_approx_eq!(frac_2_pi, 2f128 / pi, TOL_PRECISE);
 
-    #[cfg(reliable_f128_math)]
+    #[cfg(not(miri))]
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f128_math)]
     {
         let frac_2_sqrtpi: f128 = consts::FRAC_2_SQRT_PI;
         let sqrt2: f128 = consts::SQRT_2;

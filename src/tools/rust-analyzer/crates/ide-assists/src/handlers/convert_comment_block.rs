@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::IndentLevel, Comment, CommentKind, CommentShape, Whitespace},
     AstToken, Direction, SyntaxElement, TextRange,
+    ast::{self, Comment, CommentKind, CommentShape, Whitespace, edit::IndentLevel},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: line_to_block
 //
@@ -38,7 +38,7 @@ fn block_to_line(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     let target = comment.syntax().text_range();
 
     acc.add(
-        AssistId("block_to_line", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("block_to_line"),
         "Replace block comment with line comments",
         target,
         |edit| {
@@ -80,7 +80,7 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     );
 
     acc.add(
-        AssistId("line_to_block", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("line_to_block"),
         "Replace line comments with a single block comment",
         target,
         |edit| {
@@ -167,11 +167,7 @@ pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) ->
     let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);
 
     // Don't add the indentation if the line is empty
-    if contents.is_empty() {
-        contents.to_owned()
-    } else {
-        indentation.to_string() + contents
-    }
+    if contents.is_empty() { contents.to_owned() } else { indentation.to_string() + contents }
 }
 
 #[cfg(test)]

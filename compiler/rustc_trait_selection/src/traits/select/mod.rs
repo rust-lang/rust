@@ -28,10 +28,9 @@ use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
-    TypingMode, Upcast,
+    TypingMode, Upcast, elaborate,
 };
 use rustc_span::{Symbol, sym};
-use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -2323,7 +2322,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
-            | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
+            | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble constituent types of unexpected type: {:?}", t);

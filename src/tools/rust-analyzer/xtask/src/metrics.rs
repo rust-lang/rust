@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::format_err;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use crate::flags::{self, MeasurementType};
 

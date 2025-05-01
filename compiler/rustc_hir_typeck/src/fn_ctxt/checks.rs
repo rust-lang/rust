@@ -8,7 +8,6 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{ExprKind, HirId, Node, QPath};
-use rustc_hir_analysis::check::intrinsicck::InlineAsmCtxt;
 use rustc_hir_analysis::check::potentially_plural_count;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_index::IndexVec;
@@ -33,7 +32,7 @@ use crate::errors::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
 use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
-use crate::method::MethodCallee;
+use crate::inline_asm::InlineAsmCtxt;
 use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
@@ -98,13 +97,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
-            InlineAsmCtxt::new(
-                enclosing_id,
-                &self.infcx,
-                self.typing_env(self.param_env),
-                &*self.typeck_results.borrow(),
-            )
-            .check_asm(asm);
+            InlineAsmCtxt::new(self, enclosing_id).check_asm(asm);
         }
     }
 
@@ -131,61 +124,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.enforce_repeat_element_needs_copy_bound(element, element_ty);
             }
         }
-    }
-
-    pub(in super::super) fn check_method_argument_types(
-        &self,
-        sp: Span,
-        expr: &'tcx hir::Expr<'tcx>,
-        method: Result<MethodCallee<'tcx>, ErrorGuaranteed>,
-        args_no_rcvr: &'tcx [hir::Expr<'tcx>],
-        tuple_arguments: TupleArgumentsFlag,
-        expected: Expectation<'tcx>,
-    ) -> Ty<'tcx> {
-        let has_error = match method {
-            Ok(method) => method.args.error_reported().and(method.sig.error_reported()),
-            Err(guar) => Err(guar),
-        };
-        if let Err(guar) = has_error {
-            let err_inputs = self.err_args(
-                method.map_or(args_no_rcvr.len(), |method| method.sig.inputs().len() - 1),
-                guar,
-            );
-            let err_output = Ty::new_error(self.tcx, guar);
-
-            let err_inputs = match tuple_arguments {
-                DontTupleArguments => err_inputs,
-                TupleArguments => vec![Ty::new_tup(self.tcx, &err_inputs)],
-            };
-
-            self.check_argument_types(
-                sp,
-                expr,
-                &err_inputs,
-                err_output,
-                NoExpectation,
-                args_no_rcvr,
-                false,
-                tuple_arguments,
-                method.ok().map(|method| method.def_id),
-            );
-            return err_output;
-        }
-
-        let method = method.unwrap();
-        self.check_argument_types(
-            sp,
-            expr,
-            &method.sig.inputs()[1..],
-            method.sig.output(),
-            expected,
-            args_no_rcvr,
-            method.sig.c_variadic,
-            tuple_arguments,
-            Some(method.def_id),
-        );
-
-        method.sig.output()
     }
 
     /// Generic function that factors out common logic from function calls,

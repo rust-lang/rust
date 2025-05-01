@@ -336,7 +336,7 @@ enum Command {
 }
 
 impl <> $crate::cmp::PartialOrd for Command< > where {
-    fn partial_cmp(&self , other: &Self ) -> $crate::option::Option::Option<$crate::cmp::Ordering> {
+    fn partial_cmp(&self , other: &Self ) -> $crate::option::Option<$crate::cmp::Ordering> {
         match $crate::intrinsics::discriminant_value(self ).partial_cmp(&$crate::intrinsics::discriminant_value(other)) {
             $crate::option::Option::Some($crate::cmp::Ordering::Equal)=> {
                 match (self , other) {

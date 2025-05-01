@@ -6,7 +6,7 @@ src = "src"
 title = "rust-analyzer"
 
 [rust]
-edition = "2021"
+edition = "2024"
 
 [output.html]
 edit-url-template = "https://github.com/rust-lang/rust-analyzer/edit/master/docs/book/{path}"

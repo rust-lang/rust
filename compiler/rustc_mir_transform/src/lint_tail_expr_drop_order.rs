@@ -134,6 +134,8 @@ impl<'a, 'mir, 'tcx> DropsReachable<'a, 'mir, 'tcx> {
                     target: _,
                     unwind: _,
                     replace: _,
+                    drop: _,
+                    async_fut: _,
                 } = &terminator.kind
                 && place_has_common_prefix(dropped_place, self.place)
             {

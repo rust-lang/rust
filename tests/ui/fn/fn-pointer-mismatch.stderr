@@ -1,5 +1,5 @@
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/fn-pointer-mismatch.rs:11:43
+  --> $DIR/fn-pointer-mismatch.rs:13:43
    |
 LL |     let g = if n % 2 == 0 { &foo } else { &bar };
    |                             ----          ^^^^ expected `&fn(u32) -> u32 {foo}`, found `&fn(u32) -> u32 {bar}`
@@ -12,7 +12,7 @@ LL |     let g = if n % 2 == 0 { &foo } else { &bar };
    = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-pointer-mismatch.rs:23:9
+  --> $DIR/fn-pointer-mismatch.rs:25:9
    |
 LL |     let mut a = foo;
    |                 --- expected due to this value
@@ -25,7 +25,7 @@ LL |     a = bar;
    = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-pointer-mismatch.rs:31:18
+  --> $DIR/fn-pointer-mismatch.rs:33:18
    |
 LL |     b = Box::new(bar);
    |         -------- ^^^ expected fn item, found a different fn item
@@ -40,7 +40,7 @@ note: associated function defined here
    = help: consider casting both fn items to fn pointers using `as fn(u32) -> u32`
 
 error[E0308]: mismatched types
-  --> $DIR/fn-pointer-mismatch.rs:36:29
+  --> $DIR/fn-pointer-mismatch.rs:38:29
    |
 LL |     let c: fn(u32) -> u32 = &foo;
    |            --------------   ^^^^ expected fn pointer, found `&fn(u32) -> u32 {foo}`
@@ -56,7 +56,7 @@ LL +     let c: fn(u32) -> u32 = foo;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/fn-pointer-mismatch.rs:42:30
+  --> $DIR/fn-pointer-mismatch.rs:44:30
    |
 LL |     let d: &fn(u32) -> u32 = foo;
    |            ---------------   ^^^ expected `&fn(u32) -> u32`, found fn item
@@ -71,7 +71,7 @@ LL |     let d: &fn(u32) -> u32 = &foo;
    |                              +
 
 error[E0308]: mismatched types
-  --> $DIR/fn-pointer-mismatch.rs:48:30
+  --> $DIR/fn-pointer-mismatch.rs:50:30
    |
 LL |     let e: &fn(u32) -> u32 = &foo;
    |            ---------------   ^^^^ expected `&fn(u32) -> u32`, found `&fn(u32) -> u32 {foo}`

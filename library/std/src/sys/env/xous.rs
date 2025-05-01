@@ -2,11 +2,11 @@ pub use super::common::Env;
 use crate::collections::HashMap;
 use crate::ffi::{OsStr, OsString};
 use crate::io;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::sync::{Mutex, Once};
 use crate::sys::pal::os::{get_application_parameters, params};
 
-static ENV: AtomicUsize = AtomicUsize::new(0);
+static ENV: Atomic<usize> = AtomicUsize::new(0);
 static ENV_INIT: Once = Once::new();
 type EnvStore = Mutex<HashMap<OsString, OsString>>;
 

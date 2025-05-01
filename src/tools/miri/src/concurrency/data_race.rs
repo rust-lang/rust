@@ -381,7 +381,7 @@ impl AccessType {
         });
 
         if let Some(ty) = ty {
-            msg.push_str(&format!(" of type `{}`", ty));
+            msg.push_str(&format!(" of type `{ty}`"));
         }
 
         msg

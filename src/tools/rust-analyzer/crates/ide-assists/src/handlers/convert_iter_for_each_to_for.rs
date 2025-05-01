@@ -1,12 +1,12 @@
-use hir::{sym, Name};
+use hir::{Name, sym};
 use ide_db::famous_defs::FamousDefs;
 use stdx::format_to;
 use syntax::{
-    ast::{self, edit_in_place::Indent, make, HasArgList, HasLoopBody},
     AstNode,
+    ast::{self, HasArgList, HasLoopBody, edit_in_place::Indent, make},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: convert_iter_for_each_to_for
 //
@@ -53,7 +53,7 @@ pub(crate) fn convert_iter_for_each_to_for(
     let range = stmt.as_ref().map_or(method.syntax(), AstNode::syntax).text_range();
 
     acc.add(
-        AssistId("convert_iter_for_each_to_for", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_iter_for_each_to_for"),
         "Replace this `Iterator::for_each` with a for loop",
         range,
         |builder| {
@@ -108,7 +108,7 @@ pub(crate) fn convert_for_loop_with_for_each(
     }
 
     acc.add(
-        AssistId("convert_for_loop_with_for_each", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_for_loop_with_for_each"),
         "Replace this for loop with `Iterator::for_each`",
         for_loop.syntax().text_range(),
         |builder| {
@@ -154,9 +154,9 @@ fn is_ref_and_impls_iter_method(
         _ => return None,
     };
     let wanted_method = Name::new_symbol_root(if ref_expr.mut_token().is_some() {
-        sym::iter_mut.clone()
+        sym::iter_mut
     } else {
-        sym::iter.clone()
+        sym::iter
     });
     let expr_behind_ref = ref_expr.expr()?;
     let ty = sema.type_of_expr(&expr_behind_ref)?.adjusted();

@@ -1979,7 +1979,6 @@ ui/issues/issue-27997.rs
 ui/issues/issue-28105.rs
 ui/issues/issue-28109.rs
 ui/issues/issue-28181.rs
-ui/issues/issue-2823.rs
 ui/issues/issue-28279.rs
 ui/issues/issue-28344.rs
 ui/issues/issue-28433.rs

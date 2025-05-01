@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use itertools::Itertools;
 use xshell::Shell;
 
 use xshell::cmd;
@@ -46,7 +47,7 @@ lsp/ext.rs was changed without touching lsp-extensions.md.
 Expected hash: {expected_hash:x}
 Actual hash:   {actual_hash:x}
 
-Please adjust docs/dev/lsp-extensions.md.
+Please adjust docs/book/src/contributing/lsp-extensions.md.
 "
         )
     }
@@ -126,32 +127,28 @@ fn check_cargo_toml(path: &Path, text: String) {
 }
 
 fn check_licenses(sh: &Shell) {
-    let expected = "
-(MIT OR Apache-2.0) AND Unicode-DFS-2016
-0BSD OR MIT OR Apache-2.0
-Apache-2.0
-Apache-2.0 OR BSL-1.0
-Apache-2.0 OR MIT
-Apache-2.0 WITH LLVM-exception
-Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
-Apache-2.0/MIT
-BSD-2-Clause OR Apache-2.0 OR MIT
-CC0-1.0
-ISC
-MIT
-MIT / Apache-2.0
-MIT OR Apache-2.0
-MIT OR Apache-2.0 OR Zlib
-MIT OR Zlib OR Apache-2.0
-MIT/Apache-2.0
-MPL-2.0
-Unlicense OR MIT
-Unlicense/MIT
-Zlib OR Apache-2.0 OR MIT
-"
-    .lines()
-    .filter(|it| !it.is_empty())
-    .collect::<Vec<_>>();
+    const EXPECTED: [&str; 20] = [
+        "(MIT OR Apache-2.0) AND Unicode-3.0",
+        "0BSD OR MIT OR Apache-2.0",
+        "Apache-2.0",
+        "Apache-2.0 OR BSL-1.0",
+        "Apache-2.0 OR MIT",
+        "Apache-2.0 WITH LLVM-exception",
+        "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT",
+        "Apache-2.0/MIT",
+        "CC0-1.0",
+        "ISC",
+        "MIT",
+        "MIT / Apache-2.0",
+        "MIT OR Apache-2.0",
+        "MIT OR Zlib OR Apache-2.0",
+        "MIT/Apache-2.0",
+        "MPL-2.0",
+        "Unicode-3.0",
+        "Unlicense OR MIT",
+        "Unlicense/MIT",
+        "Zlib",
+    ];
 
     let meta = cmd!(sh, "cargo metadata --format-version 1").read().unwrap();
     let mut licenses = meta
@@ -162,18 +159,18 @@ Zlib OR Apache-2.0 OR MIT
         .collect::<Vec<_>>();
     licenses.sort_unstable();
     licenses.dedup();
-    if licenses != expected {
+    if licenses != EXPECTED {
         let mut diff = String::new();
 
         diff.push_str("New Licenses:\n");
         for &l in licenses.iter() {
-            if !expected.contains(&l) {
+            if !EXPECTED.contains(&l) {
                 diff += &format!("  {l}\n")
             }
         }
 
         diff.push_str("\nMissing Licenses:\n");
-        for &l in expected.iter() {
+        for l in EXPECTED {
             if !licenses.contains(&l) {
                 diff += &format!("  {l}\n")
             }
@@ -181,12 +178,11 @@ Zlib OR Apache-2.0 OR MIT
 
         panic!("different set of licenses!\n{diff}");
     }
-    assert_eq!(licenses, expected);
+    assert_eq!(licenses, EXPECTED);
 }
 
 fn check_test_attrs(path: &Path, text: &str) {
-    let panic_rule =
-        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md#should_panic";
+    let panic_rule = "https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md#should_panic";
     let need_panic: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",
@@ -194,9 +190,17 @@ fn check_test_attrs(path: &Path, text: &str) {
         // Generated code from lints contains doc tests in string literals.
         "ide-db/src/generated/lints.rs",
     ];
-    if text.contains("#[should_panic") && !need_panic.iter().any(|p| path.ends_with(p)) {
+    if need_panic.iter().any(|p| path.ends_with(p)) {
+        return;
+    }
+    if let Some((line, _)) = text
+        .lines()
+        .tuple_windows()
+        .enumerate()
+        .find(|(_, (a, b))| b.contains("#[should_panic") && !a.contains("FIXME"))
+    {
         panic!(
-            "\ndon't add `#[should_panic]` tests, see:\n\n    {}\n\n   {}\n",
+            "\ndon't add `#[should_panic]` tests, see:\n\n    {}\n\n   {}:{line}\n",
             panic_rule,
             path.display(),
         )
@@ -223,7 +227,7 @@ struct TidyDocs {
 impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
         // Tests and diagnostic fixes don't need module level comments.
-        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "ra-salsa", "stdx"]) {
+        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "stdx"]) {
             return;
         }
 
@@ -256,7 +260,7 @@ impl TidyDocs {
             d.file_name()
                 .unwrap_or_default()
                 .to_str()
-                .map(|f_n| file_names.iter().any(|name| *name == f_n))
+                .map(|f_n| file_names.contains(&f_n))
                 .unwrap_or(false)
         }
     }

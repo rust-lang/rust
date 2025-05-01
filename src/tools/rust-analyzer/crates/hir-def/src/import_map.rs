@@ -2,22 +2,22 @@
 
 use std::fmt;
 
-use base_db::CrateId;
-use fst::{raw::IndexedValue, Automaton, Streamer};
+use base_db::Crate;
+use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir_expand::name::Name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::Edition;
-use stdx::{format_to, TupleExt};
+use stdx::format_to;
 use triomphe::Arc;
 
 use crate::{
+    AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
     nameres::DefMap,
     visibility::Visibility,
-    AssocItemId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Item import details stored in the `ImportMap`.
@@ -31,6 +31,8 @@ pub struct ImportInfo {
     pub is_doc_hidden: bool,
     /// Whether this item is annotated with `#[unstable(..)]`.
     pub is_unstable: bool,
+    /// The value of `#[rust_analyzer::completions(...)]`, if exists.
+    pub complete: Complete,
 }
 
 /// A map from publicly exported items to its name.
@@ -66,19 +68,14 @@ impl ImportMap {
         for (k, v) in self.item_to_info_map.iter() {
             format_to!(out, "{:?} ({:?}) -> ", k, v.1);
             for v in &v.0 {
-                format_to!(
-                    out,
-                    "{}:{:?}, ",
-                    v.name.display(db.upcast(), Edition::CURRENT),
-                    v.container
-                );
+                format_to!(out, "{}:{:?}, ", v.name.display(db, Edition::CURRENT), v.container);
             }
             format_to!(out, "\n");
         }
         out
     }
 
-    pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
+    pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: Crate) -> Arc<Self> {
         let _p = tracing::info_span!("import_map_query").entered();
 
         let map = Self::collect_import_map(db, krate);
@@ -129,7 +126,7 @@ impl ImportMap {
         self.item_to_info_map.get(&item).map(|(info, _)| &**info)
     }
 
-    fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
+    fn collect_import_map(db: &dyn DefDatabase, krate: Crate) -> ImportMapIndex {
         let _p = tracing::info_span!("collect_import_map").entered();
 
         let def_map = db.crate_def_map(krate);
@@ -155,11 +152,7 @@ impl ImportMap {
 
             let visible_items = mod_data.scope.entries().filter_map(|(name, per_ns)| {
                 let per_ns = per_ns.filter_visibility(|vis| vis == Visibility::Public);
-                if per_ns.is_none() {
-                    None
-                } else {
-                    Some((name, per_ns))
-                }
+                if per_ns.is_none() { None } else { Some((name, per_ns)) }
             });
 
             for (name, per_ns) in visible_items {
@@ -176,16 +169,22 @@ impl ImportMap {
                             ItemInNs::Macros(id) => Some(id.into()),
                         }
                     };
-                    let (is_doc_hidden, is_unstable) = attr_id.map_or((false, false), |attr_id| {
-                        let attrs = db.attrs(attr_id);
-                        (attrs.has_doc_hidden(), attrs.is_unstable())
-                    });
+                    let (is_doc_hidden, is_unstable, do_not_complete) = match attr_id {
+                        None => (false, false, Complete::Yes),
+                        Some(attr_id) => {
+                            let attrs = db.attrs(attr_id);
+                            let do_not_complete =
+                                Complete::extract(matches!(attr_id, AttrDefId::TraitId(_)), &attrs);
+                            (attrs.has_doc_hidden(), attrs.is_unstable(), do_not_complete)
+                        }
+                    };
 
                     let import_info = ImportInfo {
                         name: name.clone(),
                         container: module,
                         is_doc_hidden,
                         is_unstable,
+                        complete: do_not_complete,
                     };
 
                     if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
@@ -222,7 +221,7 @@ impl ImportMap {
         trait_import_info: &ImportInfo,
     ) {
         let _p = tracing::info_span!("collect_trait_assoc_items").entered();
-        for &(ref assoc_item_name, item) in &db.trait_data(tr).items {
+        for &(ref assoc_item_name, item) in &db.trait_items(tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(f),
                 AssocItemId::ConstId(c) => ModuleDefId::from(c),
@@ -239,12 +238,17 @@ impl ImportMap {
                 ItemInNs::Values(module_def_id)
             };
 
-            let attrs = &db.attrs(item.into());
+            let attr_id = item.into();
+            let attrs = &db.attrs(attr_id);
+            let item_do_not_complete = Complete::extract(false, attrs);
+            let do_not_complete =
+                Complete::for_trait_item(trait_import_info.complete, item_do_not_complete);
             let assoc_item_info = ImportInfo {
                 container: trait_import_info.container,
                 name: assoc_item_name.clone(),
                 is_doc_hidden: attrs.has_doc_hidden(),
                 is_unstable: attrs.is_unstable(),
+                complete: do_not_complete,
             };
 
             let (infos, _) =
@@ -400,15 +404,13 @@ impl Query {
 /// This returns a list of items that could be imported from dependencies of `krate`.
 pub fn search_dependencies(
     db: &dyn DefDatabase,
-    krate: CrateId,
+    krate: Crate,
     query: &Query,
-) -> FxHashSet<ItemInNs> {
+) -> FxHashSet<(ItemInNs, Complete)> {
     let _p = tracing::info_span!("search_dependencies", ?query).entered();
 
-    let graph = db.crate_graph();
-
     let import_maps: Vec<_> =
-        graph[krate].dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
+        krate.data(db).dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
 
     let mut op = fst::map::OpBuilder::new();
 
@@ -445,7 +447,7 @@ fn search_maps(
     import_maps: &[Arc<ImportMap>],
     mut stream: fst::map::Union<'_>,
     query: &Query,
-) -> FxHashSet<ItemInNs> {
+) -> FxHashSet<(ItemInNs, Complete)> {
     let mut res = FxHashSet::default();
     while let Some((_, indexed_values)) = stream.next() {
         for &IndexedValue { index: import_map_idx, value } in indexed_values {
@@ -465,8 +467,9 @@ fn search_maps(
                 })
                 .filter(|&(_, info)| {
                     query.search_mode.check(&query.query, query.case_sensitive, info.name.as_str())
-                });
-            res.extend(iter.map(TupleExt::head));
+                })
+                .map(|(item, import_info)| (item, import_info.complete));
+            res.extend(iter);
         }
     }
 
@@ -475,11 +478,11 @@ fn search_maps(
 
 #[cfg(test)]
 mod tests {
-    use base_db::{SourceDatabase, Upcast};
-    use expect_test::{expect, Expect};
+    use base_db::RootQueryDb;
+    use expect_test::{Expect, expect};
     use test_fixture::WithFixture;
 
-    use crate::{test_db::TestDB, ItemContainerId, Lookup};
+    use crate::{ItemContainerId, Lookup, test_db::TestDB};
 
     use super::*;
 
@@ -512,21 +515,23 @@ mod tests {
         expect: Expect,
     ) {
         let db = TestDB::with_files(ra_fixture);
-        let crate_graph = db.crate_graph();
-        let krate = crate_graph
+        let all_crates = db.all_crates();
+        let krate = all_crates
             .iter()
+            .copied()
             .find(|&krate| {
-                crate_graph[krate]
+                krate
+                    .extra_data(&db)
                     .display_name
                     .as_ref()
                     .is_some_and(|it| it.crate_name().as_str() == crate_name)
             })
             .expect("could not find crate");
 
-        let actual = search_dependencies(db.upcast(), krate, &query)
+        let actual = search_dependencies(&db, krate, &query)
             .into_iter()
-            .filter_map(|dependency| {
-                let dependency_krate = dependency.krate(db.upcast())?;
+            .filter_map(|(dependency, _)| {
+                let dependency_krate = dependency.krate(&db)?;
                 let dependency_imports = db.import_map(dependency_krate);
 
                 let (path, mark) = match assoc_item_path(&db, &dependency_imports, dependency) {
@@ -545,7 +550,7 @@ mod tests {
 
                 Some(format!(
                     "{}::{} ({})\n",
-                    crate_graph[dependency_krate].display_name.as_ref()?,
+                    dependency_krate.extra_data(&db).display_name.as_ref()?,
                     path,
                     mark
                 ))
@@ -575,8 +580,8 @@ mod tests {
 
         let trait_info = dependency_imports.import_info_for(ItemInNs::Types(trait_id.into()))?;
 
-        let trait_data = db.trait_data(trait_id);
-        let (assoc_item_name, _) = trait_data
+        let trait_items = db.trait_items(trait_id);
+        let (assoc_item_name, _) = trait_items
             .items
             .iter()
             .find(|(_, assoc_item_id)| &dependency_assoc_item_id == assoc_item_id)?;
@@ -584,23 +589,24 @@ mod tests {
         Some(format!(
             "{}::{}",
             render_path(db, &trait_info[0]),
-            assoc_item_name.display(db.upcast(), Edition::CURRENT)
+            assoc_item_name.display(db, Edition::CURRENT)
         ))
     }
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let db = TestDB::with_files(ra_fixture);
-        let crate_graph = db.crate_graph();
+        let all_crates = db.all_crates();
 
-        let actual = crate_graph
+        let actual = all_crates
             .iter()
+            .copied()
             .filter_map(|krate| {
-                let cdata = &crate_graph[krate];
+                let cdata = &krate.extra_data(&db);
                 let name = cdata.display_name.as_ref()?;
 
                 let map = db.import_map(krate);
 
-                Some(format!("{name}:\n{}\n", map.fmt_for_test(db.upcast())))
+                Some(format!("{name}:\n{}\n", map.fmt_for_test(&db)))
             })
             .sorted()
             .collect::<String>();
@@ -623,7 +629,7 @@ mod tests {
             module = parent;
         }
 
-        segments.iter().rev().map(|it| it.display(db.upcast(), Edition::CURRENT)).join("::")
+        segments.iter().rev().map(|it| it.display(db, Edition::CURRENT)).join("::")
     }
 
     #[test]

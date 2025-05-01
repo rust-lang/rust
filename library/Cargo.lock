@@ -257,9 +257,9 @@ dependencies = [
 
 [[package]]
 name = "r-efi"
-version = "4.5.0"
+version = "5.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9e935efc5854715dfc0a4c9ef18dc69dee0ec3bf9cc3ab740db831c0fdd86a3"
+checksum = "74765f6d916ee2faa39bc8e68e4f3ed8949b48cccdac59983d287a7cb71ce9c5"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
@@ -267,9 +267,9 @@ dependencies = [
 
 [[package]]
 name = "r-efi-alloc"
-version = "1.0.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31d6f09fe2b6ad044bc3d2c34ce4979796581afd2f1ebc185837e02421e02fd7"
+checksum = "e43c53ff1a01d423d1cb762fd991de07d32965ff0ca2e4f80444ac7804198203"
 dependencies = [
  "compiler_builtins",
  "r-efi",
@@ -448,9 +448,9 @@ dependencies = [
 
 [[package]]
 name = "unwinding"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51f06a05848f650946acef3bf525fe96612226b61f74ae23ffa4e98bfbb8ab3c"
+checksum = "8393f2782b6060a807337ff353780c1ca15206f9ba2424df18cb6e733bd7b345"
 dependencies = [
  "compiler_builtins",
  "gimli",

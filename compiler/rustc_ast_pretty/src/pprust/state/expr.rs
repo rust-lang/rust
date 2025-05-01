@@ -13,7 +13,7 @@ use rustc_ast::{
 
 use crate::pp::Breaks::Inconsistent;
 use crate::pprust::state::fixup::FixupContext;
-use crate::pprust::state::{AnnNode, INDENT_UNIT, PrintState, State};
+use crate::pprust::state::{AnnNode, BoxMarker, INDENT_UNIT, PrintState, State};
 
 impl<'a> State<'a> {
     fn print_else(&mut self, els: Option<&ast::Expr>) {
@@ -21,20 +21,20 @@ impl<'a> State<'a> {
             match &_else.kind {
                 // Another `else if` block.
                 ast::ExprKind::If(i, then, e) => {
-                    self.cbox(0);
-                    self.ibox(0);
+                    let cb = self.cbox(0);
+                    let ib = self.ibox(0);
                     self.word(" else if ");
                     self.print_expr_as_cond(i);
                     self.space();
-                    self.print_block(then);
+                    self.print_block(then, cb, ib);
                     self.print_else(e.as_deref())
                 }
                 // Final `else` block.
                 ast::ExprKind::Block(b, None) => {
-                    self.cbox(0);
-                    self.ibox(0);
+                    let cb = self.cbox(0);
+                    let ib = self.ibox(0);
                     self.word(" else ");
-                    self.print_block(b)
+                    self.print_block(b, cb, ib)
                 }
                 // Constraints would be great here!
                 _ => {
@@ -45,12 +45,12 @@ impl<'a> State<'a> {
     }
 
     fn print_if(&mut self, test: &ast::Expr, blk: &ast::Block, elseopt: Option<&ast::Expr>) {
-        self.cbox(0);
-        self.ibox(0);
+        let cb = self.cbox(0);
+        let ib = self.ibox(0);
         self.word_nbsp("if");
         self.print_expr_as_cond(test);
         self.space();
-        self.print_block(blk);
+        self.print_block(blk, cb, ib);
         self.print_else(elseopt)
     }
 
@@ -112,11 +112,11 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>]) {
-        self.ibox(INDENT_UNIT);
+        let ib = self.ibox(INDENT_UNIT);
         self.word("[");
         self.commasep_exprs(Inconsistent, exprs);
         self.word("]");
-        self.end();
+        self.end(ib);
     }
 
     pub(super) fn print_expr_anon_const(
@@ -124,27 +124,27 @@ impl<'a> State<'a> {
         expr: &ast::AnonConst,
         attrs: &[ast::Attribute],
     ) {
-        self.ibox(INDENT_UNIT);
+        let ib = self.ibox(INDENT_UNIT);
         self.word("const");
         self.nbsp();
         if let ast::ExprKind::Block(block, None) = &expr.value.kind {
-            self.cbox(0);
-            self.ibox(0);
-            self.print_block_with_attrs(block, attrs);
+            let cb = self.cbox(0);
+            let ib = self.ibox(0);
+            self.print_block_with_attrs(block, attrs, cb, ib);
         } else {
             self.print_expr(&expr.value, FixupContext::default());
         }
-        self.end();
+        self.end(ib);
     }
 
     fn print_expr_repeat(&mut self, element: &ast::Expr, count: &ast::AnonConst) {
-        self.ibox(INDENT_UNIT);
+        let ib = self.ibox(INDENT_UNIT);
         self.word("[");
         self.print_expr(element, FixupContext::default());
         self.word_space(";");
         self.print_expr(&count.value, FixupContext::default());
         self.word("]");
-        self.end();
+        self.end(ib);
     }
 
     fn print_expr_struct(
@@ -169,7 +169,7 @@ impl<'a> State<'a> {
             self.word("}");
             return;
         }
-        self.cbox(0);
+        let cb = self.cbox(0);
         for (pos, field) in fields.iter().with_position() {
             let is_first = matches!(pos, Position::First | Position::Only);
             let is_last = matches!(pos, Position::Last | Position::Only);
@@ -200,7 +200,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.offset(-INDENT_UNIT);
-        self.end();
+        self.end(cb);
         self.word("}");
     }
 
@@ -368,7 +368,7 @@ impl<'a> State<'a> {
             self.print_outer_attributes(attrs);
         }
 
-        self.ibox(INDENT_UNIT);
+        let ib = self.ibox(INDENT_UNIT);
 
         // The Match subexpression in `match x {} - 1` must be parenthesized if
         // it is the leftmost subexpression in a statement:
@@ -440,14 +440,14 @@ impl<'a> State<'a> {
             ast::ExprKind::Type(expr, ty) => {
                 self.word("builtin # type_ascribe");
                 self.popen();
-                self.ibox(0);
+                let ib = self.ibox(0);
                 self.print_expr(expr, FixupContext::default());
 
                 self.word(",");
                 self.space_if_not_bol();
                 self.print_type(ty);
 
-                self.end();
+                self.end(ib);
                 self.pclose();
             }
             ast::ExprKind::Let(pat, scrutinee, _, _) => {
@@ -459,20 +459,20 @@ impl<'a> State<'a> {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                self.cbox(0);
-                self.ibox(0);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 self.word_nbsp("while");
                 self.print_expr_as_cond(test);
                 self.space();
-                self.print_block_with_attrs(blk, attrs);
+                self.print_block_with_attrs(blk, attrs, cb, ib);
             }
             ast::ExprKind::ForLoop { pat, iter, body, label, kind } => {
                 if let Some(label) = label {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                self.cbox(0);
-                self.ibox(0);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 self.word_nbsp("for");
                 if kind == &ForLoopKind::ForAwait {
                     self.word_nbsp("await");
@@ -482,21 +482,21 @@ impl<'a> State<'a> {
                 self.word_space("in");
                 self.print_expr_as_cond(iter);
                 self.space();
-                self.print_block_with_attrs(body, attrs);
+                self.print_block_with_attrs(body, attrs, cb, ib);
             }
             ast::ExprKind::Loop(blk, opt_label, _) => {
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                self.cbox(0);
-                self.ibox(0);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 self.word_nbsp("loop");
-                self.print_block_with_attrs(blk, attrs);
+                self.print_block_with_attrs(blk, attrs, cb, ib);
             }
             ast::ExprKind::Match(expr, arms, match_kind) => {
-                self.cbox(0);
-                self.ibox(0);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
 
                 match match_kind {
                     MatchKind::Prefix => {
@@ -514,13 +514,13 @@ impl<'a> State<'a> {
                     }
                 }
 
-                self.bopen();
+                self.bopen(ib);
                 self.print_inner_attributes_no_trailing_hardbreak(attrs);
                 for arm in arms {
                     self.print_arm(arm);
                 }
                 let empty = attrs.is_empty() && arms.is_empty();
-                self.bclose(expr.span, empty);
+                self.bclose(expr.span, empty, cb);
             }
             ast::ExprKind::Closure(box ast::Closure {
                 binder,
@@ -542,12 +542,15 @@ impl<'a> State<'a> {
                 self.print_fn_params_and_ret(fn_decl, true);
                 self.space();
                 self.print_expr(body, FixupContext::default());
-                self.end(); // need to close a box
+                // FIXME(nnethercote): Bogus. Reduce visibility of `ended` once it's fixed.
+                let fake_ib = BoxMarker;
+                self.end(fake_ib);
 
-                // a box will be closed by print_expr, but we didn't want an overall
+                // A box will be closed by print_expr, but we didn't want an overall
                 // wrapper so we closed the corresponding opening. so create an
                 // empty box to satisfy the close.
-                self.ibox(0);
+                // FIXME(nnethercote): Bogus.
+                let _ib = self.ibox(0);
             }
             ast::ExprKind::Block(blk, opt_label) => {
                 if let Some(label) = opt_label {
@@ -555,18 +558,18 @@ impl<'a> State<'a> {
                     self.word_space(":");
                 }
                 // containing cbox, will be closed by print-block at }
-                self.cbox(0);
+                let cb = self.cbox(0);
                 // head-box, will be closed by print-block after {
-                self.ibox(0);
-                self.print_block_with_attrs(blk, attrs);
+                let ib = self.ibox(0);
+                self.print_block_with_attrs(blk, attrs, cb, ib);
             }
             ast::ExprKind::Gen(capture_clause, blk, kind, _decl_span) => {
                 self.word_nbsp(kind.modifier());
                 self.print_capture_clause(*capture_clause);
                 // cbox/ibox in analogy to the `ExprKind::Block` arm above
-                self.cbox(0);
-                self.ibox(0);
-                self.print_block_with_attrs(blk, attrs);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
+                self.print_block_with_attrs(blk, attrs, cb, ib);
             }
             ast::ExprKind::Await(expr, _) => {
                 self.print_expr_cond_paren(
@@ -728,19 +731,19 @@ impl<'a> State<'a> {
                 // FIXME: Print `builtin # format_args` once macro `format_args` uses `builtin_syntax`.
                 self.word("format_args!");
                 self.popen();
-                self.ibox(0);
+                let ib = self.ibox(0);
                 self.word(reconstruct_format_args_template_string(&fmt.template));
                 for arg in fmt.arguments.all_args() {
                     self.word_space(",");
                     self.print_expr(&arg.expr, FixupContext::default());
                 }
-                self.end();
+                self.end(ib);
                 self.pclose();
             }
             ast::ExprKind::OffsetOf(container, fields) => {
                 self.word("builtin # offset_of");
                 self.popen();
-                self.ibox(0);
+                let ib = self.ibox(0);
                 self.print_type(container);
                 self.word(",");
                 self.space();
@@ -753,7 +756,7 @@ impl<'a> State<'a> {
                         self.print_ident(field);
                     }
                 }
-                self.end();
+                self.end(ib);
                 self.pclose();
             }
             ast::ExprKind::MacCall(m) => self.print_mac(m),
@@ -791,10 +794,10 @@ impl<'a> State<'a> {
                 self.word("?")
             }
             ast::ExprKind::TryBlock(blk) => {
-                self.cbox(0);
-                self.ibox(0);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 self.word_nbsp("try");
-                self.print_block_with_attrs(blk, attrs)
+                self.print_block_with_attrs(blk, attrs, cb, ib)
             }
             ast::ExprKind::UnsafeBinderCast(kind, expr, ty) => {
                 self.word("builtin # ");
@@ -803,7 +806,7 @@ impl<'a> State<'a> {
                     ast::UnsafeBinderCastKind::Unwrap => self.word("unwrap_binder"),
                 }
                 self.popen();
-                self.ibox(0);
+                let ib = self.ibox(0);
                 self.print_expr(expr, FixupContext::default());
 
                 if let Some(ty) = ty {
@@ -812,7 +815,7 @@ impl<'a> State<'a> {
                     self.print_type(ty);
                 }
 
-                self.end();
+                self.end(ib);
                 self.pclose();
             }
             ast::ExprKind::Err(_) => {
@@ -833,7 +836,7 @@ impl<'a> State<'a> {
             self.pclose();
         }
 
-        self.end();
+        self.end(ib);
     }
 
     fn print_arm(&mut self, arm: &ast::Arm) {
@@ -841,8 +844,8 @@ impl<'a> State<'a> {
         if arm.attrs.is_empty() {
             self.space();
         }
-        self.cbox(INDENT_UNIT);
-        self.ibox(0);
+        let cb = self.cbox(INDENT_UNIT);
+        let ib = self.ibox(0);
         self.maybe_print_comment(arm.pat.span.lo());
         self.print_outer_attributes(&arm.attrs);
         self.print_pat(&arm.pat);
@@ -863,8 +866,7 @@ impl<'a> State<'a> {
                         self.word_space(":");
                     }
 
-                    // The block will close the pattern's ibox.
-                    self.print_block_unclosed_indent(blk);
+                    self.print_block_unclosed_indent(blk, ib);
 
                     // If it is a user-provided unsafe block, print a comma after it.
                     if let BlockCheckMode::Unsafe(ast::UserProvided) = blk.rules {
@@ -872,16 +874,16 @@ impl<'a> State<'a> {
                     }
                 }
                 _ => {
-                    self.end(); // Close the ibox for the pattern.
+                    self.end(ib);
                     self.print_expr(body, FixupContext::new_match_arm());
                     self.word(",");
                 }
             }
         } else {
-            self.end(); // Close the ibox for the pattern.
+            self.end(ib);
             self.word(",");
         }
-        self.end(); // Close enclosing cbox.
+        self.end(cb);
     }
 
     fn print_closure_binder(&mut self, binder: &ast::ClosureBinder) {

@@ -7,6 +7,8 @@
 //@[stable2021] run-pass
 //@[classic2021] run-pass
 //@[structural2021] run-pass
+//@ dont-require-annotations: NOTE
+
 //! Test diagnostics for binding with `mut` when the default binding mode is by-ref.
 #![allow(incomplete_features, unused_assignments, unused_variables)]
 #![cfg_attr(any(classic2021, classic2024), feature(ref_pat_eat_one_layer_2024))]
@@ -27,7 +29,7 @@ pub fn main() {
 
     let [&mut mut x] = &[&mut 0];
     //[classic2024]~^ ERROR: mismatched types
-    //[classic2024]~| cannot match inherited `&` with `&mut` pattern
+    //[classic2024]~| NOTE cannot match inherited `&` with `&mut` pattern
     //[structural2024]~^^^ ERROR binding cannot be both mutable and by-reference
     #[cfg(any(stable2021, classic2021, structural2021))] { x = 0 }
 }

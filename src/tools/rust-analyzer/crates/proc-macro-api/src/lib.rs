@@ -13,20 +13,23 @@ mod process;
 
 use paths::{AbsPath, AbsPathBuf};
 use span::Span;
-use std::{fmt, io, sync::Arc};
+use std::{fmt, io, sync::Arc, time::SystemTime};
 
 use crate::{
     legacy_protocol::msg::{
-        deserialize_span_data_index_map, flat::serialize_span_data_index_map, ExpandMacro,
-        ExpandMacroData, ExpnGlobals, FlatTree, PanicMessage, Request, Response, SpanDataIndexMap,
-        HAS_GLOBAL_SPANS, RUST_ANALYZER_SPAN_SUPPORT,
+        ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, HAS_GLOBAL_SPANS, PanicMessage,
+        RUST_ANALYZER_SPAN_SUPPORT, Request, Response, SpanDataIndexMap,
+        deserialize_span_data_index_map, flat::serialize_span_data_index_map,
     },
     process::ProcMacroServerProcess,
 };
 
+/// Represents different kinds of procedural macros that can be expanded by the external server.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, serde_derive::Serialize, serde_derive::Deserialize)]
 pub enum ProcMacroKind {
+    /// A macro that derives implementations for a struct or enum.
     CustomDerive,
+    /// An attribute-like procedural macro.
     Attr,
     // This used to be called FuncLike, so that's what the server expects currently.
     #[serde(alias = "Bang")]
@@ -46,11 +49,13 @@ pub struct ProcMacroClient {
     path: AbsPathBuf,
 }
 
+/// Represents a dynamically loaded library containing procedural macros.
 pub struct MacroDylib {
     path: AbsPathBuf,
 }
 
 impl MacroDylib {
+    /// Creates a new MacroDylib instance with the given path.
     pub fn new(path: AbsPathBuf) -> MacroDylib {
         MacroDylib { path }
     }
@@ -66,6 +71,7 @@ pub struct ProcMacro {
     dylib_path: Arc<AbsPathBuf>,
     name: Box<str>,
     kind: ProcMacroKind,
+    dylib_last_modified: Option<SystemTime>,
 }
 
 impl Eq for ProcMacro {}
@@ -73,11 +79,13 @@ impl PartialEq for ProcMacro {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.kind == other.kind
-            && Arc::ptr_eq(&self.dylib_path, &other.dylib_path)
+            && self.dylib_path == other.dylib_path
+            && self.dylib_last_modified == other.dylib_last_modified
             && Arc::ptr_eq(&self.process, &other.process)
     }
 }
 
+/// Represents errors encountered when communicating with the proc-macro server.
 #[derive(Clone, Debug)]
 pub struct ServerError {
     pub message: String,
@@ -97,15 +105,17 @@ impl fmt::Display for ServerError {
 
 impl ProcMacroClient {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
-    pub fn spawn(
+    pub fn spawn<'a>(
         process_path: &AbsPath,
-        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
-            + Clone,
+        env: impl IntoIterator<
+            Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+        > + Clone,
     ) -> io::Result<ProcMacroClient> {
         let process = ProcMacroServerProcess::run(process_path, env)?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
+    /// Returns the absolute path to the proc-macro server.
     pub fn server_path(&self) -> &AbsPath {
         &self.path
     }
@@ -116,6 +126,9 @@ impl ProcMacroClient {
         let macros = self.process.find_proc_macros(&dylib.path)?;
 
         let dylib_path = Arc::new(dylib.path);
+        let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
+            .ok()
+            .and_then(|metadata| metadata.modified().ok());
         match macros {
             Ok(macros) => Ok(macros
                 .into_iter()
@@ -124,26 +137,32 @@ impl ProcMacroClient {
                     name: name.into(),
                     kind,
                     dylib_path: dylib_path.clone(),
+                    dylib_last_modified,
                 })
                 .collect()),
             Err(message) => Err(ServerError { message, io: None }),
         }
     }
 
+    /// Checks if the proc-macro server has exited.
     pub fn exited(&self) -> Option<&ServerError> {
         self.process.exited()
     }
 }
 
 impl ProcMacro {
+    /// Returns the name of the procedural macro.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the type of procedural macro.
     pub fn kind(&self) -> ProcMacroKind {
         self.kind
     }
 
+    /// Expands the procedural macro by sending an expansion request to the server.
+    /// This includes span information and environmental context.
     pub fn expand(
         &self,
         subtree: tt::SubtreeView<'_, Span>,
@@ -152,7 +171,7 @@ impl ProcMacro {
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
-        current_dir: Option<String>,
+        current_dir: String,
     ) -> Result<Result<tt::TopSubtree<Span>, PanicMessage>, ServerError> {
         let version = self.process.version();
 
@@ -180,7 +199,7 @@ impl ProcMacro {
             },
             lib: self.dylib_path.to_path_buf().into(),
             env,
-            current_dir,
+            current_dir: Some(current_dir),
         };
 
         let response = self.process.send_task(Request::ExpandMacro(Box::new(task)))?;

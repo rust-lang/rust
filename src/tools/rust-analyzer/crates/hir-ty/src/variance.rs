@@ -14,15 +14,15 @@
 //! while installing firewall per item queries to prevent invalidation issues.
 
 use crate::db::HirDatabase;
-use crate::generics::{generics, Generics};
+use crate::generics::{Generics, generics};
 use crate::{
     AliasTy, Const, ConstScalar, DynTyExt, GenericArg, GenericArgData, Interner, Lifetime,
     LifetimeData, Ty, TyKind,
 };
-use base_db::ra_salsa::Cycle;
 use chalk_ir::Mutability;
-use hir_def::data::adt::StructFlags;
+use hir_def::signatures::StructFlags;
 use hir_def::{AdtId, GenericDefId, GenericParamId, VariantId};
+use salsa::CycleRecoveryAction;
 use std::fmt;
 use std::ops::Not;
 use stdx::never;
@@ -34,7 +34,7 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
         GenericDefId::FunctionId(_) => (),
         GenericDefId::AdtId(adt) => {
             if let AdtId::StructId(id) = adt {
-                let flags = &db.struct_data(id).flags;
+                let flags = &db.struct_signature(id).flags;
                 if flags.contains(StructFlags::IS_UNSAFE_CELL) {
                     return Some(Arc::from_iter(vec![Variance::Invariant; 1]));
                 } else if flags.contains(StructFlags::IS_PHANTOM_DATA) {
@@ -45,7 +45,7 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
         _ => return None,
     }
 
-    let generics = generics(db.upcast(), def);
+    let generics = generics(db, def);
     let count = generics.len();
     if count == 0 {
         return None;
@@ -55,12 +55,20 @@ pub(crate) fn variances_of(db: &dyn HirDatabase, def: GenericDefId) -> Option<Ar
     variances.is_empty().not().then(|| Arc::from_iter(variances))
 }
 
-pub(crate) fn variances_of_cycle(
+pub(crate) fn variances_of_cycle_fn(
+    _db: &dyn HirDatabase,
+    _result: &Option<Arc<[Variance]>>,
+    _count: u32,
+    _def: GenericDefId,
+) -> CycleRecoveryAction<Option<Arc<[Variance]>>> {
+    CycleRecoveryAction::Iterate
+}
+
+pub(crate) fn variances_of_cycle_initial(
     db: &dyn HirDatabase,
-    _cycle: &Cycle,
-    def: &GenericDefId,
+    def: GenericDefId,
 ) -> Option<Arc<[Variance]>> {
-    let generics = generics(db.upcast(), *def);
+    let generics = generics(db, def);
     let count = generics.len();
 
     if count == 0 {
@@ -206,7 +214,7 @@ impl Context<'_> {
                     AdtId::StructId(s) => add_constraints_from_variant(VariantId::StructId(s)),
                     AdtId::UnionId(u) => add_constraints_from_variant(VariantId::UnionId(u)),
                     AdtId::EnumId(e) => {
-                        db.enum_data(e).variants.iter().for_each(|&(variant, _)| {
+                        db.enum_variants(e).variants.iter().for_each(|&(variant, _)| {
                             add_constraints_from_variant(VariantId::EnumVariantId(variant))
                         });
                     }
@@ -487,13 +495,13 @@ impl Context<'_> {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use hir_def::{
-        generics::GenericParamDataRef, src::HasSource, AdtId, GenericDefId, ModuleDefId,
+        AdtId, GenericDefId, ModuleDefId, hir::generics::GenericParamDataRef, src::HasSource,
     };
     use itertools::Itertools;
     use stdx::format_to;
-    use syntax::{ast::HasName, AstNode};
+    use syntax::{AstNode, ast::HasName};
     use test_fixture::WithFixture;
 
     use hir_def::Lookup;
@@ -953,16 +961,12 @@ struct S3<T>(S<T, T>);
 
     #[test]
     fn prove_fixedpoint() {
-        // FIXME: This is wrong, this should be `FixedPoint[T: covariant, U: covariant, V: covariant]`
-        // This is a limitation of current salsa where a cycle may only set a fallback value to the
-        // query result, but we need to solve a fixpoint here. The new salsa will have this
-        // fortunately.
         check(
             r#"
 struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
 "#,
             expect![[r#"
-                FixedPoint[T: bivariant, U: bivariant, V: bivariant]
+                FixedPoint[T: covariant, U: covariant, V: covariant]
             "#]],
         );
     }
@@ -979,7 +983,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
         let (db, file_id) = TestDB::with_single_file(ra_fixture);
 
         let mut defs: Vec<GenericDefId> = Vec::new();
-        let module = db.module_for_file_opt(file_id).unwrap();
+        let module = db.module_for_file_opt(file_id.file_id(&db)).unwrap();
         let def_map = module.def_map(&db);
         crate::tests::visit_module(&db, &def_map, module.local_id, &mut |it| {
             defs.push(match it {

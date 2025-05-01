@@ -1,11 +1,11 @@
 use std::time::Instant;
 
-use expect_test::{expect_file, ExpectFile};
+use expect_test::{ExpectFile, expect_file};
 use ide_db::SymbolKind;
 use span::Edition;
-use test_utils::{bench, bench_fixture, skip_slow_tests, AssertLinear};
+use test_utils::{AssertLinear, bench, bench_fixture, skip_slow_tests};
 
-use crate::{fixture, FileRange, HighlightConfig, HlTag, TextRange};
+use crate::{FileRange, HighlightConfig, HlTag, TextRange, fixture};
 
 const HL_CONFIG: HighlightConfig = HighlightConfig {
     strings: true,
@@ -739,14 +739,13 @@ fn test_highlight_doc_comment() {
 //! fn test() {}
 //! ```
 
+//! Syntactic name ref highlighting testing
 //! ```rust
 //! extern crate self;
-//! extern crate std;
+//! extern crate other as otter;
 //! extern crate core;
-//! extern crate alloc;
-//! extern crate proc_macro;
-//! extern crate test;
-//! extern crate Krate;
+//! trait T { type Assoc; }
+//! fn f<Arg>() -> use<Arg> where (): T<Assoc = ()> {}
 //! ```
 mod outline_module;
 
@@ -1302,7 +1301,7 @@ fn benchmark_syntax_highlighting_parser() {
             })
             .count()
     };
-    assert_eq!(hash, 1167);
+    assert_eq!(hash, 1606);
 }
 
 #[test]
@@ -1418,6 +1417,21 @@ fn main() {
 fn template() {}
 "#,
         expect_file!["./test_data/highlight_issue_18089.html"],
+        false,
+    );
+}
+
+#[test]
+fn issue_19357() {
+    check_highlighting(
+        r#"
+//- /foo.rs
+fn main() {
+    let x = &raw mut 5;
+}
+//- /main.rs
+"#,
+        expect_file!["./test_data/highlight_issue_19357.html"],
         false,
     );
 }

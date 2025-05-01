@@ -1,5 +1,7 @@
+//@ dont-require-annotations: NOTE
+
 const fn foo() -> ! {
-    unsafe { std::mem::transmute(()) } //~ inside `foo`
+    unsafe { std::mem::transmute(()) } //~ NOTE inside `foo`
 }
 
 // Type defined in a submodule, so that it is not "visibly"

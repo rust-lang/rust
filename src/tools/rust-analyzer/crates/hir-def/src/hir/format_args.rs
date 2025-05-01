@@ -4,11 +4,11 @@ use either::Either;
 use hir_expand::name::Name;
 use intern::Symbol;
 use rustc_parse_format as parse;
-use span::SyntaxContextId;
+use span::SyntaxContext;
 use stdx::TupleExt;
 use syntax::{
-    ast::{self, IsString},
     TextRange,
+    ast::{self, IsString},
 };
 
 use crate::hir::ExprId;
@@ -176,7 +176,7 @@ pub(crate) fn parse(
     is_direct_literal: bool,
     mut synth: impl FnMut(Name, Option<TextRange>) -> ExprId,
     mut record_usage: impl FnMut(Name, Option<TextRange>),
-    call_ctx: SyntaxContextId,
+    call_ctx: SyntaxContext,
 ) -> FormatArgs {
     let Ok(text) = s.value() else {
         return FormatArgs {
@@ -458,10 +458,6 @@ impl FormatArgumentsCollector {
             num_explicit_args: self.num_explicit_args,
             names: self.names.into_boxed_slice(),
         }
-    }
-
-    pub fn new() -> Self {
-        Default::default()
     }
 
     pub fn add(&mut self, arg: FormatArgument) -> usize {

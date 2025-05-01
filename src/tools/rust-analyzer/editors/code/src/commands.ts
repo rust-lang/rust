@@ -266,6 +266,43 @@ export function parentModule(ctx: CtxInit): Cmd {
     };
 }
 
+export function childModules(ctx: CtxInit): Cmd {
+    return async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        if (!(isRustDocument(editor.document) || isCargoTomlDocument(editor.document))) return;
+
+        const client = ctx.client;
+
+        const locations = await client.sendRequest(ra.childModules, {
+            textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
+            position: client.code2ProtocolConverter.asPosition(editor.selection.active),
+        });
+        if (!locations) return;
+
+        if (locations.length === 1) {
+            const loc = unwrapUndefinable(locations[0]);
+
+            const uri = client.protocol2CodeConverter.asUri(loc.targetUri);
+            const range = client.protocol2CodeConverter.asRange(loc.targetRange);
+
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const e = await vscode.window.showTextDocument(doc);
+            e.selection = new vscode.Selection(range.start, range.start);
+            e.revealRange(range, vscode.TextEditorRevealType.InCenter);
+        } else {
+            const uri = editor.document.uri.toString();
+            const position = client.code2ProtocolConverter.asPosition(editor.selection.active);
+            await showReferencesImpl(
+                client,
+                uri,
+                position,
+                locations.map((loc) => lc.Location.create(loc.targetUri, loc.targetRange)),
+            );
+        }
+    };
+}
+
 export function openCargoToml(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;

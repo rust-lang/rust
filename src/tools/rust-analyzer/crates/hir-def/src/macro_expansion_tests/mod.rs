@@ -16,34 +16,34 @@ mod proc_macros;
 
 use std::{iter, ops::Range, sync};
 
-use base_db::SourceDatabase;
+use base_db::RootQueryDb;
 use expect_test::Expect;
 use hir_expand::{
+    InFile, MacroCallKind, MacroKind,
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
-    InFile, MacroCallKind, MacroFileId, MacroFileIdExt, MacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
 use span::{Edition, Span};
 use stdx::{format_to, format_to_acc};
 use syntax::{
-    ast::{self, edit::IndentLevel},
     AstNode,
     SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
+    ast::{self, edit::IndentLevel},
 };
 use test_fixture::WithFixture;
 
 use crate::{
+    AdtId, AsMacroCall, Lookup, ModuleDefId,
     db::DefDatabase,
     nameres::{DefMap, MacroSubNs, ModuleSource},
     resolver::HasResolver,
     src::HasSource,
     test_db::TestDB,
     tt::TopSubtree,
-    AdtId, AsMacroCall, Lookup, ModuleDefId,
 };
 
 #[track_caller]
@@ -63,9 +63,11 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
                 MacroCallKind::Derive { ast_id, .. } => ast_id.map(|it| it.erase()),
                 MacroCallKind::Attr { ast_id, .. } => ast_id.map(|it| it.erase()),
             };
-            let ast = db
-                .parse(ast_id.file_id.file_id().expect("macros inside macros are not supported"))
-                .syntax_node();
+
+            let editioned_file_id =
+                ast_id.file_id.file_id().expect("macros inside macros are not supported");
+
+            let ast = db.parse(editioned_file_id).syntax_node();
             let ast_id_map = db.ast_id_map(ast_id.file_id);
             let node = ast_id_map.get_erased(ast_id.value).to_node(&ast);
             Some((node.text_range(), errors))
@@ -126,15 +128,19 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     for macro_call in source_file.syntax().descendants().filter_map(ast::MacroCall::cast) {
         let macro_call = InFile::new(source.file_id, &macro_call);
         let res = macro_call
-            .as_call_id_with_errors(&db, krate, |path| {
-                resolver
-                    .resolve_path_as_macro(&db, path, Some(MacroSubNs::Bang))
-                    .map(|(it, _)| db.macro_def(it))
-            })
+            .as_call_id_with_errors(
+                &db,
+                krate,
+                |path| {
+                    resolver
+                        .resolve_path_as_macro(&db, path, Some(MacroSubNs::Bang))
+                        .map(|(it, _)| db.macro_def(it))
+                },
+                &mut |_, _| (),
+            )
             .unwrap();
         let macro_call_id = res.value.unwrap();
-        let macro_file = MacroFileId { macro_call_id };
-        let mut expansion_result = db.parse_macro_expansion(macro_file);
+        let mut expansion_result = db.parse_macro_expansion(macro_call_id);
         expansion_result.err = expansion_result.err.or(res.err);
         expansions.push((macro_call.value.clone(), expansion_result));
     }
@@ -357,7 +363,7 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         _: Span,
         _: Span,
         _: Span,
-        _: Option<String>,
+        _: String,
     ) -> Result<TopSubtree, ProcMacroExpansionError> {
         let (parse, _) = syntax_bridge::token_tree_to_syntax_node(
             subtree,
@@ -370,5 +376,9 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         } else {
             panic!("got invalid macro input: {:?}", parse.errors());
         }
+    }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().type_id() == std::any::TypeId::of::<Self>()
     }
 }

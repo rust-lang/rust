@@ -1,16 +1,18 @@
 use std::cmp::Reverse;
 
-use hir::{db::HirDatabase, Module};
+use either::Either;
+use hir::{Module, Type, db::HirDatabase};
 use ide_db::{
+    active_parameter::ActiveParameter,
     helpers::mod_path_to_ast,
     imports::{
         import_assets::{ImportAssets, ImportCandidate, LocatedImport},
-        insert_use::{insert_use, insert_use_as_alias, ImportScope},
+        insert_use::{ImportScope, insert_use, insert_use_as_alias},
     },
 };
-use syntax::{ast, AstNode, Edition, NodeOrToken, SyntaxElement};
+use syntax::{AstNode, Edition, SyntaxNode, ast, match_ast};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
+use crate::{AssistContext, AssistId, Assists, GroupLabel};
 
 // Feature: Auto Import
 //
@@ -92,7 +94,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let cfg = ctx.config.import_path_config();
 
-    let (import_assets, syntax_under_caret) = find_importable_node(ctx)?;
+    let (import_assets, syntax_under_caret, expected) = find_importable_node(ctx)?;
     let mut proposed_imports: Vec<_> = import_assets
         .search_for_imports(&ctx.sema, cfg, ctx.config.insert_use.prefix_kind)
         .collect();
@@ -100,17 +102,8 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         return None;
     }
 
-    let range = match &syntax_under_caret {
-        NodeOrToken::Node(node) => ctx.sema.original_range(node).range,
-        NodeOrToken::Token(token) => token.text_range(),
-    };
-    let scope = ImportScope::find_insert_use_container(
-        &match syntax_under_caret {
-            NodeOrToken::Node(it) => it,
-            NodeOrToken::Token(it) => it.parent()?,
-        },
-        &ctx.sema,
-    )?;
+    let range = ctx.sema.original_range(&syntax_under_caret).range;
+    let scope = ImportScope::find_insert_use_container(&syntax_under_caret, &ctx.sema)?;
 
     // we aren't interested in different namespaces
     proposed_imports.sort_by(|a, b| a.import_path.cmp(&b.import_path));
@@ -118,8 +111,9 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
     let current_module = ctx.sema.scope(scope.as_syntax_node()).map(|scope| scope.module());
     // prioritize more relevant imports
-    proposed_imports
-        .sort_by_key(|import| Reverse(relevance_score(ctx, import, current_module.as_ref())));
+    proposed_imports.sort_by_key(|import| {
+        Reverse(relevance_score(ctx, import, expected.as_ref(), current_module.as_ref()))
+    });
     let edition = current_module.map(|it| it.krate().edition(ctx.db())).unwrap_or(Edition::CURRENT);
 
     let group_label = group_label(import_assets.import_candidate());
@@ -127,7 +121,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         let import_path = import.import_path;
 
         let (assist_id, import_name) =
-            (AssistId("auto_import", AssistKind::QuickFix), import_path.display(ctx.db(), edition));
+            (AssistId::quick_fix("auto_import"), import_path.display(ctx.db(), edition));
         acc.add_group(
             &group_label,
             assist_id,
@@ -180,22 +174,61 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
 pub(super) fn find_importable_node(
     ctx: &AssistContext<'_>,
-) -> Option<(ImportAssets, SyntaxElement)> {
+) -> Option<(ImportAssets, SyntaxNode, Option<Type>)> {
+    // Deduplicate this with the `expected_type_and_name` logic for completions
+    let expected = |expr_or_pat: Either<ast::Expr, ast::Pat>| match expr_or_pat {
+        Either::Left(expr) => {
+            let parent = expr.syntax().parent()?;
+            // FIXME: Expand this
+            match_ast! {
+                match parent {
+                    ast::ArgList(list) => {
+                        ActiveParameter::at_arg(
+                            &ctx.sema,
+                            list,
+                            expr.syntax().text_range().start(),
+                        ).map(|ap| ap.ty)
+                    },
+                    ast::LetStmt(stmt) => {
+                        ctx.sema.type_of_pat(&stmt.pat()?).map(|t| t.original)
+                    },
+                    _ => None,
+                }
+            }
+        }
+        Either::Right(pat) => {
+            let parent = pat.syntax().parent()?;
+            // FIXME: Expand this
+            match_ast! {
+                match parent {
+                    ast::LetStmt(stmt) => {
+                        ctx.sema.type_of_expr(&stmt.initializer()?).map(|t| t.original)
+                    },
+                    _ => None,
+                }
+            }
+        }
+    };
+
     if let Some(path_under_caret) = ctx.find_node_at_offset_with_descend::<ast::Path>() {
+        let expected =
+            path_under_caret.top_path().syntax().parent().and_then(Either::cast).and_then(expected);
         ImportAssets::for_exact_path(&path_under_caret, &ctx.sema)
-            .zip(Some(path_under_caret.syntax().clone().into()))
+            .map(|it| (it, path_under_caret.syntax().clone(), expected))
     } else if let Some(method_under_caret) =
         ctx.find_node_at_offset_with_descend::<ast::MethodCallExpr>()
     {
+        let expected = expected(Either::Left(method_under_caret.clone().into()));
         ImportAssets::for_method_call(&method_under_caret, &ctx.sema)
-            .zip(Some(method_under_caret.syntax().clone().into()))
+            .map(|it| (it, method_under_caret.syntax().clone(), expected))
     } else if ctx.find_node_at_offset_with_descend::<ast::Param>().is_some() {
         None
     } else if let Some(pat) = ctx
         .find_node_at_offset_with_descend::<ast::IdentPat>()
         .filter(ast::IdentPat::is_simple_ident)
     {
-        ImportAssets::for_ident_pat(&ctx.sema, &pat).zip(Some(pat.syntax().clone().into()))
+        let expected = expected(Either::Right(pat.clone().into()));
+        ImportAssets::for_ident_pat(&ctx.sema, &pat).map(|it| (it, pat.syntax().clone(), expected))
     } else {
         None
     }
@@ -219,6 +252,7 @@ fn group_label(import_candidate: &ImportCandidate) -> GroupLabel {
 pub(crate) fn relevance_score(
     ctx: &AssistContext<'_>,
     import: &LocatedImport,
+    expected: Option<&Type>,
     current_module: Option<&Module>,
 ) -> i32 {
     let mut score = 0;
@@ -229,6 +263,35 @@ pub(crate) fn relevance_score(
         hir::ItemInNs::Types(item) | hir::ItemInNs::Values(item) => item.module(db),
         hir::ItemInNs::Macros(makro) => Some(makro.module(db)),
     };
+
+    if let Some(expected) = expected {
+        let ty = match import.item_to_import {
+            hir::ItemInNs::Types(module_def) | hir::ItemInNs::Values(module_def) => {
+                match module_def {
+                    hir::ModuleDef::Function(function) => Some(function.ret_type(ctx.db())),
+                    hir::ModuleDef::Adt(adt) => Some(match adt {
+                        hir::Adt::Struct(it) => it.ty(ctx.db()),
+                        hir::Adt::Union(it) => it.ty(ctx.db()),
+                        hir::Adt::Enum(it) => it.ty(ctx.db()),
+                    }),
+                    hir::ModuleDef::Variant(variant) => Some(variant.constructor_ty(ctx.db())),
+                    hir::ModuleDef::Const(it) => Some(it.ty(ctx.db())),
+                    hir::ModuleDef::Static(it) => Some(it.ty(ctx.db())),
+                    hir::ModuleDef::TypeAlias(it) => Some(it.ty(ctx.db())),
+                    hir::ModuleDef::BuiltinType(it) => Some(it.ty(ctx.db())),
+                    _ => None,
+                }
+            }
+            hir::ItemInNs::Macros(_) => None,
+        };
+        if let Some(ty) = ty {
+            if ty == *expected {
+                score = 100000;
+            } else if ty.could_unify_with(ctx.db(), expected) {
+                score = 10000;
+            }
+        }
+    }
 
     match item_module.zip(current_module) {
         // get the distance between the imported path and the current module
@@ -279,12 +342,12 @@ mod tests {
     use super::*;
 
     use hir::{FileRange, Semantics};
-    use ide_db::{assists::AssistResolveStrategy, RootDatabase};
+    use ide_db::{RootDatabase, assists::AssistResolveStrategy};
     use test_fixture::WithFixture;
 
     use crate::tests::{
-        check_assist, check_assist_by_label, check_assist_not_applicable, check_assist_target,
-        TEST_CONFIG,
+        TEST_CONFIG, check_assist, check_assist_by_label, check_assist_not_applicable,
+        check_assist_target,
     };
 
     fn check_auto_import_order(before: &str, order: &[&str]) {
@@ -554,7 +617,7 @@ mod baz {
             }
             ",
             r"
-            use PubMod3::PubStruct;
+            use PubMod1::PubStruct;
 
             PubStruct
 
@@ -1720,6 +1783,98 @@ mod foo {
                 pub fn r#abstract() {};
             }
             ",
+        );
+    }
+
+    #[test]
+    fn prefers_type_match() {
+        check_assist(
+            auto_import,
+            r"
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: sync::atomic::Ordering) {}
+fn main() {
+    takes_ordering(Ordering$0);
+}
+",
+            r"
+use sync::atomic::Ordering;
+
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: sync::atomic::Ordering) {}
+fn main() {
+    takes_ordering(Ordering);
+}
+",
+        );
+        check_assist(
+            auto_import,
+            r"
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: cmp::Ordering) {}
+fn main() {
+    takes_ordering(Ordering$0);
+}
+",
+            r"
+use cmp::Ordering;
+
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: cmp::Ordering) {}
+fn main() {
+    takes_ordering(Ordering);
+}
+",
+        );
+    }
+
+    #[test]
+    fn prefers_type_match2() {
+        check_assist(
+            auto_import,
+            r"
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: sync::atomic::Ordering) {}
+fn main() {
+    takes_ordering(Ordering$0::V);
+}
+",
+            r"
+use sync::atomic::Ordering;
+
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: sync::atomic::Ordering) {}
+fn main() {
+    takes_ordering(Ordering::V);
+}
+",
+        );
+        check_assist(
+            auto_import,
+            r"
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: cmp::Ordering) {}
+fn main() {
+    takes_ordering(Ordering$0::V);
+}
+",
+            r"
+use cmp::Ordering;
+
+mod sync { pub mod atomic { pub enum Ordering { V } } }
+mod cmp { pub enum Ordering { V } }
+fn takes_ordering(_: cmp::Ordering) {}
+fn main() {
+    takes_ordering(Ordering::V);
+}
+",
         );
     }
 }

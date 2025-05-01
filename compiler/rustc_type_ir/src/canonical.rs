@@ -34,7 +34,6 @@ pub struct CanonicalQueryInput<I: Interner, V> {
 #[derive_where(Eq; I: Interner, V: Eq)]
 #[derive_where(Debug; I: Interner, V: fmt::Debug)]
 #[derive_where(Copy; I: Interner, V: Copy)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -147,7 +146,6 @@ impl<I: Interner> CanonicalVarInfo<I> {
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)

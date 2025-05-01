@@ -20,13 +20,13 @@ tt = { workspace = true, optional = true }
 intern.workspace = true
 
 [dev-dependencies]
-expect-test = "1.4.1"
-oorandom = "11.1.3"
+expect-test = "1.5.1"
+oorandom = "11.1.5"
 # We depend on both individually instead of using `features = ["derive"]` to microoptimize the
 # build graph: if the feature was enabled, syn would be built early on in the graph if `smolstr`
 # supports `arbitrary`. This way, we avoid feature unification.
-arbitrary = "1.3.2"
-derive_arbitrary = "1.3.2"
+arbitrary = "1.4.1"
+derive_arbitrary = "1.4.1"
 
 # local deps
 syntax-bridge.workspace = true

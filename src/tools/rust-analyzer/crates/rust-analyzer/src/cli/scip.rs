@@ -8,7 +8,7 @@ use ide::{
     TokenStaticData, VendoredLibrariesConfig,
 };
 use ide_db::LineIndexDatabase;
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use rustc_hash::{FxHashMap, FxHashSet};
 use scip::types::{self as scip_types, SymbolInformation};
 use tracing::error;
@@ -128,7 +128,7 @@ impl flags::Scip {
             };
 
         // Generates symbols from token monikers.
-        let mut symbol_generator = SymbolGenerator::new();
+        let mut symbol_generator = SymbolGenerator::default();
 
         for StaticIndexedFile { file_id, tokens, .. } in si.files {
             symbol_generator.clear_document_local_state();
@@ -417,16 +417,13 @@ struct TokenSymbols {
     is_inherent_impl: bool,
 }
 
+#[derive(Default)]
 struct SymbolGenerator {
     token_to_symbols: FxHashMap<TokenId, Option<TokenSymbols>>,
     local_count: usize,
 }
 
 impl SymbolGenerator {
-    fn new() -> Self {
-        SymbolGenerator { token_to_symbols: FxHashMap::default(), local_count: 0 }
-    }
-
     fn clear_document_local_state(&mut self) {
         self.local_count = 0;
     }
@@ -517,12 +514,13 @@ mod test {
 
     fn position(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();
-        let change_fixture = ChangeFixture::parse(ra_fixture);
+        let change_fixture = ChangeFixture::parse(host.raw_database(), ra_fixture);
         host.raw_database_mut().apply_change(change_fixture.change);
         let (file_id, range_or_offset) =
             change_fixture.file_position.expect("expected a marker ()");
         let offset = range_or_offset.expect_offset();
-        (host, FilePosition { file_id: file_id.into(), offset })
+        let position = FilePosition { file_id: file_id.file_id(host.raw_database()), offset };
+        (host, position)
     }
 
     /// If expected == "", then assert that there are no symbols (this is basically local symbol)
@@ -872,7 +870,7 @@ pub mod example_mod {
         let s = "/// foo\nfn bar() {}";
 
         let mut host = AnalysisHost::default();
-        let change_fixture = ChangeFixture::parse(s);
+        let change_fixture = ChangeFixture::parse(host.raw_database(), s);
         host.raw_database_mut().apply_change(change_fixture.change);
 
         let analysis = host.analysis();

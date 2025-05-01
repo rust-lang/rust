@@ -2,10 +2,10 @@ use ide_assists::utils::extract_trivial_expression;
 use ide_db::syntax_helpers::node_ext::expr_as_name_ref;
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, AstToken, IsString},
     NodeOrToken, SourceFile, SyntaxElement,
     SyntaxKind::{self, USE_TREE, WHITESPACE},
-    SyntaxToken, TextRange, TextSize, T,
+    SyntaxToken, T, TextRange, TextSize,
+    ast::{self, AstNode, AstToken, IsString},
 };
 
 use ide_db::text_edit::{TextEdit, TextEditBuilder};

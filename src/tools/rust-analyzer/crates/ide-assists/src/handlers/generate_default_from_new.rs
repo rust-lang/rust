@@ -1,13 +1,13 @@
 use ide_db::famous_defs::FamousDefs;
 use stdx::format_to;
 use syntax::{
-    ast::{self, make, HasGenericParams, HasName, Impl},
     AstNode,
+    ast::{self, HasGenericParams, HasName, Impl, make},
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: generate_default_from_new
@@ -65,7 +65,7 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
     let insert_location = impl_.syntax().text_range();
 
     acc.add(
-        AssistId("generate_default_from_new", crate::AssistKind::Generate),
+        AssistId::generate("generate_default_from_new"),
         "Generate a Default impl from a new fn",
         insert_location,
         move |builder| {

@@ -40,9 +40,7 @@ use std::collections::VecDeque;
 use intern::Symbol;
 use rustc_hash::FxHashMap;
 use serde_derive::{Deserialize, Serialize};
-use span::{
-    EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, TextRange, TokenId,
-};
+use span::{EditionedFileId, ErasedFileAstId, Span, SpanAnchor, SyntaxContext, TextRange, TokenId};
 
 use crate::legacy_protocol::msg::{ENCODE_CLOSE_SPAN_VERSION, EXTENDED_LEAF_DATA};
 
@@ -74,7 +72,9 @@ pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
                     ast_id: ErasedFileAstId::from_raw(ast_id),
                 },
                 range: TextRange::new(start.into(), end.into()),
-                ctx: SyntaxContextId::from_u32(e),
+                // SAFETY: We only receive spans from the server. If someone mess up the communication UB can happen,
+                // but that will be their problem.
+                ctx: unsafe { SyntaxContext::from_u32(e) },
             }
         })
         .collect()

@@ -695,13 +695,6 @@ impl<'tcx> SmirCtxt<'tcx> {
         matches!(instance.def, ty::InstanceKind::DropGlue(_, None))
     }
 
-    /// Check if this is an empty AsyncDropGlueCtor shim.
-    pub fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool {
-        let tables = self.0.borrow_mut();
-        let instance = tables.instances[def];
-        matches!(instance.def, ty::InstanceKind::AsyncDropGlueCtorShim(_, None))
-    }
-
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
     pub fn mono_instance(&self, def_id: stable_mir::DefId) -> stable_mir::mir::mono::Instance {

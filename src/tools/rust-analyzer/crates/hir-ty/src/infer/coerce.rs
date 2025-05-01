@@ -7,7 +7,7 @@
 
 use std::iter;
 
-use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyKind, TyVariableKind};
+use chalk_ir::{BoundVar, Goal, Mutability, TyKind, TyVariableKind, cast::Cast};
 use hir_def::{
     hir::ExprId,
     lang_item::{LangItem, LangItemTarget},
@@ -16,6 +16,8 @@ use stdx::always;
 use triomphe::Arc;
 
 use crate::{
+    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
     autoderef::{Autoderef, AutoderefKind},
     db::HirDatabase,
     infer::{
@@ -23,8 +25,6 @@ use crate::{
         TypeError, TypeMismatch,
     },
     utils::ClosureSubst,
-    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::unify::InferenceTable;
@@ -148,11 +148,11 @@ impl CoerceMany {
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
                 ctx.table.register_infer_ok(InferOk { value: (), goals: result1.goals });
                 for &e in &self.expressions {
-                    ctx.write_expr_adj(e, result1.value.0.clone());
+                    ctx.write_expr_adj(e, result1.value.0.clone().into_boxed_slice());
                 }
                 ctx.table.register_infer_ok(InferOk { value: (), goals: result2.goals });
                 if let Some(expr) = expr {
-                    ctx.write_expr_adj(expr, result2.value.0);
+                    ctx.write_expr_adj(expr, result2.value.0.into_boxed_slice());
                     self.expressions.push(expr);
                 }
                 return self.final_ty = Some(target_ty);
@@ -182,7 +182,7 @@ impl CoerceMany {
         {
             self.final_ty = Some(res);
             for &e in &self.expressions {
-                ctx.write_expr_adj(e, adjustments.clone());
+                ctx.write_expr_adj(e, adjustments.clone().into_boxed_slice());
             }
         } else {
             match cause {
@@ -263,7 +263,7 @@ impl InferenceContext<'_> {
     ) -> Result<Ty, TypeError> {
         let (adjustments, ty) = self.coerce_inner(from_ty, to_ty, coerce_never)?;
         if let Some(expr) = expr {
-            self.write_expr_adj(expr, adjustments);
+            self.write_expr_adj(expr, adjustments.into_boxed_slice());
         }
         Ok(ty)
     }

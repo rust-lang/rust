@@ -101,7 +101,14 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target: _, unwind: _, replace } => {
+            TerminatorKind::Drop {
+                place: drop_place,
+                target: _,
+                unwind: _,
+                replace,
+                drop: _,
+                async_fut: _,
+            } => {
                 let write_kind =
                     if *replace { WriteKind::Replace } else { WriteKind::StorageDeadOrDrop };
                 self.access_place(

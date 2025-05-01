@@ -1,4 +1,4 @@
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/issue-39367.rs:22:13
    |
 LL | /             ONCE.call_once(|| {
