@@ -6,7 +6,7 @@ of the same compiler.
 
 This raises a chicken-and-egg paradox: where did the first compiler come from?
 It must have been written in a different language. In Rust's case it was
-[written in OCaml][ocaml-compiler]. However it was abandoned long ago and the
+[written in OCaml][ocaml-compiler]. However, it was abandoned long ago, and the
 only way to build a modern version of rustc is with a slightly less modern
 version.
 
