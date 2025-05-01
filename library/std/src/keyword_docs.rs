@@ -91,7 +91,7 @@ mod as_keyword {}
 ///
 /// When associated with `loop`, a break expression may be used to return a value from that loop.
 /// This is only valid with `loop` and not with any other type of loop.
-/// If no value is specified, `break;` returns `()`.
+/// If no value is specified for `break;` it returns `()`.
 /// Every `break` within a loop must return the same type.
 ///
 /// ```rust
@@ -110,7 +110,7 @@ mod as_keyword {}
 /// ```
 ///
 /// It is also possible to exit from any *labelled* block returning the value early.
-/// If no value specified `break;` returns `()`.
+/// If no value is specified for `break;` it returns `()`.
 ///
 /// ```rust
 /// let inputs = vec!["Cow", "Cat", "Dog", "Snake", "Cod"];
