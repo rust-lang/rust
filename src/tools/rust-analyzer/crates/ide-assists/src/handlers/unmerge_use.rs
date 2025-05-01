@@ -1,12 +1,12 @@
 use syntax::{
-    ast::{self, edit_in_place::Removable, make, HasVisibility},
-    ted::{self, Position},
     AstNode, SyntaxKind,
+    ast::{self, HasVisibility, edit_in_place::Removable, make},
+    ted::{self, Position},
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    AssistId, AssistKind,
 };
 
 // Assist: unmerge_use
@@ -43,7 +43,7 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     };
 
     let target = tree.syntax().text_range();
-    acc.add(AssistId("unmerge_use", AssistKind::RefactorRewrite), label, target, |builder| {
+    acc.add(AssistId::refactor_rewrite("unmerge_use"), label, target, |builder| {
         let new_use = make::use_(
             use_.visibility(),
             make::use_tree(path, tree.use_tree_list(), tree.rename(), tree.star_token().is_some()),

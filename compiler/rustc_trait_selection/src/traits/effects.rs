@@ -4,10 +4,10 @@ use rustc_infer::traits::{
     ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
 };
 use rustc_middle::span_bug;
+use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, TypingMode};
-use rustc_type_ir::elaborate::elaborate;
-use rustc_type_ir::solve::NoSolution;
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -252,6 +252,9 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
     let self_ty = obligation.predicate.self_ty();
 
     let const_conditions = match *self_ty.kind() {
+        // `ManuallyDrop` is trivially `~const Destruct` as we do not run any drop glue on it.
+        ty::Adt(adt_def, _) if adt_def.is_manually_drop() => thin_vec![],
+
         // An ADT is `~const Destruct` only if all of the fields are,
         // *and* if there is a `Drop` impl, that `Drop` impl is also `~const`.
         ty::Adt(adt_def, args) => {

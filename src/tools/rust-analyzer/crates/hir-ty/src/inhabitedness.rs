@@ -2,14 +2,14 @@
 use std::ops::ControlFlow::{self, Break, Continue};
 
 use chalk_ir::{
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     DebruijnIndex,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
 };
-use hir_def::{visibility::Visibility, AdtId, EnumVariantId, ModuleId, VariantId};
+use hir_def::{AdtId, EnumVariantId, ModuleId, VariantId, visibility::Visibility};
 use rustc_hash::FxHashSet;
 
 use crate::{
-    consteval::try_const_usize, db::HirDatabase, Binders, Interner, Substitution, Ty, TyKind,
+    Binders, Interner, Substitution, Ty, TyKind, consteval::try_const_usize, db::HirDatabase,
 };
 
 // FIXME: Turn this into a query, it can be quite slow
@@ -98,7 +98,7 @@ impl UninhabitedFrom<'_> {
             AdtId::UnionId(_) => CONTINUE_OPAQUELY_INHABITED,
             AdtId::StructId(s) => self.visit_variant(s.into(), subst),
             AdtId::EnumId(e) => {
-                let enum_data = self.db.enum_data(e);
+                let enum_data = self.db.enum_variants(e);
 
                 for &(variant, _) in enum_data.variants.iter() {
                     let variant_inhabitedness = self.visit_variant(variant.into(), subst);
@@ -117,7 +117,7 @@ impl UninhabitedFrom<'_> {
         variant: VariantId,
         subst: &Substitution,
     ) -> ControlFlow<VisiblyUninhabited> {
-        let variant_data = self.db.variant_data(variant);
+        let variant_data = self.db.variant_fields(variant);
         let fields = variant_data.fields();
         if fields.is_empty() {
             return CONTINUE_OPAQUELY_INHABITED;
@@ -139,7 +139,7 @@ impl UninhabitedFrom<'_> {
         ty: &Binders<Ty>,
         subst: &Substitution,
     ) -> ControlFlow<VisiblyUninhabited> {
-        if vis.is_none_or(|it| it.is_visible_from(self.db.upcast(), self.target_mod)) {
+        if vis.is_none_or(|it| it.is_visible_from(self.db, self.target_mod)) {
             let ty = ty.clone().substitute(Interner, subst);
             ty.visit_with(self, DebruijnIndex::INNERMOST)
         } else {

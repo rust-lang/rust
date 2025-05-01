@@ -2,8 +2,8 @@
 
 use std::fmt;
 
-use intern::{sym, Symbol};
-use span::{Edition, SyntaxContextId};
+use intern::{Symbol, sym};
+use span::{Edition, SyntaxContext};
 use syntax::utils::is_raw_identifier;
 use syntax::{ast, format_smolstr};
 
@@ -74,7 +74,7 @@ impl Name {
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, mut ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, mut ctx: SyntaxContext) -> Name {
         // For comparisons etc. we remove the edition, because sometimes we search for some `Name`
         // and we don't know which edition it came from.
         // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
@@ -88,41 +88,40 @@ impl Name {
 
     pub fn new_root(text: &str) -> Name {
         // The edition doesn't matter for hygiene.
-        Self::new(text, SyntaxContextId::root(Edition::Edition2015))
+        Self::new(text, SyntaxContext::root(Edition::Edition2015))
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {
         let symbol = match idx {
-            0 => sym::INTEGER_0.clone(),
-            1 => sym::INTEGER_1.clone(),
-            2 => sym::INTEGER_2.clone(),
-            3 => sym::INTEGER_3.clone(),
-            4 => sym::INTEGER_4.clone(),
-            5 => sym::INTEGER_5.clone(),
-            6 => sym::INTEGER_6.clone(),
-            7 => sym::INTEGER_7.clone(),
-            8 => sym::INTEGER_8.clone(),
-            9 => sym::INTEGER_9.clone(),
-            10 => sym::INTEGER_10.clone(),
-            11 => sym::INTEGER_11.clone(),
-            12 => sym::INTEGER_12.clone(),
-            13 => sym::INTEGER_13.clone(),
-            14 => sym::INTEGER_14.clone(),
-            15 => sym::INTEGER_15.clone(),
+            0 => sym::INTEGER_0,
+            1 => sym::INTEGER_1,
+            2 => sym::INTEGER_2,
+            3 => sym::INTEGER_3,
+            4 => sym::INTEGER_4,
+            5 => sym::INTEGER_5,
+            6 => sym::INTEGER_6,
+            7 => sym::INTEGER_7,
+            8 => sym::INTEGER_8,
+            9 => sym::INTEGER_9,
+            10 => sym::INTEGER_10,
+            11 => sym::INTEGER_11,
+            12 => sym::INTEGER_12,
+            13 => sym::INTEGER_13,
+            14 => sym::INTEGER_14,
+            15 => sym::INTEGER_15,
             _ => Symbol::intern(&idx.to_string()),
         };
         Name { symbol, ctx: () }
     }
 
-    pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
-        let text = lt.text();
-        match text.strip_prefix("'r#") {
-            Some(text) => Self::new_text(&format_smolstr!("'{text}")),
-            None => Self::new_text(text.as_str()),
+    pub fn new_lifetime(lt: &str) -> Name {
+        match lt.strip_prefix("'r#") {
+            Some(lt) => Self::new_text(&format_smolstr!("'{lt}")),
+            None => Self::new_text(lt),
         }
     }
 
-    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContext) -> Self {
         debug_assert!(!symbol.as_str().starts_with("r#"));
         _ = ctx;
         Self { symbol, ctx: () }
@@ -130,7 +129,7 @@ impl Name {
 
     // FIXME: This needs to go once we have hygiene
     pub fn new_symbol_root(sym: Symbol) -> Self {
-        Self::new_symbol(sym, SyntaxContextId::root(Edition::Edition2015))
+        Self::new_symbol(sym, SyntaxContext::root(Edition::Edition2015))
     }
 
     /// A fake name for things missing in the source code.
@@ -143,7 +142,7 @@ impl Name {
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
     pub const fn missing() -> Name {
-        Name { symbol: sym::consts::MISSING_NAME, ctx: () }
+        Name { symbol: sym::MISSING_NAME, ctx: () }
     }
 
     /// Returns true if this is a fake name for things missing in the source code. See
@@ -260,7 +259,7 @@ impl AsName for ast::FieldKind {
     }
 }
 
-impl AsName for base_db::Dependency {
+impl AsName for base_db::BuiltDependency {
     fn as_name(&self) -> Name {
         Name::new_symbol_root((*self.name).clone())
     }

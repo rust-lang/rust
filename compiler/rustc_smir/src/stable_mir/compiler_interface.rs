@@ -354,11 +354,6 @@ impl<'tcx> SmirInterface<'tcx> {
         self.cx.is_empty_drop_shim(def)
     }
 
-    /// Check if this is an empty AsyncDropGlueCtor shim.
-    pub(crate) fn is_empty_async_drop_ctor_shim(&self, def: InstanceDef) -> bool {
-        self.cx.is_empty_async_drop_ctor_shim(def)
-    }
-
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
     pub(crate) fn mono_instance(&self, def_id: DefId) -> Instance {

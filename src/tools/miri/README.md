@@ -489,7 +489,7 @@ Miri knows where it is supposed to start execution:
 
 ```rust
 #[cfg(miri)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 fn miri_start(argc: isize, argv: *const *const u8) -> isize {
     // Call the actual start function that your project implements, based on your target's conventions.
 }

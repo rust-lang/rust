@@ -180,7 +180,7 @@
 # Note that this will attempt to download GCC even if there are local
 # modifications to the `src/gcc` submodule.
 # Currently, this is only supported for the `x86_64-unknown-linux-gnu` target.
-# download-ci-gcc = false
+#download-ci-gcc = false
 
 # =============================================================================
 # General build configuration options
@@ -569,6 +569,12 @@
 #
 # Defaults to rust.debug-assertions value
 #debug-assertions-std = rust.debug-assertions (boolean)
+
+# Whether or not debug assertions are enabled for the tools built by bootstrap.
+# Overrides the `debug-assertions` option, if defined.
+#
+# Defaults to rust.debug-assertions value
+#debug-assertions-tools = rust.debug-assertions (boolean)
 
 # Whether or not to leave debug! and trace! calls in the rust binary.
 #

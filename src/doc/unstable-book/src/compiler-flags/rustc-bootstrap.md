@@ -23,7 +23,7 @@ Crates can fully opt out of unstable features by using [`#![forbid(unstable_feat
 In particular, nightly is built with beta, and beta is built with stable.
 Since the standard library and compiler both use unstable features, `RUSTC_BOOTSTRAP` is required so that we can use the previous version to build them.
 
-## Why is this environment variable so easy to use for people not in the rust project?
+## Why is this environment variable so easy to use for people not in the Rust project?
 
 Originally, `RUSTC_BOOTSTRAP` required passing in a hash of the previous compiler version, to discourage using it for any purpose other than bootstrapping.
 That constraint was later relaxed; see <https://github.com/rust-lang/rust/issues/36548> for the discussion that happened at that time.

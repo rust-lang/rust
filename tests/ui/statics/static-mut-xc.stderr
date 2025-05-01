@@ -1,4 +1,4 @@
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-mut-xc.rs:19:16
    |
 LL |     assert_eq!(static_mut_xc::a, 3);
@@ -8,7 +8,7 @@ LL |     assert_eq!(static_mut_xc::a, 3);
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
    = note: `#[warn(static_mut_refs)]` on by default
 
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-mut-xc.rs:22:16
    |
 LL |     assert_eq!(static_mut_xc::a, 4);
@@ -17,7 +17,7 @@ LL |     assert_eq!(static_mut_xc::a, 4);
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-mut-xc.rs:25:16
    |
 LL |     assert_eq!(static_mut_xc::a, 5);
@@ -26,7 +26,7 @@ LL |     assert_eq!(static_mut_xc::a, 5);
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-mut-xc.rs:28:16
    |
 LL |     assert_eq!(static_mut_xc::a, 15);
@@ -35,7 +35,7 @@ LL |     assert_eq!(static_mut_xc::a, 15);
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-mut-xc.rs:31:16
    |
 LL |     assert_eq!(static_mut_xc::a, -3);
@@ -44,7 +44,7 @@ LL |     assert_eq!(static_mut_xc::a, -3);
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/static-mut-references.html>
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 
-warning: creating a shared reference to mutable static is discouraged
+warning: creating a shared reference to mutable static
   --> $DIR/static-mut-xc.rs:33:18
    |
 LL |     static_bound(&static_mut_xc::a);
@@ -57,7 +57,7 @@ help: use `&raw const` instead to create a raw pointer
 LL |     static_bound(&raw const static_mut_xc::a);
    |                   +++++++++
 
-warning: creating a mutable reference to mutable static is discouraged
+warning: creating a mutable reference to mutable static
   --> $DIR/static-mut-xc.rs:35:22
    |
 LL |     static_bound_set(&mut static_mut_xc::a);

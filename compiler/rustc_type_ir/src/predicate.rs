@@ -470,10 +470,10 @@ pub enum AliasTermKind {
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
     /// Can only be normalized away in PostAnalysis mode or its defining scope.
     OpaqueTy,
-    /// A type alias that actually checks its trait bounds.
+    /// A free type alias that actually checks its trait bounds.
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
-    WeakTy,
+    FreeTy,
     /// An unevaluated const coming from a generic const expression.
     UnevaluatedConst,
     /// An unevaluated const coming from an associated const.
@@ -487,7 +487,7 @@ impl AliasTermKind {
             AliasTermKind::ProjectionConst => "associated const",
             AliasTermKind::InherentTy => "inherent associated type",
             AliasTermKind::OpaqueTy => "opaque type",
-            AliasTermKind::WeakTy => "type alias",
+            AliasTermKind::FreeTy => "type alias",
             AliasTermKind::UnevaluatedConst => "unevaluated constant",
         }
     }
@@ -498,7 +498,7 @@ impl From<ty::AliasTyKind> for AliasTermKind {
         match value {
             ty::Projection => AliasTermKind::ProjectionTy,
             ty::Opaque => AliasTermKind::OpaqueTy,
-            ty::Weak => AliasTermKind::WeakTy,
+            ty::Free => AliasTermKind::FreeTy,
             ty::Inherent => AliasTermKind::InherentTy,
         }
     }
@@ -565,7 +565,7 @@ impl<I: Interner> AliasTerm<I> {
             AliasTermKind::ProjectionTy
             | AliasTermKind::InherentTy
             | AliasTermKind::OpaqueTy
-            | AliasTermKind::WeakTy => {}
+            | AliasTermKind::FreeTy => {}
             AliasTermKind::UnevaluatedConst | AliasTermKind::ProjectionConst => {
                 panic!("Cannot turn `UnevaluatedConst` into `AliasTy`")
             }
@@ -597,9 +597,9 @@ impl<I: Interner> AliasTerm<I> {
                 ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
             .into(),
-            AliasTermKind::WeakTy => Ty::new_alias(
+            AliasTermKind::FreeTy => Ty::new_alias(
                 interner,
-                ty::AliasTyKind::Weak,
+                ty::AliasTyKind::Free,
                 ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
             )
             .into(),

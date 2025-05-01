@@ -8,6 +8,7 @@ To run the documentation site locally:
 
 ```shell
 cargo install mdbook
+cargo xtask codegen
 cd docs/book
 mdbook serve
 # make changes to documentation files in doc/book/src

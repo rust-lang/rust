@@ -820,7 +820,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Foreign(def_id) => {
                 p!(print_def_path(def_id, &[]));
             }
-            ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ref data) => {
+            ty::Alias(ty::Projection | ty::Inherent | ty::Free, ref data) => {
                 p!(print(data))
             }
             ty::Placeholder(placeholder) => match placeholder.bound.kind {
@@ -3205,7 +3205,7 @@ define_print! {
                     p!(print_def_path(self.def_id, self.args));
                 }
             }
-            | ty::AliasTermKind::WeakTy
+            | ty::AliasTermKind::FreeTy
             | ty::AliasTermKind::OpaqueTy
             | ty::AliasTermKind::UnevaluatedConst
             | ty::AliasTermKind::ProjectionConst => {

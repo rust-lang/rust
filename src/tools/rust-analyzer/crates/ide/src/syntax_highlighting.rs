@@ -15,26 +15,23 @@ mod tests;
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{
-    DefWithBody, HirFileIdExt, InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics,
-};
+use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Name, Semantics};
 use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
-use span::EditionedFileId;
 use syntax::{
-    ast::{self, IsString},
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, WalkEvent, T,
+    SyntaxNode, SyntaxToken, T, TextRange, WalkEvent,
+    ast::{self, IsString},
 };
 
 use crate::{
+    FileId, HlMod, HlOperator, HlPunct, HlTag,
     syntax_highlighting::{
         escape::{highlight_escape_byte, highlight_escape_char, highlight_escape_string},
         format::highlight_format_string,
         highlights::Highlights,
         tags::Highlight,
     },
-    FileId, HlMod, HlOperator, HlPunct, HlTag,
 };
 
 pub(crate) use html::highlight_as_html;
@@ -199,7 +196,7 @@ pub(crate) fn highlight(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(db, file_id));
 
     // Determine the root based on the given range.
     let (root, range_to_highlight) = {
@@ -218,10 +215,7 @@ pub(crate) fn highlight(
     };
 
     let mut hl = highlights::Highlights::new(root.text_range());
-    let krate = match sema.scope(&root) {
-        Some(it) => it.krate(),
-        None => return hl.to_vec(),
-    };
+    let krate = sema.scope(&root).map(|it| it.krate());
     traverse(&mut hl, &sema, config, InRealFile::new(file_id, &root), krate, range_to_highlight);
     hl.to_vec()
 }
@@ -231,10 +225,10 @@ fn traverse(
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightConfig,
     InRealFile { file_id, value: root }: InRealFile<&SyntaxNode>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
 ) {
-    let is_unlinked = sema.file_to_module_def(file_id).is_none();
+    let is_unlinked = sema.file_to_module_def(file_id.file_id(sema.db)).is_none();
 
     enum AttrOrDerive {
         Attr(ast::Item),
@@ -494,7 +488,7 @@ fn string_injections(
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightConfig,
     file_id: EditionedFileId,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     token: SyntaxToken,
     descended_token: &SyntaxToken,
 ) -> ControlFlow<()> {
@@ -508,7 +502,14 @@ fn string_injections(
             {
                 return ControlFlow::Break(());
             }
-            highlight_format_string(hl, sema, krate, &string, &descended_string, file_id.edition());
+            highlight_format_string(
+                hl,
+                sema,
+                krate,
+                &string,
+                &descended_string,
+                file_id.edition(sema.db),
+            );
 
             if !string.is_raw() {
                 highlight_escape_string(hl, &string);

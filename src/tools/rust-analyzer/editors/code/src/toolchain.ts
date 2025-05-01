@@ -37,7 +37,6 @@ interface CompilerMessage {
 export class Cargo {
     constructor(
         readonly rootFolder: string,
-        readonly output: vscode.OutputChannel,
         readonly env: Record<string, string>,
     ) {}
 
@@ -93,14 +92,14 @@ export class Cargo {
                             });
                         }
                     } else if (message.reason === "compiler-message") {
-                        this.output.append(message.message.rendered);
+                        log.info(message.message.rendered);
                     }
                 },
-                (stderr) => this.output.append(stderr),
+                (stderr) => log.error(stderr),
                 env,
             );
         } catch (err) {
-            this.output.show(true);
+            log.error(`Cargo invocation has failed: ${err}`);
             throw new Error(`Cargo invocation has failed: ${err}`);
         }
 

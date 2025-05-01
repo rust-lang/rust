@@ -1,6 +1,6 @@
-use syntax::{ast, ast::Radix, AstToken};
+use syntax::{AstToken, ast, ast::Radix};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
+use crate::{AssistContext, AssistId, Assists, GroupLabel};
 
 const MIN_NUMBER_OF_DIGITS_TO_FORMAT: usize = 5;
 
@@ -42,7 +42,7 @@ pub(crate) fn reformat_number_literal(acc: &mut Assists, ctx: &AssistContext<'_>
     let range = literal.syntax().text_range();
     acc.add_group(
         &group_id,
-        AssistId("reformat_number_literal", AssistKind::RefactorInline),
+        AssistId::refactor_inline("reformat_number_literal"),
         label,
         range,
         |builder| builder.replace(range, converted),
@@ -54,7 +54,7 @@ fn remove_separators(acc: &mut Assists, literal: ast::IntNumber) -> Option<()> {
     let range = literal.syntax().text_range();
     acc.add_group(
         &group_id,
-        AssistId("reformat_number_literal", AssistKind::RefactorInline),
+        AssistId::refactor_inline("reformat_number_literal"),
         "Remove digit separators",
         range,
         |builder| builder.replace(range, literal.text().replace('_', "")),

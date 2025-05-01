@@ -6,9 +6,9 @@
 use bitflags::bitflags;
 
 use crate::{
+    MacroId, ModuleDefId,
     item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob, ItemInNs},
     visibility::Visibility,
-    MacroId, ModuleDefId,
 };
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
@@ -146,11 +146,7 @@ impl PerNs {
     }
 
     pub fn or_else(self, f: impl FnOnce() -> PerNs) -> PerNs {
-        if self.is_full() {
-            self
-        } else {
-            self.or(f())
-        }
+        if self.is_full() { self } else { self.or(f()) }
     }
 
     pub fn iter_items(self) -> impl Iterator<Item = (ItemInNs, Option<ImportOrExternCrate>)> {

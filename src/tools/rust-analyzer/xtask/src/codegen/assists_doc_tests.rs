@@ -5,7 +5,7 @@ use std::{fmt, fs, path::Path};
 use stdx::format_to_acc;
 
 use crate::{
-    codegen::{add_preamble, ensure_file_contents, reformat, CommentBlock, Location},
+    codegen::{CommentBlock, Location, add_preamble, ensure_file_contents, reformat},
     project_root,
     util::list_rust_files,
 };
@@ -51,6 +51,11 @@ r#####"
             &buf,
             check,
         );
+    }
+
+    // Do not generate assists manual when run with `--check`
+    if check {
+        return;
     }
 
     {

@@ -12,7 +12,6 @@ pub mod token_type;
 mod ty;
 
 use std::assert_matches::debug_assert_matches;
-use std::ops::Range;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
@@ -25,7 +24,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
-use rustc_ast::tokenstream::{AttrsTarget, Spacing, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{
+    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, TokenTreeCursor,
+};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, AnonConst, AttrArgs, AttrId, ByRef, Const, CoroutineKind, DUMMY_NODE_ID,
@@ -37,7 +38,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use token_type::TokenTypeSet;
 pub use token_type::{ExpKeywordPair, ExpTokenPair, TokenType};
@@ -55,19 +56,64 @@ mod tests;
 mod tokenstream {
     mod tests;
 }
-#[cfg(test)]
-mod mut_visit {
-    mod tests;
-}
 
 bitflags::bitflags! {
+    /// Restrictions applied while parsing.
+    ///
+    /// The parser maintains a bitset of restrictions it will honor while
+    /// parsing. This is essentially used as a way of tracking state of what
+    /// is being parsed and to change behavior based on that.
     #[derive(Clone, Copy, Debug)]
     struct Restrictions: u8 {
+        /// Restricts expressions for use in statement position.
+        ///
+        /// When expressions are used in various places, like statements or
+        /// match arms, this is used to stop parsing once certain tokens are
+        /// reached.
+        ///
+        /// For example, `if true {} & 1` with `STMT_EXPR` in effect is parsed
+        /// as two separate expression statements (`if` and a reference to 1).
+        /// Otherwise it is parsed as a bitwise AND where `if` is on the left
+        /// and 1 is on the right.
         const STMT_EXPR         = 1 << 0;
+        /// Do not allow struct literals.
+        ///
+        /// There are several places in the grammar where we don't want to
+        /// allow struct literals because they can require lookahead, or
+        /// otherwise could be ambiguous or cause confusion. For example,
+        /// `if Foo {} {}` isn't clear if it is `Foo{}` struct literal, or
+        /// just `Foo` is the condition, followed by a consequent block,
+        /// followed by an empty block.
+        ///
+        /// See [RFC 92](https://rust-lang.github.io/rfcs/0092-struct-grammar.html).
         const NO_STRUCT_LITERAL = 1 << 1;
+        /// Used to provide better error messages for const generic arguments.
+        ///
+        /// An un-braced const generic argument is limited to a very small
+        /// subset of expressions. This is used to detect the situation where
+        /// an expression outside of that subset is used, and to suggest to
+        /// wrap the expression in braces.
         const CONST_EXPR        = 1 << 2;
+        /// Allows `let` expressions.
+        ///
+        /// `let pattern = scrutinee` is parsed as an expression, but it is
+        /// only allowed in let chains (`if` and `while` conditions).
+        /// Otherwise it is not an expression (note that `let` in statement
+        /// positions is treated as a `StmtKind::Let` statement, which has a
+        /// slightly different grammar).
         const ALLOW_LET         = 1 << 3;
+        /// Used to detect a missing `=>` in a match guard.
+        ///
+        /// This is used for error handling in a match guard to give a better
+        /// error message if the `=>` is missing. It is set when parsing the
+        /// guard expression.
         const IN_IF_GUARD       = 1 << 4;
+        /// Used to detect the incorrect use of expressions in patterns.
+        ///
+        /// This is used for error handling while parsing a pattern. During
+        /// error recovery, this will be set to try to parse the pattern as an
+        /// expression, but halts parsing the expression when reaching certain
+        /// tokens like `=`.
         const IS_PAT            = 1 << 5;
     }
 }
@@ -187,57 +233,6 @@ struct ClosureSpans {
     body: Span,
 }
 
-/// A token range within a `Parser`'s full token stream.
-#[derive(Clone, Debug)]
-struct ParserRange(Range<u32>);
-
-/// A token range within an individual AST node's (lazy) token stream, i.e.
-/// relative to that node's first token. Distinct from `ParserRange` so the two
-/// kinds of range can't be mixed up.
-#[derive(Clone, Debug)]
-struct NodeRange(Range<u32>);
-
-/// Indicates a range of tokens that should be replaced by an `AttrsTarget`
-/// (replacement) or be replaced by nothing (deletion). This is used in two
-/// places during token collection.
-///
-/// 1. Replacement. During the parsing of an AST node that may have a
-///    `#[derive]` attribute, when we parse a nested AST node that has `#[cfg]`
-///    or `#[cfg_attr]`, we replace the entire inner AST node with
-///    `FlatToken::AttrsTarget`. This lets us perform eager cfg-expansion on an
-///    `AttrTokenStream`.
-///
-/// 2. Deletion. We delete inner attributes from all collected token streams,
-///    and instead track them through the `attrs` field on the AST node. This
-///    lets us manipulate them similarly to outer attributes. When we create a
-///    `TokenStream`, the inner attributes are inserted into the proper place
-///    in the token stream.
-///
-/// Each replacement starts off in `ParserReplacement` form but is converted to
-/// `NodeReplacement` form when it is attached to a single AST node, via
-/// `LazyAttrTokenStreamImpl`.
-type ParserReplacement = (ParserRange, Option<AttrsTarget>);
-
-/// See the comment on `ParserReplacement`.
-type NodeReplacement = (NodeRange, Option<AttrsTarget>);
-
-impl NodeRange {
-    // Converts a range within a parser's tokens to a range within a
-    // node's tokens beginning at `start_pos`.
-    //
-    // For example, imagine a parser with 50 tokens in its token stream, a
-    // function that spans `ParserRange(20..40)` and an inner attribute within
-    // that function that spans `ParserRange(30..35)`. We would find the inner
-    // attribute's range within the function's tokens by subtracting 20, which
-    // is the position of the function's start token. This gives
-    // `NodeRange(10..15)`.
-    fn new(ParserRange(parser_range): ParserRange, start_pos: u32) -> NodeRange {
-        assert!(!parser_range.is_empty());
-        assert!(parser_range.start >= start_pos);
-        NodeRange((parser_range.start - start_pos)..(parser_range.end - start_pos))
-    }
-}
-
 /// Controls how we capture tokens. Capturing can be expensive,
 /// so we try to avoid performing capturing in cases where
 /// we will never need an `AttrTokenStream`.
@@ -258,104 +253,6 @@ struct CaptureState {
     // `IntervalSet` is good for perf because attrs are mostly added to this
     // set in contiguous ranges.
     seen_attrs: IntervalSet<AttrId>,
-}
-
-#[derive(Clone, Debug)]
-struct TokenTreeCursor {
-    stream: TokenStream,
-    /// Points to the current token tree in the stream. In `TokenCursor::curr`,
-    /// this can be any token tree. In `TokenCursor::stack`, this is always a
-    /// `TokenTree::Delimited`.
-    index: usize,
-}
-
-impl TokenTreeCursor {
-    #[inline]
-    fn new(stream: TokenStream) -> Self {
-        TokenTreeCursor { stream, index: 0 }
-    }
-
-    #[inline]
-    fn curr(&self) -> Option<&TokenTree> {
-        self.stream.get(self.index)
-    }
-
-    fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
-        self.stream.get(self.index + n)
-    }
-
-    #[inline]
-    fn bump(&mut self) {
-        self.index += 1;
-    }
-}
-
-/// A `TokenStream` cursor that produces `Token`s. It's a bit odd that
-/// we (a) lex tokens into a nice tree structure (`TokenStream`), and then (b)
-/// use this type to emit them as a linear sequence. But a linear sequence is
-/// what the parser expects, for the most part.
-#[derive(Clone, Debug)]
-struct TokenCursor {
-    // Cursor for the current (innermost) token stream. The index within the
-    // cursor can point to any token tree in the stream (or one past the end).
-    // The delimiters for this token stream are found in `self.stack.last()`;
-    // if that is `None` we are in the outermost token stream which never has
-    // delimiters.
-    curr: TokenTreeCursor,
-
-    // Token streams surrounding the current one. The index within each cursor
-    // always points to a `TokenTree::Delimited`.
-    stack: Vec<TokenTreeCursor>,
-}
-
-impl TokenCursor {
-    fn next(&mut self) -> (Token, Spacing) {
-        self.inlined_next()
-    }
-
-    /// This always-inlined version should only be used on hot code paths.
-    #[inline(always)]
-    fn inlined_next(&mut self) -> (Token, Spacing) {
-        loop {
-            // FIXME: we currently don't return `Delimiter::Invisible` open/close delims. To fix
-            // #67062 we will need to, whereupon the `delim != Delimiter::Invisible` conditions
-            // below can be removed.
-            if let Some(tree) = self.curr.curr() {
-                match tree {
-                    &TokenTree::Token(token, spacing) => {
-                        debug_assert!(!token.kind.is_delim());
-                        let res = (token, spacing);
-                        self.curr.bump();
-                        return res;
-                    }
-                    &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
-                        let trees = TokenTreeCursor::new(tts.clone());
-                        self.stack.push(mem::replace(&mut self.curr, trees));
-                        if !delim.skip() {
-                            return (Token::new(delim.as_open_token_kind(), sp.open), spacing.open);
-                        }
-                        // No open delimiter to return; continue on to the next iteration.
-                    }
-                };
-            } else if let Some(parent) = self.stack.pop() {
-                // We have exhausted this token stream. Move back to its parent token stream.
-                let Some(&TokenTree::Delimited(span, spacing, delim, _)) = parent.curr() else {
-                    panic!("parent should be Delimited")
-                };
-                self.curr = parent;
-                self.curr.bump(); // move past the `Delimited`
-                if !delim.skip() {
-                    return (Token::new(delim.as_close_token_kind(), span.close), spacing.close);
-                }
-                // No close delimiter to return; continue on to the next iteration.
-            } else {
-                // We have exhausted the outermost token stream. The use of
-                // `Spacing::Alone` is arbitrary and immaterial, because the
-                // `Eof` token's spacing is never used.
-                return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
-            }
-        }
-    }
 }
 
 /// A sequence separator.
@@ -1740,26 +1637,6 @@ impl<'a> Parser<'a> {
             _ => self.prev_token.span,
         }
     }
-}
-
-/// A helper struct used when building an `AttrTokenStream` from
-/// a `LazyAttrTokenStream`. Both delimiter and non-delimited tokens
-/// are stored as `FlatToken::Token`. A vector of `FlatToken`s
-/// is then 'parsed' to build up an `AttrTokenStream` with nested
-/// `AttrTokenTree::Delimited` tokens.
-#[derive(Debug, Clone)]
-enum FlatToken {
-    /// A token - this holds both delimiter (e.g. '{' and '}')
-    /// and non-delimiter tokens
-    Token((Token, Spacing)),
-    /// Holds the `AttrsTarget` for an AST node. The `AttrsTarget` is inserted
-    /// directly into the constructed `AttrTokenStream` as an
-    /// `AttrTokenTree::AttrsTarget`.
-    AttrsTarget(AttrsTarget),
-    /// A special 'empty' token that is ignored during the conversion
-    /// to an `AttrTokenStream`. This is used to simplify the
-    /// handling of replace ranges.
-    Empty,
 }
 
 // Metavar captures of various kinds.

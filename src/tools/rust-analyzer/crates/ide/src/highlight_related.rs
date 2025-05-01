@@ -1,7 +1,8 @@
 use std::iter;
 
-use hir::{db, FilePosition, FileRange, HirFileId, InFile, Semantics};
+use hir::{EditionedFileId, FilePosition, FileRange, HirFileId, InFile, Semantics, db};
 use ide_db::{
+    FxHashMap, FxHashSet, RootDatabase,
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -9,17 +10,17 @@ use ide_db::{
         eq_label_lt, for_each_tail_expr, full_path_of_name_ref, is_closure_or_blk_with_modif,
         preorder_expr_with_ctx_checker,
     },
-    FxHashMap, FxHashSet, RootDatabase,
 };
-use span::EditionedFileId;
+use span::FileId;
 use syntax::{
-    ast::{self, HasLoopBody},
-    match_ast, AstNode,
+    AstNode,
     SyntaxKind::{self, IDENT, INT_NUMBER},
-    SyntaxToken, TextRange, WalkEvent, T,
+    SyntaxToken, T, TextRange, WalkEvent,
+    ast::{self, HasLoopBody},
+    match_ast,
 };
 
-use crate::{goto_definition, navigation_target::ToNav, NavigationTarget, TryToNav};
+use crate::{NavigationTarget, TryToNav, goto_definition, navigation_target::ToNav};
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct HighlightedRange {
@@ -59,13 +60,14 @@ pub(crate) fn highlight_related(
     let _p = tracing::info_span!("highlight_related").entered();
     let file_id = sema
         .attach_first_edition(file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
+        .unwrap_or_else(|| EditionedFileId::current_edition(sema.db, file_id));
+    let span_file_id = file_id.editioned_file_id(sema.db);
     let syntax = sema.parse(file_id).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`
         T![->] => 4,
-        kind if kind.is_keyword(file_id.edition()) => 3,
+        kind if kind.is_keyword(span_file_id.edition()) => 3,
         IDENT | INT_NUMBER => 2,
         T![|] => 1,
         _ => 0,
@@ -87,11 +89,18 @@ pub(crate) fn highlight_related(
         T![break] | T![loop] | T![while] | T![continue] if config.break_points => {
             highlight_break_points(sema, token).remove(&file_id)
         }
-        T![|] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
-        T![move] if config.closure_captures => highlight_closure_captures(sema, token, file_id),
-        _ if config.references => {
-            highlight_references(sema, token, FilePosition { file_id, offset })
+        T![|] if config.closure_captures => {
+            highlight_closure_captures(sema, token, file_id, span_file_id.file_id())
         }
+        T![move] if config.closure_captures => {
+            highlight_closure_captures(sema, token, file_id, span_file_id.file_id())
+        }
+        _ if config.references => highlight_references(
+            sema,
+            token,
+            FilePosition { file_id, offset },
+            span_file_id.file_id(),
+        ),
         _ => None,
     }
 }
@@ -100,6 +109,7 @@ fn highlight_closure_captures(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
     file_id: EditionedFileId,
+    vfs_file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
     let closure = token.parent_ancestors().take(2).find_map(ast::ClosureExpr::cast)?;
     let search_range = closure.body()?.syntax().text_range();
@@ -132,7 +142,7 @@ fn highlight_closure_captures(
                     .sources(sema.db)
                     .into_iter()
                     .flat_map(|x| x.to_nav(sema.db))
-                    .filter(|decl| decl.file_id == file_id)
+                    .filter(|decl| decl.file_id == vfs_file_id)
                     .filter_map(|decl| decl.focus_range)
                     .map(move |range| HighlightedRange { range, category })
                     .chain(usages)
@@ -145,6 +155,7 @@ fn highlight_references(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
     FilePosition { file_id, offset }: FilePosition,
+    vfs_file_id: FileId,
 ) -> Option<Vec<HighlightedRange>> {
     let defs = if let Some((range, resolution)) =
         sema.check_for_format_args_template(token.clone(), offset)
@@ -152,7 +163,10 @@ fn highlight_references(
         match resolution.map(Definition::from) {
             Some(def) => iter::once(def).collect(),
             None => {
-                return Some(vec![HighlightedRange { range, category: ReferenceCategory::empty() }])
+                return Some(vec![HighlightedRange {
+                    range,
+                    category: ReferenceCategory::empty(),
+                }]);
             }
         }
     } else {
@@ -224,6 +238,23 @@ fn highlight_references(
             }
         }
 
+        // highlight the tail expr of the labelled block
+        if matches!(def, Definition::Label(_)) {
+            let label = token.parent_ancestors().nth(1).and_then(ast::Label::cast);
+            if let Some(block) =
+                label.and_then(|label| label.syntax().parent()).and_then(ast::BlockExpr::cast)
+            {
+                for_each_tail_expr(&block.into(), &mut |tail| {
+                    if !matches!(tail, ast::Expr::BreakExpr(_)) {
+                        res.insert(HighlightedRange {
+                            range: tail.syntax().text_range(),
+                            category: ReferenceCategory::empty(),
+                        });
+                    }
+                });
+            }
+        }
+
         // highlight the defs themselves
         match def {
             Definition::Local(local) => {
@@ -236,7 +267,7 @@ fn highlight_references(
                     .sources(sema.db)
                     .into_iter()
                     .flat_map(|x| x.to_nav(sema.db))
-                    .filter(|decl| decl.file_id == file_id)
+                    .filter(|decl| decl.file_id == vfs_file_id)
                     .filter_map(|decl| decl.focus_range)
                     .map(|range| HighlightedRange { range, category })
                     .for_each(|x| {
@@ -254,7 +285,7 @@ fn highlight_references(
                     },
                 };
                 for nav in navs {
-                    if nav.file_id != file_id {
+                    if nav.file_id != vfs_file_id {
                         continue;
                     }
                     let hl_range = nav.focus_range.map(|range| {
@@ -274,11 +305,7 @@ fn highlight_references(
     }
 
     res.extend(usages);
-    if res.is_empty() {
-        None
-    } else {
-        Some(res.into_iter().collect())
-    }
+    if res.is_empty() { None } else { Some(res.into_iter().collect()) }
 }
 
 fn hl_exit_points(
@@ -441,6 +468,18 @@ pub(crate) fn highlight_break_points(
 
                 push_to_highlights(file_id, text_range);
             });
+
+        if matches!(expr, ast::Expr::BlockExpr(_)) {
+            for_each_tail_expr(&expr, &mut |tail| {
+                if matches!(tail, ast::Expr::BreakExpr(_)) {
+                    return;
+                }
+
+                let file_id = sema.hir_file_for(tail.syntax());
+                let range = tail.syntax().text_range();
+                push_to_highlights(file_id, Some(range));
+            });
+        }
 
         Some(highlights)
     }
@@ -2067,5 +2106,42 @@ pub unsafe fn bootstrap() -> ! {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn labeled_block_tail_expr() {
+        check(
+            r#"
+fn foo() {
+    'a: {
+ // ^^^
+        if true { break$0 'a 0; }
+               // ^^^^^^^^
+        5
+     // ^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn labeled_block_tail_expr_2() {
+        check(
+            r#"
+fn foo() {
+    let _ = 'b$0lk: {
+         // ^^^^
+        let x = 1;
+        if true { break 'blk 42; }
+                     // ^^^^
+        if false { break 'blk 24; }
+                      // ^^^^
+        100
+     // ^^^
+    };
+}
+"#,
+        );
     }
 }

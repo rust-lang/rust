@@ -1,5 +1,7 @@
 //@ reference: attributes.diagnostic.on_unimplemented.intro
 //@ reference: attributes.diagnostic.on_unimplemented.keys
+//@ dont-require-annotations: NOTE
+
 #[diagnostic::on_unimplemented(message = "my message", label = "my label", note = "my note")]
 pub trait ProviderLt {}
 
@@ -16,6 +18,6 @@ struct B;
 fn main() {
     B.request();
     //~^ ERROR my message [E0599]
-    //~| my label
-    //~| my note
+    //~| NOTE my label
+    //~| NOTE my note
 }

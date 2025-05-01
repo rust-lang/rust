@@ -106,7 +106,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
         } else {
             tcx.dcx().fatal(
                 "`miri_start` must have the following signature:\n\
-                        fn miri_start(argc: isize, argv: *const *const u8) -> isize",
+                fn miri_start(argc: isize, argv: *const *const u8) -> isize",
             );
         }
     } else {
@@ -115,7 +115,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
             Alternatively, you can export a `miri_start` function:\n\
             \n\
             #[cfg(miri)]\n\
-            #[no_mangle]\n\
+            #[unsafe(no_mangle)]\n\
             fn miri_start(argc: isize, argv: *const *const u8) -> isize {\
             \n    // Call the actual start function that your project implements, based on your target's conventions.\n\
             }"

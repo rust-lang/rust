@@ -1,4 +1,5 @@
 //@ build-fail
+//@ dont-require-annotations: NOTE
 
 trait Tr {
     const A: u8 = 255;
@@ -31,7 +32,7 @@ impl Tr for u32 {
 fn main() {
     assert_eq!(<() as Tr>::A, 255);
     assert_eq!(<() as Tr>::B, 0);    // causes the error above
-    //~^ constant
+    //~^ NOTE constant
 
     assert_eq!(<u8 as Tr>::A, 254);
     assert_eq!(<u8 as Tr>::B, 255);

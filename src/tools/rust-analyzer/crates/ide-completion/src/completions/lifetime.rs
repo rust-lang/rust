@@ -7,7 +7,7 @@
 //! there is no value in lifting these out into the outline module test since they will either not
 //! show up for normal completions, or they won't show completions other than lifetimes depending
 //! on the fixture input.
-use hir::{sym, Name, ScopeDef};
+use hir::{Name, ScopeDef, sym};
 
 use crate::{
     completions::Completions,
@@ -31,13 +31,13 @@ pub(crate) fn complete_lifetime(
             acc.add_lifetime(ctx, name);
         }
     });
-    acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static.clone()));
+    acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_static));
     if !in_lifetime_param_bound
         && def.is_some_and(|def| {
             !matches!(def, hir::GenericDef::Function(_) | hir::GenericDef::Impl(_))
         })
     {
-        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_underscore.clone()));
+        acc.add_lifetime(ctx, Name::new_symbol_root(sym::tick_underscore));
     }
 }
 

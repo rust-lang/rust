@@ -7,26 +7,30 @@ use std::{iter, ops::Not};
 
 use either::Either;
 use hir::{
-    db::DefDatabase, DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem,
-    Semantics,
+    DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics,
+    db::DefDatabase,
 };
 use ide_db::{
+    FileRange, FxIndexSet, Ranker, RootDatabase,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
-    FileRange, FxIndexSet, Ranker, RootDatabase,
 };
-use itertools::{multizip, Itertools};
+use itertools::{Itertools, multizip};
 use span::Edition;
-use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
+use syntax::{
+    AstNode,
+    SyntaxKind::{self, *},
+    SyntaxNode, T, ast,
+};
 
 use crate::{
+    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
     doc_links::token_as_doc_comment,
     markdown_remove::remove_markdown,
     markup::Markup,
     navigation_target::UpmappingResult,
     runnables::{runnable_fn, runnable_mod},
-    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
 };
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
@@ -129,8 +133,8 @@ pub(crate) fn hover(
     let sema = &hir::Semantics::new(db);
     let file = sema.parse_guess_edition(file_id).syntax().clone();
     let edition =
-        sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
-    let display_target = sema.first_crate_or_default(file_id).to_display_target(db);
+        sema.attach_first_edition(file_id).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
+    let display_target = sema.first_crate(file_id)?.to_display_target(db);
     let mut res = if range.is_empty() {
         hover_offset(
             sema,
@@ -274,11 +278,13 @@ fn hover_offset(
                         }
 
                         class => {
-                            let is_def = matches!(class, IdentClass::NameClass(_));
+                            let render_extras = matches!(class, IdentClass::NameClass(_))
+                                // Render extra information for `Self` keyword as well
+                                || ast::NameRef::cast(node.clone()).is_some_and(|name_ref| name_ref.token_kind() == SyntaxKind::SELF_TYPE_KW);
                             multizip((
                                 class.definitions(),
                                 iter::repeat(None),
-                                iter::repeat(is_def),
+                                iter::repeat(render_extras),
                                 iter::repeat(node),
                             ))
                             .collect::<Vec<_>>()
@@ -422,7 +428,7 @@ pub(crate) fn hover_for_definition(
     subst: Option<GenericSubstitution>,
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
-    hovered_definition: bool,
+    render_extras: bool,
     config: &HoverConfig,
     edition: Edition,
     display_target: DisplayTarget,
@@ -456,7 +462,7 @@ pub(crate) fn hover_for_definition(
         famous_defs.as_ref(),
         &notable_traits,
         macro_arm,
-        hovered_definition,
+        render_extras,
         subst_types.as_ref(),
         config,
         edition,
@@ -499,6 +505,7 @@ fn notable_traits(
                 )
             })
         })
+        .sorted_by_cached_key(|(trait_, _)| trait_.name(db))
         .collect::<Vec<_>>()
 }
 
@@ -512,7 +519,7 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
 
     let adt = match def {
         Definition::Trait(it) => {
-            return it.try_to_nav(db).map(UpmappingResult::call_site).map(to_action)
+            return it.try_to_nav(db).map(UpmappingResult::call_site).map(to_action);
         }
         Definition::Adt(it) => Some(it),
         Definition::SelfType(it) => it.self_ty(db).as_adt(),
@@ -544,7 +551,7 @@ fn runnable_action(
         Definition::Module(it) => runnable_mod(sema, it).map(HoverAction::Runnable),
         Definition::Function(func) => {
             let src = func.source(sema.db)?;
-            if src.file_id != file_id {
+            if src.file_id.file_id().is_none_or(|f| f.file_id(sema.db) != file_id) {
                 cov_mark::hit!(hover_macro_generated_struct_fn_doc_comment);
                 cov_mark::hit!(hover_macro_generated_struct_fn_doc_attr);
                 return None;

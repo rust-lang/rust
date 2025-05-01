@@ -1,6 +1,6 @@
 use hir::{DefWithBody, Semantics};
 use ide_db::{FilePosition, RootDatabase};
-use syntax::{algo::ancestors_at_offset, ast, AstNode};
+use syntax::{AstNode, algo::ancestors_at_offset, ast};
 
 // Feature: View Mir
 //

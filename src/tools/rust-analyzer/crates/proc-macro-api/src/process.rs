@@ -11,16 +11,17 @@ use paths::AbsPath;
 use stdx::JodChild;
 
 use crate::{
+    ProcMacroKind, ServerError,
     legacy_protocol::{
         json::{read_json, write_json},
         msg::{
-            Message, Request, Response, ServerConfig, SpanMode, CURRENT_API_VERSION,
-            RUST_ANALYZER_SPAN_SUPPORT,
+            CURRENT_API_VERSION, Message, RUST_ANALYZER_SPAN_SUPPORT, Request, Response,
+            ServerConfig, SpanMode,
         },
     },
-    ProcMacroKind, ServerError,
 };
 
+/// Represents a process handling proc-macro communication.
 #[derive(Debug)]
 pub(crate) struct ProcMacroServerProcess {
     /// The state of the proc-macro server process, the protocol is currently strictly sequential
@@ -32,6 +33,7 @@ pub(crate) struct ProcMacroServerProcess {
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
 }
 
+/// Maintains the state of the proc-macro server process.
 #[derive(Debug)]
 struct ProcessSrvState {
     process: Process,
@@ -40,10 +42,12 @@ struct ProcessSrvState {
 }
 
 impl ProcMacroServerProcess {
-    pub(crate) fn run(
+    /// Starts the proc-macro server and performs a version check
+    pub(crate) fn run<'a>(
         process_path: &AbsPath,
-        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
-            + Clone,
+        env: impl IntoIterator<
+            Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+        > + Clone,
     ) -> io::Result<ProcMacroServerProcess> {
         let create_srv = || {
             let mut process = Process::run(process_path, env.clone())?;
@@ -59,8 +63,7 @@ impl ProcMacroServerProcess {
         let mut srv = create_srv()?;
         tracing::info!("sending proc-macro server version check");
         match srv.version_check() {
-            Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::new(
-                io::ErrorKind::Other,
+            Ok(v) if v > CURRENT_API_VERSION => Err(io::Error::other(
                 format!( "The version of the proc-macro server ({v}) in your Rust toolchain is newer than the version supported by your rust-analyzer ({CURRENT_API_VERSION}).
             This will prevent proc-macro expansion from working. Please consider updating your rust-analyzer to ensure compatibility with your current toolchain."
                 ),
@@ -79,20 +82,23 @@ impl ProcMacroServerProcess {
             Err(e) => {
                 tracing::info!(%e, "proc-macro version check failed");
                 Err(
-                    io::Error::new(io::ErrorKind::Other, format!("proc-macro server version check failed: {e}")),
+                    io::Error::other(format!("proc-macro server version check failed: {e}")),
                 )
             }
         }
     }
 
+    /// Returns the server error if the process has exited.
     pub(crate) fn exited(&self) -> Option<&ServerError> {
         self.exited.get().map(|it| &it.0)
     }
 
+    /// Retrieves the API version of the proc-macro server.
     pub(crate) fn version(&self) -> u32 {
         self.version
     }
 
+    /// Checks the API version of the running proc-macro server.
     fn version_check(&self) -> Result<u32, ServerError> {
         let request = Request::ApiVersionCheck {};
         let response = self.send_task(request)?;
@@ -103,6 +109,7 @@ impl ProcMacroServerProcess {
         }
     }
 
+    /// Enable support for rust-analyzer span mode if the server supports it.
     fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
         let request = Request::SetConfig(ServerConfig { span_mode: SpanMode::RustAnalyzer });
         let response = self.send_task(request)?;
@@ -113,6 +120,7 @@ impl ProcMacroServerProcess {
         }
     }
 
+    /// Finds proc-macros in a given dynamic library.
     pub(crate) fn find_proc_macros(
         &self,
         dylib_path: &AbsPath,
@@ -127,6 +135,7 @@ impl ProcMacroServerProcess {
         }
     }
 
+    /// Sends a request to the proc-macro server and waits for a response.
     pub(crate) fn send_task(&self, req: Request) -> Result<Response, ServerError> {
         if let Some(server_error) = self.exited.get() {
             return Err(server_error.0.clone());
@@ -177,20 +186,25 @@ impl ProcMacroServerProcess {
     }
 }
 
+/// Manages the execution of the proc-macro server process.
 #[derive(Debug)]
 struct Process {
     child: JodChild,
 }
 
 impl Process {
-    fn run(
+    /// Runs a new proc-macro server process with the specified environment variables.
+    fn run<'a>(
         path: &AbsPath,
-        env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
+        env: impl IntoIterator<
+            Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+        >,
     ) -> io::Result<Process> {
         let child = JodChild(mk_child(path, env)?);
         Ok(Process { child })
     }
 
+    /// Retrieves stdin and stdout handles for the process.
     fn stdio(&mut self) -> Option<(ChildStdin, BufReader<ChildStdout>)> {
         let stdin = self.child.stdin.take()?;
         let stdout = self.child.stdout.take()?;
@@ -200,14 +214,22 @@ impl Process {
     }
 }
 
-fn mk_child(
+/// Creates and configures a new child process for the proc-macro server.
+fn mk_child<'a>(
     path: &AbsPath,
-    env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
+    extra_env: impl IntoIterator<
+        Item = (impl AsRef<std::ffi::OsStr>, &'a Option<impl 'a + AsRef<std::ffi::OsStr>>),
+    >,
 ) -> io::Result<Child> {
     #[allow(clippy::disallowed_methods)]
     let mut cmd = Command::new(path);
-    cmd.envs(env)
-        .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
+    for env in extra_env {
+        match env {
+            (key, Some(val)) => cmd.env(key, val),
+            (key, None) => cmd.env_remove(key),
+        };
+    }
+    cmd.env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
@@ -221,6 +243,7 @@ fn mk_child(
     cmd.spawn()
 }
 
+/// Sends a request to the server and reads the response.
 fn send_request(
     mut writer: &mut impl Write,
     mut reader: &mut impl BufRead,

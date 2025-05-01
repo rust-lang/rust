@@ -1,12 +1,10 @@
 use hir::HirDisplay;
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    defs::Definition,
-};
+use ide_db::{assists::AssistId, defs::Definition};
 use stdx::to_upper_snake_case;
 use syntax::{
-    ast::{self, make, HasName},
-    ted, AstNode,
+    AstNode,
+    ast::{self, HasName, make},
+    ted,
 };
 
 use crate::{
@@ -67,7 +65,7 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext<'_>)
     }
 
     acc.add(
-        AssistId("promote_local_to_const", AssistKind::Refactor),
+        AssistId::refactor("promote_local_to_const"),
         "Promote local to constant",
         let_stmt.syntax().text_range(),
         |edit| {

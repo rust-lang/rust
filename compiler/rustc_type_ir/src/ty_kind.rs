@@ -54,7 +54,7 @@ pub enum AliasTyKind {
     /// A type alias that actually checks its trait bounds.
     /// Currently only used if the type alias references opaque types.
     /// Can always be normalized away.
-    Weak,
+    Free,
 }
 
 impl AliasTyKind {
@@ -63,7 +63,7 @@ impl AliasTyKind {
             AliasTyKind::Projection => "associated type",
             AliasTyKind::Inherent => "inherent associated type",
             AliasTyKind::Opaque => "opaque type",
-            AliasTyKind::Weak => "type alias",
+            AliasTyKind::Free => "type alias",
         }
     }
 }
@@ -223,7 +223,7 @@ pub enum TyKind<I: Interner> {
     /// A tuple type. For example, `(i32, bool)`.
     Tuple(I::Tys),
 
-    /// A projection, opaque type, weak type alias, or inherent associated type.
+    /// A projection, opaque type, free type alias, or inherent associated type.
     /// All of these types are represented as pairs of def-id and args, and can
     /// be normalized, so they are grouped conceptually.
     Alias(AliasTyKind, AliasTy<I>),

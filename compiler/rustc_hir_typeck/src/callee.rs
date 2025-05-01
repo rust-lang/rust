@@ -14,7 +14,7 @@ use rustc_middle::ty::adjustment::{
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -34,11 +34,9 @@ pub(crate) fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
-    body_id: DefId,
+    _body_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.is_lang_item(trait_id, LangItem::Drop)
-        && !tcx.is_lang_item(body_id, LangItem::FallbackSurfaceDrop)
-    {
+    if tcx.is_lang_item(trait_id, LangItem::Drop) {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             errors::ExplicitDestructorCallSugg::Snippet {
                 lo: expr_span.shrink_to_lo(),
@@ -89,14 +87,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let output = match result {
             None => {
-                // this will report an error since original_callee_ty is not a fn
-                self.confirm_builtin_call(
-                    call_expr,
-                    callee_expr,
-                    original_callee_ty,
-                    arg_exprs,
-                    expected,
-                )
+                // Check all of the arg expressions, but with no expectations
+                // since we don't have a signature to compare them to.
+                for arg in arg_exprs {
+                    self.check_expr(arg);
+                }
+
+                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
+                    && let [segment] = path.segments
+                {
+                    self.dcx().try_steal_modify_and_emit_err(
+                        segment.ident.span,
+                        StashKey::CallIntoMethod,
+                        |err| {
+                            // Try suggesting `foo(a)` -> `a.foo()` if possible.
+                            self.suggest_call_as_method(
+                                err, segment, arg_exprs, call_expr, expected,
+                            );
+                        },
+                    );
+                }
+
+                let guar = self.report_invalid_callee(call_expr, callee_expr, expr_ty, arg_exprs);
+                Ty::new_error(self.tcx, guar)
             }
 
             Some(CallStep::Builtin(callee_ty)) => {
@@ -298,9 +311,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_tup_from_iter(self.tcx, arg_exprs.iter().map(|e| self.next_ty_var(e.span)))
             });
 
-            if let Some(ok) = self.lookup_method_in_trait(
+            if let Some(ok) = self.lookup_method_for_operator(
                 self.misc(call_expr.span),
-                Ident::with_dummy_span(method_name),
+                method_name,
                 trait_def_id,
                 adjusted_ty,
                 opt_input_type,
@@ -463,32 +476,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 (fn_sig, Some(def_id))
             }
+
             // FIXME(const_trait_impl): these arms should error because we can't enforce them
             ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
-            _ => {
-                for arg in arg_exprs {
-                    self.check_expr(arg);
-                }
 
-                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
-                    && let [segment] = path.segments
-                {
-                    self.dcx().try_steal_modify_and_emit_err(
-                        segment.ident.span,
-                        StashKey::CallIntoMethod,
-                        |err| {
-                            // Try suggesting `foo(a)` -> `a.foo()` if possible.
-                            self.suggest_call_as_method(
-                                err, segment, arg_exprs, call_expr, expected,
-                            );
-                        },
-                    );
-                }
-
-                let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
-
-                return Ty::new_error(self.tcx, err);
-            }
+            _ => unreachable!(),
         };
 
         // Replace any late-bound regions that appear in the function
@@ -910,19 +902,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
-        method_callee: MethodCallee<'tcx>,
+        method: MethodCallee<'tcx>,
     ) -> Ty<'tcx> {
-        let output_type = self.check_method_argument_types(
+        self.check_argument_types(
             call_expr.span,
             call_expr,
-            Ok(method_callee),
-            arg_exprs,
-            TupleArgumentsFlag::TupleArguments,
+            &method.sig.inputs()[1..],
+            method.sig.output(),
             expected,
+            arg_exprs,
+            method.sig.c_variadic,
+            TupleArgumentsFlag::TupleArguments,
+            Some(method.def_id),
         );
 
-        self.write_method_call_and_enforce_effects(call_expr.hir_id, call_expr.span, method_callee);
-        output_type
+        self.write_method_call_and_enforce_effects(call_expr.hir_id, call_expr.span, method);
+
+        method.sig.output()
     }
 }
 

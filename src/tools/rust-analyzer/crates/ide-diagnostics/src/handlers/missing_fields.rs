@@ -1,20 +1,22 @@
 use either::Either;
 use hir::{
+    AssocItem, HirDisplay, ImportPathConfig, InFile, Type,
     db::{ExpandDatabase, HirDatabase},
-    sym, AssocItem, HirDisplay, HirFileIdExt, ImportPathConfig, InFile, Type,
+    sym,
 };
 use ide_db::{
-    assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
-    source_change::SourceChange, syntax_helpers::tree_diff::diff, text_edit::TextEdit,
-    use_trivial_constructor::use_trivial_constructor, FxHashMap,
+    FxHashMap, assists::Assist, famous_defs::FamousDefs,
+    imports::import_assets::item_for_path_search, source_change::SourceChange,
+    syntax_helpers::tree_diff::diff, text_edit::TextEdit,
+    use_trivial_constructor::use_trivial_constructor,
 };
 use stdx::format_to;
 use syntax::{
-    ast::{self, make},
     AstNode, Edition, SyntaxNode, SyntaxNodePtr, ToSmolStr,
+    ast::{self, make},
 };
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: missing-fields
 //
@@ -83,7 +85,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         Some(vec![fix(
             "fill_missing_fields",
             "Fill struct fields",
-            SourceChange::from_text_edit(range.file_id, edit),
+            SourceChange::from_text_edit(range.file_id.file_id(ctx.sema.db), edit),
             range.range,
         )])
     };
@@ -140,11 +142,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                         )
                     })();
 
-                    if expr.is_some() {
-                        expr
-                    } else {
-                        Some(generate_fill_expr(ty))
-                    }
+                    if expr.is_some() { expr } else { Some(generate_fill_expr(ty)) }
                 };
                 let field = make::record_expr_field(
                     make::name_ref(&f.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr()),
@@ -177,7 +175,7 @@ fn make_ty(
     edition: Edition,
 ) -> ast::Type {
     let ty_str = match ty.as_adt() {
-        Some(adt) => adt.name(db).display(db.upcast(), edition).to_string(),
+        Some(adt) => adt.name(db).display(db, edition).to_string(),
         None => {
             ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_owned())
         }
@@ -209,14 +207,17 @@ fn get_default_constructor(
         }
     }
 
-    let krate = ctx.sema.file_to_module_def(d.file.original_file(ctx.sema.db))?.krate();
+    let krate = ctx
+        .sema
+        .file_to_module_def(d.file.original_file(ctx.sema.db).file_id(ctx.sema.db))?
+        .krate();
     let module = krate.root_module();
 
     // Look for a ::new() associated function
     let has_new_func = ty
         .iterate_assoc_items(ctx.sema.db, krate, |assoc_item| {
             if let AssocItem::Function(func) = assoc_item {
-                if func.name(ctx.sema.db) == sym::new.clone()
+                if func.name(ctx.sema.db) == sym::new
                     && func.assoc_fn_params(ctx.sema.db).is_empty()
                 {
                     return Some(());

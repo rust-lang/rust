@@ -1,9 +1,9 @@
 //! Pretty printing of macros output.
 
-use base_db::CrateId;
+use base_db::Crate;
 use rustc_hash::FxHashMap;
 use syntax::NodeOrToken;
-use syntax::{ast::make, SyntaxNode};
+use syntax::{SyntaxNode, ast::make};
 
 use crate::{db::ExpandDatabase, span_map::ExpansionSpanMap};
 
@@ -13,22 +13,20 @@ pub fn prettify_macro_expansion(
     db: &dyn ExpandDatabase,
     syn: SyntaxNode,
     span_map: &ExpansionSpanMap,
-    target_crate_id: CrateId,
+    target_crate_id: Crate,
 ) -> SyntaxNode {
     // Because `syntax_bridge::prettify_macro_expansion::prettify_macro_expansion()` clones subtree for `syn`,
     // that means it will be offsetted to the beginning.
     let span_offset = syn.text_range().start();
-    let crate_graph = db.crate_graph();
-    let target_crate = &crate_graph[target_crate_id];
+    let target_crate = target_crate_id.data(db);
     let mut syntax_ctx_id_to_dollar_crate_replacement = FxHashMap::default();
     syntax_bridge::prettify_macro_expansion::prettify_macro_expansion(syn, &mut |dollar_crate| {
         let ctx = span_map.span_at(dollar_crate.text_range().start() + span_offset).ctx;
         let replacement =
             syntax_ctx_id_to_dollar_crate_replacement.entry(ctx).or_insert_with(|| {
-                let ctx_data = db.lookup_intern_syntax_context(ctx);
                 let macro_call_id =
-                    ctx_data.outer_expn.expect("`$crate` cannot come from `SyntaxContextId::ROOT`");
-                let macro_call = db.lookup_intern_macro_call(macro_call_id);
+                    ctx.outer_expn(db).expect("`$crate` cannot come from `SyntaxContextId::ROOT`");
+                let macro_call = db.lookup_intern_macro_call(macro_call_id.into());
                 let macro_def_crate = macro_call.def.krate;
                 // First, if this is the same crate as the macro, nothing will work but `crate`.
                 // If not, if the target trait has the macro's crate as a dependency, using the dependency name
@@ -42,7 +40,7 @@ pub fn prettify_macro_expansion(
                     target_crate.dependencies.iter().find(|dep| dep.crate_id == macro_def_crate)
                 {
                     make::tokens::ident(dep.name.as_str())
-                } else if let Some(crate_name) = &crate_graph[macro_def_crate].display_name {
+                } else if let Some(crate_name) = &macro_def_crate.extra_data(db).display_name {
                     make::tokens::ident(crate_name.crate_name().as_str())
                 } else {
                     return dollar_crate.clone();

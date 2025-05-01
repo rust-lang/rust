@@ -1,8 +1,8 @@
 //! Completion of paths and keywords at item list position.
 
 use crate::{
-    context::{ItemListKind, PathCompletionCtx, PathExprCtx, Qualified},
     CompletionContext, Completions,
+    context::{ItemListKind, PathCompletionCtx, PathExprCtx, Qualified},
 };
 
 pub(crate) mod trait_impl;
@@ -114,6 +114,7 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
             add_keyword("trait", "trait $1 {\n    $0\n}");
             if no_vis_qualifiers {
                 add_keyword("impl", "impl $1 {\n    $0\n}");
+                add_keyword("impl for", "impl $1 for $2 {\n    $0\n}");
             }
         }
 
@@ -141,9 +142,10 @@ fn add_keywords(acc: &mut Completions, ctx: &CompletionContext<'_>, kind: Option
         add_keyword("struct", "struct $0");
         add_keyword("trait", "trait $1 {\n    $0\n}");
         add_keyword("union", "union $1 {\n    $0\n}");
-        add_keyword("use", "use $0");
+        add_keyword("use", "use $0;");
         if no_vis_qualifiers {
             add_keyword("impl", "impl $1 {\n    $0\n}");
+            add_keyword("impl for", "impl $1 for $2 {\n    $0\n}");
         }
     }
 

@@ -13,11 +13,13 @@ rust-version.workspace = true
 
 [dependencies]
 cfg-if = "1.0.0"
-libc.workspace = true
-jemalloc-ctl = { version = "0.5.0", package = "tikv-jemalloc-ctl", optional = true }
+jemalloc-ctl = { version = "0.5.4", package = "tikv-jemalloc-ctl", optional = true }
 
 [target.'cfg(all(target_os = "linux", not(target_env = "ohos")))'.dependencies]
 perf-event = "=0.4.7"
+
+[target.'cfg(all(target_os = "linux", target_env = "gnu"))'.dependencies]
+libc.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [

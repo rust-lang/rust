@@ -65,6 +65,12 @@ runners:
     os: codebuild-ubuntu-22-36c-$github.run_id-$github.run_attempt
     <<: *base-job
 
+  - &job-linux-8c-codebuild
+    free_disk: true
+    codebuild: true
+    os: codebuild-ubuntu-22-8c-$github.run_id-$github.run_attempt
+    <<: *base-job
+
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py check compiletest --set build.compiletest-use-stage0-libtest=true && ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
@@ -160,7 +166,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-arm-linux
-    <<: *job-linux-36c-codebuild
+    <<: *job-linux-8c-codebuild
 
   - name: dist-armhf-linux
     <<: *job-linux-4c
@@ -213,7 +219,7 @@ auto:
   - name: dist-x86_64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-linux-16c
+    <<: *job-linux-36c-codebuild
 
   - name: dist-x86_64-linux-alt
     env:

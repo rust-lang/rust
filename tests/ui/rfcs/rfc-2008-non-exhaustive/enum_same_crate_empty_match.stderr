@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/enum_same_crate_empty_match.rs:28:9
+  --> $DIR/enum_same_crate_empty_match.rs:30:9
    |
 LL |         _ => {}
    |         ^------
@@ -9,19 +9,19 @@ LL |         _ => {}
    |
    = note: to learn more about uninhabited types, see https://doc.rust-lang.org/nomicon/exotic-sizes.html#empty-types
 note: the lint level is defined here
-  --> $DIR/enum_same_crate_empty_match.rs:1:9
+  --> $DIR/enum_same_crate_empty_match.rs:3:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error[E0004]: non-exhaustive patterns: `NonExhaustiveEnum::Unit`, `NonExhaustiveEnum::Tuple(_)` and `NonExhaustiveEnum::Struct { .. }` not covered
-  --> $DIR/enum_same_crate_empty_match.rs:33:11
+  --> $DIR/enum_same_crate_empty_match.rs:35:11
    |
 LL |     match NonExhaustiveEnum::Unit {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^ patterns `NonExhaustiveEnum::Unit`, `NonExhaustiveEnum::Tuple(_)` and `NonExhaustiveEnum::Struct { .. }` not covered
    |
 note: `NonExhaustiveEnum` defined here
-  --> $DIR/enum_same_crate_empty_match.rs:4:10
+  --> $DIR/enum_same_crate_empty_match.rs:6:10
    |
 LL | pub enum NonExhaustiveEnum {
    |          ^^^^^^^^^^^^^^^^^
@@ -42,13 +42,13 @@ LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `NormalEnum::Unit`, `NormalEnum::Tuple(_)` and `NormalEnum::Struct { .. }` not covered
-  --> $DIR/enum_same_crate_empty_match.rs:35:11
+  --> $DIR/enum_same_crate_empty_match.rs:37:11
    |
 LL |     match NormalEnum::Unit {}
    |           ^^^^^^^^^^^^^^^^ patterns `NormalEnum::Unit`, `NormalEnum::Tuple(_)` and `NormalEnum::Struct { .. }` not covered
    |
 note: `NormalEnum` defined here
-  --> $DIR/enum_same_crate_empty_match.rs:13:10
+  --> $DIR/enum_same_crate_empty_match.rs:15:10
    |
 LL | pub enum NormalEnum {
    |          ^^^^^^^^^^

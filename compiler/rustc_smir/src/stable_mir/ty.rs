@@ -1026,7 +1026,7 @@ pub enum AliasKind {
     Projection,
     Inherent,
     Opaque,
-    Weak,
+    Free,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

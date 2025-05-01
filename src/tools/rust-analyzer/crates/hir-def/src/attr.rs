@@ -2,31 +2,32 @@
 
 use std::{borrow::Cow, hash::Hash, ops};
 
-use base_db::CrateId;
+use base_db::Crate;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
-    attrs::{collect_attrs, Attr, AttrId, RawAttrs},
     HirFileId, InFile,
+    attrs::{Attr, AttrId, RawAttrs, collect_attrs},
 };
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use la_arena::{ArenaMap, Idx, RawIdx};
 use mbe::DelimiterKind;
+use rustc_abi::ReprOptions;
 use syntax::{
-    ast::{self, HasAttrs},
     AstPtr,
+    ast::{self, HasAttrs},
 };
 use triomphe::Arc;
 use tt::iter::{TtElement, TtIter};
 
 use crate::{
+    AdtId, AttrDefId, GenericParamId, HasModule, ItemTreeLoc, LocalFieldId, Lookup, MacroId,
+    VariantId,
     db::DefDatabase,
     item_tree::{AttrOwner, FieldParent, ItemTreeNode},
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
-    AdtId, AttrDefId, GenericParamId, HasModule, ItemTreeLoc, LocalFieldId, Lookup, MacroId,
-    VariantId,
 };
 
 /// Desugared attributes of an item post `cfg_attr` expansion.
@@ -44,8 +45,8 @@ impl Attrs {
         (**self).iter().find(|attr| attr.id == id)
     }
 
-    pub(crate) fn filter(db: &dyn DefDatabase, krate: CrateId, raw_attrs: RawAttrs) -> Attrs {
-        Attrs(raw_attrs.filter(db.upcast(), krate))
+    pub(crate) fn filter(db: &dyn DefDatabase, krate: Crate, raw_attrs: RawAttrs) -> Attrs {
+        Attrs(raw_attrs.filter(db, krate))
     }
 }
 
@@ -75,8 +76,6 @@ impl Attrs {
         let _p = tracing::info_span!("fields_attrs_query").entered();
         // FIXME: There should be some proper form of mapping between item tree field ids and hir field ids
         let mut res = ArenaMap::default();
-
-        let crate_graph = db.crate_graph();
         let item_tree;
         let (parent, fields, krate) = match v {
             VariantId::EnumVariantId(it) => {
@@ -84,7 +83,7 @@ impl Attrs {
                 let krate = loc.parent.lookup(db).container.krate;
                 item_tree = loc.id.item_tree(db);
                 let variant = &item_tree[loc.id.value];
-                (FieldParent::Variant(loc.id.value), &variant.fields, krate)
+                (FieldParent::EnumVariant(loc.id.value), &variant.fields, krate)
             }
             VariantId::StructId(it) => {
                 let loc = it.lookup(db);
@@ -102,7 +101,7 @@ impl Attrs {
             }
         };
 
-        let cfg_options = &crate_graph[krate].cfg_options;
+        let cfg_options = krate.cfg_options(db);
 
         let mut idx = 0;
         for (id, _field) in fields.iter().enumerate() {
@@ -118,17 +117,20 @@ impl Attrs {
 }
 
 impl Attrs {
-    pub fn by_key<'attrs>(&'attrs self, key: &'attrs Symbol) -> AttrQuery<'attrs> {
+    #[inline]
+    pub fn by_key(&self, key: Symbol) -> AttrQuery<'_> {
         AttrQuery { attrs: self, key }
     }
 
+    #[inline]
     pub fn rust_analyzer_tool(&self) -> impl Iterator<Item = &Attr> {
         self.iter()
             .filter(|&attr| attr.path.segments().first().is_some_and(|s| *s == sym::rust_analyzer))
     }
 
+    #[inline]
     pub fn cfg(&self) -> Option<CfgExpr> {
-        let mut cfgs = self.by_key(&sym::cfg).tt_values().map(CfgExpr::parse);
+        let mut cfgs = self.by_key(sym::cfg).tt_values().map(CfgExpr::parse);
         let first = cfgs.next()?;
         match cfgs.next() {
             Some(second) => {
@@ -139,10 +141,12 @@ impl Attrs {
         }
     }
 
+    #[inline]
     pub fn cfgs(&self) -> impl Iterator<Item = CfgExpr> + '_ {
-        self.by_key(&sym::cfg).tt_values().map(CfgExpr::parse)
+        self.by_key(sym::cfg).tt_values().map(CfgExpr::parse)
     }
 
+    #[inline]
     pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> bool {
         match self.cfg() {
             None => true,
@@ -150,78 +154,225 @@ impl Attrs {
         }
     }
 
+    #[inline]
     pub fn lang(&self) -> Option<&Symbol> {
-        self.by_key(&sym::lang).string_value()
+        self.by_key(sym::lang).string_value()
     }
 
+    #[inline]
     pub fn lang_item(&self) -> Option<LangItem> {
-        self.by_key(&sym::lang).string_value().and_then(LangItem::from_symbol)
+        self.by_key(sym::lang).string_value().and_then(LangItem::from_symbol)
     }
 
+    #[inline]
     pub fn has_doc_hidden(&self) -> bool {
-        self.by_key(&sym::doc).tt_values().any(|tt| {
+        self.by_key(sym::doc).tt_values().any(|tt| {
             tt.top_subtree().delimiter.kind == DelimiterKind::Parenthesis &&
                 matches!(tt.token_trees().flat_tokens(), [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::hidden)
         })
     }
 
+    #[inline]
     pub fn has_doc_notable_trait(&self) -> bool {
-        self.by_key(&sym::doc).tt_values().any(|tt| {
+        self.by_key(sym::doc).tt_values().any(|tt| {
             tt.top_subtree().delimiter.kind == DelimiterKind::Parenthesis &&
                 matches!(tt.token_trees().flat_tokens(), [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.sym == sym::notable_trait)
         })
     }
 
+    #[inline]
     pub fn doc_exprs(&self) -> impl Iterator<Item = DocExpr> + '_ {
-        self.by_key(&sym::doc).tt_values().map(DocExpr::parse)
+        self.by_key(sym::doc).tt_values().map(DocExpr::parse)
     }
 
+    #[inline]
     pub fn doc_aliases(&self) -> impl Iterator<Item = Symbol> + '_ {
         self.doc_exprs().flat_map(|doc_expr| doc_expr.aliases().to_vec())
     }
 
+    #[inline]
     pub fn export_name(&self) -> Option<&Symbol> {
-        self.by_key(&sym::export_name).string_value()
+        self.by_key(sym::export_name).string_value()
     }
 
+    #[inline]
     pub fn is_proc_macro(&self) -> bool {
-        self.by_key(&sym::proc_macro).exists()
+        self.by_key(sym::proc_macro).exists()
     }
 
+    #[inline]
     pub fn is_proc_macro_attribute(&self) -> bool {
-        self.by_key(&sym::proc_macro_attribute).exists()
+        self.by_key(sym::proc_macro_attribute).exists()
     }
 
+    #[inline]
     pub fn is_proc_macro_derive(&self) -> bool {
-        self.by_key(&sym::proc_macro_derive).exists()
+        self.by_key(sym::proc_macro_derive).exists()
     }
 
+    #[inline]
     pub fn is_test(&self) -> bool {
         self.iter().any(|it| {
             it.path()
                 .segments()
                 .iter()
                 .rev()
-                .zip(
-                    [sym::core.clone(), sym::prelude.clone(), sym::v1.clone(), sym::test.clone()]
-                        .iter()
-                        .rev(),
-                )
+                .zip([sym::core, sym::prelude, sym::v1, sym::test].iter().rev())
                 .all(|it| it.0 == it.1)
         })
     }
 
+    #[inline]
     pub fn is_ignore(&self) -> bool {
-        self.by_key(&sym::ignore).exists()
+        self.by_key(sym::ignore).exists()
     }
 
+    #[inline]
     pub fn is_bench(&self) -> bool {
-        self.by_key(&sym::bench).exists()
+        self.by_key(sym::bench).exists()
     }
 
+    #[inline]
     pub fn is_unstable(&self) -> bool {
-        self.by_key(&sym::unstable).exists()
+        self.by_key(sym::unstable).exists()
     }
+
+    #[inline]
+    pub fn rustc_legacy_const_generics(&self) -> Option<Box<Box<[u32]>>> {
+        self.by_key(sym::rustc_legacy_const_generics)
+            .tt_values()
+            .next()
+            .map(parse_rustc_legacy_const_generics)
+            .filter(|it| !it.is_empty())
+            .map(Box::new)
+    }
+
+    #[inline]
+    pub fn repr(&self) -> Option<ReprOptions> {
+        self.by_key(sym::repr).tt_values().filter_map(parse_repr_tt).fold(None, |acc, repr| {
+            acc.map_or(Some(repr), |mut acc| {
+                merge_repr(&mut acc, repr);
+                Some(acc)
+            })
+        })
+    }
+}
+
+fn parse_rustc_legacy_const_generics(tt: &crate::tt::TopSubtree) -> Box<[u32]> {
+    let mut indices = Vec::new();
+    let mut iter = tt.iter();
+    while let (Some(first), second) = (iter.next(), iter.next()) {
+        match first {
+            TtElement::Leaf(tt::Leaf::Literal(lit)) => match lit.symbol.as_str().parse() {
+                Ok(index) => indices.push(index),
+                Err(_) => break,
+            },
+            _ => break,
+        }
+
+        if let Some(comma) = second {
+            match comma {
+                TtElement::Leaf(tt::Leaf::Punct(punct)) if punct.char == ',' => {}
+                _ => break,
+            }
+        }
+    }
+
+    indices.into_boxed_slice()
+}
+
+fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
+    let ReprOptions { int, align, pack, flags, field_shuffle_seed: _ } = this;
+    flags.insert(other.flags);
+    *align = (*align).max(other.align);
+    *pack = match (*pack, other.pack) {
+        (Some(pack), None) | (None, Some(pack)) => Some(pack),
+        _ => (*pack).min(other.pack),
+    };
+    if other.int.is_some() {
+        *int = other.int;
+    }
+}
+
+fn parse_repr_tt(tt: &crate::tt::TopSubtree) -> Option<ReprOptions> {
+    use crate::builtin_type::{BuiltinInt, BuiltinUint};
+    use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
+
+    match tt.top_subtree().delimiter {
+        tt::Delimiter { kind: DelimiterKind::Parenthesis, .. } => {}
+        _ => return None,
+    }
+
+    let mut acc = ReprOptions::default();
+    let mut tts = tt.iter();
+    while let Some(tt) = tts.next() {
+        let TtElement::Leaf(tt::Leaf::Ident(ident)) = tt else {
+            continue;
+        };
+        let repr = match &ident.sym {
+            s if *s == sym::packed => {
+                let pack = if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
+                    tts.next();
+                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
+                        lit.symbol.as_str().parse().unwrap_or_default()
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                };
+                let pack = Some(Align::from_bytes(pack).unwrap_or(Align::ONE));
+                ReprOptions { pack, ..Default::default() }
+            }
+            s if *s == sym::align => {
+                let mut align = None;
+                if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
+                    tts.next();
+                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
+                        if let Ok(a) = lit.symbol.as_str().parse() {
+                            align = Align::from_bytes(a).ok();
+                        }
+                    }
+                }
+                ReprOptions { align, ..Default::default() }
+            }
+            s if *s == sym::C => ReprOptions { flags: ReprFlags::IS_C, ..Default::default() },
+            s if *s == sym::transparent => {
+                ReprOptions { flags: ReprFlags::IS_TRANSPARENT, ..Default::default() }
+            }
+            s if *s == sym::simd => ReprOptions { flags: ReprFlags::IS_SIMD, ..Default::default() },
+            repr => {
+                let mut int = None;
+                if let Some(builtin) = BuiltinInt::from_suffix_sym(repr)
+                    .map(Either::Left)
+                    .or_else(|| BuiltinUint::from_suffix_sym(repr).map(Either::Right))
+                {
+                    int = Some(match builtin {
+                        Either::Left(bi) => match bi {
+                            BuiltinInt::Isize => IntegerType::Pointer(true),
+                            BuiltinInt::I8 => IntegerType::Fixed(Integer::I8, true),
+                            BuiltinInt::I16 => IntegerType::Fixed(Integer::I16, true),
+                            BuiltinInt::I32 => IntegerType::Fixed(Integer::I32, true),
+                            BuiltinInt::I64 => IntegerType::Fixed(Integer::I64, true),
+                            BuiltinInt::I128 => IntegerType::Fixed(Integer::I128, true),
+                        },
+                        Either::Right(bu) => match bu {
+                            BuiltinUint::Usize => IntegerType::Pointer(false),
+                            BuiltinUint::U8 => IntegerType::Fixed(Integer::I8, false),
+                            BuiltinUint::U16 => IntegerType::Fixed(Integer::I16, false),
+                            BuiltinUint::U32 => IntegerType::Fixed(Integer::I32, false),
+                            BuiltinUint::U64 => IntegerType::Fixed(Integer::I64, false),
+                            BuiltinUint::U128 => IntegerType::Fixed(Integer::I128, false),
+                        },
+                    });
+                }
+                ReprOptions { int, ..Default::default() }
+            }
+        };
+        merge_repr(&mut acc, repr);
+    }
+
+    Some(acc)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -373,7 +524,7 @@ impl AttrsWithOwner {
                     // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::from_attrs_owner(
-                            db.upcast(),
+                            db,
                             src.with_value(val),
                             db.span_map(src.file_id).as_ref(),
                         ),
@@ -385,7 +536,7 @@ impl AttrsWithOwner {
                     // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id()) {
                         Some(val) => RawAttrs::from_attrs_owner(
-                            db.upcast(),
+                            db,
                             src.with_value(val),
                             db.span_map(src.file_id).as_ref(),
                         ),
@@ -397,7 +548,7 @@ impl AttrsWithOwner {
                     // FIXME: We should be never getting `None` here.
                     match src.value.get(it.local_id) {
                         Some(val) => RawAttrs::from_attrs_owner(
-                            db.upcast(),
+                            db,
                             src.with_value(val),
                             db.span_map(src.file_id).as_ref(),
                         ),
@@ -410,7 +561,7 @@ impl AttrsWithOwner {
             AttrDefId::UseId(it) => attrs_from_item_tree_loc(db, it),
         };
 
-        let attrs = raw_attrs.filter(db.upcast(), def.krate(db));
+        let attrs = raw_attrs.filter(db, def.krate(db));
         Attrs(attrs)
     }
 
@@ -547,36 +698,42 @@ impl AttrSourceMap {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct AttrQuery<'attr> {
     attrs: &'attr Attrs,
-    key: &'attr Symbol,
+    key: Symbol,
 }
 
 impl<'attr> AttrQuery<'attr> {
+    #[inline]
     pub fn tt_values(self) -> impl Iterator<Item = &'attr crate::tt::TopSubtree> {
         self.attrs().filter_map(|attr| attr.token_tree_value())
     }
 
+    #[inline]
     pub fn string_value(self) -> Option<&'attr Symbol> {
         self.attrs().find_map(|attr| attr.string_value())
     }
 
+    #[inline]
     pub fn string_value_with_span(self) -> Option<(&'attr Symbol, span::Span)> {
         self.attrs().find_map(|attr| attr.string_value_with_span())
     }
 
+    #[inline]
     pub fn string_value_unescape(self) -> Option<Cow<'attr, str>> {
         self.attrs().find_map(|attr| attr.string_value_unescape())
     }
 
+    #[inline]
     pub fn exists(self) -> bool {
         self.attrs().next().is_some()
     }
 
+    #[inline]
     pub fn attrs(self) -> impl Iterator<Item = &'attr Attr> + Clone {
         let key = self.key;
-        self.attrs.iter().filter(move |attr| attr.path.as_ident().is_some_and(|s| *s == *key))
+        self.attrs.iter().filter(move |attr| attr.path.as_ident().is_some_and(|s| *s == key))
     }
 
     /// Find string value for a specific key inside token tree
@@ -585,10 +742,11 @@ impl<'attr> AttrQuery<'attr> {
     /// #[doc(html_root_url = "url")]
     ///       ^^^^^^^^^^^^^ key
     /// ```
-    pub fn find_string_value_in_tt(self, key: &'attr Symbol) -> Option<&'attr str> {
+    #[inline]
+    pub fn find_string_value_in_tt(self, key: Symbol) -> Option<&'attr str> {
         self.tt_values().find_map(|tt| {
             let name = tt.iter()
-                .skip_while(|tt| !matches!(tt, TtElement::Leaf(tt::Leaf::Ident(tt::Ident { sym, ..} )) if *sym == *key))
+                .skip_while(|tt| !matches!(tt, TtElement::Leaf(tt::Leaf::Ident(tt::Ident { sym, ..} )) if *sym == key))
                 .nth(2);
 
             match name {
@@ -601,17 +759,14 @@ impl<'attr> AttrQuery<'attr> {
 
 fn any_has_attrs<'db>(
     db: &(dyn DefDatabase + 'db),
-    id: impl Lookup<
-        Database<'db> = dyn DefDatabase + 'db,
-        Data = impl HasSource<Value = impl ast::HasAttrs>,
-    >,
+    id: impl Lookup<Database = dyn DefDatabase, Data = impl HasSource<Value = impl ast::HasAttrs>>,
 ) -> InFile<ast::AnyHasAttrs> {
     id.lookup(db).source(db).map(ast::AnyHasAttrs::new)
 }
 
 fn attrs_from_item_tree_loc<'db, N: ItemTreeNode>(
     db: &(dyn DefDatabase + 'db),
-    lookup: impl Lookup<Database<'db> = dyn DefDatabase + 'db, Data = impl ItemTreeLoc<Id = N>>,
+    lookup: impl Lookup<Database = dyn DefDatabase, Data = impl ItemTreeLoc<Id = N>>,
 ) -> RawAttrs {
     let id = lookup.lookup(db).item_tree_id();
     let tree = id.item_tree(db);
@@ -649,8 +804,8 @@ mod tests {
 
     use hir_expand::span_map::{RealSpanMap, SpanMap};
     use span::FileId;
-    use syntax::{ast, AstNode, TextRange};
-    use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
+    use syntax::{AstNode, TextRange, ast};
+    use syntax_bridge::{DocCommentDesugarMode, syntax_node_to_token_tree};
 
     use crate::attr::{DocAtom, DocExpr};
 

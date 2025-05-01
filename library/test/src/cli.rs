@@ -61,7 +61,7 @@ fn optgroups() -> getopts::Options {
         .optopt("", "logfile", "Write logs to the specified file (deprecated)", "PATH")
         .optflag(
             "",
-            "nocapture",
+            "no-capture",
             "don't capture stdout/stderr of each \
              task, allow printing directly",
         )
@@ -172,7 +172,7 @@ tests in the same order again. Note that --shuffle and --shuffle-seed do not
 affect whether the tests are run in parallel.
 
 All tests have their standard output and standard error captured by default.
-This can be overridden with the --nocapture flag or setting RUST_TEST_NOCAPTURE
+This can be overridden with the --no-capture flag or setting RUST_TEST_NOCAPTURE
 environment variable to a value other than "0". Logging is not captured by default.
 
 Test Attributes:
@@ -199,7 +199,10 @@ Test Attributes:
 /// otherwise creates a `TestOpts` object and returns it.
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Parse matches.
-    let opts = optgroups();
+    let mut opts = optgroups();
+    // Flags hidden from `usage`
+    opts.optflag("", "nocapture", "Deprecated, use `--no-capture`");
+
     let binary = args.first().map(|c| &**c).unwrap_or("...");
     let args = args.get(1..).unwrap_or(args);
     let matches = match opts.parse(args) {
@@ -210,7 +213,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Check if help was requested.
     if matches.opt_present("h") {
         // Show help and do nothing more.
-        usage(binary, &opts);
+        usage(binary, &optgroups());
         return None;
     }
 
@@ -447,7 +450,7 @@ fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
 }
 
 fn get_nocapture(matches: &getopts::Matches) -> OptPartRes<bool> {
-    let mut nocapture = matches.opt_present("nocapture");
+    let mut nocapture = matches.opt_present("nocapture") || matches.opt_present("no-capture");
     if !nocapture {
         nocapture = match env::var("RUST_TEST_NOCAPTURE") {
             Ok(val) => &val != "0",

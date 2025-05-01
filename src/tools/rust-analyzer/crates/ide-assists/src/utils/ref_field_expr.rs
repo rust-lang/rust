@@ -4,8 +4,8 @@
 //! It determines whether to deref the new expression and/or wrap it in parentheses,
 //! based on the parent of the existing expression.
 use syntax::{
-    ast::{self, make, FieldExpr, MethodCallExpr},
     AstNode, T,
+    ast::{self, FieldExpr, MethodCallExpr, make},
 };
 
 use crate::AssistContext;
@@ -125,7 +125,7 @@ impl RefData {
         }
 
         if self.needs_parentheses {
-            expr = make::expr_paren(expr);
+            expr = make::expr_paren(expr).into();
         }
 
         expr

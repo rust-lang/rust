@@ -53,11 +53,7 @@ impl<T> Delta<T> {
     where
         T: Ord + Sub<Output = T>,
     {
-        if to >= from {
-            Delta::Add(to - from)
-        } else {
-            Delta::Sub(from - to)
-        }
+        if to >= from { Delta::Add(to - from) } else { Delta::Sub(from - to) }
     }
 }
 

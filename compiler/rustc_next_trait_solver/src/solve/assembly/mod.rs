@@ -256,11 +256,6 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
-    fn consider_builtin_async_destruct_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
     fn consider_builtin_destruct_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -477,9 +472,6 @@ where
                 Some(TraitSolverLangItem::DiscriminantKind) => {
                     G::consider_builtin_discriminant_kind_candidate(self, goal)
                 }
-                Some(TraitSolverLangItem::AsyncDestruct) => {
-                    G::consider_builtin_async_destruct_candidate(self, goal)
-                }
                 Some(TraitSolverLangItem::Destruct) => {
                     G::consider_builtin_destruct_candidate(self, goal)
                 }
@@ -596,7 +588,7 @@ where
             }
 
             ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) => (kind, alias_ty),
-            ty::Alias(ty::Inherent | ty::Weak, _) => {
+            ty::Alias(ty::Inherent | ty::Free, _) => {
                 self.cx().delay_bug(format!("could not normalize {self_ty:?}, it is not WF"));
                 return;
             }

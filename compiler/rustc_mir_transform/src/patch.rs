@@ -148,6 +148,23 @@ impl<'tcx> MirPatch<'tcx> {
         self.term_patch_map[bb].is_some()
     }
 
+    /// Universal getter for block data, either it is in 'old' blocks or in patched ones
+    pub(crate) fn block<'a>(
+        &'a self,
+        body: &'a Body<'tcx>,
+        bb: BasicBlock,
+    ) -> &'a BasicBlockData<'tcx> {
+        match bb.index().checked_sub(body.basic_blocks.len()) {
+            Some(new) => &self.new_blocks[new],
+            None => &body[bb],
+        }
+    }
+
+    pub(crate) fn terminator_loc(&self, body: &Body<'tcx>, bb: BasicBlock) -> Location {
+        let offset = self.block(body, bb).statements.len();
+        Location { block: bb, statement_index: offset }
+    }
+
     /// Queues the addition of a new temporary with additional local info.
     pub(crate) fn new_local_with_info(
         &mut self,
@@ -276,10 +293,7 @@ impl<'tcx> MirPatch<'tcx> {
     }
 
     pub(crate) fn source_info_for_location(&self, body: &Body<'tcx>, loc: Location) -> SourceInfo {
-        let data = match loc.block.index().checked_sub(body.basic_blocks.len()) {
-            Some(new) => &self.new_blocks[new],
-            None => &body[loc.block],
-        };
+        let data = self.block(body, loc.block);
         Self::source_info_for_index(data, loc)
     }
 }

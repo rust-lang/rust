@@ -1,14 +1,14 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
-    ast::{self, make, syntax_factory::SyntaxFactory, HasArgList, HasGenericArgs},
-    syntax_editor::Position,
     AstNode,
+    ast::{self, HasArgList, HasGenericArgs, make, syntax_factory::SyntaxFactory},
+    syntax_editor::Position,
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    AssistId, AssistKind,
 };
 
 // Assist: add_turbo_fish
@@ -71,7 +71,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let def = match NameRefClass::classify(&ctx.sema, &name_ref)? {
         NameRefClass::Definition(def, _) => def,
         NameRefClass::FieldShorthand { .. } | NameRefClass::ExternCrateShorthand { .. } => {
-            return None
+            return None;
         }
     };
     let fun = match def {
@@ -89,7 +89,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             let_stmt.pat()?;
 
             acc.add(
-                AssistId("add_type_ascription", AssistKind::RefactorRewrite),
+                AssistId::refactor_rewrite("add_type_ascription"),
                 "Add `: _` before assignment operator",
                 ident.text_range(),
                 |builder| {
@@ -119,7 +119,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                         }
                     }
 
-                    builder.add_file_edits(ctx.file_id(), editor);
+                    builder.add_file_edits(ctx.vfs_file_id(), editor);
                 },
             )?
         } else {
@@ -135,13 +135,13 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         .count();
 
     acc.add(
-        AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("add_turbo_fish"),
         "Add `::<>`",
         ident.text_range(),
         |builder| {
             builder.trigger_parameter_hints();
 
-            let make = SyntaxFactory::new();
+            let make = SyntaxFactory::with_mappings();
             let mut editor = match &turbofish_target {
                 Either::Left(it) => builder.make_editor(it.syntax()),
                 Either::Right(it) => builder.make_editor(it.syntax()),
@@ -181,7 +181,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             }
 
             editor.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

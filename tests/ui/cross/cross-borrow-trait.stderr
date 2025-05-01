@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/cross-borrow-trait.rs:10:26
+  --> $DIR/cross-borrow-trait.rs:12:26
    |
 LL |     let _y: &dyn Trait = x;
    |             ----------   ^ expected `&dyn Trait`, found `Box<dyn Trait>`

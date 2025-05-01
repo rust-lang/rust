@@ -475,6 +475,21 @@ impl<'tcx> TypeckResults<'tcx> {
         has_ref_mut
     }
 
+    /// How should a deref pattern find the place for its inner pattern to match on?
+    ///
+    /// In most cases, if the pattern recursively contains a `ref mut` binding, we find the inner
+    /// pattern's scrutinee by calling `DerefMut::deref_mut`, and otherwise we call `Deref::deref`.
+    /// However, for boxes we can use a built-in deref instead, which doesn't borrow the scrutinee;
+    /// in this case, we return `ByRef::No`.
+    pub fn deref_pat_borrow_mode(&self, pointer_ty: Ty<'_>, inner: &hir::Pat<'_>) -> ByRef {
+        if pointer_ty.is_box() {
+            ByRef::No
+        } else {
+            let mutable = self.pat_has_ref_mut_binding(inner);
+            ByRef::Yes(if mutable { Mutability::Mut } else { Mutability::Not })
+        }
+    }
+
     /// For a given closure, returns the iterator of `ty::CapturedPlace`s that are captured
     /// by the closure.
     pub fn closure_min_captures_flattened(
@@ -701,6 +716,8 @@ pub type CanonicalUserTypeAnnotations<'tcx> =
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub user_ty: Box<CanonicalUserType<'tcx>>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,

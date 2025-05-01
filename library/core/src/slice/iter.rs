@@ -2335,7 +2335,6 @@ pub struct ArrayChunks<'a, T: 'a, const N: usize> {
 
 impl<'a, T, const N: usize> ArrayChunks<'a, T, N> {
     #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
-    // #[rustc_const_unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     pub(super) const fn new(slice: &'a [T]) -> Self {
         let (array_slice, rem) = slice.as_chunks();
