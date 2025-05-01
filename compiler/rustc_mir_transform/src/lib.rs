@@ -851,7 +851,10 @@ pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &
     vis.visit_body(&body);
 
     // MIR for monomorphic defs has already been fully optimized in optimized_mir.
-    let body = if instance.args.non_erasable_generics().next().is_some() || vis.contains_ubcheck {
+    let body = if instance.args.non_erasable_generics().next().is_some()
+        || vis.contains_ubcheck
+        || vis.contains_alias
+    {
         let mut body = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             ty::TypingEnv::fully_monomorphized(),
