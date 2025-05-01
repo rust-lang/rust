@@ -5,6 +5,8 @@
 //@ compile-flags:-Zsanitizer=address
 //@ aux-build: asan_odr_win-2.rs
 //@ only-windows-msvc
+//@ needs-sanitizer-support
+//@ needs-sanitizer-address
 
 extern crate othercrate;
 

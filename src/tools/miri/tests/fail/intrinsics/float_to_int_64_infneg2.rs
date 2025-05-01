@@ -1,8 +1,6 @@
-#![feature(intrinsics)]
-
+#![feature(core_intrinsics)]
 // Directly call intrinsic to avoid debug assertions in libstd
-#[rustc_intrinsic]
-unsafe fn float_to_int_unchecked<Float: Copy, Int: Copy>(value: Float) -> Int;
+use std::intrinsics::float_to_int_unchecked;
 
 fn main() {
     unsafe {

@@ -1,5 +1,5 @@
 error[E0308]: method not compatible with trait
-  --> $DIR/issue-37884.rs:6:5
+  --> $DIR/issue-37884.rs:8:5
    |
 LL |     fn next(&'a mut self) -> Option<Self::Item>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
@@ -9,7 +9,7 @@ LL |     fn next(&'a mut self) -> Option<Self::Item>
 note: the anonymous lifetime as defined here...
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 note: ...does not necessarily outlive the lifetime `'a` as defined here
-  --> $DIR/issue-37884.rs:3:6
+  --> $DIR/issue-37884.rs:5:6
    |
 LL | impl<'a, T: 'a> Iterator for RepeatMut<'a, T> {
    |      ^^

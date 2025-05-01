@@ -5,10 +5,9 @@ use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::ty::print::{FmtPrinter, Print};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, Upcast};
 use rustc_session::Limit;
 use rustc_span::Span;
-use rustc_type_ir::Upcast;
 use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;

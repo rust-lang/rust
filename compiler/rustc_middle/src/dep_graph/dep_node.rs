@@ -13,8 +13,11 @@ use crate::ty::TyCtxt;
 
 macro_rules! define_dep_nodes {
     (
-     $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $variant:ident($($K:tt)*) -> $V:ty,)*) => {
+        $(
+            $(#[$attr:meta])*
+            [$($modifiers:tt)*] fn $variant:ident($($K:tt)*) -> $V:ty,
+        )*
+    ) => {
 
         #[macro_export]
         macro_rules! make_dep_kind_array {
@@ -83,7 +86,9 @@ macro_rules! define_dep_nodes {
     };
 }
 
-rustc_query_append!(define_dep_nodes![
+// Create various data structures for each query, and also for a few things
+// that aren't queries.
+rustc_with_all_queries!(define_dep_nodes![
     /// We use this for most things when incr. comp. is turned off.
     [] fn Null() -> (),
     /// We use this to create a forever-red node.

@@ -1,8 +1,9 @@
 enum Enum<T: Trait> {
-    //~^ ERROR: `T` is never used
+    //~^ ERROR `T` is never used
+    //~| NOTE unused type parameter
     X = Trait::Number,
     //~^ ERROR mismatched types
-    //~| expected `isize`, found `i32`
+    //~| NOTE expected `isize`, found `i32`
 }
 
 trait Trait {

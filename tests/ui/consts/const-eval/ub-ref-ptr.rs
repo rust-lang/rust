@@ -2,6 +2,8 @@
 // Strip out raw byte dumps to make comparison platform-independent:
 //@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 //@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ dont-require-annotations: NOTE
+
 #![allow(invalid_value)]
 
 use std::mem;
@@ -14,11 +16,11 @@ union MaybeUninit<T: Copy> {
 
 const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
-//~| constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
+//~| NOTE constructing invalid value: encountered an unaligned reference (required 2 byte alignment but found 1)
 
 const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
 //~^ ERROR it is undefined behavior to use this value
-//~| constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
+//~| NOTE constructing invalid value: encountered an unaligned box (required 2 byte alignment but found 1)
 
 const NULL: &u16 = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
@@ -47,13 +49,13 @@ const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
 
 const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
-//~| uninitialized
+//~| NOTE uninitialized
 
 const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR evaluation of constant value failed
-//~| uninitialized
+//~| NOTE uninitialized
 const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
 //~^ ERROR it is undefined behavior to use this value
 const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };

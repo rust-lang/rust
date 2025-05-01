@@ -35,6 +35,9 @@ fn main() {
     //~^^ ERROR `Foo` is named the same as one of the variants of the type `foo::Foo`
     //~^^^ WARN unused variable: `Foo`
 
+    let _: fn(CamelCase: i32);
+    //~^ ERROR variable `CamelCase` should have a snake case name
+
     test(1);
 
     let _ = Something { X: 0 };

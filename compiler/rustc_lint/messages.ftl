@@ -360,6 +360,10 @@ lint_impl_trait_overcaptures = `{$self_ty}` will capture more lifetimes than pos
 lint_impl_trait_redundant_captures = all possible in-scope parameters are already captured, so `use<...>` syntax is redundant
     .suggestion = remove the `use<...>` syntax
 
+lint_implicit_unsafe_autorefs = implicit autoref creates a reference to the dereference of a raw pointer
+    .note = creating a reference requires the pointer target to be valid and imposes aliasing requirements
+    .suggestion = try using a raw pointer method instead; or if this reference is intentional, make it explicit
+
 lint_improper_ctypes = `extern` {$desc} uses type `{$ty}`, which is not FFI-safe
     .label = not FFI-safe
     .note = the type is defined here
@@ -757,7 +761,7 @@ lint_single_use_lifetime = lifetime parameter `{$ident}` only used once
 
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
-lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static is discouraged
+lint_static_mut_refs_lint = creating a {$shared_label}reference to mutable static
     .label = {$shared_label}reference to mutable static
     .suggestion = use `&raw const` instead to create a raw pointer
     .suggestion_mut = use `&raw mut` instead to create a raw pointer

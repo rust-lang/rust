@@ -21,6 +21,7 @@ use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
+use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -136,6 +137,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type AllocId = crate::mir::interpret::AllocId;
     type Pat = Pattern<'tcx>;
+    type PatList = &'tcx List<Pattern<'tcx>>;
     type Safety = hir::Safety;
     type Abi = ExternAbi;
     type Const = ty::Const<'tcx>;
@@ -226,7 +228,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 }
             }
             DefKind::OpaqueTy => ty::Opaque,
-            DefKind::TyAlias => ty::Weak,
+            DefKind::TyAlias => ty::Free,
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
         }
     }
@@ -242,7 +244,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                 }
             }
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
-            DefKind::TyAlias => ty::AliasTermKind::WeakTy,
+            DefKind::TyAlias => ty::AliasTermKind::FreeTy,
             DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
             DefKind::AnonConst | DefKind::Const | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasTermKind::UnevaluatedConst
@@ -717,7 +719,6 @@ macro_rules! bidirectional_lang_item_map {
 
 bidirectional_lang_item_map! {
 // tidy-alphabetical-start
-    AsyncDestruct,
     AsyncFn,
     AsyncFnKindHelper,
     AsyncFnKindUpvars,
@@ -843,6 +844,7 @@ pub struct CtxtInterners<'tcx> {
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     offset_of: InternedSet<'tcx, List<(VariantIdx, FieldIdx)>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<'tcx>>,
+    patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -879,6 +881,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             captures: InternedSet::with_capacity(N),
             offset_of: InternedSet::with_capacity(N),
             valtree: InternedSet::with_capacity(N),
+            patterns: InternedSet::with_capacity(N),
         }
     }
 
@@ -1439,6 +1442,9 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
     current_gcx: CurrentGcx,
+
+    /// A jobserver reference used to release then acquire a token while waiting on a query.
+    pub jobserver_proxy: Arc<Proxy>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -1643,6 +1649,7 @@ impl<'tcx> TyCtxt<'tcx> {
         query_system: QuerySystem<'tcx>,
         hooks: crate::hooks::Providers,
         current_gcx: CurrentGcx,
+        jobserver_proxy: Arc<Proxy>,
         f: impl FnOnce(TyCtxt<'tcx>) -> T,
     ) -> T {
         let data_layout = s.target.parse_data_layout().unwrap_or_else(|err| {
@@ -1677,6 +1684,7 @@ impl<'tcx> TyCtxt<'tcx> {
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
+            jobserver_proxy,
         });
 
         // This is a separate function to work around a crash with parallel rustc (#135870)
@@ -1713,6 +1721,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_coroutine(self, def_id: DefId) -> bool {
         self.coroutine_kind(def_id).is_some()
+    }
+
+    pub fn is_async_drop_in_place_coroutine(self, def_id: DefId) -> bool {
+        self.is_lang_item(self.parent(def_id), LangItem::AsyncDropInPlace)
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics
@@ -2659,6 +2671,7 @@ slice_interners!(
     local_def_ids: intern_local_def_ids(LocalDefId),
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     offset_of: pub mk_offset_of((VariantIdx, FieldIdx)),
+    patterns: pub mk_patterns(Pattern<'tcx>),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -2930,6 +2943,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // re-interning permutations, in which case that would be asserted
         // here.
         self.intern_local_def_ids(def_ids)
+    }
+
+    pub fn mk_patterns_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: CollectAndApply<ty::Pattern<'tcx>, &'tcx List<ty::Pattern<'tcx>>>,
+    {
+        T::collect_and_apply(iter, |xs| self.mk_patterns(xs))
     }
 
     pub fn mk_local_def_ids_from_iter<I, T>(self, iter: I) -> T::Output

@@ -40,7 +40,6 @@ use tracing::{debug, instrument, trace};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
-use crate::TupleArgumentsFlag::DontTupleArguments;
 use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
@@ -51,8 +50,8 @@ use crate::errors::{
     YieldExprOutsideOfCoroutine,
 };
 use crate::{
-    BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, cast, fatally_break_rust,
-    report_unexpected_variant_res, type_error_struct,
+    BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, TupleArgumentsFlag, cast,
+    fatally_break_rust, report_unexpected_variant_res, type_error_struct,
 };
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1591,28 +1590,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // no need to check for bot/err -- callee does that
         let rcvr_t = self.structurally_resolve_type(rcvr.span, rcvr_t);
 
-        let method = match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args)
-        {
+        match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args) {
             Ok(method) => {
-                // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
-                // trigger this codepath causing `structurally_resolve_type` to emit an error.
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
-                Ok(method)
+
+                self.check_argument_types(
+                    segment.ident.span,
+                    expr,
+                    &method.sig.inputs()[1..],
+                    method.sig.output(),
+                    expected,
+                    args,
+                    method.sig.c_variadic,
+                    TupleArgumentsFlag::DontTupleArguments,
+                    Some(method.def_id),
+                );
+
+                method.sig.output()
             }
             Err(error) => {
-                Err(self.report_method_error(expr.hir_id, rcvr_t, error, expected, false))
-            }
-        };
+                let guar = self.report_method_error(expr.hir_id, rcvr_t, error, expected, false);
 
-        // Call the generic checker.
-        self.check_method_argument_types(
-            segment.ident.span,
-            expr,
-            method,
-            args,
-            DontTupleArguments,
-            expected,
-        )
+                let err_inputs = self.err_args(args.len(), guar);
+                let err_output = Ty::new_error(self.tcx, guar);
+
+                self.check_argument_types(
+                    segment.ident.span,
+                    expr,
+                    &err_inputs,
+                    err_output,
+                    NoExpectation,
+                    args,
+                    false,
+                    TupleArgumentsFlag::DontTupleArguments,
+                    None,
+                );
+
+                err_output
+            }
+        }
     }
 
     /// Checks use `x.use`.

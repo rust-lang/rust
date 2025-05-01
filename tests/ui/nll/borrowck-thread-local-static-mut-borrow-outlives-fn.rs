@@ -15,7 +15,7 @@ struct S1 {
 impl S1 {
     fn new(_x: u64) -> S1 {
         S1 { a: unsafe { &mut X1 } }
-        //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
+        //~^ WARN mutable reference to mutable static [static_mut_refs]
     }
 }
 

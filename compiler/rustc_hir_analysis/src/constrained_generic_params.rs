@@ -49,7 +49,7 @@ pub(crate) fn parameters_for<'tcx>(
     include_nonconstraining: bool,
 ) -> Vec<Parameter> {
     let mut collector = ParameterCollector { parameters: vec![], include_nonconstraining };
-    let value = if !include_nonconstraining { tcx.expand_weak_alias_tys(value) } else { value };
+    let value = if !include_nonconstraining { tcx.expand_free_alias_tys(value) } else { value };
     value.visit_with(&mut collector);
     collector.parameters
 }
@@ -68,9 +68,9 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
             {
                 return;
             }
-            // All weak alias types should've been expanded beforehand.
-            ty::Alias(ty::Weak, _) if !self.include_nonconstraining => {
-                bug!("unexpected weak alias type")
+            // All free alias types should've been expanded beforehand.
+            ty::Alias(ty::Free, _) if !self.include_nonconstraining => {
+                bug!("unexpected free alias type")
             }
             ty::Param(param) => self.parameters.push(Parameter::from(param)),
             _ => {}

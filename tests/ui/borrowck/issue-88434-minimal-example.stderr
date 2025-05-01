@@ -1,17 +1,17 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-88434-minimal-example.rs:3:22
+  --> $DIR/issue-88434-minimal-example.rs:5:22
    |
 LL | const _CONST: &() = &f(&|_| {});
    |                      ^^^^^^^^^^ evaluation panicked: explicit panic
    |
-note: inside `f::<{closure@$DIR/issue-88434-minimal-example.rs:3:25: 3:28}>`
-  --> $DIR/issue-88434-minimal-example.rs:10:5
+note: inside `f::<{closure@$DIR/issue-88434-minimal-example.rs:5:25: 5:28}>`
+  --> $DIR/issue-88434-minimal-example.rs:12:5
    |
 LL |     panic!()
    |     ^^^^^^^^ the failure occurred here
 
 note: erroneous constant encountered
-  --> $DIR/issue-88434-minimal-example.rs:3:21
+  --> $DIR/issue-88434-minimal-example.rs:5:21
    |
 LL | const _CONST: &() = &f(&|_| {});
    |                     ^^^^^^^^^^^

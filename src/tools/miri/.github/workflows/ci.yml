@@ -89,14 +89,52 @@ jobs:
             # Check if all jobs that we depend on (in the needs array) were successful.
             jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
 
-  cron-fail-notify:
-    name: cronjob failure notification
+  cron-rustc-pull:
+    name: automatic pull from rustc
     runs-on: ubuntu-latest
     permissions:
         # The cronjob needs to be able to push to the repo...
         contents: write
         # ... and create a PR.
         pull-requests: write
+    if: ${{ github.event_name == 'schedule' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 256 # get a bit more of the history
+      - name: install josh-proxy
+        run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
+      - name: setup bot git name and email
+        run: |
+          git config --global user.name 'The Miri Cronjob Bot'
+          git config --global user.email 'miri@cron.bot'
+      - name: Install nightly toolchain
+        run: rustup toolchain install nightly --profile minimal
+      - name: get changes from rustc
+        run: ./miri rustc-pull
+      - name: Install rustup-toolchain-install-master
+        run: cargo install -f rustup-toolchain-install-master
+      - name: format changes (if any)
+        run: |
+          ./miri toolchain
+          ./miri fmt --check || (./miri fmt && git commit -am "fmt")
+      - name: Push changes to a branch and create PR
+        run: |
+          # `git diff --exit-code` "succeeds" if the diff is empty.
+          if git diff --exit-code HEAD^; then echo "Nothing changed in rustc, skipping PR"; exit 0; fi
+          # The diff is non-empty, create a PR.
+          BRANCH="rustup-$(date -u +%Y-%m-%d)"
+          git switch -c $BRANCH
+          git push -u origin $BRANCH
+          gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
+          ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}
+
+  cron-fail-notify:
+    name: cronjob failure notification
+    runs-on: ubuntu-latest
     needs: [build, style, coverage]
     if: ${{ github.event_name == 'schedule' && failure() }}
     steps:
@@ -122,39 +160,3 @@ jobs:
           Thanks in advance!
           Sincerely,
           The Miri Cronjobs Bot'
-
-      # Attempt to auto-sync with rustc
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 256 # get a bit more of the history
-      - name: install josh-proxy
-        run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
-      - name: setup bot git name and email
-        run: |
-          git config --global user.name 'The Miri Cronjob Bot'
-          git config --global user.email 'miri@cron.bot'
-      - name: Install nightly toolchain
-        run: rustup toolchain install nightly --profile minimal
-      - name: get changes from rustc
-        run: ./miri rustc-pull
-      - name: Install rustup-toolchain-install-master
-        run: cargo install -f rustup-toolchain-install-master
-      - name: format changes (if any)
-        run: |
-          ./miri toolchain
-          ./miri fmt --check || (./miri fmt && git commit -am "fmt")
-      - name: Push changes to a branch
-        run: |
-          BRANCH="rustup-$(date -u +%Y-%m-%d)"
-          git switch -c $BRANCH
-          git push -u origin $BRANCH
-      - name: Create Pull Request
-        run: |
-          PR=$(gh pr create -B master --title 'Automatic Rustup' --body 'Please close and re-open this PR to trigger CI, then enable auto-merge.')
-          ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
-            --stream miri --subject "Miri Build Failure ($(date -u +%Y-%m))" \
-            --message "A PR doing a rustc-pull [has been automatically created]($PR) for your convenience."
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ZULIP_BOT_EMAIL: ${{ secrets.ZULIP_BOT_EMAIL }}
-          ZULIP_API_TOKEN: ${{ secrets.ZULIP_API_TOKEN }}

@@ -1,5 +1,5 @@
 error[E0529]: expected an array or slice, found `(..., ..., ..., ...)`
-  --> $DIR/long-E0529.rs:9:9
+  --> $DIR/long-E0529.rs:10:9
    |
 LL |     let [] = x;
    |         ^^ pattern cannot match with input type `(..., ..., ..., ...)`

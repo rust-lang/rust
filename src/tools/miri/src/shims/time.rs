@@ -21,7 +21,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         clk_id_op: &OpTy<'tcx>,
         tp_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         // This clock support is deliberately minimal because a lot of clock types have fiddly
         // properties (is it possible for Miri to be suspended independently of the host?). If you
         // have a use for another clock type, please open an issue.
@@ -29,8 +30,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("clock_gettime");
+        let clockid_t_size = this.libc_ty_layout("clockid_t").size;
 
-        let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
+        let clk_id = this.read_scalar(clk_id_op)?.to_int(clockid_t_size)?;
         let tp = this.deref_pointer_as(tp_op, this.libc_ty_layout("timespec"))?;
 
         let absolute_clocks;
@@ -43,34 +45,34 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
                 // is just specified to be "faster and less precise", so we implement both the same way.
                 absolute_clocks = vec![
-                    this.eval_libc_i32("CLOCK_REALTIME"),
-                    this.eval_libc_i32("CLOCK_REALTIME_COARSE"),
+                    this.eval_libc("CLOCK_REALTIME").to_int(clockid_t_size)?,
+                    this.eval_libc("CLOCK_REALTIME_COARSE").to_int(clockid_t_size)?,
                 ];
                 // The second kind is MONOTONIC clocks for which 0 is an arbitrary time point, but they are
                 // never allowed to go backwards. We don't need to do any additional monotonicity
                 // enforcement because std::time::Instant already guarantees that it is monotonic.
                 relative_clocks = vec![
-                    this.eval_libc_i32("CLOCK_MONOTONIC"),
-                    this.eval_libc_i32("CLOCK_MONOTONIC_COARSE"),
+                    this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)?,
+                    this.eval_libc("CLOCK_MONOTONIC_COARSE").to_int(clockid_t_size)?,
                 ];
             }
             "macos" => {
-                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")];
-                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")];
+                absolute_clocks = vec![this.eval_libc("CLOCK_REALTIME").to_int(clockid_t_size)?];
+                relative_clocks = vec![this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)?];
                 // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
                 // that's not really something a program running inside Miri can tell, anyway.
                 // We need to support it because std uses it.
-                relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW"));
+                relative_clocks.push(this.eval_libc("CLOCK_UPTIME_RAW").to_int(clockid_t_size)?);
             }
             "solaris" | "illumos" => {
                 // The REALTIME clock returns the actual time since the Unix epoch.
-                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")];
+                absolute_clocks = vec![this.eval_libc("CLOCK_REALTIME").to_int(clockid_t_size)?];
                 // MONOTONIC, in the other hand, is the high resolution, non-adjustable
                 // clock from an arbitrary time in the past.
                 // Note that the man page mentions HIGHRES but it is just
                 // an alias of MONOTONIC and the libc crate does not expose it anyway.
                 // https://docs.oracle.com/cd/E23824_01/html/821-1465/clock-gettime-3c.html
-                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")];
+                relative_clocks = vec![this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)?];
             }
             target => throw_unsup_format!("`clock_gettime` is not supported on target OS {target}"),
         }
@@ -81,15 +83,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else if relative_clocks.contains(&clk_id) {
             this.machine.monotonic_clock.now().duration_since(this.machine.monotonic_clock.epoch())
         } else {
-            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
+            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
         };
 
         let tv_sec = duration.as_secs();
         let tv_nsec = duration.subsec_nanos();
 
         this.write_int_fields(&[tv_sec.into(), tv_nsec.into()], &tp)?;
+        this.write_int(0, dest)?;
 
-        interp_ok(Scalar::from_i32(0))
+        interp_ok(())
     }
 
     fn gettimeofday(
@@ -188,10 +191,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 tm_zone.push('+');
             }
             let offset_hour = offset_in_seconds.abs() / 3600;
-            write!(tm_zone, "{:02}", offset_hour).unwrap();
+            write!(tm_zone, "{offset_hour:02}").unwrap();
             let offset_min = (offset_in_seconds.abs() % 3600) / 60;
             if offset_min != 0 {
-                write!(tm_zone, "{:02}", offset_min).unwrap();
+                write!(tm_zone, "{offset_min:02}").unwrap();
             }
 
             // Add null terminator for C string compatibility.

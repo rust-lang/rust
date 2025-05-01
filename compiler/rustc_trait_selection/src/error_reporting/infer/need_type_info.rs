@@ -15,10 +15,9 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, InferConst, IsSuggestable, Term, TermKind,
-    Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
+    Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
-use rustc_type_ir::TypeVisitableExt;
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;

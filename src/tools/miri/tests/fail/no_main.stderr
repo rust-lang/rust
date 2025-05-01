@@ -2,7 +2,7 @@ error: Miri can only run programs that have a main function.
        Alternatively, you can export a `miri_start` function:
        
        #[cfg(miri)]
-       #[no_mangle]
+       #[unsafe(no_mangle)]
        fn miri_start(argc: isize, argv: *const *const u8) -> isize {
            // Call the actual start function that your project implements, based on your target's conventions.
        }

@@ -7,6 +7,7 @@ use std::{env, fs, iter};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
@@ -841,12 +842,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         dyn for<'tcx> FnOnce(
             &'tcx Session,
             CurrentGcx,
+            Arc<Proxy>,
             &'tcx OnceLock<GlobalCtxt<'tcx>>,
             &'tcx WorkerLocal<Arena<'tcx>>,
             &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
             F,
         ) -> T,
-    > = Box::new(move |sess, current_gcx, gcx_cell, arena, hir_arena, f| {
+    > = Box::new(move |sess, current_gcx, jobserver_proxy, gcx_cell, arena, hir_arena, f| {
         TyCtxt::create_global_ctxt(
             gcx_cell,
             sess,
@@ -865,6 +867,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             ),
             providers.hooks,
             current_gcx,
+            jobserver_proxy,
             |tcx| {
                 let feed = tcx.create_crate_num(stable_crate_id).unwrap();
                 assert_eq!(feed.key(), LOCAL_CRATE);
@@ -887,7 +890,15 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         )
     });
 
-    inner(&compiler.sess, compiler.current_gcx.clone(), &gcx_cell, &arena, &hir_arena, f)
+    inner(
+        &compiler.sess,
+        compiler.current_gcx.clone(),
+        Arc::clone(&compiler.jobserver_proxy),
+        &gcx_cell,
+        &arena,
+        &hir_arena,
+        f,
+    )
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
@@ -900,6 +911,12 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // is not defined. So we need to cfg it out.
     #[cfg(all(not(doc), debug_assertions))]
     rustc_passes::hir_id_validator::check_crate(tcx);
+
+    // Prefetch this to prevent multiple threads from blocking on it later.
+    // This is needed since the `hir_id_validator::check_crate` call above is not guaranteed
+    // to use `hir_crate`.
+    tcx.ensure_done().hir_crate(());
+
     let sess = tcx.sess;
     sess.time("misc_checking_1", || {
         parallel!(
@@ -982,11 +999,13 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 let _ = tcx.ensure_ok().check_coroutine_obligations(
                     tcx.typeck_root_def_id(def_id.to_def_id()).expect_local(),
                 );
-                // Eagerly check the unsubstituted layout for cycles.
-                tcx.ensure_ok().layout_of(
-                    ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
-                        .as_query_input(tcx.type_of(def_id).instantiate_identity()),
-                );
+                if !tcx.is_async_drop_in_place_coroutine(def_id.to_def_id()) {
+                    // Eagerly check the unsubstituted layout for cycles.
+                    tcx.ensure_ok().layout_of(
+                        ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
+                            .as_query_input(tcx.type_of(def_id).instantiate_identity()),
+                    );
+                }
             }
         });
     });

@@ -872,11 +872,15 @@ impl Builder<'_> {
         }
         cargo.env(
             profile_var("DEBUG_ASSERTIONS"),
-            if mode == Mode::Std {
-                self.config.std_debug_assertions.to_string()
-            } else {
-                self.config.rustc_debug_assertions.to_string()
-            },
+            match mode {
+                Mode::Std => self.config.std_debug_assertions,
+                Mode::Rustc => self.config.rustc_debug_assertions,
+                Mode::Codegen => self.config.rustc_debug_assertions,
+                Mode::ToolBootstrap => self.config.tools_debug_assertions,
+                Mode::ToolStd => self.config.tools_debug_assertions,
+                Mode::ToolRustc => self.config.tools_debug_assertions,
+            }
+            .to_string(),
         );
         cargo.env(
             profile_var("OVERFLOW_CHECKS"),

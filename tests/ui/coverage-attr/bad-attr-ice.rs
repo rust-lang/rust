@@ -10,7 +10,7 @@
 
 #[coverage]
 //~^ ERROR malformed `coverage` attribute input
-//[nofeat]~| the `#[coverage]` attribute is an experimental feature
+//[nofeat]~| ERROR the `#[coverage]` attribute is an experimental feature
 fn main() {}
 
 // FIXME(#130766): When the `#[coverage(..)]` attribute is stabilized,

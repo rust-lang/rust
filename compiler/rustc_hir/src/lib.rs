@@ -14,6 +14,7 @@
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(variant_count)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 extern crate self as rustc_hir;

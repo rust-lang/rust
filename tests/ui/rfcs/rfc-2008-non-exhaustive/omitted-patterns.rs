@@ -1,5 +1,7 @@
 // Test that the `non_exhaustive_omitted_patterns` lint is triggered correctly.
 
+//@ dont-require-annotations: NOTE
+
 #![feature(non_exhaustive_omitted_patterns_lint, unstable_test_feature)]
 #![deny(unreachable_patterns)]
 
@@ -231,7 +233,7 @@ fn main() {
     // Check that matching on a reference results in a correct diagnostic
     match &non_enum {
         //~^ ERROR some variants are not matched explicitly
-        //~| pattern `&NonExhaustiveEnum::Struct { .. }` not covered
+        //~| NOTE pattern `&NonExhaustiveEnum::Struct { .. }` not covered
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         _ => {}
@@ -239,21 +241,21 @@ fn main() {
 
     match (true, &non_enum) {
         //~^ ERROR some variants are not matched explicitly
-        //~| patterns `(_, &NonExhaustiveEnum::Tuple(_))` and `(_, &NonExhaustiveEnum::Struct { .. })` not covered
+        //~| NOTE patterns `(_, &NonExhaustiveEnum::Tuple(_))` and `(_, &NonExhaustiveEnum::Struct { .. })` not covered
         (true, NonExhaustiveEnum::Unit) => {}
         _ => {}
     }
 
     match (&non_enum, true) {
         //~^ ERROR some variants are not matched explicitly
-        //~| patterns `(&NonExhaustiveEnum::Tuple(_), _)` and `(&NonExhaustiveEnum::Struct { .. }, _)` not covered
+        //~| NOTE patterns `(&NonExhaustiveEnum::Tuple(_), _)` and `(&NonExhaustiveEnum::Struct { .. }, _)` not covered
         (NonExhaustiveEnum::Unit, true) => {}
         _ => {}
     }
 
     match Some(&non_enum) {
         //~^ ERROR some variants are not matched explicitly
-        //~| pattern `Some(&NonExhaustiveEnum::Struct { .. })` not covered
+        //~| NOTE pattern `Some(&NonExhaustiveEnum::Struct { .. })` not covered
         Some(NonExhaustiveEnum::Unit | NonExhaustiveEnum::Tuple(_)) => {}
         _ => {}
     }

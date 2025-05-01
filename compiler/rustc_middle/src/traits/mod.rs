@@ -404,7 +404,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
     ConstParam(Ty<'tcx>),
 
-    /// Obligations emitted during the normalization of a weak type alias.
+    /// Obligations emitted during the normalization of a free type alias.
     TypeAlias(ObligationCauseCodeHandle<'tcx>, Span, DefId),
 }
 

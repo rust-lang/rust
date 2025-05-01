@@ -10,11 +10,10 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
+    self, DelayedSet, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GenerateProofTree, HasChanged, SolverDelegateEvalExt as _};
 use rustc_span::Span;
-use rustc_type_ir::data_structures::DelayedSet;
 use tracing::instrument;
 
 use self::derive_errors::*;

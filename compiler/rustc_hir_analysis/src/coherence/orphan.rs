@@ -189,7 +189,7 @@ pub(crate) fn orphan_check_impl(
                     ty::Projection => "associated type",
                     // type Foo = (impl Sized, bool)
                     // impl AutoTrait for Foo {}
-                    ty::Weak => "type alias",
+                    ty::Free => "type alias",
                     // type Opaque = impl Trait;
                     // impl AutoTrait for Opaque {}
                     ty::Opaque => "opaque type",
