@@ -5,6 +5,14 @@ LL | type Loop = Loop;
    |             ^^^^ types differ
 
 error[E0271]: type mismatch resolving `Loop normalizes-to _`
+  --> $DIR/inherent-impls-overflow.rs:8:13
+   |
+LL | type Loop = Loop;
+   |             ^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0271]: type mismatch resolving `Loop normalizes-to _`
   --> $DIR/inherent-impls-overflow.rs:12:1
    |
 LL | impl Loop {}
@@ -17,6 +25,14 @@ LL | impl Loop {}
    |      ^^^^ types differ
 
 error[E0275]: overflow evaluating the requirement `Poly1<(T,)> == _`
+  --> $DIR/inherent-impls-overflow.rs:17:17
+   |
+LL | type Poly0<T> = Poly1<(T,)>;
+   |                 ^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
+error[E0275]: overflow evaluating the requirement `Poly1<(T,)> well-formed`
   --> $DIR/inherent-impls-overflow.rs:17:17
    |
 LL | type Poly0<T> = Poly1<(T,)>;
@@ -43,6 +59,14 @@ LL | type Poly1<T> = Poly0<(T,)>;
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
 
+error[E0275]: overflow evaluating the requirement `Poly0<(T,)> well-formed`
+  --> $DIR/inherent-impls-overflow.rs:21:17
+   |
+LL | type Poly1<T> = Poly0<(T,)>;
+   |                 ^^^^^^^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
+
 error: type parameter `T` is only used recursively
   --> $DIR/inherent-impls-overflow.rs:21:24
    |
@@ -62,7 +86,7 @@ LL | impl Poly0<()> {}
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
 
-error[E0275]: overflow evaluating the requirement `Poly0<()> == _`
+error[E0275]: overflow evaluating the requirement `Poly0<()> well-formed`
   --> $DIR/inherent-impls-overflow.rs:26:6
    |
 LL | impl Poly0<()> {}
@@ -70,7 +94,7 @@ LL | impl Poly0<()> {}
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`inherent_impls_overflow`)
 
-error: aborting due to 9 previous errors
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0271, E0275.
 For more information about an error, try `rustc --explain E0271`.

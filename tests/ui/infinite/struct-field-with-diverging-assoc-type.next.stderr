@@ -1,0 +1,17 @@
+error[E0271]: type mismatch resolving `<u8 as Trait>::Diverges<u8> normalizes-to _`
+  --> $DIR/struct-field-with-diverging-assoc-type.rs:14:12
+   |
+LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error[E0271]: type mismatch resolving `<u8 as Trait>::Diverges<u8> normalizes-to _`
+  --> $DIR/struct-field-with-diverging-assoc-type.rs:14:12
+   |
+LL |     field: Box<<u8 as Trait>::Diverges<u8>>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.
