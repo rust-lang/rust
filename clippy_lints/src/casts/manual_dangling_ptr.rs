@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::SpanRangeExt;
-use clippy_utils::ty::is_normalizable;
 use clippy_utils::{expr_or_init, match_def_path, path_def_id, paths, std_or_core};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
@@ -71,12 +70,10 @@ fn is_literal_aligned(cx: &LateContext<'_>, lit: &Spanned<LitKind>, to: &Ty<'_>)
         return false;
     }
     let to_mid_ty = cx.typeck_results().node_type(to.hir_id);
-    is_normalizable(cx, cx.param_env, to_mid_ty)
-        && cx
-            .tcx
-            .layout_of(cx.typing_env().as_query_input(to_mid_ty))
-            .is_ok_and(|layout| {
-                let align = u128::from(layout.align.abi.bytes());
-                u128::from(val) <= align
-            })
+    cx.tcx
+        .layout_of(cx.typing_env().as_query_input(to_mid_ty))
+        .is_ok_and(|layout| {
+            let align = u128::from(layout.align.abi.bytes());
+            u128::from(val) <= align
+        })
 }
