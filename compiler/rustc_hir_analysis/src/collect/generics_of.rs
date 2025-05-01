@@ -106,7 +106,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             match tcx.anon_const_kind(def_id) {
                 // Stable: anon consts are not able to use any generic parameters...
-                ty::AnonConstKind::MCGConst => None,
+                ty::AnonConstKind::MCG => None,
                 // we provide generics to repeat expr counts as a backwards compatibility hack. #76200
                 ty::AnonConstKind::RepeatExprCount => Some(parent_did),
 
@@ -116,13 +116,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // We could potentially mirror the hack done for defaults of generic parameters but
                 // this case just doesn't come up much compared to `const N: u32 = ...`. Long term the
                 // hack for defaulted parameters should be removed eventually anyway.
-                ty::AnonConstKind::GCEConst if in_param_ty => None,
+                ty::AnonConstKind::GCE if in_param_ty => None,
                 // GCE anon consts as a default for a generic parameter should have their provided generics
                 // "truncated" up to whatever generic parameter this anon const is within the default of.
                 //
                 // FIXME(generic_const_exprs): This only handles `const N: usize = /*defid*/` but not type
                 // parameter defaults, e.g. `T = Foo</*defid*/>`.
-                ty::AnonConstKind::GCEConst
+                ty::AnonConstKind::GCE
                     if let Some(param_id) =
                         tcx.hir_opt_const_param_default_param_def_id(hir_id) =>
                 {
@@ -169,7 +169,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         has_late_bound_regions: generics.has_late_bound_regions,
                     };
                 }
-                ty::AnonConstKind::GCEConst => Some(parent_did),
+                ty::AnonConstKind::GCE => Some(parent_did),
 
                 // Field defaults are allowed to use generic parameters, e.g. `field: u32 = /*defid: N + 1*/`
                 ty::AnonConstKind::NonTypeSystem
