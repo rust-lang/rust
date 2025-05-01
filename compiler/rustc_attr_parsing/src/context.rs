@@ -115,7 +115,8 @@ impl<'a> Deref for AcceptContext<'a> {
 
 /// Context given to every attribute parser during finalization.
 ///
-/// Gives [`AttributeParser`](crate::attributes::AttributeParser)s enough information to create errors, for example.
+/// Gives [`AttributeParser`](crate::attributes::AttributeParser)s enough information to create
+/// errors, for example.
 pub(crate) struct FinalizeContext<'a> {
     /// The parse context, gives access to the session and the
     /// diagnostics context.
@@ -146,10 +147,9 @@ pub struct AttributeParser<'sess> {
     sess: &'sess Session,
     features: Option<&'sess Features>,
 
-    /// *only* parse attributes with this symbol.
+    /// *Only* parse attributes with this symbol.
     ///
-    /// Used in cases where we want the lowering infrastructure for
-    /// parse just a single attribute.
+    /// Used in cases where we want the lowering infrastructure for parse just a single attribute.
     parse_only: Option<Symbol>,
 
     /// Can be used to instruct parsers to reduce the number of diagnostics it emits.
@@ -162,9 +162,9 @@ impl<'sess> AttributeParser<'sess> {
     /// One example where this is necessary, is to parse `feature` attributes themselves for
     /// example.
     ///
-    /// Try to use this as little as possible. Attributes *should* be lowered during `rustc_ast_lowering`.
-    /// Some attributes require access to features to parse, which would crash if you tried to do so
-    /// through [`parse_limited`](Self::parse_limited).
+    /// Try to use this as little as possible. Attributes *should* be lowered during
+    /// `rustc_ast_lowering`. Some attributes require access to features to parse, which would
+    /// crash if you tried to do so through [`parse_limited`](Self::parse_limited).
     ///
     /// To make sure use is limited, supply a `Symbol` you'd like to parse. Only attributes with
     /// that symbol are picked out of the list of instructions and parsed. Those are returned.
@@ -222,19 +222,18 @@ impl<'sess> AttributeParser<'sess> {
         let group_cx = FinalizeContext { cx: self, target_span };
 
         for attr in attrs {
-            // if we're only looking for a single attribute,
-            // skip all the ones we don't care about
+            // If we're only looking for a single attribute, skip all the ones we don't care about.
             if let Some(expected) = self.parse_only {
                 if !attr.has_name(expected) {
                     continue;
                 }
             }
 
-            // sometimes, for example for `#![doc = include_str!("readme.md")]`,
+            // Sometimes, for example for `#![doc = include_str!("readme.md")]`,
             // doc still contains a non-literal. You might say, when we're lowering attributes
             // that's expanded right? But no, sometimes, when parsing attributes on macros,
             // we already use the lowering logic and these are still there. So, when `omit_doc`
-            // is set we *also* want to ignore these
+            // is set we *also* want to ignore these.
             if omit_doc == OmitDoc::Skip && attr.has_name(sym::doc) {
                 continue;
             }
@@ -274,11 +273,11 @@ impl<'sess> AttributeParser<'sess> {
 
                         accept(&cx, &args)
                     } else {
-                        // if we're here, we must be compiling a tool attribute... Or someone forgot to
-                        // parse their fancy new attribute. Let's warn them in any case. If you are that
-                        // person, and you really your attribute should remain unparsed, carefully read the
-                        // documentation in this module and if you still think so you can add an exception
-                        // to this assertion.
+                        // If we're here, we must be compiling a tool attribute... Or someone
+                        // forgot to parse their fancy new attribute. Let's warn them in any case.
+                        // If you are that person, and you really think your attribute should
+                        // remain unparsed, carefully read the documentation in this module and if
+                        // you still think so you can add an exception to this assertion.
 
                         // FIXME(jdonszelmann): convert other attributes, and check with this that
                         // we caught em all
