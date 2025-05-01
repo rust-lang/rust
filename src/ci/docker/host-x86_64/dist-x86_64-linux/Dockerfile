@@ -103,7 +103,8 @@ ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
     --include-default-paths \
     build-manifest bootstrap && \
     # Use GCC for building GCC, as it seems to behave badly when built with Clang
-    CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ python3 ../x.py dist gcc
+    # Also build Enzyme only on the x64 Linux dist runner
+    CC=/rustroot/bin/cc CXX=/rustroot/bin/c++ python3 ../x.py dist gcc && ../x.py dist enzyme
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs
