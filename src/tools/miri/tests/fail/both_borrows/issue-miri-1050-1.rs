@@ -1,6 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-//@error-in-other-file: expected a pointer to 4 bytes of memory
+//@error-in-other-file: pointer not dereferenceable
 
 fn main() {
     unsafe {

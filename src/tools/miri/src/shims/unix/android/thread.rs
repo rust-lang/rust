@@ -42,7 +42,7 @@ pub fn prctl<'tcx>(
             ecx.check_ptr_access(
                 name.to_pointer(ecx)?,
                 Size::from_bytes(TASK_COMM_LEN),
-                CheckInAllocMsg::MemoryAccessTest,
+                CheckInAllocMsg::MemoryAccess,
             )?;
             let res = ecx.pthread_getname_np(thread, name, len, /* truncate*/ false)?;
             assert_eq!(res, ThreadNameResult::Ok);

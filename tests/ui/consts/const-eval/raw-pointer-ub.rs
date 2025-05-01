@@ -39,7 +39,7 @@ const OOB: () = unsafe {
     let mem = [0u32; 1];
     let ptr = mem.as_ptr().cast::<u64>();
     let _val = *ptr; //~ERROR: evaluation of constant value failed
-    //~^NOTE: expected a pointer to 8 bytes of memory
+    //~^NOTE: is only 4 bytes from the end of the allocation
 };
 
 fn main() {}

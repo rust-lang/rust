@@ -221,13 +221,11 @@ pub enum InvalidProgramInfo<'tcx> {
 #[derive(Debug, Copy, Clone)]
 pub enum CheckInAllocMsg {
     /// We are access memory.
-    MemoryAccessTest,
+    MemoryAccess,
     /// We are doing pointer arithmetic.
-    PointerArithmeticTest,
-    /// We are doing pointer offset_from.
-    OffsetFromTest,
+    InboundsPointerArithmetic,
     /// None of the above -- generic/unspecific inbounds test.
-    InboundsTest,
+    Dereferenceable,
 }
 
 /// Details of which pointer is not aligned.
