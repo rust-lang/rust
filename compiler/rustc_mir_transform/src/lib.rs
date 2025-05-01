@@ -797,10 +797,10 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     vis.visit_body(&body);
 
     // If the MIR is already monomorphic, we can transform it to codegen MIR right away.
-    if !tcx.generics_of(did).requires_monomorphization(tcx) && !vis.contains_ubcheck {
-        if vis.contains_alias {
-            eprintln!("alias: {:?}", did);
-        }
+    if !tcx.generics_of(did).requires_monomorphization(tcx)
+        && !vis.contains_ubcheck
+        && !vis.contains_alias
+    {
         let instance = Instance::mono(tcx, did.into());
         body = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
@@ -817,6 +817,12 @@ use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Location, NullOp};
 use rustc_middle::ty::{Ty, TypeFlags};
 
+// FIXME: This visitor looks for properties of MIR that would forbid using optimized MIR as codegen
+// MIR.
+// Currently, it looks for NullOp::UbChecks because that must be resolved at codegen, and also for
+// type projections because those are the only way I've found to realize that we are generating MIR
+// for a body with an unsatisafiable predicate. Such bodies cannot be normalized, so we must not
+// try to create codegen MIR for them.
 struct MonoCompatVisitor {
     contains_alias: bool,
     contains_ubcheck: bool,
@@ -825,7 +831,7 @@ struct MonoCompatVisitor {
 impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
     fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
         debug!("{:?} {:?}", ty, ty.flags());
-        if ty.flags().contains(TypeFlags::HAS_ALIAS) {
+        if ty.has_aliases() || ty.flags().contains(TypeFlags::HAS_TY_PROJECTION) {
             self.contains_alias = true;
         }
     }
