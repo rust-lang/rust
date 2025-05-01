@@ -31,7 +31,7 @@ use rustc_middle::mir::{
     Location, MirPhase, NullOp, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue,
     START_BLOCK, SourceInfo, Statement, StatementKind, TerminatorKind,
 };
-use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericParamDefKind, Instance, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
 use rustc_mir_build::builder::build_mir;
@@ -794,25 +794,46 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
     run_optimization_passes(tcx, &mut body);
 
-    let mut vis = MonoCompatVisitor { contains_ubcheck: false };
-    vis.visit_body(&body);
-
-    // If the MIR is already monomorphic, we can transform it to codegen MIR right away.
-    if !tcx.generics_of(did).requires_monomorphization(tcx)
-        && !vis.contains_ubcheck
-        && !body.has_aliases()
-    {
-        let instance = Instance::mono(tcx, did.into());
-        body = instance.instantiate_mir_and_normalize_erasing_regions(
-            tcx,
-            ty::TypingEnv::fully_monomorphized(),
-            ty::EarlyBinder::bind(body),
-        );
-
-        // Monomoprhizing this body didn't reveal any new information that is useful for
-        // optimizations, so we just run passes that make the MIR ready for codegen backends.
-        pm::run_passes_no_validate(tcx, &mut body, &[&add_call_guards::CriticalCallEdges], None);
+    // If the body is polymorphic, we're done. Otherwise, we're going to turn the body into codegen
+    // MIR ahead of time, as an optimization.
+    if tcx.generics_of(did).requires_monomorphization(tcx) {
+        return body;
     }
+
+    // If the body has impossible predicates, the normalization we need to do to turn this into
+    // post-mono MIR will fail. So we detect that case and return just optimized MIR.
+    let args = ty::GenericArgs::for_item(tcx, did.into(), |param, _| match param.kind {
+        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+            unreachable!(
+                "`requires_monomorphization` check means that we should have no type/const params"
+            )
+        }
+    });
+    if tcx.instantiate_and_check_impossible_predicates((did.to_def_id(), args)) {
+        return body;
+    }
+
+    // If the body contains the UB check intrinsic that is only to be monomorphized at codegen
+    // time, we cannot generate codegen MIR early. We want post-mono optimizations to optimize on
+    // whether UB checks are enabled or disabled at codegen time.
+    let mut vis = MonoCompatVisitor { contains_ubcheck: false, contains_generic_const: false };
+    vis.visit_body(&body);
+    if vis.contains_ubcheck {
+        return body;
+    }
+
+    let instance = Instance::mono(tcx, did.to_def_id());
+    body = instance.instantiate_mir_and_normalize_erasing_regions(
+        tcx,
+        ty::TypingEnv::fully_monomorphized(),
+        ty::EarlyBinder::bind(body),
+    );
+
+    // Monomoprhizing this body didn't reveal any new information that is useful for
+    // optimizations, so we just run passes that make the MIR ready for codegen backends.
+    pm::run_passes_no_validate(tcx, &mut body, &[&add_call_guards::CriticalCallEdges], None);
+    body.is_codegen_mir = true;
 
     body
 }
@@ -822,6 +843,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 // Currently, it looks for NullOp::UbChecks because that must be resolved at codegen.
 struct MonoCompatVisitor {
     contains_ubcheck: bool,
+    contains_generic_const: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
@@ -831,25 +853,43 @@ impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
         }
         self.super_rvalue(rvalue, location);
     }
+
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
+        if constant.has_non_region_param() {
+            self.contains_generic_const = true;
+        }
+        self.super_const_operand(constant, location);
+    }
 }
 
 pub fn build_codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &'tcx Body<'tcx> {
     let body = tcx.instance_mir(instance.def);
 
-    let mut vis = MonoCompatVisitor { contains_ubcheck: false };
-    vis.visit_body(&body);
+    // If we have generic params, assert that we didn't get codegen MIR out of instance_mir
+    if instance.args.non_erasable_generics().next().is_some() {
+        assert!(!body.is_codegen_mir);
+    }
 
-    // MIR for monomorphic defs has already been fully optimized in optimized_mir.
-    let body = if instance.args.non_erasable_generics().next().is_some()
-        || vis.contains_ubcheck
-        || body.has_aliases()
-    {
+    let body = if !body.is_codegen_mir {
+        let mut vis = MonoCompatVisitor { contains_ubcheck: false, contains_generic_const: false };
+        vis.visit_body(&body);
+
         let mut body = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             ty::TypingEnv::fully_monomorphized(),
             ty::EarlyBinder::bind(body.clone()),
         );
-        transform_to_codegen_mir(tcx, &mut body);
+        if vis.contains_ubcheck || vis.contains_generic_const {
+            transform_to_codegen_mir(tcx, &mut body);
+        } else {
+            pm::run_passes_no_validate(
+                tcx,
+                &mut body,
+                &[&add_call_guards::CriticalCallEdges],
+                None,
+            );
+        }
+        body.is_codegen_mir = true;
         tcx.arena.alloc(body)
     } else {
         body
