@@ -2,7 +2,7 @@
 //@ ignore-nvptx64
 //@ ignore-spirv
 
-#![feature(asm_unwind, linkage)]
+#![feature(asm_unwind, linkage, rustc_attrs)]
 #![crate_type = "lib"]
 
 use std::arch::{asm, naked_asm};
@@ -223,5 +223,11 @@ pub extern "C" fn compatible_doc_attributes() {
 #[linkage = "external"]
 #[unsafe(naked)]
 pub extern "C" fn compatible_linkage() {
+    naked_asm!("", options(raw));
+}
+
+#[rustc_std_internal_symbol]
+#[unsafe(naked)]
+pub extern "C" fn rustc_std_internal_symbol() {
     naked_asm!("", options(raw));
 }

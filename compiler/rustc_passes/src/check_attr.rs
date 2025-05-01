@@ -625,6 +625,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::naked,
             sym::instruction_set,
             sym::repr,
+            sym::rustc_std_internal_symbol,
             // code generation
             sym::cold,
             // documentation
