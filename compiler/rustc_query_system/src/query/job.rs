@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::jobserver;
 use rustc_errors::{Diag, DiagCtxtHandle};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
@@ -207,12 +206,13 @@ impl<I> QueryLatch<I> {
     /// Awaits for the query job to complete.
     pub(super) fn wait_on(
         &self,
+        qcx: impl QueryContext,
         query: Option<QueryJobId>,
         span: Span,
     ) -> Result<(), CycleError<I>> {
         let waiter =
             Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
-        self.wait_on_inner(&waiter);
+        self.wait_on_inner(qcx, &waiter);
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot
         // use Arc::get_mut
@@ -224,7 +224,7 @@ impl<I> QueryLatch<I> {
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
-    fn wait_on_inner(&self, waiter: &Arc<QueryWaiter<I>>) {
+    fn wait_on_inner(&self, qcx: impl QueryContext, waiter: &Arc<QueryWaiter<I>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside
@@ -237,11 +237,12 @@ impl<I> QueryLatch<I> {
             // we have to be in the `wait` call. This is ensured by the deadlock handler
             // getting the self.info lock.
             rayon_core::mark_blocked();
-            jobserver::release_thread();
+            let proxy = qcx.jobserver_proxy();
+            proxy.release_thread();
             waiter.condvar.wait(&mut info);
             // Release the lock before we potentially block in `acquire_thread`
             drop(info);
-            jobserver::acquire_thread();
+            proxy.acquire_thread();
         }
     }
 

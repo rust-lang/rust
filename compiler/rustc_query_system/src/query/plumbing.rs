@@ -297,7 +297,7 @@ where
 
     // With parallel queries we might just have to wait on some other
     // thread.
-    let result = latch.wait_on(current, span);
+    let result = latch.wait_on(qcx, current, span);
 
     match result {
         Ok(()) => {
