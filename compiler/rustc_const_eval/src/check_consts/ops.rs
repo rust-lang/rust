@@ -352,7 +352,7 @@ fn build_error_for_const_call<'tcx>(
             );
             err
         }
-        _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentMethods) => {
+        _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::FmtArgumentsNew) => {
             ccx.dcx().create_err(errors::NonConstFmtMacroCall {
                 span,
                 kind: ccx.const_kind(),

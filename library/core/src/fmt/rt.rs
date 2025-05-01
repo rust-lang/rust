@@ -113,46 +113,45 @@ macro_rules! argument_new {
     };
 }
 
-#[rustc_diagnostic_item = "ArgumentMethods"]
 impl Argument<'_> {
     #[inline]
-    pub fn new_display<T: Display>(x: &T) -> Argument<'_> {
+    pub const fn new_display<T: Display>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Display>::fmt)
     }
     #[inline]
-    pub fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
+    pub const fn new_debug<T: Debug>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Debug>::fmt)
     }
     #[inline]
-    pub fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
+    pub const fn new_debug_noop<T: Debug>(x: &T) -> Argument<'_> {
         argument_new!(T, x, |_: &T, _| Ok(()))
     }
     #[inline]
-    pub fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
+    pub const fn new_octal<T: Octal>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Octal>::fmt)
     }
     #[inline]
-    pub fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
+    pub const fn new_lower_hex<T: LowerHex>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as LowerHex>::fmt)
     }
     #[inline]
-    pub fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
+    pub const fn new_upper_hex<T: UpperHex>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as UpperHex>::fmt)
     }
     #[inline]
-    pub fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
+    pub const fn new_pointer<T: Pointer>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Pointer>::fmt)
     }
     #[inline]
-    pub fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
+    pub const fn new_binary<T: Binary>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as Binary>::fmt)
     }
     #[inline]
-    pub fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
+    pub const fn new_lower_exp<T: LowerExp>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as LowerExp>::fmt)
     }
     #[inline]
-    pub fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
+    pub const fn new_upper_exp<T: UpperExp>(x: &T) -> Argument<'_> {
         argument_new!(T, x, <T as UpperExp>::fmt)
     }
     #[inline]
@@ -203,15 +202,8 @@ impl Argument<'_> {
     /// let f = format_args!("{}", "a");
     /// println!("{f}");
     /// ```
-    ///
-    /// This function should _not_ be const, to make sure we don't accept
-    /// format_args!() and panic!() with arguments in const, even when not evaluated:
-    ///
-    /// ```compile_fail,E0015
-    /// const _: () = if false { panic!("a {}", "a") };
-    /// ```
     #[inline]
-    pub fn none() -> [Self; 0] {
+    pub const fn none() -> [Self; 0] {
         []
     }
 }
@@ -246,8 +238,15 @@ impl<'a> Arguments<'a> {
 
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
+    ///
+    /// This function should _not_ be const, to make sure we don't accept
+    /// format_args!() and panic!() with arguments in const, even when not evaluated:
+    ///
+    /// ```compile_fail,E0015
+    /// const _: () = if false { panic!("a {}", "a") };
+    /// ```
     #[inline]
-    pub const fn new_v1<const P: usize, const A: usize>(
+    pub fn new_v1<const P: usize, const A: usize>(
         pieces: &'a [&'static str; P],
         args: &'a [rt::Argument<'a>; A],
     ) -> Arguments<'a> {
@@ -262,8 +261,15 @@ impl<'a> Arguments<'a> {
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every `rt::Placeholder::position` value within `fmt` must be a valid index of `args`.
     /// 3. Every `rt::Count::Param` within `fmt` must contain a valid index of `args`.
+    ///
+    /// This function should _not_ be const, to make sure we don't accept
+    /// format_args!() and panic!() with arguments in const, even when not evaluated:
+    ///
+    /// ```compile_fail,E0015
+    /// const _: () = if false { panic!("a {:1}", "a") };
+    /// ```
     #[inline]
-    pub const fn new_v1_formatted(
+    pub fn new_v1_formatted(
         pieces: &'a [&'static str],
         args: &'a [rt::Argument<'a>],
         fmt: &'a [rt::Placeholder],
