@@ -43,7 +43,7 @@ use crate::Idx;
 /// is not garranteed though as we store the domain size rounded up to the next multiple of
 /// [`WORD_BITS`].
 #[repr(C)]
-pub union ThinBitSet<T> {
+pub union DenseBitSet<T> {
     /// The bit set fits in a single [`Word`] stored inline on the stack.
     ///
     /// The most significant bit is set to 1 to distinguish this from the other variants. You
@@ -72,7 +72,7 @@ pub union ThinBitSet<T> {
     marker: PhantomData<T>,
 }
 
-impl<T> ThinBitSet<T> {
+impl<T> DenseBitSet<T> {
     /// The maximum domain size that could be stored inlined on the stack.
     pub const INLINE_CAPACITY: usize = WORD_BITS - 1;
 
@@ -463,7 +463,7 @@ impl<T> ThinBitSet<T> {
     super::bit_relations_inherent_impls! {}
 }
 
-impl<T> BitRelations<ThinBitSet<T>> for ThinBitSet<T> {
+impl<T> BitRelations<DenseBitSet<T>> for DenseBitSet<T> {
     #[inline(always)]
     fn union(&mut self, other: &Self) -> bool {
         if self.is_empty_unallocated() {
@@ -505,7 +505,7 @@ impl<T> BitRelations<ThinBitSet<T>> for ThinBitSet<T> {
     }
 }
 
-impl<T: Idx> ThinBitSet<T> {
+impl<T: Idx> DenseBitSet<T> {
     /// Checks if the bit set contains `elem`.
     #[inline(always)]
     pub fn contains(&self, elem: T) -> bool {
@@ -709,7 +709,7 @@ impl<T: Idx> ThinBitSet<T> {
     }
 }
 
-impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ThinBitSet<T> {
+impl<T: Idx> BitRelations<ChunkedBitSet<T>> for DenseBitSet<T> {
     fn union(&mut self, other: &ChunkedBitSet<T>) -> bool {
         other.iter().fold(false, |changed, elem| self.insert(elem) || changed)
     }
@@ -778,7 +778,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ThinBitSet<T> {
     }
 }
 
-impl<S: Encoder, T> Encodable<S> for ThinBitSet<T> {
+impl<S: Encoder, T> Encodable<S> for DenseBitSet<T> {
     #[inline(never)] // FIXME: For profiling purposes
     fn encode(&self, s: &mut S) {
         /* FIXME: This is new incompatable encoding
@@ -821,7 +821,7 @@ impl<S: Encoder, T> Encodable<S> for ThinBitSet<T> {
     }
 }
 
-impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
+impl<D: Decoder, T> Decodable<D> for DenseBitSet<T> {
     #[inline(never)] // FIXME: For profiling purposes
     fn decode(d: &mut D) -> Self {
         /* FIXME: This is new incompatable decoding.
@@ -833,7 +833,7 @@ impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
             let n_words = word as usize;
             assert!(
                 n_words > 0,
-                "ThinBitSet decoder error: At least one word must be stored with the `on_heap` variant."
+                "DenseBitSet decoder error: At least one word must be stored with the `on_heap` variant."
             );
             let mut on_heap = BitSetOnHeap::new_empty(n_words);
 
@@ -846,7 +846,7 @@ impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
                 *word = Word::decode(d);
             }
 
-            ThinBitSet { on_heap: ManuallyDrop::new(on_heap) }
+            DenseBitSet { on_heap: ManuallyDrop::new(on_heap) }
         } else {
             // Both the `inline` and `empty_unallocated` variants are encoded by one `Word`. We can
             // just assume the `inline` variant because the `empty_unallocated` variant is smaller
@@ -865,7 +865,7 @@ impl<D: Decoder, T> Decodable<D> for ThinBitSet<T> {
     }
 }
 
-impl<T> Clone for ThinBitSet<T> {
+impl<T> Clone for DenseBitSet<T> {
     #[inline(always)]
     fn clone(&self) -> Self {
         if self.is_inline() {
@@ -882,7 +882,7 @@ impl<T> Clone for ThinBitSet<T> {
     }
 }
 
-impl<T> Drop for ThinBitSet<T> {
+impl<T> Drop for DenseBitSet<T> {
     #[inline(always)]
     fn drop(&mut self) {
         // Deallocate if `self` is not inlined.
@@ -1108,13 +1108,13 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
 
 impl<'a, T: Idx> FusedIterator for BitIter<'a, T> {}
 
-impl<T: Idx> fmt::Debug for ThinBitSet<T> {
+impl<T: Idx> fmt::Debug for DenseBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
         w.debug_list().entries(self.iter()).finish()
     }
 }
 
-impl<T> PartialEq for ThinBitSet<T> {
+impl<T> PartialEq for DenseBitSet<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         if self.is_inline() {
@@ -1153,9 +1153,9 @@ impl<T> PartialEq for ThinBitSet<T> {
     }
 }
 
-impl<T> Eq for ThinBitSet<T> {}
+impl<T> Eq for DenseBitSet<T> {}
 
-impl<T> Hash for ThinBitSet<T> {
+impl<T> Hash for DenseBitSet<T> {
     #[inline]
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         if self.is_inline() {
@@ -1186,7 +1186,7 @@ impl<T> Hash for ThinBitSet<T> {
 /// to or greater than the domain size.
 #[derive(Clone, PartialEq)]
 pub struct GrowableBitSet<T> {
-    bit_set: ThinBitSet<T>,
+    bit_set: DenseBitSet<T>,
 }
 
 impl<T> Default for GrowableBitSet<T> {
@@ -1204,28 +1204,28 @@ impl<T> GrowableBitSet<T> {
 
         if self.bit_set.is_inline() {
             // The set must change from being inlined to allocate on the heap.
-            debug_assert!(min_domain_size > ThinBitSet::<T>::INLINE_CAPACITY);
+            debug_assert!(min_domain_size > DenseBitSet::<T>::INLINE_CAPACITY);
 
-            let mut new_bit_set = ThinBitSet::new_empty(min_domain_size);
+            let mut new_bit_set = DenseBitSet::new_empty(min_domain_size);
             if !self.bit_set.is_empty() {
                 // SAFETY: We know that `self.is_inline()` is true.
-                let word = unsafe { self.bit_set.inline } ^ ThinBitSet::<T>::IS_INLINE_TAG_BIT;
+                let word = unsafe { self.bit_set.inline } ^ DenseBitSet::<T>::IS_INLINE_TAG_BIT;
                 new_bit_set.on_heap_get_or_alloc().as_mut_slice()[0] = word;
             }
             self.bit_set = new_bit_set;
         } else if self.bit_set.is_empty_unallocated() {
-            self.bit_set = ThinBitSet::new_empty(min_domain_size);
+            self.bit_set = DenseBitSet::new_empty(min_domain_size);
         } else {
             self.bit_set.on_heap_mut().unwrap().ensure_capacity(min_domain_size);
         }
     }
 
     pub fn new_empty() -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: ThinBitSet::new_empty(0) }
+        GrowableBitSet { bit_set: DenseBitSet::new_empty(0) }
     }
 
     pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: ThinBitSet::new_empty(capacity) }
+        GrowableBitSet { bit_set: DenseBitSet::new_empty(capacity) }
     }
 
     /// Insert the element with index `idx`. Returns `true` if the set has changed.
@@ -1271,13 +1271,13 @@ impl<T: Idx> GrowableBitSet<T> {
     }
 }
 
-impl<T> From<ThinBitSet<T>> for GrowableBitSet<T> {
-    fn from(bit_set: ThinBitSet<T>) -> Self {
+impl<T> From<DenseBitSet<T>> for GrowableBitSet<T> {
+    fn from(bit_set: DenseBitSet<T>) -> Self {
         Self { bit_set }
     }
 }
 
-impl<T> From<GrowableBitSet<T>> for ThinBitSet<T> {
+impl<T> From<GrowableBitSet<T>> for DenseBitSet<T> {
     fn from(bit_set: GrowableBitSet<T>) -> Self {
         bit_set.bit_set
     }
@@ -1476,9 +1476,9 @@ mod tests {
     fn test_with_domain_size(domain_size: usize) {
         const TEST_ITERATIONS: u32 = 512;
 
-        let mut set_1 = ThinBitSet::<usize>::new_empty(domain_size);
+        let mut set_1 = DenseBitSet::<usize>::new_empty(domain_size);
         let mut set_1_reference = IndexVec::<usize, bool>::from_elem_n(false, domain_size);
-        let mut set_2 = ThinBitSet::<usize>::new_empty(domain_size);
+        let mut set_2 = DenseBitSet::<usize>::new_empty(domain_size);
         let mut set_2_reference = IndexVec::<usize, bool>::from_elem_n(false, domain_size);
 
         let hasher = BuildHasherDefault::<DefaultHasher>::new();
@@ -1613,12 +1613,12 @@ mod tests {
                 97..100 => {
                     // Test new_filled().
                     if rng.next_bool() {
-                        set_1 = ThinBitSet::new_filled(domain_size);
+                        set_1 = DenseBitSet::new_filled(domain_size);
                         for x in set_1_reference.iter_mut() {
                             *x = true;
                         }
                     } else {
-                        set_2 = ThinBitSet::new_filled(domain_size);
+                        set_2 = DenseBitSet::new_filled(domain_size);
                         for x in set_2_reference.iter_mut() {
                             *x = true;
                         }
@@ -1687,7 +1687,7 @@ mod tests {
                 set_1.encode(&mut encoder);
 
                 let mut decoder = DecoderLittleEndian::new(&encoder.bytes);
-                let decoded = ThinBitSet::<usize>::decode(&mut decoder);
+                let decoded = DenseBitSet::<usize>::decode(&mut decoder);
                 assert_eq!(
                     decoder.position(),
                     encoder.bytes.len(),
@@ -1704,7 +1704,7 @@ mod tests {
     fn test_relations_with_chunked_set(domain_size: usize) {
         const TEST_ITERATIONS: u32 = 64;
 
-        let mut dense_set = ThinBitSet::<usize>::new_empty(domain_size);
+        let mut dense_set = DenseBitSet::<usize>::new_empty(domain_size);
         let mut chunked_set = ChunkedBitSet::new_empty(domain_size);
 
         let mut rng = Rng::new(42);
@@ -1786,11 +1786,11 @@ mod tests {
     }
 
     #[test]
-    fn test_thin_bit_set() {
+    fn test_dense_bit_set() {
         assert_eq!(
-            size_of::<ThinBitSet<usize>>(),
+            size_of::<DenseBitSet<usize>>(),
             size_of::<Word>(),
-            "ThinBitSet should have the same size as a Word"
+            "DenseBitSet should have the same size as a Word"
         );
 
         test_with_domain_size(0);
@@ -1825,8 +1825,8 @@ mod tests {
         for _ in 0..TEST_ITERATIONS {
             match rng.next() % 100 {
                 0..30 => {
-                    // Insert an element in the `0..=(ThinBitSet::INLINE_CAPACITY + 2)` range.
-                    let elem = rng.next() % (ThinBitSet::<usize>::INLINE_CAPACITY + 3);
+                    // Insert an element in the `0..=(DenseBitSet::INLINE_CAPACITY + 2)` range.
+                    let elem = rng.next() % (DenseBitSet::<usize>::INLINE_CAPACITY + 3);
                     set.insert(elem);
                     reference_set.insert(elem);
                 }

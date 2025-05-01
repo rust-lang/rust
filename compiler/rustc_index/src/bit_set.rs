@@ -1,8 +1,7 @@
 #![expect(unreachable_pub)]
 #![allow(dead_code)]
+mod dense_bit_set;
 mod old_dense_bit_set;
-mod thin_bit_set;
-mod twin_bit_set;
 use std::marker::PhantomData;
 #[cfg(not(feature = "nightly"))]
 use std::mem;
@@ -11,11 +10,11 @@ use std::rc::Rc;
 use std::{fmt, iter};
 
 use Chunk::*;
+pub use dense_bit_set::BitIter;
 pub use old_dense_bit_set::{DenseBitSet, GrowableBitSet};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use smallvec::{SmallVec, smallvec};
-pub use thin_bit_set::BitIter;
 
 use crate::{Idx, IndexVec};
 
