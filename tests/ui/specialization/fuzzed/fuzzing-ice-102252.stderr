@@ -1,0 +1,26 @@
+error[E0275]: overflow evaluating the requirement `<Struct as Iterator>::Item == _`
+  --> $DIR/fuzzing-ice-102252.rs:12:1
+   |
+LL | struct Struct
+   | ^^^^^^^^^^^^^
+
+error[E0277]: `Struct` is not an iterator
+  --> $DIR/fuzzing-ice-102252.rs:17:16
+   |
+LL | impl Trait for Struct {}
+   |                ^^^^^^ `Struct` is not an iterator
+   |
+   = help: the trait `Iterator` is not implemented for `Struct`
+note: required by a bound in `Struct`
+  --> $DIR/fuzzing-ice-102252.rs:15:11
+   |
+LL | struct Struct
+   |        ------ required by a bound in this struct
+...
+LL |     Self: Iterator<Item = <Self as Iterator>::Item>, {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Struct`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.
