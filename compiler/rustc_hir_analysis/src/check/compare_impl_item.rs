@@ -393,7 +393,7 @@ fn compare_method_predicate_entailment<'tcx>(
             for obligation in obligations {
                 debug!(?obligation);
                 match obligation.predicate.kind().skip_binder() {
-                    // We need to register Projection oblgiations too, because we may end up with
+                    // We need to register Projection obligations too, because we may end up with
                     // an implied `X::Item: 'a`, which gets desugared into `X::Item = ?0`, `?0: 'a`.
                     // If we only register the region outlives obligation, this leads to an unconstrained var.
                     // See `implied_bounds_entailment_alias_var.rs` test.

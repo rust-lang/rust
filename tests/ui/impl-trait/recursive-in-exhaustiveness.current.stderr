@@ -31,7 +31,7 @@ LL |     (build2(x),)
    |     ------------ returning here with type `(impl Sized,)`
 
 warning: function cannot return without recursing
-  --> $DIR/recursive-in-exhaustiveness.rs:40:1
+  --> $DIR/recursive-in-exhaustiveness.rs:41:1
    |
 LL | fn build3<T>(x: T) -> impl Sized {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -42,7 +42,7 @@ LL |     let (x,) = (build3((x,)),);
    = help: a `loop` may express intention better if this is on purpose
 
 error[E0792]: expected generic type parameter, found `(T,)`
-  --> $DIR/recursive-in-exhaustiveness.rs:49:5
+  --> $DIR/recursive-in-exhaustiveness.rs:51:5
    |
 LL | fn build3<T>(x: T) -> impl Sized {
    |           - this generic parameter must be used with a generic type parameter
