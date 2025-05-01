@@ -107,9 +107,6 @@ impl DocTestBuilder {
         let can_be_merged = can_merge_doctests
             && !has_global_allocator
             && crate_attrs.is_empty()
-            // FIXME: We can probably merge tests which have the same global crate attrs,
-            // like we already do for the edition
-            && global_crate_attrs.is_empty()
             // If this is a merged doctest and a defined macro uses `$crate`, then the path will
             // not work, so better not put it into merged doctests.
             && !(has_macro_def && everything_else.contains("$crate"));
