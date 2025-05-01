@@ -22,3 +22,5 @@ where
     //~^ ERROR type mismatch resolving
 {
 }
+
+fn main() {}
