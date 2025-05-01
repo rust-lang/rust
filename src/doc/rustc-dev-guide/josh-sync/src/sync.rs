@@ -194,7 +194,7 @@ impl GitSync {
         );
         println!(
             // Open PR with `subtree update` title to silence the `no-merges` triagebot check
-            "    https://github.com/{UPSTREAM_REPO}/compare/{github_user}:{branch}?quick_pull=1&title=Rustc+dev+guide+subtree+update&body=r?+@ghost"
+            "    https://github.com/{UPSTREAM_REPO}/compare/{github_user}:{branch}?quick_pull=1&title=rustc-dev-guide+subtree+update&body=r?+@ghost"
         );
 
         drop(josh);
