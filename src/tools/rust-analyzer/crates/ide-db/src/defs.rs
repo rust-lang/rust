@@ -5,9 +5,9 @@
 
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
+use crate::RootDatabase;
 use crate::documentation::{Documentation, HasDocs};
 use crate::famous_defs::FamousDefs;
-use crate::RootDatabase;
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
@@ -21,8 +21,9 @@ use hir::{
 use span::Edition;
 use stdx::{format_to, impl_from};
 use syntax::{
+    SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{self, AstNode},
-    match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
+    match_ast,
 };
 
 // FIXME: a more precise name would probably be `Symbol`?
@@ -838,6 +839,14 @@ impl NameRefClass {
                 ast::AsmRegSpec(_) => {
                     Some(NameRefClass::Definition(Definition::InlineAsmRegOrRegClass(()), None))
                 },
+                ast::OffsetOfExpr(_) => {
+                    let (def, subst) = sema.resolve_offset_of_field(name_ref)?;
+                    let def = match def {
+                        Either::Left(variant) => Definition::Variant(variant),
+                        Either::Right(field) => Definition::Field(field),
+                    };
+                    Some(NameRefClass::Definition(def, Some(subst)))
+                },
                 _ => None
             }
         }
@@ -988,7 +997,6 @@ impl TryFrom<DefWithBody> for Definition {
             DefWithBody::Static(it) => Ok(it.into()),
             DefWithBody::Const(it) => Ok(it.into()),
             DefWithBody::Variant(it) => Ok(it.into()),
-            DefWithBody::InTypeConst(_) => Err(()),
         }
     }
 }

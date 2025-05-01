@@ -3,7 +3,7 @@
 use ide_db::SymbolKind;
 use syntax::ast;
 
-use crate::{context::CompletionContext, item::CompletionItem, Completions};
+use crate::{Completions, context::CompletionContext, item::CompletionItem};
 
 pub(super) fn complete_repr(
     acc: &mut Completions,

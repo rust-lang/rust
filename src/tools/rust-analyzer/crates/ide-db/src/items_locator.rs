@@ -5,12 +5,12 @@
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{import_map, Crate, ItemInNs, Module, Semantics};
+use hir::{Complete, Crate, ItemInNs, Module, import_map};
 
 use crate::{
+    RootDatabase,
     imports::import_assets::NameToImport,
     symbol_index::{self, SymbolsDatabase as _},
-    RootDatabase,
 };
 
 /// A value to use, when uncertain which limit to pick.
@@ -20,13 +20,13 @@ pub use import_map::AssocSearchMode;
 
 // FIXME: Do callbacks instead to avoid allocations.
 /// Searches for importable items with the given name in the crate and its dependencies.
-pub fn items_with_name<'a>(
-    sema: &'a Semantics<'_, RootDatabase>,
+pub fn items_with_name(
+    db: &RootDatabase,
     krate: Crate,
     name: NameToImport,
     assoc_item_search: AssocSearchMode,
-) -> impl Iterator<Item = ItemInNs> + 'a {
-    let _p = tracing::info_span!("items_with_name", name = name.text(), assoc_item_search = ?assoc_item_search, crate = ?krate.display_name(sema.db).map(|name| name.to_string()))
+) -> impl Iterator<Item = (ItemInNs, Complete)> {
+    let _p = tracing::info_span!("items_with_name", name = name.text(), assoc_item_search = ?assoc_item_search, crate = ?krate.display_name(db).map(|name| name.to_string()))
         .entered();
 
     let prefix = matches!(name, NameToImport::Prefix(..));
@@ -68,12 +68,12 @@ pub fn items_with_name<'a>(
         }
     };
 
-    find_items(sema, krate, local_query, external_query)
+    find_items(db, krate, local_query, external_query)
 }
 
 /// Searches for importable items with the given name in the crate and its dependencies.
 pub fn items_with_name_in_module<T>(
-    sema: &Semantics<'_, RootDatabase>,
+    db: &RootDatabase,
     module: Module,
     name: NameToImport,
     assoc_item_search: AssocSearchMode,
@@ -110,7 +110,7 @@ pub fn items_with_name_in_module<T>(
             local_query
         }
     };
-    local_query.search(&[sema.db.module_symbols(module)], |local_candidate| {
+    local_query.search(&[db.module_symbols(module)], |local_candidate| {
         cb(match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
             def => ItemInNs::from(def),
@@ -118,32 +118,34 @@ pub fn items_with_name_in_module<T>(
     })
 }
 
-fn find_items<'a>(
-    sema: &'a Semantics<'_, RootDatabase>,
+fn find_items(
+    db: &RootDatabase,
     krate: Crate,
     local_query: symbol_index::Query,
     external_query: import_map::Query,
-) -> impl Iterator<Item = ItemInNs> + 'a {
+) -> impl Iterator<Item = (ItemInNs, Complete)> {
     let _p = tracing::info_span!("find_items").entered();
-    let db = sema.db;
 
     // NOTE: `external_query` includes `assoc_item_search`, so we don't need to
     // filter on our own.
-    let external_importables =
-        krate.query_external_importables(db, external_query).map(|external_importable| {
-            match external_importable {
+    let external_importables = krate.query_external_importables(db, external_query).map(
+        |(external_importable, do_not_complete)| {
+            let external_importable = match external_importable {
                 Either::Left(module_def) => ItemInNs::from(module_def),
                 Either::Right(macro_def) => ItemInNs::from(macro_def),
-            }
-        });
+            };
+            (external_importable, do_not_complete)
+        },
+    );
 
     // Query the local crate using the symbol index.
     let mut local_results = Vec::new();
     local_query.search(&symbol_index::crate_symbols(db, krate), |local_candidate| {
-        local_results.push(match local_candidate.def {
+        let def = match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
             def => ItemInNs::from(def),
-        });
+        };
+        local_results.push((def, local_candidate.do_not_complete));
         ControlFlow::<()>::Continue(())
     });
     local_results.into_iter().chain(external_importables)

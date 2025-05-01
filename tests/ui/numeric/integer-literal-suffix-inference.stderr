@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:38:11
+  --> $DIR/integer-literal-suffix-inference.rs:40:11
    |
 LL |     id_i8(a16);
    |     ----- ^^^ expected `i8`, found `i16`
@@ -7,7 +7,7 @@ LL |     id_i8(a16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:15:8
+  --> $DIR/integer-literal-suffix-inference.rs:17:8
    |
 LL |     fn id_i8(n: i8) -> i8 { n }
    |        ^^^^^ -----
@@ -17,7 +17,7 @@ LL |     id_i8(a16.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:41:11
+  --> $DIR/integer-literal-suffix-inference.rs:43:11
    |
 LL |     id_i8(a32);
    |     ----- ^^^ expected `i8`, found `i32`
@@ -25,7 +25,7 @@ LL |     id_i8(a32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:15:8
+  --> $DIR/integer-literal-suffix-inference.rs:17:8
    |
 LL |     fn id_i8(n: i8) -> i8 { n }
    |        ^^^^^ -----
@@ -35,7 +35,7 @@ LL |     id_i8(a32.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:44:11
+  --> $DIR/integer-literal-suffix-inference.rs:46:11
    |
 LL |     id_i8(a64);
    |     ----- ^^^ expected `i8`, found `i64`
@@ -43,7 +43,7 @@ LL |     id_i8(a64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:15:8
+  --> $DIR/integer-literal-suffix-inference.rs:17:8
    |
 LL |     fn id_i8(n: i8) -> i8 { n }
    |        ^^^^^ -----
@@ -53,7 +53,7 @@ LL |     id_i8(a64.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:47:11
+  --> $DIR/integer-literal-suffix-inference.rs:49:11
    |
 LL |     id_i8(asize);
    |     ----- ^^^^^ expected `i8`, found `isize`
@@ -61,7 +61,7 @@ LL |     id_i8(asize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:15:8
+  --> $DIR/integer-literal-suffix-inference.rs:17:8
    |
 LL |     fn id_i8(n: i8) -> i8 { n }
    |        ^^^^^ -----
@@ -71,7 +71,7 @@ LL |     id_i8(asize.try_into().unwrap());
    |                ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:51:12
+  --> $DIR/integer-literal-suffix-inference.rs:53:12
    |
 LL |     id_i16(a8);
    |     ------ ^^ expected `i16`, found `i8`
@@ -79,7 +79,7 @@ LL |     id_i16(a8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:16:8
+  --> $DIR/integer-literal-suffix-inference.rs:18:8
    |
 LL |     fn id_i16(n: i16) -> i16 { n }
    |        ^^^^^^ ------
@@ -89,7 +89,7 @@ LL |     id_i16(a8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:55:12
+  --> $DIR/integer-literal-suffix-inference.rs:57:12
    |
 LL |     id_i16(a32);
    |     ------ ^^^ expected `i16`, found `i32`
@@ -97,7 +97,7 @@ LL |     id_i16(a32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:16:8
+  --> $DIR/integer-literal-suffix-inference.rs:18:8
    |
 LL |     fn id_i16(n: i16) -> i16 { n }
    |        ^^^^^^ ------
@@ -107,7 +107,7 @@ LL |     id_i16(a32.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:58:12
+  --> $DIR/integer-literal-suffix-inference.rs:60:12
    |
 LL |     id_i16(a64);
    |     ------ ^^^ expected `i16`, found `i64`
@@ -115,7 +115,7 @@ LL |     id_i16(a64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:16:8
+  --> $DIR/integer-literal-suffix-inference.rs:18:8
    |
 LL |     fn id_i16(n: i16) -> i16 { n }
    |        ^^^^^^ ------
@@ -125,7 +125,7 @@ LL |     id_i16(a64.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:61:12
+  --> $DIR/integer-literal-suffix-inference.rs:63:12
    |
 LL |     id_i16(asize);
    |     ------ ^^^^^ expected `i16`, found `isize`
@@ -133,7 +133,7 @@ LL |     id_i16(asize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:16:8
+  --> $DIR/integer-literal-suffix-inference.rs:18:8
    |
 LL |     fn id_i16(n: i16) -> i16 { n }
    |        ^^^^^^ ------
@@ -143,7 +143,7 @@ LL |     id_i16(asize.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:65:12
+  --> $DIR/integer-literal-suffix-inference.rs:67:12
    |
 LL |     id_i32(a8);
    |     ------ ^^ expected `i32`, found `i8`
@@ -151,7 +151,7 @@ LL |     id_i32(a8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:17:8
+  --> $DIR/integer-literal-suffix-inference.rs:19:8
    |
 LL |     fn id_i32(n: i32) -> i32 { n }
    |        ^^^^^^ ------
@@ -161,7 +161,7 @@ LL |     id_i32(a8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:68:12
+  --> $DIR/integer-literal-suffix-inference.rs:70:12
    |
 LL |     id_i32(a16);
    |     ------ ^^^ expected `i32`, found `i16`
@@ -169,7 +169,7 @@ LL |     id_i32(a16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:17:8
+  --> $DIR/integer-literal-suffix-inference.rs:19:8
    |
 LL |     fn id_i32(n: i32) -> i32 { n }
    |        ^^^^^^ ------
@@ -179,7 +179,7 @@ LL |     id_i32(a16.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:72:12
+  --> $DIR/integer-literal-suffix-inference.rs:74:12
    |
 LL |     id_i32(a64);
    |     ------ ^^^ expected `i32`, found `i64`
@@ -187,7 +187,7 @@ LL |     id_i32(a64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:17:8
+  --> $DIR/integer-literal-suffix-inference.rs:19:8
    |
 LL |     fn id_i32(n: i32) -> i32 { n }
    |        ^^^^^^ ------
@@ -197,7 +197,7 @@ LL |     id_i32(a64.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:75:12
+  --> $DIR/integer-literal-suffix-inference.rs:77:12
    |
 LL |     id_i32(asize);
    |     ------ ^^^^^ expected `i32`, found `isize`
@@ -205,7 +205,7 @@ LL |     id_i32(asize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:17:8
+  --> $DIR/integer-literal-suffix-inference.rs:19:8
    |
 LL |     fn id_i32(n: i32) -> i32 { n }
    |        ^^^^^^ ------
@@ -215,7 +215,7 @@ LL |     id_i32(asize.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:79:12
+  --> $DIR/integer-literal-suffix-inference.rs:81:12
    |
 LL |     id_i64(a8);
    |     ------ ^^ expected `i64`, found `i8`
@@ -223,7 +223,7 @@ LL |     id_i64(a8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:18:8
+  --> $DIR/integer-literal-suffix-inference.rs:20:8
    |
 LL |     fn id_i64(n: i64) -> i64 { n }
    |        ^^^^^^ ------
@@ -233,7 +233,7 @@ LL |     id_i64(a8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:82:12
+  --> $DIR/integer-literal-suffix-inference.rs:84:12
    |
 LL |     id_i64(a16);
    |     ------ ^^^ expected `i64`, found `i16`
@@ -241,7 +241,7 @@ LL |     id_i64(a16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:18:8
+  --> $DIR/integer-literal-suffix-inference.rs:20:8
    |
 LL |     fn id_i64(n: i64) -> i64 { n }
    |        ^^^^^^ ------
@@ -251,7 +251,7 @@ LL |     id_i64(a16.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:85:12
+  --> $DIR/integer-literal-suffix-inference.rs:87:12
    |
 LL |     id_i64(a32);
    |     ------ ^^^ expected `i64`, found `i32`
@@ -259,7 +259,7 @@ LL |     id_i64(a32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:18:8
+  --> $DIR/integer-literal-suffix-inference.rs:20:8
    |
 LL |     fn id_i64(n: i64) -> i64 { n }
    |        ^^^^^^ ------
@@ -269,7 +269,7 @@ LL |     id_i64(a32.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:89:12
+  --> $DIR/integer-literal-suffix-inference.rs:91:12
    |
 LL |     id_i64(asize);
    |     ------ ^^^^^ expected `i64`, found `isize`
@@ -277,7 +277,7 @@ LL |     id_i64(asize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:18:8
+  --> $DIR/integer-literal-suffix-inference.rs:20:8
    |
 LL |     fn id_i64(n: i64) -> i64 { n }
    |        ^^^^^^ ------
@@ -287,7 +287,7 @@ LL |     id_i64(asize.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:93:14
+  --> $DIR/integer-literal-suffix-inference.rs:95:14
    |
 LL |     id_isize(a8);
    |     -------- ^^ expected `isize`, found `i8`
@@ -295,7 +295,7 @@ LL |     id_isize(a8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:19:8
+  --> $DIR/integer-literal-suffix-inference.rs:21:8
    |
 LL |     fn id_isize(n: isize) -> isize { n }
    |        ^^^^^^^^ --------
@@ -305,7 +305,7 @@ LL |     id_isize(a8.into());
    |                +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:96:14
+  --> $DIR/integer-literal-suffix-inference.rs:98:14
    |
 LL |     id_isize(a16);
    |     -------- ^^^ expected `isize`, found `i16`
@@ -313,7 +313,7 @@ LL |     id_isize(a16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:19:8
+  --> $DIR/integer-literal-suffix-inference.rs:21:8
    |
 LL |     fn id_isize(n: isize) -> isize { n }
    |        ^^^^^^^^ --------
@@ -323,7 +323,7 @@ LL |     id_isize(a16.into());
    |                 +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:99:14
+  --> $DIR/integer-literal-suffix-inference.rs:101:14
    |
 LL |     id_isize(a32);
    |     -------- ^^^ expected `isize`, found `i32`
@@ -331,7 +331,7 @@ LL |     id_isize(a32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:19:8
+  --> $DIR/integer-literal-suffix-inference.rs:21:8
    |
 LL |     fn id_isize(n: isize) -> isize { n }
    |        ^^^^^^^^ --------
@@ -341,7 +341,7 @@ LL |     id_isize(a32.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:102:14
+  --> $DIR/integer-literal-suffix-inference.rs:104:14
    |
 LL |     id_isize(a64);
    |     -------- ^^^ expected `isize`, found `i64`
@@ -349,7 +349,7 @@ LL |     id_isize(a64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:19:8
+  --> $DIR/integer-literal-suffix-inference.rs:21:8
    |
 LL |     fn id_isize(n: isize) -> isize { n }
    |        ^^^^^^^^ --------
@@ -359,7 +359,7 @@ LL |     id_isize(a64.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:108:11
+  --> $DIR/integer-literal-suffix-inference.rs:110:11
    |
 LL |     id_i8(c16);
    |     ----- ^^^ expected `i8`, found `i16`
@@ -367,7 +367,7 @@ LL |     id_i8(c16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:15:8
+  --> $DIR/integer-literal-suffix-inference.rs:17:8
    |
 LL |     fn id_i8(n: i8) -> i8 { n }
    |        ^^^^^ -----
@@ -377,7 +377,7 @@ LL |     id_i8(c16.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:111:11
+  --> $DIR/integer-literal-suffix-inference.rs:113:11
    |
 LL |     id_i8(c32);
    |     ----- ^^^ expected `i8`, found `i32`
@@ -385,7 +385,7 @@ LL |     id_i8(c32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:15:8
+  --> $DIR/integer-literal-suffix-inference.rs:17:8
    |
 LL |     fn id_i8(n: i8) -> i8 { n }
    |        ^^^^^ -----
@@ -395,7 +395,7 @@ LL |     id_i8(c32.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:114:11
+  --> $DIR/integer-literal-suffix-inference.rs:116:11
    |
 LL |     id_i8(c64);
    |     ----- ^^^ expected `i8`, found `i64`
@@ -403,7 +403,7 @@ LL |     id_i8(c64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:15:8
+  --> $DIR/integer-literal-suffix-inference.rs:17:8
    |
 LL |     fn id_i8(n: i8) -> i8 { n }
    |        ^^^^^ -----
@@ -413,7 +413,7 @@ LL |     id_i8(c64.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:118:12
+  --> $DIR/integer-literal-suffix-inference.rs:120:12
    |
 LL |     id_i16(c8);
    |     ------ ^^ expected `i16`, found `i8`
@@ -421,7 +421,7 @@ LL |     id_i16(c8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:16:8
+  --> $DIR/integer-literal-suffix-inference.rs:18:8
    |
 LL |     fn id_i16(n: i16) -> i16 { n }
    |        ^^^^^^ ------
@@ -431,7 +431,7 @@ LL |     id_i16(c8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:122:12
+  --> $DIR/integer-literal-suffix-inference.rs:124:12
    |
 LL |     id_i16(c32);
    |     ------ ^^^ expected `i16`, found `i32`
@@ -439,7 +439,7 @@ LL |     id_i16(c32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:16:8
+  --> $DIR/integer-literal-suffix-inference.rs:18:8
    |
 LL |     fn id_i16(n: i16) -> i16 { n }
    |        ^^^^^^ ------
@@ -449,7 +449,7 @@ LL |     id_i16(c32.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:125:12
+  --> $DIR/integer-literal-suffix-inference.rs:127:12
    |
 LL |     id_i16(c64);
    |     ------ ^^^ expected `i16`, found `i64`
@@ -457,7 +457,7 @@ LL |     id_i16(c64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:16:8
+  --> $DIR/integer-literal-suffix-inference.rs:18:8
    |
 LL |     fn id_i16(n: i16) -> i16 { n }
    |        ^^^^^^ ------
@@ -467,7 +467,7 @@ LL |     id_i16(c64.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:129:12
+  --> $DIR/integer-literal-suffix-inference.rs:131:12
    |
 LL |     id_i32(c8);
    |     ------ ^^ expected `i32`, found `i8`
@@ -475,7 +475,7 @@ LL |     id_i32(c8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:17:8
+  --> $DIR/integer-literal-suffix-inference.rs:19:8
    |
 LL |     fn id_i32(n: i32) -> i32 { n }
    |        ^^^^^^ ------
@@ -485,7 +485,7 @@ LL |     id_i32(c8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:132:12
+  --> $DIR/integer-literal-suffix-inference.rs:134:12
    |
 LL |     id_i32(c16);
    |     ------ ^^^ expected `i32`, found `i16`
@@ -493,7 +493,7 @@ LL |     id_i32(c16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:17:8
+  --> $DIR/integer-literal-suffix-inference.rs:19:8
    |
 LL |     fn id_i32(n: i32) -> i32 { n }
    |        ^^^^^^ ------
@@ -503,7 +503,7 @@ LL |     id_i32(c16.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:136:12
+  --> $DIR/integer-literal-suffix-inference.rs:138:12
    |
 LL |     id_i32(c64);
    |     ------ ^^^ expected `i32`, found `i64`
@@ -511,7 +511,7 @@ LL |     id_i32(c64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:17:8
+  --> $DIR/integer-literal-suffix-inference.rs:19:8
    |
 LL |     fn id_i32(n: i32) -> i32 { n }
    |        ^^^^^^ ------
@@ -521,7 +521,7 @@ LL |     id_i32(c64.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:140:12
+  --> $DIR/integer-literal-suffix-inference.rs:142:12
    |
 LL |     id_i64(a8);
    |     ------ ^^ expected `i64`, found `i8`
@@ -529,7 +529,7 @@ LL |     id_i64(a8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:18:8
+  --> $DIR/integer-literal-suffix-inference.rs:20:8
    |
 LL |     fn id_i64(n: i64) -> i64 { n }
    |        ^^^^^^ ------
@@ -539,7 +539,7 @@ LL |     id_i64(a8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:143:12
+  --> $DIR/integer-literal-suffix-inference.rs:145:12
    |
 LL |     id_i64(a16);
    |     ------ ^^^ expected `i64`, found `i16`
@@ -547,7 +547,7 @@ LL |     id_i64(a16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:18:8
+  --> $DIR/integer-literal-suffix-inference.rs:20:8
    |
 LL |     fn id_i64(n: i64) -> i64 { n }
    |        ^^^^^^ ------
@@ -557,7 +557,7 @@ LL |     id_i64(a16.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:146:12
+  --> $DIR/integer-literal-suffix-inference.rs:148:12
    |
 LL |     id_i64(a32);
    |     ------ ^^^ expected `i64`, found `i32`
@@ -565,7 +565,7 @@ LL |     id_i64(a32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:18:8
+  --> $DIR/integer-literal-suffix-inference.rs:20:8
    |
 LL |     fn id_i64(n: i64) -> i64 { n }
    |        ^^^^^^ ------
@@ -575,7 +575,7 @@ LL |     id_i64(a32.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:152:11
+  --> $DIR/integer-literal-suffix-inference.rs:154:11
    |
 LL |     id_u8(b16);
    |     ----- ^^^ expected `u8`, found `u16`
@@ -583,7 +583,7 @@ LL |     id_u8(b16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:27:8
+  --> $DIR/integer-literal-suffix-inference.rs:29:8
    |
 LL |     fn id_u8(n: u8) -> u8 { n }
    |        ^^^^^ -----
@@ -593,7 +593,7 @@ LL |     id_u8(b16.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:155:11
+  --> $DIR/integer-literal-suffix-inference.rs:157:11
    |
 LL |     id_u8(b32);
    |     ----- ^^^ expected `u8`, found `u32`
@@ -601,7 +601,7 @@ LL |     id_u8(b32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:27:8
+  --> $DIR/integer-literal-suffix-inference.rs:29:8
    |
 LL |     fn id_u8(n: u8) -> u8 { n }
    |        ^^^^^ -----
@@ -611,7 +611,7 @@ LL |     id_u8(b32.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:158:11
+  --> $DIR/integer-literal-suffix-inference.rs:160:11
    |
 LL |     id_u8(b64);
    |     ----- ^^^ expected `u8`, found `u64`
@@ -619,7 +619,7 @@ LL |     id_u8(b64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:27:8
+  --> $DIR/integer-literal-suffix-inference.rs:29:8
    |
 LL |     fn id_u8(n: u8) -> u8 { n }
    |        ^^^^^ -----
@@ -629,7 +629,7 @@ LL |     id_u8(b64.try_into().unwrap());
    |              ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:161:11
+  --> $DIR/integer-literal-suffix-inference.rs:163:11
    |
 LL |     id_u8(bsize);
    |     ----- ^^^^^ expected `u8`, found `usize`
@@ -637,7 +637,7 @@ LL |     id_u8(bsize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:27:8
+  --> $DIR/integer-literal-suffix-inference.rs:29:8
    |
 LL |     fn id_u8(n: u8) -> u8 { n }
    |        ^^^^^ -----
@@ -647,7 +647,7 @@ LL |     id_u8(bsize.try_into().unwrap());
    |                ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:165:12
+  --> $DIR/integer-literal-suffix-inference.rs:167:12
    |
 LL |     id_u16(b8);
    |     ------ ^^ expected `u16`, found `u8`
@@ -655,7 +655,7 @@ LL |     id_u16(b8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:28:8
+  --> $DIR/integer-literal-suffix-inference.rs:30:8
    |
 LL |     fn id_u16(n: u16) -> u16 { n }
    |        ^^^^^^ ------
@@ -665,7 +665,7 @@ LL |     id_u16(b8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:169:12
+  --> $DIR/integer-literal-suffix-inference.rs:171:12
    |
 LL |     id_u16(b32);
    |     ------ ^^^ expected `u16`, found `u32`
@@ -673,7 +673,7 @@ LL |     id_u16(b32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:28:8
+  --> $DIR/integer-literal-suffix-inference.rs:30:8
    |
 LL |     fn id_u16(n: u16) -> u16 { n }
    |        ^^^^^^ ------
@@ -683,7 +683,7 @@ LL |     id_u16(b32.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:172:12
+  --> $DIR/integer-literal-suffix-inference.rs:174:12
    |
 LL |     id_u16(b64);
    |     ------ ^^^ expected `u16`, found `u64`
@@ -691,7 +691,7 @@ LL |     id_u16(b64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:28:8
+  --> $DIR/integer-literal-suffix-inference.rs:30:8
    |
 LL |     fn id_u16(n: u16) -> u16 { n }
    |        ^^^^^^ ------
@@ -701,7 +701,7 @@ LL |     id_u16(b64.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:175:12
+  --> $DIR/integer-literal-suffix-inference.rs:177:12
    |
 LL |     id_u16(bsize);
    |     ------ ^^^^^ expected `u16`, found `usize`
@@ -709,7 +709,7 @@ LL |     id_u16(bsize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:28:8
+  --> $DIR/integer-literal-suffix-inference.rs:30:8
    |
 LL |     fn id_u16(n: u16) -> u16 { n }
    |        ^^^^^^ ------
@@ -719,7 +719,7 @@ LL |     id_u16(bsize.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:179:12
+  --> $DIR/integer-literal-suffix-inference.rs:181:12
    |
 LL |     id_u32(b8);
    |     ------ ^^ expected `u32`, found `u8`
@@ -727,7 +727,7 @@ LL |     id_u32(b8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:29:8
+  --> $DIR/integer-literal-suffix-inference.rs:31:8
    |
 LL |     fn id_u32(n: u32) -> u32 { n }
    |        ^^^^^^ ------
@@ -737,7 +737,7 @@ LL |     id_u32(b8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:182:12
+  --> $DIR/integer-literal-suffix-inference.rs:184:12
    |
 LL |     id_u32(b16);
    |     ------ ^^^ expected `u32`, found `u16`
@@ -745,7 +745,7 @@ LL |     id_u32(b16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:29:8
+  --> $DIR/integer-literal-suffix-inference.rs:31:8
    |
 LL |     fn id_u32(n: u32) -> u32 { n }
    |        ^^^^^^ ------
@@ -755,7 +755,7 @@ LL |     id_u32(b16.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:186:12
+  --> $DIR/integer-literal-suffix-inference.rs:188:12
    |
 LL |     id_u32(b64);
    |     ------ ^^^ expected `u32`, found `u64`
@@ -763,7 +763,7 @@ LL |     id_u32(b64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:29:8
+  --> $DIR/integer-literal-suffix-inference.rs:31:8
    |
 LL |     fn id_u32(n: u32) -> u32 { n }
    |        ^^^^^^ ------
@@ -773,7 +773,7 @@ LL |     id_u32(b64.try_into().unwrap());
    |               ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:189:12
+  --> $DIR/integer-literal-suffix-inference.rs:191:12
    |
 LL |     id_u32(bsize);
    |     ------ ^^^^^ expected `u32`, found `usize`
@@ -781,7 +781,7 @@ LL |     id_u32(bsize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:29:8
+  --> $DIR/integer-literal-suffix-inference.rs:31:8
    |
 LL |     fn id_u32(n: u32) -> u32 { n }
    |        ^^^^^^ ------
@@ -791,7 +791,7 @@ LL |     id_u32(bsize.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:193:12
+  --> $DIR/integer-literal-suffix-inference.rs:195:12
    |
 LL |     id_u64(b8);
    |     ------ ^^ expected `u64`, found `u8`
@@ -799,7 +799,7 @@ LL |     id_u64(b8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:30:8
+  --> $DIR/integer-literal-suffix-inference.rs:32:8
    |
 LL |     fn id_u64(n: u64) -> u64 { n }
    |        ^^^^^^ ------
@@ -809,7 +809,7 @@ LL |     id_u64(b8.into());
    |              +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:196:12
+  --> $DIR/integer-literal-suffix-inference.rs:198:12
    |
 LL |     id_u64(b16);
    |     ------ ^^^ expected `u64`, found `u16`
@@ -817,7 +817,7 @@ LL |     id_u64(b16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:30:8
+  --> $DIR/integer-literal-suffix-inference.rs:32:8
    |
 LL |     fn id_u64(n: u64) -> u64 { n }
    |        ^^^^^^ ------
@@ -827,7 +827,7 @@ LL |     id_u64(b16.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:199:12
+  --> $DIR/integer-literal-suffix-inference.rs:201:12
    |
 LL |     id_u64(b32);
    |     ------ ^^^ expected `u64`, found `u32`
@@ -835,7 +835,7 @@ LL |     id_u64(b32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:30:8
+  --> $DIR/integer-literal-suffix-inference.rs:32:8
    |
 LL |     fn id_u64(n: u64) -> u64 { n }
    |        ^^^^^^ ------
@@ -845,7 +845,7 @@ LL |     id_u64(b32.into());
    |               +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:203:12
+  --> $DIR/integer-literal-suffix-inference.rs:205:12
    |
 LL |     id_u64(bsize);
    |     ------ ^^^^^ expected `u64`, found `usize`
@@ -853,7 +853,7 @@ LL |     id_u64(bsize);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:30:8
+  --> $DIR/integer-literal-suffix-inference.rs:32:8
    |
 LL |     fn id_u64(n: u64) -> u64 { n }
    |        ^^^^^^ ------
@@ -863,7 +863,7 @@ LL |     id_u64(bsize.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:207:14
+  --> $DIR/integer-literal-suffix-inference.rs:209:14
    |
 LL |     id_usize(b8);
    |     -------- ^^ expected `usize`, found `u8`
@@ -871,7 +871,7 @@ LL |     id_usize(b8);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:31:8
+  --> $DIR/integer-literal-suffix-inference.rs:33:8
    |
 LL |     fn id_usize(n: usize) -> usize { n }
    |        ^^^^^^^^ --------
@@ -881,7 +881,7 @@ LL |     id_usize(b8.into());
    |                +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:210:14
+  --> $DIR/integer-literal-suffix-inference.rs:212:14
    |
 LL |     id_usize(b16);
    |     -------- ^^^ expected `usize`, found `u16`
@@ -889,7 +889,7 @@ LL |     id_usize(b16);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:31:8
+  --> $DIR/integer-literal-suffix-inference.rs:33:8
    |
 LL |     fn id_usize(n: usize) -> usize { n }
    |        ^^^^^^^^ --------
@@ -899,7 +899,7 @@ LL |     id_usize(b16.into());
    |                 +++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:213:14
+  --> $DIR/integer-literal-suffix-inference.rs:215:14
    |
 LL |     id_usize(b32);
    |     -------- ^^^ expected `usize`, found `u32`
@@ -907,7 +907,7 @@ LL |     id_usize(b32);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:31:8
+  --> $DIR/integer-literal-suffix-inference.rs:33:8
    |
 LL |     fn id_usize(n: usize) -> usize { n }
    |        ^^^^^^^^ --------
@@ -917,7 +917,7 @@ LL |     id_usize(b32.try_into().unwrap());
    |                 ++++++++++++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/integer-literal-suffix-inference.rs:216:14
+  --> $DIR/integer-literal-suffix-inference.rs:218:14
    |
 LL |     id_usize(b64);
    |     -------- ^^^ expected `usize`, found `u64`
@@ -925,7 +925,7 @@ LL |     id_usize(b64);
    |     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/integer-literal-suffix-inference.rs:31:8
+  --> $DIR/integer-literal-suffix-inference.rs:33:8
    |
 LL |     fn id_usize(n: usize) -> usize { n }
    |        ^^^^^^^^ --------

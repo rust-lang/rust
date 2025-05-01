@@ -4,12 +4,12 @@ struct Slice<T> {
 }
 
 fn main() {
-    match () {
+    match () { //~ NOTE this expression has type `()`
         Slice { data: data, len: len } => (),
         //~^ ERROR mismatched types
-        //~| expected unit type `()`
-        //~| found struct `Slice<_>`
-        //~| expected `()`, found `Slice<_>`
+        //~| NOTE expected unit type `()`
+        //~| NOTE found struct `Slice<_>`
+        //~| NOTE expected `()`, found `Slice<_>`
         _ => unreachable!()
     }
 }

@@ -3,19 +3,18 @@
 use std::ops;
 
 use hir_expand::{InFile, Lookup};
-use la_arena::{Idx, RawIdx};
 use span::Edition;
 use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
-    db::DefDatabase,
-    expander::Expander,
-    expr_store::{lower, pretty, ExpressionStore, ExpressionStoreSourceMap, SelfParamPtr},
-    hir::{BindingId, ExprId, PatId},
-    item_tree::AttrOwner,
-    src::HasSource,
     DefWithBodyId, HasModule,
+    db::DefDatabase,
+    expr_store::{
+        ExpressionStore, ExpressionStoreSourceMap, SelfParamPtr, lower::lower_body, pretty,
+    },
+    hir::{BindingId, ExprId, PatId},
+    src::HasSource,
 };
 
 /// The body of an item (function, const etc.).
@@ -79,31 +78,10 @@ impl Body {
         let InFile { file_id, value: body } = {
             match def {
                 DefWithBodyId::FunctionId(f) => {
-                    let data = db.function_data(f);
                     let f = f.lookup(db);
                     let src = f.source(db);
-                    params = src.value.param_list().map(move |param_list| {
-                        let item_tree = f.id.item_tree(db);
-                        let func = &item_tree[f.id.value];
-                        let krate = f.container.module(db).krate;
-                        let crate_graph = db.crate_graph();
-                        (
-                            param_list,
-                            (0..func.params.len()).map(move |idx| {
-                                item_tree
-                                    .attrs(
-                                        db,
-                                        krate,
-                                        AttrOwner::Param(
-                                            f.id.value,
-                                            Idx::from_raw(RawIdx::from(idx as u32)),
-                                        ),
-                                    )
-                                    .is_cfg_enabled(&crate_graph[krate].cfg_options)
-                            }),
-                        )
-                    });
-                    is_async_fn = data.is_async();
+                    params = src.value.param_list();
+                    is_async_fn = src.value.async_token().is_some();
                     src.map(|it| it.body().map(ast::Expr::from))
                 }
                 DefWithBodyId::ConstId(c) => {
@@ -121,13 +99,11 @@ impl Body {
                     let src = s.source(db);
                     src.map(|it| it.expr())
                 }
-                DefWithBodyId::InTypeConstId(c) => c.lookup(db).id.map(|_| c.source(db).expr()),
             }
         };
         let module = def.module(db);
-        let expander = Expander::new(db, file_id, module);
         let (body, mut source_map) =
-            lower::lower_body(db, def, expander, params, body, module.krate, is_async_fn);
+            lower_body(db, def, file_id, module, params, body, is_async_fn);
         source_map.store.shrink_to_fit();
 
         (Arc::new(body), Arc::new(source_map))

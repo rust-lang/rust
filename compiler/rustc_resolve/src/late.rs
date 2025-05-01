@@ -958,6 +958,11 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                     self.resolve_anon_const(end, AnonConstKind::ConstArg(IsRepeatExpr::No));
                 }
             }
+            TyPatKind::Or(patterns) => {
+                for pat in patterns {
+                    self.visit_ty_pat(pat)
+                }
+            }
             TyPatKind::Err(_) => {}
         }
     }

@@ -56,21 +56,20 @@ mod variance;
 
 use std::hash::Hash;
 
-use base_db::ra_salsa::InternValueTrivial;
 use chalk_ir::{
+    NoSolution,
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    NoSolution,
 };
 use either::Either;
-use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
+use hir_def::{CallableDefId, GeneralConstId, TypeOrConstParamId, hir::ExprId, type_ref::Rawness};
 use hir_expand::name::Name;
-use indexmap::{map::Entry, IndexMap};
-use intern::{sym, Symbol};
+use indexmap::{IndexMap, map::Entry};
+use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
-use syntax::ast::{make, ConstArg};
+use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
 
@@ -87,16 +86,16 @@ pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use drop::DropGlue;
 pub use infer::{
+    Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
+    InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
     cast::CastError,
     closure::{CaptureKind, CapturedItem},
-    could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
-    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
-    PointerCast,
+    could_coerce, could_unify, could_unify_deeply,
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, diagnostics::*, ImplTraitLoweringMode, ParamLoweringMode,
-    TyDefId, TyLoweringContext, ValueTyDefId,
+    ImplTraitLoweringMode, LifetimeElisionKind, ParamLoweringMode, TyDefId, TyLoweringContext,
+    ValueTyDefId, associated_type_shorthand_candidates, diagnostics::*,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
@@ -106,13 +105,13 @@ pub use mapping::{
 pub use method_resolution::check_orphan_rules;
 pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
-pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call, Unsafety};
+pub use utils::{Unsafety, all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
 pub use variance::Variance;
 
 pub use chalk_ir::{
+    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
     cast::Cast,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
 };
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
@@ -302,7 +301,7 @@ impl Hash for ConstScalar {
 
 /// Return an index of a parameter in the generic type parameter list by it's id.
 pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> {
-    generics::generics(db.upcast(), id.parent).type_or_const_param_idx(id)
+    generics::generics(db, id.parent).type_or_const_param_idx(id)
 }
 
 pub(crate) fn wrap_empty_binders<T>(value: T) -> Binders<T>
@@ -348,20 +347,24 @@ pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
     generics: &Generics,
     value: T,
 ) -> Binders<T> {
-    Binders::new(
-        VariableKinds::from_iter(
-            Interner,
-            generics.iter_id().map(|x| match x {
-                hir_def::GenericParamId::ConstParamId(id) => {
-                    chalk_ir::VariableKind::Const(db.const_param_ty(id))
-                }
-                hir_def::GenericParamId::TypeParamId(_) => {
-                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
-                }
-                hir_def::GenericParamId::LifetimeParamId(_) => chalk_ir::VariableKind::Lifetime,
-            }),
-        ),
-        value,
+    Binders::new(variable_kinds_from_iter(db, generics.iter_id()), value)
+}
+
+pub(crate) fn variable_kinds_from_iter(
+    db: &dyn HirDatabase,
+    iter: impl Iterator<Item = hir_def::GenericParamId>,
+) -> VariableKinds {
+    VariableKinds::from_iter(
+        Interner,
+        iter.map(|x| match x {
+            hir_def::GenericParamId::ConstParamId(id) => {
+                chalk_ir::VariableKind::Const(db.const_param_ty(id))
+            }
+            hir_def::GenericParamId::TypeParamId(_) => {
+                chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+            }
+            hir_def::GenericParamId::LifetimeParamId(_) => chalk_ir::VariableKind::Lifetime,
+        }),
     )
 }
 
@@ -526,13 +529,13 @@ pub type PolyFnSig = Binders<CallableSig>;
 
 impl CallableSig {
     pub fn from_params_and_return(
-        params: impl ExactSizeIterator<Item = Ty>,
+        params: impl Iterator<Item = Ty>,
         ret: Ty,
         is_varargs: bool,
         safety: Safety,
         abi: FnAbi,
     ) -> CallableSig {
-        let mut params_and_return = Vec::with_capacity(params.len() + 1);
+        let mut params_and_return = Vec::with_capacity(params.size_hint().0 + 1);
         params_and_return.extend(params);
         params_and_return.push(ret);
         CallableSig { params_and_return: params_and_return.into(), is_varargs, safety, abi }
@@ -610,7 +613,6 @@ pub enum ImplTraitId {
     TypeAliasImplTrait(hir_def::TypeAliasId, ImplTraitIdx),
     AsyncBlockTypeImplTrait(hir_def::DefWithBodyId, ExprId),
 }
-impl InternValueTrivial for ImplTraitId {}
 
 #[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTraits {
@@ -647,10 +649,8 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
         F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
         F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
     >(F1, F2);
-    impl<
-            F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
-            F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
-        > TypeFolder<Interner> for FreeVarFolder<F1, F2>
+    impl<F1: FnMut(BoundVar, DebruijnIndex) -> Ty, F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const>
+        TypeFolder<Interner> for FreeVarFolder<F1, F2>
     {
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
@@ -780,8 +780,8 @@ where
     T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + Clone,
 {
     use chalk_ir::{
-        fold::{FallibleTypeFolder, TypeSuperFoldable},
         Fallible,
+        fold::{FallibleTypeFolder, TypeSuperFoldable},
     };
     struct ErrorReplacer {
         vars: usize,
@@ -842,11 +842,7 @@ where
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(unknown_const(ty))
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
         }
 
         fn try_fold_free_var_const(
@@ -855,11 +851,7 @@ where
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(unknown_const(ty))
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
         }
 
         fn try_fold_inference_lifetime(
@@ -867,11 +859,7 @@ where
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Lifetime> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(error_lifetime())
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(error_lifetime()) }
         }
 
         fn try_fold_free_var_lifetime(
@@ -879,11 +867,7 @@ where
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Lifetime> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(error_lifetime())
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(error_lifetime()) }
         }
     }
     let mut error_replacer = ErrorReplacer { vars: 0 };
@@ -908,8 +892,8 @@ pub fn callable_sig_from_fn_trait(
     let krate = trait_env.krate;
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
     let output_assoc_type = db
-        .trait_data(fn_once_trait)
-        .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
+        .trait_items(fn_once_trait)
+        .associated_type_by_name(&Name::new_symbol_root(sym::Output))?;
 
     let mut table = InferenceTable::new(db, trait_env.clone());
     let b = TyBuilder::trait_ref(db, fn_once_trait);
@@ -1033,7 +1017,7 @@ where
     T: ?Sized + TypeVisitable<Interner>,
 {
     let mut collector = PlaceholderCollector { db, placeholders: FxHashSet::default() };
-    let _ = value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
+    _ = value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
     collector.placeholders.into_iter().collect()
 }
 
@@ -1042,15 +1026,6 @@ pub fn known_const_to_ast(
     db: &dyn HirDatabase,
     display_target: DisplayTarget,
 ) -> Option<ConstArg> {
-    if let ConstValue::Concrete(c) = &konst.interned().value {
-        match c.interned {
-            ConstScalar::UnevaluatedConst(GeneralConstId::InTypeConstId(cid), _) => {
-                return Some(cid.source(db.upcast()));
-            }
-            ConstScalar::Unknown => return None,
-            _ => (),
-        }
-    }
     Some(make::expr_const_value(konst.display(db, display_target).to_string().as_str()))
 }
 

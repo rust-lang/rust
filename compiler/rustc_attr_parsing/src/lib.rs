@@ -80,6 +80,7 @@
 #![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 #[macro_use]

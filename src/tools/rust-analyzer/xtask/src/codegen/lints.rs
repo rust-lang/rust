@@ -3,7 +3,7 @@
 #![allow(clippy::disallowed_types)]
 
 use std::{
-    collections::{hash_map, HashMap},
+    collections::{HashMap, hash_map},
     fs,
     path::Path,
     str::FromStr,
@@ -11,7 +11,7 @@ use std::{
 
 use edition::Edition;
 use stdx::format_to;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use crate::{
     codegen::{add_preamble, ensure_file_contents, reformat},

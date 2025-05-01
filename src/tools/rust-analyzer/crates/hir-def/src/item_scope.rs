@@ -3,23 +3,23 @@
 
 use std::sync::LazyLock;
 
-use base_db::CrateId;
-use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCallId};
+use base_db::Crate;
+use hir_expand::{AstId, MacroCallId, attrs::AttrId, db::ExpandDatabase, name::Name};
 use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use span::Edition;
 use stdx::format_to;
 use syntax::ast;
 
 use crate::{
+    AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
+    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::{Visibility, VisibilityExplicitness},
-    AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
-    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
 };
 
 #[derive(Debug, Default)]
@@ -358,7 +358,7 @@ impl ItemScope {
     }
 
     /// Get a name from current module scope, legacy macros are not included
-    pub(crate) fn get(&self, name: &Name) -> PerNs {
+    pub fn get(&self, name: &Name) -> PerNs {
         PerNs {
             types: self.types.get(name).copied(),
             values: self.values.get(name).copied(),
@@ -453,7 +453,7 @@ impl ItemScope {
         )
     }
 
-    pub(crate) fn macro_invoc(&self, call: AstId<ast::MacroCall>) -> Option<MacroCallId> {
+    pub fn macro_invoc(&self, call: AstId<ast::MacroCall>) -> Option<MacroCallId> {
         self.macro_invocations.get(&call).copied()
     }
 
@@ -916,7 +916,7 @@ impl ItemInNs {
     }
 
     /// Returns the crate defining this item (or `None` if `self` is built-in).
-    pub fn krate(&self, db: &dyn DefDatabase) -> Option<CrateId> {
+    pub fn krate(&self, db: &dyn DefDatabase) -> Option<Crate> {
         match self {
             ItemInNs::Types(id) | ItemInNs::Values(id) => id.module(db).map(|m| m.krate),
             ItemInNs::Macros(id) => Some(id.module(db).krate),

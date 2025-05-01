@@ -68,7 +68,7 @@ pub mod utils;
 
 use hir::Semantics;
 use ide_db::{EditionedFileId, RootDatabase};
-use syntax::TextRange;
+use syntax::{Edition, TextRange};
 
 pub(crate) use crate::assist_context::{AssistContext, Assists};
 
@@ -90,7 +90,7 @@ pub fn assists(
     let sema = Semantics::new(db);
     let file_id = sema
         .attach_first_edition(range.file_id)
-        .unwrap_or_else(|| EditionedFileId::current_edition(range.file_id));
+        .unwrap_or_else(|| EditionedFileId::new(db, range.file_id, Edition::CURRENT));
     let ctx = AssistContext::new(sema, config, hir::FileRange { file_id, range: range.range });
     let mut acc = Assists::new(&ctx, resolve);
     handlers::all().iter().for_each(|handler| {
@@ -122,6 +122,7 @@ mod handlers {
     mod convert_closure_to_fn;
     mod convert_comment_block;
     mod convert_comment_from_or_to_doc;
+    mod convert_for_to_while_let;
     mod convert_from_to_tryfrom;
     mod convert_integer_literal;
     mod convert_into_to_from;
@@ -199,6 +200,7 @@ mod handlers {
     mod remove_dbg;
     mod remove_mut;
     mod remove_parentheses;
+    mod remove_underscore;
     mod remove_unused_imports;
     mod remove_unused_param;
     mod reorder_fields;
@@ -252,6 +254,7 @@ mod handlers {
             convert_closure_to_fn::convert_closure_to_fn,
             convert_comment_block::convert_comment_block,
             convert_comment_from_or_to_doc::convert_comment_from_or_to_doc,
+            convert_for_to_while_let::convert_for_loop_to_while_let,
             convert_from_to_tryfrom::convert_from_to_tryfrom,
             convert_integer_literal::convert_integer_literal,
             convert_into_to_from::convert_into_to_from,
@@ -333,6 +336,7 @@ mod handlers {
             remove_dbg::remove_dbg,
             remove_mut::remove_mut,
             remove_parentheses::remove_parentheses,
+            remove_underscore::remove_underscore,
             remove_unused_imports::remove_unused_imports,
             remove_unused_param::remove_unused_param,
             reorder_fields::reorder_fields,

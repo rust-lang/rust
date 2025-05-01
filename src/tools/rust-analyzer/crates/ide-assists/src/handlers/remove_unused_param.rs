@@ -1,16 +1,15 @@
-use ide_db::{defs::Definition, search::FileReference, EditionedFileId};
+use ide_db::{EditionedFileId, defs::Definition, search::FileReference};
 use syntax::{
+    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, T, TextRange,
     algo::{find_node_at_range, least_common_ancestor_element},
     ast::{self, HasArgList},
     syntax_editor::Element,
-    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, T,
 };
 
 use SyntaxKind::WHITESPACE;
 
 use crate::{
-    assist_context::SourceChangeBuilder, utils::next_prev, AssistContext, AssistId, AssistKind,
-    Assists,
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::next_prev,
 };
 
 // Assist: remove_unused_param
@@ -77,7 +76,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     }
     let parent = param.syntax().parent()?;
     acc.add(
-        AssistId("remove_unused_param", AssistKind::Refactor),
+        AssistId::refactor("remove_unused_param"),
         "Remove unused parameter",
         param.syntax().text_range(),
         |builder| {
@@ -89,7 +88,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             for (file_id, references) in fn_def.usages(&ctx.sema).all() {
                 process_usages(ctx, builder, file_id, references, param_position, is_self_present);
             }
-            builder.add_file_edits(ctx.file_id(), editor);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -97,12 +96,14 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 fn process_usages(
     ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
-    file_id: EditionedFileId,
+    editioned_file_id: EditionedFileId,
     references: Vec<FileReference>,
     arg_to_remove: usize,
     is_self_present: bool,
 ) {
-    let source_file = ctx.sema.parse(file_id);
+    let source_file = ctx.sema.parse(editioned_file_id);
+    let file_id = editioned_file_id.file_id(ctx.db());
+    builder.edit_file(file_id);
     let possible_ranges = references
         .into_iter()
         .filter_map(|usage| process_usage(&source_file, usage, arg_to_remove, is_self_present));

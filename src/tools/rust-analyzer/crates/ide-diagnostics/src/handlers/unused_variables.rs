@@ -1,10 +1,10 @@
 use hir::Name;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind},
+    FileRange, RootDatabase,
+    assists::{Assist, AssistId},
     label::Label,
     source_change::SourceChange,
-    FileRange, RootDatabase,
 };
 use syntax::{Edition, TextRange};
 
@@ -46,7 +46,7 @@ pub(crate) fn unused_variables(
                 ctx.sema.db,
                 var_name,
                 it.range,
-                diagnostic_range.into(),
+                diagnostic_range,
                 ast.file_id.is_macro(),
                 ctx.edition,
             )
@@ -68,7 +68,7 @@ fn fixes(
     }
 
     Some(vec![Assist {
-        id: AssistId("unscore_unused_variable_name", AssistKind::QuickFix),
+        id: AssistId::quick_fix("unscore_unused_variable_name"),
         label: Label::new(format!(
             "Rename unused {} to _{}",
             var_name.display(db, edition),

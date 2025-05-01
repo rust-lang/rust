@@ -5,24 +5,24 @@ mod format_like;
 use base_db::SourceDatabase;
 use hir::{ItemInNs, Semantics};
 use ide_db::{
+    RootDatabase, SnippetCap,
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
     text_edit::TextEdit,
     ty_filter::TryEnum,
-    RootDatabase, SnippetCap,
 };
 use stdx::never;
 use syntax::{
-    ast::{self, AstNode, AstToken},
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
     TextRange, TextSize,
+    ast::{self, AstNode, AstToken},
 };
 
 use crate::{
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
     completions::postfix::format_like::add_format_like_completions,
     context::{BreakableKind, CompletionContext, DotAccess, DotAccessKind},
     item::{Builder, CompletionRelevancePostfixMatch},
-    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
 };
 
 pub(crate) fn complete_postfix(
@@ -155,21 +155,28 @@ pub(crate) fn complete_postfix(
     postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc, ctx.db);
     postfix_snippet("deref", "*expr", &format!("*{receiver_text}")).add_to(acc, ctx.db);
 
-    let mut unsafe_should_be_wrapped = true;
+    let mut block_should_be_wrapped = true;
     if dot_receiver.syntax().kind() == BLOCK_EXPR {
-        unsafe_should_be_wrapped = false;
+        block_should_be_wrapped = false;
         if let Some(parent) = dot_receiver.syntax().parent() {
             if matches!(parent.kind(), IF_EXPR | WHILE_EXPR | LOOP_EXPR | FOR_EXPR) {
-                unsafe_should_be_wrapped = true;
+                block_should_be_wrapped = true;
             }
         }
     };
-    let unsafe_completion_string = if unsafe_should_be_wrapped {
+    let unsafe_completion_string = if block_should_be_wrapped {
         format!("unsafe {{ {receiver_text} }}")
     } else {
         format!("unsafe {receiver_text}")
     };
     postfix_snippet("unsafe", "unsafe {}", &unsafe_completion_string).add_to(acc, ctx.db);
+
+    let const_completion_string = if block_should_be_wrapped {
+        format!("const {{ {receiver_text} }}")
+    } else {
+        format!("const {receiver_text}")
+    };
+    postfix_snippet("const", "const {}", &const_completion_string).add_to(acc, ctx.db);
 
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
@@ -276,8 +283,8 @@ fn get_receiver_text(
     if receiver_is_ambiguous_float_literal {
         range.range = TextRange::at(range.range.start(), range.range.len() - TextSize::of('.'))
     }
-    let file_text = sema.db.file_text(range.file_id.file_id());
-    let mut text = file_text[range.range].to_owned();
+    let file_text = sema.db.file_text(range.file_id.file_id(sema.db));
+    let mut text = file_text.text(sema.db)[range.range].to_owned();
 
     // The receiver texts should be interpreted as-is, as they are expected to be
     // normal Rust expressions.
@@ -414,8 +421,8 @@ mod tests {
     use expect_test::expect;
 
     use crate::{
-        tests::{check, check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig, Snippet,
+        tests::{TEST_CONFIG, check, check_edit, check_edit_with_config},
     };
 
     #[test]
@@ -430,6 +437,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -463,6 +471,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -490,6 +499,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -516,6 +526,7 @@ fn main() {
             expect![[r#"
                 sn box  Box::new(expr)
                 sn call function(expr)
+                sn const      const {}
                 sn dbg      dbg!(expr)
                 sn dbgr    dbg!(&expr)
                 sn deref         *expr
@@ -653,59 +664,74 @@ fn main() {
 
     #[test]
     fn postfix_completion_for_unsafe() {
-        check_edit("unsafe", r#"fn main() { foo.$0 }"#, r#"fn main() { unsafe { foo } }"#);
-        check_edit("unsafe", r#"fn main() { { foo }.$0 }"#, r#"fn main() { unsafe { foo } }"#);
+        postfix_completion_for_block("unsafe");
+    }
+
+    #[test]
+    fn postfix_completion_for_const() {
+        postfix_completion_for_block("const");
+    }
+
+    fn postfix_completion_for_block(kind: &str) {
+        check_edit(kind, r#"fn main() { foo.$0 }"#, &format!("fn main() {{ {kind} {{ foo }} }}"));
         check_edit(
-            "unsafe",
+            kind,
+            r#"fn main() { { foo }.$0 }"#,
+            &format!("fn main() {{ {kind} {{ foo }} }}"),
+        );
+        check_edit(
+            kind,
             r#"fn main() { if x { foo }.$0 }"#,
-            r#"fn main() { unsafe { if x { foo } } }"#,
+            &format!("fn main() {{ {kind} {{ if x {{ foo }} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { loop { foo }.$0 }"#,
-            r#"fn main() { unsafe { loop { foo } } }"#,
+            &format!("fn main() {{ {kind} {{ loop {{ foo }} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { if true {}.$0 }"#,
-            r#"fn main() { unsafe { if true {} } }"#,
+            &format!("fn main() {{ {kind} {{ if true {{}} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { while true {}.$0 }"#,
-            r#"fn main() { unsafe { while true {} } }"#,
+            &format!("fn main() {{ {kind} {{ while true {{}} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { for i in 0..10 {}.$0 }"#,
-            r#"fn main() { unsafe { for i in 0..10 {} } }"#,
+            &format!("fn main() {{ {kind} {{ for i in 0..10 {{}} }} }}"),
         );
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { let x = if true {1} else {2}.$0 }"#,
-            r#"fn main() { let x = unsafe { if true {1} else {2} } }"#,
+            &format!("fn main() {{ let x = {kind} {{ if true {{1}} else {{2}} }} }}"),
         );
 
         // completion will not be triggered
         check_edit(
-            "unsafe",
+            kind,
             r#"fn main() { let x = true else {panic!()}.$0}"#,
-            r#"fn main() { let x = true else {panic!()}.unsafe $0}"#,
+            &format!("fn main() {{ let x = true else {{panic!()}}.{kind} $0}}"),
         );
     }
 
     #[test]
     fn custom_postfix_completion() {
         let config = CompletionConfig {
-            snippets: vec![Snippet::new(
-                &[],
-                &["break".into()],
-                &["ControlFlow::Break(${receiver})".into()],
-                "",
-                &["core::ops::ControlFlow".into()],
-                crate::SnippetScope::Expr,
-            )
-            .unwrap()],
+            snippets: vec![
+                Snippet::new(
+                    &[],
+                    &["break".into()],
+                    &["ControlFlow::Break(${receiver})".into()],
+                    "",
+                    &["core::ops::ControlFlow".into()],
+                    crate::SnippetScope::Expr,
+                )
+                .unwrap(),
+            ],
             ..TEST_CONFIG
         };
 

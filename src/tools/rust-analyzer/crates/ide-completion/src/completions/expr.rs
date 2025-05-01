@@ -2,14 +2,14 @@
 
 use std::ops::ControlFlow;
 
-use hir::{sym, Name, PathCandidateCallback, ScopeDef};
+use hir::{Complete, Name, PathCandidateCallback, ScopeDef, sym};
 use ide_db::FxHashSet;
 use syntax::ast;
 
 use crate::{
+    CompletionContext, Completions,
     completions::record::add_default_update,
     context::{BreakableKind, PathCompletionCtx, PathExprCtx, Qualified},
-    CompletionContext, Completions,
 };
 
 struct PathCallback<'a, F> {
@@ -33,10 +33,10 @@ where
     fn on_trait_item(&mut self, item: hir::AssocItem) -> ControlFlow<()> {
         // The excluded check needs to come before the `seen` test, so that if we see the same method twice,
         // once as inherent and once not, we will include it.
-        if item
-            .container_trait(self.ctx.db)
-            .is_none_or(|trait_| !self.ctx.exclude_traits.contains(&trait_))
-            && self.seen.insert(item)
+        if item.container_trait(self.ctx.db).is_none_or(|trait_| {
+            !self.ctx.exclude_traits.contains(&trait_)
+                && trait_.complete(self.ctx.db) != Complete::IgnoreMethods
+        }) && self.seen.insert(item)
         {
             (self.add_assoc_item)(self.acc, item);
         }
@@ -79,11 +79,7 @@ pub(crate) fn complete_expr_path(
     let wants_const_token =
         ref_expr_parent.is_some() && has_raw_token && !has_const_token && !has_mut_token;
     let wants_mut_token = if ref_expr_parent.is_some() {
-        if has_raw_token {
-            !has_const_token && !has_mut_token
-        } else {
-            !has_mut_token
-        }
+        if has_raw_token { !has_const_token && !has_mut_token } else { !has_mut_token }
     } else {
         false
     };
@@ -108,7 +104,9 @@ pub(crate) fn complete_expr_path(
             .iter()
             .copied()
             .map(hir::Trait::from)
-            .filter(|it| !ctx.exclude_traits.contains(it))
+            .filter(|it| {
+                !ctx.exclude_traits.contains(it) && it.complete(ctx.db) != Complete::IgnoreMethods
+            })
             .flat_map(|it| it.items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
         Qualified::TypeAnchor { trait_: Some(trait_), .. } => {
@@ -262,7 +260,7 @@ pub(crate) fn complete_expr_path(
                                 path_ctx,
                                 strukt,
                                 None,
-                                Some(Name::new_symbol_root(sym::Self_.clone())),
+                                Some(Name::new_symbol_root(sym::Self_)),
                             );
                         }
                     }
@@ -282,7 +280,7 @@ pub(crate) fn complete_expr_path(
                                 ctx,
                                 un,
                                 None,
-                                Some(Name::new_symbol_root(sym::Self_.clone())),
+                                Some(Name::new_symbol_root(sym::Self_)),
                             );
                         }
                     }
@@ -349,6 +347,7 @@ pub(crate) fn complete_expr_path(
 
                     if !in_block_expr {
                         add_keyword("unsafe", "unsafe {\n    $0\n}");
+                        add_keyword("const", "const {\n    $0\n}");
                     }
                     add_keyword("match", "match $1 {\n    $0\n}");
                     add_keyword("while", "while $1 {\n    $0\n}");

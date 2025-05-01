@@ -1,11 +1,11 @@
 use hir::db::ExpandDatabase;
-use hir::{HirFileIdExt, UnsafeLint, UnsafetyReason};
+use hir::{UnsafeLint, UnsafetyReason};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
-use syntax::{ast, SyntaxNode};
-use syntax::{match_ast, AstNode};
+use syntax::{AstNode, match_ast};
+use syntax::{SyntaxNode, ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: missing-unsafe
 //
@@ -51,8 +51,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Ass
 
     let replacement = format!("unsafe {{ {} }}", node_to_add_unsafe_block.text());
     let edit = TextEdit::replace(node_to_add_unsafe_block.text_range(), replacement);
-    let source_change =
-        SourceChange::from_text_edit(d.node.file_id.original_file(ctx.sema.db), edit);
+    let source_change = SourceChange::from_text_edit(
+        d.node.file_id.original_file(ctx.sema.db).file_id(ctx.sema.db),
+        edit,
+    );
     Some(vec![fix("add_unsafe", "Add unsafe block", source_change, expr.syntax().text_range())])
 }
 
@@ -137,13 +139,13 @@ struct HasUnsafe;
 impl HasUnsafe {
     unsafe fn unsafe_fn(&self) {
         let x = &5_usize as *const usize;
-        let _y = *x;
+        let _y = unsafe {*x};
     }
 }
 
 unsafe fn unsafe_fn() {
     let x = &5_usize as *const usize;
-    let _y = *x;
+    let _y = unsafe {*x};
 }
 
 fn main() {
@@ -337,7 +339,7 @@ struct S(usize);
 impl S {
     unsafe fn func(&self) {
         let x = &self.0 as *const usize;
-        let _z = *x;
+        let _z = unsafe { *x };
     }
 }
 fn main() {
@@ -350,7 +352,7 @@ struct S(usize);
 impl S {
     unsafe fn func(&self) {
         let x = &self.0 as *const usize;
-        let _z = *x;
+        let _z = unsafe { *x };
     }
 }
 fn main() {
@@ -874,6 +876,19 @@ fn baz() {
 fn f(it: unsafe fn()){
     it();
  // ^^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn unsafe_call_in_const_expr() {
+        check_diagnostics(
+            r#"
+unsafe fn f() {}
+fn main() {
+    const { f(); };
+         // ^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
 }
         "#,
         );

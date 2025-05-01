@@ -462,7 +462,7 @@ macro_rules! bootstrap_tool {
     }
 }
 
-pub(crate) const COMPILETEST_ALLOW_FEATURES: &str = "test,internal_output_capture";
+pub(crate) const COMPILETEST_ALLOW_FEATURES: &str = "internal_output_capture";
 
 bootstrap_tool!(
     // This is marked as an external tool because it includes dependencies

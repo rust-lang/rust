@@ -4,9 +4,9 @@
 use either::Either;
 
 use crate::{
-    ast::{self, support, AstChildren, AstNode, AstToken},
-    syntax_node::SyntaxElementChildren,
     SyntaxElement, SyntaxToken, T,
+    ast::{self, AstChildren, AstNode, AstToken, support},
+    syntax_node::SyntaxElementChildren,
 };
 
 pub trait HasName: AstNode {
@@ -121,11 +121,7 @@ impl DocCommentIter {
             &mut self.filter_map(|comment| comment.doc_comment().map(ToOwned::to_owned)),
             "\n",
         );
-        if docs.is_empty() {
-            None
-        } else {
-            Some(docs)
-        }
+        if docs.is_empty() { None } else { Some(docs) }
     }
 }
 

@@ -20,7 +20,7 @@ mod coverageinfo;
 pub mod debuginfo;
 mod intrinsic;
 mod locals;
-mod naked_asm;
+pub mod naked_asm;
 pub mod operand;
 pub mod place;
 mod rvalue;
@@ -177,11 +177,6 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
-
-    if tcx.codegen_fn_attrs(instance.def_id()).flags.contains(CodegenFnAttrFlags::NAKED) {
-        crate::mir::naked_asm::codegen_naked_asm::<Bx>(cx, &mir, instance);
-        return;
-    }
 
     if tcx.features().ergonomic_clones() {
         let monomorphized_mir = instance.instantiate_mir_and_normalize_erasing_regions(

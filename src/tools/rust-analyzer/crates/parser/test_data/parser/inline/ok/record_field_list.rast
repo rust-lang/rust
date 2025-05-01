@@ -30,6 +30,20 @@ SOURCE_FILE
             PATH_SEGMENT
               NAME_REF
                 IDENT "f32"
+      COMMA ","
+      WHITESPACE " "
+      RECORD_FIELD
+        UNSAFE_KW "unsafe"
+        WHITESPACE " "
+        NAME
+          IDENT "c"
+        COLON ":"
+        WHITESPACE " "
+        PATH_TYPE
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "u8"
       WHITESPACE " "
       R_CURLY "}"
   WHITESPACE "\n"

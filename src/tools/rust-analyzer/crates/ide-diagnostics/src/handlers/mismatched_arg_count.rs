@@ -2,11 +2,11 @@ use either::Either;
 use hir::InFile;
 use ide_db::FileRange;
 use syntax::{
-    ast::{self, HasArgList},
     AstNode, AstPtr,
+    ast::{self, HasArgList},
 };
 
-use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_range};
 
 // Diagnostic: mismatched-tuple-struct-pat-arg-count
 //

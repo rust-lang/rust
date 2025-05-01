@@ -1,6 +1,9 @@
 use rand::Rng as _;
 use rustc_apfloat::Float as _;
 use rustc_apfloat::ieee::IeeeFloat;
+use rustc_middle::ty::{self, FloatTy, ScalarInt};
+
+use crate::*;
 
 /// Disturbes a floating-point result by a relative error in the range (-2^scale, 2^scale).
 ///
@@ -41,6 +44,29 @@ pub(crate) fn apply_random_float_error_ulp<F: rustc_apfloat::Float>(
     let prec = i32::try_from(F::PRECISION).unwrap();
     let err_scale = -(prec - n - 1);
     apply_random_float_error(ecx, val, err_scale)
+}
+
+/// Applies a random 16ULP floating point error to `val` and returns the new value.
+/// Will fail if `val` is not a floating point number.
+pub(crate) fn apply_random_float_error_to_imm<'tcx>(
+    ecx: &mut MiriInterpCx<'tcx>,
+    val: ImmTy<'tcx>,
+    ulp_exponent: u32,
+) -> InterpResult<'tcx, ImmTy<'tcx>> {
+    let scalar = val.to_scalar_int()?;
+    let res: ScalarInt = match val.layout.ty.kind() {
+        ty::Float(FloatTy::F16) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
+        ty::Float(FloatTy::F32) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
+        ty::Float(FloatTy::F64) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
+        ty::Float(FloatTy::F128) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
+        _ => bug!("intrinsic called with non-float input type"),
+    };
+
+    interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
 
 pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFloat<S> {

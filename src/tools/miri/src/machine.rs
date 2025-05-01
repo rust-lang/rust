@@ -1199,6 +1199,16 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     }
 
     #[inline(always)]
+    fn apply_float_nondet(
+        ecx: &mut InterpCx<'tcx, Self>,
+        val: ImmTy<'tcx>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx>> {
+        crate::math::apply_random_float_error_to_imm(
+            ecx, val, 2 /* log2(4) */
+        )
+    }
+
+    #[inline(always)]
     fn equal_float_min_max<F: Float>(ecx: &MiriInterpCx<'tcx>, a: F, b: F) -> F {
         ecx.equal_float_min_max(a, b)
     }

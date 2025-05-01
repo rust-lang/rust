@@ -1,641 +1,641 @@
 error[E0080]: evaluation of `fake_type::<!>` failed
-  --> $DIR/uninhabited-const-issue-61744.rs:12:36
+  --> $DIR/uninhabited-const-issue-61744.rs:13:36
    |
 LL |     const CONSTANT: i32 = unsafe { fake_type() };
    |                                    ^^^^^^^^^^^ reached the configured maximum number of stack frames
    |
 note: inside `fake_type::<i32>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^
 note: inside `hint_unreachable`
-  --> $DIR/uninhabited-const-issue-61744.rs:8:5
+  --> $DIR/uninhabited-const-issue-61744.rs:9:5
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
 note: inside `fake_type::<!>`
-  --> $DIR/uninhabited-const-issue-61744.rs:4:5
+  --> $DIR/uninhabited-const-issue-61744.rs:5:5
    |
 LL |     hint_unreachable()
    |     ^^^^^^^^^^^^^^^^^^ the failure occurred here

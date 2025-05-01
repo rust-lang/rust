@@ -22,7 +22,7 @@ fn mod_item_path(
 ) -> Option<ModPath> {
     let db = sema_scope.db;
     let m = sema_scope.module();
-    m.find_path(db.upcast(), *def, cfg)
+    m.find_path(db, *def, cfg)
 }
 
 /// Helper function to get path to `ModuleDef` as string
@@ -33,7 +33,7 @@ fn mod_item_path_str(
     edition: Edition,
 ) -> Result<String, DisplaySourceCodeError> {
     let path = mod_item_path(sema_scope, def, cfg);
-    path.map(|it| it.display(sema_scope.db.upcast(), edition).to_string())
+    path.map(|it| it.display(sema_scope.db, edition).to_string())
         .ok_or(DisplaySourceCodeError::PathNotFound)
 }
 
@@ -111,15 +111,15 @@ impl Expr {
                         container_name(container, sema_scope, cfg, edition, display_target)?;
                     let const_name = it
                         .name(db)
-                        .map(|c| c.display(db.upcast(), edition).to_string())
+                        .map(|c| c.display(db, edition).to_string())
                         .unwrap_or(String::new());
                     Ok(format!("{container_name}::{const_name}"))
                 }
                 None => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
             },
             Expr::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
-            Expr::Local(it) => Ok(it.name(db).display(db.upcast(), edition).to_string()),
-            Expr::ConstParam(it) => Ok(it.name(db).display(db.upcast(), edition).to_string()),
+            Expr::Local(it) => Ok(it.name(db).display(db, edition).to_string()),
+            Expr::ConstParam(it) => Ok(it.name(db).display(db, edition).to_string()),
             Expr::FamousType { value, .. } => Ok(value.to_string()),
             Expr::Function { func, params, .. } => {
                 let args = params
@@ -133,7 +133,7 @@ impl Expr {
                     Some(container) => {
                         let container_name =
                             container_name(container, sema_scope, cfg, edition, display_target)?;
-                        let fn_name = func.name(db).display(db.upcast(), edition).to_string();
+                        let fn_name = func.name(db).display(db, edition).to_string();
                         Ok(format!("{container_name}::{fn_name}({args})"))
                     }
                     None => {
@@ -147,7 +147,7 @@ impl Expr {
                     return Ok(many_formatter(&target.ty(db)));
                 }
 
-                let func_name = func.name(db).display(db.upcast(), edition).to_string();
+                let func_name = func.name(db).display(db, edition).to_string();
                 let self_param = func.self_param(db).unwrap();
                 let target_str =
                     target.gen_source_code(sema_scope, many_formatter, cfg, display_target)?;
@@ -199,7 +199,7 @@ impl Expr {
                             .map(|(a, f)| {
                                 let tmp = format!(
                                     "{}: {}",
-                                    f.name(db).display(db.upcast(), edition),
+                                    f.name(db).display(db, edition),
                                     a.gen_source_code(
                                         sema_scope,
                                         many_formatter,
@@ -241,7 +241,7 @@ impl Expr {
                             .map(|(a, f)| {
                                 let tmp = format!(
                                     "{}: {}",
-                                    f.name(db).display(db.upcast(), edition),
+                                    f.name(db).display(db, edition),
                                     a.gen_source_code(
                                         sema_scope,
                                         many_formatter,
@@ -279,7 +279,7 @@ impl Expr {
 
                 let strukt =
                     expr.gen_source_code(sema_scope, many_formatter, cfg, display_target)?;
-                let field = field.name(db).display(db.upcast(), edition).to_string();
+                let field = field.name(db).display(db, edition).to_string();
                 Ok(format!("{strukt}.{field}"))
             }
             Expr::Reference(expr) => {
@@ -387,7 +387,7 @@ fn container_name(
             let self_ty = imp.self_ty(sema_scope.db);
             // Should it be guaranteed that `mod_item_path` always exists?
             match self_ty.as_adt().and_then(|adt| mod_item_path(sema_scope, &adt.into(), cfg)) {
-                Some(path) => path.display(sema_scope.db.upcast(), edition).to_string(),
+                Some(path) => path.display(sema_scope.db, edition).to_string(),
                 None => self_ty.display(sema_scope.db, display_target).to_string(),
             }
         }

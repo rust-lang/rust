@@ -1,11 +1,11 @@
 use hir::{
-    db::ExpandDatabase,
-    term_search::{term_search, TermSearchConfig, TermSearchCtx},
     ClosureStyle, HirDisplay, ImportPathConfig,
+    db::ExpandDatabase,
+    term_search::{TermSearchConfig, TermSearchCtx, term_search},
 };
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind, GroupLabel},
+    assists::{Assist, AssistId, GroupLabel},
     label::Label,
     source_change::SourceChange,
 };
@@ -78,23 +78,19 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
         })
         .unique()
         .map(|code| Assist {
-            id: AssistId("typed-hole", AssistKind::QuickFix),
+            id: AssistId::quick_fix("typed-hole"),
             label: Label::new(format!("Replace `_` with `{code}`")),
             group: Some(GroupLabel("Replace `_` with a term".to_owned())),
             target: original_range.range,
             source_change: Some(SourceChange::from_text_edit(
-                original_range.file_id,
+                original_range.file_id.file_id(ctx.sema.db),
                 TextEdit::replace(original_range.range, code),
             )),
             command: None,
         })
         .collect();
 
-    if !assists.is_empty() {
-        Some(assists)
-    } else {
-        None
-    }
+    if !assists.is_empty() { Some(assists) } else { None }
 }
 
 #[cfg(test)]

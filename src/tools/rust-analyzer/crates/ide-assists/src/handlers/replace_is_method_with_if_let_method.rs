@@ -1,10 +1,10 @@
 use ide_db::syntax_helpers::suggest_name;
 use syntax::{
-    ast::{self, make, AstNode},
+    ast::{self, AstNode, make},
     ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: replace_is_some_with_if_let_some
 //
@@ -56,7 +56,7 @@ pub(crate) fn replace_is_method_with_if_let_method(
             };
 
             acc.add(
-                AssistId(assist_id, AssistKind::RefactorRewrite),
+                AssistId::refactor_rewrite(assist_id),
                 message,
                 call_expr.syntax().text_range(),
                 |edit| {

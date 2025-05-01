@@ -1,12 +1,8 @@
 use crate::assist_context::{AssistContext, Assists};
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    defs::Definition,
-    LineIndexDatabase,
-};
+use ide_db::{LineIndexDatabase, assists::AssistId, defs::Definition};
 use syntax::{
-    ast::{self, edit_in_place::Indent},
     AstNode,
+    ast::{self, edit_in_place::Indent},
 };
 
 // Assist: bind_unused_param
@@ -42,11 +38,11 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let r_curly_range = stmt_list.r_curly_token()?.text_range();
 
     acc.add(
-        AssistId("bind_unused_param", AssistKind::QuickFix),
+        AssistId::quick_fix("bind_unused_param"),
         format!("Bind as `let _ = {ident_pat};`"),
         param.syntax().text_range(),
         |builder| {
-            let line_index = ctx.db().line_index(ctx.file_id().into());
+            let line_index = ctx.db().line_index(ctx.vfs_file_id());
 
             let indent = func.indent_level();
             let text_indent = indent + 1;

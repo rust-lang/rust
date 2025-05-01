@@ -4,7 +4,7 @@
 
 use parser::Edition;
 
-use crate::{ast, AstNode};
+use crate::{AstNode, ast};
 
 pub fn parse_expr_from_str(s: &str, edition: Edition) -> Option<ast::Expr> {
     let s = s.trim();

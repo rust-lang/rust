@@ -22,6 +22,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -55,6 +56,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -90,6 +92,7 @@ fn main() {}
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -125,6 +128,7 @@ fn main() {}
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr

@@ -21,10 +21,10 @@ mod benchmark;
 #[cfg(test)]
 mod tests;
 
-use span::{Edition, Span, SyntaxContextId};
+use span::{Edition, Span, SyntaxContext};
 use syntax_bridge::to_parser_input;
-use tt::iter::TtIter;
 use tt::DelimSpan;
+use tt::iter::TtIter;
 
 use std::fmt;
 use std::sync::Arc;
@@ -149,7 +149,7 @@ impl DeclarativeMacro {
     /// The old, `macro_rules! m {}` flavor.
     pub fn parse_macro_rules(
         tt: &tt::TopSubtree<Span>,
-        ctx_edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        ctx_edition: impl Copy + Fn(SyntaxContext) -> Edition,
     ) -> DeclarativeMacro {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
@@ -189,7 +189,7 @@ impl DeclarativeMacro {
     pub fn parse_macro2(
         args: Option<&tt::TopSubtree<Span>>,
         body: &tt::TopSubtree<Span>,
-        ctx_edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        ctx_edition: impl Copy + Fn(SyntaxContext) -> Edition,
     ) -> DeclarativeMacro {
         let mut rules = Vec::new();
         let mut err = None;
@@ -262,7 +262,7 @@ impl DeclarativeMacro {
 
 impl Rule {
     fn parse(
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        edition: impl Copy + Fn(SyntaxContext) -> Edition,
         src: &mut TtIter<'_, Span>,
     ) -> Result<Self, ParseError> {
         let (_, lhs) =

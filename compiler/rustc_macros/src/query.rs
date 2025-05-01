@@ -407,11 +407,23 @@ pub(super) fn rustc_queries(input: TokenStream) -> TokenStream {
     }
 
     TokenStream::from(quote! {
+        /// Higher-order macro that invokes the specified macro with a prepared
+        /// list of all query signatures (including modifiers).
+        ///
+        /// This allows multiple simpler macros to each have access to the list
+        /// of queries.
         #[macro_export]
-        macro_rules! rustc_query_append {
-            ($macro:ident! $( [$($other:tt)*] )?) => {
+        macro_rules! rustc_with_all_queries {
+            (
+                // The macro to invoke once, on all queries (plus extras).
+                $macro:ident!
+
+                // Within [], an optional list of extra "query" signatures to
+                // pass to the given macro, in addition to the actual queries.
+                $( [$($extra_fake_queries:tt)*] )?
+            ) => {
                 $macro! {
-                    $( $($other)* )?
+                    $( $($extra_fake_queries)* )?
                     #query_stream
                 }
             }

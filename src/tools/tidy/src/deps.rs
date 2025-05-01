@@ -148,6 +148,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
     ("dissimilar", "Apache-2.0"),
+    ("foldhash", "Zlib"),
     ("notify", "CC0-1.0"),
     ("option-ext", "MPL-2.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),

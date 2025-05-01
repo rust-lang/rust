@@ -6,20 +6,20 @@ use std::cmp::Ordering;
 
 use hir::Semantics;
 use syntax::{
-    algo,
+    Direction, NodeOrToken, SyntaxKind, SyntaxNode, algo,
     ast::{
-        self, edit_in_place::Removable, make, AstNode, HasAttrs, HasModuleItem, HasVisibility,
-        PathSegmentKind,
+        self, AstNode, HasAttrs, HasModuleItem, HasVisibility, PathSegmentKind,
+        edit_in_place::Removable, make,
     },
-    ted, Direction, NodeOrToken, SyntaxKind, SyntaxNode,
+    ted,
 };
 
 use crate::{
-    imports::merge_imports::{
-        common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_cmp, MergeBehavior,
-        NormalizationStyle,
-    },
     RootDatabase,
+    imports::merge_imports::{
+        MergeBehavior, NormalizationStyle, common_prefix, eq_attrs, eq_visibility,
+        try_merge_imports, use_tree_cmp,
+    },
 };
 
 pub use hir::PrefixKind;

@@ -7,102 +7,139 @@ use std::process::{Command, Stdio};
 use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
-use rustc_hir::{InlineAsmOperand, ItemId};
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
+use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::layout::{
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
+};
 use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_target::asm::InlineAsmArch;
 
 use crate::prelude::*;
 
-pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, item_id: ItemId) {
-    let item = tcx.hir_item(item_id);
-    if let rustc_hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
-        let is_x86 =
-            matches!(tcx.sess.asm_arch.unwrap(), InlineAsmArch::X86 | InlineAsmArch::X86_64);
+pub(crate) struct GlobalAsmContext<'a, 'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub global_asm: &'a mut String,
+}
 
-        if is_x86 {
-            if !asm.options.contains(InlineAsmOptions::ATT_SYNTAX) {
-                global_asm.push_str("\n.intel_syntax noprefix\n");
-            } else {
-                global_asm.push_str("\n.att_syntax\n");
-            }
+impl<'tcx> AsmCodegenMethods<'tcx> for GlobalAsmContext<'_, 'tcx> {
+    fn codegen_global_asm(
+        &mut self,
+        template: &[InlineAsmTemplatePiece],
+        operands: &[GlobalAsmOperandRef<'tcx>],
+        options: InlineAsmOptions,
+        _line_spans: &[Span],
+    ) {
+        codegen_global_asm_inner(self.tcx, self.global_asm, template, operands, options);
+    }
+
+    fn mangled_name(&self, instance: Instance<'tcx>) -> String {
+        let symbol_name = self.tcx.symbol_name(instance).name.to_owned();
+        if self.tcx.sess.target.is_like_darwin { format!("_{symbol_name}") } else { symbol_name }
+    }
+}
+
+impl<'tcx> LayoutOfHelpers<'tcx> for GlobalAsmContext<'_, 'tcx> {
+    #[inline]
+    fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
+        if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
+            self.tcx.sess.dcx().span_fatal(span, err.to_string())
+        } else {
+            self.tcx
+                .sess
+                .dcx()
+                .span_fatal(span, format!("failed to get layout for `{}`: {}", ty, err))
         }
-        for piece in asm.template {
-            match *piece {
-                InlineAsmTemplatePiece::String(ref s) => global_asm.push_str(s),
-                InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: op_sp } => {
-                    match asm.operands[operand_idx].0 {
-                        InlineAsmOperand::Const { ref anon_const } => {
-                            match tcx.const_eval_poly(anon_const.def_id.to_def_id()) {
-                                Ok(const_value) => {
-                                    let ty = tcx
-                                        .typeck_body(anon_const.body)
-                                        .node_type(anon_const.hir_id);
-                                    let string = rustc_codegen_ssa::common::asm_const_to_str(
-                                        tcx,
-                                        op_sp,
-                                        const_value,
-                                        FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
-                                    );
-                                    global_asm.push_str(&string);
-                                }
-                                Err(ErrorHandled::Reported { .. }) => {
-                                    // An error has already been reported and compilation is
-                                    // guaranteed to fail if execution hits this path.
-                                }
-                                Err(ErrorHandled::TooGeneric(_)) => {
-                                    span_bug!(op_sp, "asm const cannot be resolved; too generic");
-                                }
-                            }
-                        }
-                        InlineAsmOperand::SymFn { expr } => {
-                            if cfg!(not(feature = "inline_asm_sym")) {
-                                tcx.dcx().span_err(
-                                    item.span,
-                                    "asm! and global_asm! sym operands are not yet supported",
-                                );
-                            }
+    }
+}
 
-                            let ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
-                            let instance = match ty.kind() {
-                                &ty::FnDef(def_id, args) => Instance::new(def_id, args),
-                                _ => span_bug!(op_sp, "asm sym is not a function"),
-                            };
-                            let symbol = tcx.symbol_name(instance);
-                            // FIXME handle the case where the function was made private to the
-                            // current codegen unit
-                            global_asm.push_str(symbol.name);
-                        }
-                        InlineAsmOperand::SymStatic { path: _, def_id } => {
-                            if cfg!(not(feature = "inline_asm_sym")) {
-                                tcx.dcx().span_err(
-                                    item.span,
-                                    "asm! and global_asm! sym operands are not yet supported",
-                                );
-                            }
+impl<'tcx> FnAbiOfHelpers<'tcx> for GlobalAsmContext<'_, 'tcx> {
+    #[inline]
+    fn handle_fn_abi_err(
+        &self,
+        err: FnAbiError<'tcx>,
+        span: Span,
+        fn_abi_request: FnAbiRequest<'tcx>,
+    ) -> ! {
+        FullyMonomorphizedLayoutCx(self.tcx).handle_fn_abi_err(err, span, fn_abi_request)
+    }
+}
 
-                            let instance = Instance::mono(tcx, def_id);
-                            let symbol = tcx.symbol_name(instance);
-                            global_asm.push_str(symbol.name);
+impl<'tcx> HasTyCtxt<'tcx> for GlobalAsmContext<'_, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+}
+
+impl<'tcx> rustc_abi::HasDataLayout for GlobalAsmContext<'_, 'tcx> {
+    fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'tcx> HasTypingEnv<'tcx> for GlobalAsmContext<'_, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
+    }
+}
+
+fn codegen_global_asm_inner<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    global_asm: &mut String,
+    template: &[InlineAsmTemplatePiece],
+    operands: &[GlobalAsmOperandRef<'tcx>],
+    options: InlineAsmOptions,
+) {
+    let is_x86 = matches!(tcx.sess.asm_arch.unwrap(), InlineAsmArch::X86 | InlineAsmArch::X86_64);
+
+    if is_x86 {
+        if !options.contains(InlineAsmOptions::ATT_SYNTAX) {
+            global_asm.push_str("\n.intel_syntax noprefix\n");
+        } else {
+            global_asm.push_str("\n.att_syntax\n");
+        }
+    }
+    for piece in template {
+        match *piece {
+            InlineAsmTemplatePiece::String(ref s) => global_asm.push_str(s),
+            InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span } => {
+                match operands[operand_idx] {
+                    GlobalAsmOperandRef::Const { ref string } => {
+                        global_asm.push_str(string);
+                    }
+                    GlobalAsmOperandRef::SymFn { instance } => {
+                        if cfg!(not(feature = "inline_asm_sym")) {
+                            tcx.dcx().span_err(
+                                span,
+                                "asm! and global_asm! sym operands are not yet supported",
+                            );
                         }
-                        InlineAsmOperand::In { .. }
-                        | InlineAsmOperand::Out { .. }
-                        | InlineAsmOperand::InOut { .. }
-                        | InlineAsmOperand::SplitInOut { .. }
-                        | InlineAsmOperand::Label { .. } => {
-                            span_bug!(op_sp, "invalid operand type for global_asm!")
+
+                        let symbol = tcx.symbol_name(instance);
+                        // FIXME handle the case where the function was made private to the
+                        // current codegen unit
+                        global_asm.push_str(symbol.name);
+                    }
+                    GlobalAsmOperandRef::SymStatic { def_id } => {
+                        if cfg!(not(feature = "inline_asm_sym")) {
+                            tcx.dcx().span_err(
+                                span,
+                                "asm! and global_asm! sym operands are not yet supported",
+                            );
                         }
+
+                        let instance = Instance::mono(tcx, def_id);
+                        let symbol = tcx.symbol_name(instance);
+                        global_asm.push_str(symbol.name);
                     }
                 }
             }
         }
+    }
 
-        global_asm.push('\n');
-        if is_x86 {
-            global_asm.push_str(".att_syntax\n\n");
-        }
-    } else {
-        bug!("Expected GlobalAsm found {:?}", item);
+    global_asm.push('\n');
+    if is_x86 {
+        global_asm.push_str(".att_syntax\n\n");
     }
 }
 

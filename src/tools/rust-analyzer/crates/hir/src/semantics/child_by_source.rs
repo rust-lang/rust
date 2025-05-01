@@ -5,22 +5,22 @@
 //! node for a *child*, and get its hir.
 
 use either::Either;
-use hir_expand::{attrs::collect_attrs, HirFileId};
-use syntax::{ast, AstPtr};
+use hir_expand::{HirFileId, attrs::collect_attrs};
+use syntax::{AstPtr, ast};
 
 use hir_def::{
+    AdtId, AssocItemId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId, ItemTreeLoc,
+    LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
+    VariantId,
     db::DefDatabase,
     dyn_map::{
-        keys::{self, Key},
         DynMap,
+        keys::{self, Key},
     },
     item_scope::ItemScope,
     item_tree::ItemTreeNode,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, FieldId, GenericDefId, ImplId, ItemTreeLoc,
-    LifetimeParamId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, TypeOrConstParamId,
-    VariantId,
 };
 
 pub(crate) trait ChildBySource {
@@ -34,11 +34,11 @@ pub(crate) trait ChildBySource {
 
 impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let data = db.trait_data(*self);
+        let data = db.trait_items(*self);
 
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
             },
         );
         data.items.iter().for_each(|&(_, item)| {
@@ -49,11 +49,11 @@ impl ChildBySource for TraitId {
 
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let data = db.impl_data(*self);
+        let data = db.impl_items(*self);
         // FIXME: Macro calls
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
             },
         );
         data.items.iter().for_each(|&(_, item)| {
@@ -84,7 +84,7 @@ impl ChildBySource for ItemScope {
             .for_each(|konst| insert_item_loc(db, res, file_id, konst, keys::CONST));
         self.attr_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
-                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db.upcast()), call_id);
+                res[keys::ATTR_MACRO_CALL].insert(ast_id.to_ptr(db), call_id);
             },
         );
         self.legacy_macros().for_each(|(_, ids)| {
@@ -99,7 +99,7 @@ impl ChildBySource for ItemScope {
         });
         self.derive_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, calls)| {
-                let adt = ast_id.to_node(db.upcast());
+                let adt = ast_id.to_node(db);
                 calls.for_each(|(attr_id, call_id, calls)| {
                     if let Some((_, Either::Left(attr))) =
                         collect_attrs(&adt).nth(attr_id.ast_index())
@@ -112,7 +112,7 @@ impl ChildBySource for ItemScope {
         );
         self.iter_macro_invoc().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, &call)| {
-                let ast = ast_id.to_ptr(db.upcast());
+                let ast = ast_id.to_ptr(db);
                 res[keys::MACRO_CALL].insert(ast, call);
             },
         );
@@ -182,7 +182,7 @@ impl ChildBySource for EnumId {
         let tree = loc.id.item_tree(db);
         let ast_id_map = db.ast_id_map(loc.id.file_id());
 
-        db.enum_data(*self).variants.iter().for_each(|&(variant, _)| {
+        db.enum_variants(*self).variants.iter().for_each(|&(variant, _)| {
             res[keys::ENUM_VARIANT]
                 .insert(ast_id_map.get(tree[variant.lookup(db).id.value].ast_id), variant);
         });
@@ -197,14 +197,14 @@ impl ChildBySource for DefWithBodyId {
         }
 
         sm.expansions().filter(|(ast, _)| ast.file_id == file_id).for_each(|(ast, &exp_id)| {
-            res[keys::MACRO_CALL].insert(ast.value, exp_id.macro_call_id);
+            res[keys::MACRO_CALL].insert(ast.value, exp_id);
         });
 
         for (block, def_map) in body.blocks(db) {
             // All block expressions are merged into the same map, because they logically all add
             // inner items to the containing `DefWithBodyId`.
             def_map[DefMap::ROOT].scope.child_by_source_to(db, res, file_id);
-            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_ptr(db.upcast()), block);
+            res[keys::BLOCK].insert(block.lookup(db).ast_id.to_ptr(db), block);
         }
     }
 }
@@ -254,7 +254,7 @@ fn insert_item_loc<ID, N, Data>(
     id: ID,
     key: Key<N::Source, ID>,
 ) where
-    ID: for<'db> Lookup<Database<'db> = dyn DefDatabase + 'db, Data = Data> + 'static,
+    ID: Lookup<Database = dyn DefDatabase, Data = Data> + 'static,
     Data: ItemTreeLoc<Id = N>,
     N: ItemTreeNode,
     N::Source: 'static,

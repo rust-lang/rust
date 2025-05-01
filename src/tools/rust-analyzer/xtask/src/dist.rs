@@ -1,15 +1,18 @@
+use anyhow::Context;
+use flate2::{Compression, write::GzEncoder};
+use std::env::consts::EXE_EXTENSION;
+use std::ffi::OsStr;
 use std::{
     env,
     fs::File,
     io::{self, BufWriter},
     path::{Path, PathBuf},
 };
-
-use flate2::{write::GzEncoder, Compression};
 use time::OffsetDateTime;
-use xshell::{cmd, Shell};
-use zip::{write::FileOptions, DateTime, ZipWriter};
+use xshell::{Cmd, Shell, cmd};
+use zip::{DateTime, ZipWriter, write::SimpleFileOptions};
 
+use crate::flags::PgoTrainingCrate;
 use crate::{
     date_iso,
     flags::{self, Malloc},
@@ -38,11 +41,18 @@ impl flags::Dist {
                 // A hack to make VS Code prefer nightly over stable.
                 format!("{VERSION_NIGHTLY}.{patch_version}")
             };
-            dist_server(sh, &format!("{version}-standalone"), &target, allocator, self.zig)?;
+            dist_server(
+                sh,
+                &format!("{version}-standalone"),
+                &target,
+                allocator,
+                self.zig,
+                self.pgo,
+            )?;
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_owned() };
             dist_client(sh, &version, &release_tag, &target)?;
         } else {
-            dist_server(sh, "0.0.0-standalone", &target, allocator, self.zig)?;
+            dist_server(sh, "0.0.0-standalone", &target, allocator, self.zig, self.pgo)?;
         }
         Ok(())
     }
@@ -84,6 +94,7 @@ fn dist_server(
     target: &Target,
     allocator: Malloc,
     zig: bool,
+    pgo: Option<PgoTrainingCrate>,
 ) -> anyhow::Result<()> {
     let _e = sh.push_env("CFG_RELEASE", release);
     let _e = sh.push_env("CARGO_PROFILE_RELEASE_LTO", "thin");
@@ -100,7 +111,23 @@ fn dist_server(
     };
     let features = allocator.to_features();
     let command = if linux_target && zig { "zigbuild" } else { "build" };
-    cmd!(sh, "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release").run()?;
+
+    let pgo_profile = if let Some(train_crate) = pgo {
+        Some(gather_pgo_profile(
+            sh,
+            build_command(sh, command, &target_name, features),
+            &target_name,
+            train_crate,
+        )?)
+    } else {
+        None
+    };
+
+    let mut cmd = build_command(sh, command, &target_name, features);
+    if let Some(profile) = pgo_profile {
+        cmd = cmd.env("RUSTFLAGS", format!("-Cprofile-use={}", profile.to_str().unwrap()));
+    }
+    cmd.run().context("cannot build Rust Analyzer")?;
 
     let dst = Path::new("dist").join(&target.artifact_name);
     if target_name.contains("-windows-") {
@@ -110,6 +137,97 @@ fn dist_server(
     }
 
     Ok(())
+}
+
+fn build_command<'a>(
+    sh: &'a Shell,
+    command: &str,
+    target_name: &str,
+    features: &[&str],
+) -> Cmd<'a> {
+    cmd!(
+        sh,
+        "cargo {command} --manifest-path ./crates/rust-analyzer/Cargo.toml --bin rust-analyzer --target {target_name} {features...} --release"
+    )
+}
+
+/// Decorates `ra_build_cmd` to add PGO instrumentation, and then runs the PGO instrumented
+/// Rust Analyzer on itself to gather a PGO profile.
+fn gather_pgo_profile<'a>(
+    sh: &'a Shell,
+    ra_build_cmd: Cmd<'a>,
+    target: &str,
+    train_crate: PgoTrainingCrate,
+) -> anyhow::Result<PathBuf> {
+    let pgo_dir = std::path::absolute("rust-analyzer-pgo")?;
+    // Clear out any stale profiles
+    if pgo_dir.is_dir() {
+        std::fs::remove_dir_all(&pgo_dir)?;
+    }
+    std::fs::create_dir_all(&pgo_dir)?;
+
+    // Figure out a path to `llvm-profdata`
+    let target_libdir = cmd!(sh, "rustc --print=target-libdir")
+        .read()
+        .context("cannot resolve target-libdir from rustc")?;
+    let target_bindir = PathBuf::from(target_libdir).parent().unwrap().join("bin");
+    let llvm_profdata = target_bindir.join("llvm-profdata").with_extension(EXE_EXTENSION);
+
+    // Build RA with PGO instrumentation
+    let cmd_gather =
+        ra_build_cmd.env("RUSTFLAGS", format!("-Cprofile-generate={}", pgo_dir.to_str().unwrap()));
+    cmd_gather.run().context("cannot build rust-analyzer with PGO instrumentation")?;
+
+    let (train_path, label) = match &train_crate {
+        PgoTrainingCrate::RustAnalyzer => (PathBuf::from("."), "itself"),
+        PgoTrainingCrate::GitHub(repo) => {
+            (download_crate_for_training(sh, &pgo_dir, repo)?, repo.as_str())
+        }
+    };
+
+    // Run RA either on itself or on a downloaded crate
+    eprintln!("Training RA on {label}...");
+    cmd!(
+        sh,
+        "target/{target}/release/rust-analyzer analysis-stats -q --run-all-ide-things {train_path}"
+    )
+    .run()
+    .context("cannot generate PGO profiles")?;
+
+    // Merge profiles into a single file
+    let merged_profile = pgo_dir.join("merged.profdata");
+    let profile_files = std::fs::read_dir(pgo_dir)?.filter_map(|entry| {
+        let entry = entry.ok()?;
+        if entry.path().extension() == Some(OsStr::new("profraw")) {
+            Some(entry.path().to_str().unwrap().to_owned())
+        } else {
+            None
+        }
+    });
+    cmd!(sh, "{llvm_profdata} merge {profile_files...} -o {merged_profile}").run().context(
+        "cannot merge PGO profiles. Do you have the rustup `llvm-tools` component installed?",
+    )?;
+
+    Ok(merged_profile)
+}
+
+/// Downloads a crate from GitHub, stores it into `pgo_dir` and returns a path to it.
+fn download_crate_for_training(sh: &Shell, pgo_dir: &Path, repo: &str) -> anyhow::Result<PathBuf> {
+    let mut it = repo.splitn(2, '@');
+    let repo = it.next().unwrap();
+    let revision = it.next();
+
+    // FIXME: switch to `--revision` here around 2035 or so
+    let revision =
+        if let Some(revision) = revision { &["--branch", revision] as &[&str] } else { &[] };
+
+    let normalized_path = repo.replace("/", "-");
+    let target_path = pgo_dir.join(normalized_path);
+    cmd!(sh, "git clone --depth 1 https://github.com/{repo} {revision...} {target_path}")
+        .run()
+        .with_context(|| "cannot download PGO training crate from {repo}")?;
+
+    Ok(target_path)
 }
 
 fn gzip(src_path: &Path, dest_path: &Path) -> anyhow::Result<()> {
@@ -125,7 +243,7 @@ fn zip(src_path: &Path, symbols_path: Option<&PathBuf>, dest_path: &Path) -> any
     let mut writer = ZipWriter::new(BufWriter::new(file));
     writer.start_file(
         src_path.file_name().unwrap().to_str().unwrap(),
-        FileOptions::default()
+        SimpleFileOptions::default()
             .last_modified_time(
                 DateTime::try_from(OffsetDateTime::from(std::fs::metadata(src_path)?.modified()?))
                     .unwrap(),
@@ -139,7 +257,7 @@ fn zip(src_path: &Path, symbols_path: Option<&PathBuf>, dest_path: &Path) -> any
     if let Some(symbols_path) = symbols_path {
         writer.start_file(
             symbols_path.file_name().unwrap().to_str().unwrap(),
-            FileOptions::default()
+            SimpleFileOptions::default()
                 .last_modified_time(
                     DateTime::try_from(OffsetDateTime::from(
                         std::fs::metadata(src_path)?.modified()?,

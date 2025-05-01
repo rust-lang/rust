@@ -3,11 +3,11 @@ use std::cmp::Ordering;
 use itertools::Itertools;
 
 use syntax::{
-    ast::{self, HasName},
     AstNode, SyntaxNode,
+    ast::{self, HasName},
 };
 
-use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, utils::get_methods};
 
 // Assist: sort_items
 //
@@ -126,20 +126,15 @@ impl AddRewrite for Assists {
         new: Vec<T>,
         target: &SyntaxNode,
     ) -> Option<()> {
-        self.add(
-            AssistId("sort_items", AssistKind::RefactorRewrite),
-            label,
-            target.text_range(),
-            |builder| {
-                let mut editor = builder.make_editor(target);
+        self.add(AssistId::refactor_rewrite("sort_items"), label, target.text_range(), |builder| {
+            let mut editor = builder.make_editor(target);
 
-                old.into_iter()
-                    .zip(new)
-                    .for_each(|(old, new)| editor.replace(old.syntax(), new.syntax()));
+            old.into_iter()
+                .zip(new)
+                .for_each(|(old, new)| editor.replace(old.syntax(), new.syntax()));
 
-                builder.add_file_edits(builder.file_id, editor)
-            },
-        )
+            builder.add_file_edits(builder.file_id, editor)
+        })
     }
 }
 

@@ -5,9 +5,9 @@
 //! completions if we are allowed to.
 
 use hir::ImportPathConfig;
-use ide_db::{imports::insert_use::InsertUseConfig, SnippetCap};
+use ide_db::{SnippetCap, imports::insert_use::InsertUseConfig};
 
-use crate::{snippet::Snippet, CompletionFieldsToResolve};
+use crate::{CompletionFieldsToResolve, snippet::Snippet};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CompletionConfig<'a> {

@@ -45,15 +45,14 @@ pub trait CodegenBackend {
 
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
 
-    /// Returns two feature sets:
-    /// - The first has the features that should be set in `cfg(target_features)`.
-    /// - The second is like the first, but also includes unstable features.
-    ///
-    /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
+    /// Collect target-specific options that should be set in `cfg(...)`, including
+    /// `target_feature` and support for unstable float types.
     fn target_config(&self, _sess: &Session) -> TargetConfig {
         TargetConfig {
             target_features: vec![],
             unstable_target_features: vec![],
+            // `true` is used as a default so backends need to acknowledge when they do not
+            // support the float types, rather than accidentally quietly skipping all tests.
             has_reliable_f16: true,
             has_reliable_f16_math: true,
             has_reliable_f128: true,

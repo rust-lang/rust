@@ -33,7 +33,6 @@ use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, P
 use crate::fn_ctxt::infer::FnCall;
 use crate::gather_locals::Declaration;
 use crate::inline_asm::InlineAsmCtxt;
-use crate::method::MethodCallee;
 use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
@@ -125,61 +124,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.enforce_repeat_element_needs_copy_bound(element, element_ty);
             }
         }
-    }
-
-    pub(in super::super) fn check_method_argument_types(
-        &self,
-        sp: Span,
-        expr: &'tcx hir::Expr<'tcx>,
-        method: Result<MethodCallee<'tcx>, ErrorGuaranteed>,
-        args_no_rcvr: &'tcx [hir::Expr<'tcx>],
-        tuple_arguments: TupleArgumentsFlag,
-        expected: Expectation<'tcx>,
-    ) -> Ty<'tcx> {
-        let has_error = match method {
-            Ok(method) => method.args.error_reported().and(method.sig.error_reported()),
-            Err(guar) => Err(guar),
-        };
-        if let Err(guar) = has_error {
-            let err_inputs = self.err_args(
-                method.map_or(args_no_rcvr.len(), |method| method.sig.inputs().len() - 1),
-                guar,
-            );
-            let err_output = Ty::new_error(self.tcx, guar);
-
-            let err_inputs = match tuple_arguments {
-                DontTupleArguments => err_inputs,
-                TupleArguments => vec![Ty::new_tup(self.tcx, &err_inputs)],
-            };
-
-            self.check_argument_types(
-                sp,
-                expr,
-                &err_inputs,
-                err_output,
-                NoExpectation,
-                args_no_rcvr,
-                false,
-                tuple_arguments,
-                method.ok().map(|method| method.def_id),
-            );
-            return err_output;
-        }
-
-        let method = method.unwrap();
-        self.check_argument_types(
-            sp,
-            expr,
-            &method.sig.inputs()[1..],
-            method.sig.output(),
-            expected,
-            args_no_rcvr,
-            method.sig.c_variadic,
-            tuple_arguments,
-            Some(method.def_id),
-        );
-
-        method.sig.output()
     }
 
     /// Generic function that factors out common logic from function calls,
