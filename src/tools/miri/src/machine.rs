@@ -1203,9 +1203,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         ecx: &mut InterpCx<'tcx, Self>,
         val: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
-        crate::math::apply_random_float_error_to_imm(
-            ecx, val, 2 /* log2(4) */
-        )
+        crate::math::apply_random_float_error_to_imm(ecx, val, 2 /* log2(4) */)
     }
 
     #[inline(always)]
