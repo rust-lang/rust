@@ -306,8 +306,21 @@ impl Span {
     /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
     #[inline]
     pub fn from_expansion(self) -> bool {
-        // If the span is fully inferred then ctxt > MAX_CTXT
-        self.inline_ctxt().map_or(true, |ctxt| !ctxt.is_root())
+        let ctxt = match_span_kind! {
+            self,
+            // All branches here, except `InlineParent`, actually return `span.ctxt_or_parent_or_marker`.
+            // Since `Interned` is selected if the field contains `CTXT_INTERNED_MARKER` returning that value
+            // as the context allows the compiler to optimize out the branch that selects between either
+            // `Interned` and `PartiallyInterned`.
+            //
+            // Interned contexts can never be the root context and `CTXT_INTERNED_MARKER` has a different value
+            // than the root context so this works for checking is this is an expansion.
+            InlineCtxt(span) => SyntaxContext::from_u16(span.ctxt),
+            InlineParent(_span) => SyntaxContext::root(),
+            PartiallyInterned(span) => SyntaxContext::from_u16(span.ctxt),
+            Interned(_span) => SyntaxContext::from_u16(CTXT_INTERNED_MARKER),
+        };
+        !ctxt.is_root()
     }
 
     /// Returns `true` if this is a dummy span with any hygienic context.
