@@ -966,7 +966,9 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             ty::AliasTermKind::OpaqueTy => Some(self.variances_of(def_id)),
             ty::AliasTermKind::InherentTy
+            | ty::AliasTermKind::InherentConst
             | ty::AliasTermKind::FreeTy
+            | ty::AliasTermKind::FreeConst
             | ty::AliasTermKind::UnevaluatedConst
             | ty::AliasTermKind::ProjectionConst => None,
         }

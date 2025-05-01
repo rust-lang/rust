@@ -243,10 +243,18 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     ty::AliasTermKind::ProjectionTy
                 }
             }
+            DefKind::AssocConst => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
+                {
+                    ty::AliasTermKind::InherentConst
+                } else {
+                    ty::AliasTermKind::ProjectionConst
+                }
+            }
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
             DefKind::TyAlias => ty::AliasTermKind::FreeTy,
-            DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
-            DefKind::AnonConst | DefKind::Const | DefKind::Ctor(_, CtorKind::Const) => {
+            DefKind::Const => ty::AliasTermKind::FreeConst,
+            DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasTermKind::UnevaluatedConst
             }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),

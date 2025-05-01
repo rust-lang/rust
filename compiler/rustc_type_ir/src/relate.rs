@@ -273,8 +273,10 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                     false, // do not fetch `type_of(a_def_id)`, as it will cause a cycle
                 )?,
                 ty::AliasTermKind::ProjectionTy
+                | ty::AliasTermKind::FreeConst
                 | ty::AliasTermKind::FreeTy
                 | ty::AliasTermKind::InherentTy
+                | ty::AliasTermKind::InherentConst
                 | ty::AliasTermKind::UnevaluatedConst
                 | ty::AliasTermKind::ProjectionConst => {
                     relate_args_invariantly(relation, a.args, b.args)?

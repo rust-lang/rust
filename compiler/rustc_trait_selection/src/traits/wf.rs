@@ -6,6 +6,7 @@
 use std::iter;
 
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::bug;
@@ -486,7 +487,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for an inherent alias to be WF
     /// into `self.out`.
     // FIXME(inherent_associated_types): Merge this function with `fn compute_alias`.
-    fn add_wf_preds_for_inherent_projection(&mut self, data: ty::AliasTy<'tcx>) {
+    fn add_wf_preds_for_inherent_projection(&mut self, data: ty::AliasTerm<'tcx>) {
         // An inherent projection is well-formed if
         //
         // (a) its predicates hold (*)
@@ -498,7 +499,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         if !data.self_ty().has_escaping_bound_vars() {
             // FIXME(inherent_associated_types): Should this happen inside of a snapshot?
             // FIXME(inherent_associated_types): This is incompatible with the new solver and lazy norm!
-            let args = traits::project::compute_inherent_assoc_ty_args(
+            let args = traits::project::compute_inherent_assoc_term_args(
                 &mut traits::SelectionContext::new(self.infcx),
                 self.param_env,
                 data,
@@ -776,7 +777,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.out.extend(obligations);
             }
             ty::Alias(ty::Inherent, data) => {
-                self.add_wf_preds_for_inherent_projection(data);
+                self.add_wf_preds_for_inherent_projection(data.into());
                 return; // Subtree handled by compute_inherent_projection.
             }
 
@@ -961,9 +962,6 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => {
                 if !c.has_escaping_bound_vars() {
-                    let obligations = self.nominal_obligations(uv.def, uv.args);
-                    self.out.extend(obligations);
-
                     let predicate = ty::Binder::dummy(ty::PredicateKind::Clause(
                         ty::ClauseKind::ConstEvaluatable(c),
                     ));
@@ -975,6 +973,16 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         self.param_env,
                         predicate,
                     ));
+
+                    if tcx.def_kind(uv.def) == DefKind::AssocConst
+                        && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
+                    {
+                        self.add_wf_preds_for_inherent_projection(uv.into());
+                        return; // Subtree is handled by above function
+                    } else {
+                        let obligations = self.nominal_obligations(uv.def, uv.args);
+                        self.out.extend(obligations);
+                    }
                 }
             }
             ty::ConstKind::Infer(_) => {

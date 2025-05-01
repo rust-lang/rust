@@ -51,7 +51,7 @@ pub use self::dyn_compatibility::{
 pub use self::engine::{ObligationCtxt, TraitEngineExt};
 pub use self::fulfill::{FulfillmentContext, OldSolverError, PendingPredicateObligation};
 pub use self::normalize::NormalizeExt;
-pub use self::project::{normalize_inherent_projection, normalize_projection_ty};
+pub use self::project::{normalize_inherent_projection, normalize_projection_term};
 pub use self::select::{
     EvaluationCache, EvaluationResult, IntercrateAmbiguityCause, OverflowError, SelectionCache,
     SelectionContext,
