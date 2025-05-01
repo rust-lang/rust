@@ -26,12 +26,16 @@ macro_rules! attribute_groups {
     (
         pub(crate) static $name: ident = [$($names: ty),* $(,)?];
     ) => {
-        pub(crate) static $name: LazyLock<(
-            BTreeMap<&'static [Symbol], Vec<Box<dyn Fn(&AcceptContext<'_>, &ArgParser<'_>) + Send + Sync>>>,
-            Vec<Box<dyn Send + Sync + Fn(&FinalizeContext<'_>) -> Option<AttributeKind>>>
-        )> = LazyLock::new(|| {
-            let mut accepts = BTreeMap::<_, Vec<Box<dyn Fn(&AcceptContext<'_>, &ArgParser<'_>) + Send + Sync>>>::new();
-            let mut finalizes = Vec::<Box<dyn Send + Sync + Fn(&FinalizeContext<'_>) -> Option<AttributeKind>>>::new();
+        type Accepts = BTreeMap<
+            &'static [Symbol],
+            Vec<Box<dyn Send + Sync + Fn(&AcceptContext<'_>, &ArgParser<'_>)>>
+        >;
+        type Finalizes = Vec<
+            Box<dyn Send + Sync + Fn(&FinalizeContext<'_>) -> Option<AttributeKind>>
+        >;
+        pub(crate) static $name: LazyLock<(Accepts, Finalizes)> = LazyLock::new(|| {
+            let mut accepts = Accepts::new();
+            let mut finalizes = Finalizes::new();
             $(
                 {
                     thread_local! {
