@@ -2556,9 +2556,9 @@ fn prepare_cargo_test(
     // We skip everything on Miri as then this overwrites the libdir set up
     // by `Cargo::new` and that actually makes things go wrong.
     if builder.kind != Kind::Miri {
-        let mut dylib_path = dylib_path();
-        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_target_libdir(compiler, target)));
-        cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+        let mut dylib_paths = builder.rustc_lib_paths(compiler);
+        dylib_paths.push(PathBuf::from(&builder.sysroot_target_libdir(compiler, target)));
+        helpers::add_dylib_path(dylib_paths, &mut cargo);
     }
 
     if builder.remote_tested(target) {
