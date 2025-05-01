@@ -682,7 +682,6 @@ pub fn _Unwind_Resume() {}
 
 #[cfg(not(any(windows, target_os = "cygwin")))]
 #[lang = "eh_personality"]
-#[unsafe(no_mangle)]
 pub extern "C" fn eh_personality() {}
 
 #[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
