@@ -44,10 +44,6 @@ pub(crate) fn save_dep_graph(tcx: TyCtxt<'_>) {
         sess.time("assert_dep_graph", || assert_dep_graph(tcx));
         sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx));
 
-        if sess.opts.unstable_opts.incremental_info {
-            tcx.dep_graph.print_incremental_info()
-        }
-
         join(
             move || {
                 sess.time("incr_comp_persist_dep_graph", || {
@@ -172,12 +168,5 @@ pub(crate) fn build_dep_graph(
     // First encode the commandline arguments hash
     sess.opts.dep_tracking_hash(false).encode(&mut encoder);
 
-    Some(DepGraph::new(
-        sess,
-        prev_graph,
-        prev_work_products,
-        encoder,
-        sess.opts.unstable_opts.query_dep_graph,
-        sess.opts.unstable_opts.incremental_info,
-    ))
+    Some(DepGraph::new(sess, prev_graph, prev_work_products, encoder))
 }
