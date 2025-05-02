@@ -1369,3 +1369,10 @@ pub fn has_non_owning_mutable_access<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'
     let mut phantoms = FxHashSet::default();
     has_non_owning_mutable_access_inner(cx, &mut phantoms, iter_ty)
 }
+
+/// Check if `ty` is slice-like, i.e., `&[T]`, `[T; N]`, or `Vec<T>`.
+pub fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.is_slice()
+        || ty.is_array()
+        || matches!(ty.kind(), ty::Adt(adt_def, _) if cx.tcx.is_diagnostic_item(sym::Vec, adt_def.did()))
+}
