@@ -13,7 +13,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
 use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{Span, Symbol};
 
 pub struct SegmentIterator<'a> {
     offset: usize,
@@ -176,7 +176,7 @@ impl<'a> ArgParser<'a> {
 pub enum MetaItemOrLitParser<'a> {
     MetaItemParser(MetaItemParser<'a>),
     Lit(MetaItemLit),
-    Err(Span, ErrorGuaranteed),
+    Err(Span),
 }
 
 impl<'a> MetaItemOrLitParser<'a> {
@@ -186,7 +186,7 @@ impl<'a> MetaItemOrLitParser<'a> {
                 generic_meta_item_parser.span()
             }
             MetaItemOrLitParser::Lit(meta_item_lit) => meta_item_lit.span,
-            MetaItemOrLitParser::Err(span, _) => *span,
+            MetaItemOrLitParser::Err(span) => *span,
         }
     }
 
@@ -495,12 +495,9 @@ impl<'a> MetaItemListParserContext<'a> {
                 // where the macro didn't expand to a literal. An error is already given
                 // for this at this point, and then we do continue. This makes this path
                 // reachable...
-                let e = self.dcx.span_delayed_bug(
-                    *span,
-                    "expr in place where literal is expected (builtin attr parsing)",
-                );
-
-                return Some(MetaItemOrLitParser::Err(*span, e));
+                // NOTE: For backward compatibility we can't emit any error / delayed bug here (yet).
+                //       See <https://github.com/rust-lang/rust/issues/140612>
+                return Some(MetaItemOrLitParser::Err(*span));
             } else {
                 self.next_path()?
             };
