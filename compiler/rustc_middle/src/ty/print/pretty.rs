@@ -3195,7 +3195,7 @@ define_print! {
 
     ty::AliasTerm<'tcx> {
         match self.kind(cx.tcx()) {
-            ty::AliasTermKind::InherentTy => p!(pretty_print_inherent_projection(*self)),
+            ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => p!(pretty_print_inherent_projection(*self)),
             ty::AliasTermKind::ProjectionTy => {
                 if !(cx.should_print_verbose() || with_reduced_queries())
                     && cx.tcx().is_impl_trait_in_trait(self.def_id)
@@ -3205,7 +3205,8 @@ define_print! {
                     p!(print_def_path(self.def_id, self.args));
                 }
             }
-            | ty::AliasTermKind::FreeTy
+            ty::AliasTermKind::FreeTy
+            | ty::AliasTermKind::FreeConst
             | ty::AliasTermKind::OpaqueTy
             | ty::AliasTermKind::UnevaluatedConst
             | ty::AliasTermKind::ProjectionConst => {
