@@ -753,7 +753,7 @@ impl<'test> TestCx<'test> {
         let mut not_found = Vec::new();
         // anything not yet found is a problem
         for (index, expected_error) in expected_errors.iter().enumerate() {
-            if !found[index] {
+            if expected_error.require_annotation && !found[index] {
                 self.error(&format!(
                     "{}:{}: expected {} not found: {}",
                     file_name,

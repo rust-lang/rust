@@ -65,9 +65,10 @@ pub struct Error {
     /// What kind of message we expect (e.g., warning, error, suggestion).
     pub kind: ErrorKind,
     pub msg: String,
-    /// For some `Error`s, like secondary lines of multi-line diagnostics, line annotations
-    /// are not mandatory, even if they would otherwise be mandatory for primary errors.
-    /// Only makes sense for "actual" errors, not for "expected" errors.
+    /// For `Error`s from the compiler, like secondary lines of multi-line diagnostics, line
+    /// annotations are not mandatory, even if they would otherwise be mandatory for primary errors.
+    /// For `Error`s from annotations this can be false if the annotation doesn't require to
+    /// annotate an actual error (useful for target-dependent errors).
     pub require_annotation: bool,
 }
 
@@ -167,7 +168,9 @@ fn parse_expected(
         rest.split_once(|c: char| c != '_' && !c.is_ascii_alphabetic()).unwrap_or((rest, ""));
     let kind = ErrorKind::from_user_str(kind_str);
     let untrimmed_msg = &rest[kind_str.len()..];
-    let msg = untrimmed_msg.strip_prefix(':').unwrap_or(untrimmed_msg).trim().to_owned();
+    let require_annotation = !untrimmed_msg.starts_with('?');
+    let msg = untrimmed_msg.strip_prefix('?').unwrap_or(untrimmed_msg);
+    let msg = msg.strip_prefix(':').unwrap_or(msg).trim().to_owned();
 
     let line_num_adjust = &captures["adjust"];
     let (follow_prev, line_num) = if line_num_adjust == "|" {
@@ -188,7 +191,7 @@ fn parse_expected(
         kind,
         msg
     );
-    Some((follow_prev, Error { line_num, kind, msg, require_annotation: true }))
+    Some((follow_prev, Error { line_num, kind, msg, require_annotation }))
 }
 
 #[cfg(test)]

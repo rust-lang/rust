@@ -1,12 +1,11 @@
-//FIXME~ ERROR values of the type `[u8; usize::MAX]` are too big for the target architecture
+//~ ERROR? values of the type `[u8; usize::MAX]` are too big for the target architecture
 // Make sure the compiler does not ICE when trying to generate the debuginfo name of a type that
 // causes a layout error.
 // This version of the test already ICE'd before the commit that introduce the ICE described in
 // https://github.com/rust-lang/rust/issues/94961.
 
-//@ compile-flags:-C debuginfo=2 --error-format=human
+//@ compile-flags:-C debuginfo=2
 //@ build-fail
-//@ error-pattern: values of the type `[u8; usize::MAX]` are too big for the target architecture
 
 #![crate_type = "rlib"]
 
@@ -18,5 +17,5 @@ pub fn foo() -> usize {
     std::mem::size_of::<Foo<u8>>()
 }
 
-// FIXME: the error is reported on different lines on different targets
-//FIXME~? ERROR values of the type `[u8; usize::MAX]` are too big for the target architecture
+// The error is reported on different lines on different targets
+//~? ERROR? values of the type `[u8; usize::MAX]` are too big for the target architecture

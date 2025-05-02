@@ -218,6 +218,9 @@ fn meow(_: [u8]) {}
 //~| ERROR anonymous parameters
 ```
 
+A question mark after the error kind (`//~ ERROR?`) means that the annotation error is not actually
+required to be produced by the compiler, this is useful for target-dependent errors.
+
 The space character between `//~` (or other variants) and the subsequent text is
 negligible (i.e. there is no semantic difference between `//~ ERROR` and
 `//~ERROR` although the former is more common in the codebase).
@@ -335,7 +338,9 @@ Use of `error-pattern` is not recommended in general.
 For strict testing of compile time output, try to use the line annotations `//~` as much as
 possible, including `//~?` annotations for diagnostics without spans.
 
-If the compile time output is target dependent or too verbose, use directive
+If the compile time output is target dependent, use optional annotations `//~ ERROR?`.
+
+If the compile time output is too verbose, use directive
 `//@ dont-require-annotations: <diagnostic-kind>` to make the line annotation checking
 non-exhaustive.
 Some of the compiler messages can stay uncovered by annotations in this mode.
