@@ -1633,6 +1633,9 @@ pub enum ExprKind {
     /// An `if` block, with an optional `else` block.
     ///
     /// `if expr { block } else { expr }`
+    ///
+    /// If present, the "else" expr is always `ExprKind::Block` (for `else`) or
+    /// `ExprKind::If` (for `else if`).
     If(P<Expr>, P<Block>, Option<P<Expr>>),
     /// A while loop, with an optional label.
     ///

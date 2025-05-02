@@ -2741,6 +2741,9 @@ pub enum ExprKind<'hir> {
     /// An `if` block, with an optional else block.
     ///
     /// I.e., `if <expr> { <expr> } else { <expr> }`.
+    ///
+    /// The "then" expr is always `ExprKind::Block`. If present, the "else" expr is always
+    /// `ExprKind::Block` (for `else`) or `ExprKind::If` (for `else if`).
     If(&'hir Expr<'hir>, &'hir Expr<'hir>, Option<&'hir Expr<'hir>>),
     /// A conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
