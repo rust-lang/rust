@@ -79,7 +79,7 @@ fn check_link_info_print_request(sess: &Session, crate_type: CrateType) {
                 .note(format!("consider `--crate-type staticlib` to print linkage information"));
         } else if !sess.opts.output_types.should_link() {
             sess.dcx().warn(format!(
-                    "skipping link step due to conflict: cannot output linkage information without emitting link"
+                    "cannot output linkage information when --emit link is not passed"
                 ));
         }
     }
