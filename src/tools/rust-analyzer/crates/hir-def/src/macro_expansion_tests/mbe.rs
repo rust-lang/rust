@@ -2001,8 +2001,9 @@ macro_rules! bug {
         true
     };
 }
-
-let _ = bug!(a;;;test);
+fn f() {
+    let _ = bug!(a;;;test);
+}
     "#,
         expect![[r#"
 macro_rules! bug {
@@ -2022,8 +2023,9 @@ macro_rules! bug {
         true
     };
 }
-
-let _ = true;
+fn f() {
+    let _ = true;
+}
     "#]],
     );
 }
