@@ -5,7 +5,7 @@
 #![expect(clippy::float_cmp)]
 
 use crate::res::MaybeDef;
-use crate::source::{SpanRangeExt, walk_span_to_context};
+use crate::source::{SpanExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, sym, unsext};
 
 use rustc_abi::Size;

@@ -1,6 +1,6 @@
 //! Utility functions for attributes, including Clippy's built-in ones
 
-use crate::source::SpanRangeExt;
+use crate::source::SpanExt;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;

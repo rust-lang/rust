@@ -1,6 +1,6 @@
 use crate::reference::DEREF_ADDROF;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
     get_enclosing_closure, get_parent_expr, is_expr_temporary_value, is_from_proc_macro, is_lint_allowed, is_mutable,

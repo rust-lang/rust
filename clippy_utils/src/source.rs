@@ -106,7 +106,7 @@ impl IntoSpan for Range<BytePos> {
     }
 }
 
-pub trait SpanRangeExt: SpanRange {
+pub trait SpanExt: SpanRange {
     /// Attempts to get a handle to the source text. Returns `None` if either the span is malformed,
     /// or the source text is not accessible.
     fn get_source_text<'sm>(self, sm: impl HasSourceMap<'sm>) -> Option<SourceText> {
@@ -176,7 +176,7 @@ pub trait SpanRangeExt: SpanRange {
         trim_start(sm.source_map(), self.into_range())
     }
 }
-impl<T: SpanRange> SpanRangeExt for T {}
+impl<T: SpanRange> SpanExt for T {}
 
 /// Handle to a range of text in a source file.
 pub struct SourceText(SourceFileRange);

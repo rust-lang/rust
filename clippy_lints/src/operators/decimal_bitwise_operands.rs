@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::numeric_literal;
 use clippy_utils::numeric_literal::NumericLiteral;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_hir::{BinOpKind, Expr, ExprKind};

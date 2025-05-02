@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, snippet_indent};
+use clippy_utils::source::{SpanExt, snippet_indent};
 use clippy_utils::tokenize_with_text;
 use itertools::Itertools;
 use rustc_ast::token::CommentKind;

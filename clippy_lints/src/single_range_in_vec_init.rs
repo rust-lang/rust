@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::{Range, VecArgs};
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::source::{SpanRangeExt, snippet_with_context};
+use clippy_utils::source::{SpanExt, snippet_with_context};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_no_std_crate, sym};
 use rustc_ast::{LitIntType, LitKind, RangeLimits, UintTy};

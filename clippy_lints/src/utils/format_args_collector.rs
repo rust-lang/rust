@@ -1,5 +1,5 @@
 use clippy_utils::macros::FormatArgsStorage;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use itertools::Itertools;
 use rustc_ast::{Crate, Expr, ExprKind, FormatArgs};
 use rustc_data_structures::fx::FxHashMap;

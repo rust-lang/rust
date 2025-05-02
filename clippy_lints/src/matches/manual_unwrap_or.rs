@@ -1,6 +1,6 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
-use clippy_utils::source::{SpanRangeExt as _, indent_of, reindent_multiline};
+use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use rustc_ast::{BindingMode, ByRef};
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;

@@ -2,7 +2,7 @@ use std::{fmt, ops};
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_in_test};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;

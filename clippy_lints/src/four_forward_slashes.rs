@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanRangeExt as _;
+use clippy_utils::source::SpanExt as _;
 use itertools::Itertools;
 use rustc_errors::Applicability;
 use rustc_hir::Item;

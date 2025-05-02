@@ -1,7 +1,7 @@
 use super::USELESS_ATTRIBUTE;
 use super::utils::{is_lint_level, is_word, namespace_and_lint};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{SpanRangeExt, first_line_of_span};
+use clippy_utils::source::{SpanExt, first_line_of_span};
 use clippy_utils::sym;
 use rustc_ast::{Attribute, Item, ItemKind};
 use rustc_errors::Applicability;

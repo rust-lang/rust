@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::SpanExt;
 use itertools::Itertools;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;

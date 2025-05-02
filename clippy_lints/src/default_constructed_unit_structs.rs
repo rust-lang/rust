@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_ty_alias;
-use clippy_utils::source::SpanRangeExt as _;
+use clippy_utils::source::SpanExt as _;
 use hir::ExprKind;
 use hir::def::Res;
 use rustc_errors::Applicability;
