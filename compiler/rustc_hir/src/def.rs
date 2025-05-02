@@ -273,9 +273,6 @@ impl DefKind {
             // but those provide their own DefPathData.
             DefKind::AssocTy => DefPathData::TypeNs(name.unwrap()),
 
-            // It's not exactly an anon const, but wrt DefPathData, there
-            // is no difference.
-            DefKind::Static { nested: true, .. } => DefPathData::AnonConst,
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam

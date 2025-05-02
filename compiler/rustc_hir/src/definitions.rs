@@ -313,6 +313,8 @@ pub enum DefPathData {
     AnonAssocTy(Symbol),
     /// A synthetic body for a coroutine's by-move body.
     SyntheticCoroutineBody,
+    /// Additional static data referred to by a static.
+    NestedStatic,
 }
 
 impl Definitions {
@@ -455,7 +457,8 @@ impl DefPathData {
             | Ctor
             | AnonConst
             | OpaqueTy
-            | SyntheticCoroutineBody => None,
+            | SyntheticCoroutineBody
+            | NestedStatic => None,
         }
     }
 
@@ -477,6 +480,7 @@ impl DefPathData {
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
             AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },
+            NestedStatic => DefPathDataName::Anon { namespace: sym::nested },
         }
     }
 }

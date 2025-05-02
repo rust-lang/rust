@@ -17,14 +17,13 @@ use hir::def::DefKind;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir as hir;
-use rustc_hir::definitions::DisambiguatorState;
+use rustc_hir::definitions::{DefPathData, DisambiguatorState};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::interpret::{ConstAllocation, CtfeProvenance, InterpResult};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::sym;
 use tracing::{instrument, trace};
 
 use super::{
@@ -108,9 +107,9 @@ fn intern_as_new_static<'tcx>(
 ) {
     let feed = tcx.create_def(
         static_id,
-        Some(sym::nested),
-        DefKind::Static { safety: hir::Safety::Safe, mutability: alloc.0.mutability, nested: true },
         None,
+        DefKind::Static { safety: hir::Safety::Safe, mutability: alloc.0.mutability, nested: true },
+        Some(DefPathData::NestedStatic),
         disambiguator,
     );
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());

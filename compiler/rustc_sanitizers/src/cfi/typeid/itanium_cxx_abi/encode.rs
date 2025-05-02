@@ -717,6 +717,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             hir::definitions::DefPathData::AnonConst => "k",
             hir::definitions::DefPathData::OpaqueTy => "i",
             hir::definitions::DefPathData::SyntheticCoroutineBody => "s",
+            hir::definitions::DefPathData::NestedStatic => "n",
             hir::definitions::DefPathData::CrateRoot
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
