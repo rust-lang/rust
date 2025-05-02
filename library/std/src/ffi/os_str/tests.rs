@@ -106,6 +106,35 @@ fn test_os_string_join() {
 }
 
 #[test]
+fn display() {
+    let os_string = OsString::from("bcd");
+    assert_eq!(format!("a{:^10}e", os_string.display()), "a   bcd    e");
+}
+
+#[cfg(unix)]
+#[test]
+fn display_invalid_utf8_unix() {
+    use crate::os::unix::ffi::OsStringExt;
+
+    let os_string = OsString::from_vec(b"b\xFFd".to_vec());
+    assert_eq!(format!("a{:^10}e", os_string.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", os_string.as_os_str().display()), "a   b�d    e");
+    let os_string = OsString::from_vec(b"b\xE1\xBAd".to_vec());
+    assert_eq!(format!("a{:^10}e", os_string.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", os_string.as_os_str().display()), "a   b�d    e");
+}
+
+#[cfg(windows)]
+#[test]
+fn display_invalid_wtf8_windows() {
+    use crate::os::windows::ffi::OsStringExt;
+
+    let os_string = OsString::from_wide(&[b'b' as _, 0xD800, b'd' as _]);
+    assert_eq!(format!("a{:^10}e", os_string.display()), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", os_string.as_os_str().display()), "a   b�d    e");
+}
+
+#[test]
 fn test_os_string_default() {
     let os_string: OsString = Default::default();
     assert_eq!("", &os_string);

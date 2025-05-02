@@ -1510,8 +1510,11 @@ unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> u16 {
 }
 
 /// Padding after the end of something. Returned by `Formatter::padding`.
+#[doc(hidden)]
 #[must_use = "don't forget to write the post padding"]
-pub(crate) struct PostPadding {
+#[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
+#[derive(Debug)]
+pub struct PostPadding {
     fill: char,
     padding: u16,
 }
@@ -1522,7 +1525,9 @@ impl PostPadding {
     }
 
     /// Writes this post padding.
-    pub(crate) fn write(self, f: &mut Formatter<'_>) -> Result {
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
+    pub fn write(self, f: &mut Formatter<'_>) -> Result {
         for _ in 0..self.padding {
             f.buf.write_char(self.fill)?;
         }
@@ -1719,7 +1724,9 @@ impl<'a> Formatter<'a> {
     ///
     /// Callers are responsible for ensuring post-padding is written after the
     /// thing that is being padded.
-    pub(crate) fn padding(
+    #[doc(hidden)]
+    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
+    pub fn padding(
         &mut self,
         padding: u16,
         default: Alignment,

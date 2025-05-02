@@ -10,6 +10,7 @@ mod converts;
 mod count;
 mod error;
 mod iter;
+mod lossy;
 mod traits;
 mod validations;
 
@@ -21,7 +22,6 @@ use crate::{ascii, mem};
 
 pub mod pattern;
 
-mod lossy;
 #[unstable(feature = "str_from_raw_parts", issue = "119206")]
 pub use converts::{from_raw_parts, from_raw_parts_mut};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -52,6 +52,8 @@ pub use iter::{Matches, RMatches};
 pub use iter::{RSplit, RSplitTerminator, Split, SplitTerminator};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use iter::{RSplitN, SplitN};
+#[unstable(feature = "str_internals", issue = "none")]
+pub use lossy::advance_utf8;
 #[stable(feature = "utf8_chunks", since = "1.79.0")]
 pub use lossy::{Utf8Chunk, Utf8Chunks};
 #[stable(feature = "rust1", since = "1.0.0")]
