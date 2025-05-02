@@ -240,6 +240,11 @@ pub fn print_crate<'a>(
     let mut s =
         State { s: pp::Printer::new(), comments: Some(Comments::new(sm, filename, input)), ann };
 
+    // We need to print shebang before anything else
+    // otherwise the resulting code will not compile
+    // and shebang will be useless.
+    s.maybe_print_shebang();
+
     if is_expanded && !krate.attrs.iter().any(|attr| attr.has_name(sym::no_core)) {
         // We need to print `#![no_std]` (and its feature gate) so that
         // compiling pretty-printed source won't inject libstd again.
@@ -558,6 +563,20 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
         };
         self.word(st)
+    }
+
+    fn maybe_print_shebang(&mut self) {
+        if let Some(cmnt) = self.peek_comment() {
+            // Comment is a shebang if it's:
+            // Isolated, starts with #! and doesn't continue with `[`
+            // See [rustc_lexer::strip_shebang] and [gather_comments] from pprust/state.rs for details
+            if cmnt.style == CommentStyle::Isolated
+                && cmnt.lines.first().map_or(false, |l| l.starts_with("#!"))
+            {
+                let cmnt = self.next_comment().unwrap();
+                self.print_comment(cmnt);
+            }
+        }
     }
 
     fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) -> bool {
