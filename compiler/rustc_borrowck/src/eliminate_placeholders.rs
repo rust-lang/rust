@@ -18,7 +18,7 @@ use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
 use crate::member_constraints::MemberConstraintSet;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndices};
-use crate::region_infer::{ConstraintSccs, RegionDefinition, TypeTest};
+use crate::region_infer::{ConstraintSccs, RegionDefinition, Representative, TypeTest};
 use crate::ty::VarianceDiagInfo;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::type_check::{Locations, MirTypeckRegionConstraints};
@@ -76,36 +76,23 @@ pub(crate) struct RegionTracker {
     /// The smallest universe index reachable form the nodes of this SCC.
     min_reachable_universe: UniverseIndex,
 
-    /// The representative Region Variable Id for this SCC. We prefer
-    /// placeholders over existentially quantified variables, otherwise
-    ///  it's the one with the smallest Region Variable ID.
-    pub(crate) representative: RegionVid,
-
-    /// Is the current representative a placeholder?
-    representative_is_placeholder: bool,
-
-    /// Is the current representative existentially quantified?
-    representative_is_existential: bool,
+    /// The representative Region Variable Id for this SCC.
+    pub(crate) representative: Representative,
 }
 
 impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
-        let (representative_is_placeholder, representative_is_existential) = match definition.origin
-        {
-            NllRegionVariableOrigin::FreeRegion => (false, false),
-            NllRegionVariableOrigin::Placeholder(_) => (true, false),
-            NllRegionVariableOrigin::Existential { .. } => (false, true),
-        };
-
         let placeholder_universe =
-            if representative_is_placeholder { definition.universe } else { UniverseIndex::ROOT };
+            if matches!(definition.origin, NllRegionVariableOrigin::Placeholder(_)) {
+                definition.universe
+            } else {
+                UniverseIndex::ROOT
+            };
 
         Self {
             max_placeholder_universe_reached: placeholder_universe,
             min_reachable_universe: definition.universe,
-            representative: rvid,
-            representative_is_placeholder,
-            representative_is_existential,
+            representative: Representative::new(rvid, definition),
         }
     }
 
@@ -139,21 +126,10 @@ impl RegionTracker {
 }
 
 impl scc::Annotation for RegionTracker {
-    fn merge_scc(mut self, mut other: Self) -> Self {
-        // Prefer any placeholder over any existential
-        if other.representative_is_placeholder && self.representative_is_existential {
-            other.merge_min_max_seen(&self);
-            return other;
-        }
-
-        if self.representative_is_placeholder && other.representative_is_existential
-            || (self.representative <= other.representative)
-        {
-            self.merge_min_max_seen(&other);
-            return self;
-        }
-        other.merge_min_max_seen(&self);
-        other
+    fn merge_scc(mut self, other: Self) -> Self {
+        self.representative = self.representative.merge_scc(other.representative);
+        self.merge_min_max_seen(&other);
+        self
     }
 
     fn merge_reached(mut self, other: Self) -> Self {
@@ -356,7 +332,7 @@ fn rewrite_outlives<'tcx>(
             // outlive static.
             outlives_static.insert(scc);
             let scc_representative_outlives_static = OutlivesConstraint {
-                sup: annotation.representative,
+                sup: annotation.representative.rvid(),
                 sub: fr_static,
                 category: ConstraintCategory::IllegalUniverse,
                 locations: Locations::All(rustc_span::DUMMY_SP),
