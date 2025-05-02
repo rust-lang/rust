@@ -1,5 +1,5 @@
-error[E0080]: evaluation of `_::<'_>` failed
-  --> $DIR/def-site-eval.rs:14:20
+error[E0080]: evaluation of constant value failed
+  --> $DIR/def-site-eval.rs:13:20
    |
 LL | const _<'_a>: () = panic!();
    |                    ^^^^^^^^ evaluation panicked: explicit panic
