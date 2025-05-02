@@ -1,4 +1,6 @@
-//FIXME~ ERROR values of the type `[u8; usize::MAX]` are too big for the target architecture
+// ignore-tidy-linelength
+// FIXME(#140620)~ ERROR values of the type `[u8; usize::MAX]` are too big for the target architecture
+
 // Make sure the compiler does not ICE when trying to generate the debuginfo name of a type that
 // causes a layout error.
 // This version of the test already ICE'd before the commit that introduce the ICE described in
@@ -18,5 +20,5 @@ pub fn foo() -> usize {
     std::mem::size_of::<Foo<u8>>()
 }
 
-// FIXME: the error is reported on different lines on different targets
-//FIXME~? ERROR values of the type `[u8; usize::MAX]` are too big for the target architecture
+// FIXME(#140620): the error is reported on different lines on different targets
+//FIXME(#140620)~? ERROR values of the type `[u8; usize::MAX]` are too big for the target architecture
