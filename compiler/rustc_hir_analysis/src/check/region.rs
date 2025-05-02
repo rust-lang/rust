@@ -755,6 +755,9 @@ fn resolve_local<'tcx>(
             }
             hir::ExprKind::Call(func, args) => {
                 // Recurse into tuple constructors, such as `Some(&temp())`.
+                //
+                // That way, there is no difference between `Some(..)` and `Some { 0: .. }`,
+                // even though the former is syntactically a function call.
                 if let hir::ExprKind::Path(path) = &func.kind
                     && let hir::QPath::Resolved(None, path) = path
                     && let Res::SelfCtor(_) | Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) = path.res
