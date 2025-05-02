@@ -515,9 +515,15 @@ impl From<Option<BlockId>> for VisibleFromModule {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum AutorefOrPtrAdjustment {
+    Autoref(Mutability),
+    ToConstPtr,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct ReceiverAdjustments {
-    autoref: Option<Mutability>,
+    autoref: Option<AutorefOrPtrAdjustment>,
     autoderefs: usize,
     unsize_array: bool,
 }
@@ -535,10 +541,15 @@ impl ReceiverAdjustments {
                 }
                 Some((kind, new_ty)) => {
                     ty = new_ty.clone();
+                    let mutbl = match self.autoref {
+                        Some(AutorefOrPtrAdjustment::Autoref(m)) => Some(m),
+                        Some(AutorefOrPtrAdjustment::ToConstPtr) => Some(Mutability::Not),
+                        // FIXME should we know the mutability here, when autoref is `None`?
+                        None => None,
+                    };
                     adjust.push(Adjustment {
                         kind: Adjust::Deref(match kind {
-                            // FIXME should we know the mutability here, when autoref is `None`?
-                            AutoderefKind::Overloaded => Some(OverloadedDeref(self.autoref)),
+                            AutoderefKind::Overloaded => Some(OverloadedDeref(mutbl)),
                             AutoderefKind::Builtin => None,
                         }),
                         target: new_ty,
@@ -546,11 +557,27 @@ impl ReceiverAdjustments {
                 }
             }
         }
-        if let Some(m) = self.autoref {
+        if let Some(autoref) = &self.autoref {
             let lt = table.new_lifetime_var();
-            let a = Adjustment::borrow(m, ty, lt);
-            ty = a.target.clone();
-            adjust.push(a);
+            match autoref {
+                AutorefOrPtrAdjustment::Autoref(m) => {
+                    let a = Adjustment::borrow(*m, ty, lt);
+                    ty = a.target.clone();
+                    adjust.push(a);
+                }
+                AutorefOrPtrAdjustment::ToConstPtr => {
+                    if let TyKind::Raw(Mutability::Mut, pointee) = ty.kind(Interner) {
+                        let a = Adjustment {
+                            kind: Adjust::Pointer(PointerCast::MutToConstPointer),
+                            target: TyKind::Raw(Mutability::Not, pointee.clone()).intern(Interner),
+                        };
+                        ty = a.target.clone();
+                        adjust.push(a);
+                    } else {
+                        never!("`ToConstPtr` target is not a raw mutable pointer");
+                    }
+                }
+            };
         }
         if self.unsize_array {
             ty = 'it: {
@@ -575,8 +602,8 @@ impl ReceiverAdjustments {
         (ty, adjust)
     }
 
-    fn with_autoref(&self, m: Mutability) -> ReceiverAdjustments {
-        Self { autoref: Some(m), ..*self }
+    fn with_autoref(&self, a: AutorefOrPtrAdjustment) -> ReceiverAdjustments {
+        Self { autoref: Some(a), ..*self }
     }
 }
 
@@ -1051,7 +1078,7 @@ fn iterate_method_candidates_with_autoref(
     let mut maybe_reborrowed = first_adjustment.clone();
     if let Some((_, _, m)) = receiver_ty.value.as_reference() {
         // Prefer reborrow of references to move
-        maybe_reborrowed.autoref = Some(m);
+        maybe_reborrowed.autoref = Some(AutorefOrPtrAdjustment::Autoref(m));
         maybe_reborrowed.autoderefs += 1;
     }
 
@@ -1063,15 +1090,34 @@ fn iterate_method_candidates_with_autoref(
         binders: receiver_ty.binders.clone(),
     };
 
-    iterate_method_candidates_by_receiver(refed, first_adjustment.with_autoref(Mutability::Not))?;
+    iterate_method_candidates_by_receiver(
+        refed,
+        first_adjustment.with_autoref(AutorefOrPtrAdjustment::Autoref(Mutability::Not)),
+    )?;
 
     let ref_muted = Canonical {
         value: TyKind::Ref(Mutability::Mut, error_lifetime(), receiver_ty.value.clone())
             .intern(Interner),
-        binders: receiver_ty.binders,
+        binders: receiver_ty.binders.clone(),
     };
 
-    iterate_method_candidates_by_receiver(ref_muted, first_adjustment.with_autoref(Mutability::Mut))
+    iterate_method_candidates_by_receiver(
+        ref_muted,
+        first_adjustment.with_autoref(AutorefOrPtrAdjustment::Autoref(Mutability::Mut)),
+    )?;
+
+    if let Some((ty, Mutability::Mut)) = receiver_ty.value.as_raw_ptr() {
+        let const_ptr_ty = Canonical {
+            value: TyKind::Raw(Mutability::Not, ty.clone()).intern(Interner),
+            binders: receiver_ty.binders,
+        };
+        iterate_method_candidates_by_receiver(
+            const_ptr_ty,
+            first_adjustment.with_autoref(AutorefOrPtrAdjustment::ToConstPtr),
+        )?;
+    }
+
+    ControlFlow::Continue(())
 }
 
 pub trait MethodCandidateCallback {
