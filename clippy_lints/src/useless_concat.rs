@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::CONCAT;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{match_def_path, tokenize_with_text};
+use clippy_utils::tokenize_with_text;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let x = "a";
     /// ```
-    #[clippy::version = "1.85.0"]
+    #[clippy::version = "1.89.0"]
     pub USELESS_CONCAT,
     complexity,
     "checks that the `concat` macro has at least two arguments"
@@ -39,11 +39,11 @@ impl LateLintPass<'_> for UselessConcat {
         if expr.span.from_expansion()
             // Check that it's a string literal.
             && let ExprKind::Lit(lit) = expr.kind
-            && let LitKind::Str(_, _) = lit.node
+            && let LitKind::Str(lit_s, _) = lit.node
             // Get the direct parent of the expression.
             && let Some(macro_call) = macro_backtrace(expr.span).next()
             // Check if the `concat` macro from the `core` library.
-            && match_def_path(cx, macro_call.def_id, &CONCAT)
+            && CONCAT.matches(cx, macro_call.def_id)
             // We get the original code to parse it.
             && let Some(original_code) = snippet_opt(cx, macro_call.span)
             // This check allows us to ensure that the code snippet:
@@ -68,7 +68,13 @@ impl LateLintPass<'_> for UselessConcat {
                         }
                         literal = Some(token_s);
                     },
-                    TokenKind::Ident => nb_idents += 1,
+                    TokenKind::Ident => {
+                        if token_s == "true" || token_s == "false" {
+                            literal = Some(token_s);
+                        } else {
+                            nb_idents += 1;
+                        }
+                    },
                     TokenKind::Comma => {
                         nb_commas += 1;
                         if nb_commas > 1 {
@@ -81,17 +87,6 @@ impl LateLintPass<'_> for UselessConcat {
                     _ => {},
                 }
             }
-            let literal = match literal {
-                Some(lit) => {
-                    // Literals can also be number, so we need to check this case too.
-                    if lit.starts_with('"') {
-                        lit.to_string()
-                    } else {
-                        format!("\"{lit}\"")
-                    }
-                },
-                None => "\"\"".to_string(),
-            };
             // There should always be the ident of the `concat` macro.
             if nb_idents == 1 {
                 span_lint_and_sugg(
@@ -100,7 +95,7 @@ impl LateLintPass<'_> for UselessConcat {
                     macro_call.span,
                     "unneeded use of `concat!` macro",
                     "replace with",
-                    literal,
+                    format!("{lit_s:?}"),
                     Applicability::MachineApplicable,
                 );
             }
