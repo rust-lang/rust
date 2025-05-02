@@ -1,6 +1,12 @@
-//@ compile-flags: -Zunpretty=expanded
+//@ revisions: expanded hir
+//@[expanded]compile-flags: -Zunpretty=expanded
+//@[expanded]check-pass
+//@[hir]compile-flags: -Zunpretty=hir
+//@[hir]check-fail
 //@ edition:2024
-//@ check-pass
+
+// Note: the HIR revision includes a `.stderr` file because there are some
+// errors that only occur once we get past the AST.
 
 #![feature(auto_traits)]
 #![feature(box_patterns)]
@@ -202,8 +208,8 @@ mod expressions {
         move || value;
         async || value;
         async move || value;
-        static || value;
-        static move || value;
+        static || value;            //[hir]~ ERROR closures cannot be static
+        static move || value;       //[hir]~ ERROR closures cannot be static
         (static async || value);
         (static async move || value);
         || -> u8 { value };
@@ -232,7 +238,7 @@ mod expressions {
     /// ExprKind::Await
     fn expr_await() {
         let fut;
-        fut.await;
+        fut.await;  //[hir]~ ERROR `await` is only allowed
     }
 
     /// ExprKind::TryBlock
@@ -281,7 +287,7 @@ mod expressions {
 
     /// ExprKind::Underscore
     fn expr_underscore() {
-        _;
+        _;      //[hir]~ ERROR in expressions, `_` can only
     }
 
     /// ExprKind::Path
@@ -291,10 +297,14 @@ mod expressions {
         crate::expressions::expr_path::<'static>;
         <T as Default>::default;
         <T as ::core::default::Default>::default::<>;
-        x::();
-        x::(T, T) -> T;
+        x::();            //[hir]~ ERROR parenthesized type parameters
+        x::(T, T) -> T;   //[hir]~ ERROR parenthesized type parameters
         crate::() -> ()::expressions::() -> ()::expr_path;
+        //[hir]~^ ERROR parenthesized type parameters
+        //[hir]~| ERROR parenthesized type parameters
         core::()::marker::()::PhantomData;
+        //[hir]~^ ERROR parenthesized type parameters
+        //[hir]~| ERROR parenthesized type parameters
     }
 
     /// ExprKind::AddrOf
@@ -330,18 +340,7 @@ mod expressions {
         return true;
     }
 
-    /// ExprKind::InlineAsm
-    fn expr_inline_asm() {
-        let x;
-        core::arch::asm!(
-            "mov {tmp}, {x}",
-            "shl {tmp}, 1",
-            "shl {x}, 2",
-            "add {x}, {tmp}",
-            x = inout(reg) x,
-            tmp = out(reg) _,
-        );
-    }
+    /// ExprKind::InlineAsm: see exhaustive-asm.rs
 
     /// ExprKind::OffsetOf
     fn expr_offset_of() {
@@ -390,7 +389,7 @@ mod expressions {
 
     /// ExprKind::Yield
     fn expr_yield() {
-        yield;
+        yield;          //[hir]~ ERROR `yield` can only be used
         yield true;
     }
 
@@ -470,14 +469,11 @@ mod items {
 
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
-        unsafe extern "C++" {}
+        unsafe extern "C++" {}  //[hir]~ ERROR invalid ABI
         unsafe extern "C" {}
     }
 
-    /// ItemKind::GlobalAsm
-    mod item_global_asm {
-        core::arch::global_asm!(".globl my_asm_func");
-    }
+    /// ItemKind::GlobalAsm: see exhaustive-asm.rs
 
     /// ItemKind::TyAlias
     mod item_ty_alias {
@@ -680,7 +676,7 @@ mod patterns {
 
     /// PatKind::Rest
     fn pat_rest() {
-        let ..;
+        let ..;     //[hir]~ ERROR `..` patterns are not allowed here
     }
 
     /// PatKind::Never
@@ -795,7 +791,7 @@ mod types {
         let _: T<'static>;
         let _: T<T>;
         let _: T::<T>;
-        let _: T() -> !;
+        let _: T() -> !;    //[hir]~ ERROR parenthesized type parameters
         let _: <T as ToOwned>::Owned;
     }
 
@@ -810,12 +806,12 @@ mod types {
 
     /// TyKind::ImplTrait
     const fn ty_impl_trait() {
-        let _: impl Send;
-        let _: impl Send + 'static;
-        let _: impl 'static + Send;
-        let _: impl ?Sized;
-        let _: impl ~const Clone;
-        let _: impl for<'a> Send;
+        let _: impl Send;               //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl Send + 'static;     //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl 'static + Send;     //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl ?Sized;             //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl ~const Clone;       //[hir]~ ERROR `impl Trait` is not allowed
+        let _: impl for<'a> Send;       //[hir]~ ERROR `impl Trait` is not allowed
     }
 
     /// TyKind::Paren

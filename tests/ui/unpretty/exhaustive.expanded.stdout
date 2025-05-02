@@ -1,7 +1,13 @@
 #![feature(prelude_import)]
-//@ compile-flags: -Zunpretty=expanded
+//@ revisions: expanded hir
+//@[expanded]compile-flags: -Zunpretty=expanded
+//@[expanded]check-pass
+//@[hir]compile-flags: -Zunpretty=hir
+//@[hir]check-fail
 //@ edition:2024
-//@ check-pass
+
+// Note: the HIR revision includes a `.stderr` file because there are some
+// errors that only occur once we get past the AST.
 
 #![feature(auto_traits)]
 #![feature(box_patterns)]
@@ -211,7 +217,10 @@ mod expressions {
     }
 
     /// ExprKind::Await
-    fn expr_await() { let fut; fut.await; }
+    fn expr_await() {
+        let fut;
+        fut.await;
+    }
 
     /// ExprKind::TryBlock
     fn expr_try_block() { try {} try { return; } }
@@ -242,7 +251,9 @@ mod expressions {
     }
 
     /// ExprKind::Underscore
-    fn expr_underscore() { _; }
+    fn expr_underscore() {
+        _;
+    }
 
     /// ExprKind::Path
     fn expr_path() {
@@ -275,16 +286,8 @@ mod expressions {
     /// ExprKind::Ret
     fn expr_ret() { return; return true; }
 
-    /// ExprKind::InlineAsm
-    fn expr_inline_asm() {
-        let x;
-        asm!("mov {1}, {0}\nshl {1}, 1\nshl {0}, 2\nadd {0}, {1}",
-            inout(reg)
-            x,
-            out(reg)
-            _);
-    }
 
+    /// ExprKind::InlineAsm: see exhaustive-asm.rs
     /// ExprKind::OffsetOf
     fn expr_offset_of() {
 
@@ -300,60 +303,7 @@ mod expressions {
 
 
 
-
-
-
-
-
-
         // ...
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -450,10 +400,7 @@ mod items {
         unsafe extern "C++" {}
         unsafe extern "C" {}
     }
-    /// ItemKind::GlobalAsm
-    mod item_global_asm {
-        global_asm! (".globl my_asm_func");
-    }
+    /// ItemKind::GlobalAsm: see exhaustive-asm.rs
     /// ItemKind::TyAlias
     mod item_ty_alias {
         pub type Type<'a> where T: 'a = T;
