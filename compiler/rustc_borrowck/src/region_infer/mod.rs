@@ -4,15 +4,13 @@ use std::rc::Rc;
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::scc::Sccs;
+use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
 use rustc_infer::infer::outlives::test_type_match;
-use rustc_infer::infer::region_constraints::{
-    GenericKind, RegionVariableInfo, VerifyBound, VerifyIfEq,
-};
-use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin};
+use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound, VerifyIfEq};
+use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_middle::bug;
 use rustc_middle::mir::{
     AnnotationSource, BasicBlock, Body, ConstraintCategory, Local, Location, ReturnConstraint,
@@ -29,7 +27,7 @@ use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet};
 use crate::dataflow::BorrowIndex;
 use crate::diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo};
-use crate::eliminate_placeholders::{LoweredConstraints, RegionTracker};
+use crate::handle_placeholders::{LoweredConstraints, RegionTracker};
 use crate::member_constraints::{MemberConstraintSet, NllMemberConstraintIndex};
 use crate::polonius::LiveLoans;
 use crate::polonius::legacy::PoloniusOutput;
@@ -49,6 +47,47 @@ mod opaque_types;
 mod reverse_sccs;
 
 pub(crate) mod values;
+
+/// The representative region variable for an SCC, tagged by its origin.
+/// We prefer placeholders over existentially quantified variables, otherwise
+/// it's the one with the smallest Region Variable ID. In other words,
+/// the order of this enumeration really matters!
+#[derive(Copy, Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub(crate) enum Representative {
+    FreeRegion(RegionVid),
+    Placeholder(RegionVid),
+    Existential(RegionVid),
+}
+
+impl Representative {
+    pub(crate) fn rvid(self) -> RegionVid {
+        match self {
+            Representative::FreeRegion(region_vid)
+            | Representative::Placeholder(region_vid)
+            | Representative::Existential(region_vid) => region_vid,
+        }
+    }
+
+    pub(crate) fn new(r: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+        match definition.origin {
+            NllRegionVariableOrigin::FreeRegion => Representative::FreeRegion(r),
+            NllRegionVariableOrigin::Placeholder(_) => Representative::Placeholder(r),
+            NllRegionVariableOrigin::Existential { .. } => Representative::Existential(r),
+        }
+    }
+}
+
+impl scc::Annotation for Representative {
+    fn merge_scc(self, other: Self) -> Self {
+        // Just pick the smallest one. Note that we order by tag first!
+        std::cmp::min(self, other)
+    }
+
+    // For reachability, we do nothing since the representative doesn't change.
+    fn merge_reached(self, _other: Self) -> Self {
+        self
+    }
+}
 
 pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex>;
 
@@ -351,7 +390,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut result = Self {
             definitions,
             liveness_constraints,
-            constraints: Frozen::freeze(outlives_constraints),
+            constraints: outlives_constraints,
             constraint_graph,
             constraint_sccs,
             scc_annotations,
@@ -508,11 +547,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> impl Iterator<Item = ty::PlaceholderRegion> {
         let scc = self.constraint_sccs.scc(r);
         self.scc_values.placeholders_contained_in(scc)
-    }
-
-    /// Returns access to the value of `r` for debugging purposes.
-    pub(crate) fn region_universe(&self, r: RegionVid) -> ty::UniverseIndex {
-        self.scc_universe(self.constraint_sccs.scc(r))
     }
 
     /// Once region solving has completed, this function will return the member constraints that
@@ -681,7 +715,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
-        if !self.scc_universe(scc).is_root() {
+        if !self.max_nameable_universe(scc).is_root() {
             return;
         }
 
@@ -861,7 +895,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "lower_bound = {:?} r_scc={:?} universe={:?}",
             lower_bound,
             r_scc,
-            self.scc_universe(r_scc)
+            self.max_nameable_universe(r_scc)
         );
         // If the type test requires that `T: 'a` where `'a` is a
         // placeholder from another universe, that effectively requires
@@ -1339,10 +1373,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    /// The minimum universe of any variable reachable from this
-    /// SCC, inside or outside of it.
-    fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
-        self.scc_annotations[scc].min_universe()
+    /// The largest universe of any region nameable from this SCC.
+    fn max_nameable_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
+        self.scc_annotations[scc].max_nameable_universe()
     }
 
     /// Checks the final value for the free region `fr` to see if it
@@ -1364,7 +1397,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // Because this free region must be in the ROOT universe, we
         // know it cannot contain any bound universes.
-        assert!(self.scc_universe(longer_fr_scc).is_root());
+        assert!(self.max_nameable_universe(longer_fr_scc).is_root());
 
         // Only check all of the relations for the main representative of each
         // SCC, otherwise just check that we outlive said representative. This
@@ -1755,7 +1788,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     #[instrument(skip(self), level = "trace", ret)]
     pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
-        trace!(universe = ?self.region_universe(fr1));
+        trace!(universe = ?self.max_nameable_universe(self.constraint_sccs.scc(fr1)));
         self.find_constraint_paths_between_regions(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `location`
             trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
@@ -2086,7 +2119,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
-        self.scc_annotations[scc].representative
+        self.scc_annotations[scc].representative.rvid()
     }
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {
@@ -2105,21 +2138,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, location: Location) -> bool {
         let point = self.liveness_constraints.point_from_location(location);
         self.liveness_constraints.is_loan_live_at(loan_idx, point)
-    }
-}
-
-impl<'tcx> RegionDefinition<'tcx> {
-    pub(crate) fn new(rv_info: &RegionVariableInfo) -> Self {
-        // Create a new region definition. Note that, for free
-        // regions, the `external_name` field gets updated later in
-        // [[crate::eliminate_placeholders]].
-
-        let origin = match rv_info.origin {
-            RegionVariableOrigin::Nll(origin) => origin,
-            _ => NllRegionVariableOrigin::Existential { from_forall: false },
-        };
-
-        Self { origin, universe: rv_info.universe, external_name: None }
     }
 }
 

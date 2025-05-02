@@ -13,7 +13,7 @@ use tracing::debug;
 
 use crate::borrow_set::BorrowSet;
 use crate::constraints::OutlivesConstraint;
-use crate::eliminate_placeholders::LoweredConstraints;
+use crate::handle_placeholders::LoweredConstraints;
 use crate::type_check::free_region_relations::UniversalRegionRelations;
 use crate::universal_regions::UniversalRegions;
 

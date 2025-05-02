@@ -22,7 +22,7 @@ use tracing::{debug, instrument};
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::RegionErrors;
-use crate::eliminate_placeholders::rewrite_higher_kinded_outlives_as_constraints;
+use crate::handle_placeholders::compute_sccs_applying_placeholder_outlives_constraints;
 use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
@@ -118,7 +118,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         Rc::clone(&location_map),
     );
 
-    let lowered_constraints = rewrite_higher_kinded_outlives_as_constraints(
+    let lowered_constraints = compute_sccs_applying_placeholder_outlives_constraints(
         constraints,
         &universal_region_relations,
         infcx,
