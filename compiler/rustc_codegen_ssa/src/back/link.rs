@@ -195,9 +195,9 @@ pub fn link_binary(
                 tempfiles_for_stdout_output.push(out_filename);
             }
         }
-
-        check_link_info_print_request(sess, &codegen_results.crate_info.crate_types);
     }
+
+    check_link_info_print_request(sess, &codegen_results.crate_info.crate_types);
 
     // Remove the temporary object file and metadata if we aren't saving temps.
     sess.time("link_binary_remove_temps", || {
