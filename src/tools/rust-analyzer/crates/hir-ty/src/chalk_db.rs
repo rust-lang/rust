@@ -637,7 +637,10 @@ pub(crate) fn associated_ty_data_query(
         .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, 0)
         .build();
     let pro_ty = TyBuilder::assoc_type_projection(db, type_alias, Some(trait_subst))
-        .fill_with_bound_vars(crate::DebruijnIndex::INNERMOST, generic_params.len_self())
+        .fill_with_bound_vars(
+            crate::DebruijnIndex::INNERMOST,
+            generic_params.parent_generics().map_or(0, |it| it.len()),
+        )
         .build();
     let self_ty = TyKind::Alias(AliasTy::Projection(pro_ty)).intern(Interner);
 
