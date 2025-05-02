@@ -432,27 +432,31 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Note: these spans are used for diagnostics when they can't be inferred.
         // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
-        let (elided_lifetime_span, with_angle_brackets) = if generic_args.span.is_empty() {
-            // If there are no brackets, use the identifier span.
+        let (elided_lifetime_span, angle_brackets) = if generic_args.span.is_empty() {
+            // No brackets, e.g. `Path`: use an empty span just past the end of the identifier.
             // HACK: we use find_ancestor_inside to properly suggest elided spans in paths
             // originating from macros, since the segment's span might be from a macro arg.
-            (segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span), false)
-        } else if generic_args.is_empty() {
-            // If there are brackets, but not generic arguments, then use the opening bracket
-            (generic_args.span.with_hi(generic_args.span.lo() + BytePos(1)), true)
+            (
+                segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span),
+                hir::AngleBrackets::Missing,
+            )
         } else {
-            // Else use an empty span right after the opening bracket.
-            (generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo(), true)
+            // Brackets, e.g. `Path<>` or `Path<T>`: use an empty span just after the `<`.
+            (
+                generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo(),
+                if generic_args.is_empty() {
+                    hir::AngleBrackets::Empty
+                } else {
+                    hir::AngleBrackets::Full
+                },
+            )
         };
 
         generic_args.args.insert_many(
             0,
             (start..end).map(|id| {
-                let l = self.lower_lifetime_hidden_in_path(
-                    id,
-                    elided_lifetime_span,
-                    with_angle_brackets,
-                );
+                let l =
+                    self.lower_lifetime_hidden_in_path(id, elided_lifetime_span, angle_brackets);
                 GenericArg::Lifetime(l)
             }),
         );
