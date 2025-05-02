@@ -2994,7 +2994,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// When possible, permissions should be set at creation time instead.
 ///
 /// # Rationale
-/// POSIX does not specify an `lchown` function,
+/// POSIX does not specify an `lchmod` function,
 /// and symlinks can be followed regardless of what permission bits are set.
 ///
 /// # Errors
