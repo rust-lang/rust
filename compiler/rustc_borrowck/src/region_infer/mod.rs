@@ -4,7 +4,7 @@ use std::rc::Rc;
 use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::graph::scc::Sccs;
+use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_errors::Diag;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_index::IndexVec;
@@ -49,6 +49,47 @@ mod opaque_types;
 mod reverse_sccs;
 
 pub(crate) mod values;
+
+/// The representative region variable for an SCC, tagged by its origin.
+/// We prefer placeholders over existentially quantified variables, otherwise
+/// it's the one with the smallest Region Variable ID. In other words,
+/// the order of this enumeration really matters!
+#[derive(Copy, Debug, Clone, PartialEq, PartialOrd, Eq, Ord)]
+pub(crate) enum Representative {
+    FreeRegion(RegionVid),
+    Placeholder(RegionVid),
+    Existential(RegionVid),
+}
+
+impl Representative {
+    pub(crate) fn rvid(self) -> RegionVid {
+        match self {
+            Representative::FreeRegion(region_vid)
+            | Representative::Placeholder(region_vid)
+            | Representative::Existential(region_vid) => region_vid,
+        }
+    }
+
+    pub(crate) fn new(r: RegionVid, definition: &RegionDefinition<'_>) -> Self {
+        match definition.origin {
+            NllRegionVariableOrigin::FreeRegion => Representative::FreeRegion(r),
+            NllRegionVariableOrigin::Placeholder(_) => Representative::Placeholder(r),
+            NllRegionVariableOrigin::Existential { .. } => Representative::Existential(r),
+        }
+    }
+}
+
+impl scc::Annotation for Representative {
+    fn merge_scc(self, other: Self) -> Self {
+        // Just pick the smallest one. Note that we order by tag first!
+        std::cmp::min(self, other)
+    }
+
+    // For reachability, we do nothing since the representative doesn't change.
+    fn merge_reached(self, _other: Self) -> Self {
+        self
+    }
+}
 
 pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex>;
 
@@ -2086,7 +2127,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
-        self.scc_annotations[scc].representative
+        self.scc_annotations[scc].representative.rvid()
     }
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {
