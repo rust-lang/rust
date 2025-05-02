@@ -2170,3 +2170,26 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn mut_to_const_pointer() {
+    check(
+        r#"
+pub trait X {
+    fn perform(self) -> u64;
+}
+
+impl X for *const u8 {
+    fn perform(self) -> u64 {
+        42
+    }
+}
+
+fn test(x: *mut u8) {
+    let _v = x.perform();
+     //      ^ adjustments: Pointer(MutToConstPointer)
+     //      ^^^^^^^^^^^ type: u64
+}
+"#,
+    );
+}
