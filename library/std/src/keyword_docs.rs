@@ -2415,8 +2415,7 @@ mod while_keyword {}
 /// a return from the parent function; rather, they cause the `Future` returned by the block to
 /// return with that value.
 ///
-/// For example, the following Rust function will return `5`, assigning the `!` value to `x`, which
-/// goes unused:
+/// For example, the following Rust function will return `5`, causing `x` to take the [`!` type][never type]:
 /// ```rust
 /// #[expect(unused_variables)]
 /// fn example() -> i32 {
@@ -2455,6 +2454,7 @@ mod while_keyword {}
 /// [async book]: https://rust-lang.github.io/async-book/
 /// [`return`]: ../std/keyword.return.html
 /// [try operator]: ../reference/expressions/operator-expr.html#r-expr.try
+/// [never type]: ../reference/types/never.html
 /// [`Result`]: result::Result
 /// [async book blocks]: https://rust-lang.github.io/async-book/part-guide/more-async-await.html#async-blocks
 mod async_keyword {}
