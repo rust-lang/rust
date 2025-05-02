@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
-use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
+use std::fmt::Write as _;
+use std::fs::{self, File};
+use std::io::{self, BufRead, BufReader, BufWriter, Write as _};
 use std::ops::Not;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -169,7 +170,8 @@ impl Command {
             | Command::Toolchain { .. }
             | Command::Bench { .. }
             | Command::RustcPull { .. }
-            | Command::RustcPush { .. } => {}
+            | Command::RustcPush { .. }
+            | Command::Squash => {}
         }
         // Then run the actual command.
         match self {
@@ -188,6 +190,7 @@ impl Command {
             Command::Toolchain { flags } => Self::toolchain(flags),
             Command::RustcPull { commit } => Self::rustc_pull(commit.clone()),
             Command::RustcPush { github_user, branch } => Self::rustc_push(github_user, branch),
+            Command::Squash => Self::squash(),
         }
     }
 
@@ -380,6 +383,72 @@ impl Command {
         );
 
         drop(josh);
+        Ok(())
+    }
+
+    fn squash() -> Result<()> {
+        let sh = Shell::new()?;
+        sh.change_dir(miri_dir()?);
+        // Figure out base wrt latest upstream master.
+        // (We can't trust any of the local ones, they can all be outdated.)
+        let origin_master = {
+            cmd!(sh, "git fetch https://github.com/rust-lang/miri/")
+                .quiet()
+                .ignore_stdout()
+                .ignore_stderr()
+                .run()?;
+            cmd!(sh, "git rev-parse FETCH_HEAD").read()?
+        };
+        let base = cmd!(sh, "git merge-base HEAD {origin_master}").read()?;
+        // Rebase onto that, setting ourselves as the sequence editor so that we can edit the sequence programmatically.
+        // We want to forward the host stdin so apparently we cannot use `cmd!`.
+        let mut cmd = process::Command::new("git");
+        cmd.arg("rebase").arg(&base).arg("--interactive");
+        cmd.env("GIT_SEQUENCE_EDITOR", env::current_exe()?);
+        cmd.env("MIRI_SCRIPT_IS_GIT_SEQUENCE_EDITOR", "1");
+        cmd.current_dir(sh.current_dir());
+        let result = cmd.status()?;
+        if !result.success() {
+            bail!("`git rebase` failed");
+        }
+        Ok(())
+    }
+
+    pub fn squash_sequence_editor() -> Result<()> {
+        let sequence_file = env::args().nth(1).expect("git should pass us a filename");
+        if sequence_file == "fmt" {
+            // This is probably us being called as a git hook as part of the rebase. Let's just
+            // ignore this. Sadly `git rebase` does not have a flag to skip running hooks.
+            return Ok(());
+        }
+        // Read the provided sequence and adjust it.
+        let rebase_sequence = {
+            let mut rebase_sequence = String::new();
+            let file = fs::File::open(&sequence_file).with_context(|| {
+                format!("failed to read rebase sequence from {sequence_file:?}")
+            })?;
+            let file = io::BufReader::new(file);
+            for line in file.lines() {
+                let line = line?;
+                // The first line is left unchanged.
+                if rebase_sequence.is_empty() {
+                    writeln!(rebase_sequence, "{line}").unwrap();
+                    continue;
+                }
+                // If this is a "pick" like, make it "squash".
+                if let Some(rest) = line.strip_prefix("pick ") {
+                    writeln!(rebase_sequence, "squash {rest}").unwrap();
+                    continue;
+                }
+                // We've reached the end of the relevant part of the sequence, and we can stop.
+                break;
+            }
+            rebase_sequence
+        };
+        // Write out the adjusted sequence.
+        fs::write(&sequence_file, rebase_sequence).with_context(|| {
+            format!("failed to write adjusted rebase sequence to {sequence_file:?}")
+        })?;
         Ok(())
     }
 
