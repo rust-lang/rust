@@ -1,10 +1,9 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::is_trait_method;
+use clippy_utils::{is_trait_method, sym};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 use std::cmp::Ordering::{Equal, Greater, Less};
 
 declare_clippy_lint! {
@@ -79,12 +78,10 @@ fn min_max<'a, 'tcx>(cx: &LateContext<'tcx>, expr: &'a Expr<'a>) -> Option<(MinM
         },
         ExprKind::MethodCall(path, receiver, args @ [_], _) => {
             if cx.typeck_results().expr_ty(receiver).is_floating_point() || is_trait_method(cx, expr, sym::Ord) {
-                if path.ident.name.as_str() == "max" {
-                    fetch_const(cx, Some(receiver), args, MinMax::Max)
-                } else if path.ident.name.as_str() == "min" {
-                    fetch_const(cx, Some(receiver), args, MinMax::Min)
-                } else {
-                    None
+                match path.ident.name {
+                    sym::max => fetch_const(cx, Some(receiver), args, MinMax::Max),
+                    sym::min => fetch_const(cx, Some(receiver), args, MinMax::Min),
+                    _ => None,
                 }
             } else {
                 None

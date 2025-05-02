@@ -1,7 +1,7 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_item_name;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::{parent_item_name, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
@@ -34,7 +34,7 @@ pub(crate) fn check<'tcx>(
             return;
         }
 
-        if let Some(name) = get_item_name(cx, expr) {
+        if let Some(name) = parent_item_name(cx, expr) {
             let name = name.as_str();
             if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") || name.ends_with("_eq") {
                 return;
@@ -106,7 +106,7 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     }
 
     if let ExprKind::MethodCall(method_name, self_arg, [], _) = expr.kind
-        && method_name.ident.name.as_str() == "signum"
+        && method_name.ident.name == sym::signum
     // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
     // the method call)
     {

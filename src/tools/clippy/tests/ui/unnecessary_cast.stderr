@@ -245,7 +245,25 @@ error: casting to the same type is unnecessary (`usize` -> `usize`)
   --> tests/ui/unnecessary_cast.rs:269:9
    |
 LL |         (*x as usize).pow(2)
-   |         ^^^^^^^^^^^^^ help: try: `{ *x }`
+   |         ^^^^^^^^^^^^^ help: try: `(*x)`
 
-error: aborting due to 41 previous errors
+error: casting to the same type is unnecessary (`usize` -> `usize`)
+  --> tests/ui/unnecessary_cast.rs:277:31
+   |
+LL |         assert_eq!(vec.len(), x as usize);
+   |                               ^^^^^^^^^^ help: try: `x`
+
+error: casting to the same type is unnecessary (`i64` -> `i64`)
+  --> tests/ui/unnecessary_cast.rs:280:17
+   |
+LL |         let _ = (5i32 as i64 as i64).abs();
+   |                 ^^^^^^^^^^^^^^^^^^^^ help: try: `(5i32 as i64)`
+
+error: casting to the same type is unnecessary (`i64` -> `i64`)
+  --> tests/ui/unnecessary_cast.rs:283:17
+   |
+LL |         let _ = 5i32 as i64 as i64;
+   |                 ^^^^^^^^^^^^^^^^^^ help: try: `5i32 as i64`
+
+error: aborting due to 44 previous errors
 
