@@ -127,6 +127,14 @@ fn mir_borrowck(
         Ok(tcx.arena.alloc(opaque_types))
     } else {
         let mut root_cx = BorrowCheckRootCtxt::new(tcx, def);
+        // We need to manually borrowck all nested bodies from the HIR as
+        // we do not generate MIR for dead code. Not doing so causes us to
+        // never check closures in dead code.
+        let nested_bodies = tcx.nested_bodies_within(def);
+        for def_id in nested_bodies {
+            root_cx.get_or_insert_nested(def_id);
+        }
+
         let PropagatedBorrowCheckResults { closure_requirements, used_mut_upvars } =
             do_mir_borrowck(&mut root_cx, def, None).0;
         debug_assert!(closure_requirements.is_none());

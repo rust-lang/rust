@@ -62,7 +62,10 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         self.tainted_by_errors = Some(guar);
     }
 
-    fn get_or_insert_nested(&mut self, def_id: LocalDefId) -> &PropagatedBorrowCheckResults<'tcx> {
+    pub(super) fn get_or_insert_nested(
+        &mut self,
+        def_id: LocalDefId,
+    ) -> &PropagatedBorrowCheckResults<'tcx> {
         debug_assert_eq!(
             self.tcx.typeck_root_def_id(def_id.to_def_id()),
             self.root_def_id.to_def_id()

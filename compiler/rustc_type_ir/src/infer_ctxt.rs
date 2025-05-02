@@ -100,7 +100,7 @@ impl<I: Interner> TypingMode<I> {
     pub fn typeck_for_body(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         TypingMode::Analysis {
             defining_opaque_types_and_generators: cx
-                .opaque_types_and_generators_defined_by(body_def_id),
+                .opaque_types_and_coroutines_defined_by(body_def_id),
         }
     }
 
