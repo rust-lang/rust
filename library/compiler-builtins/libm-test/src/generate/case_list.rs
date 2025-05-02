@@ -269,7 +269,18 @@ fn fma_cases() -> Vec<TestCase<op::fma::Routine>> {
 }
 
 fn fmaf_cases() -> Vec<TestCase<op::fmaf::Routine>> {
-    vec![]
+    let mut v = vec![];
+    TestCase::append_pairs(
+        &mut v,
+        &[
+            // Known rounding error for some implementations (notably MinGW)
+            (
+                (-1.9369631e13f32, 2.1513551e-7, -1.7354427e-24),
+                Some(-4167095.8),
+            ),
+        ],
+    );
+    v
 }
 
 #[cfg(f128_enabled)]
