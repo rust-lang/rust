@@ -55,8 +55,8 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
-    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, LifetimeSource,
-    LifetimeSyntax, ParamName, TraitCandidate,
+    self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem,
+    LifetimeSource, LifetimeSyntax, ParamName, TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -1087,7 +1087,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         match arg {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(
                 lt,
-                LifetimeSource::Path { with_angle_brackets: true },
+                LifetimeSource::Path { angle_brackets: hir::AngleBrackets::Full },
                 lt.ident.into(),
             )),
             ast::GenericArg::Type(ty) => {
@@ -1779,13 +1779,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         id: NodeId,
         span: Span,
-        with_angle_brackets: bool,
+        angle_brackets: AngleBrackets,
     ) -> &'hir hir::Lifetime {
         self.new_named_lifetime(
             id,
             id,
             Ident::new(kw::UnderscoreLifetime, span),
-            LifetimeSource::Path { with_angle_brackets },
+            LifetimeSource::Path { angle_brackets },
             LifetimeSyntax::Hidden,
         )
     }

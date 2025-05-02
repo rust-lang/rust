@@ -36,17 +36,23 @@ pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
+pub enum AngleBrackets {
+    /// E.g. `Path`.
+    Missing,
+    /// E.g. `Path<>`.
+    Empty,
+    /// E.g. `Path<T>`.
+    Full,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
 pub enum LifetimeSource {
     /// E.g. `&Type`, `&'_ Type`, `&'a Type`, `&mut Type`, `&'_ mut Type`, `&'a mut Type`
     Reference,
 
-    /// E.g. `ContainsLifetime`, `ContainsLifetime<'_>`, `ContainsLifetime<'a>`
-    Path {
-        /// - true for `ContainsLifetime<'_>`, `ContainsLifetime<'a>`,
-        ///   `ContainsLifetime<'_, T>`, `ContainsLifetime<'a, T>`
-        /// - false for `ContainsLifetime`
-        with_angle_brackets: bool,
-    },
+    /// E.g. `ContainsLifetime`, `ContainsLifetime<>`, `ContainsLifetime<'_>`,
+    /// `ContainsLifetime<'a>`
+    Path { angle_brackets: AngleBrackets },
 
     /// E.g. `impl Trait + '_`, `impl Trait + 'a`
     OutlivesBound,
@@ -304,12 +310,17 @@ impl Lifetime {
             (Named | Anonymous, _) => (self.ident.span, format!("{new_lifetime}")),
 
             // The user wrote `Path<T>`, and omitted the `'_,`.
-            (Hidden, Path { with_angle_brackets: true }) => {
+            (Hidden, Path { angle_brackets: AngleBrackets::Full }) => {
                 (self.ident.span, format!("{new_lifetime}, "))
             }
 
+            // The user wrote `Path<>`, and omitted the `'_`..
+            (Hidden, Path { angle_brackets: AngleBrackets::Empty }) => {
+                (self.ident.span, format!("{new_lifetime}"))
+            }
+
             // The user wrote `Path` and omitted the `<'_>`.
-            (Hidden, Path { with_angle_brackets: false }) => {
+            (Hidden, Path { angle_brackets: AngleBrackets::Missing }) => {
                 (self.ident.span.shrink_to_hi(), format!("<{new_lifetime}>"))
             }
 
