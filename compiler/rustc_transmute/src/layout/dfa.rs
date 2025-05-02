@@ -266,7 +266,7 @@ where
     }
 
     #[cfg(test)]
-    pub(crate) fn from_edges<B: Copy + Into<Byte>>(
+    pub(crate) fn from_edges<B: Clone + Into<Byte>>(
         start: u32,
         accept: u32,
         edges: &[(u32, B, u32)],
@@ -275,8 +275,8 @@ where
         let accept = State(accept);
         let mut transitions: Map<State, Vec<(Byte, State)>> = Map::default();
 
-        for (src, edge, dst) in edges.iter().copied() {
-            transitions.entry(State(src)).or_default().push((edge.into(), State(dst)));
+        for &(src, ref edge, dst) in edges.iter() {
+            transitions.entry(State(src)).or_default().push((edge.clone().into(), State(dst)));
         }
 
         let transitions = transitions
@@ -401,12 +401,24 @@ mod edge_set {
             mut join: impl FnMut(Option<S>, Option<S>) -> S,
         ) -> EdgeSet<S>
         where
-            S: Copy,
+            S: Copy + Eq,
         {
+            let mut runs: SmallVec<[(Byte, S); 1]> = SmallVec::new();
             let xs = self.runs.iter().copied();
             let ys = other.runs.iter().copied();
-            // FIXME(@joshlf): Merge contiguous runs with common destination.
-            EdgeSet { runs: union(xs, ys).map(|(range, (x, y))| (range, join(x, y))).collect() }
+            for (range, (x, y)) in union(xs, ys) {
+                let state = join(x, y);
+                match runs.last_mut() {
+                    // Merge contiguous runs with a common destination.
+                    Some(&mut (ref mut last_range, ref mut last_state))
+                        if last_range.end == range.start && *last_state == state =>
+                    {
+                        last_range.end = range.end
+                    }
+                    _ => runs.push((range, state)),
+                }
+            }
+            EdgeSet { runs }
         }
     }
 }
