@@ -2189,6 +2189,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             NameBindingKind::Module(module) => match module.kind {
                                 ModuleKind::NamespaceCrate(..) => {
                                     // This is a virtual module
+                                    debug!("{:?} is virtual module", norm_ident);
                                 }
                                 _ => {
                                     self.crate_loader(|c| {
@@ -2208,7 +2209,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 binding
             } else {
-                let crate_root = if finalize {
+                let crate_module = if finalize {
                     if let Some(crate_id) =
                         self.crate_loader(|c| c.maybe_process_path_extern(ident.name))
                     {
@@ -2242,9 +2243,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 };
 
-                debug!(?crate_root);
+                debug!(?crate_module);
                 let vis = ty::Visibility::<DefId>::Public;
-                (crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
+                (crate_module, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
             })
         });
 

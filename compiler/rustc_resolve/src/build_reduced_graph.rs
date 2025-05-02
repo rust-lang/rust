@@ -162,12 +162,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ident: Ident,
         finalize: bool,
     ) -> Module<'ra> {
-        if let Some(module) = self.module_map.get(&def_id) {
-            return *module;
+        if finalize {
+            self.used_extern_options.insert(ident.name);
         }
 
-        if finalize {
-            self.crate_loader(|c| c.process_path_extern(ident.name, ident.span));
+        if let Some(module) = self.module_map.get(&def_id) {
+            return *module;
         }
 
         let def_kind = self.cstore().def_kind_untracked(def_id);
@@ -1036,7 +1036,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             });
             crate_id.map(|crate_id| {
                 self.r.extern_crate_map.insert(local_def_id, crate_id);
-                self.r.create_module_for_external_crate(crate_id.as_def_id(), ident, false)
+                self.r.create_module_for_external_crate(crate_id.as_def_id(), ident, true)
             })
         }
         .map(|module| {
