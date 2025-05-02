@@ -309,7 +309,8 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
-    /// An anonymous associated type from an RPITIT.
+    /// An anonymous associated type from an RPITIT. The symbol refers to the name of the method
+    /// that defined the type.
     AnonAssocTy(Symbol),
     /// A synthetic body for a coroutine's by-move body.
     SyntheticCoroutineBody,
