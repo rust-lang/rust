@@ -5,20 +5,22 @@ use std::mem;
 use base_db::Crate;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
+use hir_expand::AstId;
 use hir_expand::{
     ExpandError, ExpandErrorKind, ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
     eager::EagerCallBackFn, mod_path::ModPath, span_map::SpanMap,
 };
 use span::{AstIdMap, Edition, SyntaxContext};
 use syntax::ast::HasAttrs;
-use syntax::{Parse, ast};
+use syntax::{AstNode, Parse, ast};
 use triomphe::Arc;
 use tt::TextRange;
 
 use crate::attr::Attrs;
 use crate::expr_store::HygieneId;
+use crate::macro_call_as_call_id;
 use crate::nameres::DefMap;
-use crate::{AsMacroCall, MacroId, UnresolvedMacro, db::DefDatabase};
+use crate::{MacroId, UnresolvedMacro, db::DefDatabase};
 
 #[derive(Debug)]
 pub(super) struct Expander {
@@ -92,8 +94,31 @@ impl Expander {
 
         let result = self.within_limit(db, |this| {
             let macro_call = this.in_file(&macro_call);
-            match macro_call.as_call_id_with_errors(
+
+            let expands_to = hir_expand::ExpandTo::from_call_site(macro_call.value);
+            let ast_id = AstId::new(macro_call.file_id, this.ast_id_map().ast_id(macro_call.value));
+            let path = macro_call.value.path().and_then(|path| {
+                let range = path.syntax().text_range();
+                let mod_path = ModPath::from_src(db, path, &mut |range| {
+                    this.span_map.span_for_range(range).ctx
+                })?;
+                let call_site = this.span_map.span_for_range(range);
+                Some((call_site, mod_path))
+            });
+
+            let Some((call_site, path)) = path else {
+                return ExpandResult::only_err(ExpandError::other(
+                    this.span_map.span_for_range(macro_call.value.syntax().text_range()),
+                    "malformed macro invocation",
+                ));
+            };
+
+            match macro_call_as_call_id(
                 db,
+                ast_id,
+                &path,
+                call_site.ctx,
+                expands_to,
                 krate,
                 |path| resolver(path).map(|it| db.macro_def(it)),
                 eager_callback,
