@@ -11,15 +11,15 @@ use std::cmp::Ordering;
 #[repr(packed)]
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Default)]
 struct StructA(String);
-//~^ ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `other` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `other` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `other` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
-//~| ERROR: cannot move out of `self` which is behind a shared reference
+//~^ ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
+//~| ERROR: cannot move out of a shared reference [E0507]
 
 
 // Unrelated impl: additinal diagnostic should NOT be emitted
