@@ -8,7 +8,9 @@ impl<T> Cap<'_> for T {}
 // Assuming the hidden type is `[&'?15 u8; 1]`, we have two distinct member constraints:
 // - '?15 member ['static, 'a, 'b] // from outer impl-trait
 // - '?15 member ['static, 'a]     // from inner impl-trait
-// To satisfy both we can only choose 'a.
+// To satisfy both we can only choose 'a. Concretely, the applying the first member constraint
+// requires ?15 to outlive at least 'b while the second requires ?15 to outlive 'a. As
+// 'a outlives 'b we end up with 'a as the final member region.
 fn pass_early_bound<'s, 'a, 'b>(a: &'s u8) -> impl IntoIterator<Item = impl Cap<'a>> + Cap<'b>
 where
     's: 'a,
