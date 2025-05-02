@@ -3,14 +3,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_diag_trait_item, is_in_test, last_path_segment, local_is_initialized, path_to_local};
+use clippy_utils::{is_diag_trait_item, is_in_test, last_path_segment, local_is_initialized, path_to_local, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Instance, Mutability};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::{Span, SyntaxContext};
 
 declare_clippy_lint! {
@@ -86,9 +85,9 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             && ctxt.is_root()
             && let which_trait = match fn_name {
                 sym::clone if is_diag_trait_item(cx, fn_id, sym::Clone) => CloneTrait::Clone,
-                _ if fn_name.as_str() == "to_owned"
-                    && is_diag_trait_item(cx, fn_id, sym::ToOwned)
-                    && self.msrv.meets(cx, msrvs::CLONE_INTO) =>
+                sym::to_owned
+                    if is_diag_trait_item(cx, fn_id, sym::ToOwned)
+                        && self.msrv.meets(cx, msrvs::CLONE_INTO) =>
                 {
                     CloneTrait::ToOwned
                 },
@@ -112,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             && resolved_assoc_items.in_definition_order().any(|assoc|
                 match which_trait {
                     CloneTrait::Clone => assoc.name() == sym::clone_from,
-                    CloneTrait::ToOwned => assoc.name().as_str() == "clone_into",
+                    CloneTrait::ToOwned => assoc.name() == sym::clone_into,
                 }
             )
             && !clone_source_borrows_from_dest(cx, lhs, rhs.span)

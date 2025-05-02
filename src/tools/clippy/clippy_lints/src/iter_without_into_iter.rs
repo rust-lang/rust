@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_parent_as_impl;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method, implements_trait, make_normalized_projection};
+use clippy_utils::{get_parent_as_impl, sym};
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -141,7 +140,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 ty.peel_refs().is_slice() || get_adt_inherent_method(cx, ty, expected_method_name).is_some()
             })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
-                if item.ident.name.as_str() == "IntoIter" {
+                if item.ident.name == sym::IntoIter {
                     Some(cx.tcx.hir_impl_item(item.id).expect_type().span)
                 } else {
                     None

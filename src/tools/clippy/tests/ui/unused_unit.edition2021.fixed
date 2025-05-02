@@ -1,4 +1,6 @@
-
+//@revisions: edition2021 edition2024
+//@[edition2021] edition:2021
+//@[edition2024] edition:2024
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested
@@ -121,7 +123,6 @@ mod issue9949 {
     }
 }
 
-#[clippy::msrv = "1.85"]
 mod issue14577 {
     trait Unit {}
     impl Unit for () {}
@@ -130,8 +131,10 @@ mod issue14577 {
         f();
     }
 
+    #[allow(dependency_on_unit_never_type_fallback)]
     fn bar() {
-        run(|| -> () { todo!() });
+        run(|| { todo!() }); 
+        //~[edition2021]^ unused_unit
     }
 
     struct UnitStruct;

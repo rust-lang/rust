@@ -246,9 +246,7 @@ fn does_not_lint() {
     }
 
     let x;
-    if true
-        && let Some(n) = Some("let chains too")
-    {
+    if true && let Some(n) = Some("let chains too") {
         x = 1;
     } else {
         x = 2;
