@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use rustc_ast::Path;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -31,23 +32,50 @@ pub struct UnableToConstructConstantValue<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_empty_on_clause_in_rustc_on_unimplemented, code = E0232)]
-pub struct EmptyOnClauseInOnUnimplemented {
-    #[primary_span]
-    #[label]
-    pub span: Span,
+pub enum InvalidOnClause {
+    #[diag(trait_selection_rustc_on_unimplemented_empty_on_clause, code = E0232)]
+    Empty {
+        #[primary_span]
+        #[label]
+        span: Span,
+    },
+    #[diag(trait_selection_rustc_on_unimplemented_expected_one_predicate_in_not, code = E0232)]
+    ExpectedOnePredInNot {
+        #[primary_span]
+        #[label]
+        span: Span,
+    },
+    #[diag(trait_selection_rustc_on_unimplemented_unsupported_literal_in_on, code = E0232)]
+    UnsupportedLiteral {
+        #[primary_span]
+        #[label]
+        span: Span,
+    },
+    #[diag(trait_selection_rustc_on_unimplemented_expected_identifier, code = E0232)]
+    ExpectedIdentifier {
+        #[primary_span]
+        #[label]
+        span: Span,
+        path: Path,
+    },
+    #[diag(trait_selection_rustc_on_unimplemented_invalid_predicate, code = E0232)]
+    InvalidPredicate {
+        #[primary_span]
+        #[label]
+        span: Span,
+        invalid_pred: Symbol,
+    },
+    #[diag(trait_selection_rustc_on_unimplemented_invalid_flag, code = E0232)]
+    InvalidFlag {
+        #[primary_span]
+        #[label]
+        span: Span,
+        invalid_flag: Symbol,
+    },
 }
 
 #[derive(Diagnostic)]
-#[diag(trait_selection_invalid_on_clause_in_rustc_on_unimplemented, code = E0232)]
-pub struct InvalidOnClauseInOnUnimplemented {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(trait_selection_no_value_in_rustc_on_unimplemented, code = E0232)]
+#[diag(trait_selection_rustc_on_unimplemented_missing_value, code = E0232)]
 #[note]
 pub struct NoValueInOnUnimplemented {
     #[primary_span]
