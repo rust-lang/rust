@@ -187,11 +187,10 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
         if self.clif_comments.enabled() {
             self.add_comment(func_ref, format!("{:?}", name));
+            let inst = self.bcx.func.layout.last_inst(self.bcx.current_block().unwrap()).unwrap();
+            self.add_comment(inst, format!("lib_call {}", name));
         }
         let call_inst = self.bcx.ins().call(func_ref, args);
-        if self.clif_comments.enabled() {
-            self.add_comment(call_inst, format!("lib_call {}", name));
-        }
         let results = self.bcx.inst_results(call_inst);
         assert!(results.len() <= 2, "{}", results.len());
         results

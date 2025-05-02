@@ -592,13 +592,9 @@ impl<'tcx> CPlace<'tcx> {
         assert_eq!(self.layout().size, from.layout().size);
 
         if fx.clif_comments.enabled() {
-            use cranelift_codegen::cursor::{Cursor, CursorPosition};
-            let cur_block = match fx.bcx.cursor().position() {
-                CursorPosition::After(block) => block,
-                _ => unreachable!(),
-            };
+            let inst = fx.bcx.func.layout.last_inst(fx.bcx.current_block().unwrap()).unwrap();
             fx.add_comment(
-                fx.bcx.func.layout.last_inst(cur_block).unwrap(),
+                inst,
                 format!(
                     "{}: {:?}: {:?} <- {:?}: {:?}",
                     method,

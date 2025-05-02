@@ -559,11 +559,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
     }
 }
 
-fn codegen_stmt<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    #[allow(unused_variables)] cur_block: Block,
-    stmt: &Statement<'tcx>,
-) {
+fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt: &Statement<'tcx>) {
     let _print_guard = crate::PrintOnPanic(|| format!("stmt {:?}", stmt));
 
     fx.set_debug_loc(stmt.source_info);
