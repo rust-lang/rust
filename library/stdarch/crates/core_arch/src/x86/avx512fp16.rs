@@ -13711,74 +13711,56 @@ pub fn _mm512_maskz_cvtph_epu16(k: __mmask32, a: __m512h) -> __m512i {
 /// Convert packed half-precision (16-bit) floating-point elements in a to packed unsigned 16-bit integers,
 /// and store the results in dst.
 ///
-/// Rounding is done according to the rounding parameter, which can be one of:
-///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// Exceptions can be suppressed by passing [`_MM_FROUND_NO_EXC`] in the sae parameter.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_cvt_roundph_epu16)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[cfg_attr(test, assert_instr(vcvtph2uw, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vcvtph2uw, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub fn _mm512_cvt_roundph_epu16<const ROUNDING: i32>(a: __m512h) -> __m512i {
-    static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundph_epu16::<ROUNDING>(_mm512_undefined_epi32(), 0xffffffff, a)
+pub fn _mm512_cvt_roundph_epu16<const SAE: i32>(a: __m512h) -> __m512i {
+    static_assert_sae!(SAE);
+    _mm512_mask_cvt_roundph_epu16::<SAE>(_mm512_undefined_epi32(), 0xffffffff, a)
 }
 
 /// Convert packed half-precision (16-bit) floating-point elements in a to packed unsigned 16-bit integers,
 /// and store the results in dst using writemask k (elements are copied from src when the corresponding
 /// mask bit is not set).
 ///
-/// Rounding is done according to the rounding parameter, which can be one of:
-///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// Exceptions can be suppressed by passing [`_MM_FROUND_NO_EXC`] in the sae parameter.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_mask_cvt_roundph_epu16)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[cfg_attr(test, assert_instr(vcvtph2uw, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vcvtph2uw, SAE = 8))]
 #[rustc_legacy_const_generics(3)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub fn _mm512_mask_cvt_roundph_epu16<const ROUNDING: i32>(
+pub fn _mm512_mask_cvt_roundph_epu16<const SAE: i32>(
     src: __m512i,
     k: __mmask32,
     a: __m512h,
 ) -> __m512i {
     unsafe {
-        static_assert_rounding!(ROUNDING);
-        transmute(vcvtph2uw_512(a, src.as_u16x32(), k, ROUNDING))
+        static_assert_sae!(SAE);
+        transmute(vcvtph2uw_512(a, src.as_u16x32(), k, SAE))
     }
 }
 
 /// Convert packed half-precision (16-bit) floating-point elements in a to packed unsigned 16-bit integers,
 /// and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
 ///
-/// Rounding is done according to the rounding parameter, which can be one of:
-///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// Exceptions can be suppressed by passing [`_MM_FROUND_NO_EXC`] in the sae parameter.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm512_maskz_cvt_roundph_epu16)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[cfg_attr(test, assert_instr(vcvtph2uw, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vcvtph2uw, SAE = 8))]
 #[rustc_legacy_const_generics(2)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub fn _mm512_maskz_cvt_roundph_epu16<const ROUNDING: i32>(k: __mmask32, a: __m512h) -> __m512i {
-    static_assert_rounding!(ROUNDING);
-    _mm512_mask_cvt_roundph_epu16::<ROUNDING>(_mm512_setzero_si512(), k, a)
+pub fn _mm512_maskz_cvt_roundph_epu16<const SAE: i32>(k: __mmask32, a: __m512h) -> __m512i {
+    static_assert_sae!(SAE);
+    _mm512_mask_cvt_roundph_epu16::<SAE>(_mm512_setzero_si512(), k, a)
 }
 
 /// Convert packed half-precision (16-bit) floating-point elements in a to packed 16-bit integers with
@@ -14560,24 +14542,18 @@ pub fn _mm_cvtsh_u32(a: __m128h) -> u32 {
 /// Convert the lower half-precision (16-bit) floating-point element in a to a 32-bit unsigned integer, and store
 /// the result in dst.
 ///
-/// Rounding is done according to the rounding parameter, which can be one of:
-///
-/// * [`_MM_FROUND_TO_NEAREST_INT`] | [`_MM_FROUND_NO_EXC`] : round to nearest and suppress exceptions
-/// * [`_MM_FROUND_TO_NEG_INF`] | [`_MM_FROUND_NO_EXC`] : round down and suppress exceptions
-/// * [`_MM_FROUND_TO_POS_INF`] | [`_MM_FROUND_NO_EXC`] : round up and suppress exceptions
-/// * [`_MM_FROUND_TO_ZERO`] | [`_MM_FROUND_NO_EXC`] : truncate and suppress exceptions
-/// * [`_MM_FROUND_CUR_DIRECTION`] : use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`]
+/// Exceptions can be suppressed by passing [`_MM_FROUND_NO_EXC`] in the sae parameter.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_roundsh_u32)
 #[inline]
 #[target_feature(enable = "avx512fp16")]
-#[cfg_attr(test, assert_instr(vcvtsh2usi, ROUNDING = 8))]
+#[cfg_attr(test, assert_instr(vcvtsh2usi, SAE = 8))]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_x86_avx512_f16", issue = "127213")]
-pub fn _mm_cvt_roundsh_u32<const ROUNDING: i32>(a: __m128h) -> u32 {
+pub fn _mm_cvt_roundsh_u32<const SAE: i32>(a: __m128h) -> u32 {
     unsafe {
-        static_assert_rounding!(ROUNDING);
-        vcvtsh2usi32(a, ROUNDING)
+        static_assert_rounding!(SAE);
+        vcvtsh2usi32(a, SAE)
     }
 }
 
@@ -16548,7 +16524,7 @@ unsafe extern "C" {
     #[link_name = "llvm.x86.avx512fp16.mask.vcvtph2uw.256"]
     fn vcvtph2uw_256(a: __m256h, src: u16x16, k: __mmask16) -> u16x16;
     #[link_name = "llvm.x86.avx512fp16.mask.vcvtph2uw.512"]
-    fn vcvtph2uw_512(a: __m512h, src: u16x32, k: __mmask32, rounding: i32) -> u16x32;
+    fn vcvtph2uw_512(a: __m512h, src: u16x32, k: __mmask32, sae: i32) -> u16x32;
 
     #[link_name = "llvm.x86.avx512fp16.mask.vcvttph2w.128"]
     fn vcvttph2w_128(a: __m128h, src: i16x8, k: __mmask8) -> i16x8;

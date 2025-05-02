@@ -22,6 +22,15 @@ macro_rules! static_assert_sae {
 }
 
 // Helper macro used to trigger const eval errors when the const generic immediate value `imm` is
+// not an extended rounding number
+#[allow(unused)]
+macro_rules! static_assert_extended_rounding {
+    ($imm: ident) => {
+        static_assert!(($imm & 7) < 5 && ($imm & !15) == 0, "Invalid IMM value")
+    };
+}
+
+// Helper macro used to trigger const eval errors when the const generic immediate value `imm` is
 // not a mantissas sae number.
 #[allow(unused)]
 macro_rules! static_assert_mantissas_sae {
