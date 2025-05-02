@@ -1,3 +1,3 @@
 //@ compile-flags: --print native-static-libs --crate-type staticlib  --emit metadata
 //@ check-pass
-//~? WARN skipping link step due to conflict: cannot output linkage information without emitting link
+//~? WARN cannot output linkage information when --emit link is not passed

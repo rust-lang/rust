@@ -68,19 +68,19 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     }
 }
 
-fn check_link_info_print_request(sess: &Session, crate_type: CrateType) {
+fn check_link_info_print_request(sess: &Session, crate_types: &[CrateType]) {
     let print_native_static_libs =
         sess.opts.prints.iter().any(|p| p.kind == PrintKind::NativeStaticLibs);
+    let has_staticlib = crate_types.iter().any(|ct| *ct == CrateType::Staticlib);
     if print_native_static_libs {
-        if crate_type != CrateType::Staticlib {
+        if !has_staticlib {
             sess.dcx()
                 .warn(format!("cannot output linkage information without staticlib crate-type"));
             sess.dcx()
                 .note(format!("consider `--crate-type staticlib` to print linkage information"));
         } else if !sess.opts.output_types.should_link() {
-            sess.dcx().warn(format!(
-                    "cannot output linkage information when --emit link is not passed"
-                ));
+            sess.dcx()
+                .warn(format!("cannot output linkage information when --emit link is not passed"));
         }
     }
 }
@@ -196,7 +196,7 @@ pub fn link_binary(
             }
         }
 
-        check_link_info_print_request(sess, crate_type);
+        check_link_info_print_request(sess, &codegen_results.crate_info.crate_types);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps.

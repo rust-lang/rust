@@ -1,4 +1,4 @@
-warning: skipping link step due to conflict: cannot output linkage information without emitting link
+warning: cannot output linkage information when --emit link is not passed
 
 warning: 1 warning emitted
 
