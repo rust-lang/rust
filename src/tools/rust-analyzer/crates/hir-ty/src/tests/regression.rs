@@ -2278,3 +2278,26 @@ fn test(x: bool) {
         "#]],
     );
 }
+
+#[test]
+fn issue_19730() {
+    check_infer(
+        r#"
+trait Trait<T = Self> {}
+
+trait Foo {
+    type Bar<A, B>: Trait;
+
+    fn foo<A, B>(bar: Self::Bar<A, B>) {
+        let _ = bar;
+    }
+}
+"#,
+        expect![[r#"
+            83..86 'bar': Foo::Bar<Self, A, B>
+            105..133 '{     ...     }': ()
+            119..120 '_': Foo::Bar<Self, A, B>
+            123..126 'bar': Foo::Bar<Self, A, B>
+        "#]],
+    );
+}
