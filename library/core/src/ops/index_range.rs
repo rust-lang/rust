@@ -19,6 +19,7 @@ impl IndexRange {
     /// # Safety
     /// - `start <= end`
     #[inline]
+    #[track_caller]
     pub(crate) const unsafe fn new_unchecked(start: usize, end: usize) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
