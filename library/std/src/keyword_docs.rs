@@ -91,7 +91,7 @@ mod as_keyword {}
 ///
 /// When associated with `loop`, a break expression may be used to return a value from that loop.
 /// This is only valid with `loop` and not with any other type of loop.
-/// If no value is specified, `break;` returns `()`.
+/// If no value is specified for `break;` it returns `()`.
 /// Every `break` within a loop must return the same type.
 ///
 /// ```rust
@@ -107,6 +107,33 @@ mod as_keyword {}
 /// // first number in Fibonacci sequence over 10:
 /// assert_eq!(result, 13);
 /// println!("{result}");
+/// ```
+///
+/// It is also possible to exit from any *labelled* block returning the value early.
+/// If no value is specified for `break;` it returns `()`.
+///
+/// ```rust
+/// let inputs = vec!["Cow", "Cat", "Dog", "Snake", "Cod"];
+///
+/// let mut results = vec![];
+/// for input in inputs {
+///     let result = 'filter: {
+///         if input.len() > 3 {
+///             break 'filter Err("Too long");
+///         };
+///
+///         if !input.contains("C") {
+///             break 'filter Err("No Cs");
+///         };
+///
+///         Ok(input.to_uppercase())
+///     };
+///
+///     results.push(result);
+/// }
+///
+/// // [Ok("COW"), Ok("CAT"), Err("No Cs"), Err("Too long"), Ok("COD")]
+/// println!("{:?}", results)
 /// ```
 ///
 /// For more details consult the [Reference on "break expression"] and the [Reference on "break and
