@@ -1,4 +1,7 @@
-//! The compiler_builtins library is special. It can call functions in core, but it must not
+//! The compiler_builtins library is special. When linkers are passed multiple libraries, they
+//! expect undefined symbols mentioned by libraries on the left to be defined in libraries to the
+//! right. Since calls to compiler_builtins may be inserted during codegen, it is placed all the way
+//! to the right. Therefore, compiler_builtins can call functions in core but it must not
 //! require linkage against a build of core. If it ever does, building the standard library *may*
 //! result in linker errors, depending on whether the linker in use applies optimizations first or
 //! resolves symbols first. So the portable and safe approach is to forbid such a linkage
