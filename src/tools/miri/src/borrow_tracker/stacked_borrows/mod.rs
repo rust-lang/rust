@@ -740,7 +740,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                 if let Some(access) = access {
                     assert_eq!(access, AccessKind::Write);
                     // Make sure the data race model also knows about this.
-                    if let Some(data_race) = alloc_extra.data_race.as_mut() {
+                    if let Some(data_race) = alloc_extra.data_race.as_vclocks_mut() {
                         data_race.write(
                             alloc_id,
                             range,
@@ -789,7 +789,7 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
                     if let Some(access) = access {
                         assert_eq!(access, AccessKind::Read);
                         // Make sure the data race model also knows about this.
-                        if let Some(data_race) = alloc_extra.data_race.as_ref() {
+                        if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
                             data_race.read(
                                 alloc_id,
                                 range,

@@ -6,7 +6,6 @@ use std::task::Poll;
 use std::time::{Duration, SystemTime};
 
 use either::Either;
-use rand::rngs::StdRng;
 use rand::seq::IteratorRandom;
 use rustc_abi::ExternAbi;
 use rustc_const_eval::CTRL_C_RECEIVED;
@@ -17,7 +16,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_span::Span;
 
-use crate::concurrency::data_race;
+use crate::concurrency::GlobalDataRaceHandler;
 use crate::shims::tls;
 use crate::*;
 
@@ -584,11 +583,26 @@ impl<'tcx> ThreadManager<'tcx> {
     fn join_thread(
         &mut self,
         joined_thread_id: ThreadId,
-        data_race: Option<&mut data_race::GlobalState>,
+        data_race_handler: &mut GlobalDataRaceHandler,
     ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Detached {
             // On Windows this corresponds to joining on a closed handle.
             throw_ub_format!("trying to join a detached thread");
+        }
+
+        fn after_join<'tcx>(
+            threads: &mut ThreadManager<'_>,
+            joined_thread_id: ThreadId,
+            data_race_handler: &mut GlobalDataRaceHandler,
+        ) -> InterpResult<'tcx> {
+            match data_race_handler {
+                GlobalDataRaceHandler::None => {}
+                GlobalDataRaceHandler::Vclocks(data_race) =>
+                    data_race.thread_joined(threads, joined_thread_id),
+                GlobalDataRaceHandler::Genmc(genmc_ctx) =>
+                    genmc_ctx.handle_thread_join(threads.active_thread, joined_thread_id)?,
+            }
+            interp_ok(())
         }
 
         // Mark the joined thread as being joined so that we detect if other
@@ -610,18 +624,13 @@ impl<'tcx> ThreadManager<'tcx> {
                     }
                     |this, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
-                        if let Some(data_race) = &mut this.machine.data_race {
-                            data_race.thread_joined(&this.machine.threads, joined_thread_id);
-                        }
-                        interp_ok(())
+                        after_join(&mut this.machine.threads, joined_thread_id, &mut this.machine.data_race)
                     }
                 ),
             );
         } else {
             // The thread has already terminated - establish happens-before
-            if let Some(data_race) = data_race {
-                data_race.thread_joined(self, joined_thread_id);
-            }
+            after_join(self, joined_thread_id, data_race_handler)?;
         }
         interp_ok(())
     }
@@ -631,7 +640,7 @@ impl<'tcx> ThreadManager<'tcx> {
     fn join_thread_exclusive(
         &mut self,
         joined_thread_id: ThreadId,
-        data_race: Option<&mut data_race::GlobalState>,
+        data_race_handler: &mut GlobalDataRaceHandler,
     ) -> InterpResult<'tcx> {
         if self.threads[joined_thread_id].join_status == ThreadJoinStatus::Joined {
             throw_ub_format!("trying to join an already joined thread");
@@ -649,7 +658,7 @@ impl<'tcx> ThreadManager<'tcx> {
             "this thread already has threads waiting for its termination"
         );
 
-        self.join_thread(joined_thread_id, data_race)
+        self.join_thread(joined_thread_id, data_race_handler)
     }
 
     /// Set the name of the given thread.
@@ -699,77 +708,6 @@ impl<'tcx> ThreadManager<'tcx> {
             })
             .min()
     }
-
-    /// Decide which action to take next and on which thread.
-    ///
-    /// The currently implemented scheduling policy is the one that is commonly
-    /// used in stateless model checkers such as Loom: run the active thread as
-    /// long as we can and switch only when we have to (the active thread was
-    /// blocked, terminated, or has explicitly asked to be preempted).
-    fn schedule(
-        &mut self,
-        clock: &MonotonicClock,
-        rng: &mut StdRng,
-    ) -> InterpResult<'tcx, SchedulingAction> {
-        // This thread and the program can keep going.
-        if self.threads[self.active_thread].state.is_enabled() && !self.yield_active_thread {
-            // The currently active thread is still enabled, just continue with it.
-            return interp_ok(SchedulingAction::ExecuteStep);
-        }
-        // The active thread yielded or got terminated. Let's see if there are any timeouts to take
-        // care of. We do this *before* running any other thread, to ensure that timeouts "in the
-        // past" fire before any other thread can take an action. This ensures that for
-        // `pthread_cond_timedwait`, "an error is returned if [...] the absolute time specified by
-        // abstime has already been passed at the time of the call".
-        // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
-        let potential_sleep_time = self.next_callback_wait_time(clock);
-        if potential_sleep_time == Some(Duration::ZERO) {
-            return interp_ok(SchedulingAction::ExecuteTimeoutCallback);
-        }
-        // No callbacks immediately scheduled, pick a regular thread to execute.
-        // The active thread blocked or yielded. So we go search for another enabled thread.
-        // We build the list of threads by starting with the threads after the current one, followed by
-        // the threads before the current one and then the current thread itself (i.e., this iterator acts
-        // like `threads.rotate_left(self.active_thread.index() + 1)`. This ensures that if we pick the first
-        // eligible thread, we do regular round-robin scheduling, and all threads get a chance to take a step.
-        let mut threads_iter = self
-            .threads
-            .iter_enumerated()
-            .skip(self.active_thread.index() + 1)
-            .chain(self.threads.iter_enumerated().take(self.active_thread.index() + 1))
-            .filter(|(_id, thread)| thread.state.is_enabled());
-        // Pick a new thread, and switch to it.
-        let new_thread =
-            if self.fixed_scheduling { threads_iter.next() } else { threads_iter.choose(rng) };
-
-        if let Some((id, _thread)) = new_thread {
-            if self.active_thread != id {
-                info!(
-                    "---------- Now executing on thread `{}` (previous: `{}`) ----------------------------------------",
-                    self.get_thread_display_name(id),
-                    self.get_thread_display_name(self.active_thread)
-                );
-                self.active_thread = id;
-            }
-        }
-        // This completes the `yield`, if any was requested.
-        self.yield_active_thread = false;
-
-        if self.threads[self.active_thread].state.is_enabled() {
-            return interp_ok(SchedulingAction::ExecuteStep);
-        }
-        // We have not found a thread to execute.
-        if self.threads.iter().all(|thread| thread.state.is_terminated()) {
-            unreachable!("all threads terminated without the main thread terminating?!");
-        } else if let Some(sleep_time) = potential_sleep_time {
-            // All threads are currently blocked, but we have unexecuted
-            // timeout_callbacks, which may unblock some of the threads. Hence,
-            // sleep until the first callback.
-            interp_ok(SchedulingAction::Sleep(sleep_time))
-        } else {
-            throw_machine_stop!(TerminationInfo::Deadlock);
-        }
-    }
 }
 
 impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
@@ -817,6 +755,11 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     #[inline]
     fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
+        // Inform GenMC that a thread has finished all user code. GenMC needs to know this for scheduling.
+        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+            let thread_id = this.active_thread();
+            genmc_ctx.handle_thread_stack_empty(thread_id);
+        }
         let mut callback = this
             .active_thread_mut()
             .on_stack_empty
@@ -825,6 +768,102 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let res = callback(this)?;
         this.active_thread_mut().on_stack_empty = Some(callback);
         interp_ok(res)
+    }
+
+    /// Decide which action to take next and on which thread.
+    ///
+    /// The currently implemented scheduling policy is the one that is commonly
+    /// used in stateless model checkers such as Loom: run the active thread as
+    /// long as we can and switch only when we have to (the active thread was
+    /// blocked, terminated, or has explicitly asked to be preempted).
+    ///
+    /// If GenMC mode is active, the scheduling is instead handled by GenMC.
+    fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
+        let this = self.eval_context_mut();
+        // In GenMC mode, we let GenMC do the scheduling
+        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+            let next_thread_id = genmc_ctx.schedule_thread(this)?;
+
+            let thread_manager = &mut this.machine.threads;
+            thread_manager.active_thread = next_thread_id;
+            thread_manager.yield_active_thread = false;
+
+            assert!(thread_manager.threads[thread_manager.active_thread].state.is_enabled());
+            return interp_ok(SchedulingAction::ExecuteStep);
+        }
+
+        // We are not in GenMC mode, so we control the schedule
+        let thread_manager = &mut this.machine.threads;
+        let clock = &this.machine.monotonic_clock;
+        let rng = this.machine.rng.get_mut();
+        // This thread and the program can keep going.
+        if thread_manager.threads[thread_manager.active_thread].state.is_enabled()
+            && !thread_manager.yield_active_thread
+        {
+            // The currently active thread is still enabled, just continue with it.
+            return interp_ok(SchedulingAction::ExecuteStep);
+        }
+        // The active thread yielded or got terminated. Let's see if there are any timeouts to take
+        // care of. We do this *before* running any other thread, to ensure that timeouts "in the
+        // past" fire before any other thread can take an action. This ensures that for
+        // `pthread_cond_timedwait`, "an error is returned if [...] the absolute time specified by
+        // abstime has already been passed at the time of the call".
+        // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
+        let potential_sleep_time = thread_manager.next_callback_wait_time(clock);
+        if potential_sleep_time == Some(Duration::ZERO) {
+            return interp_ok(SchedulingAction::ExecuteTimeoutCallback);
+        }
+        // No callbacks immediately scheduled, pick a regular thread to execute.
+        // The active thread blocked or yielded. So we go search for another enabled thread.
+        // We build the list of threads by starting with the threads after the current one, followed by
+        // the threads before the current one and then the current thread itself (i.e., this iterator acts
+        // like `threads.rotate_left(self.active_thread.index() + 1)`. This ensures that if we pick the first
+        // eligible thread, we do regular round-robin scheduling, and all threads get a chance to take a step.
+        let mut threads_iter = thread_manager
+            .threads
+            .iter_enumerated()
+            .skip(thread_manager.active_thread.index() + 1)
+            .chain(
+                thread_manager
+                    .threads
+                    .iter_enumerated()
+                    .take(thread_manager.active_thread.index() + 1),
+            )
+            .filter(|(_id, thread)| thread.state.is_enabled());
+        // Pick a new thread, and switch to it.
+        let new_thread = if thread_manager.fixed_scheduling {
+            threads_iter.next()
+        } else {
+            threads_iter.choose(rng)
+        };
+
+        if let Some((id, _thread)) = new_thread {
+            if thread_manager.active_thread != id {
+                info!(
+                    "---------- Now executing on thread `{}` (previous: `{}`) ----------------------------------------",
+                    thread_manager.get_thread_display_name(id),
+                    thread_manager.get_thread_display_name(thread_manager.active_thread)
+                );
+                thread_manager.active_thread = id;
+            }
+        }
+        // This completes the `yield`, if any was requested.
+        thread_manager.yield_active_thread = false;
+
+        if thread_manager.threads[thread_manager.active_thread].state.is_enabled() {
+            return interp_ok(SchedulingAction::ExecuteStep);
+        }
+        // We have not found a thread to execute.
+        if thread_manager.threads.iter().all(|thread| thread.state.is_terminated()) {
+            unreachable!("all threads terminated without the main thread terminating?!");
+        } else if let Some(sleep_time) = potential_sleep_time {
+            // All threads are currently blocked, but we have unexecuted
+            // timeout_callbacks, which may unblock some of the threads. Hence,
+            // sleep until the first callback.
+            interp_ok(SchedulingAction::Sleep(sleep_time))
+        } else {
+            throw_machine_stop!(TerminationInfo::Deadlock);
+        }
     }
 }
 
@@ -891,10 +930,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Box::new(move |m| state.on_stack_empty(m))
         });
         let current_span = this.machine.current_span();
-        if let Some(data_race) = &mut this.machine.data_race {
-            data_race.thread_created(&this.machine.threads, new_thread_id, current_span);
+        match &mut this.machine.data_race {
+            GlobalDataRaceHandler::None => {}
+            GlobalDataRaceHandler::Vclocks(data_race) =>
+                data_race.thread_created(&this.machine.threads, new_thread_id, current_span),
+            GlobalDataRaceHandler::Genmc(genmc_ctx) =>
+                genmc_ctx.handle_thread_create(&this.machine.threads, new_thread_id)?,
         }
-
         // Write the current thread-id, switch to the next thread later
         // to treat this write operation as occurring on the current thread.
         if let Some(thread_info_place) = thread {
@@ -941,12 +983,17 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// This is called by the eval loop when a thread's on_stack_empty returns `Ready`.
     fn terminate_active_thread(&mut self, tls_alloc_action: TlsAllocAction) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
+
         // Mark thread as terminated.
         let thread = this.active_thread_mut();
         assert!(thread.stack.is_empty(), "only threads with an empty stack can be terminated");
         thread.state = ThreadState::Terminated;
-        if let Some(ref mut data_race) = this.machine.data_race {
-            data_race.thread_terminated(&this.machine.threads);
+        match &mut this.machine.data_race {
+            GlobalDataRaceHandler::None => {}
+            GlobalDataRaceHandler::Vclocks(data_race) =>
+                data_race.thread_terminated(&this.machine.threads),
+            GlobalDataRaceHandler::Genmc(genmc_ctx) =>
+                genmc_ctx.handle_thread_finish(&this.machine.threads)?,
         }
         // Deallocate TLS.
         let gone_thread = this.active_thread();
@@ -1062,7 +1109,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     #[inline]
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.machine.threads.join_thread(joined_thread_id, this.machine.data_race.as_mut())?;
+        this.machine.threads.join_thread(joined_thread_id, &mut this.machine.data_race)?;
         interp_ok(())
     }
 
@@ -1071,7 +1118,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         this.machine
             .threads
-            .join_thread_exclusive(joined_thread_id, this.machine.data_race.as_mut())?;
+            .join_thread_exclusive(joined_thread_id, &mut this.machine.data_race)?;
         interp_ok(())
     }
 
@@ -1165,8 +1212,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.machine.handle_abnormal_termination();
                 throw_machine_stop!(TerminationInfo::Interrupted);
             }
-            let rng = this.machine.rng.get_mut();
-            match this.machine.threads.schedule(&this.machine.monotonic_clock, rng)? {
+            match this.schedule()? {
                 SchedulingAction::ExecuteStep => {
                     if !this.step()? {
                         // See if this thread can do something else.

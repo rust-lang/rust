@@ -149,7 +149,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         // Perform regular load.
         let val = this.read_scalar(val)?;
-        // Perform atomic store
+        // Perform atomic store.
         this.write_scalar_atomic(val, &place, atomic)?;
         interp_ok(())
     }
@@ -161,7 +161,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let [] = check_intrinsic_arg_count(args)?;
         let _ = atomic;
-        //FIXME: compiler fences are currently ignored
+        // FIXME, FIXME(GenMC): compiler fences are currently ignored (also ignored in GenMC mode)
         interp_ok(())
     }
 
@@ -199,23 +199,16 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             span_bug!(this.cur_span(), "atomic arithmetic operation type mismatch");
         }
 
-        match atomic_op {
-            AtomicOp::Min => {
-                let old = this.atomic_min_max_scalar(&place, rhs, true, atomic)?;
-                this.write_immediate(*old, dest)?; // old value is returned
-                interp_ok(())
-            }
-            AtomicOp::Max => {
-                let old = this.atomic_min_max_scalar(&place, rhs, false, atomic)?;
-                this.write_immediate(*old, dest)?; // old value is returned
-                interp_ok(())
-            }
-            AtomicOp::MirOp(op, not) => {
-                let old = this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?;
-                this.write_immediate(*old, dest)?; // old value is returned
-                interp_ok(())
-            }
-        }
+        let old = match atomic_op {
+            AtomicOp::Min =>
+                this.atomic_min_max_scalar(&place, rhs, /* min */ true, atomic)?,
+            AtomicOp::Max =>
+                this.atomic_min_max_scalar(&place, rhs, /* min */ false, atomic)?,
+            AtomicOp::MirOp(op, not) =>
+                this.atomic_rmw_op_immediate(&place, &rhs, op, not, atomic)?,
+        };
+        this.write_immediate(*old, dest)?; // old value is returned
+        interp_ok(())
     }
 
     fn atomic_exchange(

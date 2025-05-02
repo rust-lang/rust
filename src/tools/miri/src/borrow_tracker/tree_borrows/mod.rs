@@ -317,7 +317,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Also inform the data race model (but only if any bytes are actually affected).
         if range.size.bytes() > 0 && new_perm.initial_read {
-            if let Some(data_race) = alloc_extra.data_race.as_ref() {
+            if let Some(data_race) = alloc_extra.data_race.as_vclocks_ref() {
                 data_race.read(
                     alloc_id,
                     range,
