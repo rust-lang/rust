@@ -4,15 +4,20 @@
 //!
 //! This logic is provisional and should be removed once the trait
 //! solver can handle this kind of constraint.
+use std::cell::OnceCell;
+use std::collections::VecDeque;
+
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::graph::scc;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_index::IndexVec;
+use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::{RegionVid, UniverseIndex};
-use tracing::debug;
+use tracing::{debug, trace};
 
+use crate::constraints::graph::{ConstraintGraph, Normal, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::UniverseInfo;
@@ -65,16 +70,66 @@ impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
     type SccIdx = ConstraintSccIndex;
 }
 
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
+enum PlaceholderReachability {
+    /// This SCC reaches no placeholders.
+    NoPlaceholders,
+    /// This SCC reaches at least one placeholder.
+    Placeholders {
+        /// The largest-universed placeholder we can reach
+        max_universe: (UniverseIndex, RegionVid),
+
+        /// The placeholder with the smallest ID
+        min_placeholder: RegionVid,
+
+        /// The placeholder with the largest ID
+        max_placeholder: RegionVid,
+    },
+}
+
+impl PlaceholderReachability {
+    fn merge(self, other: PlaceholderReachability) -> PlaceholderReachability {
+        use PlaceholderReachability::*;
+        match (self, other) {
+            (NoPlaceholders, NoPlaceholders) => NoPlaceholders,
+            (NoPlaceholders, p @ Placeholders { .. })
+            | (p @ Placeholders { .. }, NoPlaceholders) => p,
+            (
+                Placeholders {
+                    min_placeholder: min_pl,
+                    max_placeholder: max_pl,
+                    max_universe: max_u,
+                },
+                Placeholders { min_placeholder, max_placeholder, max_universe },
+            ) => Placeholders {
+                min_placeholder: core::cmp::min(min_pl, min_placeholder),
+                max_placeholder: core::cmp::max(max_pl, max_placeholder),
+                max_universe: core::cmp::max(max_u, max_universe),
+            },
+        }
+    }
+
+    /// If we have reached placeholders, determine if they can
+    /// be named from this universe.
+    fn can_be_named_by(&self, from: UniverseIndex) -> bool {
+        if let PlaceholderReachability::Placeholders { max_universe: (max_universe, _), .. } = self
+        {
+            from.can_name(*max_universe)
+        } else {
+            true // No placeholders, no problems.
+        }
+    }
+}
+
 /// An annotation for region graph SCCs that tracks
 /// the values of its elements. This annotates a single SCC.
 #[derive(Copy, Debug, Clone)]
 pub(crate) struct RegionTracker {
-    /// The largest universe of a placeholder reached from this SCC.
-    /// This includes placeholders within this SCC.
-    max_placeholder_universe_reached: UniverseIndex,
+    /// The smallest universe reachable (and its region)
+    min_universe: (UniverseIndex, RegionVid),
 
-    /// The smallest universe index reachable form the nodes of this SCC.
-    min_reachable_universe: UniverseIndex,
+    /// Metadata about reachable placeholders
+    reachable_placeholders: PlaceholderReachability,
 
     /// The representative Region Variable Id for this SCC.
     pub(crate) representative: Representative,
@@ -82,60 +137,93 @@ pub(crate) struct RegionTracker {
 
 impl RegionTracker {
     pub(crate) fn new(rvid: RegionVid, definition: &RegionDefinition<'_>) -> Self {
-        let placeholder_universe =
+        let reachable_placeholders =
             if matches!(definition.origin, NllRegionVariableOrigin::Placeholder(_)) {
-                definition.universe
+                PlaceholderReachability::Placeholders {
+                    max_universe: (definition.universe, rvid),
+                    min_placeholder: rvid,
+                    max_placeholder: rvid,
+                }
             } else {
-                UniverseIndex::ROOT
+                PlaceholderReachability::NoPlaceholders
             };
 
         Self {
-            max_placeholder_universe_reached: placeholder_universe,
-            min_reachable_universe: definition.universe,
+            min_universe: (definition.universe, rvid),
+            reachable_placeholders,
             representative: Representative::new(rvid, definition),
         }
     }
 
     /// The smallest-indexed universe reachable from and/or in this SCC.
     pub(crate) fn min_universe(self) -> UniverseIndex {
-        self.min_reachable_universe
-    }
-
-    fn merge_min_max_seen(&mut self, other: &Self) {
-        self.max_placeholder_universe_reached = std::cmp::max(
-            self.max_placeholder_universe_reached,
-            other.max_placeholder_universe_reached,
-        );
-
-        self.min_reachable_universe =
-            std::cmp::min(self.min_reachable_universe, other.min_reachable_universe);
-    }
-
-    /// Returns `true` if during the annotated SCC reaches a placeholder
-    /// with a universe larger than the smallest reachable one, `false` otherwise.
-    pub(crate) fn has_incompatible_universes(&self) -> bool {
-        self.min_universe().cannot_name(self.max_placeholder_universe_reached)
+        self.min_universe.0
     }
 
     /// Determine if the tracked universes of the two SCCs
     /// are compatible.
     pub(crate) fn universe_compatible_with(&self, other: Self) -> bool {
         self.min_universe().can_name(other.min_universe())
-            || self.min_universe().can_name(other.max_placeholder_universe_reached)
+            || other.reachable_placeholders.can_be_named_by(self.min_universe())
+    }
+
+    /// If this SCC reaches an universe that's too large, return it.
+    fn reaches_too_large_universe(&self) -> Option<(RegionVid, UniverseIndex)> {
+        let min_u = self.min_universe();
+
+        let PlaceholderReachability::Placeholders { max_universe: (max_u, max_u_rvid), .. } =
+            self.reachable_placeholders
+        else {
+            return None;
+        };
+
+        if min_u.can_name(max_u) {
+            return None;
+        }
+
+        Some((max_u_rvid, max_u))
     }
 }
 
 impl scc::Annotation for RegionTracker {
-    fn merge_scc(mut self, other: Self) -> Self {
-        self.representative = self.representative.merge_scc(other.representative);
-        self.merge_min_max_seen(&other);
-        self
+    fn merge_scc(self, other: Self) -> Self {
+        trace!("{:?} << {:?}", self.representative, other.representative);
+
+        Self {
+            reachable_placeholders: self.reachable_placeholders.merge(other.reachable_placeholders),
+            min_universe: std::cmp::min_by_key(
+                self.min_universe,
+                other.min_universe,
+                |x: &(UniverseIndex, RegionVid)| x.0,
+            ),
+            representative: self.representative.merge_scc(other.representative),
+        }
     }
 
     fn merge_reached(mut self, other: Self) -> Self {
-        // No update to in-component values, only add seen values.
-        self.merge_min_max_seen(&other);
-        self
+        let already_has_placeholder_violation = self.reaches_too_large_universe().is_some();
+        self.min_universe = std::cmp::min_by_key(
+            self.min_universe,
+            other.min_universe,
+            |x: &(UniverseIndex, RegionVid)| x.0,
+        );
+        // This detail is subtle. We stop early here, because there may be multiple
+        // illegally reached regions, but they are not equally good as blame candidates.
+        // In general, the ones with the smallest indices of their RegionVids will
+        // be the best ones, and those will also be visited first. This code
+        // then will suptly prefer a universe violation happening close from where the
+        // constraint graph walk started over one that happens later.
+        // FIXME: a potential optimisation if this is slow is to reimplement
+        // this check as a boolean fuse, since it will idempotently turn
+        // true once triggered and never go false again.
+        if already_has_placeholder_violation {
+            debug!("SCC already has a placeholder violation; no use looking for more!");
+            self
+        } else {
+            self.reachable_placeholders =
+                self.reachable_placeholders.merge(other.reachable_placeholders);
+            self
+        }
     }
 }
 
@@ -269,7 +357,7 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
     let sccs = compute_sccs(&outlives_constraints, &mut annotations);
 
     let outlives_static =
-        rewrite_outlives(&sccs, &annotations, fr_static, &mut outlives_constraints);
+        rewrite_outlives(&sccs, &annotations, fr_static, &mut outlives_constraints, &definitions);
 
     let (sccs, scc_annotations) = if !outlives_static.is_empty() {
         debug!("The following SCCs had :'static constraints added: {:?}", outlives_static);
@@ -304,6 +392,7 @@ fn rewrite_outlives<'tcx>(
     annotations: &SccAnnotations<'_, '_, RegionTracker>,
     fr_static: RegionVid,
     outlives_constraints: &mut OutlivesConstraintSet<'tcx>,
+    definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
 ) -> FxHashSet<ConstraintSccIndex> {
     // Changed to `true` if we added any constraints to `self` and need to
     // recompute SCCs.
@@ -311,37 +400,108 @@ fn rewrite_outlives<'tcx>(
 
     let annotations = &annotations.scc_to_annotation;
 
+    let constraint_graph: OnceCell<ConstraintGraph<Normal>> = OnceCell::new();
+
     for scc in sccs.all_sccs() {
-        // No point in adding 'static: 'static!
-        // This micro-optimisation makes somewhat sense
-        // because static outlives *everything*.
+        // you may be tempted to add 'static to `outlives_static`, but
+        // we need it to be empty if no constraints were added for a
+        // later cheap check to see if we did any work.
         if scc == sccs.scc(fr_static) {
             continue;
         }
 
-        let annotation = annotations[scc];
+        let annotation = &annotations[scc];
 
-        // If this SCC participates in a universe violation,
-        // e.g. if it reaches a region with a universe smaller than
-        // the largest region reached, add a requirement that it must
-        // outlive `'static`.
-        if annotation.has_incompatible_universes() {
-            // Optimisation opportunity: this will add more constraints than
-            // needed for correctness, since an SCC upstream of another with
-            // a universe violation will "infect" its downstream SCCs to also
-            // outlive static.
-            outlives_static.insert(scc);
-            let scc_representative_outlives_static = OutlivesConstraint {
-                sup: annotation.representative.rvid(),
-                sub: fr_static,
-                category: ConstraintCategory::IllegalUniverse,
-                locations: Locations::All(rustc_span::DUMMY_SP),
-                span: rustc_span::DUMMY_SP,
-                variance_info: VarianceDiagInfo::None,
-                from_closure: false,
-            };
-            outlives_constraints.push(scc_representative_outlives_static);
-        }
+        // Figure out if there is a universe violation in this SCC.
+        // This can happen in two cases: either one of our placeholders
+        // had its universe lowered from reaching a region with a lower universe,
+        // (in which case we blame the lower universe's region), or because we reached
+        // a larger universe (in which case we blame the larger universe's region).
+        let Some((max_u_rvid, max_u)) = annotation.reaches_too_large_universe() else {
+            continue;
+        };
+
+        let min_u = annotation.min_universe();
+
+        debug!(
+            "Universe {max_u:?} is too large for its SCC, represented by {:?}",
+            annotation.representative
+        );
+        let blame_to = if annotation.representative.rvid() == max_u_rvid {
+            // We originally had a large enough universe to fit all our reachable
+            // placeholders, but had it lowered because we also absorbed something
+            // small-universed. In this case, that's to blame!
+            let small_universed_rvid = find_region(
+                outlives_constraints,
+                constraint_graph.get_or_init(|| outlives_constraints.graph(definitions.len())),
+                definitions,
+                max_u_rvid,
+                |r: RegionVid| definitions[r].universe == min_u,
+                fr_static,
+            );
+            debug!("{small_universed_rvid:?} lowered our universe to {min_u:?}");
+            small_universed_rvid
+        } else {
+            // The problem is that we, who have a small universe, reach a large one.
+            max_u_rvid
+        };
+
+        outlives_static.insert(scc);
+        outlives_constraints.push(OutlivesConstraint {
+            sup: annotation.representative.rvid(),
+            sub: fr_static,
+            category: ConstraintCategory::IllegalPlaceholder(
+                annotation.representative.rvid(),
+                blame_to,
+            ),
+            locations: Locations::All(rustc_span::DUMMY_SP),
+            span: rustc_span::DUMMY_SP,
+            variance_info: VarianceDiagInfo::None,
+            from_closure: false,
+        });
     }
     outlives_static
+}
+
+// FIXME this is at least partially duplicated code to the constraint search in `region_infer`.
+/// Find a region matching a predicate in a set of constraints, using BFS.
+fn find_region<'tcx>(
+    constraints: &OutlivesConstraintSet<'tcx>,
+    graph: &ConstraintGraph<Normal>,
+    definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
+    start_region: RegionVid,
+    target_test: impl Fn(RegionVid) -> bool,
+    fr_static: RegionVid,
+) -> RegionVid {
+    #[derive(Clone, PartialEq, Eq, Debug)]
+    enum Trace {
+        StartRegion,
+        NotVisited,
+        Visited,
+    }
+
+    let graph = RegionGraph::new(constraints, graph, fr_static);
+
+    let mut context = IndexVec::from_elem(Trace::NotVisited, definitions);
+    context[start_region] = Trace::StartRegion;
+
+    let mut deque = VecDeque::new();
+    deque.push_back(start_region);
+
+    while let Some(r) = deque.pop_front() {
+        if target_test(r) {
+            return r;
+        }
+
+        for sub_region in graph.outgoing_regions(r) {
+            if let Trace::NotVisited = context[sub_region] {
+                context[sub_region] = Trace::Visited;
+                deque.push_back(sub_region);
+            }
+        }
+    }
+    // since this function is used exclusively in this module, we know
+    // we are only searching for regions we found in the region graph,
+    // so if we don't find what we are looking for there's a bug somwehere.
+    bug!("Should have found something!");
 }
