@@ -2,5 +2,6 @@
 Warning: this tree is indicative only. Some tags may have been hidden.
 0..   4
 | Act |    └─┬──<TAG=root of the allocation>
-| ReIM|      └────<TAG=a>
+| Act |      └─┬──<TAG=ptr1>
+| ReIM|        └────<TAG=ptr2>
 ──────────────────────────────────────────────────
