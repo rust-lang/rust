@@ -1066,7 +1066,7 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&'static str) {
         *a = 1.2;
         let c = *b;
     }
@@ -1098,7 +1098,7 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&'static str) {
         let _: &mut bool = p2;
         *a = 1.2;
         let c = *b;
@@ -1136,7 +1136,7 @@ fn foo() {
             r#"
 fn foo() {
     let (mut a, b) = (0.1, "abc");
-    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&str) {
+    fn closure(p1: i32, p2: &mut bool, a: &mut f64, b: &&'static str) {
         let _: &mut bool = p2;
         *a = 1.2;
         let c = *b;

@@ -90,9 +90,24 @@ pub struct HirFormatter<'a> {
     show_container_bounds: bool,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
+    display_lifetimes: DisplayLifetime,
     display_kind: DisplayKind,
     display_target: DisplayTarget,
     bounds_formatting_ctx: BoundsFormattingCtx,
+}
+
+// FIXME: To consider, ref and dyn trait lifetimes can be omitted if they are `'_`, path args should
+// not be when in signatures
+// So this enum does not encode this well enough
+// Also 'static can be omitted for ref and dyn trait lifetimes in static/const item types
+// FIXME: Also named lifetimes may be rendered in places where their name is not in scope?
+#[derive(Copy, Clone)]
+pub enum DisplayLifetime {
+    Always,
+    OnlyStatic,
+    OnlyNamed,
+    OnlyNamedOrStatic,
+    Never,
 }
 
 #[derive(Default)]
@@ -155,6 +170,21 @@ impl HirFormatter<'_> {
             }
         }
     }
+
+    fn render_lifetime(&self, lifetime: &Lifetime) -> bool {
+        match self.display_lifetimes {
+            DisplayLifetime::Always => true,
+            DisplayLifetime::OnlyStatic => matches!(***lifetime.interned(), LifetimeData::Static),
+            DisplayLifetime::OnlyNamed => {
+                matches!(***lifetime.interned(), LifetimeData::Placeholder(_))
+            }
+            DisplayLifetime::OnlyNamedOrStatic => matches!(
+                ***lifetime.interned(),
+                LifetimeData::Static | LifetimeData::Placeholder(_)
+            ),
+            DisplayLifetime::Never => false,
+        }
+    }
 }
 
 pub trait HirDisplay {
@@ -189,6 +219,7 @@ pub trait HirDisplay {
             display_kind,
             closure_style,
             show_container_bounds,
+            display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
 
@@ -212,6 +243,7 @@ pub trait HirDisplay {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds: false,
+            display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
 
@@ -236,6 +268,7 @@ pub trait HirDisplay {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds: false,
+            display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
 
@@ -260,6 +293,7 @@ pub trait HirDisplay {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds: false,
+            display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
 
@@ -284,6 +318,7 @@ pub trait HirDisplay {
             display_target: DisplayTarget::from_crate(db, module_id.krate()),
             display_kind: DisplayKind::SourceCode { target_module_id: module_id, allow_opaque },
             show_container_bounds: false,
+            display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
             bounds_formatting_ctx: Default::default(),
         }) {
             Ok(()) => {}
@@ -312,6 +347,7 @@ pub trait HirDisplay {
             display_target,
             display_kind: DisplayKind::Test,
             show_container_bounds: false,
+            display_lifetimes: DisplayLifetime::Always,
         }
     }
 
@@ -336,6 +372,7 @@ pub trait HirDisplay {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds,
+            display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
 }
@@ -480,6 +517,7 @@ pub struct HirDisplayWrapper<'a, T> {
     display_kind: DisplayKind,
     display_target: DisplayTarget,
     show_container_bounds: bool,
+    display_lifetimes: DisplayLifetime,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -502,7 +540,7 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
         self.t.hir_fmt(&mut HirFormatter {
             db: self.db,
             fmt: f,
-            buf: String::with_capacity(20),
+            buf: String::with_capacity(self.max_size.unwrap_or(20)),
             curr_size: 0,
             max_size: self.max_size,
             entity_limit: self.limited_size,
@@ -511,12 +549,18 @@ impl<T: HirDisplay> HirDisplayWrapper<'_, T> {
             display_target: self.display_target,
             closure_style: self.closure_style,
             show_container_bounds: self.show_container_bounds,
+            display_lifetimes: self.display_lifetimes,
             bounds_formatting_ctx: Default::default(),
         })
     }
 
     pub fn with_closure_style(mut self, c: ClosureStyle) -> Self {
         self.closure_style = c;
+        self
+    }
+
+    pub fn with_lifetime_display(mut self, l: DisplayLifetime) -> Self {
+        self.display_lifetimes = l;
         self
     }
 }
@@ -1022,9 +1066,7 @@ impl HirDisplay for Ty {
             kind @ (TyKind::Raw(m, t) | TyKind::Ref(m, _, t)) => {
                 if let TyKind::Ref(_, l, _) = kind {
                     f.write_char('&')?;
-                    if cfg!(test) {
-                        // rendering these unconditionally is probably too much (at least for inlay
-                        // hints) so we gate it to testing only for the time being
+                    if f.render_lifetime(l) {
                         l.hir_fmt(f)?;
                         f.write_char(' ')?;
                     }
@@ -1055,9 +1097,10 @@ impl HirDisplay for Ty {
                     })
                 };
                 let (preds_to_print, has_impl_fn_pred) = match t.kind(Interner) {
-                    TyKind::Dyn(dyn_ty) if dyn_ty.bounds.skip_binders().interned().len() > 1 => {
+                    TyKind::Dyn(dyn_ty) => {
                         let bounds = dyn_ty.bounds.skip_binders().interned();
-                        (bounds.len(), contains_impl_fn(bounds))
+                        let render_lifetime = f.render_lifetime(&dyn_ty.lifetime);
+                        (bounds.len() + render_lifetime as usize, contains_impl_fn(bounds))
                     }
                     TyKind::Alias(AliasTy::Opaque(OpaqueTy {
                         opaque_ty_id,
@@ -1479,7 +1522,7 @@ impl HirDisplay for Ty {
             TyKind::BoundVar(idx) => idx.hir_fmt(f)?,
             TyKind::Dyn(dyn_ty) => {
                 // Reorder bounds to satisfy `write_bounds_like_dyn_trait()`'s expectation.
-                // FIXME: `Iterator::partition_in_place()` or `Vec::drain_filter()` may make it
+                // FIXME: `Iterator::partition_in_place()` or `Vec::extract_if()` may make it
                 // more efficient when either of them hits stable.
                 let mut bounds: SmallVec<[_; 4]> =
                     dyn_ty.bounds.skip_binders().iter(Interner).cloned().collect();
@@ -1487,6 +1530,17 @@ impl HirDisplay for Ty {
                     bounds.drain(1..).partition(|b| b.skip_binders().trait_id().is_some());
                 bounds.extend(others);
                 bounds.extend(auto_traits);
+
+                if f.render_lifetime(&dyn_ty.lifetime) {
+                    // we skip the binders in `write_bounds_like_dyn_trait_with_prefix`
+                    bounds.push(Binders::empty(
+                        Interner,
+                        chalk_ir::WhereClause::TypeOutlives(chalk_ir::TypeOutlives {
+                            ty: self.clone(),
+                            lifetime: dyn_ty.lifetime.clone(),
+                        }),
+                    ));
+                }
 
                 write_bounds_like_dyn_trait_with_prefix(
                     f,
@@ -1989,7 +2043,6 @@ impl HirDisplay for LifetimeData {
                 write!(f, "{}", param_data.name.display(f.db, f.edition()))?;
                 Ok(())
             }
-            _ if f.display_kind.is_source_code() => write!(f, "'_"),
             LifetimeData::BoundVar(idx) => idx.hir_fmt(f),
             LifetimeData::InferenceVar(_) => write!(f, "_"),
             LifetimeData::Static => write!(f, "'static"),
