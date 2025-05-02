@@ -145,7 +145,7 @@ impl DefKey {
         let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
 
         std::mem::discriminant(data).hash(&mut hasher);
-        if let Some(name) = data.get_opt_name() {
+        if let Some(name) = data.hashed_symbol() {
             // Get a stable hash by considering the symbol chars rather than
             // the symbol index.
             name.as_str().hash(&mut hasher);
@@ -443,6 +443,26 @@ pub enum DefPathDataName {
 
 impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
+        use self::DefPathData::*;
+        match *self {
+            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+
+            Impl
+            | ForeignMod
+            | CrateRoot
+            | Use
+            | GlobalAsm
+            | Closure
+            | Ctor
+            | AnonConst
+            | OpaqueTy
+            | AnonAssocTy(..)
+            | SyntheticCoroutineBody
+            | NestedStatic => None,
+        }
+    }
+
+    fn hashed_symbol(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name) => {
