@@ -1957,10 +1957,11 @@ impl<'tcx> TyCtxtAt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
-        def_path_data: Option<DefPathData>,
+        override_def_path_data: Option<DefPathData>,
         disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let feed = self.tcx.create_def(parent, name, def_kind, def_path_data, disambiguator);
+        let feed =
+            self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
 
         feed.def_span(self.span);
         feed
@@ -1974,10 +1975,10 @@ impl<'tcx> TyCtxt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
-        def_path_data: Option<DefPathData>,
+        override_def_path_data: Option<DefPathData>,
         disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let data = def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
+        let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
