@@ -4,7 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{IntoSpan as _, SpanRangeExt, snippet, snippet_block, snippet_block_with_applicability};
 use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Block, Expr, ExprKind, StmtKind};
+use rustc_hir::{Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -203,13 +203,12 @@ fn block_starts_with_comment(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
 fn expr_block<'tcx>(block: &Block<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     match block.stmts {
         [] => block.expr,
-        [stmt] => {
-            if let StmtKind::Semi(expr) = stmt.kind {
-                Some(expr)
-            } else {
-                None
-            }
-        },
+        [
+            Stmt {
+                kind: StmtKind::Semi(expr),
+                ..
+            },
+        ] if block.expr.is_none() => Some(expr),
         _ => None,
     }
 }
