@@ -1064,10 +1064,8 @@ fn insert_switch<'tcx>(
         },
     );
 
-    let blocks = body.basic_blocks_mut().iter_mut();
-
-    for target in blocks.flat_map(|b| b.terminator_mut().successors_mut()) {
-        *target += 1;
+    for b in body.basic_blocks_mut().iter_mut() {
+        b.terminator_mut().successors_mut(|target| *target += 1);
     }
 }
 
