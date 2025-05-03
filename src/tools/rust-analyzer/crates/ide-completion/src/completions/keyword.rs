@@ -346,7 +346,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    let $1 = $2;
+    let $1 = $0;
 }
 "#,
         );
@@ -359,7 +359,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    let mut $1 = $2;
+    let mut $1 = $0;
 }
 "#,
         );
@@ -436,7 +436,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    if { let $1 = $2; } {}
+    if { let $1 = $0; } {}
 }
 "#,
         );
@@ -449,7 +449,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    if { let mut $1 = $2; } {}
+    if { let mut $1 = $0; } {}
 }
 "#,
         );

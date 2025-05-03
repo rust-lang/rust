@@ -369,8 +369,8 @@ pub(crate) fn complete_expr_path(
                     }
 
                     if in_block_expr {
-                        add_keyword("letm", "let mut $1 = $2;");
-                        add_keyword("let", "let $1 = $2;");
+                        add_keyword("letm", "let mut $1 = $0;");
+                        add_keyword("let", "let $1 = $0;");
                     }
 
                     if after_if_expr {
