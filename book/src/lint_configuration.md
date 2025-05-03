@@ -735,7 +735,7 @@ Minimum chars an ident can have, anything below or equal to this will be linted.
 
 
 ## `missing-docs-allow-unused`
-Whether to allow fields starting with underscore to skip documentation requirements
+Whether to allow fields starting with an underscore to skip documentation requirements
 
 **Default Value:** `false`
 

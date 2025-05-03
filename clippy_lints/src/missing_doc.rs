@@ -48,7 +48,7 @@ pub struct MissingDoc {
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
     crate_items_only: bool,
-    /// Whether to allow fields starting with underscore to skip documentation requirements
+    /// Whether to allow fields starting with an underscore to skip documentation requirements
     allow_unused: bool,
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
@@ -264,7 +264,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::FieldDef<'_>) {
         if !sf.is_positional() {
-            // Skip checking if the field starts with underscore and allow_unused is enabled
+            // Skip checking if the field starts with an underscore and allow_unused is enabled
             if self.allow_unused && sf.ident.as_str().starts_with('_') {
                 self.prev_span = Some(sf.span);
                 return;

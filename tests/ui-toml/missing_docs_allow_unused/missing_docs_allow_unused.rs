@@ -6,7 +6,7 @@
 struct Test {
     /// This field is documented
     field1: i32,
-    _unused: i32, // This should not trigger a warning because it starts with underscore
+    _unused: i32, // This should not trigger a warning because it starts with an underscore
     field3: i32,  //~ missing_docs_in_private_items
 }
 
