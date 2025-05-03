@@ -603,7 +603,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // FIXME(-Znext-solver): Remove this branch once `replace_opaque_types_with_infer` is gone.
             ty::Infer(ty::TyVar(_)) => self
                 .inner
-                .borrow()
+                .borrow_mut()
+                .opaque_types()
                 .iter_opaque_types()
                 .find(|(_, v)| v.ty == expected_ty)
                 .map(|(k, _)| (k.def_id, k.args))?,
