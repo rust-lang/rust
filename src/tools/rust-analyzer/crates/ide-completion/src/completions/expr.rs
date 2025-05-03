@@ -363,9 +363,14 @@ pub(crate) fn complete_expr_path(
                     add_keyword("true", "true");
                     add_keyword("false", "false");
 
-                    if in_condition || in_block_expr {
-                        add_keyword("letm", "let mut $0");
-                        add_keyword("let", "let $0");
+                    if in_condition {
+                        add_keyword("letm", "let mut $1 = $0");
+                        add_keyword("let", "let $1 = $0");
+                    }
+
+                    if in_block_expr {
+                        add_keyword("letm", "let mut $1 = $2;");
+                        add_keyword("let", "let $1 = $2;");
                     }
 
                     if after_if_expr {
