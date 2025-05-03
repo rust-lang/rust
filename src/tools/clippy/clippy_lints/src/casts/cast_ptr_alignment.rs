@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_c_void;
-use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant};
+use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, sym};
 use rustc_hir::{Expr, ExprKind, GenericArg};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::sym;
 
 use super::CAST_PTR_ALIGNMENT;
 
@@ -20,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
         );
         lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
     } else if let ExprKind::MethodCall(method_path, self_arg, [], _) = &expr.kind
-        && method_path.ident.name.as_str() == "cast"
+        && method_path.ident.name == sym::cast
         && let Some(generic_args) = method_path.args
         && let [GenericArg::Type(cast_to)] = generic_args.args
         // There probably is no obvious reason to do this, just to be consistent with `as` cases.

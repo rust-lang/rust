@@ -121,7 +121,6 @@ debug_typeid = ["core/debug_typeid"]
 # https://github.com/rust-lang/stdarch/blob/master/crates/std_detect/Cargo.toml
 std_detect_file_io = ["std_detect/std_detect_file_io"]
 std_detect_dlsym_getauxval = ["std_detect/std_detect_dlsym_getauxval"]
-std_detect_env_override = ["std_detect/std_detect_env_override"]
 
 # Enable using raw-dylib for Windows imports.
 # This will eventually be the default.

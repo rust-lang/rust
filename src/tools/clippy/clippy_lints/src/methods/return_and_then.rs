@@ -55,7 +55,6 @@ pub(super) fn check<'tcx>(
         None => &body_snip,
     };
 
-    let msg = "use the question mark operator instead of an `and_then` call";
     let sugg = format!(
         "let {} = {}?;\n{}",
         arg_snip,
@@ -63,5 +62,13 @@ pub(super) fn check<'tcx>(
         reindent_multiline(inner, false, indent_of(cx, expr.span))
     );
 
-    span_lint_and_sugg(cx, RETURN_AND_THEN, expr.span, msg, "try", sugg, applicability);
+    span_lint_and_sugg(
+        cx,
+        RETURN_AND_THEN,
+        expr.span,
+        "use the `?` operator instead of an `and_then` call",
+        "try",
+        sugg,
+        applicability,
+    );
 }

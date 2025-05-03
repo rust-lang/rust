@@ -7,6 +7,7 @@ use std::{env, fs, iter};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
@@ -841,12 +842,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         dyn for<'tcx> FnOnce(
             &'tcx Session,
             CurrentGcx,
+            Arc<Proxy>,
             &'tcx OnceLock<GlobalCtxt<'tcx>>,
             &'tcx WorkerLocal<Arena<'tcx>>,
             &'tcx WorkerLocal<rustc_hir::Arena<'tcx>>,
             F,
         ) -> T,
-    > = Box::new(move |sess, current_gcx, gcx_cell, arena, hir_arena, f| {
+    > = Box::new(move |sess, current_gcx, jobserver_proxy, gcx_cell, arena, hir_arena, f| {
         TyCtxt::create_global_ctxt(
             gcx_cell,
             sess,
@@ -865,6 +867,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             ),
             providers.hooks,
             current_gcx,
+            jobserver_proxy,
             |tcx| {
                 let feed = tcx.create_crate_num(stable_crate_id).unwrap();
                 assert_eq!(feed.key(), LOCAL_CRATE);
@@ -887,7 +890,15 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         )
     });
 
-    inner(&compiler.sess, compiler.current_gcx.clone(), &gcx_cell, &arena, &hir_arena, f)
+    inner(
+        &compiler.sess,
+        compiler.current_gcx.clone(),
+        Arc::clone(&compiler.jobserver_proxy),
+        &gcx_cell,
+        &arena,
+        &hir_arena,
+        f,
+    )
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
