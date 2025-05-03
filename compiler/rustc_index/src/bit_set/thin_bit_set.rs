@@ -1,5 +1,6 @@
 use std::alloc::{Layout, alloc, alloc_zeroed, dealloc, handle_alloc_error, realloc};
 use std::hash::{Hash, Hasher};
+use std::iter::FusedIterator;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 use std::ops::{Range, RangeInclusive};
@@ -1076,6 +1077,8 @@ impl<'a, T: Idx> Iterator for BitIter<'a, T> {
         }
     }
 }
+
+impl<'a, T: Idx> FusedIterator for BitIter<'a, T> {}
 
 impl<T: Idx> fmt::Debug for ThinBitSet<T> {
     fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
