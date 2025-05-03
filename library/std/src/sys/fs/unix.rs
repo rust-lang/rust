@@ -300,12 +300,41 @@ impl Dir {
         })?;
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
+}
 
-    // pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> Result<()>
-    // pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(&self, from: P, to_dir: &Self, to: Q) -> Result<()>
-    // pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> Result<()>
-    // pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> Result<()>
-    // pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(&self, original: P, link: Q)
+#[cfg(any(
+    miri,
+    target_os = "redox",
+    target_os = "nto",
+    target_os = "vita",
+    target_os = "hurd",
+    target_os = "espidf",
+    target_os = "horizon",
+    target_os = "vxworks",
+    target_os = "rtems",
+    target_os = "nuttx",
+))]
+impl Dir {
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        Err(io::const_error!(
+            io::ErrorKind::Unsupported,
+            "directory handles are not available for this platform",
+        ))
+    }
+
+    pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        Err(io::const_error!(
+            io::ErrorKind::Unsupported,
+            "directory handles are not available for this platform",
+        ))
+    }
+
+    pub fn open_c(&self, path: &CStr, opts: &OpenOptions) -> io::Result<File> {
+        Err(io::const_error!(
+            io::ErrorKind::Unsupported,
+            "directory handles are not available for this platform",
+        ))
+    }
 }
 
 fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
