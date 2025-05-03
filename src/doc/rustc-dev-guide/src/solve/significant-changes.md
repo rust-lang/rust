@@ -106,4 +106,4 @@ their ambiguous nested goals are returned to the caller which then evaluates the
 See [#122687] for more details.
 
 [#122687]: https://github.com/rust-lang/rust/pull/122687
-[normalization]: ./normalization.md
+[normalization]: ../normalization.md

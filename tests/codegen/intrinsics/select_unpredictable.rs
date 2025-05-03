@@ -1,7 +1,6 @@
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 
 #![feature(core_intrinsics)]
-#![feature(select_unpredictable)]
 #![crate_type = "lib"]
 
 /* Test the intrinsic */

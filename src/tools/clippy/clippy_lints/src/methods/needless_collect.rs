@@ -9,7 +9,7 @@ use clippy_utils::ty::{
 };
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, fn_def_id, get_enclosing_block, higher, is_trait_method, path_to_local,
-    path_to_local_id,
+    path_to_local_id, sym,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
@@ -20,8 +20,8 @@ use rustc_hir::{
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, AssocTag, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
+use rustc_span::Span;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, sym};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
@@ -339,7 +339,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
         // Check function calls on our collection
         if let ExprKind::MethodCall(method_name, recv, args, _) = &expr.kind {
             if args.is_empty()
-                && method_name.ident.name.as_str() == "collect"
+                && method_name.ident.name == sym::collect
                 && is_trait_method(self.cx, expr, sym::Iterator)
             {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));

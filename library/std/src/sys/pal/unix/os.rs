@@ -56,7 +56,7 @@ unsafe extern "C" {
     #[cfg_attr(target_os = "aix", link_name = "_Errno")]
     // SAFETY: this will always return the same pointer on a given thread.
     #[unsafe(ffi_const)]
-    fn errno_location() -> *mut c_int;
+    pub safe fn errno_location() -> *mut c_int;
 }
 
 /// Returns the platform-specific value of errno

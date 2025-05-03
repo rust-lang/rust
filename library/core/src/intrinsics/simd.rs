@@ -577,11 +577,9 @@ pub unsafe fn simd_select<M, T>(mask: M, if_true: T, if_false: T) -> T;
 /// For each element, if the bit in `mask` is `1`, select the element from
 /// `if_true`.  If the corresponding bit in `mask` is `0`, select the element from
 /// `if_false`.
+/// The remaining bits of the mask are ignored.
 ///
 /// The bitmask bit order matches `simd_bitmask`.
-///
-/// # Safety
-/// Padding bits must be all zero.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;

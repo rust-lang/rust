@@ -1412,7 +1412,7 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 }
 
 /// Gets the name of the item the expression is in, if available.
-pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
+pub fn parent_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir_get_parent_item(expr.hir_id).def_id;
     match cx.tcx.hir_node_by_def_id(parent_id) {
         Node::Item(item) => item.kind.ident().map(|ident| ident.name),
@@ -2088,7 +2088,7 @@ pub fn match_libc_symbol(cx: &LateContext<'_>, did: DefId, name: &str) -> bool {
     let path = cx.get_def_path(did);
     // libc is meant to be used as a flat list of names, but they're all actually defined in different
     // modules based on the target platform. Ignore everything but crate name and the item name.
-    path.first().is_some_and(|s| s.as_str() == "libc") && path.last().is_some_and(|s| s.as_str() == name)
+    path.first().is_some_and(|s| *s == sym::libc) && path.last().is_some_and(|s| s.as_str() == name)
 }
 
 /// Returns the list of condition expressions and the list of blocks in a
@@ -3101,7 +3101,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
     sm.span_take_while(span, |&ch| ch == ' ' || ch == ';')
 }
 
-/// Returns whether the given let pattern and else body can be turned into a question mark
+/// Returns whether the given let pattern and else body can be turned into the `?` operator
 ///
 /// For this example:
 /// ```ignore
@@ -3124,8 +3124,7 @@ pub fn span_find_starting_semi(sm: &SourceMap, span: Span) -> Span {
 /// ```
 ///
 /// We output `Some(a)` in the first instance, and `Some(FooBar { a, b })` in the second, because
-/// the question mark operator is applicable here. Callers have to check whether we are in a
-/// constant or not.
+/// the `?` operator is applicable here. Callers have to check whether we are in a constant or not.
 pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
     cx: &LateContext<'_>,
     pat: &'a Pat<'hir>,

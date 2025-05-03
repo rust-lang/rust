@@ -102,6 +102,9 @@ impl Stability {
 // check whether they're named already elsewhere in rust
 // e.g. in stdarch and whether the given name matches LLVM's
 // if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted.
+// Additionally, if the feature is not available in older version of LLVM supported by the current
+// rust, the same function must be updated to filter out these features to avoid triggering
+// warnings.
 //
 // Also note that all target features listed here must be purely additive: for target_feature 1.1 to
 // be sound, we can never allow features like `+soft-float` (on x86) to be controlled on a
@@ -398,7 +401,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("avx512cd", Unstable(sym::avx512_target_feature), &["avx512f"]),
     ("avx512dq", Unstable(sym::avx512_target_feature), &["avx512f"]),
     ("avx512f", Unstable(sym::avx512_target_feature), &["avx2", "fma", "f16c"]),
-    ("avx512fp16", Unstable(sym::avx512_target_feature), &["avx512bw", "avx512vl", "avx512dq"]),
+    ("avx512fp16", Unstable(sym::avx512_target_feature), &["avx512bw"]),
     ("avx512ifma", Unstable(sym::avx512_target_feature), &["avx512f"]),
     ("avx512vbmi", Unstable(sym::avx512_target_feature), &["avx512bw"]),
     ("avx512vbmi2", Unstable(sym::avx512_target_feature), &["avx512bw"]),
@@ -507,7 +510,7 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("unaligned-vector-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &["zvl128b", "zve64d"]),
     ("za128rs", Unstable(sym::riscv_target_feature), &[]),
-    ("za64rs", Unstable(sym::riscv_target_feature), &[]),
+    ("za64rs", Unstable(sym::riscv_target_feature), &["za128rs"]), // Za64rs ⊃ Za128rs
     ("zaamo", Unstable(sym::riscv_target_feature), &[]),
     ("zabha", Unstable(sym::riscv_target_feature), &["zaamo"]),
     ("zacas", Unstable(sym::riscv_target_feature), &["zaamo"]),
@@ -526,12 +529,20 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zcmop", Unstable(sym::riscv_target_feature), &["zca"]),
     ("zdinx", Unstable(sym::riscv_target_feature), &["zfinx"]),
     ("zfa", Unstable(sym::riscv_target_feature), &["f"]),
+    ("zfbfmin", Unstable(sym::riscv_target_feature), &["f"]), // and a subset of Zfhmin
     ("zfh", Unstable(sym::riscv_target_feature), &["zfhmin"]),
     ("zfhmin", Unstable(sym::riscv_target_feature), &["f"]),
     ("zfinx", Unstable(sym::riscv_target_feature), &["zicsr"]),
     ("zhinx", Unstable(sym::riscv_target_feature), &["zhinxmin"]),
     ("zhinxmin", Unstable(sym::riscv_target_feature), &["zfinx"]),
+    ("zic64b", Unstable(sym::riscv_target_feature), &[]),
+    ("zicbom", Unstable(sym::riscv_target_feature), &[]),
+    ("zicbop", Unstable(sym::riscv_target_feature), &[]),
     ("zicboz", Unstable(sym::riscv_target_feature), &[]),
+    ("ziccamoa", Unstable(sym::riscv_target_feature), &[]),
+    ("ziccif", Unstable(sym::riscv_target_feature), &[]),
+    ("zicclsm", Unstable(sym::riscv_target_feature), &[]),
+    ("ziccrse", Unstable(sym::riscv_target_feature), &[]),
     ("zicntr", Unstable(sym::riscv_target_feature), &["zicsr"]),
     ("zicond", Unstable(sym::riscv_target_feature), &[]),
     ("zicsr", Unstable(sym::riscv_target_feature), &[]),
@@ -558,6 +569,8 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("zve64d", Unstable(sym::riscv_target_feature), &["zve64f", "d"]),
     ("zve64f", Unstable(sym::riscv_target_feature), &["zve32f", "zve64x"]),
     ("zve64x", Unstable(sym::riscv_target_feature), &["zve32x", "zvl64b"]),
+    ("zvfbfmin", Unstable(sym::riscv_target_feature), &["zve32f"]),
+    ("zvfbfwma", Unstable(sym::riscv_target_feature), &["zfbfmin", "zvfbfmin"]),
     ("zvfh", Unstable(sym::riscv_target_feature), &["zvfhmin", "zve32f", "zfhmin"]), // Zvfh ⊃ Zvfhmin
     ("zvfhmin", Unstable(sym::riscv_target_feature), &["zve32f"]),
     ("zvkb", Unstable(sym::riscv_target_feature), &["zve32x"]),
@@ -963,12 +976,12 @@ impl Target {
                 // about what the intended ABI is.
                 match &*self.llvm_abiname {
                     "ilp32d" | "lp64d" => {
-                        // Requires d (which implies f), incompatible with e.
-                        FeatureConstraints { required: &["d"], incompatible: &["e"] }
+                        // Requires d (which implies f), incompatible with e and zfinx.
+                        FeatureConstraints { required: &["d"], incompatible: &["e", "zfinx"] }
                     }
                     "ilp32f" | "lp64f" => {
-                        // Requires f, incompatible with e.
-                        FeatureConstraints { required: &["f"], incompatible: &["e"] }
+                        // Requires f, incompatible with e and zfinx.
+                        FeatureConstraints { required: &["f"], incompatible: &["e", "zfinx"] }
                     }
                     "ilp32" | "lp64" => {
                         // Requires nothing, incompatible with e.
