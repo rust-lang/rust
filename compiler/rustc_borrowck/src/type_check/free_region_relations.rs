@@ -41,8 +41,8 @@ type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
 
 pub(crate) struct CreateResult<'tcx> {
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-    pub(crate) region_bound_pairs: RegionBoundPairs<'tcx>,
-    pub(crate) known_type_outlives_obligations: Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
+    pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
     pub(crate) normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
 }
 
@@ -333,8 +333,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 outlives: self.outlives.freeze(),
                 inverse_outlives: self.inverse_outlives.freeze(),
             }),
-            known_type_outlives_obligations,
-            region_bound_pairs: self.region_bound_pairs,
+            known_type_outlives_obligations: Frozen::freeze(known_type_outlives_obligations),
+            region_bound_pairs: Frozen::freeze(self.region_bound_pairs),
             normalized_inputs_and_output,
         }
     }

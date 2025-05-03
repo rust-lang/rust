@@ -30,8 +30,7 @@ use crate::diagnostics::{DiagMode, Suggestion, import_candidates};
 use crate::errors::{
     CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS, CannotBeReexportedPrivate,
     CannotBeReexportedPrivateNS, CannotDetermineImportResolution, CannotGlobImportAllCrates,
-    ConsiderAddingMacroExport, ConsiderMarkingAsPub, IsNotDirectlyImportable,
-    ItemsInTraitsAreNotImportable,
+    ConsiderAddingMacroExport, ConsiderMarkingAsPub,
 };
 use crate::{
     AmbiguityError, AmbiguityKind, BindingKey, Finalize, ImportSuggestion, Module,
@@ -835,11 +834,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                 let parent = import.parent_scope.module;
                 match source_bindings[ns].get() {
-                    Err(Undetermined) => indeterminate_count += 1,
-                    // Don't update the resolution, because it was never added.
-                    Err(Determined) if target.name == kw::Underscore => {}
-                    Ok(binding) if binding.is_importable() => {
-                        if binding.is_assoc_const_or_fn()
+                    Ok(binding) => {
+                        if binding.is_assoc_item()
                             && !this.tcx.features().import_trait_associated_functions()
                         {
                             feature_err(
@@ -850,21 +846,21 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             )
                             .emit();
                         }
+
                         let imported_binding = this.import(binding, import);
                         target_bindings[ns].set(Some(imported_binding));
                         this.define(parent, target, ns, imported_binding);
                     }
-                    source_binding @ (Ok(..) | Err(Determined)) => {
-                        if source_binding.is_ok() {
-                            this.dcx()
-                                .create_err(IsNotDirectlyImportable { span: import.span, target })
-                                .emit();
+                    Err(Determined) => {
+                        // Don't update the resolution for underscores, because it was never added.
+                        if target.name != kw::Underscore {
+                            let key = BindingKey::new(target, ns);
+                            this.update_resolution(parent, key, false, |_, resolution| {
+                                resolution.single_imports.swap_remove(&import);
+                            });
                         }
-                        let key = BindingKey::new(target, ns);
-                        this.update_resolution(parent, key, false, |_, resolution| {
-                            resolution.single_imports.swap_remove(&import);
-                        });
                     }
+                    Err(Undetermined) => indeterminate_count += 1,
                 }
             }
         });
@@ -1428,10 +1424,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         };
 
-        if module.is_trait() {
-            self.dcx().emit_err(ItemsInTraitsAreNotImportable { span: import.span });
-            return;
-        } else if module == import.parent_scope.module {
+        if module.is_trait() && !self.tcx.features().import_trait_associated_functions() {
+            feature_err(
+                self.tcx.sess,
+                sym::import_trait_associated_functions,
+                import.span,
+                "`use` associated items of traits is unstable",
+            )
+            .emit();
+        }
+
+        if module == import.parent_scope.module {
             return;
         } else if is_prelude {
             self.prelude = Some(module);
