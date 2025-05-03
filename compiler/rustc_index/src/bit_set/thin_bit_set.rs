@@ -581,6 +581,34 @@ impl<T: Idx> ThinBitSet<T> {
         }
     }
 
+    /// Returns `Some(elem)` if the set contains exactly one elemement otherwise returns `None`.
+    #[inline(always)]
+    pub fn only_one_elem(&self) -> Option<T> {
+        if self.is_inline() {
+            let word = unsafe { self.inline } ^ Self::IS_INLINE_TAG_BIT;
+            if word.is_power_of_two() { Some(T::new(word.trailing_zeros() as usize)) } else { None }
+        } else if self.is_empty_unallocated() {
+            None
+        } else {
+            let words = self.on_heap().unwrap().as_slice();
+            let mut found_elem = None;
+            for (i, &word) in words.iter().enumerate() {
+                if word > 0 {
+                    if found_elem.is_some() {
+                        return None;
+                    }
+                    if word.is_power_of_two() {
+                        found_elem =
+                            Some(T::new(i * WORD_BITS as usize + word.trailing_zeros() as usize));
+                    } else {
+                        return None;
+                    }
+                }
+            }
+            found_elem
+        }
+    }
+
     #[inline]
     pub fn insert_range(&mut self, range: Range<T>) {
         if let Some(end) = range.end.index().checked_sub(1) {
@@ -1632,6 +1660,14 @@ mod tests {
             // Check the count function.
             assert_eq!(set_1.count(), set_1_reference.iter().filter(|&&x| x).count());
             assert_eq!(set_2.count(), set_2_reference.iter().filter(|&&x| x).count());
+
+            // Check `only_one_elem()`.
+            if let Some(elem) = set_1.only_one_elem() {
+                assert_eq!(set_1.count(), 1);
+                assert_eq!(elem, set_1.iter().next().unwrap());
+            } else {
+                assert_ne!(set_1.count(), 1);
+            }
 
             // Check `last_set_in()`.
             if domain_size > 0 {
