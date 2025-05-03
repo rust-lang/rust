@@ -17,5 +17,22 @@ LL | |     _field2: i32, // This should not trigger a warning
 LL | | }
    | |_^
 
-error: aborting due to 2 previous errors
+error: missing documentation for a struct
+  --> tests/ui-toml/missing_docs_allow_unused/missing_docs_allow_unused.rs:19:1
+   |
+LL | / struct Test3 {
+LL | |
+LL | |     /// This field is documented although this is not mandatory
+LL | |     _unused: i32, // This should not trigger a warning because it starts with an underscore
+LL | |     field2: i32,
+LL | | }
+   | |_^
+
+error: missing documentation for a struct field
+  --> tests/ui-toml/missing_docs_allow_unused/missing_docs_allow_unused.rs:23:5
+   |
+LL |     field2: i32,
+   |     ^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

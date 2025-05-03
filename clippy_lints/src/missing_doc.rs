@@ -263,17 +263,12 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::FieldDef<'_>) {
-        if !sf.is_positional() {
-            // Skip checking if the field starts with an underscore and allow_unused is enabled
-            if self.allow_unused && sf.ident.as_str().starts_with('_') {
-                self.prev_span = Some(sf.span);
-                return;
-            }
-
+        if !(sf.is_positional()
+            || is_from_proc_macro(cx, sf)
+            || self.allow_unused && sf.ident.as_str().starts_with('_'))
+        {
             let attrs = cx.tcx.hir_attrs(sf.hir_id);
-            if !is_from_proc_macro(cx, sf) {
-                self.check_missing_docs_attrs(cx, sf.def_id, attrs, sf.span, "a", "struct field");
-            }
+            self.check_missing_docs_attrs(cx, sf.def_id, attrs, sf.span, "a", "struct field");
         }
         self.prev_span = Some(sf.span);
     }

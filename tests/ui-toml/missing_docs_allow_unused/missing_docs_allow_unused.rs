@@ -16,4 +16,11 @@ struct Test2 {
     _field2: i32, // This should not trigger a warning
 }
 
+struct Test3 {
+    //~^ missing_docs_in_private_items
+    /// This field is documented although this is not mandatory
+    _unused: i32, // This should not trigger a warning because it starts with an underscore
+    field2: i32, //~ missing_docs_in_private_items
+}
+
 fn main() {}
