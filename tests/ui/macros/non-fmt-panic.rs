@@ -1,3 +1,9 @@
+//! The non_fmt_panics lint detects panic!(..) invocations where
+//! the first argument is not a formatting string.
+//!
+//! Also, this test checks that this is not emitted if it originates
+//! in an external macro.
+
 //@ run-rustfix
 //@ rustfix-only-machine-applicable
 //@ build-pass (FIXME(62277): should be check-pass)
