@@ -2234,7 +2234,7 @@ dependencies = [
 [[package]]
 name = "libwild"
 version = "0.4.0"
-source = "git+https://github.com/davidlattimore/wild.git?rev=419724d#419724d7dae2af452729b9b109064edf0ac1d7d7"
+source = "git+https://github.com/davidlattimore/wild.git?rev=e046ec6#e046ec6deb55aa57fac742f5242ecb2762a3fead"
 dependencies = [
  "anyhow",
  "atomic-take",
@@ -2303,7 +2303,7 @@ dependencies = [
 [[package]]
 name = "linker-layout"
 version = "0.4.0"
-source = "git+https://github.com/davidlattimore/wild.git?rev=419724d#419724d7dae2af452729b9b109064edf0ac1d7d7"
+source = "git+https://github.com/davidlattimore/wild.git?rev=e046ec6#e046ec6deb55aa57fac742f5242ecb2762a3fead"
 dependencies = [
  "anyhow",
  "postcard",
@@ -2313,7 +2313,7 @@ dependencies = [
 [[package]]
 name = "linker-trace"
 version = "0.4.0"
-source = "git+https://github.com/davidlattimore/wild.git?rev=419724d#419724d7dae2af452729b9b109064edf0ac1d7d7"
+source = "git+https://github.com/davidlattimore/wild.git?rev=e046ec6#e046ec6deb55aa57fac742f5242ecb2762a3fead"
 dependencies = [
  "anyhow",
  "postcard",
@@ -2323,7 +2323,7 @@ dependencies = [
 [[package]]
 name = "linker-utils"
 version = "0.4.0"
-source = "git+https://github.com/davidlattimore/wild.git?rev=419724d#419724d7dae2af452729b9b109064edf0ac1d7d7"
+source = "git+https://github.com/davidlattimore/wild.git?rev=e046ec6#e046ec6deb55aa57fac742f5242ecb2762a3fead"
 dependencies = [
  "anyhow",
  "object 0.36.7",
