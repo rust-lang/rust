@@ -133,8 +133,24 @@ pub enum TryLockError {
 }
 
 #[unstable(feature = "dirfd", issue = "120426")]
-#[cfg(target_family = "unix")]
 /// An object providing access to a directory on the filesystem.
+///
+/// Files are automatically closed when they go out of scope.  Errors detected
+/// on closing are ignored by the implementation of `Drop`.
+///
+/// # Examples
+///
+/// Opens a directory and then a file inside it.
+///
+/// ```no_run
+/// use std::fs::Dir;
+///
+/// fn main() -> std::io::Result<()> {
+///     let dir = Dir::new("/home/foo")?;
+///     let file = dir.open("bar.txt")?;
+///     Ok(())
+/// }
+/// ```
 pub struct Dir {
     inner: fs_imp::Dir,
 }
@@ -1460,13 +1476,21 @@ impl Seek for Arc<File> {
     }
 }
 
-#[unstable(feature = "dirfd", issue = "120426")]
 impl Dir {
     /// Opens a file relative to this directory.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// use std::fs::Dir;
+    ///
+    /// let dir = Dir::new("foo")?;
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         self.inner.open(path).map(|f| File { inner: f })
     }
     /// Opens a file relative to this directory with the specified options.
+    #[unstable(feature = "dirfd", issue = "120426")]
     pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
         self.inner.open_with(path, &opts.0).map(|f| File { inner: f })
     }
