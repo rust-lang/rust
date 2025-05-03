@@ -36,9 +36,7 @@ struct UnusedExternNotification {
 struct DiagnosticSpan {
     file_name: String,
     line_start: usize,
-    line_end: usize,
     column_start: usize,
-    column_end: usize,
     is_primary: bool,
     label: Option<String>,
     suggested_replacement: Option<String>,
@@ -148,6 +146,7 @@ pub fn parse_output(file_name: &str, output: &str) -> Vec<Error> {
             Ok(diagnostic) => push_actual_errors(&mut errors, &diagnostic, &[], file_name),
             Err(_) => errors.push(Error {
                 line_num: None,
+                column_num: None,
                 kind: ErrorKind::Raw,
                 msg: line.to_string(),
                 require_annotation: false,
@@ -193,25 +192,9 @@ fn push_actual_errors(
     // also ensure that `//~ ERROR E123` *always* works. The
     // assumption is that these multi-line error messages are on their
     // way out anyhow.
-    let with_code = |span: Option<&DiagnosticSpan>, text: &str| {
-        // FIXME(#33000) -- it'd be better to use a dedicated
-        // UI harness than to include the line/col number like
-        // this, but some current tests rely on it.
-        //
-        // Note: Do NOT include the filename. These can easily
-        // cause false matches where the expected message
-        // appears in the filename, and hence the message
-        // changes but the test still passes.
-        let span_str = match span {
-            Some(DiagnosticSpan { line_start, column_start, line_end, column_end, .. }) => {
-                format!("{line_start}:{column_start}: {line_end}:{column_end}")
-            }
-            None => format!("?:?: ?:?"),
-        };
-        match &diagnostic.code {
-            Some(code) => format!("{span_str}: {text} [{}]", code.code),
-            None => format!("{span_str}: {text}"),
-        }
+    let with_code = |text| match &diagnostic.code {
+        Some(code) => format!("{text} [{}]", code.code),
+        None => format!("{text}"),
     };
 
     // Convert multi-line messages into multiple errors.
@@ -225,8 +208,9 @@ fn push_actual_errors(
             || Regex::new(r"aborting due to \d+ previous errors?|\d+ warnings? emitted").unwrap();
         errors.push(Error {
             line_num: None,
+            column_num: None,
             kind,
-            msg: with_code(None, first_line),
+            msg: with_code(first_line),
             require_annotation: diagnostic.level != "failure-note"
                 && !RE.get_or_init(re_init).is_match(first_line),
         });
@@ -234,8 +218,9 @@ fn push_actual_errors(
         for span in primary_spans {
             errors.push(Error {
                 line_num: Some(span.line_start),
+                column_num: Some(span.column_start),
                 kind,
-                msg: with_code(Some(span), first_line),
+                msg: with_code(first_line),
                 require_annotation: true,
             });
         }
@@ -244,16 +229,18 @@ fn push_actual_errors(
         if primary_spans.is_empty() {
             errors.push(Error {
                 line_num: None,
+                column_num: None,
                 kind,
-                msg: with_code(None, next_line),
+                msg: with_code(next_line),
                 require_annotation: false,
             });
         } else {
             for span in primary_spans {
                 errors.push(Error {
                     line_num: Some(span.line_start),
+                    column_num: Some(span.column_start),
                     kind,
-                    msg: with_code(Some(span), next_line),
+                    msg: with_code(next_line),
                     require_annotation: false,
                 });
             }
@@ -266,6 +253,7 @@ fn push_actual_errors(
             for (index, line) in suggested_replacement.lines().enumerate() {
                 errors.push(Error {
                     line_num: Some(span.line_start + index),
+                    column_num: Some(span.column_start),
                     kind: ErrorKind::Suggestion,
                     msg: line.to_string(),
                     // Empty suggestions (suggestions to remove something) are common
@@ -288,6 +276,7 @@ fn push_actual_errors(
         if let Some(label) = &span.label {
             errors.push(Error {
                 line_num: Some(span.line_start),
+                column_num: Some(span.column_start),
                 kind: ErrorKind::Note,
                 msg: label.clone(),
                 // Empty labels (only underlining spans) are common and do not need annotations.
@@ -310,6 +299,7 @@ fn push_backtrace(
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         errors.push(Error {
             line_num: Some(expansion.span.line_start),
+            column_num: Some(expansion.span.column_start),
             kind: ErrorKind::Note,
             msg: format!("in this expansion of {}", expansion.macro_decl_name),
             require_annotation: true,
