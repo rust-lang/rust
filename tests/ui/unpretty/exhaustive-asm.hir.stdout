@@ -27,5 +27,6 @@ mod expressions {
 mod items {
     /// ItemKind::GlobalAsm
     mod item_global_asm {/// ItemKind::GlobalAsm
-        global_asm! (".globl my_asm_func") }
+        global_asm! (".globl my_asm_func");
     }
+}
