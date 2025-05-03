@@ -683,7 +683,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
 
-                    if !other_attr.has_any_name(ALLOW_LIST) {
+                    if !other_attr.has_any_name(ALLOW_LIST)
+                        && !matches!(other_attr.path().as_slice(), [sym::rustfmt, ..])
+                    {
                         let path = other_attr.path();
                         let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
                         let other_attr_name = path.join("::");
