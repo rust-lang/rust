@@ -3659,9 +3659,9 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
-    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
+    /// Use [`retain_mut`] with a negated predicate if you do not need the returned iterator.
     ///
-    /// [`retain`]: Vec::retain
+    /// [`retain_mut`]: Vec::retain_mut
     ///
     /// Using this method is equivalent to the following code:
     ///
