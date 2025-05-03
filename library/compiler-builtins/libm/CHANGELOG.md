@@ -8,6 +8,12 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.14](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.13...libm-v0.2.14) - 2025-05-03
+
+### Other
+
+- Use runtime feature detection for fma routines on x86
+
 ## [0.2.13](https://github.com/rust-lang/compiler-builtins/compare/libm-v0.2.12...libm-v0.2.13) - 2025-04-21
 
 ### Fixed
