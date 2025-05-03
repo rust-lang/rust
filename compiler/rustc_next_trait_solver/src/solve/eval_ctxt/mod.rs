@@ -188,9 +188,13 @@ where
         generate_proof_tree: GenerateProofTree,
         span: I::Span,
     ) -> (Result<(HasChanged, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, span, |ecx| {
-            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
-        })
+        EvalCtxt::enter_root(
+            self,
+            self.cx().recursion_limit() * 2,
+            generate_proof_tree,
+            span,
+            |ecx| ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal),
+        )
     }
 
     fn root_goal_may_hold_with_depth(
@@ -218,7 +222,7 @@ where
     ) {
         EvalCtxt::enter_root(
             self,
-            self.cx().recursion_limit(),
+            self.cx().recursion_limit() * 2,
             generate_proof_tree,
             I::Span::dummy(),
             |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal),
