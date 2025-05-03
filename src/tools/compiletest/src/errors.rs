@@ -16,6 +16,8 @@ pub enum ErrorKind {
     Suggestion,
     Warning,
     Raw,
+    /// Used for better recovery and diagnostics in compiletest.
+    Unknown,
 }
 
 impl ErrorKind {
@@ -31,21 +33,25 @@ impl ErrorKind {
 
     /// Either the canonical uppercase string, or some additional versions for compatibility.
     /// FIXME: consider keeping only the canonical versions here.
-    pub fn from_user_str(s: &str) -> ErrorKind {
-        match s {
+    fn from_user_str(s: &str) -> Option<ErrorKind> {
+        Some(match s {
             "HELP" | "help" => ErrorKind::Help,
             "ERROR" | "error" => ErrorKind::Error,
-            // `MONO_ITEM` makes annotations in `codegen-units` tests syntactically correct,
-            // but those tests never use the error kind later on.
-            "NOTE" | "note" | "MONO_ITEM" => ErrorKind::Note,
+            "NOTE" | "note" => ErrorKind::Note,
             "SUGGESTION" => ErrorKind::Suggestion,
             "WARN" | "WARNING" | "warn" | "warning" => ErrorKind::Warning,
             "RAW" => ErrorKind::Raw,
-            _ => panic!(
+            _ => return None,
+        })
+    }
+
+    pub fn expect_from_user_str(s: &str) -> ErrorKind {
+        ErrorKind::from_user_str(s).unwrap_or_else(|| {
+            panic!(
                 "unexpected diagnostic kind `{s}`, expected \
-                 `ERROR`, `WARN`, `NOTE`, `HELP` or `SUGGESTION`"
-            ),
-        }
+                 `ERROR`, `WARN`, `NOTE`, `HELP`, `SUGGESTION` or `RAW`"
+            )
+        })
     }
 }
 
@@ -58,6 +64,7 @@ impl fmt::Display for ErrorKind {
             ErrorKind::Suggestion => write!(f, "SUGGESTION"),
             ErrorKind::Warning => write!(f, "WARN"),
             ErrorKind::Raw => write!(f, "RAW"),
+            ErrorKind::Unknown => write!(f, "UNKNOWN"),
         }
     }
 }
@@ -75,11 +82,6 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn render_for_expected(&self) -> String {
-        use colored::Colorize;
-        format!("{: <10}line {: >3}: {}", self.kind, self.line_num_str(), self.msg.cyan())
-    }
-
     pub fn line_num_str(&self) -> String {
         self.line_num.map_or("?".to_string(), |line_num| line_num.to_string())
     }
@@ -168,8 +170,10 @@ fn parse_expected(
     let rest = line[tag.end()..].trim_start();
     let (kind_str, _) =
         rest.split_once(|c: char| c != '_' && !c.is_ascii_alphabetic()).unwrap_or((rest, ""));
-    let kind = ErrorKind::from_user_str(kind_str);
-    let untrimmed_msg = &rest[kind_str.len()..];
+    let (kind, untrimmed_msg) = match ErrorKind::from_user_str(kind_str) {
+        Some(kind) => (kind, &rest[kind_str.len()..]),
+        None => (ErrorKind::Unknown, rest),
+    };
     let msg = untrimmed_msg.strip_prefix(':').unwrap_or(untrimmed_msg).trim().to_owned();
 
     let line_num_adjust = &captures["adjust"];
