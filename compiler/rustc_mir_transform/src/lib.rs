@@ -855,7 +855,7 @@ impl<'tcx> Visitor<'tcx> for MonoCompatVisitor {
     }
 
     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        if constant.has_non_region_param() {
+        if constant.has_non_region_param() && !constant.ty().is_fn() {
             self.contains_generic_const = true;
         }
         self.super_const_operand(constant, location);
