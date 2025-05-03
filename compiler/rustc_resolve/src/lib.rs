@@ -949,14 +949,8 @@ impl<'ra> NameBindingData<'ra> {
         }
     }
 
-    fn is_importable(&self) -> bool {
-        !matches!(self.res(), Res::Def(DefKind::AssocTy, _))
-    }
-
-    // FIXME(import_trait_associated_functions): associate `const` or `fn` are not importable unless
-    // the feature `import_trait_associated_functions` is enable
-    fn is_assoc_const_or_fn(&self) -> bool {
-        matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn, _))
+    fn is_assoc_item(&self) -> bool {
+        matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _))
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
