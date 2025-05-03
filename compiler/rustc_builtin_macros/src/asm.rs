@@ -144,7 +144,7 @@ fn parse_asm_operand<'a>(
     }))
 }
 
-// Public for rustfmt
+// Public for rustfmt.
 pub fn parse_raw_asm_args<'a>(
     p: &mut Parser<'a>,
     sp: Span,
@@ -176,13 +176,15 @@ pub fn parse_raw_asm_args<'a>(
                 return Err(p.expect(exp!(Comma)).err().unwrap());
             }
         }
+
+        // Accept trailing commas.
         if p.token == token::Eof {
             break;
-        } // accept trailing commas
+        }
 
         let span_start = p.token.span;
 
-        // Parse clobber_abi
+        // Parse `clobber_abi`.
         if p.eat_keyword(exp!(ClobberAbi)) {
             allow_templates = false;
 
@@ -194,7 +196,7 @@ pub fn parse_raw_asm_args<'a>(
             continue;
         }
 
-        // Parse options
+        // Parse `options`.
         if p.eat_keyword(exp!(Options)) {
             allow_templates = false;
 
@@ -206,7 +208,7 @@ pub fn parse_raw_asm_args<'a>(
             continue;
         }
 
-        // Parse operand names
+        // Parse operand names.
         let name = if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             let (ident, _) = p.token.ident().unwrap();
             p.bump();
@@ -347,7 +349,7 @@ fn validate_raw_asm_args<'a>(
                     if !asm_macro.is_supported_option(option) {
                         // Currently handled during parsing.
                     } else if args.options.contains(option) {
-                        // Tool-only output
+                        // Tool-only output.
                         dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
                     } else {
                         args.options |= option;
@@ -360,7 +362,7 @@ fn validate_raw_asm_args<'a>(
                 allow_templates = false;
 
                 match &new_abis[..] {
-                    // should have errored above during parsing
+                    // This should have errored above during parsing.
                     [] => unreachable!(),
                     [(abi, _span)] => args.clobber_abis.push((*abi, arg.span)),
                     _ => args.clobber_abis.extend(new_abis),
@@ -492,7 +494,7 @@ fn parse_options<'a>(
 
                     // NOTE: should this be handled during validation instead?
                     if !asm_macro.is_supported_option(option) {
-                        // Tool-only output
+                        // Tool-only output.
                         p.dcx().emit_err(errors::AsmUnsupportedOption {
                             span,
                             symbol: exp.kw,
@@ -509,7 +511,7 @@ fn parse_options<'a>(
             return p.unexpected_any();
         }
 
-        // Allow trailing commas
+        // Allow trailing commas.
         if p.eat(exp!(CloseParen)) {
             break;
         }
