@@ -1,0 +1,16 @@
+warning: `regex::Regex::new_` does not refer to an existing function
+  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:3:1
+   |
+LL | / [[disallowed-methods]]
+LL | | path = "regex::Regex::new_"
+   | |___________________________^
+
+warning: `regex::Regex_::new` does not refer to an existing function
+  --> $DIR/tests/ui-toml/toml_unloaded_crate/clippy.toml:6:1
+   |
+LL | / [[disallowed-methods]]
+LL | | path = "regex::Regex_::new"
+   | |___________________________^
+
+warning: 2 warnings emitted
+
