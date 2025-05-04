@@ -116,7 +116,7 @@ jobs:
         - tuple: i686-pc-windows-msvc
           os: windows-2025
         - tuple: aarch64-pc-windows-msvc
-          os: windows-2025
+          os: windows-11-arm
         - tuple: x86_64-pc-windows-gnu
           os: windows-2025
         # - tuple: i686-pc-windows-gnu
@@ -199,10 +199,6 @@ jobs:
             tuple: aarch64-apple-ios-macabi
             os: macos-15
           norun: true # https://github.com/rust-lang/stdarch/issues/1206
-        - target:
-            tuple: aarch64-pc-windows-msvc
-            os: windows-2025
-          norun: true
 
     steps:
     - uses: actions/checkout@v4
@@ -210,13 +206,24 @@ jobs:
       run: |
         rustup update nightly --no-self-update
         rustup default nightly
+      shell: bash
+      if: matrix.target.os != 'windows-11-arm'
+    - name: Install Rust for `windows-11-arm` runners
+      # The arm runners don't have Rust pre-installed (https://github.com/actions/partner-runner-images/issues/77)
+      run: |
+        curl https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      shell: bash
+      if: matrix.target.os == 'windows-11-arm'
+
     - run: rustup target add ${{ matrix.target.tuple }}
+      shell: bash
       if: matrix.build_std == ''
     - run: |
         rustup component add rust-src
         echo "CARGO_UNSTABLE_BUILD_STD=std" >> $GITHUB_ENV
+      shell: bash
       if: matrix.build_std != ''
-    - run: cargo generate-lockfile
 
     # Configure some env vars based on matrix configuration
     - run: echo "PROFILE=--profile=${{matrix.profile}}" >> $GITHUB_ENV
