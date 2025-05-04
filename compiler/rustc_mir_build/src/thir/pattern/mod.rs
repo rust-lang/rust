@@ -567,6 +567,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Lower the named constant to a THIR pattern.
         let args = self.typeck_results.node_args(id);
+        // FIXME(mgca): we will need to special case IACs here to have type system compatible
+        // generic args, instead of how we represent them in body expressions.
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
         let mut pattern = self.const_to_pat(c, ty, id, span);
 
