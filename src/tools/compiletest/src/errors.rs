@@ -15,6 +15,7 @@ pub enum ErrorKind {
     Note,
     Suggestion,
     Warning,
+    Raw,
 }
 
 impl ErrorKind {
@@ -39,6 +40,7 @@ impl ErrorKind {
             "NOTE" | "note" | "MONO_ITEM" => ErrorKind::Note,
             "SUGGESTION" => ErrorKind::Suggestion,
             "WARN" | "WARNING" | "warn" | "warning" => ErrorKind::Warning,
+            "RAW" => ErrorKind::Raw,
             _ => panic!(
                 "unexpected diagnostic kind `{s}`, expected \
                  `ERROR`, `WARN`, `NOTE`, `HELP` or `SUGGESTION`"
@@ -55,6 +57,7 @@ impl fmt::Display for ErrorKind {
             ErrorKind::Note => write!(f, "NOTE"),
             ErrorKind::Suggestion => write!(f, "SUGGESTION"),
             ErrorKind::Warning => write!(f, "WARN"),
+            ErrorKind::Raw => write!(f, "RAW"),
         }
     }
 }

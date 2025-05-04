@@ -9,7 +9,7 @@ use super::{
     AllowUnused, Emit, FailMode, LinkToAux, PassMode, TargetLocation, TestCx, TestOutput,
     Truncated, UI_FIXED, WillExecute,
 };
-use crate::{errors, json};
+use crate::json;
 
 impl TestCx<'_> {
     pub(super) fn run_ui_test(&self) {
@@ -127,9 +127,7 @@ impl TestCx<'_> {
             );
         }
 
-        let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
-
-        if let WillExecute::Yes = should_run {
+        let output_to_check = if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();
             let run_output_errors = if self.props.check_run_results {
                 self.load_compare_outputs(&proc_res, TestOutput::Run, explicit)
@@ -150,44 +148,19 @@ impl TestCx<'_> {
                 self.fatal_proc_rec("test run succeeded!", &proc_res);
             }
 
-            let output_to_check = self.get_output(&proc_res);
-            if !self.props.error_patterns.is_empty() || !self.props.regex_error_patterns.is_empty()
-            {
-                // "// error-pattern" comments
-                self.check_all_error_patterns(&output_to_check, &proc_res, pm);
-            }
-            self.check_forbid_output(&output_to_check, &proc_res)
-        }
+            self.get_output(&proc_res)
+        } else {
+            self.get_output(&proc_res)
+        };
 
         debug!(
-            "run_ui_test: explicit={:?} config.compare_mode={:?} expected_errors={:?} \
+            "run_ui_test: explicit={:?} config.compare_mode={:?} \
                proc_res.status={:?} props.error_patterns={:?}",
-            explicit,
-            self.config.compare_mode,
-            expected_errors,
-            proc_res.status,
-            self.props.error_patterns
+            explicit, self.config.compare_mode, proc_res.status, self.props.error_patterns
         );
 
-        if !explicit && self.config.compare_mode.is_none() {
-            // "//~ERROR comments"
-            self.check_expected_errors(expected_errors, &proc_res);
-        } else if explicit && !expected_errors.is_empty() {
-            let msg = format!(
-                "line {}: cannot combine `--error-format` with {} annotations; use `error-pattern` instead",
-                expected_errors[0].line_num_str(),
-                expected_errors[0].kind,
-            );
-            self.fatal(&msg);
-        }
-        let output_to_check = self.get_output(&proc_res);
-        if should_run == WillExecute::No
-            && (!self.props.error_patterns.is_empty()
-                || !self.props.regex_error_patterns.is_empty())
-        {
-            // "// error-pattern" comments
-            self.check_all_error_patterns(&output_to_check, &proc_res, pm);
-        }
+        self.check_expected_errors(&proc_res);
+        self.check_all_error_patterns(&output_to_check, &proc_res);
         self.check_forbid_output(&output_to_check, &proc_res);
 
         if self.props.run_rustfix && self.config.compare_mode.is_none() {
