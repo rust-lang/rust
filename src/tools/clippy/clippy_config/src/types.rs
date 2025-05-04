@@ -4,7 +4,7 @@ use rustc_hir::PrimTy;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use serde::de::{self, Deserializer, Visitor};
 use serde::{Deserialize, Serialize, ser};
 use std::collections::HashMap;
@@ -145,7 +145,8 @@ pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
         FxHashMap::default();
     for disallowed_path in disallowed_paths {
         let path = disallowed_path.path();
-        let mut resolutions = clippy_utils::def_path_res(tcx, &path.split("::").collect::<Vec<_>>());
+        let path_split = path.split("::").collect::<Vec<_>>();
+        let mut resolutions = clippy_utils::def_path_res(tcx, &path_split);
 
         let mut found_def_id = None;
         let mut found_prim_ty = false;
@@ -160,8 +161,12 @@ pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
             },
             _ => false,
         });
-
-        if resolutions.is_empty() {
+        if resolutions.is_empty()
+            // Don't warn about unloaded crates:
+            // https://github.com/rust-lang/rust-clippy/pull/14397#issuecomment-2848328221
+            && (path_split.len() < 2
+                || !clippy_utils::find_crates(tcx, Symbol::intern(path_split[0])).is_empty())
+        {
             let span = disallowed_path.span();
 
             if let Some(def_id) = found_def_id {
