@@ -214,6 +214,8 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     let mut by_move_body = body.clone();
     MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
 
+    // This path is unique since we're in a query so we'll only be called once with `parent_def_id`
+    // and this is the only location creating `SyntheticCoroutineBody`.
     let body_def = tcx.create_def(
         parent_def_id,
         None,
