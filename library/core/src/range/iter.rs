@@ -168,7 +168,7 @@ impl<A: Step> IterRangeInclusive<A> {
     }
 }
 
-#[unstable(feature = "trusted_random_access", issue = "none")]
+#[unstable(feature = "new_range_api", issue = "125687")]
 impl<A: Step> Iterator for IterRangeInclusive<A> {
     type Item = A;
 
@@ -302,7 +302,7 @@ impl<A> IterRangeFrom<A> {
     }
 }
 
-#[unstable(feature = "trusted_random_access", issue = "none")]
+#[unstable(feature = "new_range_api", issue = "125687")]
 impl<A: Step> Iterator for IterRangeFrom<A> {
     type Item = A;
 
