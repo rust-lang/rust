@@ -496,8 +496,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         .tcx
                         .offset_of_subfield(self.typing_env(), arg_layout, fields.iter())
                         .bytes(),
-                    NullOp::UbChecks => return None,
-                    NullOp::ContractChecks => return None,
+                    NullOp::RuntimeChecks(_) => return None,
                 };
                 ImmTy::from_uint(val, ty).into()
             }
