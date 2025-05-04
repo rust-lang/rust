@@ -1565,12 +1565,27 @@ pub enum AggregateKind<'tcx> {
 pub enum NullOp<'tcx> {
     /// Returns the offset of a field
     OffsetOf(&'tcx List<(VariantIdx, FieldIdx)>),
+    /// Returns whether we should perform some checking at runtime.
+    RuntimeChecks(RuntimeChecks),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]
+pub enum RuntimeChecks {
     /// Returns whether we should perform some UB-checking at runtime.
     /// See the `ub_checks` intrinsic docs for details.
     UbChecks,
     /// Returns whether we should perform contract-checking at runtime.
     /// See the `contract_checks` intrinsic docs for details.
     ContractChecks,
+}
+
+impl RuntimeChecks {
+    pub fn value(self, sess: &rustc_session::Session) -> bool {
+        match self {
+            Self::UbChecks => sess.ub_checks(),
+            Self::ContractChecks => sess.contract_checks(),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
