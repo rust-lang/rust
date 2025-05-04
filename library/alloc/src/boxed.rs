@@ -95,6 +95,7 @@
 //!
 //! ```
 //! #[repr(C)]
+//! #[allow(improper_ctype_definitions)]
 //! pub struct Foo;
 //!
 //! #[unsafe(no_mangle)]

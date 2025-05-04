@@ -4,6 +4,8 @@
 // independently. This verifies that `repr(some_int)` has a stable representation,
 // and that we don't miscompile these kinds of manipulations.
 
+#![allow(improper_ctype_definitions)]
+
 use std::time::Duration;
 use std::mem;
 

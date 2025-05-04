@@ -197,8 +197,7 @@ late_lint_methods!(
             DefaultCouldBeDerived: DefaultCouldBeDerived::default(),
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
-            ImproperCTypesDeclarations: ImproperCTypesDeclarations,
-            ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+            ImproperCTypesLint: ImproperCTypesLint,
             InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
             PathStatements: PathStatements,
@@ -338,6 +337,14 @@ fn register_builtins(store: &mut LintStore) {
         REFINING_IMPL_TRAIT_INTERNAL
     );
 
+    add_lint_group!(
+        "improper_c_boundaries",
+        IMPROPER_C_CALLBACKS,
+        IMPROPER_C_FN_DEFINITIONS,
+        IMPROPER_CTYPE_DEFINITIONS,
+        IMPROPER_CTYPES
+    );
+
     add_lint_group!("deprecated_safe", DEPRECATED_SAFE_2024);
 
     // Register renamed and removed lints.
@@ -356,6 +363,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("unused_tuple_struct_fields", "dead_code");
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
+    store.register_renamed("improper_ctypes_definitions", "improper_c_fn_definitions");
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use

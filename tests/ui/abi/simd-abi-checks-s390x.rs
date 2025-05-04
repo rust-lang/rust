@@ -12,7 +12,7 @@
 #![feature(no_core, repr_simd, s390x_target_feature)]
 #![no_core]
 #![crate_type = "lib"]
-#![allow(non_camel_case_types, improper_ctypes_definitions)]
+#![allow(non_camel_case_types, improper_c_fn_definitions)]
 
 extern crate minicore;
 use minicore::*;

@@ -209,7 +209,7 @@ fn rust_call_abi() {
 struct I64X2([i64; 2]);
 
 #[cfg_attr(target_arch = "s390x", allow(dead_code))]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 extern "C" fn foo(_a: I64X2) {}
 
 #[cfg(target_arch = "x86_64")]

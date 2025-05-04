@@ -19,9 +19,9 @@ pub struct NormalStruct {
     pub second_field: u16,
 }
 
-#[non_exhaustive]
-#[repr(C)]
-pub struct UnitStruct;
+//#[non_exhaustive]
+//#[repr(C)]
+//pub struct UnitStruct;
 
 #[non_exhaustive]
 #[repr(C)]

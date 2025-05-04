@@ -1,4 +1,4 @@
-#![deny(improper_ctypes)]
+#![deny(improper_ctypes, improper_ctype_definitions)]
 #![allow(dead_code)]
 
 // issue https://github.com/rust-lang/rust/issues/14309
@@ -29,15 +29,16 @@ struct D {
     x: C,
     y: A
 }
+//~^^^^ ERROR type `A`
 
 extern "C" {
     fn foo(x: A); //~ ERROR type `A`, which is not FFI-safe
-    fn bar(x: B); //~ ERROR type `A`
+    fn bar(x: B); //~ ERROR type `B`
     fn baz(x: C);
     fn qux(x: A2); //~ ERROR type `A`
-    fn quux(x: B2); //~ ERROR type `A`
+    fn quux(x: B2); //~ ERROR type `B`
     fn corge(x: C2);
-    fn fred(x: D); //~ ERROR type `A`
+    fn fred(x: D); //~ ERROR type `D`
 }
 
 fn main() { }

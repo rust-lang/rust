@@ -25,7 +25,7 @@ pub enum ReprTransparentEnumU64 {
 pub struct U32Compound(u16, u16);
 
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_callbacks)]
 pub fn params(
     f1: extern "C-cmse-nonsecure-call" fn(),
     f2: extern "C-cmse-nonsecure-call" fn(u32, u32, u32, u32),
@@ -38,7 +38,7 @@ pub fn params(
 }
 
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_callbacks)]
 pub fn returns(
     f1: extern "C-cmse-nonsecure-call" fn() -> u32,
     f2: extern "C-cmse-nonsecure-call" fn() -> u64,

@@ -11,7 +11,10 @@ use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
 mod improper_ctypes; // these filed do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
-pub(crate) use improper_ctypes::{ImproperCTypesDeclarations, ImproperCTypesDefinitions};
+pub(crate) use improper_ctypes::{
+    IMPROPER_C_CALLBACKS, IMPROPER_C_FN_DEFINITIONS, IMPROPER_CTYPE_DEFINITIONS, IMPROPER_CTYPES,
+    ImproperCTypesLint,
+};
 
 use crate::lints::{
     AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
@@ -709,6 +712,26 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
             tcx.layout_of(typing_env.as_query_input(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
     })
+}
+
+/// for a given ADT variant, list which fields are non-1ZST
+/// (`repr(transparent)` guarantees that there is at most one)
+pub(crate) fn map_non_1zst_fields<'a, 'tcx>(
+    tcx: TyCtxt<'tcx>,
+    variant: &'a ty::VariantDef,
+) -> Vec<bool> {
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
+    variant
+        .fields
+        .iter()
+        .map(|field| {
+            let field_ty = tcx.type_of(field.did).instantiate_identity();
+            let is_1zst = tcx
+                .layout_of(typing_env.as_query_input(field_ty))
+                .is_ok_and(|layout| layout.is_1zst());
+            !is_1zst
+        })
+        .collect()
 }
 
 /// Is type known to be non-null?
