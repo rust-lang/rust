@@ -276,13 +276,7 @@ ui/auto-traits/issue-23080-2.rs
 ui/auto-traits/issue-23080.rs
 ui/auto-traits/issue-83857-ub.rs
 ui/auto-traits/issue-84075.rs
-ui/auxiliary/issue-13560-1.rs
-ui/auxiliary/issue-13560-2.rs
-ui/auxiliary/issue-13560-3.rs
 ui/auxiliary/issue-16822.rs
-ui/auxiliary/issue-18502.rs
-ui/auxiliary/issue-24106.rs
-ui/auxiliary/issue-76387.rs
 ui/bench/issue-32062.rs
 ui/binding/issue-40402-1.rs
 ui/binding/issue-40402-2.rs
@@ -1378,12 +1372,8 @@ ui/intrinsics/issue-28575.rs
 ui/intrinsics/issue-84297-reifying-copy.rs
 ui/invalid/issue-114435-layout-type-err.rs
 ui/issue-11881.rs
-ui/issue-13560.rs
 ui/issue-15924.rs
 ui/issue-16822.rs
-ui/issue-18502.rs
-ui/issue-24106.rs
-ui/issue-76387-llvm-miscompile.rs
 ui/issues-71798.rs
 ui/issues/auxiliary/issue-11224.rs
 ui/issues/auxiliary/issue-11508.rs

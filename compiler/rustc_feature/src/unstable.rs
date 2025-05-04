@@ -393,6 +393,8 @@ declare_features! (
     (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows `async` trait bound modifier.
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
+    /// Allows using Intel AVX10 target features and intrinsics
+    (unstable, avx10_target_feature, "CURRENT_RUSTC_VERSION", Some(138843)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.

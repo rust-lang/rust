@@ -3,7 +3,8 @@
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
+    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, NodeId,
+    Safety,
 };
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -15,7 +16,7 @@ use rustc_span::{Span, Symbol, sym};
 
 use crate::{errors, parse_in};
 
-pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
+pub fn check_attr(psess: &ParseSess, attr: &Attribute, id: NodeId) {
     if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
     {
         return;
@@ -26,7 +27,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
 
     // All non-builtin attributes are considered safe
     let safety = attr_info.map(|x| x.safety).unwrap_or(AttributeSafety::Normal);
-    check_attribute_safety(psess, safety, attr);
+    check_attribute_safety(psess, safety, attr, id);
 
     // Check input tokens for built-in and key-value attributes.
     match attr_info {
@@ -154,7 +155,12 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
     }
 }
 
-pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: &Attribute) {
+pub fn check_attribute_safety(
+    psess: &ParseSess,
+    safety: AttributeSafety,
+    attr: &Attribute,
+    id: NodeId,
+) {
     let attr_item = attr.get_normal_item();
 
     if let AttributeSafety::Unsafe { unsafe_since } = safety {
@@ -185,7 +191,7 @@ pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: 
                 psess.buffer_lint(
                     UNSAFE_ATTR_OUTSIDE_UNSAFE,
                     path_span,
-                    ast::CRATE_NODE_ID,
+                    id,
                     BuiltinLintDiag::UnsafeAttrOutsideUnsafe {
                         attribute_name_span: path_span,
                         sugg_spans: (diag_span.shrink_to_lo(), diag_span.shrink_to_hi()),

@@ -274,7 +274,12 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
-        validate_attr::check_attribute_safety(&self.sess.psess, AttributeSafety::Normal, &cfg_attr);
+        validate_attr::check_attribute_safety(
+            &self.sess.psess,
+            AttributeSafety::Normal,
+            &cfg_attr,
+            ast::CRATE_NODE_ID,
+        );
 
         // A trace attribute left in AST in place of the original `cfg_attr` attribute.
         // It can later be used by lints or other diagnostics.

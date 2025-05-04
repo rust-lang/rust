@@ -100,6 +100,30 @@ pub struct Argument<'a> {
     pub format: FormatSpec<'a>,
 }
 
+impl<'a> Argument<'a> {
+    pub fn is_identifier(&self) -> bool {
+        matches!(self.position, Position::ArgumentNamed(_))
+            && matches!(
+                self.format,
+                FormatSpec {
+                    fill: None,
+                    fill_span: None,
+                    align: AlignUnknown,
+                    sign: None,
+                    alternate: false,
+                    zero_pad: false,
+                    debug_hex: None,
+                    precision: CountImplied,
+                    precision_span: None,
+                    width: CountImplied,
+                    width_span: None,
+                    ty: "",
+                    ty_span: None,
+                },
+            )
+    }
+}
+
 /// Specification for the formatting of an argument in the format string.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct FormatSpec<'a> {
@@ -894,6 +918,11 @@ impl<'a> Parser<'a> {
     }
 
     fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: Argument<'a>) {
+        // If the argument is not an identifier, it is not a field access.
+        if !arg.is_identifier() {
+            return;
+        }
+
         if let Some(end) = self.consume_pos('.') {
             let byte_pos = self.to_span_index(end);
             let start = InnerOffset(byte_pos.0 + 1);
