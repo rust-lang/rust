@@ -204,7 +204,7 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl From<Vec<u8>> for ByteString {
-//     /// Make a `ByteString` with `Vec<u8>` as inner
+//     /// Wrap `Vec<u8>` with a `ByteString`
 //     #[inline]
 //     fn from(s: Vec<u8>) -> Self {
 //         ByteString(s)
@@ -258,7 +258,6 @@ impl<'a> From<ByteString> for Cow<'a, ByteStr> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
-    /// Wrap `ByteString` as byte str in `Cow::Borrowed`.
     #[inline]
     fn from(s: &'a ByteString) -> Self {
         Cow::Borrowed(s.as_bytestr())

@@ -181,7 +181,6 @@ impl Command {
 }
 
 impl From<AnonPipe> for Stdio {
-    /// Diverge the `Pipe`.
     fn from(pipe: AnonPipe) -> Stdio {
         pipe.diverge()
     }

@@ -195,7 +195,7 @@ pub struct Connection(u32);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl From<u32> for Connection {
-    /// Make a `Connection` with `u32` as inner
+    /// Wrap `u32` in `Connection`
     fn from(src: u32) -> Connection {
         Connection(src)
     }

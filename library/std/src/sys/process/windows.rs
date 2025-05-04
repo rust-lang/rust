@@ -109,7 +109,6 @@ impl PartialOrd<str> for EnvKey {
 }
 impl PartialEq<str> for EnvKey {
     fn eq(&self, other: &str) -> bool {
-        // Save an allocation if lengths are different
         if self.os_string.len() != other.len() {
             false
         } else {
@@ -138,10 +137,10 @@ impl From<EnvKey> for OsString {
 }
 
 impl From<&OsStr> for EnvKey {
-    /// Uses `EnvKey::From<OsString>` to convert the `&OsStr`.
+    /// Allocates an `EnvKey` from `&OsStr`.
     ///
     /// ## Cost
-    /// Converts `&OsStr` to `OsString` which does a heap allocation
+    /// Converts `&OsStr` to `OsString` which requires a heap allocation
     fn from(k: &OsStr) -> Self {
         Self::from(k.to_os_string())
     }
@@ -619,7 +618,7 @@ impl Stdio {
 }
 
 impl From<AnonPipe> for Stdio {
-    /// Wrap `AnonPipe` in the `Pipe` variant
+    /// Wrap `AnonPipe` in `Pipe`
     fn from(pipe: AnonPipe) -> Stdio {
         Stdio::Pipe(pipe)
     }

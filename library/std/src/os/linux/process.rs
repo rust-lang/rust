@@ -137,7 +137,6 @@ impl From<OwnedFd> for PidFd {
 }
 
 impl From<PidFd> for OwnedFd {
-    /// Get the inner of `PidFd`
     fn from(pid_fd: PidFd) -> Self {
         pid_fd.into_inner().into_inner().into_inner()
     }

@@ -188,10 +188,7 @@ mod perf_counter {
         }
     }
     impl From<PerformanceCounterInstant> for super::Instant {
-        /// Use `PerformanceCounterInstant` to get instant in nano sec, then make a `Duration` from nanos.
-        ///
-        /// ## Cost
-        /// This calls a function that makes an atomic oparation
+        /// Get `PerformanceCounterInstant`s instant.
         fn from(other: PerformanceCounterInstant) -> Self {
             let freq = frequency() as u64;
             let instant_nsec = mul_div_u64(other.ts as u64, NANOS_PER_SEC, freq);
