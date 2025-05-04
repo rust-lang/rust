@@ -9,7 +9,7 @@
 // codegen unit (except for naked fns) and so the label could be duplicated
 // which causes less readable LLVM errors and in the worst cases causes ICEs
 // or segfaults based on system dependent behavior and codegen flags.
-
+#![allow(improper_c_fn_definitions)]  // unchecked-value references
 use std::arch::{asm, global_asm, naked_asm};
 
 #[no_mangle]

@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(improper_c_fn_definitions)]  // unchecked-value references
+
 use std::fmt::Debug;
 use std::hint::black_box;
 

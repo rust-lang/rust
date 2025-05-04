@@ -53,8 +53,7 @@ pub static EMPTY_PANIC: fn(&'static str) -> ! =
 //
 // One day this may look a little less ad-hoc with the compiler helping out to
 // hook up these functions, but it is not this day!
-#[allow(improper_ctypes)]
-unsafe extern "C" {
+unsafe extern "Rust" {
     #[rustc_std_internal_symbol]
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 }

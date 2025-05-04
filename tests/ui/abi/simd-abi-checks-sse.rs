@@ -7,7 +7,7 @@
 //@ needs-llvm-components: x86
 #![feature(no_core, repr_simd)]
 #![no_core]
-#![allow(improper_ctypes_definitions)]
+#![allow(improper_c_fn_definitions)]
 
 extern crate minicore;
 use minicore::*;

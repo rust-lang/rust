@@ -447,6 +447,20 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "improper_c_callbacks",
+        description: r##"proper use of libc types in foreign-code-compatible callbacks"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "improper_c_fn_definitions",
+        description: r##"proper use of libc types in foreign item definitions"##,
+        default_severity: Severity::Warning,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "improper_ctypes",
         description: r##"proper use of libc types in foreign modules"##,
         default_severity: Severity::Warning,
@@ -454,8 +468,8 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
-        label: "improper_ctypes_definitions",
-        description: r##"proper use of libc types in foreign item definitions"##,
+        label: "improper_ctype_definitions",
+        description: r##"proper use of libc types when defining foreign-code-compatible structs"##,
         default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,

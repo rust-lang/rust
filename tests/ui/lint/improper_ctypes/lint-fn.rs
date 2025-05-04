@@ -1,5 +1,6 @@
 #![allow(private_interfaces)]
-#![deny(improper_ctypes_definitions)]
+#![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+#![deny(improper_c_callbacks)]
 
 use std::default::Default;
 use std::marker::PhantomData;
@@ -22,11 +23,11 @@ pub struct StructWithProjectionAndLifetime<'a>(
 pub type I32Pair = (i32, i32);
 
 #[repr(C)]
-pub struct ZeroSize;
+pub struct ZeroSize;  //~ ERROR uses type `ZeroSize`
 
 pub type RustFn = fn();
 
-pub type RustBadRet = extern "C" fn() -> Box<u32>;
+pub type RustBadRet = extern "C" fn() -> (u32,u64); //~ ERROR uses type `(u32, u64)`
 
 pub type CVoidRet = ();
 
@@ -115,11 +116,13 @@ pub extern "C" fn fn_type2(p: fn()) { }
 //~^ ERROR uses type `fn()`
 
 pub extern "C" fn fn_contained(p: RustBadRet) { }
+// ^ FIXME it doesn't see the error... but at least it reports it elsewhere?
 
 pub extern "C" fn transparent_str(p: TransparentStr) { }
-//~^ ERROR: uses type `&str`
+//~^ ERROR: uses type `TransparentStr`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
+// ^ FIXME it doesn't see the error... but at least it reports it elsewhere?
 
 pub extern "C" fn good3(fptr: Option<extern "C" fn()>) { }
 
@@ -129,7 +132,7 @@ pub extern "C" fn argument_with_assumptions_4(aptr: &[u8; 4 as usize]) { }
 pub extern "C" fn good5(s: StructWithProjection) { }
 
 pub extern "C" fn argument_with_assumptions_6(s: StructWithProjectionAndLifetime) { }
-//~^ ERROR: uses type `&mut StructWithProjectionAndLifetime<'_>`
+//~^ ERROR: uses type `StructWithProjectionAndLifetime<'_>`
 // note: the type translation might be a little eager for
 // `<StructWithProjectionAndLifetime as Mirror>::It`
 
@@ -148,7 +151,7 @@ pub extern "C" fn good12(size: usize) { }
 pub extern "C" fn good13(n: TransparentInt) { }
 
 pub extern "C" fn argument_with_assumptions_14(p: TransparentRef) { }
-//~^ ERROR: uses type `&TransparentInt`
+//~^ ERROR: uses type `TransparentRef<'_>`
 
 pub extern "C" fn good15(p: TransparentLifetime) { }
 
@@ -156,7 +159,7 @@ pub extern "C" fn good16(p: TransparentUnit<ZeroSize>) { }
 
 pub extern "C" fn good17(p: TransparentCustomZst) { }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C" fn good18(_: &String) { }
 
 pub extern "C" fn good_i128_type(p: i128) { }
