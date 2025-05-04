@@ -301,6 +301,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             None
         }
         ("x86", "movrs") if get_version().0 < 20 => None,
+        ("x86", "avx10.1") => Some(LLVMFeature::new("avx10.1-512")),
+        ("x86", "avx10.2") if get_version().0 < 20 => None,
+        ("x86", "avx10.2") if get_version().0 >= 20 => Some(LLVMFeature::new("avx10.2-512")),
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }

@@ -531,6 +531,7 @@ symbols! {
         autodiff,
         automatically_derived,
         avx,
+        avx10_target_feature,
         avx512_target_feature,
         avx512bw,
         avx512f,
