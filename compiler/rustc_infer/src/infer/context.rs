@@ -213,4 +213,43 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {
         self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy_with_span(span));
     }
+
+    fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.inner.borrow_mut().opaque_types().iter_lookup_table().map(|(k, h)| (k, h.ty)).collect()
+    }
+    fn clone_duplicate_opaque_types(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .iter_duplicate_entries()
+            .map(|(k, h)| (k, h.ty))
+            .collect()
+    }
+
+    fn register_hidden_type_in_storage(
+        &self,
+        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) -> Option<Ty<'tcx>> {
+        self.register_hidden_type_in_storage(
+            opaque_type_key,
+            ty::OpaqueHiddenType { span, ty: hidden_ty },
+        )
+    }
+    fn add_duplicate_opaque_type(
+        &self,
+        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .add_duplicate(opaque_type_key, ty::OpaqueHiddenType { span, ty: hidden_ty })
+    }
+
+    fn reset_opaque_types(&self) {
+        let _ = self.take_opaque_types();
+    }
 }
