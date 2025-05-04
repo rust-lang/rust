@@ -3567,7 +3567,14 @@ impl Target {
             "x86" => (Architecture::I386, None),
             "s390x" => (Architecture::S390x, None),
             "mips" | "mips32r6" => (Architecture::Mips, None),
-            "mips64" | "mips64r6" => (Architecture::Mips64, None),
+            "mips64" | "mips64r6" => (
+                if self.options.llvm_abiname.as_ref() == "n32" {
+                    Architecture::Mips64_N32
+                } else {
+                    Architecture::Mips64
+                },
+                None,
+            ),
             "x86_64" => (
                 if self.pointer_width == 32 {
                     Architecture::X86_64_X32
