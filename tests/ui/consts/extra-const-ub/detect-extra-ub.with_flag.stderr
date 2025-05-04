@@ -44,7 +44,7 @@ LL |     let v = *addr_of!(data).cast::<UninhDiscriminant>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:83:16
+  --> $DIR/detect-extra-ub.rs:84:16
    |
 LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a partial pointer or a mix of pointers
@@ -53,7 +53,7 @@ LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:98:16
+  --> $DIR/detect-extra-ub.rs:99:16
    |
 LL |     let _val = &*slice;
    |                ^^^^^^^ constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object

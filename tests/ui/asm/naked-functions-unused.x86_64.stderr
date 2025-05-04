@@ -1,5 +1,5 @@
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:16:32
+  --> $DIR/naked-functions-unused.rs:17:32
    |
 LL |     pub extern "C" fn function(a: usize, b: usize) -> usize {
    |                                ^ help: if this is intentional, prefix it with an underscore: `_a`
@@ -12,58 +12,109 @@ LL | #![deny(unused)]
    = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:16:42
+  --> $DIR/naked-functions-unused.rs:17:42
    |
 LL |     pub extern "C" fn function(a: usize, b: usize) -> usize {
    |                                          ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:27:38
+  --> $DIR/naked-functions-unused.rs:28:38
    |
 LL |         pub extern "C" fn associated(a: usize, b: usize) -> usize {
    |                                      ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:27:48
+  --> $DIR/naked-functions-unused.rs:28:48
    |
 LL |         pub extern "C" fn associated(a: usize, b: usize) -> usize {
    |                                                ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:35:41
+  --> $DIR/naked-functions-unused.rs:36:41
    |
 LL |         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
    |                                         ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:35:51
+  --> $DIR/naked-functions-unused.rs:36:51
    |
 LL |         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
    |                                                   ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:45:40
+  --> $DIR/naked-functions-unused.rs:47:40
    |
 LL |         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
    |                                        ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:45:50
+  --> $DIR/naked-functions-unused.rs:47:50
    |
 LL |         extern "C" fn trait_associated(a: usize, b: usize) -> usize {
    |                                                  ^ help: if this is intentional, prefix it with an underscore: `_b`
 
 error: unused variable: `a`
-  --> $DIR/naked-functions-unused.rs:53:43
+  --> $DIR/naked-functions-unused.rs:55:43
    |
 LL |         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
    |                                           ^ help: if this is intentional, prefix it with an underscore: `_a`
 
 error: unused variable: `b`
-  --> $DIR/naked-functions-unused.rs:53:53
+  --> $DIR/naked-functions-unused.rs:55:53
    |
 LL |         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
    |                                                     ^ help: if this is intentional, prefix it with an underscore: `_b`
 
-error: aborting due to 10 previous errors
+warning: `extern` fn uses type `&Self`, which is not FFI-safe
+  --> $DIR/naked-functions-unused.rs:10:32
+   |
+LL |     extern "C" fn trait_method(&self, a: usize, b: usize) -> usize;
+   |                                ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `&Self` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+   = note: `#[warn(improper_c_fn_definitions)]` on by default
+
+warning: `extern` fn uses type `&normal::Normal`, which is not FFI-safe
+  --> $DIR/naked-functions-unused.rs:36:34
+   |
+LL |         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
+   |                                  ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `&normal::Normal` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+
+warning: `extern` fn uses type `&normal::Normal`, which is not FFI-safe
+  --> $DIR/naked-functions-unused.rs:55:36
+   |
+LL |         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
+   |                                    ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `&normal::Normal` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+
+warning: `extern` fn uses type `&Naked`, which is not FFI-safe
+  --> $DIR/naked-functions-unused.rs:83:34
+   |
+LL |         pub extern "C" fn method(&self, a: usize, b: usize) -> usize {
+   |                                  ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `&Naked` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+
+warning: `extern` fn uses type `&Naked`, which is not FFI-safe
+  --> $DIR/naked-functions-unused.rs:96:36
+   |
+LL |         extern "C" fn trait_method(&self, a: usize, b: usize) -> usize {
+   |                                    ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `&Naked` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+
+error: aborting due to 10 previous errors; 5 warnings emitted
 

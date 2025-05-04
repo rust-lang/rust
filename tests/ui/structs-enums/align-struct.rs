@@ -33,6 +33,7 @@ enum Enum {
 }
 
 // Nested alignment - use `#[repr(C)]` to suppress field reordering for sizeof test
+#[allow(improper_ctype_definitions)]
 #[repr(C)]
 struct Nested {
     a: i32,

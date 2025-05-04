@@ -1,5 +1,5 @@
 warning: the feature `inherent_associated_types` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/lint-tykind-fuzz.rs:10:12
+  --> $DIR/lint-tykind-fuzz.rs:11:12
    |
 LL | #![feature(inherent_associated_types)]
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,22 +7,65 @@ LL | #![feature(inherent_associated_types)]
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
+error: `extern` fn uses type `&SomeStruct`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:35:7
+   |
+LL |       &self
+   |       ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `&SomeStruct` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+note: the lint level is defined here
+  --> $DIR/lint-tykind-fuzz.rs:5:26
+   |
+LL | #![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `extern` fn uses type `Box<Self>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:91:14
+   |
+LL |        self: Box<Self>,
+   |              ^^^^^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `Box<Self>` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+
+error: `extern` fn uses type `&Self`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:98:8
+   |
+LL |        &self
+   |        ^^^^^ not FFI-safe
+   |
+   = help: consider using a raw pointer, or wrapping `&Self` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+
+error: `repr(C)` type uses type `dyn Debug`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:108:1
+   |
+LL | pub struct StructWithDyn(dyn std::fmt::Debug);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: trait objects have no C equivalent
+note: the lint level is defined here
+  --> $DIR/lint-tykind-fuzz.rs:5:53
+   |
+LL | #![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: `extern` fn uses type `String`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:119:5
+  --> $DIR/lint-tykind-fuzz.rs:121:5
    |
 LL |   s:String,
    |     ^^^^^^ not FFI-safe
    |
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
-note: the lint level is defined here
-  --> $DIR/lint-tykind-fuzz.rs:5:25
-   |
-LL | #![deny(improper_ctypes,improper_ctypes_definitions)]
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `String`
+   = note: `String` has unspecified layout
 
 error: `extern` fn uses type `&str`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:121:6
+  --> $DIR/lint-tykind-fuzz.rs:123:6
    |
 LL |   s2:&str,
    |      ^^^^ not FFI-safe
@@ -31,7 +74,7 @@ LL |   s2:&str,
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `char`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:123:6
+  --> $DIR/lint-tykind-fuzz.rs:125:6
    |
 LL |   c: char,
    |      ^^^^ not FFI-safe
@@ -40,7 +83,7 @@ LL |   c: char,
    = note: the `char` type has no C equivalent
 
 error: `extern` fn uses type `&[u8]`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:125:6
+  --> $DIR/lint-tykind-fuzz.rs:127:6
    |
 LL |   s3:&[u8],
    |      ^^^^^ not FFI-safe
@@ -49,7 +92,7 @@ LL |   s3:&[u8],
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `[u8; N]`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:127:6
+  --> $DIR/lint-tykind-fuzz.rs:129:6
    |
 LL |   s4:[u8;N],
    |      ^^^^^^ not FFI-safe
@@ -58,7 +101,7 @@ LL |   s4:[u8;N],
    = note: passing raw arrays by value is not FFI-safe
 
 error: `extern` fn uses type `(u8, u8)`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:129:5
+  --> $DIR/lint-tykind-fuzz.rs:131:5
    |
 LL |   p:(u8, u8),
    |     ^^^^^^^^ not FFI-safe
@@ -67,7 +110,7 @@ LL |   p:(u8, u8),
    = note: tuples have unspecified layout
 
 error: `extern` fn uses type `(u8, u8)`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:131:12
+  --> $DIR/lint-tykind-fuzz.rs:133:12
    |
 LL |   (p2, p3):(u8, u8),
    |            ^^^^^^^^ not FFI-safe
@@ -75,8 +118,8 @@ LL |   (p2, p3):(u8, u8),
    = help: consider using a struct instead
    = note: tuples have unspecified layout
 
-error: `extern` fn uses type `(u32) is 1..=`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:133:7
+error: `extern` fn uses type `(u32) is 1..`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:135:7
    |
 LL |   nz: pattern_type!(u32 is 1..),
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -85,7 +128,7 @@ LL |   nz: pattern_type!(u32 is 1..),
    = note: integers constrained to a given range cannot have their value be provided by non-rust code
 
 error: `extern` fn uses type `&StructWithDyn`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:147:7
+  --> $DIR/lint-tykind-fuzz.rs:149:7
    |
 LL |   e3: &StructWithDyn,
    |       ^^^^^^^^^^^^^^ not FFI-safe
@@ -93,7 +136,7 @@ LL |   e3: &StructWithDyn,
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `fn(u8) -> u8`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:152:7
+  --> $DIR/lint-tykind-fuzz.rs:154:7
    |
 LL |   f2: fn(u8)->u8,
    |       ^^^^^^^^^^ not FFI-safe
@@ -102,7 +145,7 @@ LL |   f2: fn(u8)->u8,
    = note: this function pointer has Rust-specific calling convention
 
 error: `extern` fn uses type `&dyn Fn(u8) -> u8`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:154:7
+  --> $DIR/lint-tykind-fuzz.rs:156:7
    |
 LL |   f3: &'a dyn Fn(u8)->u8,
    |       ^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -110,7 +153,7 @@ LL |   f3: &'a dyn Fn(u8)->u8,
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `&dyn PartialOrd<u8>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:156:7
+  --> $DIR/lint-tykind-fuzz.rs:158:7
    |
 LL |   d2: &dyn std::cmp::PartialOrd<u8>,
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -118,7 +161,7 @@ LL |   d2: &dyn std::cmp::PartialOrd<u8>,
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `impl Debug`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:160:6
+  --> $DIR/lint-tykind-fuzz.rs:162:6
    |
 LL | ) -> impl std::fmt::Debug {
    |      ^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -126,7 +169,7 @@ LL | ) -> impl std::fmt::Debug {
    = note: opaque types have no C equivalent
 
 error: `extern` fn uses type `*const str`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:170:7
+  --> $DIR/lint-tykind-fuzz.rs:172:7
    |
 LL |   s2: *const str,
    |       ^^^^^^^^^^ not FFI-safe
@@ -135,7 +178,7 @@ LL |   s2: *const str,
    = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `*const [u8]`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:174:7
+  --> $DIR/lint-tykind-fuzz.rs:176:7
    |
 LL |   s3: *const [u8],
    |       ^^^^^^^^^^^ not FFI-safe
@@ -144,7 +187,7 @@ LL |   s3: *const [u8],
    = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `(*const u8, *const u8)`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:180:12
+  --> $DIR/lint-tykind-fuzz.rs:182:12
    |
 LL |   (p2, p3):(*const u8, *const u8),
    |            ^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -153,17 +196,17 @@ LL |   (p2, p3):(*const u8, *const u8),
    = note: tuples have unspecified layout
 
 error: `extern` fn uses type `&SomeStruct`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:184:29
+  --> $DIR/lint-tykind-fuzz.rs:186:29
    |
 LL |   SomeStruct{b: ref p4,..}: & SomeStruct,
    |                             ^^^^^^^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer, or wrapping `&SomeStruct` in an `Option<_>`
-   = note: boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `*const StructWithDyn`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:196:7
+  --> $DIR/lint-tykind-fuzz.rs:198:7
    |
 LL |   e3: *const StructWithDyn,
    |       ^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -171,7 +214,7 @@ LL |   e3: *const StructWithDyn,
    = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `*const dyn Fn(u8) -> u8`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:203:7
+  --> $DIR/lint-tykind-fuzz.rs:205:7
    |
 LL |   f3: *const dyn Fn(u8)->u8,
    |       ^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -179,7 +222,7 @@ LL |   f3: *const dyn Fn(u8)->u8,
    = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `*const dyn PartialOrd<u8>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:205:7
+  --> $DIR/lint-tykind-fuzz.rs:207:7
    |
 LL |   d2: *const dyn std::cmp::PartialOrd<u8>,
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -187,49 +230,29 @@ LL |   d2: *const dyn std::cmp::PartialOrd<u8>,
    = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `*const dyn Debug`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:209:6
+  --> $DIR/lint-tykind-fuzz.rs:211:6
    |
 LL | ) -> *const dyn std::fmt::Debug {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this pointer to an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `String`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:218:6
-   |
-LL |   s: &String,
-   |      ^^^^^^^ not FFI-safe
-   |
-   = note: this reference (`&String`) is ABI-compatible with a C pointer, but `String` itself does not have a C layout
-   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
-   = note: this struct has unspecified layout
-note: the lint level is defined here
-  --> $DIR/lint-tykind-fuzz.rs:5:9
-   |
-LL | #![deny(improper_ctypes,improper_ctypes_definitions)]
-   |         ^^^^^^^^^^^^^^^
-
 error: `extern` block uses type `&str`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:220:7
+  --> $DIR/lint-tykind-fuzz.rs:222:7
    |
 LL |   s2: &str,
    |       ^^^^ not FFI-safe
    |
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
-
-error: `extern` block uses type `char`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:222:6
+note: the lint level is defined here
+  --> $DIR/lint-tykind-fuzz.rs:5:9
    |
-LL |   c: &char,
-   |      ^^^^^ not FFI-safe
-   |
-   = note: this reference (`&char`) is ABI-compatible with a C pointer, but `char` itself does not have a C layout
-   = help: consider using `u32` or `libc::wchar_t` instead
-   = note: the `char` type has no C equivalent
+LL | #![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+   |         ^^^^^^^^^^^^^^^
 
 error: `extern` block uses type `&[u8]`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:224:7
+  --> $DIR/lint-tykind-fuzz.rs:226:7
    |
 LL |   s3: &[u8],
    |       ^^^^^ not FFI-safe
@@ -237,36 +260,16 @@ LL |   s3: &[u8],
    = help: consider using a raw pointer to the slice's first element (and a length) instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `(u8, u8)`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:228:6
-   |
-LL |   p: &(u8, u8),
-   |      ^^^^^^^^^ not FFI-safe
-   |
-   = note: this reference (`&(u8, u8)`) is ABI-compatible with a C pointer, but `(u8, u8)` itself does not have a C layout
-   = help: consider using a struct instead
-   = note: tuples have unspecified layout
-
 error: `extern` block uses type `&StructWithDyn`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:246:7
+  --> $DIR/lint-tykind-fuzz.rs:248:7
    |
 LL |   e3: &StructWithDyn,
    |       ^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: `extern` block uses type `fn(u8) -> u8`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:251:7
-   |
-LL |   f2: &fn(u8)->u8,
-   |       ^^^^^^^^^^^ not FFI-safe
-   |
-   = note: this reference (`&fn(u8) -> u8`) is ABI-compatible with a C pointer, but `fn(u8) -> u8` itself does not have a C layout
-   = help: consider using an `extern fn(...) -> ...` function pointer instead
-   = note: this function pointer has Rust-specific calling convention
-
 error: `extern` block uses type `&dyn Fn(u8) -> u8`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:253:7
+  --> $DIR/lint-tykind-fuzz.rs:255:7
    |
 LL |   f3: &dyn Fn(u8)->u8,
    |       ^^^^^^^^^^^^^^^ not FFI-safe
@@ -274,7 +277,7 @@ LL |   f3: &dyn Fn(u8)->u8,
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `&dyn PartialOrd<u8>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:255:7
+  --> $DIR/lint-tykind-fuzz.rs:257:7
    |
 LL |   d2: &dyn std::cmp::PartialOrd<u8>,
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -282,7 +285,7 @@ LL |   d2: &dyn std::cmp::PartialOrd<u8>,
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` block uses type `&dyn Debug`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:259:6
+  --> $DIR/lint-tykind-fuzz.rs:261:6
    |
 LL | ) -> &'a dyn std::fmt::Debug;
    |      ^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -290,7 +293,7 @@ LL | ) -> &'a dyn std::fmt::Debug;
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<str>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:268:7
+  --> $DIR/lint-tykind-fuzz.rs:270:7
    |
 LL |   s2: Box<str>,
    |       ^^^^^^^^ not FFI-safe
@@ -299,17 +302,17 @@ LL |   s2: Box<str>,
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<char>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:270:6
+  --> $DIR/lint-tykind-fuzz.rs:272:6
    |
 LL |   c: Box<char>,
    |      ^^^^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer, or wrapping `Box<char>` in an `Option<_>`
-   = note: boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `Box<[u8]>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:272:7
+  --> $DIR/lint-tykind-fuzz.rs:274:7
    |
 LL |   s3: Box<[u8]>,
    |       ^^^^^^^^^ not FFI-safe
@@ -318,7 +321,7 @@ LL |   s3: Box<[u8]>,
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `(Box<u8>, Box<u8>)`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:278:11
+  --> $DIR/lint-tykind-fuzz.rs:280:11
    |
 LL |   (p2,p3):(Box<u8>, Box<u8>),
    |           ^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -327,17 +330,17 @@ LL |   (p2,p3):(Box<u8>, Box<u8>),
    = note: tuples have unspecified layout
 
 error: `extern` fn uses type `&SomeStruct`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:282:29
+  --> $DIR/lint-tykind-fuzz.rs:284:29
    |
 LL |   SomeStruct{b: ref p4,..}: &SomeStruct,
    |                             ^^^^^^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer, or wrapping `&SomeStruct` in an `Option<_>`
-   = note: boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `Box<StructWithDyn>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:294:7
+  --> $DIR/lint-tykind-fuzz.rs:296:7
    |
 LL |   e3: Box<StructWithDyn>,
    |       ^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -345,27 +348,27 @@ LL |   e3: Box<StructWithDyn>,
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<!>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:297:6
+  --> $DIR/lint-tykind-fuzz.rs:299:6
    |
 LL |   x: Box<!>,
    |      ^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer, or wrapping `Box<!>` in an `Option<_>`
-   = note: boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `Box<fn(u8) -> u8>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:300:7
+  --> $DIR/lint-tykind-fuzz.rs:302:7
    |
 LL |   f2: Box<fn(u8)->u8>,
    |       ^^^^^^^^^^^^^^^ not FFI-safe
    |
    = help: consider using a raw pointer, or wrapping `Box<fn(u8) -> u8>` in an `Option<_>`
-   = note: boxes and references are assumed to be valid (non-null, non-dangling, aligned) pointers,
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `Box<dyn Fn(u8) -> u8>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:302:7
+  --> $DIR/lint-tykind-fuzz.rs:304:7
    |
 LL |   f3: Box<dyn Fn(u8)->u8>,
    |       ^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -373,7 +376,7 @@ LL |   f3: Box<dyn Fn(u8)->u8>,
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<dyn PartialOrd<u8>>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:304:7
+  --> $DIR/lint-tykind-fuzz.rs:306:7
    |
 LL |   d2: Box<dyn std::cmp::PartialOrd<u8>>,
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -381,12 +384,108 @@ LL |   d2: Box<dyn std::cmp::PartialOrd<u8>>,
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
 error: `extern` fn uses type `Box<dyn Debug>`, which is not FFI-safe
-  --> $DIR/lint-tykind-fuzz.rs:308:6
+  --> $DIR/lint-tykind-fuzz.rs:310:6
    |
 LL | ) -> Box<dyn std::fmt::Debug> {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
    = note: this box for an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: aborting due to 42 previous errors; 1 warning emitted
+error: `repr(C)` type uses type `String`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `String`
+   = note: `String` has unspecified layout
+
+error: `repr(C)` type uses type `&str`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = help: consider using `*const u8` and a length instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `repr(C)` type uses type `char`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = help: consider using `u32` or `libc::wchar_t` instead
+   = note: the `char` type has no C equivalent
+
+error: `repr(C)` type uses type `&[u8]`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = help: consider using a raw pointer to the slice's first element (and a length) instead
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `repr(C)` type uses type `(u8, u8)`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = help: consider using a struct instead
+   = note: tuples have unspecified layout
+
+error: `repr(C)` type uses type `&StructWithDyn`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `repr(C)` type uses type `fn(u8) -> u8`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = help: consider using an `extern fn(...) -> ...` function pointer instead
+   = note: this function pointer has Rust-specific calling convention
+
+error: `repr(C)` type uses type `&dyn Fn(u8) -> u8`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: `repr(C)` type uses type `&dyn PartialOrd<u8>`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:317:1
+   |
+LL | / struct AllTyKinds<'a,const N:usize,T>{
+...  |
+LL | | }
+   | |_^ not FFI-safe
+   |
+   = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
+
+error: aborting due to 51 previous errors; 1 warning emitted
 
