@@ -1,0 +1,14 @@
+error: cannot find attribute `safe` in this scope
+  --> $DIR/safe-proc-macro-attribute.rs:18:3
+   |
+LL | #[safe(no_mangle)]
+   |   ^^^^
+
+error: cannot find attribute `safe` in this scope
+  --> $DIR/safe-proc-macro-attribute.rs:14:3
+   |
+LL | #[safe]
+   |   ^^^^
+
+error: aborting due to 2 previous errors
+
