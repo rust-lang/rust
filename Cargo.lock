@@ -4,11 +4,11 @@ version = 4
 
 [[package]]
 name = "addr2line"
-version = "0.24.2"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfbe277e56a376000877090da837660b4427aad530e3028d44e0bffe4f89a1c1"
+checksum = "8a30b2e23b9e17a9f90641c7ab1549cd9b44f296d3ccbf309d2863cfe398a0cb"
 dependencies = [
- "gimli",
+ "gimli 0.28.1",
 ]
 
 [[package]]
@@ -168,7 +168,7 @@ version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01667f6f40216b9a0b2945e05fed5f1ad0ab6470e69cb9378001e37b1c0668e4"
 dependencies = [
- "object",
+ "object 0.36.7",
 ]
 
 [[package]]
@@ -233,17 +233,17 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
 name = "backtrace"
-version = "0.3.74"
+version = "0.3.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d82cb332cdfaed17ae235a638438ac4d4839913cc2af585c3c6746e8f8bee1a"
+checksum = "26b05800d2e817c8b3b4b54abd461726265fa9789ae34330622f2db9ee696f9d"
 dependencies = [
  "addr2line",
+ "cc",
  "cfg-if",
  "libc",
- "miniz_oxide 0.8.8",
- "object",
+ "miniz_oxide 0.7.4",
+ "object 0.32.2",
  "rustc-demangle",
- "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -1454,6 +1454,12 @@ dependencies = [
 
 [[package]]
 name = "gimli"
+version = "0.28.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
+
+[[package]]
+name = "gimli"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
@@ -2062,7 +2068,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -2474,6 +2480,15 @@ checksum = "71c1c64d6120e51cd86033f67176b1cb66780c2efe34dec55176f77befd93c0a"
 dependencies = [
  "libc",
  "objc2-core-foundation",
+]
+
+[[package]]
+name = "object"
+version = "0.32.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6a622008b6e321afc04970976f62ee297fdbaa6f95318ca343e3eebb9648441"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -3089,9 +3104,9 @@ version = "0.2.0"
 dependencies = [
  "bstr",
  "build_helper",
- "gimli",
+ "gimli 0.31.1",
  "libc",
- "object",
+ "object 0.36.7",
  "regex",
  "serde_json",
  "similar",
@@ -3398,11 +3413,11 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "gimli",
+ "gimli 0.31.1",
  "itertools",
  "libc",
  "measureme",
- "object",
+ "object 0.36.7",
  "rustc-demangle",
  "rustc_abi",
  "rustc_ast",
@@ -3443,7 +3458,7 @@ dependencies = [
  "either",
  "itertools",
  "libc",
- "object",
+ "object 0.36.7",
  "pathdiff",
  "regex",
  "rustc_abi",
@@ -4459,7 +4474,7 @@ name = "rustc_target"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "object",
+ "object 0.36.7",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_fs_util",
@@ -5225,9 +5240,9 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e9c1e705f82a260173f3eec93f2ff6d7807f23ad5a8cc2e7316a891733ea7a1"
 dependencies = [
- "gimli",
+ "gimli 0.31.1",
  "hashbrown",
- "object",
+ "object 0.36.7",
  "tracing",
 ]
 
