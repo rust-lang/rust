@@ -21,5 +21,5 @@ pub extern "C-cmse-nonsecure-entry" fn f3(_: u32, _: u64, _: u32) {} //~ ERROR [
 pub extern "C-cmse-nonsecure-entry" fn f4(_: AlignRelevant, _: u32) {} //~ ERROR [E0798]
 
 #[no_mangle]
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C-cmse-nonsecure-entry" fn f5(_: [u32; 5]) {} //~ ERROR [E0798]

@@ -1,10 +1,10 @@
 //@ run-pass
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C" fn tuple2() -> (u16, u8) {
     (1, 2)
 }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 pub extern "C" fn tuple3() -> (u8, u8, u8) {
     (1, 2, 3)
 }

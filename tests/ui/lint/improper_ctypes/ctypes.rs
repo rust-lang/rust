@@ -4,7 +4,8 @@
 #![feature(pattern_type_macro)]
 
 #![allow(private_interfaces)]
-#![deny(improper_ctypes)]
+#![deny(improper_ctypes, improper_c_callbacks)]
+#![deny(improper_c_fn_definitions, improper_ctype_definitions)]
 
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
@@ -24,14 +25,14 @@ pub struct StructWithProjectionAndLifetime<'a>(
 );
 pub type I32Pair = (i32, i32);
 #[repr(C)]
-pub struct ZeroSize;
+pub struct ZeroSize;  //~ ERROR: `repr(C)` type uses type `ZeroSize`
 pub type RustFn = fn();
 pub type RustBoxRet = extern "C" fn() -> Box<u32>;
 pub type CVoidRet = ();
 pub struct Foo;
 #[repr(transparent)]
 pub struct TransparentI128(i128);
-#[repr(transparent)]
+#[repr(transparent)] // reminder: repr(transparent) struct defs are not scanned
 pub struct TransparentStr(&'static str);
 #[repr(transparent)]
 pub struct TransparentBoxFn(RustBoxRet);
@@ -52,12 +53,15 @@ pub struct UnsizedStructBecauseForeign {
 }
 #[repr(C)]
 pub struct UnsizedStructBecauseDyn {
+    //~^ ERROR: `repr(C)` type uses type `dyn Debug`
     sized: u32,
     unszd: dyn Debug,
 }
 
 #[repr(C)]
 pub struct TwoBadTypes<'a> {
+    //~^ ERROR: `repr(C)` type uses type `char`
+    //~| ERROR: `repr(C)` type uses type `&[u8]`
     non_c_type: char,
     ref_with_mdata: &'a [u8],
 }
@@ -66,10 +70,10 @@ pub struct TwoBadTypes<'a> {
 pub struct ZeroSizeWithPhantomData(::std::marker::PhantomData<i32>);
 
 extern "C" {
-    pub fn ptr_type1(size: *const Foo); //~ ERROR: uses type `Foo`
-    pub fn ptr_type2(size: *const Foo); //~ ERROR: uses type `Foo`
+    pub fn ptr_type1(size: *const Foo);
+    pub fn ptr_type2(size: *const Foo);
     pub fn ptr_unit(p: *const ());
-    pub fn ptr_tuple(p: *const ((),)); //~ ERROR: uses type `((),)`
+    pub fn ptr_tuple(p: *const ((),));
     pub fn slice_type(p: &[u32]); //~ ERROR: uses type `&[u32]`
     pub fn str_type(p: &str); //~ ERROR: uses type `&str`
     pub fn box_type(p: Box<u32>);
@@ -77,7 +81,7 @@ extern "C" {
     pub fn char_type(p: char); //~ ERROR uses type `char`
     pub fn i128_type(p: i128); //~ ERROR uses type `i128`
     pub fn u128_type(p: u128); //~ ERROR uses type `u128`
-    pub fn pat_type1() -> pattern_type!(u32 is 1..); //~ ERROR uses type `(u32) is 1..=`
+    pub fn pat_type1() -> pattern_type!(u32 is 1..); //~ ERROR uses type `(u32) is 1..`
     pub fn pat_type2(p: pattern_type!(u32 is 1..)); // no error!
     pub fn trait_type(p: &dyn Bar); //~ ERROR uses type `&dyn Bar`
     pub fn tuple_type(p: (i32, i32)); //~ ERROR uses type `(i32, i32)`
@@ -90,17 +94,16 @@ extern "C" {
     pub fn fn_type(p: RustFn); //~ ERROR uses type `fn()`
     pub fn fn_type2(p: fn()); //~ ERROR uses type `fn()`
     pub fn fn_contained(p: RustBoxRet);
-    pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `i128`
-    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `&str`
+    pub fn transparent_i128(p: TransparentI128); //~ ERROR: uses type `TransparentI128`
+    pub fn transparent_str(p: TransparentStr); //~ ERROR: uses type `TransparentStr`
     pub fn transparent_fn(p: TransparentBoxFn);
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
     pub fn multi_errors_per_arg(
-        f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: Box<TwoBadTypes<'a>>)
+        f: for<'a> extern "C" fn(a:char, b:&dyn Debug, c: TwoBadTypes<'a>)
     );
     //~^^ ERROR: uses type `char`
-    //~^^^ ERROR: uses type `&dyn Debug`
-    // (possible FIXME: the in-struct `char` field doesn't get a warning due ^^)
-    //~^^^^^ ERROR: uses type `&[u8]`
+    //~| ERROR: uses type `&dyn Debug`
+    //~| ERROR: uses type `TwoBadTypes<'_>`
 
     pub fn struct_unsized_ptr_no_metadata(p: &UnsizedStructBecauseForeign);
     pub fn struct_unsized_ptr_has_metadata(p: &UnsizedStructBecauseDyn); //~ ERROR uses type `&UnsizedStructBecauseDyn`

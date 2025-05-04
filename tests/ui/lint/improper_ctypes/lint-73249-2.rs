@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-#![deny(improper_ctypes)]
+#![deny(improper_ctypes, improper_ctype_definitions)]
 
 trait Baz {}
 
@@ -24,7 +24,9 @@ struct A<T: Foo> {
 }
 
 extern "C" {
-    fn lint_me() -> A<()>; //~ ERROR: uses type `Qux`
+    // possible FIXME: currenty, the error comes from the non-option'd reference, not the unsafety
+    // of Qux
+    fn lint_me() -> A<()>; //~ ERROR: uses type `A<()>`
 }
 
 fn main() {}

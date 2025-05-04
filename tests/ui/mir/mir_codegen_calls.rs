@@ -74,7 +74,7 @@ fn test8() -> isize {
     Two::two()
 }
 
-#[allow(improper_ctypes_definitions)]
+#[allow(improper_c_fn_definitions)]
 extern "C" fn simple_extern(x: u32, y: (u32, u32)) -> u32 {
     x + y.0 * y.1
 }

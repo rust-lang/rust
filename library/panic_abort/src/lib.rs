@@ -27,7 +27,8 @@ use core::any::Any;
 use core::panic::PanicPayload;
 
 #[rustc_std_internal_symbol]
-#[allow(improper_ctypes_definitions)]
+#[allow(unknown_lints, renamed_and_removed_lints, improper_ctypes_definitions)] // FIXME delete line once improper_c_fn_definitions exists upstream
+#[allow(improper_c_fn_definitions)]
 pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Send + 'static) {
     unreachable!()
 }
