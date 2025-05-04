@@ -1,8 +1,9 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::paths::{self, PathNS, find_crates, lookup_path_str};
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{PathNS, find_crates, fn_def_id, is_no_std_crate, lookup_path_str, path_def_id, paths, sym};
+use clippy_utils::{fn_def_id, is_no_std_crate, path_def_id, sym};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};

@@ -1,4 +1,4 @@
-use clippy_utils::PathNS;
+use clippy_utils::paths::{PathNS, find_crates, lookup_path};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::PrimTy;
@@ -148,7 +148,7 @@ pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     for disallowed_path in disallowed_paths {
         let path = disallowed_path.path();
         let sym_path: Vec<Symbol> = path.split("::").map(Symbol::intern).collect();
-        let mut resolutions = clippy_utils::lookup_path(tcx, ns, &sym_path);
+        let mut resolutions = lookup_path(tcx, ns, &sym_path);
         resolutions.retain(|&def_id| def_kind_predicate(tcx.def_kind(def_id)));
 
         let (prim_ty, found_prim_ty) = if let &[name] = sym_path.as_slice()
@@ -164,10 +164,10 @@ pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
             && !disallowed_path.allow_invalid
             // Don't warn about unloaded crates:
             // https://github.com/rust-lang/rust-clippy/pull/14397#issuecomment-2848328221
-            && (sym_path.len() < 2 || !clippy_utils::find_crates(tcx, sym_path[0]).is_empty())
+            && (sym_path.len() < 2 || !find_crates(tcx, sym_path[0]).is_empty())
         {
             // Relookup the path in an arbitrary namespace to get a good `expected, found` message
-            let found_def_ids = clippy_utils::lookup_path(tcx, PathNS::Arbitrary, &sym_path);
+            let found_def_ids = lookup_path(tcx, PathNS::Arbitrary, &sym_path);
             let message = if let Some(&def_id) = found_def_ids.first() {
                 let (article, description) = tcx.article_and_description(def_id);
                 format!("expected a {predicate_description}, found {article} {description}")

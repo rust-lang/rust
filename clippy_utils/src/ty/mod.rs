@@ -32,7 +32,8 @@ use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
 use std::iter;
 
-use crate::{PathNS, lookup_path_str, path_res};
+use crate::path_res;
+use crate::paths::{PathNS, lookup_path_str};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;

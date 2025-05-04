@@ -1,6 +1,7 @@
 use crate::internal_paths;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{PathNS, lookup_path, path_def_id, peel_ref_operators};
+use clippy_utils::paths::{PathNS, lookup_path};
+use clippy_utils::{path_def_id, peel_ref_operators};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

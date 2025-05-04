@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPath, create_disallowed_map};
-use clippy_utils::PathNS;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::macros::macro_backtrace;
+use clippy_utils::paths::PathNS;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefIdMap;

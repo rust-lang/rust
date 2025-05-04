@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_config::types::{DisallowedPathWithoutReplacement, create_disallowed_map};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{PathNS, paths};
+use clippy_utils::paths::{self, PathNS};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_lint::{LateContext, LateLintPass};

@@ -1,5 +1,5 @@
-use clippy_utils::paths::PathLookup;
-use clippy_utils::{PathNS, sym, type_path, value_path};
+use clippy_utils::paths::{PathLookup, PathNS};
+use clippy_utils::{sym, type_path, value_path};
 
 // Paths inside rustc
 pub static EARLY_LINT_PASS: PathLookup = type_path!(rustc_lint::passes::EarlyLintPass);

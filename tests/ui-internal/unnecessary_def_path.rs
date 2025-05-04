@@ -1,7 +1,7 @@
 #![feature(rustc_private)]
 
-use clippy_utils::paths::PathLookup;
-use clippy_utils::{PathNS, macro_path, sym, type_path, value_path};
+use clippy_utils::paths::{PathLookup, PathNS};
+use clippy_utils::{macro_path, sym, type_path, value_path};
 
 static OPTION: PathLookup = type_path!(core::option::Option);
 //~^ unnecessary_def_path

@@ -11,7 +11,7 @@
 //! As a heuristic, `expr_type_is_certain` may produce false negatives, but a false positive should
 //! be considered a bug.
 
-use crate::{PathNS, lookup_path};
+use crate::paths::{PathNS, lookup_path};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_qpath, walk_ty};
