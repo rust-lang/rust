@@ -1469,6 +1469,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
+                // `opaque_def_id` is unique to the `BoundVarContext` pass which is executed once
+                // per `resolve_bound_vars` query. This is the only location that creates nested
+                // lifetime inside a opaque type. `<opaque_def_id>::LifetimeNs(..)` is thus unique
+                // to this query and duplicates within the query are handled by `self.disambiguator`.
                 let feed = self.tcx.create_def(
                     opaque_def_id,
                     Some(ident.name),
