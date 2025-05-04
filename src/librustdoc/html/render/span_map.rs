@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{ExprKind, HirId, Item, ItemKind, Mod, Node, QPath};
 use rustc_middle::hir::nested_filter;
@@ -201,6 +201,17 @@ impl SpanMapVisitor<'_> {
     }
 }
 
+// This is a reimplementation of `hir_enclosing_body_owner` which allows to fail without
+// panicking.
+fn hir_enclosing_body_owner(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<LocalDefId> {
+    for (_, node) in tcx.hir_parent_iter(hir_id) {
+        if let Some((def_id, _)) = node.associated_body() {
+            return Some(def_id);
+        }
+    }
+    None
+}
+
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     type NestedFilter = nested_filter::All;
 
@@ -221,15 +232,16 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             QPath::TypeRelative(qself, path) => {
                 if matches!(path.res, Res::Err) {
                     let tcx = self.tcx;
-                    let body_id = tcx.hir_enclosing_body_owner(id);
-                    let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
-                    let path = rustc_hir::Path {
-                        // We change the span to not include parens.
-                        span: path.ident.span,
-                        res: typeck_results.qpath_res(qpath, id),
-                        segments: &[],
-                    };
-                    self.handle_path(&path, false);
+                    if let Some(body_id) = hir_enclosing_body_owner(tcx, id) {
+                        let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
+                        let path = rustc_hir::Path {
+                            // We change the span to not include parens.
+                            span: path.ident.span,
+                            res: typeck_results.qpath_res(qpath, id),
+                            segments: &[],
+                        };
+                        self.handle_path(&path, false);
+                    }
                 } else {
                     self.infer_id(path.hir_id, Some(id), path.ident.span);
                 }
