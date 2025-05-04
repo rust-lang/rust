@@ -185,7 +185,7 @@ fn compile_c_arm(
      * does not work as it gets caught up with `#include_next <stdlib.h>`
      * not existing...
      */
-    if target == "aarch64_be-unknown-linux-gnu" {
+    if target.contains("aarch64_be") {
         command = command
             .set_linker(
                 cxx_toolchain_dir.unwrap_or("").to_string() + "/bin/aarch64_be-none-linux-gnu-g++",

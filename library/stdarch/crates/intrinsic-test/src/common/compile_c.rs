@@ -85,7 +85,6 @@ impl CompilationCommandBuilder {
 
     pub fn set_linker(mut self, linker: String) -> Self {
         self.linker = Some(linker);
-        self.output += ".o";
         self
     }
 
@@ -106,12 +105,16 @@ impl CompilationCommandBuilder {
         let flags = std::env::var("CPPFLAGS").unwrap_or("".into());
         let project_root = self.project_root.unwrap_or(String::new());
         let project_root_str = project_root.as_str();
+        let mut output = self.output.clone();
+        if self.linker.is_some() {
+            output += ".o"
+        };
         let mut command = format!(
             "{} {flags} -march={arch_flags} \
             -O{} \
             -o {project_root}/{} \
             {project_root}/{}.cpp",
-            self.compiler, self.optimization, self.output, self.input,
+            self.compiler, self.optimization, output, self.input,
         );
 
         command = command + " " + self.extra_flags.join(" ").as_str();
@@ -133,19 +136,19 @@ impl CompilationCommandBuilder {
                 + include_args.as_str()
                 + " && "
                 + linker
+                + " "
                 + project_root_str
                 + "/"
-                + self.output.as_str()
+                + &output
                 + " -o "
                 + project_root_str
                 + "/"
-                + self.output.strip_suffix(".o").unwrap()
+                + &self.output
                 + " && rm "
                 + project_root_str
                 + "/"
-                + self.output.as_str();
+                + &output;
         }
-
         command
     }
 }

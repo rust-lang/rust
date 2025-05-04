@@ -356,7 +356,7 @@ pub trait IntrinsicTypeDefinition: BaseIntrinsicTypeDefinition {
 #[macro_export]
 macro_rules! base_intrinsictype_trait_def_macro {
     ($T:ident) => {
-        use crate::common::intrinsic_types::IntrinsicType;
+        use crate::common::intrinsic_helpers::IntrinsicType;
 
         #[derive(Debug, Clone, PartialEq)]
         pub struct $T(pub IntrinsicType);
