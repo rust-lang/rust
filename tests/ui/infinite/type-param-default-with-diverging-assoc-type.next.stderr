@@ -1,0 +1,9 @@
+error[E0271]: type mismatch resolving `<u8 as Trait>::Diverges<u8> normalizes-to _`
+  --> $DIR/type-param-default-with-diverging-assoc-type.rs:13:12
+   |
+LL | struct Bar<T: ?Sized = <u8 as Trait>::Diverges<u8>>(Box<T>);
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.

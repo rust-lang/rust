@@ -31,4 +31,5 @@ fn main() {
     //~^ ERROR implementation of `Y` is not general enough
     //~| ERROR implementation of `Y` is not general enough
     //~| ERROR implementation of `Y` is not general enough
+    //~| ERROR implementation of `Y` is not general enough
 }
