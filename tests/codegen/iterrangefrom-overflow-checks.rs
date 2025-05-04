@@ -11,9 +11,8 @@
 //@ compile-flags: -O -Cdebug-assertions=yes
 
 #![crate_type = "lib"]
-
 #![feature(new_range_api)]
-use std::range::{RangeFrom, IterRangeFrom};
+use std::range::{IterRangeFrom, RangeFrom};
 
 // CHECK-LABEL: @iterrangefrom_remainder(
 #[no_mangle]
