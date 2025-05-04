@@ -276,7 +276,7 @@ impl<'a> StripUnconfigured<'a> {
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         validate_attr::check_attribute_safety(
             &self.sess.psess,
-            AttributeSafety::Normal,
+            Some(AttributeSafety::Normal),
             &cfg_attr,
             ast::CRATE_NODE_ID,
         );
