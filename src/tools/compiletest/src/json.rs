@@ -181,8 +181,6 @@ fn push_actual_errors(
         .filter(|(_, span)| Path::new(&span.file_name) == Path::new(&file_name))
         .collect();
 
-    let spans_in_this_file: Vec<_> = spans_info_in_this_file.iter().map(|(_, span)| span).collect();
-
     let primary_spans: Vec<_> = spans_info_in_this_file
         .iter()
         .filter(|(is_primary, _)| *is_primary)
@@ -280,7 +278,9 @@ fn push_actual_errors(
                     line_num: Some(span.line_start + index),
                     kind: ErrorKind::Suggestion,
                     msg: line.to_string(),
-                    require_annotation: true,
+                    // Empty suggestions (suggestions to remove something) are common
+                    // and annotating them in source is not useful.
+                    require_annotation: !line.is_empty(),
                 });
             }
         }
@@ -294,13 +294,16 @@ fn push_actual_errors(
     }
 
     // Add notes for any labels that appear in the message.
-    for span in spans_in_this_file.iter().filter(|span| span.label.is_some()) {
-        errors.push(Error {
-            line_num: Some(span.line_start),
-            kind: ErrorKind::Note,
-            msg: span.label.clone().unwrap(),
-            require_annotation: true,
-        });
+    for (_, span) in spans_info_in_this_file {
+        if let Some(label) = &span.label {
+            errors.push(Error {
+                line_num: Some(span.line_start),
+                kind: ErrorKind::Note,
+                msg: label.clone(),
+                // Empty labels (only underlining spans) are common and do not need annotations.
+                require_annotation: !label.is_empty(),
+            });
+        }
     }
 
     // Flatten out the children.
