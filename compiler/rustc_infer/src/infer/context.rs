@@ -6,7 +6,10 @@ use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use super::{BoundRegionConversionTime, InferCtxt, RegionVariableOrigin, SubregionOrigin};
+use super::{
+    BoundRegionConversionTime, InferCtxt, OpaqueTypeStorageEntries, RegionVariableOrigin,
+    SubregionOrigin,
+};
 
 impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     type Interner = TyCtxt<'tcx>;
@@ -214,6 +217,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy_with_span(span));
     }
 
+    type OpaqueTypeStorageEntries = OpaqueTypeStorageEntries;
+    fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
+        self.inner.borrow_mut().opaque_types().num_entries()
+    }
     fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
         self.inner.borrow_mut().opaque_types().iter_lookup_table().map(|(k, h)| (k, h.ty)).collect()
     }
@@ -222,6 +229,17 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
             .borrow_mut()
             .opaque_types()
             .iter_duplicate_entries()
+            .map(|(k, h)| (k, h.ty))
+            .collect()
+    }
+    fn clone_opaque_types_added_since(
+        &self,
+        prev_entries: OpaqueTypeStorageEntries,
+    ) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.inner
+            .borrow_mut()
+            .opaque_types()
+            .opaque_types_added_since(prev_entries)
             .map(|(k, h)| (k, h.ty))
             .collect()
     }

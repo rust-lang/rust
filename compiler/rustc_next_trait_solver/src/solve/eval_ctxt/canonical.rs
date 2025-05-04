@@ -250,13 +250,7 @@ where
         // to the `var_values`.
         let opaque_types = self
             .delegate
-            .clone_opaque_types_lookup_table()
-            .into_iter()
-            .filter(|(a, _)| {
-                self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
-            })
-            .chain(self.delegate.clone_duplicate_opaque_types())
-            .collect();
+            .clone_opaque_types_added_since(self.initial_opaque_types_storage_num_entries);
 
         ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }

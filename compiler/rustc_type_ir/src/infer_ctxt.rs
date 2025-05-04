@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
@@ -246,11 +248,17 @@ pub trait InferCtxtLike: Sized {
         span: <Self::Interner as Interner>::Span,
     );
 
+    type OpaqueTypeStorageEntries: Debug + Copy + Default;
+    fn opaque_types_storage_num_entries(&self) -> Self::OpaqueTypeStorageEntries;
     fn clone_opaque_types_lookup_table(
         &self,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
     fn clone_duplicate_opaque_types(
         &self,
+    ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
+    fn clone_opaque_types_added_since(
+        &self,
+        prev_entries: Self::OpaqueTypeStorageEntries,
     ) -> Vec<(ty::OpaqueTypeKey<Self::Interner>, <Self::Interner as Interner>::Ty)>;
 
     fn register_hidden_type_in_storage(
