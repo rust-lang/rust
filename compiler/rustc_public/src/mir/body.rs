@@ -645,8 +645,7 @@ impl Rvalue {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 Ok(Ty::usize_ty())
             }
-            Rvalue::NullaryOp(NullOp::ContractChecks, _)
-            | Rvalue::NullaryOp(NullOp::UbChecks, _) => Ok(Ty::bool_ty()),
+            Rvalue::NullaryOp(NullOp::RuntimeChecks(_), _) => Ok(Ty::bool_ty()),
             Rvalue::Aggregate(ak, ops) => match *ak {
                 AggregateKind::Array(ty) => Ty::try_new_array(ty, ops.len() as u64),
                 AggregateKind::Tuple => Ok(Ty::new_tuple(
@@ -1031,6 +1030,12 @@ pub enum NullOp {
     AlignOf,
     /// Returns the offset of a field.
     OffsetOf(Vec<(VariantIdx, FieldIdx)>),
+    /// Codegen conditions for runtime checks.
+    RuntimeChecks(RuntimeChecks),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize)]
+pub enum RuntimeChecks {
     /// cfg!(ub_checks), but at codegen time
     UbChecks,
     /// cfg!(contract_checks), but at codegen time
