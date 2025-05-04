@@ -498,11 +498,14 @@ mod pattern_types {
         struct NonZeroUsize(pattern_type!(usize is 1..));
         extern "C" {
             fn pt_non_zero_usize() -> pattern_type!(usize is 1..);
+            //~^ WARN not FFI-safe
             fn pt_non_zero_usize_opt() -> Option<pattern_type!(usize is 1..)>;
             fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;
             //~^ WARN not FFI-safe
             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
+            //~^ WARN not FFI-safe
             fn pt_non_zero_usize_wrapper() -> NonZeroUsize;
+            //~^ WARN not FFI-safe
             fn pt_non_zero_usize_wrapper_opt() -> Option<NonZeroUsize>;
         }
     }

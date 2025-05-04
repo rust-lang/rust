@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-#![deny(improper_ctypes)]
+#![deny(improper_ctypes, improper_ctype_definitions)]
 
 pub trait Baz {}
 
@@ -18,7 +18,7 @@ pub struct A {
 }
 
 extern "C" {
-    pub fn lint_me() -> A; //~ ERROR: uses type `Qux`
+    pub fn lint_me() -> A; //~ ERROR: uses type `A`
 }
 
 fn main() {}

@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-#![deny(improper_ctypes, improper_ctypes_definitions)]
+#![deny(improper_ctypes, improper_c_fn_definitions)]
 
 use std::ffi::{CStr, CString};
 
