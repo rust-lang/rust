@@ -79,27 +79,11 @@ pub macro panic_2021 {
 #[cfg(not(feature = "panic_immediate_abort"))]
 pub macro panic_2021 {
     () => ({
-        // Create a function so that the argument for `track_caller`
-        // can be moved inside if possible.
-        #[cold]
-        #[track_caller]
-        #[inline(never)]
-        const fn panic_cold_explicit() -> ! {
-            $crate::panicking::panic_explicit()
-        }
-        panic_cold_explicit();
+        $crate::panicking::panic_explicit();
     }),
     // Special-case the single-argument case for const_panic.
     ("{}", $arg:expr $(,)?) => ({
-        #[cold]
-        #[track_caller]
-        #[inline(never)]
-        #[rustc_const_panic_str] // enforce a &&str argument in const-check and hook this by const-eval
-        #[rustc_do_not_const_check] // hooked by const-eval
-        const fn panic_cold_display<T: $crate::fmt::Display>(arg: &T) -> ! {
-            $crate::panicking::panic_display(arg)
-        }
-        panic_cold_display(&$arg);
+        $crate::panicking::panic_display(&$arg);
     }),
     ($($t:tt)+) => ({
         // Semicolon to prevent temporaries inside the formatting machinery from
