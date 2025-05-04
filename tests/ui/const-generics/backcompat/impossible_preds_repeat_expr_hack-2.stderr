@@ -1,0 +1,12 @@
+warning: cannot use constants which depend on trivially-false where clauses
+  --> $DIR/impossible_preds_repeat_expr_hack-2.rs:26:19
+   |
+LL |     let _b = [(); 1 + 1];
+   |                   ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` on by default
+
+warning: 1 warning emitted
+

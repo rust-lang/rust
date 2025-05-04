@@ -1,0 +1,26 @@
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/impossible_preds_const_pattern.rs:42:9
+   |
+LL | trait Trait<T>
+   | --------------
+...
+LL |     const ASSOC: usize;
+   |     ------------------ constant defined here
+...
+LL |         <() as Trait<()>>::ASSOC => todo!(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
+
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/impossible_preds_const_pattern.rs:55:9
+   |
+LL | trait Global {
+   | ------------
+LL |     const ASSOC: usize
+   |     ------------------ constant defined here
+...
+LL |         <() as Global>::ASSOC => todo!(),
+   |         ^^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0158`.

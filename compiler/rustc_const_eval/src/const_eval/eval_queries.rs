@@ -335,6 +335,50 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
+    // Avoid evaluating instances with impossible bounds required to hold as
+    // this can result in executing code that should never be executed.
+    //
+    // We handle this in interpreter internals instead of at callsites (such as
+    // type system normalization or match exhaustiveness handling) as basically
+    // *every* place that we invoke CTFE should not be doing so on definitions
+    // with impossible bounds. Handling it here ensures that we can be certain
+    // that we haven't missed anywhere.
+    let instance_def = key.value.instance.def_id();
+    if tcx.def_kind(instance_def) == DefKind::AnonConst
+        && let ty::AnonConstKind::GCEConst = tcx.anon_const_kind(instance_def)
+    { // ... do nothing for GCE anon consts as it would cycle
+    } else if tcx.def_kind(instance_def) == DefKind::AnonConst
+        && let ty::AnonConstKind::RepeatExprCount = tcx.anon_const_kind(instance_def)
+    {
+        // Instead of erroring when encountering a repeat expr hack const with impossible
+        // preds we just FCW, as anon consts are unnameable and this code *might* wind up
+        // supported one day if the anon const is a path expr.
+        if tcx.instantiate_and_check_impossible_predicates((
+            instance_def,
+            tcx.erase_regions(key.value.instance.args),
+        )) {
+            if let Some(local_def) = instance_def.as_local() {
+                tcx.node_span_lint(
+                    rustc_session::lint::builtin::CONST_EVALUATABLE_UNCHECKED,
+                    tcx.local_def_id_to_hir_id(local_def),
+                    tcx.def_span(instance_def),
+                    |lint| {
+                        lint.primary_message(
+                            "cannot use constants which depend on trivially-false where clauses",
+                        );
+                    },
+                )
+            } else {
+                // If the repeat expr count is from some upstream crate then we don't care to
+                // lint on it as it should have been linted on when compiling the upstream crate.
+            }
+        };
+    } else if tcx
+        .instantiate_and_check_impossible_predicates((instance_def, key.value.instance.args))
+    {
+        return Err(ErrorHandled::TooGeneric(tcx.def_span(instance_def)));
+    }
+
     // This shouldn't be used for statics, since statics are conceptually places,
     // not values -- so what we do here could break pointer identity.
     assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));

@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/impossible_preds_on_anon_const.rs:39:21
+   |
+LL |     let _: Foo<1> = Foo::<{ <u8 as Trait>::NON_GLOBAL::<()> }>;
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `1`, found `<u8 as Trait>::NON_GLOBAL::<()>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<1>`
+              found struct `Foo<<u8 as Trait>::NON_GLOBAL::<()>>`
+
+error[E0308]: mismatched types
+  --> $DIR/impossible_preds_on_anon_const.rs:47:21
+   |
+LL |     let _: Foo<1> = Foo::<{ <u8 as Trait>::GLOBAL }>;
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `1`, found `<u8 as Trait>::GLOBAL`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Foo<1>`
+              found struct `Foo<<u8 as Trait>::GLOBAL>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
