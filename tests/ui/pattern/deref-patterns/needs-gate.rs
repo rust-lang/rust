@@ -46,4 +46,13 @@ fn main() {
         //~^ ERROR: mismatched types
         _ => {}
     }
+
+    // `deref_patterns` allows string and byte string patterns to match on mutable references.
+    // See also `tests/ui/pattern/byte-string-mutability-mismatch.rs`.
+    if let "str" = &mut *"str".to_string() {}
+    //~^ ERROR mismatched types
+    if let b"str" = &mut b"str".clone() {}
+    //~^ ERROR mismatched types
+    if let b"str" = &mut b"str".clone()[..] {}
+    //~^ ERROR mismatched types
 }

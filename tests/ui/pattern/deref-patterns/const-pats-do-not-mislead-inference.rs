@@ -45,4 +45,10 @@ fn main() {
     if let b"..." = Box::new(&x) {}
     //[stable]~^ ERROR mismatched types
     has_type::<[u8; 3]>(x);
+
+    // `&` and `&mut` aren't interchangeable: `&mut`s need to be peeled before unifying, like boxes:
+    let mut x = uninferred();
+    if let "..." = &mut x {}
+    //[stable]~^ ERROR mismatched types
+    has_type::<&str>(x);
 }

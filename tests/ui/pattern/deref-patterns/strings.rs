@@ -14,6 +14,14 @@ fn main() {
         };
         assert_eq!(test_actual, test_expect);
 
+        // Test matching on `&mut str`.
+        let test_actual = match &mut *test_in.to_string() {
+            "zero" => 0,
+            "one" => 1,
+            _ => 2,
+        };
+        assert_eq!(test_actual, test_expect);
+
         // Test string literals in deref patterns.
         let test_actual = match test_in.to_string() {
             deref!("zero") => 0,
@@ -49,6 +57,22 @@ fn main() {
 
         // Test byte string literal patterns having type `[u8]`
         let test_actual = match *(test_in as &[u8]) {
+            b"0" => 0,
+            b"1" => 1,
+            _ => 2,
+        };
+        assert_eq!(test_actual, test_expect);
+
+        // Test matching on `&mut [u8; N]`.
+        let test_actual = match &mut test_in.clone() {
+            b"0" => 0,
+            b"1" => 1,
+            _ => 2,
+        };
+        assert_eq!(test_actual, test_expect);
+
+        // Test matching on `&mut [u8]`.
+        let test_actual = match &mut test_in.clone()[..] {
             b"0" => 0,
             b"1" => 1,
             _ => 2,

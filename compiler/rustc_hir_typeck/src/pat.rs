@@ -740,10 +740,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         // If the pattern has as many or more layers of reference as the expected type, we can match
-        // without peeling more, *unless* we find a smart pointer that we also need to peel.
-        // TODO: always peel `&mut`
+        // without peeling more, unless we find a smart pointer or `&mut` that we also need to peel.
+        // We don't treat `&` and `&mut` as interchangeable, but by peeling `&mut`s before matching,
+        // we can still, e.g., match on a `&mut str` with a string literal pattern. This is because
+        // string literal patterns may be used where `str` is expected.
         let mut expected_ref_layers = 0;
-        while let ty::Ref(_, inner_ty, _) = *expected.kind() {
+        while let ty::Ref(_, inner_ty, mutbl) = *expected.kind() {
+            if mutbl.is_mut() {
+                // Mutable references can't be in the final value of constants, thus they can't be
+                // at the head of their types, thus we should always peel `&mut`.
+                return true;
+            }
             expected_ref_layers += 1;
             expected = inner_ty;
         }
