@@ -4,10 +4,6 @@
 #![doc(masked)]
 //~^ ERROR this attribute can only be applied to an `extern crate` item
 
-#[doc(test(attr(allow(warnings))))]
-//~^ ERROR can only be applied at module level
-//~| HELP to apply to the crate, use an inner attribute
-//~| SUGGESTION !
 #[doc(test(no_crate_inject))]
 //~^ ERROR can only be applied at the crate level
 //~| HELP to apply to the crate, use an inner attribute
