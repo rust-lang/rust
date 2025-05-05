@@ -723,7 +723,10 @@ impl<'tcx> Ty<'tcx> {
         repr: DynKind,
     ) -> Ty<'tcx> {
         if cfg!(debug_assertions) {
-            let projection_count = obj.projection_bounds().count();
+            let projection_count = obj
+                .projection_bounds()
+                .filter(|item| !tcx.generics_require_sized_self(item.item_def_id()))
+                .count();
             let expected_count: usize = obj
                 .principal_def_id()
                 .into_iter()
