@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/regression-issue-81317.rs:13:9
+  --> $DIR/regression-issue-81317.rs:44:9
    |
 LL |     let iv = S ^ index.into();
    |         ^^
