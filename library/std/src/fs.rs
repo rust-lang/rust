@@ -167,7 +167,7 @@ pub enum TryLockError {
 /// use std::fs::Dir;
 ///
 /// fn main() -> std::io::Result<()> {
-///     let dir = Dir::new("/home/foo")?;
+///     let dir = Dir::new("foo")?;
 ///     let file = dir.open("bar.txt")?;
 ///     Ok(())
 /// }
@@ -1498,22 +1498,196 @@ impl Seek for Arc<File> {
 }
 
 impl Dir {
-    /// Opens a file relative to this directory.
+    /// Attempts to open a directory at `path` in read-only mode.
+    ///
+    /// See [`new_with`] for more options.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The path doesn't exist
+    /// * The path doesn't specify a directory
+    /// * The process doesn't have permission to read the directory
     ///
     /// # Examples
+    ///
     /// ```no_run
     /// use std::fs::Dir;
     ///
-    /// let dir = Dir::new("foo")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open("bar.txt")?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`new_with`]: Dir::new_with
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        Ok(Self { inner: fs_imp::Dir::new(path)? })
+    }
+
+    /// Attempts to open a directory at `path` with the options specified by `opts`.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The path doesn't exist
+    /// * The path doesn't specify a directory
+    /// * The process doesn't have permission to read/write (according to `opts`) the directory
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new_with("foo", OpenOptions::new().write(true))?;
+    ///     let mut f = dir.remove_file("bar.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        Ok(Self { inner: fs_imp::Dir::new_with(path, &opts.0)? })
+    }
+
+    /// Attempts to open a file relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The path doesn't exist
+    /// * The path doesn't specify a regular file
+    /// * The process doesn't have permission to read/write (according to `opts`) the directory
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open("bar.txt")?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
     /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         self.inner.open(path).map(|f| File { inner: f })
     }
-    /// Opens a file relative to this directory with the specified options.
+
+    /// Attempts to open a file relative to this directory with the options specified by `opts`.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The path doesn't exist
+    /// * The path doesn't specify a regular file
+    /// * The process doesn't have permission to read/write (according to `opts`) the directory
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open_with("bar.txt", OpenOptions::new().read(true))?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
+    /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
     pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
         self.inner.open_with(path, &opts.0).map(|f| File { inner: f })
+    }
+
+    /// Attempts to remove a file relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The path doesn't exist
+    /// * The path doesn't specify a regular file
+    /// * The process doesn't have permission to delete the file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     dir.remove_file("bar.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_file(path)
+    }
+
+    /// Attempts to remove a directory relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The path doesn't exist
+    /// * The path doesn't specify a directory
+    /// * The directory isn't empty
+    /// * The process doesn't have permission to delete the directory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     dir.remove_dir("baz")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_dir(path)
+    }
+
+    /// Attempts to rename a file or directory relative to this directory to a new name, replacing
+    /// the destination file if present.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The `from` path doesn't exist
+    /// * The `from` path doesn't specify a directory
+    /// * `self` and `to_dir` are on different mount points
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     dir.rename("bar.txt", &dir, "quux.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        from: P,
+        to_dir: &Self,
+        to: Q,
+    ) -> io::Result<()> {
+        self.inner.rename(from, &to_dir.inner, to)
     }
 }
 
