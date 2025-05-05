@@ -15,7 +15,8 @@ use rustc_index::IndexVec;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable,
+    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
+    TypeFoldable,
 };
 use tracing::{debug, instrument, trace};
 
@@ -56,7 +57,10 @@ where
         &self,
         goal: Goal<I, T>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, T>) {
-        let opaque_types = self.delegate.clone_opaque_types_for_query_response();
+        // We only care about one entry per `OpaqueTypeKey` here,
+        // so we only canonicalize the lookup table and ignore
+        // duplicate entries.
+        let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) =
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
@@ -241,19 +245,21 @@ where
             Default::default()
         };
 
-        ExternalConstraintsData {
-            region_constraints,
-            opaque_types: self
-                .delegate
-                .clone_opaque_types_for_query_response()
-                .into_iter()
-                // Only return *newly defined* opaque types.
-                .filter(|(a, _)| {
-                    self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
-                })
-                .collect(),
-            normalization_nested_goals,
-        }
+        // We only return *newly defined* opaque types from canonical queries.
+        //
+        // Constraints for any existing opaque types are already tracked by changes
+        // to the `var_values`.
+        let opaque_types = self
+            .delegate
+            .clone_opaque_types_lookup_table()
+            .into_iter()
+            .filter(|(a, _)| {
+                self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
+            })
+            .chain(self.delegate.clone_duplicate_opaque_types())
+            .collect();
+
+        ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -354,37 +360,52 @@ where
             }
         }
 
-        let var_values = delegate.cx().mk_args_from_iter(
-            response.variables.iter().enumerate().map(|(index, info)| {
-                if info.universe() != ty::UniverseIndex::ROOT {
-                    // A variable from inside a binder of the query. While ideally these shouldn't
-                    // exist at all (see the FIXME at the start of this method), we have to deal with
-                    // them for now.
-                    delegate.instantiate_canonical_var_with_infer(info, span, |idx| {
-                        prev_universe + idx.index()
-                    })
-                } else if info.is_existential() {
-                    // As an optimization we sometimes avoid creating a new inference variable here.
-                    //
-                    // All new inference variables we create start out in the current universe of the caller.
-                    // This is conceptually wrong as these inference variables would be able to name
-                    // more placeholders then they should be able to. However the inference variables have
-                    // to "come from somewhere", so by equating them with the original values of the caller
-                    // later on, we pull them down into their correct universe again.
-                    if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
-                        v
-                    } else {
-                        delegate.instantiate_canonical_var_with_infer(info, span, |_| prev_universe)
+        let mut var_values = Vec::new();
+        for (index, info) in response.variables.iter().enumerate() {
+            let value = if info.universe() != ty::UniverseIndex::ROOT {
+                // A variable from inside a binder of the query. While ideally these shouldn't
+                // exist at all (see the FIXME at the start of this method), we have to deal with
+                // them for now.
+                delegate.instantiate_canonical_var_with_infer(info, span, &var_values, |idx| {
+                    prev_universe + idx.index()
+                })
+            } else if info.is_existential() {
+                // As an optimization we sometimes avoid creating a new inference variable here.
+                // We need to still make sure to register any subtype relations returned by the
+                // query.
+                if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
+                    if let CanonicalVarKind::Ty { universe: _, sub_root } = info.kind {
+                        if let Some(prev) = var_values.get(sub_root.as_usize()) {
+                            let v = delegate.shallow_resolve(v.expect_ty());
+                            let prev = delegate.shallow_resolve(prev.expect_ty());
+                            match (v.kind(), prev.kind()) {
+                                (ty::Infer(ty::TyVar(vid)), ty::Infer(ty::TyVar(sub_root))) => {
+                                    delegate.sub_ty_vids_raw(vid, sub_root)
+                                }
+                                _ => {}
+                            }
+                        }
                     }
+                    v
                 } else {
-                    // For placeholders which were already part of the input, we simply map this
-                    // universal bound variable back the placeholder of the input.
-                    original_values[info.expect_placeholder_index()]
+                    // All new inference variables we create start out in the current universe
+                    // of the caller. This is conceptually wrong as these inference variables
+                    // would be able to name more placeholders then they should be able to.
+                    // However the inference variables have to "come from somewhere", so by
+                    // equating them with the original values of the caller later on, we pull
+                    // them down into their correct universe again.
+                    delegate.instantiate_canonical_var_with_infer(info, span, &var_values, |_| {
+                        prev_universe
+                    })
                 }
-            }),
-        );
-
-        CanonicalVarValues { var_values }
+            } else {
+                // For placeholders which were already part of the input, we simply map this
+                // universal bound variable back the placeholder of the input.
+                original_values[info.expect_placeholder_index()]
+            };
+            var_values.push(value)
+        }
+        CanonicalVarValues { var_values: delegate.cx().mk_args(&var_values) }
     }
 
     /// Unify the `original_values` with the `var_values` returned by the canonical query..
@@ -432,7 +453,16 @@ where
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
             let prev = self.delegate.register_hidden_type_in_storage(key, ty, self.origin_span);
-            assert_eq!(prev, None);
+            // We eagerly resolve inference variables when computing the query response.
+            // This can cause previously distinct opaque type keys to now be structurally equal.
+            //
+            // To handle this, we store any duplicate entries in a separate list to check them
+            // at the end of typeck/borrowck. We could alternatively eagerly equate the hidden
+            // types here. However, doing so is difficult as it may result in nested goals and
+            // any errors may make it harder to track the control flow for diagnostics.
+            if let Some(prev) = prev {
+                self.delegate.add_duplicate_opaque_type(key, prev, self.origin_span);
+            }
         }
     }
 }

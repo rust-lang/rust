@@ -14,7 +14,7 @@ use rustc_type_ir::{
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,
 };
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use super::has_only_region_constraints;
 use crate::coherence;
@@ -361,7 +361,20 @@ where
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
             let prev = ecx.delegate.register_hidden_type_in_storage(key, ty, ecx.origin_span);
-            assert_eq!(prev, None);
+            // It may be possible that two entries in the opaque type storage end up
+            // with the same key after resolving contained inference variables.
+            //
+            // We could put them in the duplicate list but don't have to. The opaques we
+            // encounter here are already tracked in the caller, so there's no need to
+            // also store them here. We'd take them out when computing the query response
+            // and then discard them, as they're already present in the input.
+            //
+            // Ideally we'd drop duplicate opaque type definitions when computing
+            // the canonical input. This is more annoying to implement and may cause a
+            // perf regression, so we do it inside of the query for now.
+            if let Some(prev) = prev {
+                debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_type_storage`");
+            }
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -844,6 +857,10 @@ where
             && goal.param_env.visit_with(&mut visitor).is_continue()
     }
 
+    pub(super) fn sub_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid) {
+        self.delegate.sub_ty_vids_raw(a, b)
+    }
+
     #[instrument(level = "trace", skip(self, param_env), ret)]
     pub(super) fn eq<T: Relate<I>>(
         &mut self,
@@ -1065,14 +1082,13 @@ where
         &mut self,
         key: ty::OpaqueTypeKey<I>,
     ) -> Option<(ty::OpaqueTypeKey<I>, I::Ty)> {
-        let mut matching =
-            self.delegate.clone_opaque_types_for_query_response().into_iter().filter(
-                |(candidate_key, _)| {
-                    candidate_key.def_id == key.def_id
-                        && DeepRejectCtxt::relate_rigid_rigid(self.cx())
-                            .args_may_unify(candidate_key.args, key.args)
-                },
-            );
+        let mut matching = self.delegate.clone_opaque_types_lookup_table().into_iter().filter(
+            |(candidate_key, _)| {
+                candidate_key.def_id == key.def_id
+                    && DeepRejectCtxt::relate_rigid_rigid(self.cx())
+                        .args_may_unify(candidate_key.args, key.args)
+            },
+        );
         let first = matching.next();
         let second = matching.next();
         assert_eq!(second, None);
@@ -1097,6 +1113,26 @@ where
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
         self.delegate.is_transmutable(dst, src, assume)
+    }
+
+    pub(crate) fn find_sup_as_registered_opaque(&self, self_ty: I::Ty) -> Option<ty::AliasTy<I>> {
+        self.delegate
+            .clone_opaque_types_lookup_table()
+            .into_iter()
+            .chain(self.delegate.clone_duplicate_opaque_types())
+            .find(|(_, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(self_vid)) = self_ty.kind() {
+                    if let ty::Infer(ty::TyVar(hidden_vid)) = hidden_ty.kind() {
+                        if self.delegate.sub_root_ty_var(self_vid)
+                            == self.delegate.sub_root_ty_var(hidden_vid)
+                        {
+                            return true;
+                        }
+                    }
+                }
+                false
+            })
+            .map(|(key, _)| ty::AliasTy::new_from_args(self.cx(), key.def_id.into(), key.args))
     }
 }
 

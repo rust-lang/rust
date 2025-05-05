@@ -13,9 +13,33 @@ use tracing::debug;
 
 use crate::infer::InferCtxtUndoLogs;
 
-impl<'tcx> Rollback<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for TypeVariableStorage<'tcx> {
-    fn reverse(&mut self, undo: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) {
-        self.eq_relations.reverse(undo)
+/// Represents a single undo-able action that affects a type inference variable.
+#[derive(Clone)]
+pub(crate) enum UndoLog<'tcx> {
+    EqRelation(sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>),
+    SubRelation(sv::UndoLog<ut::Delegate<ty::TyVid>>),
+}
+
+/// Convert from a specific kind of undo to the more general UndoLog
+impl<'tcx> From<sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<TyVidEqKey<'tcx>>>) -> Self {
+        UndoLog::EqRelation(l)
+    }
+}
+
+/// Convert from a specific kind of undo to the more general UndoLog
+impl<'tcx> From<sv::UndoLog<ut::Delegate<ty::TyVid>>> for UndoLog<'tcx> {
+    fn from(l: sv::UndoLog<ut::Delegate<ty::TyVid>>) -> Self {
+        UndoLog::SubRelation(l)
+    }
+}
+
+impl<'tcx> Rollback<UndoLog<'tcx>> for TypeVariableStorage<'tcx> {
+    fn reverse(&mut self, undo: UndoLog<'tcx>) {
+        match undo {
+            UndoLog::EqRelation(undo) => self.eq_relations.reverse(undo),
+            UndoLog::SubRelation(undo) => self.sub_relations.reverse(undo),
+        }
     }
 }
 
@@ -27,6 +51,24 @@ pub(crate) struct TypeVariableStorage<'tcx> {
     /// constraint `?X == ?Y`. This table also stores, for each key,
     /// the known value.
     eq_relations: ut::UnificationTableStorage<TyVidEqKey<'tcx>>,
+
+    /// Only used by `-Znext-solver` andfor diagnostics.
+    ///
+    /// When reporting ambiguity errors, we sometimes want to
+    /// treat all inference vars which are subtypes of each
+    /// others as if they are equal. For this case we compute
+    /// the transitive closure of our subtype obligations here.
+    ///
+    /// E.g. when encountering ambiguity errors, we want to suggest
+    /// specifying some method argument or to add a type annotation
+    /// to a local variable. Because subtyping cannot change the
+    /// shape of a type, it's fine if the cause of the ambiguity error
+    /// is only related to the suggested variable via subtyping.
+    ///
+    /// Even for something like `let x = returns_arg(); x.method();` the
+    /// type of `x` is only a supertype of the argument of `returns_arg`. We
+    /// still want to suggest specifying the type of the argument.
+    sub_relations: ut::UnificationTableStorage<ty::TyVid>,
 }
 
 pub(crate) struct TypeVariableTable<'a, 'tcx> {
@@ -109,6 +151,16 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         debug_assert!(self.probe(a).is_unknown());
         debug_assert!(self.probe(b).is_unknown());
         self.eq_relations().union(a, b);
+        self.sub_relations().union(a, b);
+    }
+
+    /// Records that `a <: b`, depending on `dir`.
+    ///
+    /// Precondition: neither `a` nor `b` are known.
+    pub(crate) fn sub(&mut self, a: ty::TyVid, b: ty::TyVid) {
+        debug_assert!(self.probe(a).is_unknown());
+        debug_assert!(self.probe(b).is_unknown());
+        self.sub_relations().union(a, b);
     }
 
     /// Instantiates `vid` with the type `ty`.
@@ -142,6 +194,10 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         origin: TypeVariableOrigin,
     ) -> ty::TyVid {
         let eq_key = self.eq_relations().new_key(TypeVariableValue::Unknown { universe });
+
+        let sub_key = self.sub_relations().new_key(());
+        debug_assert_eq!(eq_key.vid, sub_key);
+
         let index = self.storage.values.push(TypeVariableData { origin });
         debug_assert_eq!(eq_key.vid, index);
 
@@ -164,6 +220,18 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         self.eq_relations().find(vid).vid
     }
 
+    /// Returns the "root" variable of `vid` in the `sub_relations`
+    /// equivalence table. All type variables that have been are
+    /// related via equality or subtyping will yield the same root
+    /// variable (per the union-find algorithm), so `sub_root_var(a)
+    /// == sub_root_var(b)` implies that:
+    /// ```text
+    /// exists X. (a <: X || X <: a) && (b <: X || X <: b)
+    /// ```
+    pub(crate) fn sub_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
+        self.sub_relations().find(vid)
+    }
+
     /// Retrieves the type to which `vid` has been instantiated, if
     /// any.
     pub(crate) fn probe(&mut self, vid: ty::TyVid) -> TypeVariableValue<'tcx> {
@@ -179,6 +247,11 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     #[inline]
     fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
         self.storage.eq_relations.with_log(self.undo_log)
+    }
+
+    #[inline]
+    fn sub_relations(&mut self) -> super::UnificationTable<'_, 'tcx, ty::TyVid> {
+        self.storage.sub_relations.with_log(self.undo_log)
     }
 
     /// Returns a range of the type variables created during the snapshot.
