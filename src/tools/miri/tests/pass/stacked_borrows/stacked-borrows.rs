@@ -1,3 +1,6 @@
+// FIXME: this miscompiles with optimizations, see <https://github.com/rust-lang/rust/issues/132898>.
+//@compile-flags: -Zmir-opt-level=0
+
 // Test various stacked-borrows-specific things
 // (i.e., these do not work the same under TB).
 fn main() {

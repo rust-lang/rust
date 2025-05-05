@@ -1,9 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 
-// FIXME: this miscompiles with optimizations, see <https://github.com/rust-lang/rust/issues/132898>.
-//@compile-flags: -Zmir-opt-level=0
-
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
 }
@@ -34,9 +31,9 @@ fn two_phase3(b: bool) {
     ));
 }
 
-#[allow(unreachable_code)]
 fn two_phase_raw() {
     let x: &mut Vec<i32> = &mut vec![];
+    #[allow(unreachable_code)] // The `push` itself never gets reached.
     x.push({
         // Unfortunately this does not trigger the problem of creating a
         // raw ponter from a pointer that had a two-phase borrow derived from
