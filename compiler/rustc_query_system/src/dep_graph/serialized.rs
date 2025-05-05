@@ -12,7 +12,7 @@
 //! node and edge count are stored at the end of the file, all the arrays can be
 //! pre-allocated with the right length.
 //!
-//! The encoding of the de-pgraph is generally designed around the fact that fixed-size
+//! The encoding of the dep-graph is generally designed around the fact that fixed-size
 //! reads of encoded data are generally faster than variable-sized reads. Ergo we adopt
 //! essentially the same varint encoding scheme used in the rmeta format; the edge lists
 //! for each node on the graph store a 2-bit integer which is the number of bytes per edge
@@ -34,6 +34,10 @@
 //! [`DepKind`], number of edges, and bytes per edge are all bit-packed together, if they fit.
 //! If the number of edges in this node does not fit in the bits available in the header, we
 //! store it directly after the header with leb128.
+//!
+//! Dep-graph indices are bulk allocated to threads inside `LocalEncoderState`. Having threads
+//! own these indices helps avoid races when they are conditionally used when marking nodes green.
+//! It also reduces congestion on the shared index count.
 
 use std::cell::RefCell;
 use std::cmp::max;
