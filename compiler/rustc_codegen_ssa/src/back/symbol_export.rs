@@ -612,7 +612,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
         ExportedSymbol::Generic(def_id, args) => {
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
-                Instance::new(def_id, args),
+                Instance::new_raw(def_id, args),
                 instantiating_crate,
             )
         }
@@ -660,7 +660,7 @@ fn calling_convention_for_symbol<'tcx>(
             None
         }
         ExportedSymbol::NonGeneric(def_id) => Some(Instance::mono(tcx, def_id)),
-        ExportedSymbol::Generic(def_id, args) => Some(Instance::new(def_id, args)),
+        ExportedSymbol::Generic(def_id, args) => Some(Instance::new_raw(def_id, args)),
         // DropGlue always use the Rust calling convention and thus follow the target's default
         // symbol decoration scheme.
         ExportedSymbol::DropGlue(..) => None,

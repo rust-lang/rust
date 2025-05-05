@@ -931,7 +931,7 @@ fn visit_instance_use<'tcx>(
             // We explicitly skip this otherwise to ensure we get a linker error
             // if anyone tries to call this intrinsic and the codegen backend did not
             // override the implementation.
-            let instance = ty::Instance::new(instance.def_id(), instance.args);
+            let instance = ty::Instance::new_raw(instance.def_id(), instance.args);
             if tcx.should_codegen_locally(instance) {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
@@ -1520,7 +1520,7 @@ impl<'v> RootCollector<'_, 'v> {
                         ty::Closure(def_id, args)
                         | ty::Coroutine(def_id, args)
                         | ty::CoroutineClosure(def_id, args) => {
-                            Instance::new(def_id, self.tcx.erase_regions(args))
+                            Instance::new_raw(def_id, self.tcx.erase_regions(args))
                         }
                         _ => unreachable!(),
                     };
