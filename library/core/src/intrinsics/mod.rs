@@ -439,12 +439,6 @@ pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
-/// Do NOT use this intrinsic; "unordered" operations do not exist in our memory model!
-/// In terms of the Rust Abstract Machine, this operation is equivalent to `src.read()`,
-/// i.e., it performs a non-atomic read.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.
 /// `T` must be an integer or pointer type.
@@ -473,12 +467,6 @@ pub unsafe fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
-/// Do NOT use this intrinsic; "unordered" operations do not exist in our memory model!
-/// In terms of the Rust Abstract Machine, this operation is equivalent to `dst.write(val)`,
-/// i.e., it performs a non-atomic write.
-#[rustc_intrinsic]
-#[rustc_nounwind]
-pub unsafe fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
 
 /// Stores the value at the specified memory location, returning the old value.
 /// `T` must be an integer or pointer type.
