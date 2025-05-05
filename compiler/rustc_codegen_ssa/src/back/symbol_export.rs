@@ -29,7 +29,7 @@ fn crate_export_threshold(crate_type: CrateType) -> SymbolExportLevel {
         CrateType::Executable | CrateType::Staticlib | CrateType::ProcMacro | CrateType::Cdylib => {
             SymbolExportLevel::C
         }
-        CrateType::Rlib | CrateType::Dylib => SymbolExportLevel::Rust,
+        CrateType::Rlib | CrateType::Dylib | CrateType::Sdylib => SymbolExportLevel::Rust,
     }
 }
 
@@ -45,7 +45,7 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
 }
 
 fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<SymbolExportInfo> {
-    if !tcx.sess.opts.output_types.should_codegen() {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
         return Default::default();
     }
 
@@ -168,7 +168,7 @@ fn exported_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     _: LocalCrate,
 ) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
-    if !tcx.sess.opts.output_types.should_codegen() {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
         return &[];
     }
 

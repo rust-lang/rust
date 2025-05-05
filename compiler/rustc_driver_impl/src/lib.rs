@@ -54,8 +54,8 @@ use rustc_metadata::locator;
 use rustc_middle::ty::TyCtxt;
 use rustc_parse::{new_parser_from_file, new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::config::{
-    CG_OPTIONS, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType, UnstableOptions,
-    Z_OPTIONS, nightly_options, parse_target_triple,
+    CG_OPTIONS, CrateType, ErrorOutputType, Input, OptionDesc, OutFileName, OutputType,
+    UnstableOptions, Z_OPTIONS, nightly_options, parse_target_triple,
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
@@ -351,6 +351,8 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             passes::write_dep_info(tcx);
+
+            passes::write_interface(tcx);
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
@@ -816,6 +818,7 @@ fn print_crate_info(
                 let supported_crate_types = CRATE_TYPES
                     .iter()
                     .filter(|(_, crate_type)| !invalid_output_for_target(&sess, *crate_type))
+                    .filter(|(_, crate_type)| *crate_type != CrateType::Sdylib)
                     .map(|(crate_type_sym, _)| *crate_type_sym)
                     .collect::<BTreeSet<_>>();
                 for supported_crate_type in supported_crate_types {

@@ -277,6 +277,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfg_attr
                             | sym::cfg_trace
                             | sym::cfg_attr_trace
+                            | sym::export_stable // handled in `check_export`
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)

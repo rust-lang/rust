@@ -4036,6 +4036,7 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
+ "tempfile",
  "tracing",
 ]
 

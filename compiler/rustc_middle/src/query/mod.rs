@@ -2239,6 +2239,16 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query stable_order_of_exportable_impls(_: CrateNum) -> &'tcx FxIndexMap<DefId, usize> {
+        desc { "fetching the stable impl's order" }
+        separate_provide_extern
+    }
+
+    query exportable_items(_: CrateNum) -> &'tcx [DefId] {
+        desc { "fetching all exportable items in a crate" }
+        separate_provide_extern
+    }
+
     /// The list of symbols exported from the given crate.
     ///
     /// - All names contained in `exported_symbols(cnum)` are guaranteed to
