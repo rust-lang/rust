@@ -1,5 +1,4 @@
 use hir::def_id::{DefId, LocalDefId};
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
@@ -19,7 +18,6 @@ use crate::traits::{self, Obligation, PredicateObligations};
 
 mod table;
 
-pub(crate) type OpaqueTypeMap<'tcx> = FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>;
 pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
 
 impl<'tcx> InferCtxt<'tcx> {

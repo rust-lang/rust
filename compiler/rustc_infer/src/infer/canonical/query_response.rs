@@ -13,7 +13,9 @@ use std::iter;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{
+    self, BoundVar, CanonicalVarKind, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable,
+};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
 
@@ -132,7 +134,13 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let certainty = if errors.is_empty() { Certainty::Proven } else { Certainty::Ambiguous };
 
-        let opaque_types = self.take_opaque_types_for_query_response();
+        let opaque_types = self
+            .inner
+            .borrow_mut()
+            .opaque_type_storage
+            .take_opaque_types()
+            .map(|(k, v)| (k, v.ty))
+            .collect();
 
         Ok(QueryResponse {
             var_values: inference_vars,
@@ -141,24 +149,6 @@ impl<'tcx> InferCtxt<'tcx> {
             value: answer,
             opaque_types,
         })
-    }
-
-    /// Used by the new solver as that one takes the opaque types at the end of a probe
-    /// to deal with multiple candidates without having to recompute them.
-    pub fn clone_opaque_types_for_query_response(
-        &self,
-    ) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.inner
-            .borrow()
-            .opaque_type_storage
-            .opaque_types
-            .iter()
-            .map(|(k, v)| (*k, v.ty))
-            .collect()
-    }
-
-    fn take_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.take_opaque_types().into_iter().map(|(k, v)| (k, v.ty)).collect()
     }
 
     /// Given the (canonicalized) result to a canonical query,
@@ -455,32 +445,48 @@ impl<'tcx> InferCtxt<'tcx> {
         // Create result arguments: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let result_args = CanonicalVarValues {
-            var_values: self.tcx.mk_args_from_iter(
-                query_response.variables.iter().enumerate().map(|(index, info)| {
-                    if info.universe() != ty::UniverseIndex::ROOT {
-                        // A variable from inside a binder of the query. While ideally these shouldn't
-                        // exist at all, we have to deal with them for now.
-                        self.instantiate_canonical_var(cause.span, info, |u| {
-                            universe_map[u.as_usize()]
-                        })
-                    } else if info.is_existential() {
-                        match opt_values[BoundVar::new(index)] {
-                            Some(k) => k,
-                            None => self.instantiate_canonical_var(cause.span, info, |u| {
-                                universe_map[u.as_usize()]
-                            }),
+        let mut var_values = Vec::new();
+        for (index, info) in query_response.variables.iter().enumerate() {
+            let value = if info.universe() != ty::UniverseIndex::ROOT {
+                // A variable from inside a binder of the query. While ideally these shouldn't
+                // exist at all, we have to deal with them for now.
+                self.instantiate_canonical_var(cause.span, info, &var_values, |u| {
+                    universe_map[u.as_usize()]
+                })
+            } else if info.is_existential() {
+                // As an optimization we sometimes avoid creating a new inference variable here.
+                // We need to still make sure to register any subtype relations returned by the
+                // query.
+                match opt_values[BoundVar::new(index)] {
+                    Some(v) => {
+                        if let CanonicalVarKind::Ty { universe: _, sub_root } = info.kind {
+                            if let Some(prev) = var_values.get(sub_root.as_usize()) {
+                                let &ty::Infer(ty::TyVar(vid)) = v.expect_ty().kind() else {
+                                    unreachable!("expected `sub_root` to be an inference variable");
+                                };
+                                let &ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind()
+                                else {
+                                    unreachable!("expected `sub_root` to be an inference variable");
+                                };
+                                self.inner.borrow_mut().type_variables().sub(vid, sub_root);
+                            }
                         }
-                    } else {
-                        // For placeholders which were already part of the input, we simply map this
-                        // universal bound variable back the placeholder of the input.
-                        opt_values[BoundVar::new(index)].expect(
-                            "expected placeholder to be unified with itself during response",
-                        )
+                        v
                     }
-                }),
-            ),
-        };
+                    None => self.instantiate_canonical_var(cause.span, info, &var_values, |u| {
+                        universe_map[u.as_usize()]
+                    }),
+                }
+            } else {
+                // For placeholders which were already part of the input, we simply map this
+                // universal bound variable back the placeholder of the input.
+                opt_values[BoundVar::new(index)]
+                    .expect("expected placeholder to be unified with itself during response")
+            };
+            var_values.push(value)
+        }
+
+        let result_args = CanonicalVarValues { var_values: self.tcx.mk_args(&var_values) };
 
         let mut obligations = PredicateObligations::new();
 

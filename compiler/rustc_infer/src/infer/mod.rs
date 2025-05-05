@@ -31,9 +31,9 @@ use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Term, TermKind,
-    Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
-    TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, OpaqueHiddenType, OpaqueTypeKey,
+    PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
@@ -198,7 +198,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
+    pub fn opaque_types(&mut self) -> opaque_types::OpaqueTypeTable<'_, 'tcx> {
         self.opaque_type_storage.with_log(&mut self.undo_log)
     }
 
@@ -223,15 +223,6 @@ impl<'tcx> InferCtxtInner<'tcx> {
             .as_mut()
             .expect("region constraints already solved")
             .with_log(&mut self.undo_log)
-    }
-
-    // Iterates through the opaque type definitions without taking them; this holds the
-    // `InferCtxtInner` lock, so make sure to not do anything with `InferCtxt` side-effects
-    // while looping through this.
-    pub fn iter_opaque_types(
-        &self,
-    ) -> impl Iterator<Item = (ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>)> {
-        self.opaque_type_storage.opaque_types.iter().map(|(&k, &v)| (k, v))
     }
 }
 
@@ -733,6 +724,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let r_b = self.shallow_resolve(predicate.skip_binder().b);
         match (r_a.kind(), r_b.kind()) {
             (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
+                self.inner.borrow_mut().type_variables().sub(a_vid, b_vid);
                 return Err((a_vid, b_vid));
             }
             _ => {}
@@ -954,13 +946,30 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn take_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        std::mem::take(&mut self.inner.borrow_mut().opaque_type_storage.opaque_types)
+    pub fn take_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+        self.inner.borrow_mut().opaque_type_storage.take_opaque_types().collect()
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn clone_opaque_types(&self) -> opaque_types::OpaqueTypeMap<'tcx> {
-        self.inner.borrow().opaque_type_storage.opaque_types.clone()
+    pub fn clone_opaque_types(&self) -> Vec<(OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>)> {
+        self.inner.borrow_mut().opaque_type_storage.iter_opaque_types().collect()
+    }
+
+    pub fn find_sup_as_registered_opaque(&self, ty_vid: TyVid) -> Option<ty::AliasTy<'tcx>> {
+        let ty_sub_vid = self.sub_root_var(ty_vid);
+        let opaques: Vec<_> = self.inner.borrow_mut().opaque_types().iter_opaque_types().collect();
+        opaques
+            .into_iter()
+            .find(|(_, hidden_ty)| {
+                if let ty::Infer(ty::TyVar(hidden_vid)) = *hidden_ty.ty.kind()
+                    && self.sub_root_var(hidden_vid) == ty_sub_vid
+                {
+                    true
+                } else {
+                    false
+                }
+            })
+            .map(|(key, _)| ty::AliasTy::new_from_args(self.tcx, key.def_id.to_def_id(), key.args))
     }
 
     #[inline(always)]
@@ -1063,6 +1072,10 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
+    }
+
+    pub fn sub_root_var(&self, var: ty::TyVid) -> ty::TyVid {
+        self.inner.borrow_mut().type_variables().sub_root_var(var)
     }
 
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {
