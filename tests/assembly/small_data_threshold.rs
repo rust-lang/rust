@@ -1,4 +1,5 @@
 // Test for -Z small_data_threshold=...
+//@ add-core-stubs
 //@ revisions: RISCV MIPS HEXAGON M68K
 //@ assembly-output: emit-asm
 //@ compile-flags: -Z small_data_threshold=4
@@ -19,11 +20,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "drop_in_place"]
-fn drop_in_place<T>(_: *mut T) {}
+extern crate minicore;
+use minicore::*;
 
 #[used]
 #[no_mangle]

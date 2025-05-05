@@ -1,13 +1,15 @@
+//@ add-core-stubs
+
 #![feature(no_core, lang_items)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![no_core]
 #![rustc_coherence_is_core]
 
-//@ set impl_i32 = "$.index[?(@.docs=='Only core can do this')].id"
+extern crate minicore;
+use minicore::*;
 
-#[lang = "sized"]
-trait Sized {}
+//@ set impl_i32 = "$.index[?(@.docs=='Only core can do this')].id"
 
 /// Only core can do this
 impl i32 {

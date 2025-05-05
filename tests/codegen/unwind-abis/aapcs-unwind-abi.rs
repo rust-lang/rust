@@ -1,9 +1,11 @@
+//@ add-core-stubs
 //@ needs-llvm-components: arm
 //@ compile-flags: --target=armv7-unknown-linux-gnueabihf --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang = "sized"]
-trait Sized {}
+
+extern crate minicore;
+use minicore::*;
 
 // Test that `nounwind` attributes are correctly applied to exported `aapcs` and
 // `aapcs-unwind` extern functions. `aapcs-unwind` functions MUST NOT have this attribute. We

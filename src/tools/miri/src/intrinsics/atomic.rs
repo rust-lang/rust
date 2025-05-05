@@ -73,23 +73,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ["singlethreadfence", ord] => this.compiler_fence_intrinsic(args, fence_ord(ord))?,
 
             ["xchg", ord] => this.atomic_exchange(args, dest, rw_ord(ord))?,
-            ["cxchg", ord1, ord2] =>
-                this.atomic_compare_exchange(args, dest, rw_ord(ord1), read_ord(ord2))?,
-            ["cxchgweak", ord1, ord2] =>
-                this.atomic_compare_exchange_weak(args, dest, rw_ord(ord1), read_ord(ord2))?,
+            ["cxchg", ord1, ord2] => {
+                this.atomic_compare_exchange(args, dest, rw_ord(ord1), read_ord(ord2))?
+            }
+            ["cxchgweak", ord1, ord2] => {
+                this.atomic_compare_exchange_weak(args, dest, rw_ord(ord1), read_ord(ord2))?
+            }
 
-            ["or", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord))?,
-            ["xor", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord))?,
-            ["and", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord))?,
-            ["nand", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord))?,
-            ["xadd", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord))?,
-            ["xsub", ord] =>
-                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord))?,
+            ["or", ord] => {
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitOr, false), rw_ord(ord))?
+            }
+            ["xor", ord] => {
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitXor, false), rw_ord(ord))?
+            }
+            ["and", ord] => {
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, false), rw_ord(ord))?
+            }
+            ["nand", ord] => {
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::BitAnd, true), rw_ord(ord))?
+            }
+            ["xadd", ord] => {
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Add, false), rw_ord(ord))?
+            }
+            ["xsub", ord] => {
+                this.atomic_rmw_op(args, dest, AtomicOp::MirOp(BinOp::Sub, false), rw_ord(ord))?
+            }
             ["min", ord] => {
                 // Later we will use the type to indicate signed vs unsigned,
                 // so make sure it matches the intrinsic name.

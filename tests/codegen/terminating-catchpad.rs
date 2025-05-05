@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: emscripten wasi seh
 //@[emscripten] compile-flags: --target wasm32-unknown-emscripten -Z emscripten-wasm-eh
 //@[wasi] compile-flags: --target wasm32-wasip1 -C panic=unwind
@@ -15,8 +16,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 unsafe extern "C-unwind" {
     safe fn unwinds();

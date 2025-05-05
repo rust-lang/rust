@@ -1,8 +1,10 @@
+//@ add-core-stubs
+
 #![feature(no_core, auto_traits, lang_items, arbitrary_self_types)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}

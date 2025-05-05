@@ -555,12 +555,12 @@ fn main() {
                 "abort" => miri::IsolatedOp::Reject(miri::RejectOpWith::Abort),
                 "hide" => miri::IsolatedOp::Reject(miri::RejectOpWith::NoWarning),
                 "warn" => miri::IsolatedOp::Reject(miri::RejectOpWith::Warning),
-                "warn-nobacktrace" =>
-                    miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace),
-                _ =>
-                    show_error!(
-                        "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
-                    ),
+                "warn-nobacktrace" => {
+                    miri::IsolatedOp::Reject(miri::RejectOpWith::WarningWithoutBacktrace)
+                }
+                _ => show_error!(
+                    "-Zmiri-isolation-error must be `abort`, `hide`, `warn`, or `warn-nobacktrace`"
+                ),
             };
         } else if arg == "-Zmiri-ignore-leaks" {
             miri_config.ignore_leaks = true;

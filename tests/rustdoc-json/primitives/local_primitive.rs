@@ -1,3 +1,4 @@
+//@ add-core-stubs
 // Regression test for <https://github.com/rust-lang/rust/issues/104064>.
 
 #![feature(no_core)]
@@ -6,7 +7,10 @@
 #![no_core]
 #![rustc_coherence_is_core]
 
-//! Link to [i32][prim@i32] [i64][prim@i64]
+extern crate minicore;
+use minicore::*;
+
+/// Link to [i32][prim@i32] [i64][prim@i64]
 
 #[rustc_doc_primitive = "i32"]
 mod prim_i32 {}

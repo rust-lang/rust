@@ -126,8 +126,9 @@ impl<'tcx> std::fmt::Debug for ThreadState<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Enabled => write!(f, "Enabled"),
-            Self::Blocked { reason, timeout, .. } =>
-                f.debug_struct("Blocked").field("reason", reason).field("timeout", timeout).finish(),
+            Self::Blocked { reason, timeout, .. } => {
+                f.debug_struct("Blocked").field("reason", reason).field("timeout", timeout).finish()
+            }
             Self::Terminated => write!(f, "Terminated"),
         }
     }
@@ -350,8 +351,9 @@ impl Timeout {
     fn get_wait_time(&self, clock: &MonotonicClock) -> Duration {
         match self {
             Timeout::Monotonic(instant) => instant.duration_since(clock.now()),
-            Timeout::RealTime(time) =>
-                time.duration_since(SystemTime::now()).unwrap_or(Duration::ZERO),
+            Timeout::RealTime(time) => {
+                time.duration_since(SystemTime::now()).unwrap_or(Duration::ZERO)
+            }
         }
     }
 
@@ -686,12 +688,11 @@ impl<'tcx> ThreadManager<'tcx> {
     fn next_callback_wait_time(&self, clock: &MonotonicClock) -> Option<Duration> {
         self.threads
             .iter()
-            .filter_map(|t| {
-                match &t.state {
-                    ThreadState::Blocked { timeout: Some(timeout), .. } =>
-                        Some(timeout.get_wait_time(clock)),
-                    _ => None,
+            .filter_map(|t| match &t.state {
+                ThreadState::Blocked { timeout: Some(timeout), .. } => {
+                    Some(timeout.get_wait_time(clock))
                 }
+                _ => None,
             })
             .min()
     }
@@ -954,16 +955,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Now free the TLS statics.
             for ptr in free_tls_statics {
                 match tls_alloc_action {
-                    TlsAllocAction::Deallocate =>
-                        this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?,
-                    TlsAllocAction::Leak =>
+                    TlsAllocAction::Deallocate => {
+                        this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?
+                    }
+                    TlsAllocAction::Leak => {
                         if let Some(alloc) = ptr.provenance.get_alloc_id() {
                             trace!(
                                 "Thread-local static leaked and stored as static root: {:?}",
                                 alloc
                             );
                             this.machine.static_roots.push(alloc);
-                        },
+                        }
+                    }
                 }
             }
         }
@@ -1004,11 +1007,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         TimeoutAnchor::Relative => SystemTime::now(),
                     })
                 }
-                TimeoutClock::Monotonic =>
-                    Timeout::Monotonic(match anchor {
-                        TimeoutAnchor::Absolute => this.machine.monotonic_clock.epoch(),
-                        TimeoutAnchor::Relative => this.machine.monotonic_clock.now(),
-                    }),
+                TimeoutClock::Monotonic => Timeout::Monotonic(match anchor {
+                    TimeoutAnchor::Absolute => this.machine.monotonic_clock.epoch(),
+                    TimeoutAnchor::Relative => this.machine.monotonic_clock.now(),
+                }),
             };
             anchor.add_lossy(duration)
         });
@@ -1158,8 +1160,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         // See if this thread can do something else.
                         match this.run_on_stack_empty()? {
                             Poll::Pending => {} // keep going
-                            Poll::Ready(()) =>
-                                this.terminate_active_thread(TlsAllocAction::Deallocate)?,
+                            Poll::Ready(()) => {
+                                this.terminate_active_thread(TlsAllocAction::Deallocate)?
+                            }
                         }
                     }
                 }

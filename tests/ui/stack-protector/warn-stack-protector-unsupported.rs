@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ build-pass
 //@ revisions: all strong basic
 //@ compile-flags: --target nvptx64-nvidia-cuda
@@ -11,12 +12,10 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
-pub fn main(){}
+pub fn main() {}
 
 //[all]~? WARN `-Z stack-protector=all` is not supported for target nvptx64-nvidia-cuda and will be ignored
 //[strong]~? WARN `-Z stack-protector=strong` is not supported for target nvptx64-nvidia-cuda and will be ignored

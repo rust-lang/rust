@@ -1,9 +1,11 @@
+//@ add-core-stubs
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang = "sized"]
-trait Sized {}
+
+extern crate minicore;
+use minicore::*;
 
 // Test that `nounwind` attributes are correctly applied to exported `sysv64` and
 // `sysv64-unwind` extern functions. `sysv64-unwind` functions MUST NOT have this attribute. We

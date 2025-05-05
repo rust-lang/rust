@@ -253,14 +253,12 @@ impl GlobalStateInner {
         machine: &MiriMachine<'_>,
     ) -> AllocState {
         match self.borrow_tracker_method {
-            BorrowTrackerMethod::StackedBorrows =>
-                AllocState::StackedBorrows(Box::new(RefCell::new(Stacks::new_allocation(
-                    id, alloc_size, self, kind, machine,
-                )))),
-            BorrowTrackerMethod::TreeBorrows =>
-                AllocState::TreeBorrows(Box::new(RefCell::new(Tree::new_allocation(
-                    id, alloc_size, self, kind, machine,
-                )))),
+            BorrowTrackerMethod::StackedBorrows => AllocState::StackedBorrows(Box::new(
+                RefCell::new(Stacks::new_allocation(id, alloc_size, self, kind, machine)),
+            )),
+            BorrowTrackerMethod::TreeBorrows => AllocState::TreeBorrows(Box::new(RefCell::new(
+                Tree::new_allocation(id, alloc_size, self, kind, machine),
+            ))),
         }
     }
 }
@@ -324,8 +322,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
                 interp_ok(())
             }
-            BorrowTrackerMethod::TreeBorrows =>
-                this.tb_give_pointer_debug_name(ptr, nth_parent, name),
+            BorrowTrackerMethod::TreeBorrows => {
+                this.tb_give_pointer_debug_name(ptr, nth_parent, name)
+            }
         }
     }
 
@@ -424,16 +423,16 @@ impl AllocState {
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
-            AllocState::StackedBorrows(sb) =>
-                sb.borrow_mut().before_memory_read(alloc_id, prov_extra, range, machine),
-            AllocState::TreeBorrows(tb) =>
-                tb.borrow_mut().before_memory_access(
-                    AccessKind::Read,
-                    alloc_id,
-                    prov_extra,
-                    range,
-                    machine,
-                ),
+            AllocState::StackedBorrows(sb) => {
+                sb.borrow_mut().before_memory_read(alloc_id, prov_extra, range, machine)
+            }
+            AllocState::TreeBorrows(tb) => tb.borrow_mut().before_memory_access(
+                AccessKind::Read,
+                alloc_id,
+                prov_extra,
+                range,
+                machine,
+            ),
         }
     }
 
@@ -445,16 +444,16 @@ impl AllocState {
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
-            AllocState::StackedBorrows(sb) =>
-                sb.get_mut().before_memory_write(alloc_id, prov_extra, range, machine),
-            AllocState::TreeBorrows(tb) =>
-                tb.get_mut().before_memory_access(
-                    AccessKind::Write,
-                    alloc_id,
-                    prov_extra,
-                    range,
-                    machine,
-                ),
+            AllocState::StackedBorrows(sb) => {
+                sb.get_mut().before_memory_write(alloc_id, prov_extra, range, machine)
+            }
+            AllocState::TreeBorrows(tb) => tb.get_mut().before_memory_access(
+                AccessKind::Write,
+                alloc_id,
+                prov_extra,
+                range,
+                machine,
+            ),
         }
     }
 
@@ -466,10 +465,12 @@ impl AllocState {
         machine: &MiriMachine<'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
-            AllocState::StackedBorrows(sb) =>
-                sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine),
-            AllocState::TreeBorrows(tb) =>
-                tb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine),
+            AllocState::StackedBorrows(sb) => {
+                sb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine)
+            }
+            AllocState::TreeBorrows(tb) => {
+                tb.get_mut().before_memory_deallocation(alloc_id, prov_extra, size, machine)
+            }
         }
     }
 
@@ -490,8 +491,9 @@ impl AllocState {
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(_sb) => interp_ok(()),
-            AllocState::TreeBorrows(tb) =>
-                tb.borrow_mut().release_protector(machine, global, tag, alloc_id),
+            AllocState::TreeBorrows(tb) => {
+                tb.borrow_mut().release_protector(machine, global, tag, alloc_id)
+            }
         }
     }
 }

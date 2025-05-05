@@ -34,9 +34,6 @@ pub struct f64x4([f64; 4]);
 #[repr(simd)]
 pub struct m64x4([i64; 4]);
 
-#[rustc_intrinsic]
-unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
-
 // CHECK-LABEL: load_i8x16
 #[no_mangle]
 pub unsafe extern "C" fn load_i8x16(mask: m8x16, pointer: *const i8) -> i8x16 {
