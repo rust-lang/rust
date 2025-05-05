@@ -26,7 +26,7 @@ use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
-    AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, ExternBlockLoc,
+    AdtId, AssocItemId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, ExternBlockLoc,
     ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern, ItemContainerId,
     LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId, MacroRulesId,
     MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
@@ -45,7 +45,7 @@ use crate::{
         attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
-        path_resolution::ReachedFixedPoint,
+        path_resolution::{ReachedFixedPoint, ResolvePathResult},
         proc_macro::{ProcMacroDef, ProcMacroKind, parse_macro_name_and_helper_attrs},
         sub_namespace_match,
     },
@@ -811,32 +811,35 @@ impl DefCollector<'_> {
         let _p = tracing::info_span!("resolve_import", import_path = %import.path.display(self.db, Edition::LATEST))
             .entered();
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
-        let res = self.def_map.resolve_path_fp_with_macro(
-            self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
-            self.db,
-            ResolveMode::Import,
-            module_id,
-            &import.path,
-            BuiltinShadowMode::Module,
-            None, // An import may resolve to any kind of macro.
-        );
+        let ResolvePathResult { resolved_def, segment_index, reached_fixedpoint, prefix_info } =
+            self.def_map.resolve_path_fp_with_macro(
+                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                self.db,
+                ResolveMode::Import,
+                module_id,
+                &import.path,
+                BuiltinShadowMode::Module,
+                None, // An import may resolve to any kind of macro.
+            );
 
-        let def = res.resolved_def;
-        if res.reached_fixedpoint == ReachedFixedPoint::No || def.is_none() {
+        if reached_fixedpoint == ReachedFixedPoint::No
+            || resolved_def.is_none()
+            || segment_index.is_some()
+        {
             return PartialResolvedImport::Unresolved;
         }
 
-        if res.prefix_info.differing_crate {
+        if prefix_info.differing_crate {
             return PartialResolvedImport::Resolved(
-                def.filter_visibility(|v| matches!(v, Visibility::Public)),
+                resolved_def.filter_visibility(|v| matches!(v, Visibility::Public)),
             );
         }
 
         // Check whether all namespaces are resolved.
-        if def.is_full() {
-            PartialResolvedImport::Resolved(def)
+        if resolved_def.is_full() {
+            PartialResolvedImport::Resolved(resolved_def)
         } else {
-            PartialResolvedImport::Indeterminate(def)
+            PartialResolvedImport::Indeterminate(resolved_def)
         }
     }
 
@@ -979,6 +982,43 @@ impl DefCollector<'_> {
                                 (Some(name.clone()), res)
                             })
                             .collect::<Vec<_>>();
+                        self.update(
+                            module_id,
+                            &resolutions,
+                            vis,
+                            Some(ImportOrExternCrate::Glob(glob)),
+                        );
+                    }
+                    Some(ModuleDefId::TraitId(it)) => {
+                        // FIXME: Implement this correctly
+                        // We can't actually call `trait_items`, the reason being that if macro calls
+                        // occur, they will call back into the def map which we might be computing right
+                        // now resulting in a cycle.
+                        // To properly implement this, trait item collection needs to be done in def map
+                        // collection...
+                        let resolutions = if true {
+                            vec![]
+                        } else {
+                            self.db
+                                .trait_items(it)
+                                .items
+                                .iter()
+                                .map(|&(ref name, variant)| {
+                                    let res = match variant {
+                                        AssocItemId::FunctionId(it) => {
+                                            PerNs::values(it.into(), vis, None)
+                                        }
+                                        AssocItemId::ConstId(it) => {
+                                            PerNs::values(it.into(), vis, None)
+                                        }
+                                        AssocItemId::TypeAliasId(it) => {
+                                            PerNs::types(it.into(), vis, None)
+                                        }
+                                    };
+                                    (Some(name.clone()), res)
+                                })
+                                .collect::<Vec<_>>()
+                        };
                         self.update(
                             module_id,
                             &resolutions,
