@@ -1,5 +1,5 @@
-use super::super::{Float, MinInt};
 use super::{copysign, trunc};
+use crate::support::{Float, MinInt};
 
 #[inline]
 pub fn round<F: Float>(x: F) -> F {

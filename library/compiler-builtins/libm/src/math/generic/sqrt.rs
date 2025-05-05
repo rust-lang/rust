@@ -41,8 +41,9 @@
 //! Goldschmidt has the advantage over Newton-Raphson that `sqrt(x)` and `1/sqrt(x)` are
 //! computed at the same time, i.e. there is no need to calculate `1/sqrt(x)` and invert it.
 
-use super::super::support::{FpResult, IntTy, Round, Status, cold_path};
-use super::super::{CastFrom, CastInto, DInt, Float, HInt, Int, MinInt};
+use crate::support::{
+    CastFrom, CastInto, DInt, Float, FpResult, HInt, Int, IntTy, MinInt, Round, Status, cold_path,
+};
 
 #[inline]
 pub fn sqrt<F>(x: F) -> F

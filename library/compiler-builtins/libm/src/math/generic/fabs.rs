@@ -1,4 +1,4 @@
-use super::super::Float;
+use crate::support::Float;
 
 /// Absolute value.
 #[inline]

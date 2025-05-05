@@ -1,4 +1,4 @@
-use super::super::{CastFrom, CastInto, Float, IntTy, MinInt};
+use crate::support::{CastFrom, CastInto, Float, IntTy, MinInt};
 
 /// Scale the exponent.
 ///

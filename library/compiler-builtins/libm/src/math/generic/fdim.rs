@@ -1,4 +1,4 @@
-use super::super::Float;
+use crate::support::Float;
 
 #[inline]
 pub fn fdim<F: Float>(x: F, y: F) -> F {

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT OR Apache-2.0 */
-use super::super::{CastFrom, Float, Int, MinInt};
+use crate::support::{CastFrom, Float, Int, MinInt};
 
 #[inline]
 pub fn fmod<F: Float>(x: F, y: F) -> F {
