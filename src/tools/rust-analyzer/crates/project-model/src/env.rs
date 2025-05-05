@@ -18,6 +18,7 @@ pub(crate) fn inject_cargo_package_env(env: &mut Env, package: &PackageData) {
 
     let manifest_dir = package.manifest.parent();
     env.set("CARGO_MANIFEST_DIR", manifest_dir.as_str());
+    env.set("CARGO_MANIFEST_PATH", package.manifest.as_str());
 
     env.set("CARGO_PKG_VERSION", package.version.to_string());
     env.set("CARGO_PKG_VERSION_MAJOR", package.version.major.to_string());
