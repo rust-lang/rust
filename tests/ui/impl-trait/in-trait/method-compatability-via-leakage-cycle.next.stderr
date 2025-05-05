@@ -1,4 +1,4 @@
-error[E0391]: cycle detected when computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::{anon_assoc#0}`
+error[E0391]: cycle detected when computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`
   --> $DIR/method-compatability-via-leakage-cycle.rs:21:24
    |
 LL |     fn foo(b: bool) -> impl Sized {
@@ -49,7 +49,7 @@ note: ...which requires type-checking `<impl at $DIR/method-compatability-via-le
    |
 LL |     fn foo(b: bool) -> impl Sized {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::{anon_assoc#0}`, completing the cycle
+   = note: ...which again requires computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`, completing the cycle
 note: cycle used when checking that `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>` is well-formed
   --> $DIR/method-compatability-via-leakage-cycle.rs:17:1
    |
@@ -57,7 +57,7 @@ LL | impl Trait for u32 {
    | ^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error[E0391]: cycle detected when computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::{anon_assoc#0}`
+error[E0391]: cycle detected when computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`
   --> $DIR/method-compatability-via-leakage-cycle.rs:21:24
    |
 LL |     fn foo(b: bool) -> impl Sized {
@@ -108,7 +108,7 @@ note: ...which requires type-checking `<impl at $DIR/method-compatability-via-le
    |
 LL |     fn foo(b: bool) -> impl Sized {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::{anon_assoc#0}`, completing the cycle
+   = note: ...which again requires computing type of `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo::{anon_assoc#0}`, completing the cycle
 note: cycle used when checking that `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>` is well-formed
   --> $DIR/method-compatability-via-leakage-cycle.rs:17:1
    |

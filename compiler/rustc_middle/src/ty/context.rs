@@ -35,7 +35,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate};
@@ -1978,8 +1978,11 @@ impl<'tcx> TyCtxtAt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
+        override_def_path_data: Option<DefPathData>,
+        disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let feed = self.tcx.create_def(parent, name, def_kind);
+        let feed =
+            self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
 
         feed.def_span(self.span);
         feed
@@ -1993,8 +1996,10 @@ impl<'tcx> TyCtxt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
+        override_def_path_data: Option<DefPathData>,
+        disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let data = def_kind.def_path_data(name);
+        let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
@@ -2004,12 +2009,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // - has been created by this call to `create_def`.
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
-        //
-        // This call also writes to the value of the `source_span` query.
-        // This is fine because:
-        // - that query is `eval_always` so we won't miss its result changing;
-        // - this write will have happened before that query is called.
-        let def_id = self.untracked.definitions.write().create_def(parent, data);
+        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
 
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
