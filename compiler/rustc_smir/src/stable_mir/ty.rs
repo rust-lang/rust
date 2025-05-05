@@ -298,6 +298,12 @@ pub struct LineInfo {
     pub end_col: usize,
 }
 
+impl LineInfo {
+    pub fn from(lines: (usize, usize, usize, usize)) -> Self {
+        LineInfo { start_line: lines.0, start_col: lines.1, end_line: lines.2, end_col: lines.3 }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum TyKind {
     RigidTy(RigidTy),
