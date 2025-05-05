@@ -6,7 +6,7 @@ use serde::Serialize;
 use stable_mir::compiler_interface::with;
 use stable_mir::mir::FieldIdx;
 use stable_mir::target::{MachineInfo, MachineSize as Size};
-use stable_mir::ty::{Align, IndexedVal, Ty, VariantIdx};
+use stable_mir::ty::{Align, Ty, VariantIdx};
 use stable_mir::{Error, Opaque, error};
 
 use crate::stable_mir;
@@ -119,7 +119,7 @@ impl Layout {
     }
 }
 
-impl IndexedVal for Layout {
+impl crate::rustc_smir::IndexedVal for Layout {
     fn to_val(index: usize) -> Self {
         Layout(index)
     }

@@ -1,6 +1,7 @@
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
+use rustc_smir::IndexedVal;
 use serde::Serialize;
 use stable_mir::abi::{FnAbi, Layout};
 use stable_mir::crate_def::{CrateDef, CrateDefItems, CrateDefType};
@@ -12,7 +13,7 @@ use stable_mir::{Filename, Opaque};
 use super::abi::ReprOptions;
 use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
-use crate::stable_mir;
+use crate::{rustc_smir, stable_mir};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Ty(usize);
@@ -1563,15 +1564,9 @@ pub enum PredicatePolarity {
     Negative,
 }
 
-pub trait IndexedVal {
-    fn to_val(index: usize) -> Self;
-
-    fn to_index(&self) -> usize;
-}
-
 macro_rules! index_impl {
     ($name:ident) => {
-        impl IndexedVal for $name {
+        impl crate::rustc_smir::IndexedVal for $name {
             fn to_val(index: usize) -> Self {
                 $name(index)
             }

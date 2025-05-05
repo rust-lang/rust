@@ -17,11 +17,10 @@ use rustc_span::Span;
 use rustc_span::def_id::{CrateNum, DefId};
 use scoped_tls::scoped_thread_local;
 use stable_mir::Error;
-use stable_mir::ty::IndexedVal;
 
 use crate::rustc_smir::context::SmirCtxt;
 use crate::rustc_smir::{Stable, Tables};
-use crate::rustc_smir::{Bridge, SmirContainer, Tables};
+use crate::rustc_smir::{Bridge, IndexedVal, SmirContainer, Tables};
 use crate::stable_mir;
 
 mod internal;
