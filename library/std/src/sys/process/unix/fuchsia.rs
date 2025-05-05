@@ -81,7 +81,7 @@ impl Command {
 
                 let mut handle = ZX_HANDLE_INVALID;
                 let status = fdio_fd_clone(target_fd, &mut handle);
-                if status == ERR_INVALID_ARGS || status == ERR_NOT_SUPPORTED {
+                if status == ZX_ERR_INVALID_ARGS || status == ZX_ERR_NOT_SUPPORTED {
                     // This descriptor is closed; skip it rather than generating an
                     // error.
                     return Ok(Default::default());
@@ -197,7 +197,7 @@ impl Process {
                 zx_object_wait_one(self.handle.raw(), ZX_TASK_TERMINATED, 0, ptr::null_mut());
             match status {
                 0 => {} // Success
-                x if x == ERR_TIMED_OUT => {
+                x if x == ZX_ERR_TIMED_OUT => {
                     return Ok(None);
                 }
                 _ => {
