@@ -25,27 +25,36 @@ impl Drop for Handler {
     }
 }
 
-#[cfg(any(
-    target_os = "linux",
-    target_os = "freebsd",
-    target_os = "hurd",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "solaris",
-    target_os = "illumos",
+#[cfg(all(
+    not(miri),
+    any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "hurd",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    ),
 ))]
 mod thread_info;
 
-#[cfg(any(
-    target_os = "linux",
-    target_os = "freebsd",
-    target_os = "hurd",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "solaris",
-    target_os = "illumos",
+// miri doesn't model signals nor stack overflows and this code has some
+// synchronization properties that we don't want to expose to user code,
+// hence we disable it on miri.
+#[cfg(all(
+    not(miri),
+    any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "hurd",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+    )
 ))]
 mod imp {
     use libc::{
@@ -606,17 +615,20 @@ mod imp {
 // usually have fewer qualms about forwards compatibility, since the runtime
 // is shipped with the OS):
 // <https://github.com/apple/swift/blob/swift-5.10-RELEASE/stdlib/public/runtime/CrashHandlerMacOS.cpp>
-#[cfg(not(any(
-    target_os = "linux",
-    target_os = "freebsd",
-    target_os = "hurd",
-    target_os = "macos",
-    target_os = "netbsd",
-    target_os = "openbsd",
-    target_os = "solaris",
-    target_os = "illumos",
-    target_os = "cygwin",
-)))]
+#[cfg(any(
+    miri,
+    not(any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "hurd",
+        target_os = "macos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "cygwin",
+    ))
+))]
 mod imp {
     pub unsafe fn init() {}
 
