@@ -554,8 +554,6 @@ fn main() {
         } else if arg == "-Zmiri-tree-borrows" {
             miri_config.borrow_tracker = Some(BorrowTrackerMethod::TreeBorrows);
             miri_config.provenance_mode = ProvenanceMode::Strict;
-        } else if arg == "-Zmiri-unique-is-unique" {
-            miri_config.unique_is_unique = true;
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;
@@ -721,14 +719,6 @@ fn main() {
             // Forward to rustc.
             rustc_args.push(arg);
         }
-    }
-    // `-Zmiri-unique-is-unique` should only be used with `-Zmiri-tree-borrows`.
-    if miri_config.unique_is_unique
-        && !matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
-    {
-        show_error!(
-            "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
-        );
     }
     // Tree Borrows implies strict provenance, and is not compatible with native calls.
     if matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows)) {

@@ -1,6 +1,4 @@
-//@revisions: default uniq
 //@compile-flags: -Zmiri-tree-borrows
-//@[uniq]compile-flags: -Zmiri-unique-is-unique
 #![allow(dangerous_implicit_autorefs)]
 use std::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use std::mem::{self, MaybeUninit};
