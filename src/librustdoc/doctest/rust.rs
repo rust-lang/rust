@@ -127,6 +127,26 @@ impl HirCollector<'_> {
             return;
         }
 
+        // Try collecting `#[doc(test(attr(...)))]`
+        let old_global_crate_attrs_len = self.collector.global_crate_attrs.len();
+        for doc_test_attrs in ast_attrs
+            .iter()
+            .filter(|a| a.has_name(sym::doc))
+            .flat_map(|a| a.meta_item_list().unwrap_or_default())
+            .filter(|a| a.has_name(sym::test))
+        {
+            let Some(doc_test_attrs) = doc_test_attrs.meta_item_list() else { continue };
+            for attr in doc_test_attrs
+                .iter()
+                .filter(|a| a.has_name(sym::attr))
+                .flat_map(|a| a.meta_item_list().unwrap_or_default())
+                .map(|i| pprust::meta_list_item_to_string(i))
+            {
+                // Add the additional attributes to the global_crate_attrs vector
+                self.collector.global_crate_attrs.push(attr);
+            }
+        }
+
         let mut has_name = false;
         if let Some(name) = name {
             self.collector.cur_path.push(name);
@@ -161,6 +181,9 @@ impl HirCollector<'_> {
 
         nested(self);
 
+        // Restore global_crate_attrs to it's previous size/content
+        self.collector.global_crate_attrs.truncate(old_global_crate_attrs_len);
+
         if has_name {
             self.collector.cur_path.pop();
         }
@@ -172,40 +195,6 @@ impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         self.tcx
-    }
-
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _s: Span, hir_id: hir::HirId) {
-        let attrs = self.tcx.hir_attrs(hir_id);
-
-        if !attrs.is_empty() {
-            // Try collecting `#![doc(test(attr(...)))]` from the attribute module
-            let old_len = self.collector.global_crate_attrs.len();
-            for doc_test_attrs in attrs
-                .iter()
-                .filter(|a| a.has_name(sym::doc))
-                .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                .filter(|a| a.has_name(sym::test))
-            {
-                let Some(doc_test_attrs) = doc_test_attrs.meta_item_list() else { continue };
-                for attr in doc_test_attrs
-                    .iter()
-                    .filter(|a| a.has_name(sym::attr))
-                    .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                    .map(|i| pprust::meta_list_item_to_string(i))
-                {
-                    // Add the additional attributes to the global_crate_attrs vector
-                    self.collector.global_crate_attrs.push(attr);
-                }
-            }
-
-            let r = intravisit::walk_mod(self, m);
-
-            // Restore global_crate_attrs to it's previous size/content
-            self.collector.global_crate_attrs.truncate(old_len);
-            r
-        } else {
-            intravisit::walk_mod(self, m)
-        }
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
