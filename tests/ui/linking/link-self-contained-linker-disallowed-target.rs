@@ -1,0 +1,16 @@
+// Check that `-C link-self-contained=[+-]linker` is only stable on x64 linux, and needs `-Z
+// unstable-options` elsewhere.
+
+// ignore-tidy-linelength
+
+//@ revisions: positive negative
+//@ [negative] compile-flags: --target=x86_64-unknown-linux-musl -C link-self-contained=-linker --crate-type=rlib
+//@ [negative] needs-llvm-components: x86
+//@ [positive] compile-flags: --target=x86_64-unknown-linux-musl -C link-self-contained=+linker --crate-type=rlib
+//@ [positive] needs-llvm-components: x86
+
+#![feature(no_core)]
+#![no_core]
+
+//[negative]~? ERROR `-C link-self-contained=-linker` is unstable on the `x86_64-unknown-linux-musl` target
+//[positive]~? ERROR `-C link-self-contained=+linker` is unstable on the `x86_64-unknown-linux-musl` target
