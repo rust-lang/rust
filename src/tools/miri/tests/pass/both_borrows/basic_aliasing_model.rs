@@ -1,14 +1,15 @@
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(allocator_api)]
 use std::ptr;
 
-// Test various stacked-borrows-related things.
+// Test various aliasing-model-related things.
 fn main() {
     read_does_not_invalidate1();
     read_does_not_invalidate2();
     mut_raw_then_mut_shr();
     mut_shr_then_mut_raw();
     mut_raw_mut();
-    mut_raw_mut2();
     partially_invalidate_mut();
     drop_after_sharing();
     // direct_mut_to_const_raw();
@@ -97,18 +98,6 @@ fn mut_raw_mut() {
     assert_eq!(x, 4);
 }
 
-// A variant of `mut_raw_mut` that does *not* get accepted by Tree Borrows.
-// It's kind of an accident that we accept it in Stacked Borrows...
-fn mut_raw_mut2() {
-    unsafe {
-        let mut root = 0;
-        let to = &mut root as *mut i32;
-        *to = 0;
-        let _val = root;
-        *to = 0;
-    }
-}
-
 fn partially_invalidate_mut() {
     let data = &mut (0u8, 0u8);
     let reborrow = &mut *data as *mut (u8, u8);
@@ -123,15 +112,6 @@ fn drop_after_sharing() {
     let x = String::from("hello!");
     let _len = x.len();
 }
-
-// Make sure that coercing &mut T to *const T produces a writeable pointer.
-// TODO: This is currently disabled, waiting on a decision on <https://github.com/rust-lang/rust/issues/56604>
-/*fn direct_mut_to_const_raw() {
-    let x = &mut 0;
-    let y: *const i32 = x;
-    unsafe { *(y as *mut i32) = 1; }
-    assert_eq!(*x, 1);
-}*/
 
 // Make sure that we can create two raw pointers from a mutable reference and use them both.
 fn two_raw() {
@@ -178,7 +158,7 @@ fn disjoint_mutable_subborrows() {
     let b = unsafe { borrow_field_b(ptr) };
     b.push(4);
     a.push_str(" world");
-    eprintln!("{:?} {:?}", a, b);
+    assert_eq!(format!("{:?} {:?}", a, b), r#""hello world" [0, 1, 2, 4]"#);
 }
 
 fn raw_ref_to_part() {
@@ -243,7 +223,7 @@ fn not_unpin_not_protected() {
     pub struct NotUnpin(#[allow(dead_code)] i32, PhantomPinned);
 
     fn inner(x: &mut NotUnpin, f: fn(&mut NotUnpin)) {
-        // `f` may mutate, but it may not deallocate!
+        // `f` is allowed to deallocate `x`.
         f(x)
     }
 

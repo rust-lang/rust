@@ -1,8 +1,7 @@
 ──────────────────────────────────────────────────
 Warning: this tree is indicative only. Some tags may have been hidden.
-0..   2
+0..   4
 | Act |    └─┬──<TAG=root of the allocation>
-|-----|      └─┬──<TAG=base.as_ptr(), base.as_ptr()>
-|-----|        └─┬──<TAG=raw_parts.0>
-|-----|          └────<TAG=reconstructed.as_ptr(), reconstructed.as_ptr()>
+| Act |      └─┬──<TAG=ptr1>
+| ReIM|        └────<TAG=ptr2>
 ──────────────────────────────────────────────────

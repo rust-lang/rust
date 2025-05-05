@@ -1,7 +1,7 @@
-//@revisions: default uniq
-//@compile-flags: -Zmiri-tree-borrows
-//@[uniq]compile-flags: -Zmiri-unique-is-unique
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![allow(dangerous_implicit_autorefs)]
+
 use std::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
 use std::mem::{self, MaybeUninit};
 
@@ -16,6 +16,7 @@ fn main() {
     ref_protector();
     ref_mut_protector();
     rust_issue_68303();
+    two_phase();
 }
 
 fn aliasing_mut_and_shr() {
@@ -104,7 +105,14 @@ fn unsafe_cell_invalidate() {
     let ref1 = unsafe { &mut *raw1 };
     let raw2 = ref1 as *mut _;
     // Now the borrow stack is: raw1, ref2, raw2.
-    // So using raw1 invalidates raw2.
+    //
+    // For TB, the tree is
+    //
+    // Act x
+    // Res `- raw1
+    // Res    `- ref1, raw2
+    //
+    // Either way, using raw1 invalidates raw2.
     f(unsafe { mem::transmute(raw2) }, raw1);
 }
 
@@ -140,7 +148,7 @@ fn refcell_basic() {
     }
 }
 
-// Adding a Stacked Borrows protector for `Ref` would break this
+// Adding a protector for `Ref` would break this
 fn ref_protector() {
     fn break_it(rc: &RefCell<i32>, r: Ref<'_, i32>) {
         // `r` has a shared reference, it is passed in as argument and hence
@@ -175,4 +183,28 @@ fn rust_issue_68303() {
     let mut handle = optional.as_ref().unwrap().borrow_mut();
     assert!(optional.is_some());
     *handle = true;
+}
+
+fn two_phase() {
+    use std::cell::Cell;
+
+    trait Thing: Sized {
+        fn do_the_thing(&mut self, _s: i32) {}
+    }
+
+    impl<T> Thing for Cell<T> {}
+
+    let mut x = Cell::new(1);
+    let l = &x;
+
+    x.do_the_thing({
+        // In TB terms:
+        // Several Foreign accesses (both Reads and Writes) to the location
+        // being reborrowed. Reserved + unprotected + interior mut
+        // makes the pointer immune to everything as long as all accesses
+        // are child accesses to its parent pointer x.
+        x.set(3);
+        l.set(4);
+        x.get() + l.get()
+    });
 }

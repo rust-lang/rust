@@ -8,6 +8,10 @@ use crate::borrow_tracker::tree_borrows::tree::AccessRelatedness;
 /// The activation states of a pointer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum PermissionPriv {
+    /// represents: a shared reference to interior mutable data.
+    /// allows: all foreign and child accesses;
+    /// rejects: nothing
+    Cell,
     /// represents: a local mutable reference that has not yet been written to;
     /// allows: child reads, foreign reads;
     /// affected by: child writes (becomes Active),
@@ -60,6 +64,14 @@ impl PartialOrd for PermissionPriv {
         use Ordering::*;
         Some(match (self, other) {
             (a, b) if a == b => Equal,
+            // Versions of `Reserved` with different interior mutability are incomparable with each
+            // other.
+            (ReservedIM, ReservedFrz { .. })
+            | (ReservedFrz { .. }, ReservedIM)
+            // `Cell` is not comparable with any other permission
+            // since it never transitions to any other state and we
+            // can never get to `Cell` from another state.
+            | (Cell, _) | (_, Cell) => return None,
             (Disabled, _) => Greater,
             (_, Disabled) => Less,
             (Frozen, _) => Greater,
@@ -71,9 +83,6 @@ impl PartialOrd for PermissionPriv {
                 // `bool` is ordered such that `false <= true`, so this works as intended.
                 c1.cmp(c2)
             }
-            // Versions of `Reserved` with different interior mutability are incomparable with each
-            // other.
-            (ReservedIM, ReservedFrz { .. }) | (ReservedFrz { .. }, ReservedIM) => return None,
         })
     }
 }
@@ -81,17 +90,22 @@ impl PartialOrd for PermissionPriv {
 impl PermissionPriv {
     /// Check if `self` can be the initial state of a pointer.
     fn is_initial(&self) -> bool {
-        matches!(self, ReservedFrz { conflicted: false } | Frozen | ReservedIM)
+        matches!(self, ReservedFrz { conflicted: false } | Frozen | ReservedIM | Cell)
     }
 
     /// Reject `ReservedIM` that cannot exist in the presence of a protector.
     fn compatible_with_protector(&self) -> bool {
-        !matches!(self, ReservedIM)
+        // FIXME(TB-Cell): It is unclear what to do here.
+        // `Cell` will occur with a protector but won't provide the guarantees
+        // of noalias (it will fail the `protected_enforces_noalias` test).
+        !matches!(self, ReservedIM | Cell)
     }
 
     /// See `foreign_access_skipping.rs`. Computes the SIFA of a permission.
     fn strongest_idempotent_foreign_access(&self, prot: bool) -> IdempotentForeignAccess {
         match self {
+            // Cell survives any foreign access
+            Cell => IdempotentForeignAccess::Write,
             // A protected non-conflicted Reserved will become conflicted under a foreign read,
             // and is hence not idempotent under it.
             ReservedFrz { conflicted } if prot && !conflicted => IdempotentForeignAccess::None,
@@ -124,7 +138,7 @@ mod transition {
             Disabled => return None,
             // The inner data `ty_is_freeze` of `Reserved` is always irrelevant for Read
             // accesses, since the data is not being mutated. Hence the `{ .. }`.
-            readable @ (ReservedFrz { .. } | ReservedIM | Active | Frozen) => readable,
+            readable @ (Cell | ReservedFrz { .. } | ReservedIM | Active | Frozen) => readable,
         })
     }
 
@@ -132,6 +146,8 @@ mod transition {
     /// is protected; invalidate `Active`.
     fn foreign_read(state: PermissionPriv, protected: bool) -> Option<PermissionPriv> {
         Some(match state {
+            // Cell ignores foreign reads.
+            Cell => Cell,
             // Non-writeable states just ignore foreign reads.
             non_writeable @ (Frozen | Disabled) => non_writeable,
             // Writeable states are more tricky, and depend on whether things are protected.
@@ -167,6 +183,8 @@ mod transition {
     /// write permissions, `Frozen` and `Disabled` cannot obtain such permissions and produce UB.
     fn child_write(state: PermissionPriv, protected: bool) -> Option<PermissionPriv> {
         Some(match state {
+            // Cell ignores child writes.
+            Cell => Cell,
             // If the `conflicted` flag is set, then there was a foreign read during
             // the function call that is still ongoing (still `protected`),
             // this is UB (`noalias` violation).
@@ -185,6 +203,8 @@ mod transition {
         // types receive a `ReservedFrz` instead of `ReservedIM` when retagged under a protector,
         // so the result of this function does indirectly depend on (past) protector status.
         Some(match state {
+            // Cell ignores foreign writes.
+            Cell => Cell,
             res @ ReservedIM => {
                 // We can never create a `ReservedIM` under a protector, only `ReservedFrz`.
                 assert!(!protected);
@@ -242,6 +262,11 @@ impl Permission {
         self.inner == Frozen
     }
 
+    /// Check if `self` is the shared-reference-to-interior-mutable-data state of a pointer.
+    pub fn is_cell(&self) -> bool {
+        self.inner == Cell
+    }
+
     /// Default initial permission of the root of a new tree at inbounds positions.
     /// Must *only* be used for the root, this is not in general an "initial" permission!
     pub fn new_active() -> Self {
@@ -278,9 +303,25 @@ impl Permission {
         Self { inner: Disabled }
     }
 
+    /// Default initial permission of a shared reference to interior mutable data.
+    pub fn new_cell() -> Self {
+        Self { inner: Cell }
+    }
+
     /// Reject `ReservedIM` that cannot exist in the presence of a protector.
     pub fn compatible_with_protector(&self) -> bool {
         self.inner.compatible_with_protector()
+    }
+
+    /// What kind of access to perform before releasing the protector.
+    pub fn protector_end_access(&self) -> Option<AccessKind> {
+        match self.inner {
+            // Do not do perform access if it is a `Cell`, as this
+            // can cause data races when using thread-safe data types.
+            Cell => None,
+            Active => Some(AccessKind::Write),
+            _ => Some(AccessKind::Read),
+        }
     }
 
     /// Apply the transition to the inner PermissionPriv.
@@ -306,30 +347,32 @@ impl Permission {
     /// remove protected parents.
     pub fn can_be_replaced_by_child(self, child: Self) -> bool {
         match (self.inner, child.inner) {
-            // ReservedIM can be replaced by anything, as it allows all
-            // transitions.
+            // Cell allows all transitions.
+            (Cell, _) => true,
+            // Cell is the most permissive, nothing can be replaced by Cell.
+            // (ReservedIM, Cell) => true,
+            (_, Cell) => false,
+            // ReservedIM can be replaced by anything besides Cell.
+            // ReservedIM allows all transitions, but unlike Cell, a local write
+            // to ReservedIM transitions to Active, while it is a no-op for Cell.
             (ReservedIM, _) => true,
+            (_, ReservedIM) => false,
             // Reserved (as parent, where conflictedness does not matter)
-            // can be replaced by all but ReservedIM,
-            // since ReservedIM alone would survive foreign writes
-            (ReservedFrz { .. }, ReservedIM) => false,
+            // can be replaced by all but ReservedIM and Cell,
+            // since ReservedIM and Cell alone would survive foreign writes
             (ReservedFrz { .. }, _) => true,
+            (_, ReservedFrz { .. }) => false,
             // Active can not be replaced by something surviving
-            // foreign reads and then remaining writable.
-            (Active, ReservedIM) => false,
-            (Active, ReservedFrz { .. }) => false,
+            // foreign reads and then remaining writable (i.e., Reserved*).
             // Replacing a state by itself is always okay, even if the child state is protected.
-            (Active, Active) => true,
             // Active can be replaced by Frozen, since it is not protected.
-            (Active, Frozen) => true,
-            (Active, Disabled) => true,
+            (Active, Active | Frozen | Disabled) => true,
+            (_, Active) => false,
             // Frozen can only be replaced by Disabled (and itself).
-            (Frozen, Frozen) => true,
-            (Frozen, Disabled) => true,
-            (Frozen, _) => false,
+            (Frozen, Frozen | Disabled) => true,
+            (_, Frozen) => false,
             // Disabled can not be replaced by anything else.
             (Disabled, Disabled) => true,
-            (Disabled, _) => false,
         }
     }
 
@@ -383,6 +426,7 @@ pub mod diagnostics {
                 f,
                 "{}",
                 match self {
+                    Cell => "Cell",
                     ReservedFrz { conflicted: false } => "Reserved",
                     ReservedFrz { conflicted: true } => "Reserved (conflicted)",
                     ReservedIM => "Reserved (interior mutable)",
@@ -413,6 +457,7 @@ pub mod diagnostics {
             // and also as `diagnostics::DisplayFmtPermission.uninit` otherwise
             // alignment will be incorrect.
             match self.inner {
+                Cell => "Cel ",
                 ReservedFrz { conflicted: false } => "Res ",
                 ReservedFrz { conflicted: true } => "ResC",
                 ReservedIM => "ReIM",
@@ -459,7 +504,7 @@ pub mod diagnostics {
         ///   (Reserved < Active < Frozen < Disabled);
         /// - between `self` and `err` the permission should also be increasing,
         ///   so all permissions inside `err` should be greater than `self.1`;
-        /// - `Active` and `Reserved(conflicted=false)` cannot cause an error
+        /// - `Active`, `Reserved(conflicted=false)`, and `Cell` cannot cause an error
         ///   due to insufficient permissions, so `err` cannot be a `ChildAccessForbidden(_)`
         ///   of either of them;
         /// - `err` should not be `ProtectedDisabled(Disabled)`, because the protected
@@ -492,13 +537,14 @@ pub mod diagnostics {
                         (ReservedFrz { conflicted: true } | Active | Frozen, Disabled) => false,
                         (ReservedFrz { conflicted: true }, Frozen) => false,
 
-                        // `Active` and `Reserved` have all permissions, so a
+                        // `Active`, `Reserved`, and `Cell` have all permissions, so a
                         // `ChildAccessForbidden(Reserved | Active)` can never exist.
-                        (_, Active) | (_, ReservedFrz { conflicted: false }) =>
+                        (_, Active) | (_, ReservedFrz { conflicted: false }) | (_, Cell) =>
                             unreachable!("this permission cannot cause an error"),
                         // No transition has `Reserved { conflicted: false }` or `ReservedIM`
-                        // as its `.to` unless it's a noop.
-                        (ReservedFrz { conflicted: false } | ReservedIM, _) =>
+                        // as its `.to` unless it's a noop. `Cell` cannot be in its `.to`
+                        // because all child accesses are a noop.
+                        (ReservedFrz { conflicted: false } | ReservedIM | Cell, _) =>
                             unreachable!("self is a noop transition"),
                         // All transitions produced in normal executions (using `apply_access`)
                         // change permissions in the order `Reserved -> Active -> Frozen -> Disabled`.
@@ -544,16 +590,17 @@ pub mod diagnostics {
                                 "permission that results in Disabled should not itself be Disabled in the first place"
                             ),
                         // No transition has `Reserved { conflicted: false }` or `ReservedIM` as its `.to`
-                        // unless it's a noop.
-                        (ReservedFrz { conflicted: false } | ReservedIM, _) =>
+                        // unless it's a noop. `Cell` cannot be in its `.to` because all child
+                        // accesses are a noop.
+                        (ReservedFrz { conflicted: false } | ReservedIM | Cell, _) =>
                             unreachable!("self is a noop transition"),
 
                         // Permissions only evolve in the order `Reserved -> Active -> Frozen -> Disabled`,
                         // so permissions found must be increasing in the order
                         // `self.from < self.to <= forbidden.from < forbidden.to`.
-                        (Disabled, ReservedFrz { .. } | ReservedIM | Active | Frozen)
-                        | (Frozen, ReservedFrz { .. } | ReservedIM | Active)
-                        | (Active, ReservedFrz { .. } | ReservedIM) =>
+                        (Disabled, Cell | ReservedFrz { .. } | ReservedIM | Active | Frozen)
+                        | (Frozen, Cell | ReservedFrz { .. } | ReservedIM | Active)
+                        | (Active, Cell | ReservedFrz { .. } | ReservedIM) =>
                             unreachable!("permissions between self and err must be increasing"),
                     }
                 }
@@ -590,7 +637,7 @@ mod propagation_optimization_checks {
     impl Exhaustive for PermissionPriv {
         fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
             Box::new(
-                vec![Active, Frozen, Disabled, ReservedIM]
+                vec![Active, Frozen, Disabled, ReservedIM, Cell]
                     .into_iter()
                     .chain(<bool>::exhaustive().map(|conflicted| ReservedFrz { conflicted })),
             )
