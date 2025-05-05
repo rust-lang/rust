@@ -117,8 +117,8 @@ impl ImplItems {
 struct AssocItemCollector<'a> {
     db: &'a dyn DefDatabase,
     module_id: ModuleId,
-    def_map: Arc<DefMap>,
-    local_def_map: Arc<LocalDefMap>,
+    def_map: &'a DefMap,
+    local_def_map: &'a LocalDefMap,
     diagnostics: Vec<DefDiagnostic>,
     container: ItemContainerId,
 
@@ -183,7 +183,7 @@ impl<'a> AssocItemCollector<'a> {
             let ast_id_with_path = AstIdWithPath { path: attr.path.clone(), ast_id };
 
             match self.def_map.resolve_attr_macro(
-                &self.local_def_map,
+                self.local_def_map,
                 self.db,
                 self.module_id.local_id,
                 ast_id_with_path,
@@ -255,7 +255,7 @@ impl<'a> AssocItemCollector<'a> {
                 let resolver = |path: &_| {
                     self.def_map
                         .resolve_path(
-                            &self.local_def_map,
+                            self.local_def_map,
                             self.db,
                             self.module_id.local_id,
                             path,

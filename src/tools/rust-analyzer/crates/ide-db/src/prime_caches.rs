@@ -73,7 +73,7 @@ pub fn parallel_prime_caches(
                     .send(ParallelPrimeCacheWorkerProgress::BeginCrate { crate_id, crate_name })?;
 
                 let cancelled = Cancelled::catch(|| match kind {
-                    PrimingPhase::DefMap => _ = db.crate_def_map(crate_id),
+                    PrimingPhase::DefMap => _ = hir::crate_def_map(&db, crate_id),
                     PrimingPhase::ImportMap => _ = db.import_map(crate_id),
                     PrimingPhase::CrateSymbols => _ = db.crate_symbols(crate_id.into()),
                 });

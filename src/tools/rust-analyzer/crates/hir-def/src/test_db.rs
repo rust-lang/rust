@@ -15,7 +15,7 @@ use triomphe::Arc;
 use crate::{
     LocalModuleId, Lookup, ModuleDefId, ModuleId,
     db::DefDatabase,
-    nameres::{DefMap, ModuleSource},
+    nameres::{DefMap, ModuleSource, block_def_map, crate_def_map},
     src::HasSource,
 };
 
@@ -133,7 +133,7 @@ impl TestDB {
 
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
-            let crate_def_map = self.crate_def_map(krate);
+            let crate_def_map = crate_def_map(self, krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
                     return crate_def_map.module_id(local_id);
@@ -146,16 +146,16 @@ impl TestDB {
     pub(crate) fn module_at_position(&self, position: FilePosition) -> ModuleId {
         let file_module = self.module_for_file(position.file_id.file_id(self));
         let mut def_map = file_module.def_map(self);
-        let module = self.mod_at_position(&def_map, position);
+        let module = self.mod_at_position(def_map, position);
 
-        def_map = match self.block_at_position(&def_map, position) {
+        def_map = match self.block_at_position(def_map, position) {
             Some(it) => it,
             None => return def_map.module_id(module),
         };
         loop {
-            let new_map = self.block_at_position(&def_map, position);
+            let new_map = self.block_at_position(def_map, position);
             match new_map {
-                Some(new_block) if !Arc::ptr_eq(&new_block, &def_map) => {
+                Some(new_block) if !std::ptr::eq(&new_block, &def_map) => {
                     def_map = new_block;
                 }
                 _ => {
@@ -206,7 +206,7 @@ impl TestDB {
         res
     }
 
-    fn block_at_position(&self, def_map: &DefMap, position: FilePosition) -> Option<Arc<DefMap>> {
+    fn block_at_position(&self, def_map: &DefMap, position: FilePosition) -> Option<&DefMap> {
         // Find the smallest (innermost) function in `def_map` containing the cursor.
         let mut size = None;
         let mut fn_def = None;
@@ -263,7 +263,7 @@ impl TestDB {
             let mut containing_blocks =
                 scopes.scope_chain(Some(scope)).filter_map(|scope| scopes.block(scope));
 
-            if let Some(block) = containing_blocks.next().map(|block| self.block_def_map(block)) {
+            if let Some(block) = containing_blocks.next().map(|block| block_def_map(self, block)) {
                 return Some(block);
             }
         }

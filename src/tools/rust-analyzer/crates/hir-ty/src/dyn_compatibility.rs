@@ -9,8 +9,8 @@ use chalk_ir::{
 };
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
-    AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
-    lang_item::LangItem, signatures::TraitFlags,
+    AssocItemId, ConstId, CrateRootModuleId, FunctionId, GenericDefId, HasModule, TraitId,
+    TypeAliasId, lang_item::LangItem, signatures::TraitFlags,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -343,7 +343,7 @@ where
             })
         }
         AssocItemId::TypeAliasId(it) => {
-            let def_map = db.crate_def_map(trait_.krate(db));
+            let def_map = CrateRootModuleId::from(trait_.krate(db)).def_map(db);
             if def_map.is_unstable_feature_enabled(&intern::sym::generic_associated_type_extended) {
                 ControlFlow::Continue(())
             } else {

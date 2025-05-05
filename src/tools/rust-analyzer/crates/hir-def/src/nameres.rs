@@ -112,6 +112,18 @@ pub struct LocalDefMap {
     extern_prelude: FxIndexMap<Name, (CrateRootModuleId, Option<ExternCrateId>)>,
 }
 
+impl std::hash::Hash for LocalDefMap {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        let LocalDefMap { extern_prelude } = self;
+        extern_prelude.len().hash(state);
+        for (name, (crate_root, extern_crate)) in extern_prelude {
+            name.hash(state);
+            crate_root.hash(state);
+            extern_crate.hash(state);
+        }
+    }
+}
+
 impl LocalDefMap {
     pub(crate) const EMPTY: &Self =
         &Self { extern_prelude: FxIndexMap::with_hasher(rustc_hash::FxBuildHasher) };
@@ -250,7 +262,7 @@ struct BlockRelativeModuleId {
 }
 
 impl BlockRelativeModuleId {
-    fn def_map(self, db: &dyn DefDatabase, krate: Crate) -> Arc<DefMap> {
+    fn def_map(self, db: &dyn DefDatabase, krate: Crate) -> &DefMap {
         self.into_module(krate).def_map(db)
     }
 
@@ -358,83 +370,93 @@ pub struct ModuleData {
     pub scope: ItemScope,
 }
 
+#[inline]
+pub fn crate_def_map(db: &dyn DefDatabase, crate_id: Crate) -> &DefMap {
+    crate_local_def_map(db, crate_id).def_map(db)
+}
+
+#[allow(unused_lifetimes)]
+mod __ {
+    use super::*;
+    #[salsa_macros::tracked]
+    pub(crate) struct DefMapPair<'db> {
+        #[tracked]
+        #[return_ref]
+        pub(crate) def_map: DefMap,
+        #[return_ref]
+        pub(crate) local: LocalDefMap,
+    }
+}
+pub(crate) use __::DefMapPair;
+
+#[salsa_macros::tracked(return_ref)]
+pub(crate) fn crate_local_def_map(db: &dyn DefDatabase, crate_id: Crate) -> DefMapPair<'_> {
+    let krate = crate_id.data(db);
+    let _p = tracing::info_span!(
+        "crate_def_map_query",
+        name=?crate_id
+            .extra_data(db)
+            .display_name
+            .as_ref()
+            .map(|it| it.crate_name().to_smolstr())
+            .unwrap_or_default()
+    )
+    .entered();
+
+    let module_data = ModuleData::new(
+        ModuleOrigin::CrateRoot { definition: krate.root_file_id(db) },
+        Visibility::Public,
+    );
+
+    let def_map =
+        DefMap::empty(crate_id, Arc::new(DefMapCrateData::new(krate.edition)), module_data, None);
+    let (def_map, local_def_map) = collector::collect_defs(
+        db,
+        def_map,
+        TreeId::new(krate.root_file_id(db).into(), None),
+        None,
+    );
+
+    DefMapPair::new(db, def_map, local_def_map)
+}
+
+#[salsa_macros::tracked(return_ref)]
+pub fn block_def_map(db: &dyn DefDatabase, block_id: BlockId) -> DefMap {
+    let BlockLoc { ast_id, module } = block_id.lookup(db);
+
+    let visibility = Visibility::Module(
+        ModuleId { krate: module.krate, local_id: DefMap::ROOT, block: module.block },
+        VisibilityExplicitness::Implicit,
+    );
+    let module_data =
+        ModuleData::new(ModuleOrigin::BlockExpr { block: ast_id, id: block_id }, visibility);
+
+    let local_def_map = crate_local_def_map(db, module.krate);
+    let def_map = DefMap::empty(
+        module.krate,
+        local_def_map.def_map(db).data.clone(),
+        module_data,
+        Some(BlockInfo {
+            block: block_id,
+            parent: BlockRelativeModuleId { block: module.block, local_id: module.local_id },
+        }),
+    );
+
+    let (def_map, _) = collector::collect_defs(
+        db,
+        def_map,
+        TreeId::new(ast_id.file_id, Some(block_id)),
+        Some(local_def_map.local(db)),
+    );
+    def_map
+}
+
 impl DefMap {
     /// The module id of a crate or block root.
     pub const ROOT: LocalModuleId = LocalModuleId::from_raw(la_arena::RawIdx::from_u32(0));
 
     pub fn edition(&self) -> Edition {
         self.data.edition
-    }
-
-    pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, crate_id: Crate) -> Arc<DefMap> {
-        db.crate_local_def_map(crate_id).0
-    }
-
-    pub(crate) fn crate_local_def_map_query(
-        db: &dyn DefDatabase,
-        crate_id: Crate,
-    ) -> (Arc<DefMap>, Arc<LocalDefMap>) {
-        let krate = crate_id.data(db);
-        let _p = tracing::info_span!(
-            "crate_def_map_query",
-            name=?crate_id
-                .extra_data(db)
-                .display_name
-                .as_ref()
-                .map(|it| it.crate_name().to_smolstr())
-                .unwrap_or_default()
-        )
-        .entered();
-
-        let module_data = ModuleData::new(
-            ModuleOrigin::CrateRoot { definition: krate.root_file_id(db) },
-            Visibility::Public,
-        );
-
-        let def_map = DefMap::empty(
-            crate_id,
-            Arc::new(DefMapCrateData::new(krate.edition)),
-            module_data,
-            None,
-        );
-        let (def_map, local_def_map) = collector::collect_defs(
-            db,
-            def_map,
-            TreeId::new(krate.root_file_id(db).into(), None),
-            None,
-        );
-
-        (Arc::new(def_map), Arc::new(local_def_map))
-    }
-
-    pub(crate) fn block_def_map_query(db: &dyn DefDatabase, block_id: BlockId) -> Arc<DefMap> {
-        let BlockLoc { ast_id, module } = block_id.lookup(db);
-
-        let visibility = Visibility::Module(
-            ModuleId { krate: module.krate, local_id: Self::ROOT, block: module.block },
-            VisibilityExplicitness::Implicit,
-        );
-        let module_data =
-            ModuleData::new(ModuleOrigin::BlockExpr { block: ast_id, id: block_id }, visibility);
-
-        let (crate_map, crate_local_map) = db.crate_local_def_map(module.krate);
-        let def_map = DefMap::empty(
-            module.krate,
-            crate_map.data.clone(),
-            module_data,
-            Some(BlockInfo {
-                block: block_id,
-                parent: BlockRelativeModuleId { block: module.block, local_id: module.local_id },
-            }),
-        );
-
-        let (def_map, _) = collector::collect_defs(
-            db,
-            def_map,
-            TreeId::new(ast_id.file_id, Some(block_id)),
-            Some(crate_local_map),
-        );
-        Arc::new(def_map)
     }
 
     fn empty(
@@ -595,7 +617,7 @@ impl DefMap {
             go(&mut buf, db, current_map, "block scope", Self::ROOT);
             buf.push('\n');
             arc = block.parent.def_map(db, self.krate);
-            current_map = &arc;
+            current_map = arc;
         }
         go(&mut buf, db, current_map, "crate", Self::ROOT);
         return buf;
@@ -628,7 +650,7 @@ impl DefMap {
         while let Some(block) = current_map.block {
             format_to!(buf, "{:?} in {:?}\n", block.block, block.parent);
             arc = block.parent.def_map(db, self.krate);
-            current_map = &arc;
+            current_map = arc;
         }
 
         format_to!(buf, "crate scope\n");
@@ -708,7 +730,7 @@ impl DefMap {
         let mut block = self.block;
         while let Some(block_info) = block {
             let parent = block_info.parent.def_map(db, self.krate);
-            if let Some(it) = f(&parent, block_info.parent.local_id) {
+            if let Some(it) = f(parent, block_info.parent.local_id) {
                 return Some(it);
             }
             block = parent.block;

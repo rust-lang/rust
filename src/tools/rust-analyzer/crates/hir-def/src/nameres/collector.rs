@@ -43,6 +43,7 @@ use crate::{
     nameres::{
         BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
         attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
+        crate_def_map,
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
         path_resolution::{ReachedFixedPoint, ResolvePathResult},
@@ -61,7 +62,7 @@ pub(super) fn collect_defs(
     db: &dyn DefDatabase,
     def_map: DefMap,
     tree_id: TreeId,
-    crate_local_def_map: Option<Arc<LocalDefMap>>,
+    crate_local_def_map: Option<&LocalDefMap>,
 ) -> (DefMap, LocalDefMap) {
     let krate = &def_map.krate.data(db);
     let cfg_options = def_map.krate.cfg_options(db);
@@ -216,7 +217,7 @@ struct DefCollector<'a> {
     def_map: DefMap,
     local_def_map: LocalDefMap,
     /// Set only in case of blocks.
-    crate_local_def_map: Option<Arc<LocalDefMap>>,
+    crate_local_def_map: Option<&'a LocalDefMap>,
     // The dependencies of the current crate, including optional deps like `test`.
     deps: FxHashMap<Name, BuiltDependency>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility, GlobId)>>,
@@ -533,7 +534,7 @@ impl DefCollector<'_> {
         );
 
         let (per_ns, _) = self.def_map.resolve_path(
-            self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+            self.crate_local_def_map.unwrap_or(&self.local_def_map),
             self.db,
             DefMap::ROOT,
             &path,
@@ -556,7 +557,7 @@ impl DefCollector<'_> {
     }
 
     fn local_def_map(&mut self) -> &LocalDefMap {
-        self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map)
+        self.crate_local_def_map.unwrap_or(&self.local_def_map)
     }
 
     /// Adds a definition of procedural macro `name` to the root module.
@@ -688,7 +689,7 @@ impl DefCollector<'_> {
         let vis = self
             .def_map
             .resolve_visibility(
-                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                self.crate_local_def_map.unwrap_or(&self.local_def_map),
                 self.db,
                 module_id,
                 vis,
@@ -731,7 +732,7 @@ impl DefCollector<'_> {
         names: Option<Vec<Name>>,
         extern_crate: Option<ExternCrateId>,
     ) {
-        let def_map = self.db.crate_def_map(krate);
+        let def_map = crate_def_map(self.db, krate);
         // `#[macro_use]` brings macros into macro_use prelude. Yes, even non-`macro_rules!`
         // macros.
         let root_scope = &def_map[DefMap::ROOT].scope;
@@ -813,7 +814,7 @@ impl DefCollector<'_> {
         tracing::debug!("resolving import: {:?} ({:?})", import, self.def_map.data.edition);
         let ResolvePathResult { resolved_def, segment_index, reached_fixedpoint, prefix_info } =
             self.def_map.resolve_path_fp_with_macro(
-                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                self.crate_local_def_map.unwrap_or(&self.local_def_map),
                 self.db,
                 ResolveMode::Import,
                 module_id,
@@ -852,7 +853,7 @@ impl DefCollector<'_> {
         let vis = self
             .def_map
             .resolve_visibility(
-                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                self.crate_local_def_map.unwrap_or(&self.local_def_map),
                 self.db,
                 module_id,
                 &directive.import.visibility,
@@ -1280,7 +1281,7 @@ impl DefCollector<'_> {
             };
             let resolver = |path: &_| {
                 let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                    self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                    self.crate_local_def_map.unwrap_or(&self.local_def_map),
                     self.db,
                     ResolveMode::Other,
                     directive.module_id,
@@ -1347,7 +1348,7 @@ impl DefCollector<'_> {
                         );
                         // Record its helper attributes.
                         if def_id.krate != self.def_map.krate {
-                            let def_map = self.db.crate_def_map(def_id.krate);
+                            let def_map = crate_def_map(self.db, def_id.krate);
                             if let Some(helpers) = def_map.data.exported_derives.get(&def_id) {
                                 self.def_map
                                     .derive_helpers_in_scope
@@ -1593,7 +1594,7 @@ impl DefCollector<'_> {
                         self.def_map.krate,
                         |path| {
                             let resolved_res = self.def_map.resolve_path_fp_with_macro(
-                                self.crate_local_def_map.as_deref().unwrap_or(&self.local_def_map),
+                                self.crate_local_def_map.unwrap_or(&self.local_def_map),
                                 self.db,
                                 ResolveMode::Other,
                                 directive.module_id,
@@ -1742,11 +1743,8 @@ impl ModCollector<'_, '_> {
 
             let module = self.def_collector.def_map.module_id(module_id);
             let def_map = &mut self.def_collector.def_map;
-            let local_def_map = self
-                .def_collector
-                .crate_local_def_map
-                .as_deref()
-                .unwrap_or(&self.def_collector.local_def_map);
+            let local_def_map =
+                self.def_collector.crate_local_def_map.unwrap_or(&self.def_collector.local_def_map);
 
             match item {
                 ModItem::Mod(m) => self.collect_module(m, &attrs),
@@ -2173,10 +2171,7 @@ impl ModCollector<'_, '_> {
         let def_map = &mut self.def_collector.def_map;
         let vis = def_map
             .resolve_visibility(
-                self.def_collector
-                    .crate_local_def_map
-                    .as_deref()
-                    .unwrap_or(&self.def_collector.local_def_map),
+                self.def_collector.crate_local_def_map.unwrap_or(&self.def_collector.local_def_map),
                 self.def_collector.db,
                 self.module_id,
                 visibility,

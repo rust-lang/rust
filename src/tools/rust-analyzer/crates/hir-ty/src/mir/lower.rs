@@ -68,16 +68,16 @@ struct DropScope {
     locals: Vec<LocalId>,
 }
 
-struct MirLowerCtx<'a> {
+struct MirLowerCtx<'db> {
     result: MirBody,
     owner: DefWithBodyId,
     current_loop_blocks: Option<LoopBlocks>,
     labeled_loop_blocks: FxHashMap<LabelId, LoopBlocks>,
     discr_temp: Option<Place>,
-    db: &'a dyn HirDatabase,
-    body: &'a Body,
-    infer: &'a InferenceResult,
-    resolver: Resolver,
+    db: &'db dyn HirDatabase,
+    body: &'db Body,
+    infer: &'db InferenceResult,
+    resolver: Resolver<'db>,
     drop_scopes: Vec<DropScope>,
 }
 

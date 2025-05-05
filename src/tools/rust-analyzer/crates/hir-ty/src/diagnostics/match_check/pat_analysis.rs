@@ -73,7 +73,7 @@ pub(crate) struct MatchCheckCtx<'db> {
 
 impl<'db> MatchCheckCtx<'db> {
     pub(crate) fn new(module: ModuleId, body: DefWithBodyId, db: &'db dyn HirDatabase) -> Self {
-        let def_map = db.crate_def_map(module.krate());
+        let def_map = module.crate_def_map(db);
         let exhaustive_patterns = def_map.is_unstable_feature_enabled(&sym::exhaustive_patterns);
         Self { module, body, db, exhaustive_patterns }
     }

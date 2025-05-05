@@ -19,7 +19,6 @@ use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
 use syntax::{AstPtr, SyntaxNodePtr, ast};
-use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
@@ -30,7 +29,7 @@ use crate::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
         PatId, RecordFieldPat, Statement,
     },
-    nameres::DefMap,
+    nameres::{DefMap, block_def_map},
     type_ref::{LifetimeRef, LifetimeRefId, PathId, TypeRef, TypeRefId},
 };
 
@@ -225,8 +224,8 @@ impl ExpressionStore {
     pub fn blocks<'a>(
         &'a self,
         db: &'a dyn DefDatabase,
-    ) -> impl Iterator<Item = (BlockId, Arc<DefMap>)> + 'a {
-        self.block_scopes.iter().map(move |&block| (block, db.block_def_map(block)))
+    ) -> impl Iterator<Item = (BlockId, &'a DefMap)> + 'a {
+        self.block_scopes.iter().map(move |&block| (block, block_def_map(db, block)))
     }
 
     pub fn walk_bindings_in_pat(&self, pat_id: PatId, mut f: impl FnMut(BindingId)) {
