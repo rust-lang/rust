@@ -531,24 +531,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If `deref_patterns` is enabled, peel a smart pointer from the scrutinee type. See the
             // examples in `tests/ui/pattern/deref_patterns/`.
             _ if self.tcx.features().deref_patterns()
-                && let AdjustMode::Peel { kind: PeelKind::Implicit { until_adt } } = adjust_mode
+                && let AdjustMode::Peel { kind: peel_kind } = adjust_mode
                 && pat.default_binding_modes
-                // For simplicity, only apply overloaded derefs if `expected` is a known ADT.
-                // FIXME(deref_patterns): we'll get better diagnostics for users trying to
-                // implicitly deref generics if we allow them here, but primitives, tuples, and
-                // inference vars definitely should be stopped. Figure out what makes most sense.
-                && let ty::Adt(scrutinee_adt, _) = *expected.kind()
-                // Don't peel if the pattern type already matches the scrutinee. E.g., stop here if
-                // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
-                && until_adt != Some(scrutinee_adt.did())
-                // At this point, the pattern isn't able to match `expected` without peeling. Check
-                // that it implements `Deref` before assuming it's a smart pointer, to get a normal
-                // type error instead of a missing impl error if not. This only checks for `Deref`,
-                // not `DerefPure`: we require that too, but we want a trait error if it's missing.
-                && let Some(deref_trait) = self.tcx.lang_items().deref_trait()
-                && self
-                    .type_implements_trait(deref_trait, [expected], self.param_env)
-                    .may_apply() =>
+                && self.should_peel_smart_pointer(peel_kind, expected) =>
             {
                 debug!("scrutinee ty {expected:?} is a smart pointer, inserting overloaded deref");
                 // The scrutinee is a smart pointer; implicitly dereference it. This adds a
@@ -717,6 +702,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::Or(_)
             // Like or-patterns, guard patterns just propogate to their subpatterns.
             | PatKind::Guard(..) => AdjustMode::Pass,
+        }
+    }
+
+    /// Determine whether `expected` is a smart pointer type that should be peeled before matching.
+    fn should_peel_smart_pointer(&self, peel_kind: PeelKind, expected: Ty<'tcx>) -> bool {
+        // Explicit `deref!(_)` patterns match against smart pointers; don't peel in that case.
+        if let PeelKind::Implicit { until_adt, .. } = peel_kind
+            // For simplicity, only apply overloaded derefs if `expected` is a known ADT.
+            // FIXME(deref_patterns): we'll get better diagnostics for users trying to
+            // implicitly deref generics if we allow them here, but primitives, tuples, and
+            // inference vars definitely should be stopped. Figure out what makes most sense.
+            && let ty::Adt(scrutinee_adt, _) = *expected.kind()
+            // Don't peel if the pattern type already matches the scrutinee. E.g., stop here if
+            // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
+            && until_adt != Some(scrutinee_adt.did())
+            // At this point, the pattern isn't able to match `expected` without peeling. Check
+            // that it implements `Deref` before assuming it's a smart pointer, to get a normal
+            // type error instead of a missing impl error if not. This only checks for `Deref`,
+            // not `DerefPure`: we require that too, but we want a trait error if it's missing.
+            && let Some(deref_trait) = self.tcx.lang_items().deref_trait()
+            && self.type_implements_trait(deref_trait, [expected], self.param_env).may_apply()
+        {
+            true
+        } else {
+            false
         }
     }
 
