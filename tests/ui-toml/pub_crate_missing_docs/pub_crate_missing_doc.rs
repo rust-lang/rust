@@ -24,7 +24,6 @@ mod my_mod {
         /// some docs
         pub(crate) fn sub_crate_with_docs() {}
         pub(crate) fn sub_crate_no_docs() {}
-        //~^ missing_docs_in_private_items
         /// some docs
         pub(super) fn sub_super_with_docs() {}
         pub(super) fn sub_super_no_docs() {}

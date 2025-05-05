@@ -1,16 +1,9 @@
 //@needs-asm-support
 //@aux-build: proc_macros.rs
-//@aux-build: proc_macro_attr.rs
 
 #![warn(clippy::missing_docs_in_private_items)]
-// When denying at the crate level, be sure to not get random warnings from the
-// injected intrinsics by the compiler.
-#![allow(dead_code)]
-//! Some garbage docs for the crate here
-#![doc = "More garbage"]
+#![allow(dead_code, non_local_definitions)]
 
-#[macro_use]
-extern crate proc_macro_attr;
 extern crate proc_macros;
 
 use proc_macros::with_span;
@@ -138,11 +131,53 @@ fn issue13298() {
     const MSG: &str = "Hello, world!";
 }
 
-// issue #12197
-// Undocumented field originated inside of spanned proc-macro attribute
-/// Some dox for struct.
-#[rewrite_struct]
-pub struct Test {
-    /// Dox
-    a: u8,
+with_span!(span
+    /// docs
+    struct WithInternalHelper {
+        __helper: u32,
+        $(
+            field: u32, //~ missing_docs_in_private_items
+            /// docs
+            field2: u32,
+        )
+    }
+
+    const _: () = {
+        struct Internal {
+            __helper: u32,
+            $(field: u32),
+            $(field2: u32),
+        };
+        impl WithInternalHelper {
+            pub(crate) fn internal(self) -> Internal {
+                unimplemented!()
+            }
+        }
+    };
+);
+
+/// docs
+struct WithHiddenImpl;
+
+/// docs
+fn with_hidden_impl() {
+    mod m {
+        struct Bar;
+        const _: () = {
+            mod m2 {
+                impl super::Bar {
+                    pub fn bar() {
+                        impl crate::WithHiddenImpl {
+                            pub(crate) fn visible(&self) {}
+                        }
+                    }
+                }
+            }
+
+            #[automatically_derived]
+            impl crate::WithHiddenImpl {
+                fn derived(self) {}
+            }
+        };
+    }
 }
