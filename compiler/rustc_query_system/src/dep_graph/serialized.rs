@@ -572,14 +572,18 @@ impl<D: Deps> EncoderState<D> {
     #[inline]
     fn next_index(&self, local: &mut LocalEncoderState) -> DepNodeIndex {
         if local.remaining_node_index == 0 {
-            let count = 256;
+            const COUNT: u32 = 256;
 
-            // We assume that there won't be enough active threads to overflow u64 from u32::MAX here.
-            assert!(self.next_node_index.load(Ordering::Relaxed) <= u32::MAX as u64);
+            // We assume that there won't be enough active threads to overflow `u64` from `u32::MAX` here.
+            // This can exceed u32::MAX by at most `N` * `COUNT` where `N` is the thread pool count since
+            // `try_into().unwrap()` will make threads panic when `self.next_node_index` exceeds u32::MAX.
             local.next_node_index =
-                self.next_node_index.fetch_add(count, Ordering::Relaxed).try_into().unwrap();
+                self.next_node_index.fetch_add(COUNT as u64, Ordering::Relaxed).try_into().unwrap();
 
-            local.remaining_node_index = count as u32;
+            // Check that we'll stay within `u32`
+            local.next_node_index.checked_add(COUNT).unwrap();
+
+            local.remaining_node_index = COUNT;
         }
 
         DepNodeIndex::from_u32(local.next_node_index)
