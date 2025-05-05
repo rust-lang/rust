@@ -9,15 +9,15 @@
 
 use std::marker::PointeeSized;
 use std::ops::RangeInclusive;
+use std::cell::RefCell;
+use std::fmt::Debug;
 
+use context::SmirCtxt;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use stable_mir::abi::Layout;
-use stable_mir::mir::mono::{InstanceDef, StaticDef};
-use stable_mir::ty::{FnDef, MirConstId, Span, TyConstId};
 use stable_mir::{CtorKind, ItemKind};
 use tracing::debug;
 
@@ -29,28 +29,50 @@ mod builder;
 pub mod context;
 mod convert;
 
-pub struct Tables<'tcx> {
-    pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) def_ids: IndexMap<DefId, stable_mir::DefId>,
-    pub(crate) alloc_ids: IndexMap<AllocId, stable_mir::mir::alloc::AllocId>,
-    pub(crate) spans: IndexMap<rustc_span::Span, Span>,
-    pub(crate) types: IndexMap<Ty<'tcx>, stable_mir::ty::Ty>,
-    pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
-    pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, TyConstId>,
-    pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, MirConstId>,
-    pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, Layout>,
+/// A container which is used for TLS.
+pub struct SmirContainer<'tcx, B: Bridge> {
+    pub tables: RefCell<Tables<'tcx, B>>,
+    pub cx: RefCell<SmirCtxt<'tcx, B>>,
 }
 
-impl<'tcx> Tables<'tcx> {
-    pub(crate) fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
+pub struct Tables<'tcx, B: Bridge> {
+    tcx: TyCtxt<'tcx>,
+    pub(crate) def_ids: IndexMap<DefId, B::DefId>,
+    pub(crate) alloc_ids: IndexMap<AllocId, B::AllocId>,
+    pub(crate) spans: IndexMap<rustc_span::Span, B::Span>,
+    pub(crate) types: IndexMap<Ty<'tcx>, B::Ty>,
+    pub(crate) instances: IndexMap<ty::Instance<'tcx>, B::InstanceDef>,
+    pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, B::TyConstId>,
+    pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, B::MirConstId>,
+    pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, B::Layout>,
+}
+
+impl<'tcx, B: Bridge> Tables<'tcx, B> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            tcx,
+            def_ids: IndexMap::default(),
+            alloc_ids: IndexMap::default(),
+            spans: IndexMap::default(),
+            types: IndexMap::default(),
+            instances: IndexMap::default(),
+            ty_consts: IndexMap::default(),
+            mir_consts: IndexMap::default(),
+            layouts: IndexMap::default(),
+        }
+    }
+}
+
+impl<'tcx, B: Bridge> Tables<'tcx, B> {
+    pub(crate) fn intern_ty(&mut self, ty: Ty<'tcx>) -> B::Ty {
         self.types.create_or_fetch(ty)
     }
 
-    pub(crate) fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> TyConstId {
+    pub(crate) fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> B::TyConstId {
         self.ty_consts.create_or_fetch(ct)
     }
 
-    pub(crate) fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> MirConstId {
+    pub(crate) fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> B::MirConstId {
         self.mir_consts.create_or_fetch(constant)
     }
 
@@ -82,17 +104,36 @@ impl<'tcx> Tables<'tcx> {
         !must_override && self.tcx.is_mir_available(def_id)
     }
 
-    fn to_fn_def(&mut self, def_id: DefId) -> Option<FnDef> {
+    fn filter_fn_def(&mut self, def_id: DefId) -> Option<DefId> {
         if matches!(self.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-            Some(self.fn_def(def_id))
+            Some(def_id)
         } else {
             None
         }
     }
 
-    fn to_static(&mut self, def_id: DefId) -> Option<StaticDef> {
-        matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| self.static_def(def_id))
+    fn filter_static_def(&mut self, def_id: DefId) -> Option<DefId> {
+        matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| def_id)
     }
+}
+
+/// A trait defining types that are used to emulate StableMIR components, which is really
+/// useful when programming in stable_mir-agnostic settings.
+pub trait Bridge {
+    type DefId: Copy + Debug + PartialEq + IndexedVal;
+    type AllocId: Copy + Debug + PartialEq + IndexedVal;
+    type Span: Copy + Debug + PartialEq + IndexedVal;
+    type Ty: Copy + Debug + PartialEq + IndexedVal;
+    type InstanceDef: Copy + Debug + PartialEq + IndexedVal;
+    type TyConstId: Copy + Debug + PartialEq + IndexedVal;
+    type MirConstId: Copy + Debug + PartialEq + IndexedVal;
+    type Layout: Copy + Debug + PartialEq + IndexedVal;
+    type Error: SmirError;
+}
+
+pub trait SmirError {
+    fn new(msg: String) -> Self;
+    fn from_internal<T: Debug>(err: T) -> Self;
 }
 
 /// Iterate over the definitions of the given crate.

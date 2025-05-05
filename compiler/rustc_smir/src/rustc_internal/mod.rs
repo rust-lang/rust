@@ -17,12 +17,12 @@ use rustc_span::Span;
 use rustc_span::def_id::{CrateNum, DefId};
 use scoped_tls::scoped_thread_local;
 use stable_mir::Error;
-use stable_mir::abi::Layout;
 use stable_mir::compiler_interface::SmirInterface;
 use stable_mir::ty::IndexedVal;
 
 use crate::rustc_smir::context::SmirCtxt;
 use crate::rustc_smir::{Stable, Tables};
+use crate::rustc_smir::{Bridge, SmirContainer, Tables};
 use crate::stable_mir;
 
 mod internal;
@@ -40,7 +40,7 @@ pub mod pretty;
 ///
 /// This function will panic if StableMIR has not been properly initialized.
 pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
-    with_tables(|tables| item.stable(tables))
+    with_container(|tables, cx| item.stable(tables, cx))
 }
 
 /// Convert a stable item into its internal Rust compiler counterpart, if one exists.
@@ -54,137 +54,40 @@ pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
 /// # Panics
 ///
 /// This function will panic if StableMIR has not been properly initialized.
-pub fn internal<'tcx, S>(tcx: TyCtxt<'tcx>, item: S) -> S::T<'tcx>
+pub fn internal<'tcx, S>(item: S) -> S::T<'tcx>
 where
     S: RustcInternal,
 {
-    // The tcx argument ensures that the item won't outlive the type context.
-    with_tables(|tables| item.internal(tables, tcx))
+    with_container(|tables, cx| item.internal(tables, cx))
 }
 
-impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
+impl<'tcx, B: Bridge> Index<B::DefId> for Tables<'tcx, B> {
     type Output = DefId;
 
     #[inline(always)]
-    fn index(&self, index: stable_mir::DefId) -> &Self::Output {
+    fn index(&self, index: B::DefId) -> &Self::Output {
         &self.def_ids[index]
     }
 }
 
-impl<'tcx> Index<stable_mir::ty::Span> for Tables<'tcx> {
-    type Output = Span;
-
-    #[inline(always)]
-    fn index(&self, index: stable_mir::ty::Span) -> &Self::Output {
-        &self.spans[index]
-    }
-}
-
-impl<'tcx> Tables<'tcx> {
-    pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
-        stable_mir::CrateItem(self.create_def_id(did))
-    }
-
-    pub fn adt_def(&mut self, did: DefId) -> stable_mir::ty::AdtDef {
-        stable_mir::ty::AdtDef(self.create_def_id(did))
-    }
-
-    pub fn foreign_module_def(&mut self, did: DefId) -> stable_mir::ty::ForeignModuleDef {
-        stable_mir::ty::ForeignModuleDef(self.create_def_id(did))
-    }
-
-    pub fn foreign_def(&mut self, did: DefId) -> stable_mir::ty::ForeignDef {
-        stable_mir::ty::ForeignDef(self.create_def_id(did))
-    }
-
-    pub fn fn_def(&mut self, did: DefId) -> stable_mir::ty::FnDef {
-        stable_mir::ty::FnDef(self.create_def_id(did))
-    }
-
-    pub fn closure_def(&mut self, did: DefId) -> stable_mir::ty::ClosureDef {
-        stable_mir::ty::ClosureDef(self.create_def_id(did))
-    }
-
-    pub fn coroutine_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineDef {
-        stable_mir::ty::CoroutineDef(self.create_def_id(did))
-    }
-
-    pub fn coroutine_closure_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineClosureDef {
-        stable_mir::ty::CoroutineClosureDef(self.create_def_id(did))
-    }
-
-    pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {
-        stable_mir::ty::AliasDef(self.create_def_id(did))
-    }
-
-    pub fn param_def(&mut self, did: DefId) -> stable_mir::ty::ParamDef {
-        stable_mir::ty::ParamDef(self.create_def_id(did))
-    }
-
-    pub fn br_named_def(&mut self, did: DefId) -> stable_mir::ty::BrNamedDef {
-        stable_mir::ty::BrNamedDef(self.create_def_id(did))
-    }
-
-    pub fn trait_def(&mut self, did: DefId) -> stable_mir::ty::TraitDef {
-        stable_mir::ty::TraitDef(self.create_def_id(did))
-    }
-
-    pub fn generic_def(&mut self, did: DefId) -> stable_mir::ty::GenericDef {
-        stable_mir::ty::GenericDef(self.create_def_id(did))
-    }
-
-    pub fn const_def(&mut self, did: DefId) -> stable_mir::ty::ConstDef {
-        stable_mir::ty::ConstDef(self.create_def_id(did))
-    }
-
-    pub fn impl_def(&mut self, did: DefId) -> stable_mir::ty::ImplDef {
-        stable_mir::ty::ImplDef(self.create_def_id(did))
-    }
-
-    pub fn region_def(&mut self, did: DefId) -> stable_mir::ty::RegionDef {
-        stable_mir::ty::RegionDef(self.create_def_id(did))
-    }
-
-    pub fn coroutine_witness_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineWitnessDef {
-        stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
-    }
-
-    pub fn assoc_def(&mut self, did: DefId) -> stable_mir::ty::AssocDef {
-        stable_mir::ty::AssocDef(self.create_def_id(did))
-    }
-
-    pub fn opaque_def(&mut self, did: DefId) -> stable_mir::ty::OpaqueDef {
-        stable_mir::ty::OpaqueDef(self.create_def_id(did))
-    }
-
-    pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
-        stable_mir::ty::Prov(self.create_alloc_id(aid))
-    }
-
-    pub(crate) fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
+impl<'tcx, B: Bridge> Tables<'tcx, B> {
+    pub fn create_def_id(&mut self, did: DefId) -> B::DefId {
         self.def_ids.create_or_fetch(did)
     }
 
-    pub(crate) fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::mir::alloc::AllocId {
+    pub fn create_alloc_id(&mut self, aid: AllocId) -> B::AllocId {
         self.alloc_ids.create_or_fetch(aid)
     }
 
-    pub(crate) fn create_span(&mut self, span: Span) -> stable_mir::ty::Span {
+    pub fn create_span(&mut self, span: Span) -> B::Span {
         self.spans.create_or_fetch(span)
     }
 
-    pub(crate) fn instance_def(
-        &mut self,
-        instance: ty::Instance<'tcx>,
-    ) -> stable_mir::mir::mono::InstanceDef {
+    pub fn instance_def(&mut self, instance: ty::Instance<'tcx>) -> B::InstanceDef {
         self.instances.create_or_fetch(instance)
     }
 
-    pub(crate) fn static_def(&mut self, did: DefId) -> stable_mir::mir::mono::StaticDef {
-        stable_mir::mir::mono::StaticDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> Layout {
+    pub fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> B::Layout {
         self.layouts.create_or_fetch(layout)
     }
 }
@@ -197,25 +100,28 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx, F, T>(cx: &SmirCtxt<'tcx>, f: F) -> T
+pub(crate) fn init<'tcx, F, T, B: Bridge>(container: &SmirContainer<'tcx, B>, f: F) -> T
 where
     F: FnOnce() -> T,
 {
     assert!(!TLV.is_set());
-    let ptr = cx as *const _ as *const ();
+    let ptr = container as *const _ as *const ();
     TLV.set(&Cell::new(ptr), || f())
 }
 
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub(crate) fn with_tables<R>(f: impl for<'tcx> FnOnce(&mut Tables<'tcx>) -> R) -> R {
+pub(crate) fn with_container<'tcx, R, B: Bridge>(
+    f: impl FnOnce(&mut Tables<'tcx, B>, &SmirCtxt<'tcx, B>) -> R,
+) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let context = ptr as *const SmirCtxt<'_>;
-        let mut tables = unsafe { (*context).0.borrow_mut() };
-        f(&mut *tables)
+        let container = ptr as *const SmirContainer<'tcx, B>;
+        let mut tables = unsafe { (*container).tables.borrow_mut() };
+        let cx = unsafe { (*container).cx.borrow() };
+        f(&mut *tables, &*cx)
     })
 }
 
@@ -223,23 +129,10 @@ pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
-    let tables = SmirCtxt(RefCell::new(Tables {
-        tcx,
-        def_ids: IndexMap::default(),
-        alloc_ids: IndexMap::default(),
-        spans: IndexMap::default(),
-        types: IndexMap::default(),
-        instances: IndexMap::default(),
-        ty_consts: IndexMap::default(),
-        mir_consts: IndexMap::default(),
-        layouts: IndexMap::default(),
-    }));
+    let smir_cx = RefCell::new(SmirCtxt::new(tcx));
+    let container = SmirContainer { tables: RefCell::new(Tables::new(tcx)), cx: smir_cx };
 
-    let interface = SmirInterface { cx: tables };
-
-    // Pass the `SmirInterface` to compiler_interface::run
-    // and initialize the rustc-specific TLS with tables.
-    stable_mir::compiler_interface::run(&interface, || init(&interface.cx, f))
+    stable_mir::compiler_interface::run(&container, || init(&container, f))
 }
 
 /// Instantiate and run the compiler with the provided arguments and callback.
