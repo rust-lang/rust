@@ -271,6 +271,8 @@ pub(super) fn elf_os_abi(sess: &Session) -> u8 {
 pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
     match architecture {
         Architecture::Mips | Architecture::Mips64 | Architecture::Mips64_N32 => {
+            // "N32" indicates an "ILP32" data model on a 64-bit MIPS CPU
+            // like SPARC's "v8+", x86_64's "x32", or the watchOS "arm64_32".
             let is_32bit = architecture == Architecture::Mips;
             let mut e_flags = match sess.target.options.cpu.as_ref() {
                 "mips1" if is_32bit => elf::EF_MIPS_ARCH_1,
@@ -293,7 +295,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             };
 
             // If the ABI is explicitly given, use it, or default to O32 on 32-bit MIPS,
-            // which is the only option.
+            // which is the only "true" 32-bit option that LLVM supports.
             match sess.target.options.llvm_abiname.as_ref() {
                 "o32" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
                 "n32" if !is_32bit => e_flags |= elf::EF_MIPS_ABI2,
@@ -307,6 +309,15 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
             };
 
             if sess.target.options.relocation_model != RelocModel::Static {
+                // PIC means position-independent code. CPIC means "calls PIC".
+                // CPIC was mutually exclusive with PIC according to
+                // the SVR4 MIPS ABI https://refspecs.linuxfoundation.org/elf/mipsabi.pdf
+                // and should have only appeared on static objects with dynamically calls.
+                // At some point someone (GCC?) decided to set CPIC even for PIC.
+                // Nowadays various things expect both set on the same object file
+                // and may even error if you mix CPIC and non-CPIC object files,
+                // despite that being the entire point of the CPIC ABI extension!
+                // As we are in Rome, we do as the Romans do.
                 e_flags |= elf::EF_MIPS_PIC | elf::EF_MIPS_CPIC;
             }
             if sess.target.options.cpu.contains("r6") {
