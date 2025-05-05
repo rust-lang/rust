@@ -483,6 +483,7 @@ impl DefMap {
             curr_per_ns = match curr.def {
                 ModuleDefId::ModuleId(module) => {
                     if module.krate != self.krate {
+                        // FIXME: Inefficient
                         let path = ModPath::from_segments(
                             PathKind::SELF,
                             path.segments()[i..].iter().cloned(),
