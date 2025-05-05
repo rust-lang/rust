@@ -19,7 +19,6 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 
 use crate::rustc_internal::IndexMap;
-use crate::stable_mir;
 
 mod alloc;
 mod builder;
@@ -131,6 +130,12 @@ pub trait Bridge {
 pub trait SmirError {
     fn new(msg: String) -> Self;
     fn from_internal<T: Debug>(err: T) -> Self;
+}
+
+pub trait IndexedVal {
+    fn to_val(index: usize) -> Self;
+
+    fn to_index(&self) -> usize;
 }
 
 /// Iterate over the definitions of the given crate.

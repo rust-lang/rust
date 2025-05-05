@@ -28,15 +28,16 @@ use std::fmt::Debug;
 use std::{fmt, io};
 
 use rustc_hir::def::DefKind;
+use rustc_smir::IndexedVal;
 use serde::Serialize;
 use stable_mir::compiler_interface::with;
 pub use stable_mir::crate_def::{CrateDef, CrateDefItems, CrateDefType, DefId};
 pub use stable_mir::error::*;
 use stable_mir::mir::mono::StaticDef;
 use stable_mir::mir::{Body, Mutability};
-use stable_mir::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, IndexedVal, Span, TraitDef, Ty};
+use stable_mir::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, Span, TraitDef, Ty};
 
-use crate::stable_mir;
+use crate::{rustc_smir, stable_mir};
 
 pub mod abi;
 #[macro_use]
