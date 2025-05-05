@@ -9,8 +9,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::ty::{self, TyCtxt};
 
-use crate::rustc_smir::{Stable, Tables};
-use crate::stable_mir;
+use crate::rustc_smir::{Bridge, Tables};
 
 /// Builds a monomorphic body for a given instance.
 pub(crate) struct BodyBuilder<'tcx> {
@@ -31,7 +30,7 @@ impl<'tcx> BodyBuilder<'tcx> {
     /// Build a stable monomorphic body for a given instance based on the MIR body.
     ///
     /// All constants are also evaluated.
-    pub(crate) fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
+    pub(crate) fn build<B: Bridge>(mut self, tables: &mut Tables<'tcx, B>) -> mir::Body<'tcx> {
         let body = tables.tcx.instance_mir(self.instance.def).clone();
         let mono_body = if !self.instance.args.is_empty()
             // Without the `generic_const_exprs` feature gate, anon consts in signatures do not
@@ -50,7 +49,8 @@ impl<'tcx> BodyBuilder<'tcx> {
             // Already monomorphic.
             body
         };
-        mono_body.stable(tables)
+
+        mono_body
     }
 }
 
