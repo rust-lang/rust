@@ -40,6 +40,7 @@ use stable_mir::ty::{AssocItem, FnDef, ForeignModuleDef, ImplDef, Span, TraitDef
 use crate::{rustc_smir, stable_mir};
 
 pub mod abi;
+mod alloc;
 #[macro_use]
 pub mod crate_def;
 pub mod compiler_interface;
