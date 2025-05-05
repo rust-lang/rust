@@ -178,9 +178,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .filter(|item| item.kind == ty::AssocKind::Type)
                                 // No RPITITs -- they're not dyn-compatible for now.
                                 .filter(|item| !item.is_impl_trait_in_trait())
-                                // If the associated type has a `where Self: Sized` bound,
-                                // we do not need to constrain the associated type.
-                                .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                                 .map(|item| (item.def_id, trait_ref)),
                         );
                     }
@@ -259,7 +256,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 if let Some(assoc) = projection_bounds.get(&key) {
                     Some(*assoc)
                 } else {
-                    missing_assoc_types.insert(key);
+                    // If the associated type has a `where Self: Sized` bound,
+                    // we do not need to constrain the associated type.
+                    if !tcx.generics_require_sized_self(key.0) {
+                        missing_assoc_types.insert(key);
+                    }
                     None
                 }
             })
