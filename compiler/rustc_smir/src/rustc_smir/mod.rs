@@ -20,7 +20,7 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 
 use crate::rustc_internal::IndexMap;
 
-mod alloc;
+pub mod alloc;
 mod builder;
 pub mod context;
 mod convert;
