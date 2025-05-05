@@ -885,6 +885,26 @@ where
         };
 
         let mut candidates = vec![];
+
+        let cx = self.cx();
+        cx.for_each_blanket_impl(goal.predicate.trait_def_id(cx), |impl_def_id| {
+            // For every `default impl`, there's always a non-default `impl`
+            // that will *also* apply. There's no reason to register a candidate
+            // for this impl, since it is *not* proof that the trait goal holds.
+            if cx.impl_is_default(impl_def_id) {
+                return;
+            }
+
+            match G::consider_impl_candidate(self, goal, impl_def_id) {
+                Ok(mut candidate) => {
+                    candidate.result.value.certainty =
+                        candidate.result.value.certainty.and(Certainty::AMBIGUOUS);
+                    candidates.push(candidate);
+                }
+                Err(NoSolution) => (),
+            }
+        });
+
         for item_bound in
             self.cx().item_self_bounds(alias_ty.def_id).iter_instantiated(self.cx(), alias_ty.args)
         {
