@@ -701,6 +701,16 @@ pub enum AssocItemId {
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_from!(FunctionId, ConstId, TypeAliasId for AssocItemId);
 
+impl From<AssocItemId> for ModuleDefId {
+    fn from(item: AssocItemId) -> Self {
+        match item {
+            AssocItemId::FunctionId(f) => f.into(),
+            AssocItemId::ConstId(c) => c.into(),
+            AssocItemId::TypeAliasId(t) => t.into(),
+        }
+    }
+}
+
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum GenericDefId {
     AdtId(AdtId),

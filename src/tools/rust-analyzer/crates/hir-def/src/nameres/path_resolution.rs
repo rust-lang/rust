@@ -17,6 +17,7 @@ use hir_expand::{
     name::Name,
 };
 use span::Edition;
+use stdx::TupleExt;
 use triomphe::Arc;
 
 use crate::{
@@ -44,6 +45,7 @@ pub(super) enum ReachedFixedPoint {
 #[derive(Debug, Clone)]
 pub(super) struct ResolvePathResult {
     pub(super) resolved_def: PerNs,
+    /// The index of the last resolved segment, or `None` if the full path has been resolved.
     pub(super) segment_index: Option<usize>,
     pub(super) reached_fixedpoint: ReachedFixedPoint,
     pub(super) prefix_info: ResolvePathResultPrefixInfo,
@@ -364,7 +366,15 @@ impl DefMap {
             },
         };
 
-        self.resolve_remaining_segments(segments, curr_per_ns, path, db, shadow, original_module)
+        self.resolve_remaining_segments(
+            db,
+            mode,
+            segments,
+            curr_per_ns,
+            path,
+            shadow,
+            original_module,
+        )
     }
 
     /// Resolves a path only in the preludes, without accounting for item scopes.
@@ -413,7 +423,15 @@ impl DefMap {
             }
         };
 
-        self.resolve_remaining_segments(segments, curr_per_ns, path, db, shadow, original_module)
+        self.resolve_remaining_segments(
+            db,
+            mode,
+            segments,
+            curr_per_ns,
+            path,
+            shadow,
+            original_module,
+        )
     }
 
     /// 2018-style absolute path -- only extern prelude
@@ -441,10 +459,11 @@ impl DefMap {
 
     fn resolve_remaining_segments<'a>(
         &self,
+        db: &dyn DefDatabase,
+        mode: ResolveMode,
         mut segments: impl Iterator<Item = (usize, &'a Name)>,
         mut curr_per_ns: PerNs,
         path: &ModPath,
-        db: &dyn DefDatabase,
         shadow: BuiltinShadowMode,
         original_module: LocalModuleId,
     ) -> ResolvePathResult {
@@ -478,7 +497,7 @@ impl DefMap {
                         let resolution = defp_map.resolve_path_fp_with_macro(
                             LocalDefMap::EMPTY,
                             db,
-                            ResolveMode::Other,
+                            mode,
                             module.local_id,
                             &path,
                             shadow,
@@ -547,6 +566,44 @@ impl DefMap {
                         }
                         None => ResolvePathResult::new(
                             PerNs::types(e.into(), curr.vis, curr.import),
+                            ReachedFixedPoint::Yes,
+                            Some(i),
+                            ResolvePathResultPrefixInfo::default(),
+                        ),
+                    };
+                }
+                def @ ModuleDefId::TraitId(t) if mode == ResolveMode::Import => {
+                    // FIXME: Implement this correctly
+                    // We can't actually call `trait_items`, the reason being that if macro calls
+                    // occur, they will call back into the def map which we might be computing right
+                    // now resulting in a cycle.
+                    // To properly implement this, trait item collection needs to be done in def map
+                    // collection...
+                    let item =
+                        if true { None } else { db.trait_items(t).assoc_item_by_name(segment) };
+                    return match item {
+                        Some(item) => ResolvePathResult::new(
+                            match item {
+                                crate::AssocItemId::FunctionId(function_id) => PerNs::values(
+                                    function_id.into(),
+                                    curr.vis,
+                                    curr.import.and_then(|it| it.import_or_glob()),
+                                ),
+                                crate::AssocItemId::ConstId(const_id) => PerNs::values(
+                                    const_id.into(),
+                                    curr.vis,
+                                    curr.import.and_then(|it| it.import_or_glob()),
+                                ),
+                                crate::AssocItemId::TypeAliasId(type_alias_id) => {
+                                    PerNs::types(type_alias_id.into(), curr.vis, curr.import)
+                                }
+                            },
+                            ReachedFixedPoint::Yes,
+                            segments.next().map(TupleExt::head),
+                            ResolvePathResultPrefixInfo::default(),
+                        ),
+                        None => ResolvePathResult::new(
+                            PerNs::types(def, curr.vis, curr.import),
                             ReachedFixedPoint::Yes,
                             Some(i),
                             ResolvePathResultPrefixInfo::default(),

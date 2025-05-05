@@ -66,6 +66,15 @@ impl TraitItems {
         })
     }
 
+    pub fn assoc_item_by_name(&self, name: &Name) -> Option<AssocItemId> {
+        self.items.iter().find_map(|&(ref item_name, item)| match item {
+            AssocItemId::FunctionId(_) if item_name == name => Some(item),
+            AssocItemId::TypeAliasId(_) if item_name == name => Some(item),
+            AssocItemId::ConstId(_) if item_name == name => Some(item),
+            _ => None,
+        })
+    }
+
     pub fn attribute_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
         self.macro_calls.iter().flat_map(|it| it.iter()).copied()
     }
