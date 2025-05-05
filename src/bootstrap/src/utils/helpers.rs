@@ -7,8 +7,9 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
+use std::thread::panicking;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
-use std::{env, fs, io, str};
+use std::{env, fs, io, panic, str};
 
 use build_helper::util::fail;
 use object::read::archive::ArchiveFile;
@@ -22,6 +23,23 @@ pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 #[cfg(test)]
 mod tests;
 
+/// A wrapper around `std::panic::Location` used to track the location of panics
+/// triggered by `t` macro usage.
+pub struct PanicTracker<'a>(pub &'a panic::Location<'a>);
+
+impl Drop for PanicTracker<'_> {
+    fn drop(&mut self) {
+        if panicking() {
+            eprintln!(
+                "Panic was initiated from {}:{}:{}",
+                self.0.file(),
+                self.0.line(),
+                self.0.column()
+            );
+        }
+    }
+}
+
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
 /// * The file/line of the panic
@@ -32,19 +50,21 @@ mod tests;
 /// using a `Result` with `try!`, but this may change one day...
 #[macro_export]
 macro_rules! t {
-    ($e:expr) => {
+    ($e:expr) => {{
+        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
         match $e {
             Ok(e) => e,
             Err(e) => panic!("{} failed with {}", stringify!($e), e),
         }
-    };
+    }};
     // it can show extra info in the second parameter
-    ($e:expr, $extra:expr) => {
+    ($e:expr, $extra:expr) => {{
+        let _panic_guard = $crate::PanicTracker(std::panic::Location::caller());
         match $e {
             Ok(e) => e,
             Err(e) => panic!("{} failed with {} ({:?})", stringify!($e), e, $extra),
         }
-    };
+    }};
 }
 
 pub use t;
