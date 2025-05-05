@@ -41,6 +41,7 @@ use crate::{rustc_smir, stable_mir};
 
 pub mod abi;
 mod alloc;
+pub(crate) mod convert;
 #[macro_use]
 pub mod crate_def;
 pub mod compiler_interface;

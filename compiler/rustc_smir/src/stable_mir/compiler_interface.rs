@@ -8,6 +8,7 @@ use std::cell::Cell;
 use rustc_hir::def::DefKind;
 use rustc_smir::{Bridge, SmirContainer, Tables};
 use stable_mir::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
+use stable_mir::convert::{RustcInternal, Stable};
 use stable_mir::crate_def::Attribute;
 use stable_mir::mir::alloc::{AllocId, GlobalAlloc};
 use stable_mir::mir::mono::{Instance, InstanceDef, StaticDef};

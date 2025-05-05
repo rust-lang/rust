@@ -17,13 +17,12 @@ use rustc_span::Span;
 use rustc_span::def_id::{CrateNum, DefId};
 use scoped_tls::scoped_thread_local;
 use stable_mir::Error;
+use stable_mir::convert::{RustcInternal, Stable};
 
 use crate::rustc_smir::context::SmirCtxt;
-use crate::rustc_smir::{Stable, Tables};
 use crate::rustc_smir::{Bridge, IndexedVal, SmirContainer, Tables};
 use crate::stable_mir;
 
-mod internal;
 pub mod pretty;
 
 /// Convert an internal Rust compiler item into its stable counterpart, if one exists.
@@ -339,12 +338,4 @@ impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V
         assert_eq!(*v, index, "Provided value doesn't match with indexed value");
         k
     }
-}
-
-/// Trait used to translate a stable construct to its rustc counterpart.
-///
-/// This is basically a mirror of [crate::rustc_smir::Stable].
-pub trait RustcInternal {
-    type T<'tcx>;
-    fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx>;
 }

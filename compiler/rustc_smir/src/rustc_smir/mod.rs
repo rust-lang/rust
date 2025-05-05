@@ -7,7 +7,6 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use std::marker::PointeeSized;
 use std::cell::RefCell;
 use std::fmt::Debug;
 
@@ -23,7 +22,6 @@ use crate::rustc_internal::IndexMap;
 pub mod alloc;
 mod builder;
 pub mod context;
-mod convert;
 
 /// A container which is used for TLS.
 pub struct SmirContainer<'tcx, B: Bridge> {
@@ -153,81 +151,5 @@ where
                 func(def_id)
             })
             .collect()
-    }
-}
-
-/// Trait used to convert between an internal MIR type to a Stable MIR type.
-pub trait Stable<'cx>: PointeeSized {
-    /// The stable representation of the type implementing Stable.
-    type T;
-    /// Converts an object to the equivalent Stable MIR representation.
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T;
-}
-
-impl<'tcx, T> Stable<'tcx> for &T
-where
-    T: Stable<'tcx>,
-{
-    type T = T::T;
-
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        (*self).stable(tables)
-    }
-}
-
-impl<'tcx, T> Stable<'tcx> for Option<T>
-where
-    T: Stable<'tcx>,
-{
-    type T = Option<T::T>;
-
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        self.as_ref().map(|value| value.stable(tables))
-    }
-}
-
-impl<'tcx, T, E> Stable<'tcx> for Result<T, E>
-where
-    T: Stable<'tcx>,
-    E: Stable<'tcx>,
-{
-    type T = Result<T::T, E::T>;
-
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        match self {
-            Ok(val) => Ok(val.stable(tables)),
-            Err(error) => Err(error.stable(tables)),
-        }
-    }
-}
-
-impl<'tcx, T> Stable<'tcx> for &[T]
-where
-    T: Stable<'tcx>,
-{
-    type T = Vec<T::T>;
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        self.iter().map(|e| e.stable(tables)).collect()
-    }
-}
-
-impl<'tcx, T, U> Stable<'tcx> for (T, U)
-where
-    T: Stable<'tcx>,
-    U: Stable<'tcx>,
-{
-    type T = (T::T, U::T);
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        (self.0.stable(tables), self.1.stable(tables))
-    }
-}
-
-impl<'tcx, T> Stable<'tcx> for RangeInclusive<T>
-where
-    T: Stable<'tcx>,
-{
-    type T = RangeInclusive<T::T>;
-    fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        RangeInclusive::new(self.start().stable(tables), self.end().stable(tables))
     }
 }
