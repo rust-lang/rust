@@ -4,13 +4,12 @@
 #![allow(incomplete_features)]
 
 //@ revisions: fail pass
-//@[fail] build-fail (we require monomorphization)
-//@[pass] build-pass (we require monomorphization)
+//@[pass] check-pass
 
 const _<_T>: () = panic!();
 const _<const _N: usize>: () = panic!();
 
 #[cfg(fail)]
-const _<'_a>: () = panic!(); //[fail]~ ERROR evaluation of `_::<'_>` failed
+const _<'_a>: () = panic!(); //[fail]~ ERROR evaluation of constant value failed
 
 fn main() {}
