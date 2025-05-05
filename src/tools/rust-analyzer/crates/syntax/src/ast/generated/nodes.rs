@@ -1525,6 +1525,10 @@ impl ast::HasDocComments for SourceFile {}
 impl ast::HasModuleItem for SourceFile {}
 impl SourceFile {
     #[inline]
+    pub fn frontmatter_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![frontmatter])
+    }
+    #[inline]
     pub fn shebang_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![shebang]) }
 }
 pub struct Static {

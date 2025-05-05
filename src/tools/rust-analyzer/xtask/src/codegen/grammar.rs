@@ -670,6 +670,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             [ident] => { $crate::SyntaxKind::IDENT };
             [string] => { $crate::SyntaxKind::STRING };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
+            [frontmatter] => { $crate::SyntaxKind::FRONTMATTER };
         }
 
         impl ::core::marker::Copy for SyntaxKind {}
