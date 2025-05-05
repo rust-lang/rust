@@ -23,7 +23,6 @@ use crate::rustc_internal::IndexMap;
 pub mod alloc;
 mod builder;
 pub mod context;
-mod convert;
 
 /// A container which is used for TLS.
 pub struct SmirContainer<'tcx, B: Bridge> {
