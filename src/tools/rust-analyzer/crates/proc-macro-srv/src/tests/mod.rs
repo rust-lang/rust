@@ -248,13 +248,17 @@ fn test_fn_like_mk_literals() {
               LITERAL Str string 1
               LITERAL CStr cstring 1
               LITERAL Float 3.14f64 1
-              LITERAL Float -3.14f64 1
+              PUNCH   - [alone] 1
+              LITERAL Float 3.14f64 1
               LITERAL Float 3.14 1
-              LITERAL Float -3.14 1
+              PUNCH   - [alone] 1
+              LITERAL Float 3.14 1
               LITERAL Integer 123i64 1
-              LITERAL Integer -123i64 1
+              PUNCH   - [alone] 1
+              LITERAL Integer 123i64 1
               LITERAL Integer 123 1
-              LITERAL Integer -123 1"#]],
+              PUNCH   - [alone] 1
+              LITERAL Integer 123 1"#]],
         expect![[r#"
             SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
 
@@ -266,13 +270,17 @@ fn test_fn_like_mk_literals() {
               LITERAL Str string 42:2@0..100#ROOT2024
               LITERAL CStr cstring 42:2@0..100#ROOT2024
               LITERAL Float 3.14f64 42:2@0..100#ROOT2024
-              LITERAL Float -3.14f64 42:2@0..100#ROOT2024
+              PUNCH   - [alone] 42:2@0..100#ROOT2024
+              LITERAL Float 3.14f64 42:2@0..100#ROOT2024
               LITERAL Float 3.14 42:2@0..100#ROOT2024
-              LITERAL Float -3.14 42:2@0..100#ROOT2024
+              PUNCH   - [alone] 42:2@0..100#ROOT2024
+              LITERAL Float 3.14 42:2@0..100#ROOT2024
               LITERAL Integer 123i64 42:2@0..100#ROOT2024
-              LITERAL Integer -123i64 42:2@0..100#ROOT2024
+              PUNCH   - [alone] 42:2@0..100#ROOT2024
+              LITERAL Integer 123i64 42:2@0..100#ROOT2024
               LITERAL Integer 123 42:2@0..100#ROOT2024
-              LITERAL Integer -123 42:2@0..100#ROOT2024"#]],
+              PUNCH   - [alone] 42:2@0..100#ROOT2024
+              LITERAL Integer 123 42:2@0..100#ROOT2024"#]],
     );
 }
 
@@ -399,7 +407,6 @@ fn test_fn_like_macro_clone_literals() {
               LITERAL CStr null 42:2@86..93#ROOT2024"#]],
     );
 }
-
 
 #[test]
 fn test_fn_like_macro_negative_literals() {
