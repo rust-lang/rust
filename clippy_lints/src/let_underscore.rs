@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::{implements_trait, is_must_use_ty, match_type};
+use clippy_utils::ty::{implements_trait, is_must_use_ty};
 use clippy_utils::{is_from_proc_macro, is_must_use_func_call, paths};
 use rustc_hir::{LetStmt, LocalSource, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -129,12 +129,6 @@ declare_clippy_lint! {
 
 declare_lint_pass!(LetUnderscore => [LET_UNDERSCORE_MUST_USE, LET_UNDERSCORE_LOCK, LET_UNDERSCORE_FUTURE, LET_UNDERSCORE_UNTYPED]);
 
-const SYNC_GUARD_PATHS: [&[&str]; 3] = [
-    &paths::PARKING_LOT_MUTEX_GUARD,
-    &paths::PARKING_LOT_RWLOCK_READ_GUARD,
-    &paths::PARKING_LOT_RWLOCK_WRITE_GUARD,
-];
-
 impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &LetStmt<'tcx>) {
         if matches!(local.source, LocalSource::Normal)
@@ -144,7 +138,9 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
         {
             let init_ty = cx.typeck_results().expr_ty(init);
             let contains_sync_guard = init_ty.walk().any(|inner| match inner.unpack() {
-                GenericArgKind::Type(inner_ty) => SYNC_GUARD_PATHS.iter().any(|path| match_type(cx, inner_ty, path)),
+                GenericArgKind::Type(inner_ty) => inner_ty
+                    .ty_adt_def()
+                    .is_some_and(|adt| paths::PARKING_LOT_GUARDS.iter().any(|path| path.matches(cx, adt.did()))),
                 GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
             });
             if contains_sync_guard {

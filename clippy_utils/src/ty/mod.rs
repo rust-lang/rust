@@ -32,7 +32,8 @@ use std::assert_matches::debug_assert_matches;
 use std::collections::hash_map::Entry;
 use std::iter;
 
-use crate::{def_path_def_ids, match_def_path, path_res};
+use crate::path_res;
+use crate::paths::{PathNS, lookup_path_str};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
@@ -229,9 +230,7 @@ pub fn has_iter_method(cx: &LateContext<'_>, probably_ref_ty: Ty<'_>) -> Option<
 /// Checks whether a type implements a trait.
 /// The function returns false in case the type contains an inference variable.
 ///
-/// See:
-/// * [`get_trait_def_id`](super::get_trait_def_id) to get a trait [`DefId`].
-/// * [Common tools for writing lints] for an example how to use this function and other options.
+/// See [Common tools for writing lints] for an example how to use this function and other options.
 ///
 /// [Common tools for writing lints]: https://github.com/rust-lang/rust-clippy/blob/master/book/src/development/common_tools_writing_lints.md#checking-if-a-type-implements-a-specific-trait
 pub fn implements_trait<'tcx>(
@@ -422,17 +421,6 @@ pub fn is_type_lang_item(cx: &LateContext<'_>, ty: Ty<'_>, lang_item: LangItem) 
 /// Return `true` if the passed `typ` is `isize` or `usize`.
 pub fn is_isize_or_usize(typ: Ty<'_>) -> bool {
     matches!(typ.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
-}
-
-/// Checks if type is struct, enum or union type with the given def path.
-///
-/// If the type is a diagnostic item, use `is_type_diagnostic_item` instead.
-/// If you change the signature, remember to update the internal lint `MatchTypeOnDiagItem`
-pub fn match_type(cx: &LateContext<'_>, ty: Ty<'_>, path: &[&str]) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, _) => match_def_path(cx, adt.did(), path),
-        _ => false,
-    }
 }
 
 /// Checks if the drop order for a type matters.
@@ -1131,10 +1119,7 @@ impl<'tcx> InteriorMut<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, ignore_interior_mutability: &[String]) -> Self {
         let ignored_def_ids = ignore_interior_mutability
             .iter()
-            .flat_map(|ignored_ty| {
-                let path: Vec<&str> = ignored_ty.split("::").collect();
-                def_path_def_ids(tcx, path.as_slice())
-            })
+            .flat_map(|ignored_ty| lookup_path_str(tcx, PathNS::Type, ignored_ty))
             .collect();
 
         Self {
