@@ -5,13 +5,14 @@
 
 use std::cell::Cell;
 
-use rustc_smir::context::SmirCtxt;
+use rustc_hir::def::DefKind;
+use rustc_smir::{Bridge, SmirContainer, Tables};
 use stable_mir::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
 use stable_mir::crate_def::Attribute;
 use stable_mir::mir::alloc::{AllocId, GlobalAlloc};
 use stable_mir::mir::mono::{Instance, InstanceDef, StaticDef};
 use stable_mir::mir::{BinOp, Body, Place, UnOp};
-use stable_mir::target::MachineInfo;
+use stable_mir::target::{MachineInfo, MachineSize};
 use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, CoroutineDef, Discr, FieldDef, FnDef,
     ForeignDef, ForeignItemKind, ForeignModule, ForeignModuleDef, GenericArgs, GenericPredicates,
@@ -19,119 +20,571 @@ use stable_mir::ty::{
     TraitDecl, TraitDef, Ty, TyConst, TyConstId, TyKind, UintTy, VariantDef, VariantIdx,
 };
 use stable_mir::{
-    AssocItems, Crate, CrateItem, CrateItems, CrateNum, DefId, Error, Filename, ImplTraitDecls,
-    ItemKind, Symbol, TraitDecls, mir,
+    AssocItems, Crate, CrateDef, CrateItem, CrateItems, CrateNum, DefId, Error, Filename,
+    ImplTraitDecls, ItemKind, Symbol, TraitDecls, alloc, mir, new_item_kind,
 };
+use tracing::debug;
 
 use crate::{rustc_smir, stable_mir};
 
+pub struct BridgeTys;
+
+impl Bridge for BridgeTys {
+    type DefId = stable_mir::DefId;
+    type AllocId = stable_mir::mir::alloc::AllocId;
+    type Span = stable_mir::ty::Span;
+    type Ty = stable_mir::ty::Ty;
+    type InstanceDef = stable_mir::mir::mono::InstanceDef;
+    type TyConstId = stable_mir::ty::TyConstId;
+    type MirConstId = stable_mir::ty::MirConstId;
+    type Layout = stable_mir::abi::Layout;
+    type Error = stable_mir::Error;
+}
+
+impl<'tcx> Tables<'tcx, BridgeTys> {
+    pub(crate) fn crate_item(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::CrateItem {
+        stable_mir::CrateItem(self.create_def_id(did))
+    }
+
+    pub(crate) fn adt_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::AdtDef {
+        stable_mir::ty::AdtDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn foreign_module_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::ForeignModuleDef {
+        stable_mir::ty::ForeignModuleDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn foreign_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::ForeignDef {
+        stable_mir::ty::ForeignDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn fn_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::FnDef {
+        stable_mir::ty::FnDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn closure_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::ClosureDef {
+        stable_mir::ty::ClosureDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn coroutine_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::CoroutineDef {
+        stable_mir::ty::CoroutineDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn coroutine_closure_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::CoroutineClosureDef {
+        stable_mir::ty::CoroutineClosureDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn alias_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::AliasDef {
+        stable_mir::ty::AliasDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn param_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::ParamDef {
+        stable_mir::ty::ParamDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn br_named_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::BrNamedDef {
+        stable_mir::ty::BrNamedDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn trait_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::TraitDef {
+        stable_mir::ty::TraitDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn generic_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::GenericDef {
+        stable_mir::ty::GenericDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn const_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::ConstDef {
+        stable_mir::ty::ConstDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn impl_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::ImplDef {
+        stable_mir::ty::ImplDef(self.create_def_id(did))
+    }
+
+    /*
+        pub(crate) fn region_def(
+            &mut self,
+            did: rustc_span::def_id::DefId,
+        ) -> stable_mir::ty::RegionDef {
+            stable_mir::ty::RegionDef(self.create_def_id(did))
+        }
+    */
+
+    pub(crate) fn coroutine_witness_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::CoroutineWitnessDef {
+        stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn assoc_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::AssocDef {
+        stable_mir::ty::AssocDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn opaque_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::ty::OpaqueDef {
+        stable_mir::ty::OpaqueDef(self.create_def_id(did))
+    }
+
+    pub(crate) fn prov(
+        &mut self,
+        aid: rustc_middle::mir::interpret::AllocId,
+    ) -> stable_mir::ty::Prov {
+        stable_mir::ty::Prov(self.create_alloc_id(aid))
+    }
+
+    pub(crate) fn static_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> stable_mir::mir::mono::StaticDef {
+        stable_mir::mir::mono::StaticDef(self.create_def_id(did))
+    }
+}
+
 /// Stable public API for querying compiler information.
 ///
-/// All queries are delegated to an internal [`SmirCtxt`] that provides
+/// All queries are delegated to [`crate::rustc_smir::context::SmirCtxt`] that provides
 /// similar APIs but based on internal rustc constructs.
 ///
 /// Do not use this directly. This is currently used in the macro expansion.
-pub(crate) struct SmirInterface<'tcx> {
-    pub(crate) cx: SmirCtxt<'tcx>,
+pub(crate) trait SmirInterface {
+    fn entry_fn(&self) -> Option<CrateItem>;
+    /// Retrieve all items of the local crate that have a MIR associated with them.
+    fn all_local_items(&self) -> CrateItems;
+    /// Retrieve the body of a function.
+    /// This function will panic if the body is not available.
+    fn mir_body(&self, item: DefId) -> mir::Body;
+    /// Check whether the body of a function is available.
+    fn has_body(&self, item: DefId) -> bool;
+    fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef>;
+
+    /// Retrieve all functions defined in this crate.
+    fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef>;
+
+    /// Retrieve all static items defined in this crate.
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef>;
+    fn foreign_module(&self, mod_def: ForeignModuleDef) -> ForeignModule;
+    fn foreign_items(&self, mod_def: ForeignModuleDef) -> Vec<ForeignDef>;
+    fn all_trait_decls(&self) -> TraitDecls;
+    fn trait_decls(&self, crate_num: CrateNum) -> TraitDecls;
+    fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
+    fn all_trait_impls(&self) -> ImplTraitDecls;
+    fn trait_impls(&self, crate_num: CrateNum) -> ImplTraitDecls;
+    fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait;
+    fn generics_of(&self, def_id: DefId) -> Generics;
+    fn predicates_of(&self, def_id: DefId) -> GenericPredicates;
+    fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates;
+
+    /// Get information about the local crate.
+    fn local_crate(&self) -> Crate;
+    /// Retrieve a list of all external crates.
+    fn external_crates(&self) -> Vec<Crate>;
+
+    /// Find a crate with the given name.
+    fn find_crates(&self, name: &str) -> Vec<Crate>;
+
+    /// Returns the name of given `DefId`
+    fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol;
+
+    /// Return registered tool attributes with the given attribute name.
+    ///
+    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
+    /// attributes will simply return an empty list.
+    ///
+    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
+    /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
+    fn tool_attrs(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute>;
+
+    /// Get all tool attributes of a definition.
+    fn all_tool_attrs(&self, def_id: DefId) -> Vec<Attribute>;
+
+    /// Returns printable, human readable form of `Span`
+    fn span_to_string(&self, span: Span) -> String;
+
+    /// Return filename from given `Span`, for diagnostic purposes
+    fn get_filename(&self, span: &Span) -> Filename;
+
+    /// Return lines corresponding to this `Span`
+    fn get_lines(&self, span: &Span) -> LineInfo;
+
+    /// Returns the `kind` of given `DefId`
+    fn item_kind(&self, item: CrateItem) -> ItemKind;
+
+    /// Returns whether this is a foreign item.
+    fn is_foreign_item(&self, item: DefId) -> bool;
+
+    /// Returns the kind of a given foreign item.
+    fn foreign_item_kind(&self, def: ForeignDef) -> ForeignItemKind;
+
+    /// Returns the kind of a given algebraic data type
+    fn adt_kind(&self, def: AdtDef) -> AdtKind;
+
+    /// Returns if the ADT is a box.
+    fn adt_is_box(&self, def: AdtDef) -> bool;
+
+    /// Returns whether this ADT is simd.
+    fn adt_is_simd(&self, def: AdtDef) -> bool;
+
+    /// Returns whether this definition is a C string.
+    fn adt_is_cstr(&self, def: AdtDef) -> bool;
+
+    /// Retrieve the function signature for the given generic arguments.
+    fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
+
+    /// Retrieve the intrinsic definition if the item corresponds one.
+    fn intrinsic(&self, item: DefId) -> Option<IntrinsicDef>;
+
+    /// Retrieve the plain function name of an intrinsic.
+    fn intrinsic_name(&self, def: IntrinsicDef) -> Symbol;
+
+    /// Retrieve the closure signature for the given generic arguments.
+    fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig;
+
+    /// The number of variants in this ADT.
+    fn adt_variants_len(&self, def: AdtDef) -> usize;
+
+    /// The name of a variant.
+    fn variant_name(&self, def: VariantDef) -> Symbol;
+    fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef>;
+
+    /// Evaluate constant as a target usize.
+    fn eval_target_usize(&self, cnst: &MirConst) -> Result<u64, Error>;
+    fn eval_target_usize_ty(&self, cnst: &TyConst) -> Result<u64, Error>;
+
+    /// Create a new zero-sized constant.
+    fn try_new_const_zst(&self, ty: Ty) -> Result<MirConst, Error>;
+
+    /// Create a new constant that represents the given string value.
+    fn new_const_str(&self, value: &str) -> MirConst;
+
+    /// Create a new constant that represents the given boolean value.
+    fn new_const_bool(&self, value: bool) -> MirConst;
+
+    /// Create a new constant that represents the given value.
+    fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<MirConst, Error>;
+    fn try_new_ty_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<TyConst, Error>;
+
+    /// Create a new type from the given kind.
+    fn new_rigid_ty(&self, kind: RigidTy) -> Ty;
+
+    /// Create a new box type, `Box<T>`, for the given inner type `T`.
+    fn new_box_ty(&self, ty: Ty) -> Ty;
+
+    /// Returns the type of given crate item.
+    fn def_ty(&self, item: DefId) -> Ty;
+
+    /// Returns the type of given definition instantiated with the given arguments.
+    fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty;
+
+    /// Returns literal value of a const as a string.
+    fn mir_const_pretty(&self, cnst: &MirConst) -> String;
+
+    /// `Span` of an item
+    fn span_of_an_item(&self, def_id: DefId) -> Span;
+
+    fn ty_const_pretty(&self, ct: TyConstId) -> String;
+
+    /// Obtain the representation of a type.
+    fn ty_pretty(&self, ty: Ty) -> String;
+
+    /// Obtain the kind of a type.
+    fn ty_kind(&self, ty: Ty) -> TyKind;
+
+    // Get the discriminant Ty for this Ty if there's one.
+    fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> Ty;
+
+    /// Get the body of an Instance which is already monomorphized.
+    fn instance_body(&self, instance: InstanceDef) -> Option<Body>;
+
+    /// Get the instance type with generic instantiations applied and lifetimes erased.
+    fn instance_ty(&self, instance: InstanceDef) -> Ty;
+
+    /// Get the instantiation types.
+    fn instance_args(&self, def: InstanceDef) -> GenericArgs;
+
+    /// Get the instance.
+    fn instance_def_id(&self, instance: InstanceDef) -> DefId;
+
+    /// Get the instance mangled name.
+    fn instance_mangled_name(&self, instance: InstanceDef) -> Symbol;
+
+    /// Check if this is an empty DropGlue shim.
+    fn is_empty_drop_shim(&self, def: InstanceDef) -> bool;
+
+    /// Convert a non-generic crate item into an instance.
+    /// This function will panic if the item is generic.
+    fn mono_instance(&self, def_id: DefId) -> Instance;
+
+    /// Item requires monomorphization.
+    fn requires_monomorphization(&self, def_id: DefId) -> bool;
+
+    /// Resolve an instance from the given function definition and generic arguments.
+    fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+
+    /// Resolve an instance for drop_in_place for the given type.
+    fn resolve_drop_in_place(&self, ty: Ty) -> Instance;
+
+    /// Resolve instance for a function pointer.
+    fn resolve_for_fn_ptr(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+
+    /// Resolve instance for a closure with the requested type.
+    fn resolve_closure(
+        &self,
+        def: ClosureDef,
+        args: &GenericArgs,
+        kind: ClosureKind,
+    ) -> Option<Instance>;
+
+    /// Evaluate a static's initializer.
+    fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error>;
+
+    /// Try to evaluate an instance into a constant.
+    fn eval_instance(&self, def: InstanceDef, const_ty: Ty) -> Result<Allocation, Error>;
+
+    /// Retrieve global allocation for the given allocation ID.
+    fn global_alloc(&self, id: AllocId) -> GlobalAlloc;
+
+    /// Retrieve the id for the virtual table.
+    fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
+    fn krate(&self, def_id: DefId) -> Crate;
+    fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol;
+
+    /// Return information about the target machine.
+    fn target_info(&self) -> MachineInfo;
+
+    /// Get an instance ABI.
+    fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error>;
+
+    /// Get the ABI of a function pointer.
+    fn fn_ptr_abi(&self, fn_ptr: PolyFnSig) -> Result<FnAbi, Error>;
+
+    /// Get the layout of a type.
+    fn ty_layout(&self, ty: Ty) -> Result<Layout, Error>;
+
+    /// Get the layout shape.
+    fn layout_shape(&self, id: Layout) -> LayoutShape;
+
+    /// Get a debug string representation of a place.
+    fn place_pretty(&self, place: &Place) -> String;
+
+    /// Get the resulting type of binary operation.
+    fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty;
+
+    /// Get the resulting type of unary operation.
+    fn unop_ty(&self, un_op: UnOp, arg: Ty) -> Ty;
+
+    /// Get all associated items of a definition.
+    fn associated_items(&self, def_id: DefId) -> AssocItems;
 }
 
-impl<'tcx> SmirInterface<'tcx> {
-    pub(crate) fn entry_fn(&self) -> Option<CrateItem> {
-        self.cx.entry_fn()
+impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
+    fn entry_fn(&self) -> Option<CrateItem> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = cx.entry_fn();
+        Some(tables.crate_item(did?))
     }
 
     /// Retrieve all items of the local crate that have a MIR associated with them.
-    pub(crate) fn all_local_items(&self) -> CrateItems {
-        self.cx.all_local_items()
+    fn all_local_items(&self) -> CrateItems {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.all_local_items().iter().map(|did| tables.crate_item(*did)).collect()
     }
 
     /// Retrieve the body of a function.
     /// This function will panic if the body is not available.
-    pub(crate) fn mir_body(&self, item: DefId) -> mir::Body {
-        self.cx.mir_body(item)
+    fn mir_body(&self, item: DefId) -> mir::Body {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[item];
+        cx.mir_body(did).stable(&mut *tables, cx)
     }
 
     /// Check whether the body of a function is available.
-    pub(crate) fn has_body(&self, item: DefId) -> bool {
-        self.cx.has_body(item)
+    fn has_body(&self, item: DefId) -> bool {
+        let mut tables = self.tables.borrow_mut();
+        let tables_ref = &mut *tables;
+        let cx = &*self.cx.borrow();
+        let def = item.internal(tables_ref, cx);
+        cx.has_body(def, tables_ref)
     }
 
-    pub(crate) fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef> {
-        self.cx.foreign_modules(crate_num)
+    fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.foreign_modules(crate_num.internal(&mut *tables, cx))
+            .iter()
+            .map(|did| tables.foreign_module_def(*did))
+            .collect()
     }
 
     /// Retrieve all functions defined in this crate.
-    pub(crate) fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef> {
-        self.cx.crate_functions(crate_num)
+    fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let tables_ref = &mut *tables;
+        let krate = crate_num.internal(tables_ref, cx);
+        cx.crate_functions(krate, tables_ref).iter().map(|did| tables.fn_def(*did)).collect()
     }
 
     /// Retrieve all static items defined in this crate.
-    pub(crate) fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
-        self.cx.crate_statics(crate_num)
+    fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let tables_ref = &mut *tables;
+        let krate = crate_num.internal(tables_ref, cx);
+        cx.crate_statics(krate, tables_ref).iter().map(|did| tables.static_def(*did)).collect()
     }
 
-    pub(crate) fn foreign_module(&self, mod_def: ForeignModuleDef) -> ForeignModule {
-        self.cx.foreign_module(mod_def)
+    fn foreign_module(&self, mod_def: ForeignModuleDef) -> ForeignModule {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[mod_def.def_id()];
+        cx.foreign_module(did).stable(&mut *tables, cx)
     }
 
-    pub(crate) fn foreign_items(&self, mod_def: ForeignModuleDef) -> Vec<ForeignDef> {
-        self.cx.foreign_items(mod_def)
+    fn foreign_items(&self, mod_def: ForeignModuleDef) -> Vec<ForeignDef> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[mod_def.def_id()];
+        cx.foreign_items(did).iter().map(|did| tables.foreign_def(*did)).collect()
     }
 
-    pub(crate) fn all_trait_decls(&self) -> TraitDecls {
-        self.cx.all_trait_decls()
+    fn all_trait_decls(&self) -> TraitDecls {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.all_trait_decls().map(|did| tables.trait_def(did)).collect()
     }
 
-    pub(crate) fn trait_decls(&self, crate_num: CrateNum) -> TraitDecls {
-        self.cx.trait_decls(crate_num)
+    fn trait_decls(&self, crate_num: CrateNum) -> TraitDecls {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let krate = crate_num.internal(&mut *tables, cx);
+        cx.trait_decls(krate).iter().map(|did| tables.trait_def(*did)).collect()
     }
 
-    pub(crate) fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl {
-        self.cx.trait_decl(trait_def)
+    fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[trait_def.0];
+        cx.trait_decl(did).stable(&mut *tables, cx)
     }
 
-    pub(crate) fn all_trait_impls(&self) -> ImplTraitDecls {
-        self.cx.all_trait_impls()
+    fn all_trait_impls(&self) -> ImplTraitDecls {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.all_trait_impls().iter().map(|did| tables.impl_def(*did)).collect()
     }
 
-    pub(crate) fn trait_impls(&self, crate_num: CrateNum) -> ImplTraitDecls {
-        self.cx.trait_impls(crate_num)
+    fn trait_impls(&self, crate_num: CrateNum) -> ImplTraitDecls {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let krate = crate_num.internal(&mut *tables, cx);
+        cx.trait_impls(krate).iter().map(|did| tables.impl_def(*did)).collect()
     }
 
-    pub(crate) fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait {
-        self.cx.trait_impl(trait_impl)
+    fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[trait_impl.0];
+        cx.trait_impl(did).stable(&mut *tables, cx)
     }
 
-    pub(crate) fn generics_of(&self, def_id: DefId) -> Generics {
-        self.cx.generics_of(def_id)
+    fn generics_of(&self, def_id: DefId) -> Generics {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.generics_of(did).stable(&mut *tables, cx)
     }
 
-    pub(crate) fn predicates_of(&self, def_id: DefId) -> GenericPredicates {
-        self.cx.predicates_of(def_id)
+    fn predicates_of(&self, def_id: DefId) -> GenericPredicates {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        let rustc_middle::ty::GenericPredicates { parent, predicates } = cx.predicates_of(did);
+        stable_mir::ty::GenericPredicates {
+            parent: parent.map(|did| tables.trait_def(did)),
+            predicates: predicates
+                .iter()
+                .map(|(clause, span)| {
+                    (
+                        clause.as_predicate().kind().skip_binder().stable(&mut *tables, cx),
+                        span.stable(&mut *tables, cx),
+                    )
+                })
+                .collect(),
+        }
     }
 
-    pub(crate) fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates {
-        self.cx.explicit_predicates_of(def_id)
+    fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        let rustc_middle::ty::GenericPredicates { parent, predicates } =
+            cx.explicit_predicates_of(did);
+        stable_mir::ty::GenericPredicates {
+            parent: parent.map(|did| tables.trait_def(did)),
+            predicates: predicates
+                .iter()
+                .map(|(clause, span)| {
+                    (
+                        clause.as_predicate().kind().skip_binder().stable(&mut *tables, cx),
+                        span.stable(&mut *tables, cx),
+                    )
+                })
+                .collect(),
+        }
     }
 
     /// Get information about the local crate.
-    pub(crate) fn local_crate(&self) -> Crate {
-        self.cx.local_crate()
+    fn local_crate(&self) -> Crate {
+        let cx = &*self.cx.borrow();
+        self.smir_crate(cx.local_crate_num())
     }
 
     /// Retrieve a list of all external crates.
-    pub(crate) fn external_crates(&self) -> Vec<Crate> {
-        self.cx.external_crates()
+    fn external_crates(&self) -> Vec<Crate> {
+        let cx = &*self.cx.borrow();
+        cx.external_crates().iter().map(|crate_num| self.smir_crate(*crate_num)).collect()
     }
 
     /// Find a crate with the given name.
-    pub(crate) fn find_crates(&self, name: &str) -> Vec<Crate> {
-        self.cx.find_crates(name)
+    fn find_crates(&self, name: &str) -> Vec<Crate> {
+        let cx = &*self.cx.borrow();
+        cx.find_crates(name).iter().map(|crate_num| self.smir_crate(*crate_num)).collect()
     }
 
     /// Returns the name of given `DefId`.
-    pub(crate) fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol {
-        self.cx.def_name(def_id, trimmed)
+    fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol {
+        let tables = self.tables.borrow();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.def_name(did, trimmed)
     }
 
     /// Return registered tool attributes with the given attribute name.
@@ -141,63 +594,111 @@ impl<'tcx> SmirInterface<'tcx> {
     ///
     /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
     /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
-    pub(crate) fn tool_attrs(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute> {
-        self.cx.tool_attrs(def_id, attr)
+    fn tool_attrs(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.tool_attrs(did, attr)
+            .into_iter()
+            .map(|(attr_str, span)| Attribute::new(attr_str, span.stable(&mut *tables, cx)))
+            .collect()
     }
 
     /// Get all tool attributes of a definition.
-    pub(crate) fn all_tool_attrs(&self, def_id: DefId) -> Vec<Attribute> {
-        self.cx.all_tool_attrs(def_id)
+    fn all_tool_attrs(&self, def_id: DefId) -> Vec<Attribute> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.all_tool_attrs(did)
+            .into_iter()
+            .map(|(attr_str, span)| Attribute::new(attr_str, span.stable(&mut *tables, cx)))
+            .collect()
     }
 
     /// Returns printable, human readable form of `Span`.
-    pub(crate) fn span_to_string(&self, span: Span) -> String {
-        self.cx.span_to_string(span)
+    fn span_to_string(&self, span: Span) -> String {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let sp = tables.spans[span];
+        cx.span_to_string(sp)
     }
 
     /// Return filename from given `Span`, for diagnostic purposes.
-    pub(crate) fn get_filename(&self, span: &Span) -> Filename {
-        self.cx.get_filename(span)
+    fn get_filename(&self, span: &Span) -> Filename {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let sp = tables.spans[*span];
+        cx.get_filename(sp)
     }
 
     /// Return lines corresponding to this `Span`.
-    pub(crate) fn get_lines(&self, span: &Span) -> LineInfo {
-        self.cx.get_lines(span)
+    fn get_lines(&self, span: &Span) -> LineInfo {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let sp = tables.spans[*span];
+        let lines = cx.get_lines(sp);
+        LineInfo::from(lines)
     }
 
     /// Returns the `kind` of given `DefId`.
-    pub(crate) fn item_kind(&self, item: CrateItem) -> ItemKind {
-        self.cx.item_kind(item)
+    fn item_kind(&self, item: CrateItem) -> ItemKind {
+        let tables = self.tables.borrow();
+        let cx = &*self.cx.borrow();
+        let did = tables[item.0];
+        new_item_kind(cx.def_kind(did))
     }
 
     /// Returns whether this is a foreign item.
-    pub(crate) fn is_foreign_item(&self, item: DefId) -> bool {
-        self.cx.is_foreign_item(item)
+    fn is_foreign_item(&self, item: DefId) -> bool {
+        let tables = self.tables.borrow();
+        let cx = &*self.cx.borrow();
+        let did = tables[item];
+        cx.is_foreign_item(did)
     }
 
     /// Returns the kind of a given foreign item.
-    pub(crate) fn foreign_item_kind(&self, def: ForeignDef) -> ForeignItemKind {
-        self.cx.foreign_item_kind(def)
+    fn foreign_item_kind(&self, def: ForeignDef) -> ForeignItemKind {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = tables[def.def_id()];
+        let def_kind = cx.foreign_item_kind(def_id);
+        match def_kind {
+            DefKind::Fn => ForeignItemKind::Fn(tables.fn_def(def_id)),
+            DefKind::Static { .. } => ForeignItemKind::Static(tables.static_def(def_id)),
+            DefKind::ForeignTy => {
+                use rustc_smir::context::SmirTy;
+                ForeignItemKind::Type(tables.intern_ty(cx.new_foreign(def_id)))
+            }
+            def_kind => unreachable!("Unexpected kind for a foreign item: {:?}", def_kind),
+        }
     }
 
     /// Returns the kind of a given algebraic data type.
-    pub(crate) fn adt_kind(&self, def: AdtDef) -> AdtKind {
-        self.cx.adt_kind(def)
+    fn adt_kind(&self, def: AdtDef) -> AdtKind {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.adt_kind(def.internal(&mut *tables, cx)).stable(&mut *tables, cx)
     }
 
     /// Returns if the ADT is a box.
-    pub(crate) fn adt_is_box(&self, def: AdtDef) -> bool {
-        self.cx.adt_is_box(def)
+    fn adt_is_box(&self, def: AdtDef) -> bool {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.adt_is_box(def.internal(&mut *tables, cx))
     }
 
     /// Returns whether this ADT is simd.
-    pub(crate) fn adt_is_simd(&self, def: AdtDef) -> bool {
-        self.cx.adt_is_simd(def)
+    fn adt_is_simd(&self, def: AdtDef) -> bool {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.adt_is_simd(def.internal(&mut *tables, cx))
     }
 
     /// Returns whether this definition is a C string.
-    pub(crate) fn adt_is_cstr(&self, def: AdtDef) -> bool {
-        self.cx.adt_is_cstr(def)
+    fn adt_is_cstr(&self, def: AdtDef) -> bool {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.adt_is_cstr(def.0.internal(&mut *tables, cx))
     }
 
     /// Returns the representation options for this ADT
@@ -206,28 +707,43 @@ impl<'tcx> SmirInterface<'tcx> {
     }
 
     /// Retrieve the function signature for the given generic arguments.
-    pub(crate) fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
-        self.cx.fn_sig(def, args)
+    fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx);
+        let args_ref = args.internal(&mut *tables, cx);
+        cx.fn_sig(def_id, args_ref).stable(&mut *tables, cx)
     }
 
     /// Retrieve the intrinsic definition if the item corresponds one.
-    pub(crate) fn intrinsic(&self, item: DefId) -> Option<IntrinsicDef> {
-        self.cx.intrinsic(item)
+    fn intrinsic(&self, item: DefId) -> Option<IntrinsicDef> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = item.internal(&mut *tables, cx);
+        cx.intrinsic(def_id).map(|_| IntrinsicDef(item))
     }
 
     /// Retrieve the plain function name of an intrinsic.
-    pub(crate) fn intrinsic_name(&self, def: IntrinsicDef) -> Symbol {
-        self.cx.intrinsic_name(def)
+    fn intrinsic_name(&self, def: IntrinsicDef) -> Symbol {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx);
+        cx.intrinsic_name(def_id)
     }
 
     /// Retrieve the closure signature for the given generic arguments.
-    pub(crate) fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig {
-        self.cx.closure_sig(args)
+    fn closure_sig(&self, args: &GenericArgs) -> PolyFnSig {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let args_ref = args.internal(&mut *tables, cx);
+        cx.closure_sig(args_ref).stable(&mut *tables, cx)
     }
 
     /// The number of variants in this ADT.
-    pub(crate) fn adt_variants_len(&self, def: AdtDef) -> usize {
-        self.cx.adt_variants_len(def)
+    fn adt_variants_len(&self, def: AdtDef) -> usize {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.adt_variants_len(def.internal(&mut *tables, cx))
     }
 
     /// Discriminant for a given variant index of AdtDef
@@ -246,259 +762,405 @@ impl<'tcx> SmirInterface<'tcx> {
     }
 
     /// The name of a variant.
-    pub(crate) fn variant_name(&self, def: VariantDef) -> Symbol {
-        self.cx.variant_name(def)
+    fn variant_name(&self, def: VariantDef) -> Symbol {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.variant_name(def.internal(&mut *tables, cx))
     }
 
-    pub(crate) fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef> {
-        self.cx.variant_fields(def)
+    fn variant_fields(&self, def: VariantDef) -> Vec<FieldDef> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        def.internal(&mut *tables, cx).fields.iter().map(|f| f.stable(&mut *tables, cx)).collect()
     }
 
     /// Evaluate constant as a target usize.
-    pub(crate) fn eval_target_usize(&self, cnst: &MirConst) -> Result<u64, Error> {
-        self.cx.eval_target_usize(cnst)
+    fn eval_target_usize(&self, mir_const: &MirConst) -> Result<u64, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let cnst = mir_const.internal(&mut *tables, cx);
+        cx.eval_target_usize(cnst)
     }
 
-    pub(crate) fn eval_target_usize_ty(&self, cnst: &TyConst) -> Result<u64, Error> {
-        self.cx.eval_target_usize_ty(cnst)
+    fn eval_target_usize_ty(&self, ty_const: &TyConst) -> Result<u64, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let cnst = ty_const.internal(&mut *tables, cx);
+        cx.eval_target_usize_ty(cnst)
     }
 
     /// Create a new zero-sized constant.
-    pub(crate) fn try_new_const_zst(&self, ty: Ty) -> Result<MirConst, Error> {
-        self.cx.try_new_const_zst(ty)
+    fn try_new_const_zst(&self, ty: Ty) -> Result<MirConst, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let ty_internal = ty.internal(&mut *tables, cx);
+        cx.try_new_const_zst(ty_internal).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
     /// Create a new constant that represents the given string value.
-    pub(crate) fn new_const_str(&self, value: &str) -> MirConst {
-        self.cx.new_const_str(value)
+    fn new_const_str(&self, value: &str) -> MirConst {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.new_const_str(value).stable(&mut *tables, cx)
     }
 
     /// Create a new constant that represents the given boolean value.
-    pub(crate) fn new_const_bool(&self, value: bool) -> MirConst {
-        self.cx.new_const_bool(value)
+    fn new_const_bool(&self, value: bool) -> MirConst {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.new_const_bool(value).stable(&mut *tables, cx)
     }
 
     /// Create a new constant that represents the given value.
-    pub(crate) fn try_new_const_uint(
-        &self,
-        value: u128,
-        uint_ty: UintTy,
-    ) -> Result<MirConst, Error> {
-        self.cx.try_new_const_uint(value, uint_ty)
+    fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<MirConst, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let ty = cx.ty_new_uint(uint_ty.internal(&mut *tables, cx));
+        cx.try_new_const_uint(value, ty).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
-    pub(crate) fn try_new_ty_const_uint(
-        &self,
-        value: u128,
-        uint_ty: UintTy,
-    ) -> Result<TyConst, Error> {
-        self.cx.try_new_ty_const_uint(value, uint_ty)
+    fn try_new_ty_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<TyConst, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let ty = cx.ty_new_uint(uint_ty.internal(&mut *tables, cx));
+        cx.try_new_ty_const_uint(value, ty).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
     /// Create a new type from the given kind.
-    pub(crate) fn new_rigid_ty(&self, kind: RigidTy) -> Ty {
-        self.cx.new_rigid_ty(kind)
+    fn new_rigid_ty(&self, kind: RigidTy) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let internal_kind = kind.internal(&mut *tables, cx);
+        cx.new_rigid_ty(internal_kind).stable(&mut *tables, cx)
     }
 
     /// Create a new box type, `Box<T>`, for the given inner type `T`.
-    pub(crate) fn new_box_ty(&self, ty: Ty) -> Ty {
-        self.cx.new_box_ty(ty)
+    fn new_box_ty(&self, ty: Ty) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let inner = ty.internal(&mut *tables, cx);
+        cx.new_box_ty(inner).stable(&mut *tables, cx)
     }
 
     /// Returns the type of given crate item.
-    pub(crate) fn def_ty(&self, item: DefId) -> Ty {
-        self.cx.def_ty(item)
+    fn def_ty(&self, item: DefId) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let inner = item.internal(&mut *tables, cx);
+        cx.def_ty(inner).stable(&mut *tables, cx)
     }
 
     /// Returns the type of given definition instantiated with the given arguments.
-    pub(crate) fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty {
-        self.cx.def_ty_with_args(item, args)
+    fn def_ty_with_args(&self, item: DefId, args: &GenericArgs) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let inner = item.internal(&mut *tables, cx);
+        let args_ref = args.internal(&mut *tables, cx);
+        cx.def_ty_with_args(inner, args_ref).stable(&mut *tables, cx)
     }
 
     /// Returns literal value of a const as a string.
-    pub(crate) fn mir_const_pretty(&self, cnst: &MirConst) -> String {
-        self.cx.mir_const_pretty(cnst)
+    fn mir_const_pretty(&self, cnst: &MirConst) -> String {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cnst.internal(&mut *tables, cx).to_string()
     }
 
     /// `Span` of an item.
-    pub(crate) fn span_of_an_item(&self, def_id: DefId) -> Span {
-        self.cx.span_of_an_item(def_id)
+    fn span_of_an_item(&self, def_id: DefId) -> Span {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.span_of_an_item(did).stable(&mut *tables, cx)
     }
 
-    pub(crate) fn ty_const_pretty(&self, ct: TyConstId) -> String {
-        self.cx.ty_const_pretty(ct)
+    fn ty_const_pretty(&self, ct: TyConstId) -> String {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.ty_const_pretty(tables.ty_consts[ct])
     }
 
     /// Obtain the representation of a type.
-    pub(crate) fn ty_pretty(&self, ty: Ty) -> String {
-        self.cx.ty_pretty(ty)
+    fn ty_pretty(&self, ty: Ty) -> String {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.ty_pretty(tables.types[ty])
     }
 
-    /// Obtain the representation of a type.
-    pub(crate) fn ty_kind(&self, ty: Ty) -> TyKind {
-        self.cx.ty_kind(ty)
+    /// Obtain the kind of a type.
+    fn ty_kind(&self, ty: Ty) -> TyKind {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        cx.ty_kind(tables.types[ty]).stable(&mut *tables, cx)
     }
 
     /// Get the discriminant Ty for this Ty if there's one.
-    pub(crate) fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> Ty {
-        self.cx.rigid_ty_discriminant_ty(ty)
+    fn rigid_ty_discriminant_ty(&self, ty: &RigidTy) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let internal_kind = ty.internal(&mut *tables, cx);
+        cx.rigid_ty_discriminant_ty(internal_kind).stable(&mut *tables, cx)
     }
 
     /// Get the body of an Instance which is already monomorphized.
-    pub(crate) fn instance_body(&self, instance: InstanceDef) -> Option<Body> {
-        self.cx.instance_body(instance)
+    fn instance_body(&self, instance: InstanceDef) -> Option<Body> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[instance];
+        cx.instance_body(instance, &mut *tables).map(|body| body.stable(&mut *tables, cx))
     }
 
     /// Get the instance type with generic instantiations applied and lifetimes erased.
-    pub(crate) fn instance_ty(&self, instance: InstanceDef) -> Ty {
-        self.cx.instance_ty(instance)
+    fn instance_ty(&self, instance: InstanceDef) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[instance];
+        cx.instance_ty(instance).stable(&mut *tables, cx)
     }
 
     /// Get the instantiation types.
-    pub(crate) fn instance_args(&self, def: InstanceDef) -> GenericArgs {
-        self.cx.instance_args(def)
+    fn instance_args(&self, def: InstanceDef) -> GenericArgs {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[def];
+        cx.instance_args(instance).stable(&mut *tables, cx)
     }
 
     /// Get the instance.
-    pub(crate) fn instance_def_id(&self, instance: InstanceDef) -> DefId {
-        self.cx.instance_def_id(instance)
+    fn instance_def_id(&self, instance: InstanceDef) -> DefId {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[instance];
+        cx.instance_def_id(instance, &mut *tables)
     }
 
     /// Get the instance mangled name.
-    pub(crate) fn instance_mangled_name(&self, instance: InstanceDef) -> Symbol {
-        self.cx.instance_mangled_name(instance)
+    fn instance_mangled_name(&self, instance: InstanceDef) -> Symbol {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[instance];
+        cx.instance_mangled_name(instance)
     }
 
     /// Check if this is an empty DropGlue shim.
-    pub(crate) fn is_empty_drop_shim(&self, def: InstanceDef) -> bool {
-        self.cx.is_empty_drop_shim(def)
+    fn is_empty_drop_shim(&self, def: InstanceDef) -> bool {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[def];
+        cx.is_empty_drop_shim(instance)
     }
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
-    pub(crate) fn mono_instance(&self, def_id: DefId) -> Instance {
-        self.cx.mono_instance(def_id)
+    fn mono_instance(&self, def_id: DefId) -> Instance {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.mono_instance(did).stable(&mut *tables, cx)
     }
 
     /// Item requires monomorphization.
-    pub(crate) fn requires_monomorphization(&self, def_id: DefId) -> bool {
-        self.cx.requires_monomorphization(def_id)
+    fn requires_monomorphization(&self, def_id: DefId) -> bool {
+        let tables = self.tables.borrow();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.requires_monomorphization(did)
     }
 
     /// Resolve an instance from the given function definition and generic arguments.
-    pub(crate) fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance> {
-        self.cx.resolve_instance(def, args)
+    fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx);
+        let args_ref = args.internal(&mut *tables, cx);
+        cx.resolve_instance(def_id, args_ref).map(|inst| inst.stable(&mut *tables, cx))
     }
 
     /// Resolve an instance for drop_in_place for the given type.
-    pub(crate) fn resolve_drop_in_place(&self, ty: Ty) -> Instance {
-        self.cx.resolve_drop_in_place(ty)
+    fn resolve_drop_in_place(&self, ty: Ty) -> Instance {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let internal_ty = ty.internal(&mut *tables, cx);
+
+        cx.resolve_drop_in_place(internal_ty).stable(&mut *tables, cx)
     }
 
     /// Resolve instance for a function pointer.
-    pub(crate) fn resolve_for_fn_ptr(&self, def: FnDef, args: &GenericArgs) -> Option<Instance> {
-        self.cx.resolve_for_fn_ptr(def, args)
+    fn resolve_for_fn_ptr(&self, def: FnDef, args: &GenericArgs) -> Option<Instance> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx);
+        let args_ref = args.internal(&mut *tables, cx);
+        cx.resolve_for_fn_ptr(def_id, args_ref).stable(&mut *tables, cx)
     }
 
     /// Resolve instance for a closure with the requested type.
-    pub(crate) fn resolve_closure(
+    fn resolve_closure(
         &self,
         def: ClosureDef,
         args: &GenericArgs,
         kind: ClosureKind,
     ) -> Option<Instance> {
-        self.cx.resolve_closure(def, args, kind)
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx);
+        let args_ref = args.internal(&mut *tables, cx);
+        let closure_kind = kind.internal(&mut *tables, cx);
+        cx.resolve_closure(def_id, args_ref, closure_kind).map(|inst| inst.stable(&mut *tables, cx))
     }
 
     /// Evaluate a static's initializer.
-    pub(crate) fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error> {
-        self.cx.eval_static_initializer(def)
+    fn eval_static_initializer(&self, def: StaticDef) -> Result<Allocation, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let def_id = def.0.internal(&mut *tables, cx);
+
+        cx.eval_static_initializer(def_id).stable(&mut *tables, cx)
     }
 
     /// Try to evaluate an instance into a constant.
-    pub(crate) fn eval_instance(
-        &self,
-        def: InstanceDef,
-        const_ty: Ty,
-    ) -> Result<Allocation, Error> {
-        self.cx.eval_instance(def, const_ty)
+    fn eval_instance(&self, def: InstanceDef, const_ty: Ty) -> Result<Allocation, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let instance = tables.instances[def];
+        let cx = &*self.cx.borrow();
+        let const_ty = const_ty.internal(&mut *tables, cx);
+        cx.eval_instance(instance)
+            .map(|const_val| alloc::try_new_allocation(const_ty, const_val, &mut *tables, cx))
+            .map_err(|e| e.stable(&mut *tables, cx))?
     }
 
     /// Retrieve global allocation for the given allocation ID.
-    pub(crate) fn global_alloc(&self, id: AllocId) -> GlobalAlloc {
-        self.cx.global_alloc(id)
+    fn global_alloc(&self, id: AllocId) -> GlobalAlloc {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let alloc_id = id.internal(&mut *tables, cx);
+        cx.global_alloc(alloc_id).stable(&mut *tables, cx)
     }
 
     /// Retrieve the id for the virtual table.
-    pub(crate) fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId> {
-        self.cx.vtable_allocation(global_alloc)
+    fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId> {
+        let mut tables = self.tables.borrow_mut();
+        let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else {
+            return None;
+        };
+        let cx = &*self.cx.borrow();
+        let ty = ty.internal(&mut *tables, cx);
+        let trait_ref = trait_ref.internal(&mut *tables, cx);
+        let alloc_id = cx.vtable_allocation(ty, trait_ref);
+        Some(alloc_id.stable(&mut *tables, cx))
     }
 
-    pub(crate) fn krate(&self, def_id: DefId) -> Crate {
-        self.cx.krate(def_id)
+    fn krate(&self, def_id: DefId) -> Crate {
+        let tables = self.tables.borrow();
+        self.smir_crate(tables[def_id].krate)
     }
 
-    pub(crate) fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol {
-        self.cx.instance_name(def, trimmed)
+    fn instance_name(&self, def: InstanceDef, trimmed: bool) -> Symbol {
+        let tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[def];
+        cx.instance_name(instance, trimmed)
     }
 
     /// Return information about the target machine.
-    pub(crate) fn target_info(&self) -> MachineInfo {
-        self.cx.target_info()
+    fn target_info(&self) -> MachineInfo {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        MachineInfo {
+            endian: cx.target_endian().stable(&mut *tables, cx),
+            pointer_width: MachineSize::from_bits(cx.target_pointer_size()),
+        }
     }
 
     /// Get an instance ABI.
-    pub(crate) fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error> {
-        self.cx.instance_abi(def)
+    fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let instance = tables.instances[def];
+        cx.instance_abi(instance, &mut *tables).map(|fn_abi| fn_abi.stable(&mut *tables, cx))
     }
 
     /// Get the ABI of a function pointer.
-    pub(crate) fn fn_ptr_abi(&self, fn_ptr: PolyFnSig) -> Result<FnAbi, Error> {
-        self.cx.fn_ptr_abi(fn_ptr)
+    fn fn_ptr_abi(&self, fn_ptr: PolyFnSig) -> Result<FnAbi, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let sig = fn_ptr.internal(&mut *tables, cx);
+        cx.fn_ptr_abi(sig, &mut *tables).map(|fn_abi| fn_abi.stable(&mut *tables, cx))
     }
 
     /// Get the layout of a type.
-    pub(crate) fn ty_layout(&self, ty: Ty) -> Result<Layout, Error> {
-        self.cx.ty_layout(ty)
+    fn ty_layout(&self, ty: Ty) -> Result<Layout, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let internal_ty = ty.internal(&mut *tables, cx);
+        cx.ty_layout(internal_ty, &mut *tables).map(|layout| layout.stable(&mut *tables, cx))
     }
 
     /// Get the layout shape.
-    pub(crate) fn layout_shape(&self, id: Layout) -> LayoutShape {
-        self.cx.layout_shape(id)
+    fn layout_shape(&self, id: Layout) -> LayoutShape {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        id.internal(&mut *tables, cx).0.stable(&mut *tables, cx)
     }
 
     /// Get a debug string representation of a place.
-    pub(crate) fn place_pretty(&self, place: &Place) -> String {
-        self.cx.place_pretty(place)
+    fn place_pretty(&self, place: &Place) -> String {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+
+        format!("{:?}", place.internal(&mut *tables, cx))
     }
 
     /// Get the resulting type of binary operation.
-    pub(crate) fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty {
-        self.cx.binop_ty(bin_op, rhs, lhs)
+    fn binop_ty(&self, bin_op: BinOp, rhs: Ty, lhs: Ty) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let rhs_internal = rhs.internal(&mut *tables, cx);
+        let lhs_internal = lhs.internal(&mut *tables, cx);
+        let bin_op_internal = bin_op.internal(&mut *tables, cx);
+        cx.binop_ty(bin_op_internal, rhs_internal, lhs_internal).stable(&mut *tables, cx)
     }
 
     /// Get the resulting type of unary operation.
-    pub(crate) fn unop_ty(&self, un_op: UnOp, arg: Ty) -> Ty {
-        self.cx.unop_ty(un_op, arg)
+    fn unop_ty(&self, un_op: UnOp, arg: Ty) -> Ty {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let un_op = un_op.internal(&mut *tables, cx);
+        let arg = arg.internal(&mut *tables, cx);
+        cx.unop_ty(un_op, arg).stable(&mut *tables, cx)
     }
 
     /// Get all associated items of a definition.
-    pub(crate) fn associated_items(&self, def_id: DefId) -> AssocItems {
-        self.cx.associated_items(def_id)
+    fn associated_items(&self, def_id: DefId) -> AssocItems {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let did = tables[def_id];
+        cx.associated_items(did).iter().map(|assoc| assoc.stable(&mut *tables, cx)).collect()
+    }
+}
+
+impl<'tcx> SmirContainer<'tcx, BridgeTys> {
+    fn smir_crate(&self, crate_num: rustc_span::def_id::CrateNum) -> Crate {
+        let cx = &*self.cx.borrow();
+        let name = cx.crate_name(crate_num);
+        let is_local = cx.crate_is_local(crate_num);
+        let id = cx.crate_num_id(crate_num);
+        debug!(?name, ?crate_num, "smir_crate");
+        Crate { id, name, is_local }
     }
 }
 
 // A thread local variable that stores a pointer to [`SmirInterface`].
 scoped_tls::scoped_thread_local!(static TLV: Cell<*const ()>);
 
-pub(crate) fn run<'tcx, T, F>(interface: &SmirInterface<'tcx>, f: F) -> Result<T, Error>
+pub(crate) fn run<F, T>(interface: &dyn SmirInterface, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
     if TLV.is_set() {
         Err(Error::from("StableMIR already running"))
     } else {
-        let ptr: *const () = (interface as *const SmirInterface<'tcx>) as *const ();
+        let ptr: *const () = (&raw const interface) as _;
         TLV.set(&Cell::new(ptr), || Ok(f()))
     }
 }
@@ -507,11 +1169,11 @@ where
 ///
 /// I.e., This function will load the current interface and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub(crate) fn with<R>(f: impl FnOnce(&SmirInterface<'_>) -> R) -> R {
+pub(crate) fn with<R>(f: impl FnOnce(&dyn SmirInterface) -> R) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        f(unsafe { &*(ptr as *const SmirInterface<'_>) })
+        f(unsafe { *(ptr as *const &dyn SmirInterface) })
     })
 }

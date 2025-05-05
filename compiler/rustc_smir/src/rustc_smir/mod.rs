@@ -8,7 +8,6 @@
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
 use std::marker::PointeeSized;
-use std::ops::RangeInclusive;
 use std::cell::RefCell;
 use std::fmt::Debug;
 
@@ -18,8 +17,6 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use stable_mir::{CtorKind, ItemKind};
-use tracing::debug;
 
 use crate::rustc_internal::IndexMap;
 use crate::stable_mir;
@@ -151,51 +148,6 @@ where
                 func(def_id)
             })
             .collect()
-    }
-}
-
-/// Build a stable mir crate from a given crate number.
-pub(crate) fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
-    let crate_name = tcx.crate_name(crate_num).to_string();
-    let is_local = crate_num == LOCAL_CRATE;
-    debug!(?crate_name, ?crate_num, "smir_crate");
-    stable_mir::Crate { id: crate_num.into(), name: crate_name, is_local }
-}
-
-pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
-    match kind {
-        DefKind::Mod
-        | DefKind::Struct
-        | DefKind::Union
-        | DefKind::Enum
-        | DefKind::Variant
-        | DefKind::Trait
-        | DefKind::TyAlias
-        | DefKind::ForeignTy
-        | DefKind::TraitAlias
-        | DefKind::AssocTy
-        | DefKind::TyParam
-        | DefKind::ConstParam
-        | DefKind::Macro(_)
-        | DefKind::ExternCrate
-        | DefKind::Use
-        | DefKind::ForeignMod
-        | DefKind::OpaqueTy
-        | DefKind::Field
-        | DefKind::LifetimeParam
-        | DefKind::Impl { .. }
-        | DefKind::GlobalAsm => {
-            unreachable!("Not a valid item kind: {kind:?}");
-        }
-        DefKind::Closure | DefKind::AssocFn | DefKind::Fn | DefKind::SyntheticCoroutineBody => {
-            ItemKind::Fn
-        }
-        DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
-            ItemKind::Const
-        }
-        DefKind::Static { .. } => ItemKind::Static,
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
-        DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),
     }
 }
 
