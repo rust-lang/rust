@@ -12,5 +12,5 @@
 #![feature(no_core)]
 #![no_core]
 
-//[negative]~? ERROR `-C linker-features=-lld` is unstable on the `x86_64-unknown-linux-musl` target. The `-Z unstable-options` flag must also be passed to use it on this target
-//[positive]~? ERROR `-C linker-features=+lld` is unstable on the `x86_64-unknown-linux-musl` target. The `-Z unstable-options` flag must also be passed to use it on this target
+//[negative]~? ERROR `-C linker-features=-lld` is unstable on the `x86_64-unknown-linux-musl` target
+//[positive]~? ERROR `-C linker-features=+lld` is unstable on the `x86_64-unknown-linux-musl` target
