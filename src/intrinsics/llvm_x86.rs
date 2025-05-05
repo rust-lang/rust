@@ -147,10 +147,10 @@ pub(super) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let offset = fx.bcx.ins().imul(index_lane, scale);
                 let lane_ptr = fx.bcx.ins().iadd(ptr, offset);
                 let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), lane_ptr, 0);
-                fx.bcx.ins().jump(next, &[res]);
+                fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
-                fx.bcx.ins().jump(next, &[src_lane]);
+                fx.bcx.ins().jump(next, &[src_lane.into()]);
 
                 fx.bcx.seal_block(next);
                 fx.bcx.switch_to_block(next);

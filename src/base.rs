@@ -806,7 +806,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                         let done_block = fx.bcx.create_block();
                         let index = fx.bcx.append_block_param(loop_block, fx.pointer_type);
                         let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-                        fx.bcx.ins().jump(loop_block, &[zero]);
+                        fx.bcx.ins().jump(loop_block, &[zero.into()]);
 
                         fx.bcx.switch_to_block(loop_block);
                         let done = fx.bcx.ins().icmp_imm(IntCC::Equal, index, times as i64);
@@ -816,7 +816,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
                         let index = fx.bcx.ins().iadd_imm(index, 1);
-                        fx.bcx.ins().jump(loop_block, &[index]);
+                        fx.bcx.ins().jump(loop_block, &[index.into()]);
 
                         fx.bcx.switch_to_block(done_block);
                         fx.bcx.ins().nop();

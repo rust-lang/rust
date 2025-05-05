@@ -1008,10 +1008,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
 
                 fx.bcx.switch_to_block(if_enabled);
                 let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), ptr_lane, 0);
-                fx.bcx.ins().jump(next, &[res]);
+                fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
-                fx.bcx.ins().jump(next, &[val_lane]);
+                fx.bcx.ins().jump(next, &[val_lane.into()]);
 
                 fx.bcx.seal_block(next);
                 fx.bcx.switch_to_block(next);
@@ -1057,10 +1057,10 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     ptr_val,
                     Offset32::new(offset),
                 );
-                fx.bcx.ins().jump(next, &[res]);
+                fx.bcx.ins().jump(next, &[res.into()]);
 
                 fx.bcx.switch_to_block(if_disabled);
-                fx.bcx.ins().jump(next, &[val_lane]);
+                fx.bcx.ins().jump(next, &[val_lane.into()]);
 
                 fx.bcx.seal_block(next);
                 fx.bcx.switch_to_block(next);
