@@ -10,8 +10,8 @@
 
 fn main() {}
 
-//[crto]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable, the `-Z unstable-options` flag must also be passed to use the unstable values
-//[libc]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable, the `-Z unstable-options` flag must also be passed to use the unstable values
-//[unwind]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable, the `-Z unstable-options` flag must also be passed to use the unstable values
-//[sanitizers]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable, the `-Z unstable-options` flag must also be passed to use the unstable values
-//[mingw]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable, the `-Z unstable-options` flag must also be passed to use the unstable values
+//[crto]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable
+//[libc]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable
+//[unwind]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable
+//[sanitizers]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable
+//[mingw]~? ERROR only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable
