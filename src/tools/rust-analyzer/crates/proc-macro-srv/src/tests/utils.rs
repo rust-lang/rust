@@ -32,9 +32,9 @@ pub fn assert_expand(
     macro_name: &str,
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
-    expect_s: Expect,
+    expect_spanned: Expect,
 ) {
-    assert_expand_impl(macro_name, ra_fixture, None, expect, expect_s);
+    assert_expand_impl(macro_name, ra_fixture, None, expect, expect_spanned);
 }
 
 pub fn assert_expand_attr(
@@ -42,9 +42,9 @@ pub fn assert_expand_attr(
     #[rust_analyzer::rust_fixture] ra_fixture: &str,
     attr_args: &str,
     expect: Expect,
-    expect_s: Expect,
+    expect_spanned: Expect,
 ) {
-    assert_expand_impl(macro_name, ra_fixture, Some(attr_args), expect, expect_s);
+    assert_expand_impl(macro_name, ra_fixture, Some(attr_args), expect, expect_spanned);
 }
 
 fn assert_expand_impl(
@@ -52,7 +52,7 @@ fn assert_expand_impl(
     input: &str,
     attr: Option<&str>,
     expect: Expect,
-    expect_s: Expect,
+    expect_spanned: Expect,
 ) {
     let path = proc_macro_test_dylib_path();
     let expander = dylib::Expander::new(&path).unwrap();
@@ -60,20 +60,17 @@ fn assert_expand_impl(
     let def_site = TokenId(0);
     let call_site = TokenId(1);
     let mixed_site = TokenId(2);
-    let input_ts = parse_string(call_site, input);
+    let input_ts = parse_string(call_site, input).into_subtree(call_site);
     let attr_ts = attr.map(|attr| parse_string(call_site, attr).into_subtree(call_site));
+    let input_ts_string = format!("{input_ts:?}");
+    let attr_ts_string = attr_ts.as_ref().map(|it| format!("{it:?}"));
 
-    let res = expander
-        .expand(
-            macro_name,
-            input_ts.into_subtree(call_site),
-            attr_ts,
-            def_site,
-            call_site,
-            mixed_site,
-        )
-        .unwrap();
-    expect.assert_eq(&format!("{res:?}"));
+    let res =
+        expander.expand(macro_name, input_ts, attr_ts, def_site, call_site, mixed_site).unwrap();
+    expect.assert_eq(&format!(
+        "{input_ts_string}\n\n{}\n\n{res:?}",
+        attr_ts_string.unwrap_or_default()
+    ));
 
     let def_site = Span {
         range: TextRange::new(0.into(), 150.into()),
@@ -93,15 +90,17 @@ fn assert_expand_impl(
     };
     let mixed_site = call_site;
 
-    let fixture = parse_string_spanned(call_site.anchor, call_site.ctx, input);
+    let fixture =
+        parse_string_spanned(call_site.anchor, call_site.ctx, input).into_subtree(call_site);
     let attr = attr.map(|attr| {
         parse_string_spanned(call_site.anchor, call_site.ctx, attr).into_subtree(call_site)
     });
+    let fixture_string = format!("{fixture:?}");
+    let attr_string = attr.as_ref().map(|it| format!("{it:?}"));
 
-    let res = expander
-        .expand(macro_name, fixture.into_subtree(call_site), attr, def_site, call_site, mixed_site)
-        .unwrap();
-    expect_s.assert_eq(&format!("{res:#?}"));
+    let res = expander.expand(macro_name, fixture, attr, def_site, call_site, mixed_site).unwrap();
+    expect_spanned
+        .assert_eq(&format!("{fixture_string}\n\n{}\n\n{res:#?}", attr_string.unwrap_or_default()));
 }
 
 pub(crate) fn list() -> Vec<String> {
