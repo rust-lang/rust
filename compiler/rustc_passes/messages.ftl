@@ -46,11 +46,6 @@ passes_attr_crate_level =
     .suggestion = to apply to the crate, use an inner attribute
     .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information
 
-passes_attr_mod_level =
-    this attribute can only be applied at module level
-    .suggestion = to apply to the crate, use an inner attribute at the crate level
-    .note = read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-module-level> for more information
-
 passes_attr_only_in_functions =
     `{$attr}` attribute can only be used on functions
 
