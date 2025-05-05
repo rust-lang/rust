@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: ptx-linker
 //@ compile-flags: --crate-type cdylib -C target-cpu=sm_86 -Z unstable-options -Clinker-flavor=llbc
 //@ only-nvptx64
@@ -20,10 +21,8 @@
 #![feature(abi_ptx, lang_items, no_core)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 pub struct SingleU8 {

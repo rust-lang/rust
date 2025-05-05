@@ -2,6 +2,7 @@
 //! that we can use the `neon` target feature on ARM32 targets in rustdoc despite there
 //! being a "forbidden" feature of the same name for aarch64, and rustdoc merging the
 //! target features of all targets.
+//@ add-core-stubs
 //@ check-pass
 //@ revisions: arm aarch64
 //@[arm] compile-flags: --target armv7-unknown-linux-gnueabihf
@@ -14,8 +15,8 @@
 #![feature(arm_target_feature)]
 #![no_core]
 
-#[lang = "sized"]
-pub trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // `fp-armv8` is "forbidden" on aarch64 as we tie it to `neon`.
 #[target_feature(enable = "fp-armv8")]

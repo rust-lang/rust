@@ -1,3 +1,4 @@
+//@ add-core-stubs
 // This test ensures that warnings are working as expected for "custom_code_classes_in_docs"
 // feature.
 
@@ -5,8 +6,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 /// ```{class="}
 /// main;

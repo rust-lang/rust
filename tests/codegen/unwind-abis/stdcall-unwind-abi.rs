@@ -1,9 +1,11 @@
+//@ add-core-stubs
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang = "sized"]
-trait Sized {}
+
+extern crate minicore;
+use minicore::*;
 
 // Test that `nounwind` attributes are correctly applied to exported `stdcall` and `stdcall-unwind`
 // extern functions. `stdcall-unwind` functions MUST NOT have this attribute. We disable

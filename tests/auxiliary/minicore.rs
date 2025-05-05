@@ -25,7 +25,8 @@
     f16,
     f128,
     asm_experimental_arch,
-    unboxed_closures
+    unboxed_closures,
+    intrinsics
 )]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![no_std]
@@ -189,4 +190,71 @@ impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b 
 #[lang = "drop"]
 trait Drop {
     fn drop(&mut self);
+}
+
+#[lang = "neg"]
+trait Neg: Sized {
+    type Output;
+
+    fn neg(self) -> Self::Output;
+}
+
+// Macro to implement Neg for a list of primitive numeric types
+// macro_rules! impl_neg_trait {
+//     ( $($ty:ty),* $(,)? ) => {
+//         $(
+//             impl Neg for $ty {
+//                 type Output = $ty;
+//
+//                 fn neg(self) -> Self::Output {
+//                     -self
+//                 }
+//             }
+//         )*
+//     }
+// }
+//
+// impl_neg_trait!(isize, i8, i16, i32, i64, i128,);
+
+#[lang = "Ordering"]
+#[repr(i8)]
+pub enum Ordering {
+    Less = 0,
+    Equal = 1,
+    Greater = 2,
+}
+
+#[rustc_intrinsic]
+pub fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_gather<V, M, P>(values: V, mask: M, pointer: P) -> V;
+
+#[rustc_intrinsic]
+pub unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
+
+// Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+#[rustc_nounwind]
+#[rustc_intrinsic]
+unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+
+#[lang = "panic_location"]
+struct Location<'a> {
+    _file: &'a str,
+    _line: u32,
+    _col: u32,
+}
+
+#[lang = "panic_const_div_by_zero"]
+#[inline]
+#[track_caller]
+fn panic_div_zero() -> ! {
+    loop {}
+}
+
+#[lang = "panic_const_div_overflow"]
+#[inline]
+#[track_caller]
+fn panic_div_overflow() -> ! {
+    loop {}
 }

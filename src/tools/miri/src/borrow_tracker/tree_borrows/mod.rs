@@ -336,10 +336,10 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // - if the pointer is not reborrowed (raw pointer) or if `zero_size` is set
         // then we override the size to do a zero-length reborrow.
         let reborrow_size = match new_perm {
-            NewPermission { zero_size: false, .. } =>
-                this.size_and_align_of_mplace(place)?
-                    .map(|(size, _)| size)
-                    .unwrap_or(place.layout.size),
+            NewPermission { zero_size: false, .. } => this
+                .size_and_align_of_mplace(place)?
+                .map(|(size, _)| size)
+                .unwrap_or(place.layout.size),
             _ => Size::from_bytes(0),
         };
         trace!("Creating new permission: {:?} with size {:?}", new_perm, reborrow_size);
@@ -385,8 +385,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         let this = self.eval_context_mut();
         let new_perm = match val.layout.ty.kind() {
-            &ty::Ref(_, pointee, mutability) =>
-                NewPermission::from_ref_ty(pointee, mutability, kind, this),
+            &ty::Ref(_, pointee, mutability) => {
+                NewPermission::from_ref_ty(pointee, mutability, kind, this)
+            }
             _ => None,
         };
         if let Some(new_perm) = new_perm {

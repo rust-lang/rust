@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: -Copt-level=3 --target wasm32-unknown-emscripten -Z emscripten-wasm-eh
 //@ needs-llvm-components: webassembly
 
@@ -8,12 +9,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 impl<T> Copy for *mut T {}
 

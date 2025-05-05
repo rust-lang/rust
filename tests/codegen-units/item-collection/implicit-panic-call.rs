@@ -1,4 +1,5 @@
-//@ compile-flags:-Zprint-mono-items=lazy
+//@ add-core-stubs
+// @ compile-flags:-Zprint-mono-items=lazy
 
 // rust-lang/rust#90405
 // Ensure implicit panic calls are collected
@@ -9,35 +10,8 @@
 #![no_core]
 #![no_std]
 
-#[lang = "panic_location"]
-struct Location<'a> {
-    _file: &'a str,
-    _line: u32,
-    _col: u32,
-}
-
-#[lang = "panic_const_div_by_zero"]
-#[inline]
-#[track_caller]
-fn panic_div_zero() -> ! {
-    loop {}
-}
-
-#[lang = "panic_const_div_overflow"]
-#[inline]
-#[track_caller]
-fn panic_div_overflow() -> ! {
-    loop {}
-}
-
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
-
-#[lang = "freeze"]
-trait Freeze {}
+extern crate minicore;
+use minicore::*;
 
 impl Copy for i32 {}
 

@@ -226,31 +226,29 @@ impl<'tcx> MainThreadState<'tcx> {
             Running => {
                 *self = TlsDtors(Default::default());
             }
-            TlsDtors(state) =>
-                match state.on_stack_empty(this)? {
-                    Poll::Pending => {} // just keep going
-                    Poll::Ready(()) => {
-                        // Give background threads a chance to finish by yielding the main thread a
-                        // couple of times -- but only if we would also preempt threads randomly.
-                        if this.machine.preemption_rate > 0.0 {
-                            // There is a non-zero chance they will yield back to us often enough to
-                            // make Miri terminate eventually.
-                            *self = Yield { remaining: MAIN_THREAD_YIELDS_AT_SHUTDOWN };
-                        } else {
-                            // The other threads did not get preempted, so no need to yield back to
-                            // them.
-                            *self = Done;
-                        }
+            TlsDtors(state) => match state.on_stack_empty(this)? {
+                Poll::Pending => {} // just keep going
+                Poll::Ready(()) => {
+                    // Give background threads a chance to finish by yielding the main thread a
+                    // couple of times -- but only if we would also preempt threads randomly.
+                    if this.machine.preemption_rate > 0.0 {
+                        // There is a non-zero chance they will yield back to us often enough to
+                        // make Miri terminate eventually.
+                        *self = Yield { remaining: MAIN_THREAD_YIELDS_AT_SHUTDOWN };
+                    } else {
+                        // The other threads did not get preempted, so no need to yield back to
+                        // them.
+                        *self = Done;
                     }
-                },
-            Yield { remaining } =>
-                match remaining.checked_sub(1) {
-                    None => *self = Done,
-                    Some(new_remaining) => {
-                        *remaining = new_remaining;
-                        this.yield_active_thread();
-                    }
-                },
+                }
+            },
+            Yield { remaining } => match remaining.checked_sub(1) {
+                None => *self = Done,
+                Some(new_remaining) => {
+                    *remaining = new_remaining;
+                    this.yield_active_thread();
+                }
+            },
             Done => {
                 // Figure out exit code.
                 let ret_place = this.machine.main_fn_ret_place.clone().unwrap();

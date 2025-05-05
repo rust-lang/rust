@@ -1,4 +1,5 @@
-//@ compile-flags: -Z merge-functions=disabled
+//@ add-core-stubs
+// @ compile-flags: -Z merge-functions=disabled
 
 //@ revisions: x86-64
 //@[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
@@ -16,11 +17,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // Ensure this type is passed without ptr indirection on targets that
 // require SSE2.
