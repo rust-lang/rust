@@ -283,7 +283,7 @@ pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clea
     // The generics need to be cleaned before the signature.
     let mut generics =
         clean_ty_generics(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id));
-    let bound_vars = clean_bound_vars(sig.bound_vars());
+    let bound_vars = clean_bound_vars(sig.bound_vars(), cx);
 
     // At the time of writing early & late-bound params are stored separately in rustc,
     // namely in `generics.params` and `bound_vars` respectively.

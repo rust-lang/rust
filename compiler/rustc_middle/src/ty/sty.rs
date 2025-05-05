@@ -388,7 +388,7 @@ impl<'tcx> rustc_type_ir::inherent::BoundVarLike<TyCtxt<'tcx>> for BoundTy {
 #[derive(HashStable)]
 pub enum BoundTyKind {
     Anon,
-    Param(DefId, Symbol),
+    Param(DefId),
 }
 
 impl From<BoundVar> for BoundTy {
@@ -1975,7 +1975,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(ty::RegionKind<'_>, 24);
+    static_assert_size!(ty::RegionKind<'_>, 20);
     static_assert_size!(ty::TyKind<'_>, 24);
     // tidy-alphabetical-end
 }

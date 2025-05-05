@@ -46,7 +46,7 @@ pub fn find_param_with_region<'tcx>(
         ty::ReLateParam(late_param) => (late_param.scope, late_param.kind),
         ty::ReEarlyParam(ebr) => {
             let region_def = tcx.generics_of(generic_param_scope).region_param(ebr, tcx).def_id;
-            (tcx.parent(region_def), ty::LateParamRegionKind::Named(region_def, ebr.name))
+            (tcx.parent(region_def), ty::LateParamRegionKind::Named(region_def))
         }
         _ => return None, // not a free region
     };
@@ -144,7 +144,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // We are only checking is any region meets the condition so order doesn't matter
         #[allow(rustc::potential_query_instability)]
         late_bound_regions.iter().any(|r| match *r {
-            ty::BoundRegionKind::Named(def_id, _) => def_id == region_def_id,
+            ty::BoundRegionKind::Named(def_id) => def_id == region_def_id,
             _ => false,
         })
     }
