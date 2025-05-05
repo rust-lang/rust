@@ -1,6 +1,8 @@
 use std::env::VarError;
 use std::{panic, thread};
 
+use build_helper::ci::CiEnv;
+use build_helper::git::GitConfig;
 use build_helper::stage0_parser::parse_stage0_file;
 use llvm::prebuilt_llvm_config;
 
@@ -264,6 +266,32 @@ fn ci_rustc_if_unchanged_invalidate_on_library_changes_in_ci() {
 
         let config = parse_config_download_rustc_at(ctx.get_path(), "if-unchanged", true);
         assert_eq!(config.download_rustc_commit, None);
+    });
+}
+
+// this test is similar to the other two `ci_rustc_if_unchanged_` tests below but overrides
+// `merge_bot_email`. it uses the lower level `build_helper::git` API because
+// `parse_config_download_rustc_at` is hard-coded to use the `git_merge_commit_email` value in
+// the git-tracked file `/src/stage0`
+#[test]
+fn ci_rustc_with_square_bracket_in_author_email() {
+    git_test(|ctx| {
+        let author_email = "bors[bot]@example.com";
+        ctx.merge_bot_email = format!("Merge bot <{}>", author_email);
+        ctx.write("src/ci/channel", "nightly");
+        ctx.commit();
+
+        let sha = ctx.create_upstream_merge(&["compiler/bar"]);
+
+        let git_config =
+            GitConfig { nightly_branch: &ctx.nightly_branch, git_merge_commit_email: author_email };
+        let got = build_helper::git::get_closest_upstream_commit(
+            Some(ctx.get_path()),
+            &git_config,
+            CiEnv::None,
+        );
+
+        assert_eq!(got, Ok(Some(sha)));
     });
 }
 

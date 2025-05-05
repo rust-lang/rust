@@ -9,6 +9,16 @@ pub struct GitConfig<'a> {
     pub git_merge_commit_email: &'a str,
 }
 
+impl GitConfig<'_> {
+    // prepares `git_merge_commit_email` before it gets passed to `git rev-list`'s `--author` flag
+    //
+    // the `--author` flag takes a "pattern" (regular expression) not a substring so any
+    // square bracket in the original email needs to be escaped
+    fn author_email(&self) -> String {
+        self.git_merge_commit_email.replace('[', "\\[").replace(']', "\\]")
+    }
+}
+
 /// Runs a command and returns the output
 pub fn output_result(cmd: &mut Command) -> Result<String, String> {
     let output = match cmd.stderr(Stdio::inherit()).output() {
@@ -183,7 +193,7 @@ fn get_latest_upstream_commit_that_modified_files(
         "-n1",
         &upstream,
         "--author",
-        git_config.git_merge_commit_email,
+        &git_config.author_email(),
     ]);
 
     if !target_paths.is_empty() {
@@ -198,7 +208,7 @@ fn get_latest_upstream_commit_that_modified_files(
 /// author.
 ///
 /// If we are in CI, we simply return our first parent.
-fn get_closest_upstream_commit(
+pub fn get_closest_upstream_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
     env: CiEnv,
@@ -227,13 +237,7 @@ fn get_closest_upstream_commit(
     // chronologically recent bors commit.
     // Here we assume that none of our subtrees use bors anymore, and that all their old bors
     // commits are way older than recent rustc bors commits!
-    git.args([
-        "rev-list",
-        "--author-date-order",
-        &format!("--author={}", config.git_merge_commit_email),
-        "-n1",
-        &base,
-    ]);
+    git.args(["rev-list", "--author-date-order", "--author", &config.author_email(), "-n1", &base]);
 
     let output = output_result(&mut git)?.trim().to_owned();
     if output.is_empty() { Ok(None) } else { Ok(Some(output)) }
