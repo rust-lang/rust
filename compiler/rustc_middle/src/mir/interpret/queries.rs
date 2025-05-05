@@ -23,7 +23,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
-        let instance = ty::Instance::new(def_id, args);
+        let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
         self.const_eval_global_id(typing_env, cid, DUMMY_SP)
@@ -39,7 +39,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self, def_id);
-        let instance = ty::Instance::new(def_id, args);
+        let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self, def_id);
         let inputs = self.erase_regions(typing_env.as_query_input(cid));
@@ -209,7 +209,7 @@ impl<'tcx> TyCtxtEnsureOk<'tcx> {
         // into `const_eval` which will return `ErrorHandled::TooGeneric` if any of them are
         // encountered.
         let args = GenericArgs::identity_for_item(self.tcx, def_id);
-        let instance = ty::Instance::new(def_id, self.tcx.erase_regions(args));
+        let instance = ty::Instance::new_raw(def_id, self.tcx.erase_regions(args));
         let cid = GlobalId { instance, promoted: None };
         let typing_env = ty::TypingEnv::post_analysis(self.tcx, def_id);
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should

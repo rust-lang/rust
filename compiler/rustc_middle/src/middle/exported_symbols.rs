@@ -56,7 +56,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
         match *self {
             ExportedSymbol::NonGeneric(def_id) => tcx.symbol_name(ty::Instance::mono(tcx, def_id)),
             ExportedSymbol::Generic(def_id, args) => {
-                tcx.symbol_name(ty::Instance::new(def_id, args))
+                tcx.symbol_name(ty::Instance::new_raw(def_id, args))
             }
             ExportedSymbol::DropGlue(ty) => {
                 tcx.symbol_name(ty::Instance::resolve_drop_in_place(tcx, ty))
