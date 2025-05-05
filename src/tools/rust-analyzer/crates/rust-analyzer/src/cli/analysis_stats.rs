@@ -175,7 +175,7 @@ impl flags::AnalysisStats {
             UsizeWithUnderscore(dep_loc),
             UsizeWithUnderscore(dep_item_trees),
         );
-        eprintln!("  dependency item stats: {}", dep_item_stats);
+        eprintln!("  dependency item stats: {dep_item_stats}");
 
         // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
         // and ParseMacroExpansionQuery (macro expansion "file") size whenever we implement
@@ -295,7 +295,7 @@ impl flags::AnalysisStats {
             UsizeWithUnderscore(workspace_loc),
             UsizeWithUnderscore(workspace_item_trees),
         );
-        eprintln!("    usages: {}", workspace_item_stats);
+        eprintln!("    usages: {workspace_item_stats}");
 
         eprintln!("  Dependencies:");
         eprintln!(
@@ -303,7 +303,7 @@ impl flags::AnalysisStats {
             UsizeWithUnderscore(dep_loc),
             UsizeWithUnderscore(dep_item_trees),
         );
-        eprintln!("    declarations: {}", dep_item_stats);
+        eprintln!("    declarations: {dep_item_stats}");
 
         let crate_def_map_time = crate_def_map_sw.elapsed();
         eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
@@ -701,10 +701,9 @@ impl flags::AnalysisStats {
 
         if self.parallel {
             let mut inference_sw = self.stop_watch();
-            let snap = db.snapshot();
             bodies
                 .par_iter()
-                .map_with(snap, |snap, &body| {
+                .map_with(db.clone(), |snap, &body| {
                     snap.body(body.into());
                     snap.infer(body.into());
                 })
@@ -1294,7 +1293,7 @@ impl fmt::Display for UsizeWithUnderscore {
         let num_str = self.0.to_string();
 
         if num_str.len() <= 3 {
-            return write!(f, "{}", num_str);
+            return write!(f, "{num_str}");
         }
 
         let mut result = String::new();
@@ -1307,7 +1306,7 @@ impl fmt::Display for UsizeWithUnderscore {
         }
 
         let result = result.chars().rev().collect::<String>();
-        write!(f, "{}", result)
+        write!(f, "{result}")
     }
 }
 

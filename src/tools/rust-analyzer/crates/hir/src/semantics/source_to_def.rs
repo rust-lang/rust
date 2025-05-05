@@ -559,7 +559,7 @@ impl SourceToDefCtx<'_, '_> {
             let item = match ast::Item::cast(value.clone()) {
                 Some(it) => it,
                 None => {
-                    let variant = ast::Variant::cast(value.clone())?;
+                    let variant = ast::Variant::cast(value)?;
                     return this
                         .enum_variant_to_def(InFile::new(file_id, &variant))
                         .map(Into::into);

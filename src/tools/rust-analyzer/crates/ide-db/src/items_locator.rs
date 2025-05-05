@@ -86,7 +86,7 @@ pub fn items_with_name_in_module<T>(
     let local_query = match name {
         NameToImport::Prefix(exact_name, case_sensitive)
         | NameToImport::Exact(exact_name, case_sensitive) => {
-            let mut local_query = symbol_index::Query::new(exact_name.clone());
+            let mut local_query = symbol_index::Query::new(exact_name);
             local_query.assoc_search_mode(assoc_item_search);
             if prefix {
                 local_query.prefix();
@@ -99,7 +99,7 @@ pub fn items_with_name_in_module<T>(
             local_query
         }
         NameToImport::Fuzzy(fuzzy_search_string, case_sensitive) => {
-            let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());
+            let mut local_query = symbol_index::Query::new(fuzzy_search_string);
             local_query.fuzzy();
             local_query.assoc_search_mode(assoc_item_search);
 

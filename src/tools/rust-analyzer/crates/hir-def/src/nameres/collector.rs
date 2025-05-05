@@ -39,7 +39,7 @@ use crate::{
         ItemTreeId, ItemTreeNode, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
         UseTreeKind,
     },
-    macro_call_as_call_id, macro_call_as_call_id_with_eager,
+    macro_call_as_call_id,
     nameres::{
         BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
         attr_resolution::{attr_macro_as_call_id, derive_macro_as_call_id},
@@ -1256,7 +1256,8 @@ impl DefCollector<'_> {
                 MacroDirectiveKind::FnLike { ast_id, expand_to, ctxt: call_site } => {
                     let call_id = macro_call_as_call_id(
                         self.db,
-                        ast_id,
+                        ast_id.ast_id,
+                        &ast_id.path,
                         *call_site,
                         *expand_to,
                         self.def_map.krate,
@@ -1265,15 +1266,18 @@ impl DefCollector<'_> {
                             eager_callback_buffer.push((directive.module_id, ptr, call_id));
                         },
                     );
-                    if let Ok(Some(call_id)) = call_id {
-                        self.def_map.modules[directive.module_id]
-                            .scope
-                            .add_macro_invoc(ast_id.ast_id, call_id);
+                    if let Ok(call_id) = call_id {
+                        // FIXME: Expansion error
+                        if let Some(call_id) = call_id.value {
+                            self.def_map.modules[directive.module_id]
+                                .scope
+                                .add_macro_invoc(ast_id.ast_id, call_id);
 
-                        push_resolved(directive, call_id);
+                            push_resolved(directive, call_id);
 
-                        res = ReachedFixedPoint::No;
-                        return Resolved::Yes;
+                            res = ReachedFixedPoint::No;
+                            return Resolved::Yes;
+                        }
                     }
                 }
                 MacroDirectiveKind::Derive {
@@ -1542,7 +1546,8 @@ impl DefCollector<'_> {
                     // FIXME: we shouldn't need to re-resolve the macro here just to get the unresolved error!
                     let macro_call_as_call_id = macro_call_as_call_id(
                         self.db,
-                        ast_id,
+                        ast_id.ast_id,
+                        &ast_id.path,
                         *call_site,
                         *expand_to,
                         self.def_map.krate,
@@ -2420,7 +2425,7 @@ impl ModCollector<'_, '_> {
 
         let mut eager_callback_buffer = vec![];
         // Case 1: try to resolve macro calls with single-segment name and expand macro_rules
-        if let Ok(res) = macro_call_as_call_id_with_eager(
+        if let Ok(res) = macro_call_as_call_id(
             db,
             ast_id.ast_id,
             &ast_id.path,
@@ -2444,21 +2449,6 @@ impl ModCollector<'_, '_> {
                         })
                         .map(|it| self.def_collector.db.macro_def(it))
                 })
-            },
-            |path| {
-                let resolved_res = self.def_collector.def_map.resolve_path_fp_with_macro(
-                    self.def_collector
-                        .crate_local_def_map
-                        .as_deref()
-                        .unwrap_or(&self.def_collector.local_def_map),
-                    db,
-                    ResolveMode::Other,
-                    self.module_id,
-                    path,
-                    BuiltinShadowMode::Module,
-                    Some(MacroSubNs::Bang),
-                );
-                resolved_res.resolved_def.take_macros().map(|it| db.macro_def(it))
             },
             &mut |ptr, call_id| eager_callback_buffer.push((ptr, call_id)),
         ) {

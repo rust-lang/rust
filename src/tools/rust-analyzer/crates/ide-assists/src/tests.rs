@@ -4,6 +4,7 @@ use expect_test::expect;
 use hir::Semantics;
 use ide_db::{
     EditionedFileId, FileRange, RootDatabase, SnippetCap,
+    assists::ExprFillDefaultMode,
     base_db::SourceDatabase,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
@@ -35,6 +36,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     term_search_fuel: 400,
     term_search_borrowck: true,
     code_action_grouping: true,
+    expr_fill_default: ExprFillDefaultMode::Todo,
 };
 
 pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
@@ -54,6 +56,7 @@ pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
     term_search_fuel: 400,
     term_search_borrowck: true,
     code_action_grouping: false,
+    expr_fill_default: ExprFillDefaultMode::Todo,
 };
 
 pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
@@ -73,6 +76,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     term_search_fuel: 400,
     term_search_borrowck: true,
     code_action_grouping: true,
+    expr_fill_default: ExprFillDefaultMode::Todo,
 };
 
 pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
@@ -92,6 +96,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     term_search_fuel: 400,
     term_search_borrowck: true,
     code_action_grouping: true,
+    expr_fill_default: ExprFillDefaultMode::Todo,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {

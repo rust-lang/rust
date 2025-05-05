@@ -126,10 +126,8 @@ impl CargoParser<DiscoverProjectMessage> for DiscoverProjectParser {
                 Some(msg)
             }
             Err(err) => {
-                let err = DiscoverProjectData::Error {
-                    error: format!("{:#?}\n{}", err, line),
-                    source: None,
-                };
+                let err =
+                    DiscoverProjectData::Error { error: format!("{err:#?}\n{line}"), source: None };
                 Some(DiscoverProjectMessage::new(err))
             }
         }

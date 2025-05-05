@@ -1517,7 +1517,7 @@ fn main() {
             en Enum                      Enum
             fn function()                fn()
             fn main()                    fn()
-            lc variable                  &str
+            lc variable          &'static str
             ma helper!(…) macro_rules! helper
             ma m!(…)           macro_rules! m
             ma makro!(…)   macro_rules! makro
@@ -2107,6 +2107,22 @@ fn foo() {
             sn macro_rules
             sn pd
             sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn escaped_label() {
+    check(
+        r#"
+fn main() {
+    'r#break: {
+        break '$0;
+    }
+}
+    "#,
+        expect![[r#"
+            lb 'r#break
         "#]],
     );
 }

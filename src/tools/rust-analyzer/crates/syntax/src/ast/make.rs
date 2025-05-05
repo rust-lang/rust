@@ -69,6 +69,9 @@ pub mod ext {
     pub fn expr_todo() -> ast::Expr {
         expr_from_text("todo!()")
     }
+    pub fn expr_underscore() -> ast::Expr {
+        expr_from_text("_")
+    }
     pub fn expr_ty_default(ty: &ast::Type) -> ast::Expr {
         expr_from_text(&format!("{ty}::default()"))
     }
@@ -706,7 +709,7 @@ pub fn wildcard_pat() -> ast::WildcardPat {
 }
 
 pub fn rest_pat() -> ast::RestPat {
-    ast_from_text("fn f(..)")
+    ast_from_text("fn f() { let ..; }")
 }
 
 pub fn literal_pat(lit: &str) -> ast::LiteralPat {
@@ -785,8 +788,8 @@ pub fn record_pat_field(name_ref: ast::NameRef, pat: ast::Pat) -> ast::RecordPat
     ast_from_text(&format!("fn f(S {{ {name_ref}: {pat} }}: ()))"))
 }
 
-pub fn record_pat_field_shorthand(name_ref: ast::NameRef) -> ast::RecordPatField {
-    ast_from_text(&format!("fn f(S {{ {name_ref} }}: ()))"))
+pub fn record_pat_field_shorthand(pat: ast::Pat) -> ast::RecordPatField {
+    ast_from_text(&format!("fn f(S {{ {pat} }}: ()))"))
 }
 
 /// Returns a `IdentPat` if the path has just one segment, a `PathPat` otherwise.
@@ -798,14 +801,36 @@ pub fn path_pat(path: ast::Path) -> ast::Pat {
 }
 
 /// Returns a `Pat` if the path has just one segment, an `OrPat` otherwise.
-pub fn or_pat(pats: impl IntoIterator<Item = ast::Pat>, leading_pipe: bool) -> ast::Pat {
+///
+/// Invariant: `pats` must be length > 1.
+pub fn or_pat(pats: impl IntoIterator<Item = ast::Pat>, leading_pipe: bool) -> ast::OrPat {
     let leading_pipe = if leading_pipe { "| " } else { "" };
     let pats = pats.into_iter().join(" | ");
 
     return from_text(&format!("{leading_pipe}{pats}"));
-    fn from_text(text: &str) -> ast::Pat {
+    fn from_text(text: &str) -> ast::OrPat {
         ast_from_text(&format!("fn f({text}: ())"))
     }
+}
+
+pub fn box_pat(pat: ast::Pat) -> ast::BoxPat {
+    ast_from_text(&format!("fn f(box {pat}: ())"))
+}
+
+pub fn paren_pat(pat: ast::Pat) -> ast::ParenPat {
+    ast_from_text(&format!("fn f(({pat}): ())"))
+}
+
+pub fn range_pat(start: Option<ast::Pat>, end: Option<ast::Pat>) -> ast::RangePat {
+    ast_from_text(&format!(
+        "fn f({}..{}: ())",
+        start.map(|e| e.to_string()).unwrap_or_default(),
+        end.map(|e| e.to_string()).unwrap_or_default()
+    ))
+}
+
+pub fn ref_pat(pat: ast::Pat) -> ast::RefPat {
+    ast_from_text(&format!("fn f(&{pat}: ())"))
 }
 
 pub fn match_arm(pat: ast::Pat, guard: Option<ast::MatchGuard>, expr: ast::Expr) -> ast::MatchArm {

@@ -76,8 +76,10 @@ pub type FxIndexMap<K, V> =
 pub type FilePosition = FilePositionWrapper<FileId>;
 pub type FileRange = FileRangeWrapper<FileId>;
 
-#[salsa::db]
+#[salsa_macros::db]
 pub struct RootDatabase {
+    // FIXME: Revisit this commit now that we migrated to the new salsa, given we store arcs in this
+    // db directly now
     // We use `ManuallyDrop` here because every codegen unit that contains a
     // `&RootDatabase -> &dyn OtherDatabase` cast will instantiate its drop glue in the vtable,
     // which duplicates `Weak::drop` and `Arc::drop` tens of thousands of times, which makes
@@ -89,7 +91,7 @@ pub struct RootDatabase {
 
 impl std::panic::RefUnwindSafe for RootDatabase {}
 
-#[salsa::db]
+#[salsa_macros::db]
 impl salsa::Database for RootDatabase {
     fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
 }
@@ -116,7 +118,7 @@ impl fmt::Debug for RootDatabase {
     }
 }
 
-#[salsa::db]
+#[salsa_macros::db]
 impl SourceDatabase for RootDatabase {
     fn file_text(&self, file_id: vfs::FileId) -> FileText {
         self.files.file_text(file_id)
@@ -233,14 +235,6 @@ impl RootDatabase {
         //         .unwrap_or(base_db::DEFAULT_BORROWCK_LRU_CAP),
         // );
         // hir::db::BodyWithSourceMapQuery.in_db_mut(self).set_lru_capacity(2048);
-    }
-
-    pub fn snapshot(&self) -> Self {
-        Self {
-            storage: self.storage.clone(),
-            files: self.files.clone(),
-            crates_map: self.crates_map.clone(),
-        }
     }
 }
 

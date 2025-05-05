@@ -18,8 +18,8 @@ use crate::{
 };
 
 use super::{
-    AggregateKind, BasicBlockId, BorrowKind, LocalId, MirBody, MutBorrowKind, Operand, Place,
-    Rvalue, UnOp,
+    AggregateKind, BasicBlockId, BorrowKind, LocalId, MirBody, MutBorrowKind, Operand, OperandKind,
+    Place, Rvalue, UnOp,
 };
 
 macro_rules! w {
@@ -374,14 +374,14 @@ impl<'a> MirPrettyCtx<'a> {
     }
 
     fn operand(&mut self, r: &Operand) {
-        match r {
-            Operand::Copy(p) | Operand::Move(p) => {
+        match &r.kind {
+            OperandKind::Copy(p) | OperandKind::Move(p) => {
                 // MIR at the time of writing doesn't have difference between move and copy, so we show them
                 // equally. Feel free to change it.
                 self.place(p);
             }
-            Operand::Constant(c) => w!(self, "Const({})", self.hir_display(c)),
-            Operand::Static(s) => w!(self, "Static({:?})", s),
+            OperandKind::Constant(c) => w!(self, "Const({})", self.hir_display(c)),
+            OperandKind::Static(s) => w!(self, "Static({:?})", s),
         }
     }
 
