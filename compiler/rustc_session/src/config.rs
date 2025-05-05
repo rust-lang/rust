@@ -367,17 +367,40 @@ impl LinkSelfContained {
     }
 
     /// To help checking CLI usage while some of the values are unstable: returns whether one of the
-    /// components was set individually. This would also require the `-Zunstable-options` flag, to
-    /// be allowed.
-    fn are_unstable_variants_set(&self) -> bool {
+    /// unstable components was set individually, for the given `TargetTuple`. This would also
+    /// require the `-Zunstable-options` flag, to be allowed.
+    fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
         if self.explicitly_set.is_some() {
-            return false;
+            return Ok(());
         }
 
-        // Only the linker component is stable, anything else is thus unstable.
-        let mentioned_components = self.enabled_components.union(self.disabled_components);
-        let unstable_components = mentioned_components - LinkSelfContainedComponents::LINKER;
-        !unstable_components.is_empty()
+        // `-C link-self-contained=[-+]linker` is only stable on x64 linux.
+        let check_linker = |components: LinkSelfContainedComponents, polarity: &str| {
+            let has_linker = components.is_linker_enabled();
+            if has_linker && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+                return Err(format!(
+                    "`-C link-self-contained={polarity}linker` is unstable on the `{target_tuple}` \
+                    target. The `-Z unstable-options` flag must also be passed to use it on this target",
+                ));
+            }
+            Ok(())
+        };
+        check_linker(self.enabled_components, "+")?;
+        check_linker(self.disabled_components, "-")?;
+
+        // Since only the linker component is stable, any other component used is unstable, and
+        // that's an error.
+        let unstable_enabled = self.enabled_components - LinkSelfContainedComponents::LINKER;
+        let unstable_disabled = self.disabled_components - LinkSelfContainedComponents::LINKER;
+        if !unstable_enabled.union(unstable_disabled).is_empty() {
+            return Err(String::from(
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`\
+                /`+linker` are stable, the `-Z unstable-options` flag must also be passed to use \
+                the unstable values",
+            ));
+        }
+
+        Ok(())
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
@@ -2646,17 +2669,13 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         )
     }
 
-    // For testing purposes, until we have more feedback about these options: ensure `-Z
-    // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
-    // linker-flavor` options.
+    let target_triple = parse_target_triple(early_dcx, matches);
+
+    // Ensure `-Z unstable-options` is required when using the unstable `-C link-self-contained` and
+    // `-C linker-flavor` options.
     if !unstable_options_enabled {
-        let uses_unstable_self_contained_option =
-            cg.link_self_contained.are_unstable_variants_set();
-        if uses_unstable_self_contained_option {
-            early_dcx.early_fatal(
-                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable, \
-                the `-Z unstable-options` flag must also be passed to use the unstable values",
-            );
+        if let Err(error) = cg.link_self_contained.check_unstable_variants(&target_triple) {
+            early_dcx.early_fatal(error);
         }
 
         if let Some(flavor) = cg.linker_flavor {
@@ -2688,7 +2707,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let cg = cg;
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
-    let target_triple = parse_target_triple(early_dcx, matches);
     let opt_level = parse_opt_level(early_dcx, matches, &cg);
     // The `-g` and `-C debuginfo` flags specify the same setting, so we want to be able
     // to use them interchangeably. See the note above (regarding `-O` and `-C opt-level`)
