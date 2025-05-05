@@ -205,6 +205,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             if global_state.next_base_addr > this.target_usize_max() {
                 throw_exhaust!(AddressSpaceFull);
             }
+            // If we filled up more than half the address space, start aggressively reusing
+            // addresses to avoid running out.
+            if global_state.next_base_addr > u64::try_from(this.target_isize_max()).unwrap() {
+                global_state.reuse.address_space_shortage();
+            }
 
             interp_ok(base_addr)
         }
