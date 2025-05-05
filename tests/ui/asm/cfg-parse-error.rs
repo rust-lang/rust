@@ -14,7 +14,7 @@ fn main() {
             #[cfg(false)]
             a = out(reg) x,
             "",
-            //~^ ERROR expected one of `clobber_abi`, `const`
+            //~^ ERROR expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
         );
         asm!(
             #[cfg(false)]
@@ -23,7 +23,8 @@ fn main() {
             const {
                 5
             },
-            "", //~ ERROR expected one of `clobber_abi`, `const`
+            "",
+            //~^ ERROR expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
         );
 
         asm!(

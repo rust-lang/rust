@@ -1,3 +1,4 @@
+pub mod asm;
 pub mod attr;
 mod attr_wrapper;
 mod diagnostics;

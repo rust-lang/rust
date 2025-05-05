@@ -176,17 +176,17 @@ LL |         asm!("{a}", a = const foo, a = const bar);
    |
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
-error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
+error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `""`
   --> $DIR/parse-error.rs:80:29
    |
 LL |         asm!("", options(), "");
-   |                             ^^ expected one of 10 possible tokens
+   |                             ^^ expected one of 11 possible tokens
 
-error: expected one of `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
+error: expected one of `#`, `clobber_abi`, `const`, `in`, `inlateout`, `inout`, `label`, `lateout`, `options`, `out`, or `sym`, found `"{}"`
   --> $DIR/parse-error.rs:82:33
    |
 LL |         asm!("{}", in(reg) foo, "{}", out(reg) foo);
-   |                                 ^^^^ expected one of 10 possible tokens
+   |                                 ^^^^ expected one of 11 possible tokens
 
 error: asm template must be a string literal
   --> $DIR/parse-error.rs:84:14
@@ -340,17 +340,17 @@ LL | global_asm!("{a}", a = const FOO, a = const BAR);
    |
    = help: if this argument is intentionally unused, consider using it in an asm comment: `"/* {1} */"`
 
-error: expected one of `clobber_abi`, `const`, `options`, or `sym`, found `""`
+error: expected one of `#`, `clobber_abi`, `const`, `options`, or `sym`, found `""`
   --> $DIR/parse-error.rs:137:28
    |
 LL | global_asm!("", options(), "");
-   |                            ^^ expected one of `clobber_abi`, `const`, `options`, or `sym`
+   |                            ^^ expected one of `#`, `clobber_abi`, `const`, `options`, or `sym`
 
-error: expected one of `clobber_abi`, `const`, `options`, or `sym`, found `"{}"`
+error: expected one of `#`, `clobber_abi`, `const`, `options`, or `sym`, found `"{}"`
   --> $DIR/parse-error.rs:139:30
    |
 LL | global_asm!("{}", const FOO, "{}", const FOO);
-   |                              ^^^^ expected one of `clobber_abi`, `const`, `options`, or `sym`
+   |                              ^^^^ expected one of `#`, `clobber_abi`, `const`, `options`, or `sym`
 
 error: asm template must be a string literal
   --> $DIR/parse-error.rs:141:13
