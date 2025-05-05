@@ -555,15 +555,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            if let Err(guar) = check_opaque_type_parameter_valid(
+            if let Err(err) = check_opaque_type_parameter_valid(
                 &self.fcx,
                 opaque_type_key,
                 hidden_type.span,
                 DefiningScopeKind::HirTypeck,
             ) {
-                self.typeck_results
-                    .concrete_opaque_types
-                    .insert(opaque_type_key.def_id, ty::OpaqueHiddenType::new_error(tcx, guar));
+                self.typeck_results.concrete_opaque_types.insert(
+                    opaque_type_key.def_id,
+                    ty::OpaqueHiddenType::new_error(tcx, err.report(self.fcx)),
+                );
             }
 
             let hidden_type = hidden_type.remap_generic_params_to_declaration_params(

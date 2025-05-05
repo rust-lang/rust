@@ -267,13 +267,13 @@ impl<'tcx> InferCtxt<'tcx> {
             return Ty::new_error(self.tcx, e);
         }
 
-        if let Err(guar) = check_opaque_type_parameter_valid(
+        if let Err(err) = check_opaque_type_parameter_valid(
             self,
             opaque_type_key,
             instantiated_ty.span,
             DefiningScopeKind::MirBorrowck,
         ) {
-            return Ty::new_error(self.tcx, guar);
+            return Ty::new_error(self.tcx, err.report(self));
         }
 
         let definition_ty = instantiated_ty
