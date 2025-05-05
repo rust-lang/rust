@@ -380,8 +380,4 @@ impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
             panic!("got invalid macro input: {:?}", parse.errors());
         }
     }
-
-    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
-        other.as_any().type_id() == std::any::TypeId::of::<Self>()
-    }
 }
