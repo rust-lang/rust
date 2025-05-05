@@ -261,7 +261,9 @@ class Context:
         if error_on_many_tests and total_to_test > MANY_EXTENSIVE_THRESHOLD:
             eprint(
                 f"More than {MANY_EXTENSIVE_THRESHOLD} tests would be run; add"
-                f" `{ALLOW_MANY_EXTENSIVE_DIRECTIVE}` to the PR body if this is intentional"
+                f" `{ALLOW_MANY_EXTENSIVE_DIRECTIVE}` to the PR body if this is"
+                " intentional. If this is refactoring that happens to touch a lot of"
+                f" files, `{SKIP_EXTENSIVE_DIRECTIVE}` can be used instead."
             )
             exit(1)
 
