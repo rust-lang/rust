@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use rustc_ast::{LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit};
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
+use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{AttrArgs, Attribute};
 use rustc_macros::LintDiagnostic;
@@ -13,17 +14,16 @@ use rustc_middle::ty::{self, GenericArgsRef, GenericParamDef, GenericParamDefKin
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, info};
-use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::error_reporting::TypeErrCtxt;
-use crate::error_reporting::traits::on_unimplemented_condition::{Condition, ConditionOptions};
+use crate::error_reporting::traits::on_unimplemented_condition::{
+    ConditionOptions, OnUnimplementedCondition,
+};
 use crate::error_reporting::traits::on_unimplemented_format::{
     Ctx, FormatArgs, FormatString, FormatWarning,
 };
-use crate::errors::{
-    EmptyOnClauseInOnUnimplemented, InvalidOnClauseInOnUnimplemented, NoValueInOnUnimplemented,
-};
+use crate::errors::{InvalidOnClause, NoValueInOnUnimplemented};
 use crate::infer::InferCtxtExt;
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
@@ -306,21 +306,21 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString {
     /// Symbol of the format string, i.e. `"content"`
-    pub symbol: Symbol,
+    symbol: Symbol,
     ///The span of the format string, i.e. `"content"`
-    pub span: Span,
-    pub is_diagnostic_namespace_variant: bool,
+    span: Span,
+    is_diagnostic_namespace_variant: bool,
 }
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
-    pub condition: Option<Condition>,
-    pub subcommands: Vec<OnUnimplementedDirective>,
-    pub message: Option<(Span, OnUnimplementedFormatString)>,
-    pub label: Option<(Span, OnUnimplementedFormatString)>,
-    pub notes: Vec<OnUnimplementedFormatString>,
-    pub parent_label: Option<OnUnimplementedFormatString>,
-    pub append_const_msg: Option<AppendConstMessage>,
+    condition: Option<OnUnimplementedCondition>,
+    subcommands: Vec<OnUnimplementedDirective>,
+    message: Option<(Span, OnUnimplementedFormatString)>,
+    label: Option<(Span, OnUnimplementedFormatString)>,
+    notes: Vec<OnUnimplementedFormatString>,
+    parent_label: Option<OnUnimplementedFormatString>,
+    append_const_msg: Option<AppendConstMessage>,
 }
 
 /// For the `#[rustc_on_unimplemented]` attribute
@@ -427,18 +427,12 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             let cond = item_iter
                 .next()
-                .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?
-                .meta_item_or_bool()
-                .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
-            attr::eval_condition(cond, &tcx.sess, Some(tcx.features()), &mut |cfg| {
-                if let Some(value) = cfg.value
-                    && let Err(guar) = parse_value(value, cfg.span)
-                {
-                    errored = Some(guar);
-                }
-                true
-            });
-            Some(Condition { inner: cond.clone() })
+                .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClause::Empty { span }))?;
+
+            match OnUnimplementedCondition::parse(cond) {
+                Ok(condition) => Some(condition),
+                Err(e) => return Err(tcx.dcx().emit_err(e)),
+            }
         };
 
         let mut message = None;
@@ -724,7 +718,7 @@ impl<'tcx> OnUnimplementedDirective {
         result
     }
 
-    pub fn evaluate(
+    pub(crate) fn evaluate(
         &self,
         tcx: TyCtxt<'tcx>,
         trait_ref: ty::TraitRef<'tcx>,
@@ -744,7 +738,7 @@ impl<'tcx> OnUnimplementedDirective {
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             debug!(?command);
             if let Some(ref condition) = command.condition
-                && !condition.matches_predicate(tcx, condition_options)
+                && !condition.matches_predicate(condition_options)
             {
                 debug!("evaluate: skipping {:?} due to condition", command);
                 continue;
