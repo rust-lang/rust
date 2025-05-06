@@ -1,11 +1,11 @@
 use tracing::debug;
 
-use crate::graph::implementation::*;
+use super::{Debug, LinkedGraph, NodeIndex};
 
-type TestGraph = Graph<&'static str, &'static str>;
+type TestGraph = LinkedGraph<&'static str, &'static str>;
 
 fn create_graph() -> TestGraph {
-    let mut graph = Graph::new();
+    let mut graph = LinkedGraph::new();
 
     // Create a simple graph
     //
@@ -56,7 +56,7 @@ fn each_edge() {
 }
 
 fn test_adjacent_edges<N: PartialEq + Debug, E: PartialEq + Debug>(
-    graph: &Graph<N, E>,
+    graph: &LinkedGraph<N, E>,
     start_index: NodeIndex,
     start_data: N,
     expected_incoming: &[(E, N)],

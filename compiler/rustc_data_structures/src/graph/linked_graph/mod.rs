@@ -1,4 +1,4 @@
-//! A graph module for use in dataflow, region resolution, and elsewhere.
+//! See [`LinkedGraph`].
 //!
 //! # Interface details
 //!
@@ -28,7 +28,23 @@ use tracing::debug;
 #[cfg(test)]
 mod tests;
 
-pub struct Graph<N, E> {
+/// A concrete graph implementation that supports:
+/// - Nodes and/or edges labelled with custom data types (`N` and `E` respectively).
+/// - Incremental addition of new nodes/edges (but not removal).
+/// - Flat storage of node/edge data in a pair of vectors.
+/// - Iteration over any node's out-edges or in-edges, via linked lists
+///   threaded through the node/edge data.
+///
+/// # Caution
+/// This is an older graph implementation that is still used by some pieces
+/// of diagnostic/debugging code. New code that needs a graph data structure
+/// should consider using `VecGraph` instead, or implementing its own
+/// special-purpose graph with the specific features needed.
+///
+/// This graph implementation predates the later [graph traits](crate::graph),
+/// and does not implement those traits, so it has its own implementations of a
+/// few basic graph algorithms.
+pub struct LinkedGraph<N, E> {
     nodes: Vec<Node<N>>,
     edges: Vec<Edge<E>>,
 }
@@ -71,13 +87,13 @@ impl NodeIndex {
     }
 }
 
-impl<N: Debug, E: Debug> Graph<N, E> {
-    pub fn new() -> Graph<N, E> {
-        Graph { nodes: Vec::new(), edges: Vec::new() }
+impl<N: Debug, E: Debug> LinkedGraph<N, E> {
+    pub fn new() -> Self {
+        Self { nodes: Vec::new(), edges: Vec::new() }
     }
 
-    pub fn with_capacity(nodes: usize, edges: usize) -> Graph<N, E> {
-        Graph { nodes: Vec::with_capacity(nodes), edges: Vec::with_capacity(edges) }
+    pub fn with_capacity(nodes: usize, edges: usize) -> Self {
+        Self { nodes: Vec::with_capacity(nodes), edges: Vec::with_capacity(edges) }
     }
 
     // # Simple accessors
@@ -249,7 +265,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
 // # Iterators
 
 pub struct AdjacentEdges<'g, N, E> {
-    graph: &'g Graph<N, E>,
+    graph: &'g LinkedGraph<N, E>,
     direction: Direction,
     next: EdgeIndex,
 }
@@ -285,7 +301,7 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentEdges<'g, N, E> {
 }
 
 pub struct DepthFirstTraversal<'g, N, E> {
-    graph: &'g Graph<N, E>,
+    graph: &'g LinkedGraph<N, E>,
     stack: Vec<NodeIndex>,
     visited: DenseBitSet<usize>,
     direction: Direction,
@@ -293,7 +309,7 @@ pub struct DepthFirstTraversal<'g, N, E> {
 
 impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
     pub fn with_start_node(
-        graph: &'g Graph<N, E>,
+        graph: &'g LinkedGraph<N, E>,
         start_node: NodeIndex,
         direction: Direction,
     ) -> Self {
