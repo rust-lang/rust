@@ -9,7 +9,7 @@ use std::collections::VecDeque;
 use std::fmt::{Display, Write};
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_lexer::{Cursor, LiteralKind, TokenKind};
+use rustc_lexer::{Cursor, FrontmatterAllowed, LiteralKind, TokenKind};
 use rustc_span::edition::Edition;
 use rustc_span::symbol::Symbol;
 use rustc_span::{BytePos, DUMMY_SP, Span};
@@ -638,7 +638,8 @@ impl<'src> Classifier<'src> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondence_map`.
     fn new(src: &'src str, file_span: Span, decoration_info: Option<&DecorationInfo>) -> Self {
-        let tokens = PeekIter::new(TokenIter { src, cursor: Cursor::new(src) });
+        let tokens =
+            PeekIter::new(TokenIter { src, cursor: Cursor::new(src, FrontmatterAllowed::Yes) });
         let decorations = decoration_info.map(Decorations::new);
         Classifier {
             tokens,
@@ -884,6 +885,7 @@ impl<'src> Classifier<'src> {
             | TokenKind::At
             | TokenKind::Tilde
             | TokenKind::Colon
+            | TokenKind::Frontmatter { .. }
             | TokenKind::Unknown => return no_highlight(sink),
 
             TokenKind::Question => Class::QuestionMark,
