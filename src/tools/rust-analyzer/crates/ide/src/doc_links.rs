@@ -12,7 +12,9 @@ use pulldown_cmark_to_cmark::{Options as CMarkOptions, cmark_resume_with_options
 use stdx::format_to;
 use url::Url;
 
-use hir::{Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs, db::HirDatabase, sym};
+use hir::{
+    Adt, AsAssocItem, AssocItem, AssocItemContainer, AttrsWithOwner, HasAttrs, db::HirDatabase, sym,
+};
 use ide_db::{
     RootDatabase,
     base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, RootQueryDb},
@@ -322,13 +324,7 @@ impl DocCommentToken {
             };
             let token_start = t.text_range().start();
             let abs_in_expansion_offset = token_start + relative_comment_offset + descended_prefix_len;
-
-            let (attributes, def) = if is_inner && node.kind() != SOURCE_FILE {
-                let parent = node.parent()?;
-                doc_attributes(sema, &parent).unwrap_or(doc_attributes(sema, &parent.parent()?)?)
-            }else {
-                doc_attributes(sema, &node)?
-            };
+            let (attributes, def) = Self::doc_attributes(sema, &node, is_inner)?;
             let (docs, doc_mapping) = docs_with_rangemap(sema.db, &attributes)?;
             let (in_expansion_range, link, ns, is_inner) =
                 extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
@@ -342,6 +338,28 @@ impl DocCommentToken {
             let def = resolve_doc_path_for_def(sema.db, def, &link, ns, is_inner)?;
             cb(def, node, absolute_range)
         })
+    }
+
+    /// When we hover a inner doc item, this find a attached definition.
+    /// ```
+    /// // node == ITEM_LIST
+    /// // node.parent == EXPR_BLOCK
+    /// // node.parent().parent() == FN
+    /// fn f() {
+    ///    //! [`S$0`]
+    /// }
+    /// ```
+    fn doc_attributes(
+        sema: &Semantics<'_, RootDatabase>,
+        node: &SyntaxNode,
+        is_inner_doc: bool,
+    ) -> Option<(AttrsWithOwner, Definition)> {
+        if is_inner_doc && node.kind() != SOURCE_FILE {
+            let parent = node.parent()?;
+            doc_attributes(sema, &parent).or(doc_attributes(sema, &parent.parent()?))
+        } else {
+            doc_attributes(sema, node)
+        }
     }
 }
 
