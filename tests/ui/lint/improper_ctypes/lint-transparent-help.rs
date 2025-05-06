@@ -1,4 +1,4 @@
-#![deny(improper_c_fn_definitions, improper_ctype_definitions)]
+#![deny(improper_c_fn_definitions)]
 use std::marker::PhantomData;
 use std::collections::HashMap;
 use std::ffi::c_void;
@@ -10,7 +10,7 @@ struct DictPhantom<'a, A,B:'a>{
 }
 
 #[repr(C)] // [option 2] oops, we meant repr(transparent)
-struct MyTypedRawPointer<'a,T:'a>{  //~ ERROR: uses type `DictPhantom<'_, T, T>`
+struct MyTypedRawPointer<'a,T:'a>{
     ptr: *const c_void,
     metadata: DictPhantom<'a,T,T>,
 }

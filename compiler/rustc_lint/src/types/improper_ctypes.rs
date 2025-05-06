@@ -105,9 +105,6 @@ enum CItemKind {
     ExportedStatic,
     /// `extern "C"` function pointers -> IMPROPER_C_CALLBACKS,
     Callback,
-    /// `repr(C)` structs/enums/unions -> IMPROPER_CTYPE_DEFINITIONS
-    #[allow(unused)]
-    AdtDef,
 }
 
 #[derive(Clone, Debug)]
@@ -447,8 +444,6 @@ enum CTypesVisitorState {
     // uses bitflags from CTypesVisitorStateFlags
     StaticTy = CTypesVisitorStateFlags::STATIC,
     ExportedStaticTy = CTypesVisitorStateFlags::STATIC | CTypesVisitorStateFlags::FN_DEFINED,
-    #[allow(unused)]
-    AdtDef = CTypesVisitorStateFlags::THEORETICAL,
     ArgumentTyInDefinition = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::FN_DEFINED,
     ReturnTyInDefinition = CTypesVisitorStateFlags::FUNC
         | CTypesVisitorStateFlags::FN_RETURN
@@ -508,11 +503,6 @@ impl CTypesVisitorState {
         ((self as u8) & THEORETICAL) != 0 && self.is_in_function()
     }
 
-    /// whether the type is currently being defined
-    fn is_being_defined(self) -> bool {
-        self == Self::AdtDef
-    }
-
     /// whether we can expect type parameters and co in a given type
     fn can_expect_ty_params(self) -> bool {
         use CTypesVisitorStateFlags::*;
@@ -527,11 +517,7 @@ impl CTypesVisitorState {
     /// whether the value for that type might come from the non-rust side of a FFI boundary
     /// this is particularly useful for non-raw pointers, since rust assume they are non-null
     fn value_may_be_unchecked(self) -> bool {
-        if self == Self::AdtDef {
-            // some ADTs are only used to go through the FFI boundary in one direction,
-            // so let's not make hasty judgement
-            false
-        } else if self.is_in_static() {
+        if self.is_in_static() {
             // FIXME: this is evidently untrue for non-mut static variables
             // (assuming the cross-FFI code respects this)
             true
@@ -646,9 +632,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
     ) -> FfiResult<'tcx> {
-        if state.is_being_defined()
-            || (state.is_in_function_return()
-                && matches!(outer_ty.map(|ty| ty.kind()), None | Some(ty::FnPtr(..)),))
+        if state.is_in_function_return()
+            && matches!(outer_ty.map(|ty| ty.kind()), None | Some(ty::FnPtr(..)))
         {
             FfiResult::FfiSafe
         } else {
@@ -846,7 +831,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         &self,
         state: CTypesVisitorState,
         ty: Ty<'tcx>,
-        def: ty::AdtDef<'tcx>,
+        def: AdtDef<'tcx>,
         variant: &ty::VariantDef,
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
@@ -1000,9 +985,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_struct_or_union(
         &self,
         state: CTypesVisitorState,
-        outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
-        def: ty::AdtDef<'tcx>,
+        def: AdtDef<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
@@ -1063,12 +1047,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         //    which is partly why we keep the details as to why that struct is FFI-unsafe)
         // - if the struct is from another crate, then there's not much that can be done anyways
         //
-        // if outer_ty.is_some() || !state.is_being_defined() then this enum is visited in the middle of another lint,
+        // this enum is visited in the middle of another lint,
         // so we override the "cause type" of the lint
-        let override_cause_ty =
-            if state.is_being_defined() { outer_ty.and(Some(ty)) } else { Some(ty) };
-
-        ffires.with_overrides(override_cause_ty)
+        ffires.with_overrides(Some(ty))
     }
 
     fn visit_enum(
@@ -1076,7 +1057,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         state: CTypesVisitorState,
         outer_ty: Option<Ty<'tcx>>,
         ty: Ty<'tcx>,
-        def: ty::AdtDef<'tcx>,
+        def: AdtDef<'tcx>,
         args: GenericArgsRef<'tcx>,
     ) -> FfiResult<'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Enum));
@@ -1163,12 +1144,10 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 ffires += variants_uninhabited_ffires.into_iter().reduce(|r1, r2| r1 + r2).unwrap();
             }
 
-            // if outer_ty.is_some() || !state.is_being_defined() then this enum is visited in the middle of another lint,
+            // this enum is visited in the middle of another lint,
             // so we override the "cause type" of the lint
             // (for more detail, see comment in ``visit_struct_union`` before its call to ``ffires.with_overrides``)
-            let override_cause_ty =
-                if state.is_being_defined() { outer_ty.and(Some(ty)) } else { Some(ty) };
-            ffires.with_overrides(override_cause_ty)
+            ffires.with_overrides(Some(ty))
         }
     }
 
@@ -1213,7 +1192,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         {
                             return self.visit_cstr(outer_ty, ty);
                         }
-                        self.visit_struct_or_union(state, outer_ty, ty, def, args)
+                        self.visit_struct_or_union(state, ty, def, args)
                     }
                     AdtKind::Enum => self.visit_enum(state, outer_ty, ty, def, args),
                 }
@@ -1280,7 +1259,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Slice(inner_ty) => {
                 // ty::Slice is used for !Sized arrays, since they are the pointee for actual slices
                 let slice_is_actually_array = match outer_ty.map(|ty| ty.kind()) {
-                    None => state.is_in_static() || state.is_being_defined(),
+                    None => state.is_in_static(),
                     // this should have been caught a layer up, in visit_indirection
                     Some(ty::Ref(..) | ty::RawPtr(..)) => false,
                     Some(ty::Adt(..)) => ty.boxed_ty().is_none(),
@@ -1522,71 +1501,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    #[allow(unused)]
-    fn check_for_adtdef(&mut self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
-        use FfiResult::*;
-        let ty = erase_and_maybe_normalize(self.cx, ty);
-
-        let mut ffires = match *ty.kind() {
-            ty::Adt(def, args) => {
-                if !def.did().is_local() {
-                    bug!(
-                        "check_adtdef expected to visit a locally-defined struct/enum/union not {:?}",
-                        def
-                    );
-                }
-
-                // question: how does this behave when running for "special" ADTs in the stdlib?
-                // answer: none of CStr, CString, Box, and PhantomData are repr(C)
-                let state = CTypesVisitorState::AdtDef;
-                match def.adt_kind() {
-                    AdtKind::Struct | AdtKind::Union => {
-                        self.visit_struct_or_union(state, None, ty, def, args)
-                    }
-                    AdtKind::Enum => self.visit_enum(state, None, ty, def, args),
-                }
-            }
-            r @ _ => {
-                bug!("expected to inspect the type of an `extern \"ABI\"` FnPtr, not {:?}", r,)
-            }
-        };
-
-        match &mut ffires {
-            // due to the way type visits work, any unsafeness that comes from the fields inside an ADT
-            // is uselessly "prefixed" with the fact that yes, the error occurs in that ADT
-            // we remove the prefixes here.
-            FfiUnsafe(explanations) => {
-                explanations.iter_mut().for_each(|explanation| {
-                    if let Some(inner_reason) = explanation.reason.inner.take() {
-                        debug_assert_eq!(explanation.reason.ty, ty);
-                        debug_assert_eq!(
-                            explanation.reason.note,
-                            fluent::lint_improper_ctypes_struct_dueto
-                        );
-                        if let Some(help) = &explanation.reason.help {
-                            // there is an actual help message in the normally useless prefix
-                            // make sure it gets through
-                            debug_assert_eq!(
-                                help,
-                                &fluent::lint_improper_ctypes_struct_consider_transparent
-                            );
-                            explanation.override_cause_ty = Some(inner_reason.ty);
-                            explanation.reason.inner = Some(inner_reason);
-                        } else {
-                            explanation.reason = inner_reason;
-                        }
-                    }
-                });
-            }
-
-            // also, turn FfiPhantom into FfiSafe: unlike other places we can check, we don't want
-            // FfiPhantom to end up emitting a lint
-            ffires @ FfiPhantom(_) => *ffires = FfiSafe,
-            FfiSafe => {}
-        }
-        ffires
-    }
-
     fn check_arg_for_power_alignment(&self, cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         let tcx = cx.tcx;
         assert!(tcx.sess.target.os == "aix");
@@ -1748,12 +1662,7 @@ impl ImproperCTypesLint {
     }
 
     /// Check that a `#[no_mangle]`/`#[export_name = _]` static variable is of a ffi-safe type
-    fn check_exported_static<'tcx>(
-        &self,
-        cx: &LateContext<'tcx>,
-        id: hir::OwnerId,
-        span: Span,
-    ) {
+    fn check_exported_static<'tcx>(&self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
         let ty = cx.tcx.type_of(id).instantiate_identity();
         let visitor = ImproperCTypesVisitor::new(cx);
         let ffi_res = visitor.check_for_type(CTypesVisitorState::ExportedStaticTy, ty);
@@ -1869,7 +1778,6 @@ impl ImproperCTypesLint {
             CItemKind::ImportedExtern => IMPROPER_CTYPES,
             CItemKind::ExportedFunction => IMPROPER_C_FN_DEFINITIONS,
             CItemKind::ExportedStatic => IMPROPER_C_VAR_DEFINITIONS,
-            CItemKind::AdtDef => IMPROPER_CTYPE_DEFINITIONS,
             CItemKind::Callback => IMPROPER_C_CALLBACKS,
         };
         let desc = match fn_mode {
@@ -1877,7 +1785,6 @@ impl ImproperCTypesLint {
             CItemKind::ExportedFunction => "`extern` fn",
             CItemKind::ExportedStatic => "foreign-code-reachable static",
             CItemKind::Callback => "`extern` callback",
-            CItemKind::AdtDef => "`repr(C)` type",
         };
         for reason in reasons.iter_mut() {
             reason.span_note = if let ty::Adt(def, _) = reason.ty.kind()
@@ -1906,9 +1813,6 @@ impl ImproperCTypesLint {
 /// to be used from the other side of a FFI boundary.
 /// In other words, `extern "<abi>" fn` definitions and trait-method declarations.
 /// This only matters if `<abi>` is external (e.g. `C`).
-///
-/// `IMPROPER_CTYPE_DEFINITIONS` checks structs/enums/unions marked with `repr(C)`,
-/// assuming they are to have a fully C-compatible layout.
 ///
 /// and now combinatorics for pointees
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
@@ -2179,33 +2083,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `improper_ctype_definitions` lint detects incorrect use of types in
-    /// foreign-compatible structs, enums, and union definitions.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// repr(C) struct StringWrapper{
-    ///     length: usize,
-    ///     strung: &str,
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The compiler has several checks to verify that types designed to be
-    /// compatible with foreign interfaces follow certain rules to be safe.
-    /// This lint is issued when it detects a probable mistake in a definition.
-    /// The lint usually should provide a description of the issue,
-    /// along with possibly a hint on how to resolve it.
-    pub(crate) IMPROPER_CTYPE_DEFINITIONS,
-    Warn,
-    "proper use of libc types when defining foreign-code-compatible structs"
-}
-
-declare_lint! {
     /// The `uses_power_alignment` lint detects specific `repr(C)`
     /// aggregates on AIX.
     /// In its platform C ABI, AIX uses the "power" (as in PowerPC) alignment
@@ -2265,6 +2142,5 @@ declare_lint_pass!(ImproperCTypesLint => [
     IMPROPER_C_FN_DEFINITIONS,
     IMPROPER_C_VAR_DEFINITIONS,
     IMPROPER_C_CALLBACKS,
-    IMPROPER_CTYPE_DEFINITIONS,
     USES_POWER_ALIGNMENT,
 ]);

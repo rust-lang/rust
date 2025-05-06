@@ -1,5 +1,5 @@
 #![allow(private_interfaces)]
-#![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+#![deny(improper_ctypes, improper_c_fn_definitions)]
 #![deny(improper_c_callbacks)]
 
 use std::default::Default;
@@ -23,7 +23,7 @@ pub struct StructWithProjectionAndLifetime<'a>(
 pub type I32Pair = (i32, i32);
 
 #[repr(C)]
-pub struct ZeroSize;  //~ ERROR uses type `ZeroSize`
+pub struct ZeroSize;
 
 pub type RustFn = fn();
 

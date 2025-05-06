@@ -1,4 +1,4 @@
-#![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+#![deny(improper_ctypes, improper_c_fn_definitions)]
 #![deny(improper_c_callbacks)]
 
 //@ aux-build: outer_crate_types.rs
@@ -8,15 +8,17 @@ extern crate outer_crate_types as outer;
 // ////////////////////////////////////////////////////////
 // first, the same bank of types as in the extern crate
 
+// FIXME: maybe re-introduce improper_ctype_definitions (ctype singular)
+// as a way to mark ADTs as "let's ignore that they are not actually FFI-unsafe"
+
 #[repr(C)]
 struct SafeStruct (i32);
 
 #[repr(C)]
 struct UnsafeStruct (String);
-//~^ ERROR: `repr(C)` type uses type `String`
 
 #[repr(C)]
-#[allow(improper_ctype_definitions)]
+//#[allow(improper_ctype_definitions)]
 struct AllowedUnsafeStruct (String);
 
 // refs are only unsafe if the value comes from the other side of the FFI boundary
@@ -28,7 +30,7 @@ struct AllowedUnsafeStruct (String);
 struct UnsafeFromForeignStruct<'a> (&'a u32);
 
 #[repr(C)]
-#[allow(improper_ctype_definitions)]
+//#[allow(improper_ctype_definitions)]
 struct AllowedUnsafeFromForeignStruct<'a> (&'a u32);
 
 
@@ -134,7 +136,6 @@ extern "C" fn fn6ou() -> outer::AllowedUnsafeFromForeignStruct<'static> {
 
 #[repr(C)]
 struct FakeVTable<A>{
-//~^ ERROR: `repr(C)` type uses type `(A, usize)`
     make_new: extern "C" fn() -> A,
     combine: extern "C" fn(&[A]) -> A,
     //~^ ERROR: `extern` callback uses type `&[A]`
@@ -146,7 +147,7 @@ type FakeVTableMaker = extern "C" fn() -> FakeVTable<u32>;
 //~^ ERROR: `extern` callback uses type `FakeVTable<u32>`
 
 #[repr(C)]
-#[allow(improper_c_callbacks, improper_ctype_definitions)]
+#[allow(improper_c_callbacks)]
 struct FakeVTableAllowed<A>{
     make_new: extern "C" fn() -> A,
     combine: extern "C" fn(&[A]) -> A,

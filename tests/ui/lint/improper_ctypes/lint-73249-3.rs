@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-#![deny(improper_ctypes, improper_ctype_definitions)]
+#![deny(improper_ctypes)]
 
 pub trait Baz {}
 
@@ -13,7 +13,7 @@ fn assign() -> Qux {
 }
 
 #[repr(C)]
-pub struct A { //~ ERROR: `repr(C)` type uses type `Qux`
+pub struct A {
     x: Qux,
 }
 

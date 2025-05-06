@@ -642,7 +642,6 @@ fn offset_of_dst() {
     trait Trait {}
 
     #[repr(C)]
-    #[allow(improper_ctype_definitions)]
     struct Beta {
         x: u8,
         y: u16,

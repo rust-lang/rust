@@ -33,7 +33,7 @@
 // the sysv64 ABI on Windows.
 
 #[allow(dead_code)]
-#[allow(improper_ctypes, improper_ctype_definitions)]
+#[allow(improper_ctypes)]
 
 #[cfg(target_arch = "x86_64")]
 mod tests {
@@ -72,7 +72,6 @@ mod tests {
     }
 
     #[repr(C)]
-    #[allow(improper_ctype_definitions)]
     pub struct Empty;
 
     #[repr(C)]

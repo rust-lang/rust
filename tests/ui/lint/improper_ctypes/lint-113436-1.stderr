@@ -1,26 +1,3 @@
-error: `repr(C)` type uses type `NotSafe`, which is not FFI-safe
-  --> $DIR/lint-113436-1.rs:16:1
-   |
-LL | / pub struct Bar {
-LL | |     a: u8,
-LL | |     b: (),
-LL | |     c: NotSafe,
-LL | | }
-   | |_^ not FFI-safe
-   |
-   = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `NotSafe`
-   = note: `NotSafe` has unspecified layout
-note: the type is defined here
-  --> $DIR/lint-113436-1.rs:13:1
-   |
-LL | struct NotSafe(u32);
-   | ^^^^^^^^^^^^^^
-note: the lint level is defined here
-  --> $DIR/lint-113436-1.rs:1:36
-   |
-LL | #![deny(improper_c_fn_definitions, improper_ctype_definitions)]
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: `extern` fn uses type `Bar`, which is not FFI-safe
   --> $DIR/lint-113436-1.rs:22:22
    |
@@ -43,7 +20,7 @@ LL | struct NotSafe(u32);
 note: the lint level is defined here
   --> $DIR/lint-113436-1.rs:1:9
    |
-LL | #![deny(improper_c_fn_definitions, improper_ctype_definitions)]
+LL | #![deny(improper_c_fn_definitions)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `extern` fn uses type `Bar`, which is not FFI-safe
@@ -66,5 +43,5 @@ note: the type is defined here
 LL | struct NotSafe(u32);
    | ^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
