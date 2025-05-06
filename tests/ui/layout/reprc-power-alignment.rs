@@ -150,7 +150,7 @@ pub struct I {
     e: f64,
 }
 #[repr(C)]
-pub struct J {  //~ WARNING `repr(C)` type uses type `I`
+pub struct J {
     a: u8,
     b: I,
 }

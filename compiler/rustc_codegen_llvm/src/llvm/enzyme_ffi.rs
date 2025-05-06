@@ -5,7 +5,9 @@ use libc::{c_char, c_uint};
 use super::MetadataKindId;
 use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::{Bool, Builder};
+use crate::wrap_returns_in_options;
 
+wrap_returns_in_options! {
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     // Enzyme
@@ -14,7 +16,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustGetLastInstruction<'a>(BB: &BasicBlock) -> Option<&'a Value>;
     pub(crate) fn LLVMRustDIGetInstMetadata(I: &Value) -> Option<&Metadata>;
     pub(crate) fn LLVMRustEraseInstFromParent(V: &Value);
-    pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
+    |wrap pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
     pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
     pub(crate) fn LLVMRustHasAttributeAtIndex(V: &Value, i: c_uint, Kind: AttributeKind) -> bool;
     pub(crate) fn LLVMRustGetArrayNumElements(Ty: &Type) -> u64;
@@ -46,9 +48,10 @@ unsafe extern "C" {
     pub(crate) fn LLVMDumpModule(M: &Module);
     pub(crate) fn LLVMDumpValue(V: &Value);
     pub(crate) fn LLVMGetFunctionCallConv(F: &Value) -> c_uint;
-    pub(crate) fn LLVMGetReturnType(T: &Type) -> &Type;
+    |wrap pub(crate) fn LLVMGetReturnType(T: &Type) -> &Type;
     pub(crate) fn LLVMGetParams(Fnc: &Value, params: *mut &Value);
     pub(crate) fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
+}
 }
 
 #[repr(C)]
