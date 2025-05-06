@@ -148,7 +148,7 @@ extern "C" fn all_ty_kinds<'a,const N:usize,T>(
   // Ref[Struct]
   e3: &StructWithDyn, //~ ERROR: uses type `&StructWithDyn`
   // Never
-  x:!,
+  x:!, //~ ERROR: uses type `!`
   //r1: &u8, r2: *const u8, r3: Box<u8>,
   // FnPtr
   f2: fn(u8)->u8, //~ ERROR: uses type `fn(u8) -> u8`
