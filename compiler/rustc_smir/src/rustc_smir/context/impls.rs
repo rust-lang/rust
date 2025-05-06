@@ -143,6 +143,46 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
         self.tcx.valtree_to_const_val(key)
     }
 
+    /// Return whether the instance as a body available.
+    ///
+    /// Items and intrinsics may have a body available from its definition.
+    /// Shims body may be generated depending on their type.
+    pub(crate) fn instance_has_body(&self, instance: Instance<'tcx>) -> bool {
+        let def_id = instance.def_id();
+        self.item_has_body(def_id)
+            || !matches!(
+                instance.def,
+                ty::InstanceKind::Virtual(..)
+                    | ty::InstanceKind::Intrinsic(..)
+                    | ty::InstanceKind::Item(..)
+            )
+    }
+
+    /// Return whether the item has a body defined by the user.
+    ///
+    /// Note that intrinsics may have a placeholder body that shouldn't be used in practice.
+    /// In StableMIR, we handle this case as if the body is not available.
+    pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
+        let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
+            intrinsic.must_be_overridden
+        } else {
+            false
+        };
+        !must_override && self.tcx.is_mir_available(def_id)
+    }
+
+    fn filter_fn_def(&self, def_id: DefId) -> Option<DefId> {
+        if matches!(self.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+            Some(def_id)
+        } else {
+            None
+        }
+    }
+
+    fn filter_static_def(&self, def_id: DefId) -> Option<DefId> {
+        matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| def_id)
+    }
+
     pub fn target_endian(&self) -> Endian {
         self.tcx.data_layout.endian
     }
@@ -167,8 +207,8 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     }
 
     /// Check whether the body of a function is available.
-    pub fn has_body(&self, def: DefId, tables: &mut Tables<'_, B>) -> bool {
-        tables.item_has_body(def)
+    pub fn has_body(&self, def: DefId) -> bool {
+        self.item_has_body(def)
     }
 
     pub fn foreign_modules(&self, crate_num: CrateNum) -> Vec<DefId> {
@@ -176,13 +216,13 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     }
 
     /// Retrieve all functions defined in this crate.
-    pub fn crate_functions(&self, crate_num: CrateNum, tables: &mut Tables<'_, B>) -> Vec<DefId> {
-        filter_def_ids(self.tcx, crate_num, |def_id| tables.filter_fn_def(def_id))
+    pub fn crate_functions(&self, crate_num: CrateNum) -> Vec<DefId> {
+        filter_def_ids(self.tcx, crate_num, |def_id| self.filter_fn_def(def_id))
     }
 
     /// Retrieve all static items defined in this crate.
-    pub fn crate_statics(&self, crate_num: CrateNum, tables: &mut Tables<'_, B>) -> Vec<DefId> {
-        filter_def_ids(self.tcx, crate_num, |def_id| tables.filter_static_def(def_id))
+    pub fn crate_statics(&self, crate_num: CrateNum) -> Vec<DefId> {
+        filter_def_ids(self.tcx, crate_num, |def_id| self.filter_static_def(def_id))
     }
 
     pub fn foreign_module(&self, mod_def: DefId) -> &ForeignModule {
@@ -574,14 +614,8 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     }
 
     /// Get the body of an Instance which is already monomorphized.
-    pub fn instance_body(
-        &self,
-        instance: ty::Instance<'tcx>,
-        tables: &mut Tables<'tcx, B>,
-    ) -> Option<Body<'tcx>> {
-        tables
-            .instance_has_body(instance)
-            .then(|| BodyBuilder::new(self.tcx, instance).build(tables))
+    pub fn instance_body(&self, instance: ty::Instance<'tcx>) -> Option<Body<'tcx>> {
+        self.instance_has_body(instance).then(|| BodyBuilder::new(self.tcx, instance).build())
     }
 
     /// Get the instance type with generic instantiations applied and lifetimes erased.
@@ -599,18 +633,13 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     pub fn instance_abi(
         &self,
         instance: ty::Instance<'tcx>,
-        tables: &mut Tables<'tcx, B>,
     ) -> Result<&FnAbi<'tcx, Ty<'tcx>>, B::Error> {
-        Ok(tables.fn_abi_of_instance(instance, List::empty())?)
+        Ok(self.fn_abi_of_instance(instance, List::empty())?)
     }
 
     /// Get the ABI of a function pointer.
-    pub fn fn_ptr_abi(
-        &self,
-        sig: PolyFnSig<'tcx>,
-        tables: &mut Tables<'tcx, B>,
-    ) -> Result<&FnAbi<'tcx, Ty<'tcx>>, B::Error> {
-        Ok(tables.fn_abi_of_fn_ptr(sig, List::empty())?)
+    pub fn fn_ptr_abi(&self, sig: PolyFnSig<'tcx>) -> Result<&FnAbi<'tcx, Ty<'tcx>>, B::Error> {
+        Ok(self.fn_abi_of_fn_ptr(sig, List::empty())?)
     }
 
     /// Get the instance.
@@ -737,12 +766,8 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
     }
 
     /// Get the layout of a type.
-    pub fn ty_layout(
-        &self,
-        ty: Ty<'tcx>,
-        tables: &mut Tables<'tcx, B>,
-    ) -> Result<Layout<'tcx>, B::Error> {
-        let layout = tables.layout_of(ty)?.layout;
+    pub fn ty_layout(&self, ty: Ty<'tcx>) -> Result<Layout<'tcx>, B::Error> {
+        let layout = self.layout_of(ty)?.layout;
         Ok(layout)
     }
 
