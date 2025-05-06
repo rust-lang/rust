@@ -1358,6 +1358,7 @@ pub trait Iterator {
     /// ```
     ///
     /// [`by_ref`]: Iterator::by_ref
+    #[doc(alias = "limit")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: usize) -> Take<Self>
