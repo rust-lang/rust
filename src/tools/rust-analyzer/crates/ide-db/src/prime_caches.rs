@@ -202,7 +202,7 @@ pub fn parallel_prime_caches(
                     crates_currently_indexing: vec![],
                     crates_done: crate_def_maps_done,
                     crates_total: crate_def_maps_done,
-                    work_type: "Indexing",
+                    work_type: "Done",
                 });
                 return;
             }
@@ -224,6 +224,15 @@ pub fn parallel_prime_caches(
                         let dep_name = crate_name(db, dep);
                         def_map_work_sender.send((dep, dep_name)).ok();
                     }
+                }
+
+                if crate_def_maps_done == crate_def_maps_total {
+                    cb(ParallelPrimeCachesProgress {
+                        crates_currently_indexing: vec![],
+                        crates_done: crate_def_maps_done,
+                        crates_total: crate_def_maps_done,
+                        work_type: "Collecting Symbols",
+                    });
                 }
 
                 let origin = &crate_id.data(db).origin;
