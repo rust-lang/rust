@@ -74,7 +74,6 @@ const PARTIAL_POINTER: () = unsafe {
     }
     // `Align` ensures that the entire thing has pointer alignment again.
     #[repr(C)]
-    #[allow(improper_ctype_definitions)]
     struct Align {
         p: Packed,
         align: usize,

@@ -1,7 +1,7 @@
 #![feature(never_type)]
 
 #![allow(dead_code, unused_variables)]
-#![deny(improper_ctypes,improper_ctype_definitions)]
+#![deny(improper_ctypes)]
 #![deny(improper_c_fn_definitions, improper_c_callbacks)]
 
 use std::mem::transmute;

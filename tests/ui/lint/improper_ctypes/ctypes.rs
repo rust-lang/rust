@@ -5,7 +5,7 @@
 
 #![allow(private_interfaces)]
 #![deny(improper_ctypes, improper_c_callbacks)]
-#![deny(improper_c_fn_definitions, improper_ctype_definitions)]
+#![deny(improper_c_fn_definitions)]
 
 use std::cell::UnsafeCell;
 use std::marker::PhantomData;
@@ -25,14 +25,14 @@ pub struct StructWithProjectionAndLifetime<'a>(
 );
 pub type I32Pair = (i32, i32);
 #[repr(C)]
-pub struct ZeroSize;  //~ ERROR: `repr(C)` type uses type `ZeroSize`
+pub struct ZeroSize;
 pub type RustFn = fn();
 pub type RustBoxRet = extern "C" fn() -> Box<u32>;
 pub type CVoidRet = ();
 pub struct Foo;
 #[repr(transparent)]
 pub struct TransparentI128(i128);
-#[repr(transparent)] // reminder: repr(transparent) struct defs are not scanned
+#[repr(transparent)]
 pub struct TransparentStr(&'static str);
 #[repr(transparent)]
 pub struct TransparentBoxFn(RustBoxRet);
@@ -53,15 +53,12 @@ pub struct UnsizedStructBecauseForeign {
 }
 #[repr(C)]
 pub struct UnsizedStructBecauseDyn {
-    //~^ ERROR: `repr(C)` type uses type `dyn Debug`
     sized: u32,
     unszd: dyn Debug,
 }
 
 #[repr(C)]
 pub struct TwoBadTypes<'a> {
-    //~^ ERROR: `repr(C)` type uses type `char`
-    //~| ERROR: `repr(C)` type uses type `&[u8]`
     non_c_type: char,
     ref_with_mdata: &'a [u8],
 }

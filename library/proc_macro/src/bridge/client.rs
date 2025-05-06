@@ -358,8 +358,6 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
 
 #[repr(C)]
 #[derive(Copy, Clone)]
-#[allow(unknown_lints, renamed_and_removed_lints, improper_ctypes_definitions)] // FIXME delete line once improper_c_fn_definitions exists upstream
-#[allow(improper_ctype_definitions)] // so many C-incompatible double-width pointers
 pub enum ProcMacro {
     CustomDerive {
         trait_name: &'static str,

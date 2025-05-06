@@ -10,7 +10,6 @@ extern crate minicore;
 use minicore::*;
 
 #[warn(uses_power_alignment)]
-#[warn(improper_ctype_definitions)]
 
 #[repr(C)]
 pub struct Floats {

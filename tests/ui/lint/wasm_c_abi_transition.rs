@@ -41,7 +41,6 @@ pub fn call_other_fun(x: MyType) {
 }
 
 // Zero-sized types are safe in both ABIs
-#[allow(improper_ctype_definitions)]
 #[repr(C)]
 pub struct MyZstType;
 #[allow(improper_c_fn_definitions)]

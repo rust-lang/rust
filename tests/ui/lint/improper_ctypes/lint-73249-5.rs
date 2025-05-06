@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-#![deny(improper_ctypes, improper_ctype_definitions)]
+#![deny(improper_ctypes)]
 
 pub trait Baz {}
 

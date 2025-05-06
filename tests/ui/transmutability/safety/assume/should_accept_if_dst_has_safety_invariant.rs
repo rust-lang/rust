@@ -19,7 +19,6 @@ mod assert {
 fn test() {
     type Src = ();
     #[repr(C)]
-    #[allow(improper_ctype_definitions)]
     struct Dst;
     assert::is_transmutable::<Src, Dst>();
 }

@@ -4,7 +4,6 @@
 #![crate_type = "lib"]
 #![feature(transmutability)]
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
-#![allow(improper_ctype_definitions)] // turns out empty structs don't C well
 
 mod assert {
     use std::mem::{Assume, TransmuteFrom};

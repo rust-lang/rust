@@ -2,7 +2,7 @@
 //@ edition:2018
 
 #![allow(dead_code,unused_variables)]
-#![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+#![deny(improper_ctypes, improper_c_fn_definitions)]
 #![deny(improper_c_callbacks)]
 
 // we want ALL the ty_kinds, including the feature-gated ones
@@ -106,7 +106,6 @@ extern "C" {type ExtType;}
 
 #[repr(C)]
 pub struct StructWithDyn(dyn std::fmt::Debug);
-//~^ ERROR: `repr(C)` type uses type `dyn Debug`
 
 extern "C" {
   // variadic args aren't listed as args in a way that allows type checking.
@@ -309,67 +308,6 @@ extern "C" fn all_ty_kinds_in_box<const N:usize,T>(
   // Box[Dynamic]
 ) -> Box<dyn std::fmt::Debug> { //~ ERROR: uses type `Box<dyn Debug>`
     u.unwrap()
-}
-
-
-// FIXME: all the errors are apparently on the same line...
-#[repr(C)]
-struct AllTyKinds<'a,const N:usize,T>{
-  //~^ ERROR: uses type `String`
-  //~| ERROR: uses type `&str`
-  //~| ERROR: uses type `char`
-  //~| ERROR: uses type `&[u8]`
-  //~| ERROR: uses type `(u8, u8)`
-  //~| ERROR: uses type `&StructWithDyn`
-  //~| ERROR: uses type `fn(u8) -> u8`
-  //~| ERROR: uses type `&dyn Fn(u8) -> u8`
-  //~| ERROR: uses type `&dyn PartialOrd<u8>`
-
-  // UInt, Int, Float, Bool
-  u:u8, i:i8, f:f64, b:bool,
-  // Struct
-  s:String,
-  // Ref[Str]
-  s2:&'a str,
-  // Char
-  c: char,
-  // Ref[Slice]
-  s3:&'a[u8],
-  // Array (this gets caught outside of the code we want to test)
-  s4:[u8;N],
-  // Tuple
-  p:(u8, u8),
-  // deactivated here (patterns unacceptable)
-  // (p2, p3):(&u8, &u8),
-  // Pat
-  nz: pattern_type!(u32 is 1..),
-  // deactivated here, because this is a function *declaration* (pattern unacceptable)
-  // SomeStruct{b: ref p4,..}: &SomeStruct,
-  // Union
-  u2: SomeUnion,
-  // Enum,
-  e: SomeEnum,
-  // deactivated here (impl type unacceptable)
-  // d: impl Clone,
-  // Param
-  t: T,
-  // Ptr[Foreign]
-  e2: *mut ExtType,
-  // Ref[Struct]
-  e3: &'a StructWithDyn,
-  // Never
-  x:!,
-  //r1: &u8, r2: *const u8, r3: Box<u8>,
-  // FnPtr
-  f2: fn(u8)->u8,
-  // Ref[Dynamic]
-  f3: &'a dyn Fn(u8)->u8,
-  // Ref[Dynamic]
-  d2: &'a dyn std::cmp::PartialOrd<u8>,
-  // deactivated here (impl type unacceptable),
-  //a: impl async Fn(u8)->u8,  //FIXME: eventually, be able to peer into type params
-  // deactivated here (impl type unacceptable)
-  //d3: impl std::fmt::Debug,
 }
 
 fn main() {}
