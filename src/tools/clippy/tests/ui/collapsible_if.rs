@@ -172,3 +172,14 @@ fn layout_check() -> u32 {
     }; 3
     //~^^^^^ collapsible_if
 }
+
+fn issue14722() {
+    let x = if true {
+        Some(1)
+    } else {
+        if true {
+            println!("Some debug information");
+        };
+        None
+    };
+}
