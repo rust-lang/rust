@@ -58,6 +58,8 @@ pub use utils::helpers::PanicTracker;
 use crate::core::build_steps::vendor::VENDOR_DIR;
 
 const LLVM_TOOLS: &[&str] = &[
+    "llvm-bolt",
+    "merge-fdata",
     "llvm-cov",      // used to generate coverage report
     "llvm-nm",       // used to inspect binaries; it shows symbol names, their sizes and visibility
     "llvm-objcopy",  // used to transform ELFs into binary format which flashing tools consume

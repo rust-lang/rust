@@ -437,6 +437,7 @@ impl Step for Llvm {
         if builder.config.llvm_clang {
             enabled_llvm_projects.push("clang");
         }
+        enabled_llvm_projects.push("bolt");
 
         // We want libxml to be disabled.
         // See https://github.com/rust-lang/rust/pull/50104
