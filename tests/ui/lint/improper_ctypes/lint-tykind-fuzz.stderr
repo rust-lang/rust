@@ -135,6 +135,14 @@ LL |   e3: &StructWithDyn,
    |
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
+error: `extern` fn uses type `!`, which is not FFI-safe
+  --> $DIR/lint-tykind-fuzz.rs:151:5
+   |
+LL |   x:!,
+   |     ^ not FFI-safe
+   |
+   = note: the never type (`!`) and other uninhabited types are not allowed in function arguments and static variables
+
 error: `extern` fn uses type `fn(u8) -> u8`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:154:7
    |
@@ -487,5 +495,5 @@ LL | | }
    |
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
-error: aborting due to 51 previous errors; 1 warning emitted
+error: aborting due to 52 previous errors; 1 warning emitted
 
