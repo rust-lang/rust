@@ -3,7 +3,7 @@
 struct A();
 
 impl const Drop for A {
-    fn drop(&mut self) {}
+    (const) fn drop(&mut self) {}
 }
 
 const C: A = A();

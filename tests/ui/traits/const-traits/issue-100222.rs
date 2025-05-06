@@ -14,6 +14,9 @@ pub trait Index {
 pub trait IndexMut where Self: Index {
     const C: <Self as Index>::Output;
     type Assoc = <Self as Index>::Output;
+    #[cfg(any(ny, yy))]
+    (const) fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;
+    #[cfg(not(any(ny, yy)))]
     fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output;
 }
 
@@ -23,7 +26,7 @@ impl Index for () { type Output = (); }
 impl const IndexMut for <() as Index>::Output {
     const C: <Self as Index>::Output = ();
     type Assoc = <Self as Index>::Output;
-    fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output
+    (const) fn foo(&mut self, x: <Self as Index>::Output) -> <Self as Index>::Output
         where <Self as Index>::Output:,
     {}
 }

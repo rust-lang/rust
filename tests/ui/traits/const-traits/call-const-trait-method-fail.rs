@@ -3,11 +3,11 @@
 
 #[const_trait]
 pub trait Plus {
-    fn plus(self, rhs: Self) -> Self;
+    (const) fn plus(self, rhs: Self) -> Self;
 }
 
 impl const Plus for i32 {
-    fn plus(self, rhs: Self) -> Self {
+    (const) fn plus(self, rhs: Self) -> Self {
         self + rhs
     }
 }

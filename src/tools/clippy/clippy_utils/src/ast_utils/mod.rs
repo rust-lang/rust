@@ -719,7 +719,7 @@ fn eq_opt_coroutine_kind(l: Option<CoroutineKind>, r: Option<CoroutineKind>) -> 
 pub fn eq_fn_header(l: &FnHeader, r: &FnHeader) -> bool {
     matches!(l.safety, Safety::Default) == matches!(r.safety, Safety::Default)
         && eq_opt_coroutine_kind(l.coroutine_kind, r.coroutine_kind)
-        && matches!(l.constness, Const::No) == matches!(r.constness, Const::No)
+        && l.constness == r.constness
         && eq_ext(&l.ext, &r.ext)
 }
 

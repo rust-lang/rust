@@ -4,7 +4,7 @@
 
 #[const_trait]
 trait Foo {
-    fn a(&self);
+    (const) fn a(&self);
 }
 
 #[const_trait]
@@ -12,7 +12,7 @@ trait Bar: ~const Foo {}
 
 struct S;
 impl const Foo for S {
-    fn a(&self) {}
+    (const) fn a(&self) {}
 }
 
 impl const Bar for S {}

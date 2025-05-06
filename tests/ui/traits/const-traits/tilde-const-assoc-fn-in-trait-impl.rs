@@ -5,22 +5,22 @@
 
 #[const_trait]
 trait Main {
-    fn compute<T: ~const Aux>() -> u32;
+    (const) fn compute<T: ~const Aux>() -> u32;
 }
 
 impl const Main for () {
-    fn compute<T: ~const Aux>() -> u32 {
+    (const) fn compute<T: ~const Aux>() -> u32 {
         T::generate()
     }
 }
 
 #[const_trait]
 trait Aux {
-    fn generate() -> u32;
+    (const) fn generate() -> u32;
 }
 
 impl const Aux for () {
-    fn generate() -> u32 { 1024 }
+    (const) fn generate() -> u32 { 1024 }
 }
 
 fn main() {

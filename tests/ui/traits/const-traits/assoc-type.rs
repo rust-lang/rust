@@ -7,13 +7,13 @@
 trait Add<Rhs = Self> {
     type Output;
 
-    fn add(self, other: Rhs) -> Self::Output;
+    (const) fn add(self, other: Rhs) -> Self::Output;
 }
 
 impl const Add for i32 {
     type Output = Self;
 
-    fn add(self, other: Self) -> Self::Output {
+    (const) fn add(self, other: Self) -> Self::Output {
         self + other
     }
 }

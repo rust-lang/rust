@@ -6,11 +6,11 @@
 
 #[const_trait]
 trait Trait {
-    fn required();
+    (const) fn required();
 }
 
 impl const Trait for () {
-    fn required() {
+    (const) fn required() {
         pub struct Type;
 
         impl Type {

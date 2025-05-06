@@ -257,12 +257,55 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn check_trait_fn_not_const(&self, constness: Const, parent: &TraitOrTraitImpl) {
-        let Const::Yes(span) = constness else {
-            return;
+    fn check_trait_fn_not_const(
+        &self,
+        constness: BoundConstness,
+        sig_span: Span,
+        parent: &TraitOrTraitImpl,
+    ) {
+        let const_trait_impl = self.features.const_trait_impl();
+
+        let span = match (constness, parent) {
+            (BoundConstness::Never, toti) => {
+                // only `(const)` or `const` fn are allowed in traits or impls respectively.
+                // But for bootstrap purposes we allow the stage1 std and the stage0 std to be the same.
+                if toti.constness().is_some() && !self.features.staged_api() {
+                    // FIXME(const_trait_impls): allow non-const fns
+                    self.dcx()
+                        .struct_span_err(
+                            sig_span.shrink_to_lo(),
+                            "non-const fn in const traits are not supported yet",
+                        )
+                        .with_span_suggestion(
+                            sig_span.shrink_to_lo(),
+                            "mark the function as const",
+                            match toti {
+                                TraitOrTraitImpl::Trait { .. } => "(const) ",
+                                TraitOrTraitImpl::TraitImpl { .. } => "const ",
+                            },
+                            rustc_errors::Applicability::MachineApplicable,
+                        )
+                        .emit();
+                }
+                return;
+            }
+            // `(const) fn` in `const Trait` or `impl const Trait` is ok
+            (BoundConstness::Always(span), _) => span,
+            (
+                BoundConstness::Maybe(span),
+                TraitOrTraitImpl::Trait { constness_span: Some(_), .. }
+                | TraitOrTraitImpl::TraitImpl { constness: Const::Yes(_), .. },
+            ) => {
+                if !const_trait_impl {
+                    self.sess
+                        .create_feature_err(errors::ConstInTrait { span }, sym::const_trait_impl)
+                        .emit();
+                }
+                return;
+            }
+            (BoundConstness::Maybe(span), _) => span,
         };
 
-        let const_trait_impl = self.features.const_trait_impl();
         let make_impl_const_sugg = if const_trait_impl
             && let TraitOrTraitImpl::TraitImpl {
                 constness: Const::No,
@@ -504,8 +547,9 @@ impl<'a> AstValidator<'a> {
             None => (),
         }
         match constness {
-            Const::Yes(span) => report_err(span, "const"),
-            Const::No => (),
+            BoundConstness::Always(span) => report_err(span, "const"),
+            BoundConstness::Maybe(span) => report_err(span, "~const"),
+            BoundConstness::Never => (),
         }
         match ext {
             Extern::None => (),
@@ -542,7 +586,9 @@ impl<'a> AstValidator<'a> {
         }
 
         if let Some(header) = fk.header() {
-            if let Const::Yes(const_span) = header.constness {
+            if let BoundConstness::Always(const_span) | BoundConstness::Maybe(const_span) =
+                header.constness
+            {
                 let mut spans = variadic_spans.clone();
                 spans.push(const_span);
                 self.dcx().emit_err(errors::ConstAndCVariadic {
@@ -1356,7 +1402,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         // Functions cannot both be `const async` or `const gen`
         if let Some(&FnHeader {
-            constness: Const::Yes(const_span),
+            constness: BoundConstness::Always(const_span) | BoundConstness::Maybe(const_span),
             coroutine_kind: Some(coroutine_kind),
             ..
         }) = fk.header()
@@ -1407,14 +1453,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             });
         }
 
-        let tilde_const_allowed =
-            matches!(fk.header(), Some(FnHeader { constness: ast::Const::Yes(_), .. }))
-                || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)))
-                    && self
-                        .outer_trait_or_trait_impl
-                        .as_ref()
-                        .and_then(TraitOrTraitImpl::constness)
-                        .is_some();
+        let tilde_const_allowed = matches!(fk.header(), Some(FnHeader { constness: ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_), .. }))
+            // FIXME(const_trait_impls): remove this, we don't want to allow `~const` trait bounds in non-const methods
+            || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)))
+                && self
+                    .outer_trait_or_trait_impl
+                    .as_ref()
+                    .and_then(TraitOrTraitImpl::constness)
+                    .is_some();
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
             FnKind::Fn(_, _, f) => TildeConstReason::Function { ident: f.ident.span },
@@ -1483,7 +1529,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let Some(parent) = &self.outer_trait_or_trait_impl {
             self.visibility_not_permitted(&item.vis, errors::VisibilityNotPermittedNote::TraitImpl);
             if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
-                self.check_trait_fn_not_const(sig.header.constness, parent);
+                self.check_trait_fn_not_const(sig.header.constness, sig.span, parent);
             }
         }
 
@@ -1498,7 +1544,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             AssocItemKind::Fn(func)
                 if parent_is_const
                     || ctxt == AssocCtxt::Trait
-                    || matches!(func.sig.header.constness, Const::Yes(_)) =>
+                    || !matches!(func.sig.header.constness, ast::BoundConstness::Never) =>
             {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, &func.ident);
                 let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.vis, &*func);

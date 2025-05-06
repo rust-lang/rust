@@ -14,7 +14,7 @@ impl Drop for NonTrivialDrop {
 }
 
 #[const_trait]
-trait A { fn a() { } }
+trait A { (const) fn a() { } }
 
 impl A for NonTrivialDrop {}
 
@@ -23,7 +23,7 @@ const fn check<T: ~const Destruct>(_: T) {}
 struct ConstDropImplWithBounds<T: A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
-    fn drop(&mut self) {
+    (const) fn drop(&mut self) {
         T::a();
     }
 }
@@ -36,7 +36,7 @@ const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
 struct ConstDropImplWithNonConstBounds<T: A>(PhantomData<T>);
 
 impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
-    fn drop(&mut self) {
+    (const) fn drop(&mut self) {
         T::a();
     }
 }

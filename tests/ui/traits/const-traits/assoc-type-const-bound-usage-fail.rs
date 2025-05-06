@@ -10,7 +10,7 @@
 #[const_trait]
 trait Trait {
     type Assoc: ~const Trait;
-    fn func();
+    (const) fn func();
 }
 
 const fn unqualified<T: Trait>() {

@@ -4,7 +4,7 @@ pub struct Vec3;
 
 #[const_trait]
 pub trait Add {
-    fn add(self) -> Vec3;
+    (const) fn add(self) -> Vec3;
 }
 
 impl Add for Vec3 {

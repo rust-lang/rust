@@ -32,12 +32,12 @@ impl<T: ?Sized> Copy for &T {}
 pub trait Add<Rhs = Self> {
     type Output;
 
-    fn add(self, rhs: Rhs) -> Self::Output;
+    (const) fn add(self, rhs: Rhs) -> Self::Output;
 }
 
 impl const Add for i32 {
     type Output = i32;
-    fn add(self, rhs: i32) -> i32 {
+    (const) fn add(self, rhs: i32) -> i32 {
         loop {}
     }
 }
@@ -57,16 +57,16 @@ pub trait Try: FromResidual<Self::Residual> {
     type Residual;
 
     #[lang = "from_output"]
-    fn from_output(output: Self::Output) -> Self;
+    (const) fn from_output(output: Self::Output) -> Self;
 
     #[lang = "branch"]
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
+    (const) fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
 
 #[const_trait]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     #[lang = "from_residual"]
-    fn from_residual(residual: R) -> Self;
+    (const) fn from_residual(residual: R) -> Self;
 }
 
 enum ControlFlow<B, C = ()> {
@@ -80,14 +80,14 @@ enum ControlFlow<B, C = ()> {
 #[lang = "fn"]
 #[rustc_paren_sugar]
 pub trait Fn<Args: Tuple>: ~const FnMut<Args> {
-    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+    (const) extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
 #[const_trait]
 #[lang = "fn_mut"]
 #[rustc_paren_sugar]
 pub trait FnMut<Args: Tuple>: ~const FnOnce<Args> {
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+    (const) extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
 #[const_trait]
@@ -97,7 +97,7 @@ pub trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
 
-    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+    (const) extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
 
 #[lang = "tuple_trait"]
@@ -130,7 +130,7 @@ pub unsafe auto trait Freeze {}
 #[lang = "drop"]
 #[const_trait]
 pub trait Drop {
-    fn drop(&mut self);
+    (const) fn drop(&mut self);
 }
 
 #[const_trait]
@@ -165,13 +165,13 @@ fn panic_fmt() {}
 pub trait Index<Idx: ?Sized> {
     type Output: ?Sized;
 
-    fn index(&self, index: Idx) -> &Self::Output;
+    (const) fn index(&self, index: Idx) -> &Self::Output;
 }
 
 #[const_trait]
 pub unsafe trait SliceIndex<T: ?Sized> {
     type Output: ?Sized;
-    fn index(self, slice: &T) -> &Self::Output;
+    (const) fn index(self, slice: &T) -> &Self::Output;
 }
 
 impl<T, I> const Index<I> for [T]
@@ -181,7 +181,7 @@ where
     type Output = I::Output;
 
     #[inline]
-    fn index(&self, index: I) -> &I::Output {
+    (const) fn index(&self, index: I) -> &I::Output {
         index.index(self)
     }
 }
@@ -193,7 +193,7 @@ where
     type Output = <[T] as Index<I>>::Output;
 
     #[inline]
-    fn index(&self, index: I) -> &<[T] as Index<I>>::Output {
+    (const) fn index(&self, index: I) -> &<[T] as Index<I>>::Output {
         Index::index(self as &[T], index)
     }
 }
@@ -212,13 +212,13 @@ pub trait Deref {
     #[lang = "deref_target"]
     type Target: ?Sized;
 
-    fn deref(&self) -> &Self::Target;
+    (const) fn deref(&self) -> &Self::Target;
 }
 
 impl<T: ?Sized> const Deref for &T {
     type Target = T;
 
-    fn deref(&self) -> &T {
+    (const) fn deref(&self) -> &T {
         *self
     }
 }
@@ -226,7 +226,7 @@ impl<T: ?Sized> const Deref for &T {
 impl<T: ?Sized> const Deref for &mut T {
     type Target = T;
 
-    fn deref(&self) -> &T {
+    (const) fn deref(&self) -> &T {
         *self
     }
 }
@@ -268,25 +268,25 @@ where
 
 #[const_trait]
 pub trait Into<T>: Sized {
-    fn into(self) -> T;
+    (const) fn into(self) -> T;
 }
 
 #[const_trait]
 pub trait From<T>: Sized {
-    fn from(value: T) -> Self;
+    (const) fn from(value: T) -> Self;
 }
 
 impl<T, U> const Into<U> for T
 where
     U: ~const From<T>,
 {
-    fn into(self) -> U {
+    (const) fn into(self) -> U {
         U::from(self)
     }
 }
 
 impl<T> const From<T> for T {
-    fn from(t: T) -> T {
+    (const) fn from(t: T) -> T {
         t
     }
 }
@@ -308,8 +308,8 @@ fn from_str(s: &str) -> Result<bool, ()> {
 #[lang = "eq"]
 #[const_trait]
 pub trait PartialEq<Rhs: ?Sized = Self> {
-    fn eq(&self, other: &Rhs) -> bool;
-    fn ne(&self, other: &Rhs) -> bool {
+    (const) fn eq(&self, other: &Rhs) -> bool;
+    (const) fn ne(&self, other: &Rhs) -> bool {
         !self.eq(other)
     }
 }
@@ -318,7 +318,7 @@ impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
 where
     A: ~const PartialEq<B>,
 {
-    fn eq(&self, other: &&B) -> bool {
+    (const) fn eq(&self, other: &&B) -> bool {
         PartialEq::eq(*self, *other)
     }
 }
@@ -333,12 +333,12 @@ impl PartialEq for str {
 #[const_trait]
 pub trait Not {
     type Output;
-    fn not(self) -> Self::Output;
+    (const) fn not(self) -> Self::Output;
 }
 
 impl const Not for bool {
     type Output = bool;
-    fn not(self) -> bool {
+    (const) fn not(self) -> bool {
         !self
     }
 }
@@ -398,14 +398,14 @@ impl<T> Option<T> {
 
 impl<P: ~const Deref> const Deref for Pin<P> {
     type Target = P::Target;
-    fn deref(&self) -> &P::Target {
+    (const) fn deref(&self) -> &P::Target {
         Pin::get_ref(Pin::as_ref(self))
     }
 }
 
 impl<T> const Deref for Option<T> {
     type Target = T;
-    fn deref(&self) -> &T {
+    (const) fn deref(&self) -> &T {
         loop {}
     }
 }
@@ -457,8 +457,8 @@ impl<T: ?Sized> Deref for Ref<'_, T> {
 #[rustc_trivial_field_reads]
 #[const_trait]
 pub trait Clone: Sized {
-    fn clone(&self) -> Self;
-    fn clone_from(&mut self, source: &Self)
+    (const) fn clone(&self) -> Self;
+    (const) fn clone_from(&mut self, source: &Self)
     where
         Self: ~const Destruct,
     {

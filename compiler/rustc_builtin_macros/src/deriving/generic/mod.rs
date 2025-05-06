@@ -1018,7 +1018,18 @@ impl<'a> MethodDef<'a> {
 
         let trait_lo_sp = span.shrink_to_lo();
 
-        let sig = ast::FnSig { header: ast::FnHeader::default(), decl: fn_decl, span };
+        let sig = ast::FnSig {
+            header: ast::FnHeader {
+                constness: if trait_.is_const {
+                    ast::BoundConstness::Maybe(span)
+                } else {
+                    ast::BoundConstness::Never
+                },
+                ..Default::default()
+            },
+            decl: fn_decl,
+            span,
+        };
         let defaultness = ast::Defaultness::Final;
 
         // Create the method.

@@ -8,11 +8,11 @@
 
 #[const_trait]
 trait Value {
-    fn value() -> u32;
+    (const) fn value() -> u32;
 }
 
 impl<T> const Value for T {
-    default fn value() -> u32 {
+    default (const) fn value() -> u32 {
         0
     }
 }

@@ -1,0 +1,83 @@
+error: expected one of `extern`, `fn`, `safe`, or `unsafe`, found keyword `const`
+  --> $DIR/async-const-trait-methods.rs:15:11
+   |
+LL |     async const fn ft4() {}
+   |     ------^^^^^
+   |     |     |
+   |     |     expected one of `extern`, `fn`, `safe`, or `unsafe`
+   |     help: `const` must come before `async`: `const async`
+   |
+   = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+
+error: non-item in item list
+  --> $DIR/async-const-trait-methods.rs:19:5
+   |
+LL | trait Tr {
+   |          - item list starts here
+...
+LL |     async (const) fn ft5() {}
+   |     ^^^^^ non-item starts here
+LL |
+LL | }
+   | - item list ends here
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/async-const-trait-methods.rs:8:5
+   |
+LL |     (const) async fn ft1() {}
+   |     ^^^^^^^-^^^^^------------
+   |     |       |
+   |     |       `async` because of this
+   |     `const` because of this
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/async-const-trait-methods.rs:10:5
+   |
+LL |     async fn ft2() {}
+   |     ^ help: mark the function as const: `(const)`
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/async-const-trait-methods.rs:12:5
+   |
+LL | #[const_trait]
+   | -------------- this declares all associated functions implicitly const
+...
+LL |     const async fn ft3() {}
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/async-const-trait-methods.rs:12:5
+   |
+LL |     const async fn ft3() {}
+   |     ^^^^^-^^^^^------------
+   |     |     |
+   |     |     `async` because of this
+   |     `const` because of this
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/async-const-trait-methods.rs:15:11
+   |
+LL | #[const_trait]
+   | -------------- this declares all associated functions implicitly const
+...
+LL |     async const fn ft4() {}
+   |           ^^^^^-
+   |           |
+   |           functions in traits cannot be const
+   |           help: remove the `const`
+
+error: functions cannot be both `const` and `async`
+  --> $DIR/async-const-trait-methods.rs:15:5
+   |
+LL |     async const fn ft4() {}
+   |     ^^^^^-^^^^^------------
+   |     |     |
+   |     |     `const` because of this
+   |     `async` because of this
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0379`.

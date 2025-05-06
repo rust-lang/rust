@@ -3,8 +3,8 @@
 
 #[const_trait]
 pub trait MyTrait {
-    fn defaulted_func(&self) {}
-    fn func(self);
+    (const) fn defaulted_func(&self) {}
+    (const) fn func(self);
 }
 
 pub struct NonConst;
@@ -18,7 +18,7 @@ impl MyTrait for NonConst {
 pub struct Const;
 
 impl const MyTrait for Const {
-    fn func(self) {
+    (const) fn func(self) {
 
     }
 }

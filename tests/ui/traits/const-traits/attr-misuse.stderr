@@ -11,8 +11,8 @@ error: attribute should be applied to a trait
    |
 LL |     #[const_trait]
    |     ^^^^^^^^^^^^^^
-LL |     fn foo(self);
-   |     ------------- not a trait
+LL |     (const) fn foo(self);
+   |     --------------------- not a trait
 
 error: aborting due to 2 previous errors
 
