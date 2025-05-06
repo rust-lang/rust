@@ -127,7 +127,7 @@ where
     F: FnOnce() -> T,
 {
     let smir_cx = RefCell::new(SmirCtxt::new(tcx));
-    let container = SmirContainer { tables: RefCell::new(Tables::new(tcx)), cx: smir_cx };
+    let container = SmirContainer { tables: RefCell::new(Tables::default()), cx: smir_cx };
 
     stable_mir::compiler_interface::run(&container, || init(&container, f))
 }

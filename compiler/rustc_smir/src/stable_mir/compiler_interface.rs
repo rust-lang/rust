@@ -432,7 +432,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let tables_ref = &mut *tables;
         let cx = &*self.cx.borrow();
         let def = item.internal(tables_ref, cx);
-        cx.has_body(def, tables_ref)
+        cx.has_body(def)
     }
 
     fn foreign_modules(&self, crate_num: CrateNum) -> Vec<ForeignModuleDef> {
@@ -448,18 +448,16 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     fn crate_functions(&self, crate_num: CrateNum) -> Vec<FnDef> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let tables_ref = &mut *tables;
-        let krate = crate_num.internal(tables_ref, cx);
-        cx.crate_functions(krate, tables_ref).iter().map(|did| tables.fn_def(*did)).collect()
+        let krate = crate_num.internal(&mut *tables, cx);
+        cx.crate_functions(krate).iter().map(|did| tables.fn_def(*did)).collect()
     }
 
     /// Retrieve all static items defined in this crate.
     fn crate_statics(&self, crate_num: CrateNum) -> Vec<StaticDef> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
-        let tables_ref = &mut *tables;
-        let krate = crate_num.internal(tables_ref, cx);
-        cx.crate_statics(krate, tables_ref).iter().map(|did| tables.static_def(*did)).collect()
+        let krate = crate_num.internal(&mut *tables, cx);
+        cx.crate_statics(krate).iter().map(|did| tables.static_def(*did)).collect()
     }
 
     fn foreign_module(&self, mod_def: ForeignModuleDef) -> ForeignModule {
@@ -908,7 +906,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
         let instance = tables.instances[instance];
-        cx.instance_body(instance, &mut *tables).map(|body| body.stable(&mut *tables, cx))
+        cx.instance_body(instance).map(|body| body.stable(&mut *tables, cx))
     }
 
     /// Get the instance type with generic instantiations applied and lifetimes erased.
@@ -1078,7 +1076,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
         let instance = tables.instances[def];
-        cx.instance_abi(instance, &mut *tables).map(|fn_abi| fn_abi.stable(&mut *tables, cx))
+        cx.instance_abi(instance).map(|fn_abi| fn_abi.stable(&mut *tables, cx))
     }
 
     /// Get the ABI of a function pointer.
@@ -1086,7 +1084,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
         let sig = fn_ptr.internal(&mut *tables, cx);
-        cx.fn_ptr_abi(sig, &mut *tables).map(|fn_abi| fn_abi.stable(&mut *tables, cx))
+        cx.fn_ptr_abi(sig).map(|fn_abi| fn_abi.stable(&mut *tables, cx))
     }
 
     /// Get the layout of a type.
@@ -1094,7 +1092,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
         let mut tables = self.tables.borrow_mut();
         let cx = &*self.cx.borrow();
         let internal_ty = ty.internal(&mut *tables, cx);
-        cx.ty_layout(internal_ty, &mut *tables).map(|layout| layout.stable(&mut *tables, cx))
+        cx.ty_layout(internal_ty).map(|layout| layout.stable(&mut *tables, cx))
     }
 
     /// Get the layout shape.

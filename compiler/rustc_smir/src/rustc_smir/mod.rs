@@ -14,7 +14,7 @@ use context::SmirCtxt;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 
 use crate::rustc_internal::IndexMap;
@@ -30,7 +30,6 @@ pub struct SmirContainer<'tcx, B: Bridge> {
 }
 
 pub struct Tables<'tcx, B: Bridge> {
-    tcx: TyCtxt<'tcx>,
     pub(crate) def_ids: IndexMap<DefId, B::DefId>,
     pub(crate) alloc_ids: IndexMap<AllocId, B::AllocId>,
     pub(crate) spans: IndexMap<rustc_span::Span, B::Span>,
@@ -41,10 +40,9 @@ pub struct Tables<'tcx, B: Bridge> {
     pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, B::Layout>,
 }
 
-impl<'tcx, B: Bridge> Tables<'tcx, B> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>) -> Self {
+impl<'tcx, B: Bridge> Default for Tables<'tcx, B> {
+    fn default() -> Self {
         Self {
-            tcx,
             def_ids: IndexMap::default(),
             alloc_ids: IndexMap::default(),
             spans: IndexMap::default(),
@@ -68,46 +66,6 @@ impl<'tcx, B: Bridge> Tables<'tcx, B> {
 
     pub(crate) fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> B::MirConstId {
         self.mir_consts.create_or_fetch(constant)
-    }
-
-    /// Return whether the instance as a body available.
-    ///
-    /// Items and intrinsics may have a body available from its definition.
-    /// Shims body may be generated depending on their type.
-    pub(crate) fn instance_has_body(&self, instance: Instance<'tcx>) -> bool {
-        let def_id = instance.def_id();
-        self.item_has_body(def_id)
-            || !matches!(
-                instance.def,
-                ty::InstanceKind::Virtual(..)
-                    | ty::InstanceKind::Intrinsic(..)
-                    | ty::InstanceKind::Item(..)
-            )
-    }
-
-    /// Return whether the item has a body defined by the user.
-    ///
-    /// Note that intrinsics may have a placeholder body that shouldn't be used in practice.
-    /// In StableMIR, we handle this case as if the body is not available.
-    pub(crate) fn item_has_body(&self, def_id: DefId) -> bool {
-        let must_override = if let Some(intrinsic) = self.tcx.intrinsic(def_id) {
-            intrinsic.must_be_overridden
-        } else {
-            false
-        };
-        !must_override && self.tcx.is_mir_available(def_id)
-    }
-
-    fn filter_fn_def(&mut self, def_id: DefId) -> Option<DefId> {
-        if matches!(self.tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
-            Some(def_id)
-        } else {
-            None
-        }
-    }
-
-    fn filter_static_def(&mut self, def_id: DefId) -> Option<DefId> {
-        matches!(self.tcx.def_kind(def_id), DefKind::Static { .. }).then(|| def_id)
     }
 }
 

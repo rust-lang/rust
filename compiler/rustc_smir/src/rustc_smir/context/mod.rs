@@ -9,7 +9,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::layout::{FnAbiOfHelpers, HasTyCtxt, HasTypingEnv, LayoutOfHelpers};
 use rustc_middle::ty::{Ty, TyCtxt};
 
-use crate::rustc_smir::{Bridge, SmirError, Tables};
+use crate::rustc_smir::{Bridge, SmirError};
 
 mod impls;
 mod traits;
@@ -21,7 +21,7 @@ pub use traits::*;
 /// The [`crate::stable_mir::compiler_interface::SmirInterface`] must go through
 /// this context to obtain rustc-level information.
 pub struct SmirCtxt<'tcx, B: Bridge> {
-    tcx: TyCtxt<'tcx>,
+    pub(crate) tcx: TyCtxt<'tcx>,
     _marker: PhantomData<B>,
 }
 
@@ -32,7 +32,7 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
 }
 
 /// Implement error handling for extracting function ABI information.
-impl<'tcx, B: Bridge> FnAbiOfHelpers<'tcx> for Tables<'tcx, B> {
+impl<'tcx, B: Bridge> FnAbiOfHelpers<'tcx> for SmirCtxt<'tcx, B> {
     type FnAbiOfResult = Result<&'tcx rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>, B::Error>;
 
     #[inline]
@@ -46,7 +46,7 @@ impl<'tcx, B: Bridge> FnAbiOfHelpers<'tcx> for Tables<'tcx, B> {
     }
 }
 
-impl<'tcx, B: Bridge> LayoutOfHelpers<'tcx> for Tables<'tcx, B> {
+impl<'tcx, B: Bridge> LayoutOfHelpers<'tcx> for SmirCtxt<'tcx, B> {
     type LayoutOfResult = Result<ty::layout::TyAndLayout<'tcx>, B::Error>;
 
     #[inline]
@@ -60,19 +60,19 @@ impl<'tcx, B: Bridge> LayoutOfHelpers<'tcx> for Tables<'tcx, B> {
     }
 }
 
-impl<'tcx, B: Bridge> HasTypingEnv<'tcx> for Tables<'tcx, B> {
+impl<'tcx, B: Bridge> HasTypingEnv<'tcx> for SmirCtxt<'tcx, B> {
     fn typing_env(&self) -> ty::TypingEnv<'tcx> {
         ty::TypingEnv::fully_monomorphized()
     }
 }
 
-impl<'tcx, B: Bridge> HasTyCtxt<'tcx> for Tables<'tcx, B> {
+impl<'tcx, B: Bridge> HasTyCtxt<'tcx> for SmirCtxt<'tcx, B> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 }
 
-impl<'tcx, B: Bridge> HasDataLayout for Tables<'tcx, B> {
+impl<'tcx, B: Bridge> HasDataLayout for SmirCtxt<'tcx, B> {
     fn data_layout(&self) -> &rustc_abi::TargetDataLayout {
         self.tcx.data_layout()
     }
