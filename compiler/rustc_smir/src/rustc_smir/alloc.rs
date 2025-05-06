@@ -8,19 +8,28 @@ use rustc_abi::{Size, TyAndLayout};
 use rustc_middle::mir::interpret::{
     AllocId, AllocInit, AllocRange, Allocation, ConstAllocation, Pointer, Scalar, alloc_range,
 };
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{Ty, layout};
 
-use crate::rustc_smir::{Bridge, SmirError, Tables};
+use super::SmirCtxt;
+use crate::rustc_smir::{Bridge, SmirError};
+
+pub fn create_ty_and_layout<'tcx, B: Bridge>(
+    cx: &SmirCtxt<'tcx, B>,
+    ty: Ty<'tcx>,
+) -> Result<TyAndLayout<'tcx, Ty<'tcx>>, &'tcx layout::LayoutError<'tcx>> {
+    use crate::rustc_smir::context::SmirTypingEnv;
+    cx.tcx.layout_of(cx.fully_monomorphized().as_query_input(ty))
+}
 
 pub fn try_new_scalar<'tcx, B: Bridge>(
     layout: TyAndLayout<'tcx, Ty<'tcx>>,
     scalar: Scalar,
-    tables: &mut Tables<'tcx, B>,
+    cx: &SmirCtxt<'tcx, B>,
 ) -> Result<Allocation, B::Error> {
     let size = scalar.size();
     let mut allocation = Allocation::new(size, layout.align.abi, AllocInit::Uninit, ());
     allocation
-        .write_scalar(&tables.tcx, alloc_range(Size::ZERO, size), scalar)
+        .write_scalar(&cx.tcx, alloc_range(Size::ZERO, size), scalar)
         .map_err(|e| B::Error::from_internal(e))?;
 
     Ok(allocation)
@@ -30,24 +39,20 @@ pub fn try_new_slice<'tcx, B: Bridge>(
     layout: TyAndLayout<'tcx, Ty<'tcx>>,
     data: ConstAllocation<'tcx>,
     meta: u64,
-    tables: &mut Tables<'tcx, B>,
+    cx: &SmirCtxt<'tcx, B>,
 ) -> Result<Allocation, B::Error> {
-    let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
+    let alloc_id = cx.tcx.reserve_and_set_memory_alloc(data);
     let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
     let scalar_ptr = Scalar::from_pointer(ptr, &tables.tcx);
     let scalar_meta: Scalar = Scalar::from_target_usize(meta, &tables.tcx);
     let mut allocation = Allocation::new(layout.size, layout.align.abi, AllocInit::Uninit, ());
     allocation
-        .write_scalar(
-            &tables.tcx,
-            alloc_range(Size::ZERO, tables.tcx.data_layout.pointer_size),
-            scalar_ptr,
-        )
+        .write_scalar(&cx.tcx, alloc_range(Size::ZERO, cx.tcx.data_layout.pointer_size), scalar_ptr)
         .map_err(|e| B::Error::from_internal(e))?;
     allocation
         .write_scalar(
-            &tables.tcx,
-            alloc_range(tables.tcx.data_layout.pointer_size, scalar_meta.size()),
+            &cx.tcx,
+            alloc_range(cx.tcx.data_layout.pointer_size, scalar_meta.size()),
             scalar_meta,
         )
         .map_err(|e| B::Error::from_internal(e))?;
@@ -57,9 +62,9 @@ pub fn try_new_slice<'tcx, B: Bridge>(
 
 pub fn try_new_indirect<'tcx, B: Bridge>(
     alloc_id: AllocId,
-    tables: &mut Tables<'tcx, B>,
+    cx: &SmirCtxt<'tcx, B>,
 ) -> ConstAllocation<'tcx> {
-    let alloc = tables.tcx.global_alloc(alloc_id).unwrap_memory();
+    let alloc = cx.tcx.global_alloc(alloc_id).unwrap_memory();
 
     alloc
 }
