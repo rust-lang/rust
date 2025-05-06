@@ -23,8 +23,8 @@ warning: `extern` block uses type `(usize) is 1..`, which is not FFI-safe
 LL |             fn pt_non_zero_usize() -> pattern_type!(usize is 1..);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = help: consider using the base type instead
-   = note: integers constrained to a given range cannot have their value be provided by non-rust code
+   = help: consider using the base type instead, or wrapping `(usize) is 1..` in an `Option<_>`
+   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
 
 warning: `extern` block uses type `Option<(usize) is 0..>`, which is not FFI-safe
   --> $DIR/clashing-extern-fn.rs:503:54
@@ -41,8 +41,8 @@ warning: `extern` block uses type `(usize) is 1..`, which is not FFI-safe
 LL |             fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
    |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = help: consider using the base type instead
-   = note: integers constrained to a given range cannot have their value be provided by non-rust code
+   = help: consider using the base type instead, or wrapping `(usize) is 1..` in an `Option<_>`
+   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
 
 warning: `extern` block uses type `NonZeroUsize`, which is not FFI-safe
   --> $DIR/clashing-extern-fn.rs:507:47
@@ -56,8 +56,8 @@ note: the type is defined here
    |
 LL |         struct NonZeroUsize(pattern_type!(usize is 1..));
    |         ^^^^^^^^^^^^^^^^^^^
-   = help: consider using the base type instead
-   = note: integers constrained to a given range cannot have their value be provided by non-rust code
+   = help: consider using the base type instead, or wrapping `(usize) is 1..` in an `Option<_>`
+   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
 
 warning: `clash` redeclared with a different signature
   --> $DIR/clashing-extern-fn.rs:13:13

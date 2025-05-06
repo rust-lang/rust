@@ -677,6 +677,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiResult::new_with_reason(ty, fluent::lint_improper_ctypes_128bit, None)
             }
             ty::Int(..) | ty::Uint(..) | ty::Float(..) => FfiResult::FfiSafe,
+
+            ty::Char => FfiResult::new_with_reason(
+                ty,
+                fluent::lint_improper_ctypes_char_reason,
+                Some(fluent::lint_improper_ctypes_char_help),
+            ),
             _ => bug!("visit_numeric is to be called with numeric (int, float) types"),
         }
     }
@@ -1077,7 +1083,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             && def.repr().int.is_none()
         {
             // Special-case types like `Option<extern fn()>` and `Result<extern fn(), ()>`
-            if let Some(inner_ty) = repr_nullable_ptr(self.cx.tcx, self.cx.typing_env(), ty) {
+            if let Some(inner_ty) = repr_nullable_ptr(
+                self.cx.tcx,
+                self.cx.typing_env(),
+                ty,
+                state.value_may_be_unchecked(),
+            ) {
                 return self.visit_type(state, Some(ty), inner_ty);
             }
 
@@ -1198,37 +1209,60 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
             }
 
-            ty::Char => FfiResult::new_with_reason(
-                ty,
-                fluent::lint_improper_ctypes_char_reason,
-                Some(fluent::lint_improper_ctypes_char_help),
-            ),
-
-            ty::Pat(pat_ty, _) => {
-                if state.value_may_be_unchecked() {
-                    // you would think that int-range pattern types that exclude 0 would have Option layout optimisation
-                    // they don't (see tests/ui/type/pattern_types/range_patterns.stderr)
-                    // so there's no need to allow Option<pattern_type!(u32 in 1..)>.
-                    debug_assert!(matches!(
-                        pat_ty.kind(),
-                        ty::Int(..) | ty::Uint(..) | ty::Float(..)
-                    ));
-                    FfiResult::new_with_reason(
-                        ty,
-                        fluent::lint_improper_ctypes_pat_intrange_reason,
-                        Some(fluent::lint_improper_ctypes_pat_intrange_help),
-                    )
-                } else if let ty::Int(_) | ty::Uint(_) = pat_ty.kind() {
-                    self.visit_numeric(pat_ty)
-                } else {
+            ty::Pat(pat_ty, pat) => {
+                #[cfg(debug_assertions)]
+                if !matches!(pat_ty.kind(), ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Char) {
                     bug!(
                         "this lint was written when pattern types could only be integers constrained to ranges"
                     )
                 }
+
+                let mut ffires = self.visit_numeric(pat_ty);
+                if state.value_may_be_unchecked() {
+                    // if the pattern type's value can come from non-rust code,
+                    // ensure all values of `pat_ty` are accounted for
+
+                    if matches!(
+                        outer_ty.map(|outer_ty| super::is_outer_optionlike_around_ty(
+                            self.cx, outer_ty, ty
+                        )),
+                        Some(true)
+                    ) {
+                        // if this is the case, then super::get_pat_disallowed_value_count has been called already
+                        // for the optionlike wrapper, and had returned 2 or more disallowed values
+                        debug_assert!(
+                            matches!(super::get_pat_disallowed_value_count(pat), Some(i) if i != 1)
+                        );
+                        ffires += FfiResult::new_with_reason(
+                            ty,
+                            fluent::lint_improper_ctypes_pat_int2_reason,
+                            Some(fluent::lint_improper_ctypes_pat_int2_help),
+                        );
+                    } else {
+                        match super::get_pat_disallowed_value_count(pat) {
+                            None => {}
+                            Some(1) => {
+                                ffires += FfiResult::new_with_reason(
+                                    ty,
+                                    fluent::lint_improper_ctypes_pat_int1_reason,
+                                    Some(fluent::lint_improper_ctypes_pat_int1_help),
+                                );
+                            }
+                            Some(_) => {
+                                ffires += FfiResult::new_with_reason(
+                                    ty,
+                                    fluent::lint_improper_ctypes_pat_int2_reason,
+                                    Some(fluent::lint_improper_ctypes_pat_int2_help),
+                                );
+                            }
+                        }
+                    }
+                }
+                ffires
             }
 
             // types which likely have a stable representation, depending on the target architecture
-            ty::Int(..) | ty::Uint(..) | ty::Float(..) => self.visit_numeric(ty),
+            ty::Char | ty::Int(..) | ty::Uint(..) | ty::Float(..) => self.visit_numeric(ty),
 
             // Primitive types with a stable representation.
             ty::Bool => FfiSafe,
@@ -1351,17 +1385,17 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     FfiSafe
                 };
 
-                if state.value_may_be_unchecked()
-                    && outer_ty
-                        .map(|outer_ty| super::is_outer_optionlike_around_ty(self.cx, outer_ty, ty))
-                        == Some(true)
-                {
-                    inherent_safety
-                        + FfiResult::new_with_reason(
-                            ty,
-                            fluent::lint_improper_ctypes_ptr_validity_reason,
-                            Some(fluent::lint_improper_ctypes_ptr_validity_help),
-                        )
+                if let (Some(outer_ty), true) = (outer_ty, state.value_may_be_unchecked()) {
+                    if !super::is_outer_optionlike_around_ty(self.cx, outer_ty, ty) {
+                        inherent_safety
+                            + FfiResult::new_with_reason(
+                                ty,
+                                fluent::lint_improper_ctypes_ptr_validity_reason,
+                                Some(fluent::lint_improper_ctypes_ptr_validity_help),
+                            )
+                    } else {
+                        inherent_safety
+                    }
                 } else {
                     inherent_safety
                 }
