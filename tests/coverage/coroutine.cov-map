@@ -1,7 +1,7 @@
 Function name: coroutine::get_u32
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 0b, 01, 01, 0b, 05, 02, 09, 00, 0e, 02, 02, 09, 00, 28, 01, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/coroutine.rs
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 4
@@ -15,7 +15,7 @@ Highest counter ID seen: c1
 Function name: coroutine::main
 Raw bytes (53): 0x[01, 01, 02, 01, 05, 05, 09, 09, 01, 13, 01, 02, 16, 01, 08, 0b, 00, 2d, 05, 01, 2b, 00, 2d, 02, 01, 0e, 00, 14, 05, 02, 0b, 00, 2e, 0d, 01, 22, 00, 27, 09, 00, 2c, 00, 2e, 06, 01, 0e, 00, 14, 09, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/coroutine.rs
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Counter(2)
@@ -36,7 +36,7 @@ Highest counter ID seen: c3
 Function name: coroutine::main::{closure#0}
 Raw bytes (14): 0x[01, 01, 00, 02, 01, 16, 08, 01, 1f, 05, 02, 10, 01, 06]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/coroutine.rs
 Number of expressions: 0
 Number of file 0 mappings: 2
 - Code(Counter(0)) at (prev + 22, 8) to (start + 1, 31)

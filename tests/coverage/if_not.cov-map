@@ -1,7 +1,7 @@
 Function name: if_not::if_not
 Raw bytes (60): 0x[01, 01, 03, 01, 05, 01, 09, 01, 0d, 0a, 01, 05, 01, 03, 0d, 02, 04, 05, 02, 06, 05, 02, 05, 00, 06, 01, 03, 09, 01, 0d, 06, 02, 05, 02, 06, 09, 02, 05, 00, 06, 01, 03, 09, 01, 0d, 0a, 02, 05, 02, 06, 0d, 02, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/if_not.rs
 Number of expressions: 3
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(0), rhs = Counter(2)

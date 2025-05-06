@@ -1,7 +1,7 @@
 Function name: unicode::main
 Raw bytes (53): 0x[01, 01, 02, 05, 01, 01, 0d, 09, 01, 0e, 01, 00, 0b, 02, 01, 09, 00, 0c, 05, 00, 10, 00, 1b, 02, 00, 1c, 00, 28, 01, 02, 08, 00, 23, 09, 00, 29, 00, 44, 0d, 00, 47, 02, 06, 06, 02, 05, 00, 06, 01, 02, 05, 01, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unicode.rs
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(1), rhs = Counter(0)
 - expression 1 operands: lhs = Counter(0), rhs = Counter(3)
@@ -23,7 +23,7 @@ Highest counter ID seen: c3
 Function name: unicode::他 (unused)
 Raw bytes (9): 0x[01, 01, 00, 01, 00, 1e, 19, 00, 25]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unicode.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Zero) at (prev + 30, 25) to (start + 0, 37)
@@ -32,7 +32,7 @@ Highest counter ID seen: (none)
 Function name: unicode::申し訳ございません
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 18, 01, 02, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/unicode.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 24, 1) to (start + 2, 2)

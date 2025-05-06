@@ -736,6 +736,61 @@ pub(crate) struct FoundExprWouldBeStmt {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_frontmatter_extra_characters_after_close)]
+pub(crate) struct FrontmatterExtraCharactersAfterClose {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_invalid_infostring)]
+#[note]
+pub(crate) struct FrontmatterInvalidInfostring {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_invalid_opening_preceding_whitespace)]
+pub(crate) struct FrontmatterInvalidOpeningPrecedingWhitespace {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_unclosed)]
+pub(crate) struct FrontmatterUnclosed {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_invalid_close_preceding_whitespace)]
+pub(crate) struct FrontmatterInvalidClosingPrecedingWhitespace {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub note_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_frontmatter_length_mismatch)]
+pub(crate) struct FrontmatterLengthMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[label(parse_label_opening)]
+    pub opening: Span,
+    #[label(parse_label_close)]
+    pub close: Span,
+    pub len_opening: usize,
+    pub len_close: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_leading_plus_not_supported)]
 pub(crate) struct LeadingPlusNotSupported {
     #[primary_span]

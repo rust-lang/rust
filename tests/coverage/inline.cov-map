@@ -1,7 +1,7 @@
 Function name: inline::display::<char>
 Raw bytes (31): 0x[01, 01, 01, 05, 01, 05, 01, 29, 01, 00, 22, 02, 01, 09, 00, 0a, 05, 00, 0e, 00, 10, 02, 00, 11, 02, 06, 01, 03, 05, 01, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inline.rs
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(1), rhs = Counter(0)
 Number of file 0 mappings: 5
@@ -17,7 +17,7 @@ Highest counter ID seen: c1
 Function name: inline::error
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 31, 01, 01, 0b]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inline.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 49, 1) to (start + 1, 11)
@@ -26,7 +26,7 @@ Highest counter ID seen: c0
 Function name: inline::length::<char>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 1e, 01, 02, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inline.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 30, 1) to (start + 2, 2)
@@ -35,7 +35,7 @@ Highest counter ID seen: c0
 Function name: inline::main
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 05, 01, 02, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inline.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 5, 1) to (start + 2, 2)
@@ -44,7 +44,7 @@ Highest counter ID seen: c0
 Function name: inline::permutate::<char>
 Raw bytes (54): 0x[01, 01, 05, 01, 05, 0d, 09, 0d, 09, 01, 13, 05, 09, 08, 01, 0f, 01, 02, 0e, 05, 02, 0f, 02, 06, 02, 02, 0f, 00, 14, 0a, 01, 0d, 00, 0e, 09, 00, 12, 00, 16, 0a, 00, 17, 04, 0a, 0e, 05, 0c, 02, 06, 01, 03, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inline.rs
 Number of expressions: 5
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(3), rhs = Counter(2)
@@ -69,7 +69,7 @@ Highest counter ID seen: c2
 Function name: inline::permutations::<char>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 0a, 01, 03, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inline.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 10, 1) to (start + 3, 2)
@@ -78,7 +78,7 @@ Highest counter ID seen: c0
 Function name: inline::swap::<char>
 Raw bytes (9): 0x[01, 01, 00, 01, 01, 23, 01, 04, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/inline.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 35, 1) to (start + 4, 2)

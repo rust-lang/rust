@@ -1,5 +1,6 @@
 use r_efi::protocols::{simple_text_input, simple_text_output};
 
+use super::env::{CommandEnv, CommandEnvs};
 use crate::collections::BTreeMap;
 pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
@@ -10,7 +11,6 @@ use crate::sys::pal::helpers;
 use crate::sys::pal::os::error_string;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::{fmt, io};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,72 +139,72 @@ impl Command {
             Stdio::MakePipe => unsupported(),
         }
     }
+}
 
-    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
-        let mut cmd = uefi_command_internal::Image::load_image(&self.prog)?;
+pub fn output(command: &mut Command) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    let mut cmd = uefi_command_internal::Image::load_image(&command.prog)?;
 
-        // UEFI adds the bin name by default
-        if !self.args.is_empty() {
-            let args = uefi_command_internal::create_args(&self.prog, &self.args);
-            cmd.set_args(args);
-        }
-
-        // Setup Stdout
-        let stdout = self.stdout.unwrap_or(Stdio::MakePipe);
-        let stdout = Self::create_pipe(stdout)?;
-        if let Some(con) = stdout {
-            cmd.stdout_init(con)
-        } else {
-            cmd.stdout_inherit()
-        };
-
-        // Setup Stderr
-        let stderr = self.stderr.unwrap_or(Stdio::MakePipe);
-        let stderr = Self::create_pipe(stderr)?;
-        if let Some(con) = stderr {
-            cmd.stderr_init(con)
-        } else {
-            cmd.stderr_inherit()
-        };
-
-        // Setup Stdin
-        let stdin = self.stdin.unwrap_or(Stdio::Null);
-        let stdin = Self::create_stdin(stdin)?;
-        if let Some(con) = stdin {
-            cmd.stdin_init(con)
-        } else {
-            cmd.stdin_inherit()
-        };
-
-        let env = env_changes(&self.env);
-
-        // Set any new vars
-        if let Some(e) = &env {
-            for (k, (_, v)) in e {
-                match v {
-                    Some(v) => unsafe { crate::env::set_var(k, v) },
-                    None => unsafe { crate::env::remove_var(k) },
-                }
-            }
-        }
-
-        let stat = cmd.start_image()?;
-
-        // Rollback any env changes
-        if let Some(e) = env {
-            for (k, (v, _)) in e {
-                match v {
-                    Some(v) => unsafe { crate::env::set_var(k, v) },
-                    None => unsafe { crate::env::remove_var(k) },
-                }
-            }
-        }
-
-        let stdout = cmd.stdout()?;
-        let stderr = cmd.stderr()?;
-
-        Ok((ExitStatus(stat), stdout, stderr))
+    // UEFI adds the bin name by default
+    if !command.args.is_empty() {
+        let args = uefi_command_internal::create_args(&command.prog, &command.args);
+        cmd.set_args(args);
     }
+
+    // Setup Stdout
+    let stdout = command.stdout.unwrap_or(Stdio::MakePipe);
+    let stdout = Command::create_pipe(stdout)?;
+    if let Some(con) = stdout {
+        cmd.stdout_init(con)
+    } else {
+        cmd.stdout_inherit()
+    };
+
+    // Setup Stderr
+    let stderr = command.stderr.unwrap_or(Stdio::MakePipe);
+    let stderr = Command::create_pipe(stderr)?;
+    if let Some(con) = stderr {
+        cmd.stderr_init(con)
+    } else {
+        cmd.stderr_inherit()
+    };
+
+    // Setup Stdin
+    let stdin = command.stdin.unwrap_or(Stdio::Null);
+    let stdin = Command::create_stdin(stdin)?;
+    if let Some(con) = stdin {
+        cmd.stdin_init(con)
+    } else {
+        cmd.stdin_inherit()
+    };
+
+    let env = env_changes(&command.env);
+
+    // Set any new vars
+    if let Some(e) = &env {
+        for (k, (_, v)) in e {
+            match v {
+                Some(v) => unsafe { crate::env::set_var(k, v) },
+                None => unsafe { crate::env::remove_var(k) },
+            }
+        }
+    }
+
+    let stat = cmd.start_image()?;
+
+    // Rollback any env changes
+    if let Some(e) = env {
+        for (k, (v, _)) in e {
+            match v {
+                Some(v) => unsafe { crate::env::set_var(k, v) },
+                None => unsafe { crate::env::remove_var(k) },
+            }
+        }
+    }
+
+    let stdout = cmd.stdout()?;
+    let stderr = cmd.stderr()?;
+
+    Ok((ExitStatus(stat), stdout, stderr))
 }
 
 impl From<AnonPipe> for Stdio {

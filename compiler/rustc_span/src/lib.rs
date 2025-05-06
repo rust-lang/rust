@@ -224,7 +224,7 @@ pub fn with_metavar_spans<R>(f: impl FnOnce(&MetavarSpansMap) -> R) -> R {
 
 // FIXME: We should use this enum or something like it to get rid of the
 // use of magic `/rust/1.x/...` paths across the board.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable, Encodable)]
 pub enum RealFileName {
     LocalPath(PathBuf),
     /// For remapped paths (namely paths into libstd that have been mapped
@@ -247,28 +247,6 @@ impl Hash for RealFileName {
         // virtualized paths to sysroot crates (/rust/$hash or /rust/$version)
         // remain stable even if the corresponding local_path changes
         self.remapped_path_if_available().hash(state)
-    }
-}
-
-// This is functionally identical to #[derive(Encodable)], with the exception of
-// an added assert statement
-impl<S: Encoder> Encodable<S> for RealFileName {
-    fn encode(&self, encoder: &mut S) {
-        match *self {
-            RealFileName::LocalPath(ref local_path) => {
-                encoder.emit_u8(0);
-                local_path.encode(encoder);
-            }
-
-            RealFileName::Remapped { ref local_path, ref virtual_name } => {
-                encoder.emit_u8(1);
-                // For privacy and build reproducibility, we must not embed host-dependant path
-                // in artifacts if they have been remapped by --remap-path-prefix
-                assert!(local_path.is_none());
-                local_path.encode(encoder);
-                virtual_name.encode(encoder);
-            }
-        }
     }
 }
 
@@ -366,6 +344,16 @@ impl From<PathBuf> for FileName {
     fn from(p: PathBuf) -> Self {
         FileName::Real(RealFileName::LocalPath(p))
     }
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub enum FileNameEmbeddablePreference {
+    /// If a remapped path is available, only embed the `virtual_path` and omit the `local_path`.
+    ///
+    /// Otherwise embed the local-path into the `virtual_path`.
+    RemappedOnly,
+    /// Embed the original path as well as its remapped `virtual_path` component if available.
+    LocalAndRemapped,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]

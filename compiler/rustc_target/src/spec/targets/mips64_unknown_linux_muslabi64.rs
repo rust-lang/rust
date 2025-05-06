@@ -25,6 +25,7 @@ pub(crate) fn target() -> Target {
             mcount: "_mcount".into(),
             // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
             crt_static_default: true,
+            llvm_abiname: "n64".into(),
             ..base
         },
     }
