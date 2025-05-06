@@ -108,10 +108,9 @@ pub fn resolve_doc_path_on(
     def: impl HasAttrs + Copy,
     link: &str,
     ns: Option<Namespace>,
+    is_inner_doc: bool,
 ) -> Option<DocLinkDef> {
-    let is_inner =
-        def.attrs(db).by_key(&intern::sym::doc).attrs().all(|attr| attr.id.is_inner_attr());
-    resolve_doc_path_on_(db, link, def.attr_id(), ns, is_inner)
+    resolve_doc_path_on_(db, link, def.attr_id(), ns, is_inner_doc)
 }
 
 fn resolve_doc_path_on_(
@@ -119,11 +118,11 @@ fn resolve_doc_path_on_(
     link: &str,
     attr_id: AttrDefId,
     ns: Option<Namespace>,
-    is_inner: bool,
+    is_inner_doc: bool,
 ) -> Option<DocLinkDef> {
     let resolver = match attr_id {
         AttrDefId::ModuleId(it) => {
-            if is_inner {
+            if is_inner_doc {
                 it.resolver(db)
             } else if let Some(parent) = Module::from(it).parent(db) {
                 parent.id.resolver(db)
