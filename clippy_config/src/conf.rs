@@ -675,6 +675,9 @@ define_Conf! {
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
     #[lints(min_ident_chars)]
     min_ident_chars_threshold: u64 = 1,
+    /// Whether to allow fields starting with an underscore to skip documentation requirements
+    #[lints(missing_docs_in_private_items)]
+    missing_docs_allow_unused: bool = false,
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
     #[lints(missing_docs_in_private_items)]

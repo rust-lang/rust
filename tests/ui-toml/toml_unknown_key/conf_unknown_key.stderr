@@ -57,6 +57,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            max-suggested-slice-pattern-length
            max-trait-bounds
            min-ident-chars-threshold
+           missing-docs-allow-unused
            missing-docs-in-crate-items
            module-item-order-groupings
            module-items-ordered-within-groupings
@@ -149,6 +150,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            max-suggested-slice-pattern-length
            max-trait-bounds
            min-ident-chars-threshold
+           missing-docs-allow-unused
            missing-docs-in-crate-items
            module-item-order-groupings
            module-items-ordered-within-groupings
@@ -241,6 +243,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            max-suggested-slice-pattern-length
            max-trait-bounds
            min-ident-chars-threshold
+           missing-docs-allow-unused
            missing-docs-in-crate-items
            module-item-order-groupings
            module-items-ordered-within-groupings
