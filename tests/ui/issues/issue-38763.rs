@@ -2,7 +2,6 @@
 //@ needs-threads
 
 #[repr(C)]
-#[allow(improper_ctype_definitions)]
 pub struct Foo(i128);
 
 #[no_mangle]

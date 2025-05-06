@@ -14,7 +14,7 @@ LL | pub struct A {
 note: the lint level is defined here
   --> $DIR/lint-73249-5.rs:2:9
    |
-LL | #![deny(improper_ctypes, improper_ctype_definitions)]
+LL | #![deny(improper_ctypes)]
    |         ^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error

@@ -8,7 +8,7 @@ pub struct SafeStruct (pub i32);
 pub struct UnsafeStruct (pub String);
 
 #[repr(C)]
-#[allow(improper_ctype_definitions)]
+//#[allow(improper_ctype_definitions)]
 pub struct AllowedUnsafeStruct (pub String);
 
 // refs are only unsafe if the value comes from the other side of the FFI boundary
@@ -19,7 +19,7 @@ pub struct AllowedUnsafeStruct (pub String);
 pub struct UnsafeFromForeignStruct<'a> (pub &'a u32);
 
 #[repr(C)]
-#[allow(improper_ctype_definitions)]
+//#[allow(improper_ctype_definitions)]
 pub struct AllowedUnsafeFromForeignStruct<'a> (pub &'a u32);
 
 

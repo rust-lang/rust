@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-#![deny(improper_ctypes, improper_c_fn_definitions, improper_ctype_definitions)]
+#![deny(improper_ctypes, improper_c_fn_definitions)]
 #![deny(improper_c_callbacks)]
 
 pub fn bad(f: extern "C" fn([u8])) {}

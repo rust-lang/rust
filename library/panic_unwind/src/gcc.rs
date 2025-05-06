@@ -52,8 +52,6 @@ static CANARY: u8 = 0;
 // The first two field must be `_Unwind_Exception` and `canary`,
 // as it may be accessed by a different version of the std with a different compiler.
 #[repr(C)]
-#[allow(unknown_lints, renamed_and_removed_lints, improper_ctypes_definitions)] // FIXME delete line once improper_c_fn_definitions exists upstream
-#[allow(improper_ctype_definitions)] // Boxed dyn is a fat pointer
 struct Exception {
     _uwe: uw::_Unwind_Exception,
     canary: *const u8,
