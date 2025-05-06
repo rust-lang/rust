@@ -109,6 +109,10 @@ enum EnvironmentCmd {
         #[clap(flatten)]
         shared: SharedArgs,
     },
+    MacCi {
+        #[clap(flatten)]
+        shared: SharedArgs,
+    }
 }
 
 /// For a fast try build, we want to only build the bare minimum of components to get a
@@ -197,6 +201,26 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
 
             (env, shared.build_args)
         }
+        EnvironmentCmd::MacCi { shared } => {
+            let target_triple =
+                std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
+
+            let checkout_dir: Utf8PathBuf = std::env::current_dir()?.try_into()?;
+            let env = EnvironmentBuilder::default()
+                .host_tuple(target_triple)
+                .python_binary("python3".to_string())
+                .checkout_dir(checkout_dir.clone())
+                .host_llvm_dir("/opt/homebrew/Cellar/llvm/20.1.2".into())
+                .artifact_dir(checkout_dir.join("opt-artifacts"))
+                .build_dir(checkout_dir)
+                .shared_llvm(false)
+                .use_bolt(false)
+                .run_tests(false)
+                .skipped_tests(vec![])
+                .build()?;
+
+            (env, shared.build_args)
+        }
     };
     Ok((env, args))
 }
@@ -256,6 +280,9 @@ fn execute_pipeline(
     // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = timer.section("Stage 2 (LLVM PGO)", |stage| {
+        if 1 + 1 == 2 {
+            return Err(anyhow::anyhow!("disabled"));
+        }
         // Remove the previous, uninstrumented build of LLVM.
         clear_llvm_files(env)?;
 
@@ -278,7 +305,7 @@ fn execute_pipeline(
         clear_llvm_files(env)?;
 
         Ok(profile)
-    })?;
+    });
 
     let bolt_profiles = if env.use_bolt() {
         // Stage 3: Build BOLT instrumented LLVM
@@ -290,7 +317,7 @@ fn execute_pipeline(
             stage.section("Build PGO optimized LLVM", |stage| {
                 Bootstrap::build(env)
                     .with_llvm_bolt_ldflags()
-                    .llvm_pgo_optimize(&llvm_pgo_profile)
+                    .llvm_pgo_optimize(&llvm_pgo_profile?)
                     .avoid_rustc_rebuild()
                     .run(stage)
             })?;
@@ -342,7 +369,6 @@ fn execute_pipeline(
     };
 
     let mut dist = Bootstrap::dist(env, &dist_args)
-        .llvm_pgo_optimize(&llvm_pgo_profile)
         .rustc_pgo_optimize(&rustc_pgo_profile)
         .avoid_rustc_rebuild();
 

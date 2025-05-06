@@ -1388,12 +1388,19 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     // found. This is to avoid the linker errors about undefined references to
     // `__llvm_profile_instrument_memop` when linking `rustc_driver`.
     let mut llvm_linker_flags = String::new();
-    if builder.config.llvm_profile_generate && target.is_msvc() {
-        if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
-            // Add clang's runtime library directory to the search path
-            let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
-            llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
+    if builder.config.llvm_profile_generate {
+        if target.is_msvc() {
+            if let Some(ref clang_cl_path) = builder.config.llvm_clang_cl {
+                // Add clang's runtime library directory to the search path
+                let clang_rt_dir = get_clang_cl_resource_dir(builder, clang_cl_path);
+                llvm_linker_flags.push_str(&format!("-L{}", clang_rt_dir.display()));
+            }
+        } else  {
+
+            llvm_linker_flags.push_str("-L/opt/homebrew/Cellar/llvm/20.1.2/lib/clang/20/lib/darwin/lib -lclang_rt.profile_osx");
+
         }
+
     }
 
     // The config can also specify its own llvm linker flags.
