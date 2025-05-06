@@ -1,7 +1,7 @@
 Function name: <issue_84561::Foo as core::fmt::Debug>::fmt
 Raw bytes (27): 0x[01, 01, 01, 01, 05, 04, 01, 8a, 01, 05, 01, 24, 05, 01, 25, 00, 26, 02, 01, 09, 00, 0f, 01, 01, 05, 00, 06]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/issue-84561.rs
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 4
@@ -15,7 +15,7 @@ Highest counter ID seen: c1
 Function name: issue_84561::main
 Raw bytes (10): 0x[01, 01, 00, 01, 01, b4, 01, 01, 04, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/issue-84561.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 180, 1) to (start + 4, 2)
@@ -24,7 +24,7 @@ Highest counter ID seen: c0
 Function name: issue_84561::test1
 Raw bytes (50): 0x[01, 01, 00, 09, 01, 9a, 01, 01, 01, 0b, 05, 01, 0c, 00, 1e, 01, 01, 05, 00, 0b, 09, 00, 0c, 00, 1e, 01, 01, 0d, 01, 0b, 0d, 01, 0c, 00, 1e, 01, 01, 05, 03, 0b, 11, 03, 0c, 00, 1e, 01, 01, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/issue-84561.rs
 Number of expressions: 0
 Number of file 0 mappings: 9
 - Code(Counter(0)) at (prev + 154, 1) to (start + 1, 11)
@@ -41,7 +41,7 @@ Highest counter ID seen: c4
 Function name: issue_84561::test2
 Raw bytes (20): 0x[01, 01, 00, 03, 01, b0, 01, 01, 01, 10, 05, 01, 11, 00, 23, 01, 01, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/issue-84561.rs
 Number of expressions: 0
 Number of file 0 mappings: 3
 - Code(Counter(0)) at (prev + 176, 1) to (start + 1, 16)
@@ -52,7 +52,7 @@ Highest counter ID seen: c1
 Function name: issue_84561::test2::call_print
 Raw bytes (10): 0x[01, 01, 00, 01, 01, a7, 01, 09, 02, 0a]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/issue-84561.rs
 Number of expressions: 0
 Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 167, 9) to (start + 2, 10)
@@ -61,7 +61,7 @@ Highest counter ID seen: c0
 Function name: issue_84561::test3
 Raw bytes (279): 0x[01, 01, 0a, 0d, 11, 0d, 15, 0d, 19, 1d, 21, 29, 2d, 25, 29, 25, 29, 25, 29, 27, 31, 29, 2d, 33, 01, 08, 01, 03, 0f, 05, 04, 09, 01, 0f, 09, 02, 05, 04, 0f, 09, 05, 05, 00, 0f, 09, 01, 05, 00, 0f, 09, 01, 09, 01, 0f, 0d, 02, 05, 00, 0f, 0d, 01, 05, 00, 0f, 00, 00, 20, 00, 30, 0d, 01, 05, 03, 0f, 00, 03, 20, 00, 30, 00, 00, 33, 00, 41, 00, 00, 4b, 00, 5a, 0d, 01, 05, 00, 0f, 00, 05, 09, 03, 10, 00, 05, 0d, 00, 1b, 00, 02, 0d, 00, 1c, 0d, 04, 09, 02, 0f, 0d, 06, 05, 00, 0f, 0d, 04, 05, 00, 0f, 0d, 04, 09, 01, 0f, 0d, 05, 08, 00, 0f, 11, 01, 09, 00, 13, 02, 05, 09, 00, 13, 0d, 05, 08, 00, 0f, 15, 01, 09, 00, 13, 00, 03, 0d, 00, 1d, 06, 03, 09, 00, 13, 00, 03, 0d, 00, 1d, 0d, 03, 05, 00, 0f, 0d, 01, 0c, 00, 13, 19, 01, 0d, 00, 13, 0a, 02, 0d, 00, 13, 1d, 04, 05, 02, 13, 21, 03, 0d, 00, 13, 0e, 02, 0d, 00, 13, 27, 03, 05, 00, 0f, 25, 01, 0c, 00, 13, 29, 01, 0d, 00, 17, 29, 04, 0d, 00, 13, 1e, 02, 0d, 00, 17, 1e, 01, 14, 00, 1b, 00, 01, 15, 00, 1b, 1e, 02, 15, 00, 1b, 2d, 04, 0d, 00, 13, 22, 03, 09, 00, 19, 31, 02, 05, 00, 0f, 31, 03, 09, 00, 22, 00, 02, 05, 00, 0f, 00, 03, 09, 00, 2c, 00, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/issue-84561.rs
 Number of expressions: 10
 - expression 0 operands: lhs = Counter(3), rhs = Counter(4)
 - expression 1 operands: lhs = Counter(3), rhs = Counter(5)

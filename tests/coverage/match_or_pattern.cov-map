@@ -1,7 +1,7 @@
 Function name: match_or_pattern::main
 Raw bytes (145): 0x[01, 01, 08, 01, 05, 01, 09, 01, 0d, 01, 11, 01, 15, 01, 19, 01, 1d, 01, 21, 19, 01, 01, 01, 08, 0f, 05, 08, 10, 03, 06, 02, 03, 05, 00, 06, 01, 01, 0b, 00, 11, 06, 03, 1b, 00, 1d, 09, 01, 0e, 00, 10, 01, 02, 08, 00, 0f, 0d, 00, 10, 03, 06, 0a, 03, 05, 00, 06, 01, 01, 0b, 00, 11, 0e, 01, 1b, 00, 1d, 11, 01, 0e, 00, 10, 01, 02, 08, 00, 0f, 15, 00, 10, 03, 06, 12, 03, 05, 00, 06, 01, 01, 0b, 00, 11, 16, 01, 1b, 00, 1d, 19, 01, 0e, 00, 10, 01, 02, 08, 00, 0f, 1d, 00, 10, 03, 06, 1a, 03, 05, 00, 06, 01, 01, 0b, 00, 11, 1e, 01, 1b, 00, 1d, 21, 01, 0e, 00, 10, 01, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/match_or_pattern.rs
 Number of expressions: 8
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(0), rhs = Counter(2)

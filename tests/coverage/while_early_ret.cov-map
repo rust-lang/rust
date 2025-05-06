@@ -1,7 +1,7 @@
 Function name: while_early_ret::main
 Raw bytes (63): 0x[01, 01, 07, 0f, 05, 01, 09, 0f, 13, 01, 09, 05, 0d, 05, 01, 05, 09, 09, 01, 05, 01, 01, 1b, 05, 03, 09, 02, 0a, 09, 05, 0d, 02, 0e, 02, 06, 15, 02, 16, 0d, 04, 15, 00, 1b, 0a, 04, 15, 00, 1b, 16, 03, 0a, 03, 0a, 1a, 06, 05, 00, 0b, 01, 01, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/while_early_ret.rs
 Number of expressions: 7
 - expression 0 operands: lhs = Expression(3, Add), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(0), rhs = Counter(2)

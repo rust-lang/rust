@@ -1,9 +1,5 @@
 use super::unescape_llvm_string_contents;
 
-// WARNING: These tests don't necessarily run in CI, and were mainly used to
-// help track down problems when originally developing this tool.
-// (The tool is still tested indirectly by snapshot tests that rely on it.)
-
 // Tests for `unescape_llvm_string_contents`:
 
 #[test]

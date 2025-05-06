@@ -1,7 +1,7 @@
 Function name: nested_loops::main
 Raw bytes (97): 0x[01, 01, 0e, 07, 2f, 05, 11, 01, 0d, 2f, 05, 01, 0d, 27, 05, 01, 09, 33, 27, 05, 15, 01, 09, 2f, 33, 01, 0d, 05, 15, 05, 01, 0d, 01, 01, 01, 02, 1b, 05, 04, 13, 00, 20, 09, 01, 0d, 01, 18, 0d, 02, 12, 00, 17, 11, 01, 10, 00, 16, 02, 01, 11, 00, 16, 0e, 01, 0e, 03, 16, 15, 04, 11, 01, 1b, 16, 02, 15, 00, 21, 1e, 01, 18, 02, 12, 2a, 03, 0d, 00, 0e, 36, 02, 09, 00, 17, 01, 02, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/nested_loops.rs
 Number of expressions: 14
 - expression 0 operands: lhs = Expression(1, Add), rhs = Expression(11, Add)
 - expression 1 operands: lhs = Counter(1), rhs = Counter(4)
