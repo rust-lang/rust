@@ -364,7 +364,8 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         if !def_id.is_local() {
             let needs_dll_storage_attr = self.use_dll_storage_attrs
-                && !self.tcx.is_foreign_item(def_id)
+                && (!self.tcx.is_foreign_item(def_id)
+                    || fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL))
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
                 && !dso_local
