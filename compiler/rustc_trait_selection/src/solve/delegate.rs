@@ -148,9 +148,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         &self,
         cv_info: CanonicalVarInfo<'tcx>,
         span: Span,
+        var_values: &[ty::GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(span, cv_info, universe_map)
+        self.0.instantiate_canonical_var(span, cv_info, var_values, universe_map)
     }
 
     fn register_hidden_type_in_storage(

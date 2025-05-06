@@ -84,13 +84,12 @@ impl<'tcx> InferCtxt<'tcx> {
         variables: &List<CanonicalVarInfo<'tcx>>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
-        CanonicalVarValues {
-            var_values: self.tcx.mk_args_from_iter(
-                variables
-                    .iter()
-                    .map(|info| self.instantiate_canonical_var(span, info, &universe_map)),
-            ),
+        let mut var_values = Vec::new();
+        for info in variables.iter() {
+            let value = self.instantiate_canonical_var(span, info, &var_values, &universe_map);
+            var_values.push(value);
         }
+        CanonicalVarValues { var_values: self.tcx.mk_args(&var_values) }
     }
 
     /// Given the "info" about a canonical variable, creates a fresh
@@ -105,10 +104,22 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         span: Span,
         cv_info: CanonicalVarInfo<'tcx>,
+        previous_var_values: &[GenericArg<'tcx>],
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> GenericArg<'tcx> {
         match cv_info.kind {
-            CanonicalVarKind::Ty(ui) => self.next_ty_var_in_universe(span, universe_map(ui)).into(),
+            CanonicalVarKind::Ty { universe, sub_root } => {
+                let vid = self.next_ty_var_id_in_universe(span, universe_map(universe));
+                if let Some(prev) = previous_var_values.get(sub_root.as_usize()) {
+                    // We cannot simply assume that previous `var_values` get instantiated
+                    // with inference variables as we may reuse the generic arguments from the
+                    // input which may have gotten constrained after we've canonicalized it.
+                    if let &ty::Infer(ty::TyVar(sub_root)) = prev.expect_ty().kind() {
+                        self.inner.borrow_mut().type_variables().sub(vid, sub_root);
+                    }
+                }
+                Ty::new_var(self.tcx, vid).into()
+            }
             CanonicalVarKind::Int => self.next_int_var().into(),
             CanonicalVarKind::Float => self.next_float_var().into(),
 
