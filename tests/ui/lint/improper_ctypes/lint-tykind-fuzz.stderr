@@ -124,8 +124,8 @@ error: `extern` fn uses type `(u32) is 1..`, which is not FFI-safe
 LL |   nz: pattern_type!(u32 is 1..),
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
    |
-   = help: consider using the base type instead
-   = note: integers constrained to a given range cannot have their value be provided by non-rust code
+   = help: consider using the base type instead, or wrapping `(u32) is 1..` in an `Option<_>`
+   = note: integer-pattern types with one disallowed value and no `Option` wrapping cannot have their value be provided by non-rust code
 
 error: `extern` fn uses type `&StructWithDyn`, which is not FFI-safe
   --> $DIR/lint-tykind-fuzz.rs:149:7
