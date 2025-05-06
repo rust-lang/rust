@@ -49,8 +49,8 @@ impl Iterator for Args {
     }
 
     #[inline]
-    fn last(mut self) -> Option<OsString> {
-        self.iter.next_back()
+    fn last(self) -> Option<OsString> {
+        self.iter.last()
     }
 
     #[inline]
