@@ -1,4 +1,3 @@
-#![feature(let_chains)]
 #![feature(rustc_private)]
 #![warn(
     trivial_casts,

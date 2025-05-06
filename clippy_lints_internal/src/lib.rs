@@ -1,4 +1,4 @@
-#![feature(let_chains, rustc_private)]
+#![feature(rustc_private)]
 #![allow(
     clippy::missing_docs_in_private_items,
     clippy::must_use_candidate,
