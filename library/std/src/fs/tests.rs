@@ -2167,3 +2167,11 @@ fn test_dir_rename_file() {
     check!(f.read_exact(&mut buf));
     assert_eq!(b"bar", &buf);
 }
+
+#[test]
+fn test_dir_create_dir() {
+    let tmpdir = tmpdir();
+    let dir = check!(Dir::new(tmpdir.path()));
+    check!(dir.create_dir("foo"));
+    check!(Dir::new(tmpdir.join("foo")));
+}
