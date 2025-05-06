@@ -216,8 +216,24 @@ LL | pub struct TransparentStr(&'static str);
    = help: consider using `*const u8` and a length instead
    = note: this reference to an unsized type contains metadata, which makes it incompatible with a C pointer
 
+error: `extern` fn uses type `TransparentBadFn`, which is not FFI-safe
+  --> $DIR/lint-fn.rs:133:37
+   |
+LL | pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
+   |                                     ^^^^^^^^^^^^^^^^ not FFI-safe
+   |
+   = note: this struct/enum/union (`TransparentBadFn`) is FFI-unsafe due to a `extern "C" fn() -> (u32, u64)` field
+note: the type is defined here
+  --> $DIR/lint-fn.rs:43:1
+   |
+LL | pub struct TransparentBadFn(RustBadRet); // note: non-null ptr assumption
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: consider using a raw pointer, or wrapping `extern "C" fn() -> (u32, u64)` in an `Option<_>`
+   = note: boxes, references, and function pointers are assumed to be valid (non-null, non-dangling, aligned) pointers,
+           which cannot be garanteed if their values are produced by non-rust code
+
 error: `extern` fn uses type `&[u8; 4]`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:138:53
+  --> $DIR/lint-fn.rs:139:53
    |
 LL | pub extern "C" fn argument_with_assumptions_4(aptr: &[u8; 4 as usize]) { }
    |                                                     ^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -227,7 +243,7 @@ LL | pub extern "C" fn argument_with_assumptions_4(aptr: &[u8; 4 as usize]) { }
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `StructWithProjectionAndLifetime<'_>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:143:50
+  --> $DIR/lint-fn.rs:144:50
    |
 LL | pub extern "C" fn argument_with_assumptions_6(s: StructWithProjectionAndLifetime) { }
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -243,7 +259,7 @@ LL | pub struct StructWithProjectionAndLifetime<'a>(
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `TransparentRef<'_>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:162:51
+  --> $DIR/lint-fn.rs:163:51
    |
 LL | pub extern "C" fn argument_with_assumptions_14(p: TransparentRef) { }
    |                                                   ^^^^^^^^^^^^^^ not FFI-safe
@@ -259,7 +275,7 @@ LL | pub struct TransparentRef<'a>(&'a TransparentInt);
            which cannot be garanteed if their values are produced by non-rust code
 
 error: `extern` fn uses type `PhantomData<bool>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:182:43
+  --> $DIR/lint-fn.rs:183:43
    |
 LL | pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
    |                                           ^^^^^^^^^^^^^^^^^ not FFI-safe
@@ -267,7 +283,7 @@ LL | pub extern "C" fn unused_generic2<T>() -> PhantomData<bool> {
    = note: composed only of `PhantomData`
 
 error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:195:39
+  --> $DIR/lint-fn.rs:196:39
    |
 LL | pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
    |                                       ^^^^^^ not FFI-safe
@@ -276,7 +292,7 @@ LL | pub extern "C" fn used_generic4<T>(x: Vec<T>) { }
    = note: `Vec<T>` has unspecified layout
 
 error: `extern` fn uses type `Vec<T>`, which is not FFI-safe
-  --> $DIR/lint-fn.rs:198:41
+  --> $DIR/lint-fn.rs:199:41
    |
 LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {
    |                                         ^^^^^^ not FFI-safe
@@ -284,5 +300,5 @@ LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {
    = help: consider adding a `#[repr(C)]` (not `#[repr(C,packed)]`) or `#[repr(transparent)]` attribute to `Vec<T>`
    = note: `Vec<T>` has unspecified layout
 
-error: aborting due to 26 previous errors
+error: aborting due to 27 previous errors
 
