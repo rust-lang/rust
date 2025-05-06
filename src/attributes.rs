@@ -88,14 +88,8 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
     let target_features = function_features
         .iter()
         .filter_map(|feature| {
-            // FIXME(antoyo): for some reasons, disabling SSE results in the following error when
-            // compiling Rust for Linux:
-            // SSE register return with SSE disabled
-            // TODO(antoyo): support soft-float and retpoline-external-thunk.
-            if feature.contains("soft-float")
-                || feature.contains("retpoline-external-thunk")
-                || *feature == "-sse"
-            {
+            // TODO(antoyo): support soft-float.
+            if feature.contains("soft-float") {
                 return None;
             }
 
