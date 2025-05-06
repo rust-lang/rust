@@ -12,18 +12,7 @@
 extern crate minicore;
 use minicore::*;
 
-impl<T> Copy for *mut T {}
 
-#[rustc_intrinsic]
-fn size_of<T>() -> usize {
-    loop {}
-}
-#[rustc_intrinsic]
-unsafe fn catch_unwind(
-    try_fn: fn(_: *mut u8),
-    data: *mut u8,
-    catch_fn: fn(_: *mut u8, _: *mut u8),
-) -> i32;
 
 // CHECK-LABEL: @ptr_size
 #[no_mangle]

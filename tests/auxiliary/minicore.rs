@@ -31,6 +31,7 @@
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![no_std]
 #![no_core]
+#![rustc_coherence_is_core]
 
 // `core` has some exotic `marker_impls!` macro for handling the with-generics cases, but for our
 // purposes, just use a simple macro_rules macro.
@@ -255,6 +256,18 @@ fn panic_div_zero() -> ! {
 #[lang = "panic_const_div_overflow"]
 #[inline]
 #[track_caller]
-fn panic_div_overflow() -> ! {
+pub fn panic_div_overflow() -> ! {
     loop {}
 }
+
+#[rustc_intrinsic]
+pub fn size_of<T>() -> usize {
+    loop {}
+}
+
+#[rustc_intrinsic]
+pub unsafe fn catch_unwind(
+    try_fn: fn(_: *mut u8),
+    data: *mut u8,
+    catch_fn: fn(_: *mut u8, _: *mut u8),
+) -> i32;
