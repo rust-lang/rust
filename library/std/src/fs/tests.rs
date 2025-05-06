@@ -9,14 +9,6 @@ use rand::RngCore;
 ))]
 use crate::assert_matches::assert_matches;
 use crate::char::MAX_LEN_UTF8;
-#[cfg(any(
-    windows,
-    target_os = "freebsd",
-    target_os = "linux",
-    target_os = "netbsd",
-    target_vendor = "apple",
-))]
-use crate::fs::TryLockError;
 use crate::fs::{self, File, FileTimes, OpenOptions};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -259,12 +251,12 @@ fn file_lock_blocking() {
 
     // Check that shared locks block exclusive locks
     check!(f1.lock_shared());
-    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock().unwrap_err().kind(), ErrorKind::WouldBlock);
     check!(f1.unlock());
 
     // Check that exclusive locks block shared locks
     check!(f1.lock());
-    assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock_shared().unwrap_err().kind(), ErrorKind::WouldBlock);
 }
 
 #[test]
@@ -283,7 +275,7 @@ fn file_lock_drop() {
 
     // Check that locks are released when the File is dropped
     check!(f1.lock_shared());
-    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock().unwrap_err().kind(), ErrorKind::WouldBlock);
     drop(f1);
     check!(f2.try_lock());
 }
@@ -304,10 +296,10 @@ fn file_lock_dup() {
 
     // Check that locks are not dropped if the File has been cloned
     check!(f1.lock_shared());
-    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock().unwrap_err().kind(), ErrorKind::WouldBlock);
     let cloned = check!(f1.try_clone());
     drop(f1);
-    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock().unwrap_err().kind(), ErrorKind::WouldBlock);
     drop(cloned)
 }
 
@@ -323,7 +315,7 @@ fn file_lock_double_unlock() {
     // Check that both are released by unlock()
     check!(f1.lock());
     check!(f1.lock_shared());
-    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock().unwrap_err().kind(), ErrorKind::WouldBlock);
     check!(f1.unlock());
     check!(f2.try_lock());
 }

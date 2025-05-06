@@ -3,7 +3,6 @@
 use crate::alloc::{Layout, alloc, dealloc};
 use crate::borrow::Cow;
 use crate::ffi::{OsStr, OsString, c_void};
-use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit, offset_of};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
@@ -400,7 +399,7 @@ impl File {
         self.acquire_lock(0)
     }
 
-    pub fn try_lock(&self) -> Result<(), TryLockError> {
+    pub fn try_lock(&self) -> io::Result<()> {
         let result = cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
@@ -419,13 +418,13 @@ impl File {
                 if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
                     || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
             {
-                Err(TryLockError::WouldBlock)
+                Err(io::ErrorKind::WouldBlock.into())
             }
-            Err(err) => Err(TryLockError::Error(err)),
+            Err(err) => Err(err),
         }
     }
 
-    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+    pub fn try_lock_shared(&self) -> io::Result<()> {
         let result = cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
@@ -444,9 +443,9 @@ impl File {
                 if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
                     || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
             {
-                Err(TryLockError::WouldBlock)
+                Err(io::ErrorKind::WouldBlock.into())
             }
-            Err(err) => Err(TryLockError::Error(err)),
+            Err(err) => Err(err),
         }
     }
 
