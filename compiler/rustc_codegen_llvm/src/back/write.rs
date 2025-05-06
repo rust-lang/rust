@@ -462,10 +462,11 @@ fn report_inline_asm(
     cgcx.diag_emitter.inline_asm_error(span, msg, level, source);
 }
 
-unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void) {
+unsafe extern "C" fn diagnostic_handler(info: Option<&DiagnosticInfo>, user: *mut c_void) {
     if user.is_null() {
         return;
     }
+    let info = info.unwrap();
     let (cgcx, dcx) =
         unsafe { *(user as *const (&CodegenContext<LlvmCodegenBackend>, DiagCtxtHandle<'_>)) };
 

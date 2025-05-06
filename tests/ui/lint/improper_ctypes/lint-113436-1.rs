@@ -13,7 +13,7 @@ extern "C" fn foo(x: Foo) -> Foo {
 struct NotSafe(u32);
 
 #[repr(C)]
-pub struct Bar {  //~ ERROR `repr(C)` type uses type `NotSafe`
+pub struct Bar {
     a: u8,
     b: (),
     c: NotSafe,

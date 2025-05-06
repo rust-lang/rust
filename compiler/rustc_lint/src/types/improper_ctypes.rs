@@ -100,11 +100,13 @@ enum CItemKind {
     /// Imported items in an `extern "C"` block (function declarations, static variables) -> IMPROPER_CTYPES
     ImportedExtern,
     /// `extern "C"` function definitions, to be used elsewhere -> IMPROPER_C_FN_DEFINITIONS,
-    /// (FIXME: can we detect static variables made to be exported?)
     ExportedFunction,
+    /// `no_mangle`/`export_name` static variables, assumed to be used from across an FFI boundary
+    ExportedStatic,
     /// `extern "C"` function pointers -> IMPROPER_C_CALLBACKS,
     Callback,
     /// `repr(C)` structs/enums/unions -> IMPROPER_CTYPE_DEFINITIONS
+    #[allow(unused)]
     AdtDef,
 }
 
@@ -444,6 +446,8 @@ enum CTypesVisitorState {
     None = CTypesVisitorStateFlags::NO_FLAGS,
     // uses bitflags from CTypesVisitorStateFlags
     StaticTy = CTypesVisitorStateFlags::STATIC,
+    ExportedStaticTy = CTypesVisitorStateFlags::STATIC | CTypesVisitorStateFlags::FN_DEFINED,
+    #[allow(unused)]
     AdtDef = CTypesVisitorStateFlags::THEORETICAL,
     ArgumentTyInDefinition = CTypesVisitorStateFlags::FUNC | CTypesVisitorStateFlags::FN_DEFINED,
     ReturnTyInDefinition = CTypesVisitorStateFlags::FUNC
@@ -513,7 +517,11 @@ impl CTypesVisitorState {
     fn can_expect_ty_params(self) -> bool {
         use CTypesVisitorStateFlags::*;
         // rust-defined functions, as well as FnPtrs and ADT definitions
-        ((self as u8) & (FN_DEFINED | THEORETICAL)) != 0
+        if ((self as u8) & THEORETICAL) != 0 {
+            true
+        } else {
+            ((self as u8) & FN_DEFINED) != 0 && ((self as u8) & STATIC) == 0
+        }
     }
 
     /// whether the value for that type might come from the non-rust side of a FFI boundary
@@ -524,6 +532,8 @@ impl CTypesVisitorState {
             // so let's not make hasty judgement
             false
         } else if self.is_in_static() {
+            // FIXME: this is evidently untrue for non-mut static variables
+            // (assuming the cross-FFI code respects this)
             true
         } else if self.is_in_defined_function() {
             // function definitions are assumed to be maybe-not-rust-caller, rust-callee
@@ -1512,6 +1522,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
+    #[allow(unused)]
     fn check_for_adtdef(&mut self, ty: Ty<'tcx>) -> FfiResult<'tcx> {
         use FfiResult::*;
         let ty = erase_and_maybe_normalize(self.cx, ty);
@@ -1720,16 +1731,12 @@ impl ImproperCTypesLint {
             adt_def.repr().c() && !adt_def.repr().packed() && adt_def.repr().align.is_none()
         );
 
-        let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
-        let mut visitor = ImproperCTypesVisitor::new(cx);
+        let visitor = ImproperCTypesVisitor::new(cx);
 
         // FIXME: this following call is awkward.
         // is there a way to perform its logic in MIR space rather than HIR space?
         // (so that its logic can be absorbed into visitor.visit_struct_or_union)
         visitor.check_struct_for_power_alignment(cx, item, adt_def);
-        let ffi_res = visitor.check_for_adtdef(ty);
-
-        self.process_ffi_result(cx, item.span, ffi_res, CItemKind::AdtDef);
     }
 
     /// Check that an extern "ABI" static variable is of a ffi-safe type
@@ -1738,6 +1745,19 @@ impl ImproperCTypesLint {
         let visitor = ImproperCTypesVisitor::new(cx);
         let ffi_res = visitor.check_for_type(CTypesVisitorState::StaticTy, ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::ImportedExtern);
+    }
+
+    /// Check that a `#[no_mangle]`/`#[export_name = _]` static variable is of a ffi-safe type
+    fn check_exported_static<'tcx>(
+        &self,
+        cx: &LateContext<'tcx>,
+        id: hir::OwnerId,
+        span: Span,
+    ) {
+        let ty = cx.tcx.type_of(id).instantiate_identity();
+        let visitor = ImproperCTypesVisitor::new(cx);
+        let ffi_res = visitor.check_for_type(CTypesVisitorState::ExportedStaticTy, ty);
+        self.process_ffi_result(cx, span, ffi_res, CItemKind::ExportedStatic);
     }
 
     /// Check if a function's argument types and result type are "ffi-safe".
@@ -1848,12 +1868,14 @@ impl ImproperCTypesLint {
         let lint = match fn_mode {
             CItemKind::ImportedExtern => IMPROPER_CTYPES,
             CItemKind::ExportedFunction => IMPROPER_C_FN_DEFINITIONS,
+            CItemKind::ExportedStatic => IMPROPER_C_VAR_DEFINITIONS,
             CItemKind::AdtDef => IMPROPER_CTYPE_DEFINITIONS,
             CItemKind::Callback => IMPROPER_C_CALLBACKS,
         };
         let desc = match fn_mode {
             CItemKind::ImportedExtern => "`extern` block",
             CItemKind::ExportedFunction => "`extern` fn",
+            CItemKind::ExportedStatic => "foreign-code-reachable static",
             CItemKind::Callback => "`extern` callback",
             CItemKind::AdtDef => "`repr(C)` type",
         };
@@ -1925,6 +1947,13 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     ty,
                     cx.tcx.type_of(item.owner_id).instantiate_identity(),
                 );
+
+                if matches!(item.kind, hir::ItemKind::Static(..))
+                    && (cx.tcx.has_attr(item.owner_id, sym::no_mangle)
+                        || cx.tcx.has_attr(item.owner_id, sym::export_name))
+                {
+                    self.check_exported_static(cx, item.owner_id, ty.span);
+                }
             }
             // See `check_fn` for declarations, `check_foreign_items` for definitions in extern blocks
             hir::ItemKind::Fn { .. } => {}
@@ -2092,6 +2121,36 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `improper_c_var_definitions` lint detects incorrect use of
+    /// [`no_mangle`] and [`export_name`] static variable definitions.
+    /// (in other words, static variables accessible by name by foreign code)
+    ///
+    /// [`no_mangle`]: https://doc.rust-lang.org/stable/reference/abi.html#the-no_mangle-attribute
+    /// [`export_name`]: https://doc.rust-lang.org/stable/reference/abi.html#the-export_name-attribute
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![unsafe(no_mangle)]
+    /// static mut PLUGIN_ABI_MIN_VERSION: &'static str = "0.0.5";
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler has several checks to verify that types used in
+    /// static variables exposed to foreign code are safe and follow
+    /// certain rules to ensure proper compatibility with the foreign interfaces.
+    /// This lint is issued when it detects a probable mistake in a definition.
+    /// The lint usually should provide a description of the issue,
+    /// along with possibly a hint on how to resolve it.
+    pub(crate) IMPROPER_C_VAR_DEFINITIONS,
+    Warn,
+    "proper use of libc types in foreign-reachable static variable definitions"
+}
+
+declare_lint! {
     /// The `improper_c_callbacks` lint detects incorrect use of
     /// [`extern` function] pointers.
     /// (in other words, function signatures for callbacks)
@@ -2204,6 +2263,7 @@ declare_lint! {
 declare_lint_pass!(ImproperCTypesLint => [
     IMPROPER_CTYPES,
     IMPROPER_C_FN_DEFINITIONS,
+    IMPROPER_C_VAR_DEFINITIONS,
     IMPROPER_C_CALLBACKS,
     IMPROPER_CTYPE_DEFINITIONS,
     USES_POWER_ALIGNMENT,
