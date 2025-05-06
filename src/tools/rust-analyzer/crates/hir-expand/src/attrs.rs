@@ -175,21 +175,24 @@ pub struct AttrId {
 // FIXME: This only handles a single level of cfg_attr nesting
 // that is `#[cfg_attr(all(), cfg_attr(all(), cfg(any())))]` breaks again
 impl AttrId {
-    const AST_INDEX_MASK: usize = 0x00FF_FFFF;
-    const INNER_ATTR_BIT: usize = 1 << 31;
+    const INNER_ATTR_SET_BIT: usize = 1 << 31;
 
     pub fn new(id: usize, is_inner: bool) -> Self {
-        let id = id & Self::AST_INDEX_MASK;
-        let id = if is_inner { id | Self::INNER_ATTR_BIT } else { id };
-        Self { id: id as u32 }
+        Self {
+            id: if is_inner {
+                id | Self::INNER_ATTR_SET_BIT
+            } else {
+                id & !Self::INNER_ATTR_SET_BIT
+            } as u32,
+        }
     }
 
     pub fn ast_index(&self) -> usize {
-        self.id as usize & Self::AST_INDEX_MASK
+        self.id as usize & !Self::INNER_ATTR_SET_BIT
     }
 
     pub fn is_inner_attr(&self) -> bool {
-        (self.id as usize) & Self::INNER_ATTR_BIT != 0
+        (self.id as usize) & Self::INNER_ATTR_SET_BIT != 0
     }
 }
 
