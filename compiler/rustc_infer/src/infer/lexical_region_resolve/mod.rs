@@ -3,8 +3,8 @@
 use std::fmt;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::implementation::{
-    Direction, Graph, INCOMING, NodeIndex, OUTGOING,
+use rustc_data_structures::graph::linked_graph::{
+    Direction, INCOMING, LinkedGraph, NodeIndex, OUTGOING,
 };
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
@@ -118,7 +118,7 @@ struct RegionAndOrigin<'tcx> {
     origin: SubregionOrigin<'tcx>,
 }
 
-type RegionGraph<'tcx> = Graph<(), Constraint<'tcx>>;
+type RegionGraph<'tcx> = LinkedGraph<(), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'tcx> {
     region_rels: &'cx RegionRelations<'cx, 'tcx>,
@@ -668,7 +668,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     fn construct_graph(&self) -> RegionGraph<'tcx> {
         let num_vars = self.num_vars();
 
-        let mut graph = Graph::new();
+        let mut graph = LinkedGraph::new();
 
         for _ in 0..num_vars {
             graph.add_node(());
