@@ -195,7 +195,7 @@ pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Str
         parent_is_crate: sidebar_path.len() == 1,
         blocks,
         path,
-        book_location: cx.shared.book_location.as_ref(),
+        book_location: cx.shared.book_target.as_ref(),
     };
     sidebar.render_into(buffer).unwrap();
 }

@@ -760,8 +760,12 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 }
 
 fn generate_book(render_options: &mut config::RenderOptions) -> Result<(), String> {
-    let Some(config::PathOrUrl::Path(ref mut book_dir)) = render_options.book_location else {
-        return Ok(());
+    let book_dir = match &render_options.book_source {
+        Some(config::PathOrUrl::Path(book_dir)) => book_dir,
+        other => {
+            render_options.book_target = other.clone();
+            return Ok(());
+        }
     };
     if !book_dir.is_dir() {
         return Err(format!(
@@ -774,7 +778,7 @@ fn generate_book(render_options: &mut config::RenderOptions) -> Result<(), Strin
         Err(error) => return Err(format!("failed to load book: {error:?}")),
     };
     let output_dir = render_options.output.join("doc-book");
-    *book_dir = output_dir.join("index.html");
+    let book_target = output_dir.join("index.html");
     book.config.build.build_dir = output_dir;
     if let Err(error) = book.build() {
         return Err(format!(
@@ -782,6 +786,7 @@ fn generate_book(render_options: &mut config::RenderOptions) -> Result<(), Strin
             book.config.build.build_dir.display()
         ));
     }
+    render_options.book_target = Some(config::PathOrUrl::Path(book_target));
     Ok(())
 }
 

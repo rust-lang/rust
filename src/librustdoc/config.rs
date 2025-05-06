@@ -321,8 +321,10 @@ pub(crate) struct RenderOptions {
     pub(crate) parts_out_dir: Option<PathToParts>,
     /// disable minification of CSS/JS
     pub(crate) disable_minification: bool,
-    /// Location where the associated book is located.
-    pub(crate) book_location: Option<PathOrUrl>,
+    /// Location where the associated book source is located.
+    pub(crate) book_source: Option<PathOrUrl>,
+    /// Location where the associated book is generated. None if it's not local.
+    pub(crate) book_target: Option<PathOrUrl>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -826,7 +828,7 @@ impl Options {
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
 
         let disable_minification = matches.opt_present("disable-minification");
-        let book_location = matches.opt_str("book-location").map(PathOrUrl::new);
+        let book_source = matches.opt_str("book-location").map(PathOrUrl::new);
 
         let options = Options {
             bin_crate,
@@ -905,7 +907,9 @@ impl Options {
             include_parts_dir,
             parts_out_dir,
             disable_minification,
-            book_location,
+            book_source,
+            // This field is updated in `generate_book`.
+            book_target: None,
         };
         Some((input, options, render_options))
     }
