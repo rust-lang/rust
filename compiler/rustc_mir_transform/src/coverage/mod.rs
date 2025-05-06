@@ -268,9 +268,9 @@ fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb
 struct ExtractedHirInfo {
     function_source_hash: u64,
     is_async_fn: bool,
-    /// The span of the function's signature, extended to the start of `body_span`.
+    /// The span of the function's signature, if available.
     /// Must have the same context and filename as the body span.
-    fn_sig_span_extended: Option<Span>,
+    fn_sig_span: Option<Span>,
     body_span: Span,
     /// "Holes" are regions within the function body (or its expansions) that
     /// should not be included in coverage spans for this function
@@ -308,30 +308,20 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     // The actual signature span is only used if it has the same context and
     // filename as the body, and precedes the body.
-    let fn_sig_span_extended = maybe_fn_sig
-        .map(|fn_sig| fn_sig.span)
-        .filter(|&fn_sig_span| {
-            let source_map = tcx.sess.source_map();
-            let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
+    let fn_sig_span = maybe_fn_sig.map(|fn_sig| fn_sig.span).filter(|&fn_sig_span| {
+        let source_map = tcx.sess.source_map();
+        let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
 
-            fn_sig_span.eq_ctxt(body_span)
-                && fn_sig_span.hi() <= body_span.lo()
-                && file_idx(fn_sig_span) == file_idx(body_span)
-        })
-        // If so, extend it to the start of the body span.
-        .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()));
+        fn_sig_span.eq_ctxt(body_span)
+            && fn_sig_span.hi() <= body_span.lo()
+            && file_idx(fn_sig_span) == file_idx(body_span)
+    });
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
     let hole_spans = extract_hole_spans_from_hir(tcx, hir_body);
 
-    ExtractedHirInfo {
-        function_source_hash,
-        is_async_fn,
-        fn_sig_span_extended,
-        body_span,
-        hole_spans,
-    }
+    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span, body_span, hole_spans }
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx hir::Body<'tcx>) -> u64 {
