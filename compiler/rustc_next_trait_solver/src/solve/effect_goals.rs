@@ -61,13 +61,14 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<(), NoSolution> {
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
         let host_clause = assumption.as_host_effect_clause().unwrap();
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
 
-        Ok(())
+        then(ecx)
     }
 
     /// Register additional assumptions for aliases corresponding to `~const` item bounds.
