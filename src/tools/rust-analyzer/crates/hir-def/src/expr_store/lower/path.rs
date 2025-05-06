@@ -232,6 +232,14 @@ pub(super) fn lower_path(
             .with_borrow_mut(|map| map.extend(ast_segments.into_iter().zip(ast_segments_offset..)));
     }
 
+    if let Some(last_segment_args @ Some(GenericArgs { has_self_type: true, .. })) =
+        generic_args.last_mut()
+    {
+        // Well-formed code cannot have `<T as Trait>` without an associated item after,
+        // and this causes panics in hir-ty lowering.
+        *last_segment_args = None;
+    }
+
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
     if type_anchor.is_none() && generic_args.is_empty() {
         return Some(Path::BarePath(mod_path));
