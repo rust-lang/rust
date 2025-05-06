@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::paths::{self, PathNS, find_crates, lookup_path_str};
 use clippy_utils::visitors::for_each_expr;
@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId};
-use rustc_hir::{self as hir, BodyId, Expr, ExprKind, Item, ItemKind};
+use rustc_hir::{self as hir, BodyId, Expr, ExprKind, HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
@@ -173,6 +173,8 @@ struct LazyInfo {
     /// //          ^^^^
     /// ```
     ty_span_no_args: Span,
+    /// Item on which the lint must be generated.
+    item_hir_id: HirId,
     /// `Span` and `DefId` of calls on `Lazy` type.
     /// i.e.:
     /// ```ignore
@@ -206,6 +208,7 @@ impl LazyInfo {
 
             Some(LazyInfo {
                 ty_span_no_args,
+                item_hir_id: item.hir_id(),
                 calls_span_and_id: new_fn_calls,
             })
         } else {
@@ -229,9 +232,10 @@ impl LazyInfo {
             }
         }
 
-        span_lint_and_then(
+        span_lint_hir_and_then(
             cx,
             NON_STD_LAZY_STATICS,
+            self.item_hir_id,
             self.ty_span_no_args,
             "this type has been superseded by `LazyLock` in the standard library",
             |diag| {
