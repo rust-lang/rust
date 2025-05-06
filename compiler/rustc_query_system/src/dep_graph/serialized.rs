@@ -43,14 +43,14 @@ use std::cell::RefCell;
 use std::cmp::max;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::Ordering;
 use std::{iter, mem, u64};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::outline;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::{Lock, WorkerLocal, broadcast};
+use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal, broadcast};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
