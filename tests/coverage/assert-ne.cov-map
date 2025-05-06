@@ -1,7 +1,7 @@
 Function name: assert_ne::main
 Raw bytes (28): 0x[01, 01, 02, 01, 05, 01, 09, 04, 01, 08, 01, 03, 15, 05, 04, 0d, 00, 13, 02, 02, 0d, 00, 13, 06, 03, 05, 01, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/assert-ne.rs
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(0), rhs = Counter(2)

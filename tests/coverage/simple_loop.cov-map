@@ -1,7 +1,7 @@
 Function name: simple_loop::main
 Raw bytes (43): 0x[01, 01, 02, 01, 05, 09, 01, 07, 01, 04, 01, 09, 10, 05, 0a, 05, 05, 06, 02, 05, 05, 00, 06, 09, 05, 0d, 02, 0e, 01, 04, 0d, 00, 12, 06, 02, 0a, 03, 0a, 01, 06, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/simple_loop.rs
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(2), rhs = Counter(0)

@@ -54,6 +54,7 @@ impl Step for CrateBootstrap {
         run.path("src/tools/jsondoclint")
             .path("src/tools/suggest-tests")
             .path("src/tools/replace-version-placeholder")
+            .path("src/tools/coverage-dump")
             // We want `./x test tidy` to _run_ the tidy tool, not its tests.
             // So we need a separate alias to test the tidy tool itself.
             .alias("tidyselftest")

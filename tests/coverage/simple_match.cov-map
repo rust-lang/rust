@@ -1,7 +1,7 @@
 Function name: simple_match::main
 Raw bytes (64): 0x[01, 01, 05, 01, 05, 09, 01, 09, 01, 09, 13, 01, 0d, 0a, 01, 04, 01, 07, 0f, 05, 07, 10, 02, 06, 02, 02, 05, 00, 06, 09, 05, 09, 00, 0d, 0a, 05, 0d, 00, 16, 0d, 02, 0d, 00, 0e, 0a, 02, 11, 02, 12, 0d, 04, 0d, 07, 0e, 0e, 0a, 0d, 00, 0f, 01, 03, 01, 00, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/simple_match.rs
 Number of expressions: 5
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(2), rhs = Counter(0)

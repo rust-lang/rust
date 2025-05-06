@@ -777,6 +777,7 @@ name = "coverage-dump"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "itertools",
  "leb128",
  "md-5",
  "miniz_oxide 0.7.4",

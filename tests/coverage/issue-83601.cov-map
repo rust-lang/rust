@@ -1,7 +1,7 @@
 Function name: issue_83601::main
 Raw bytes (21): 0x[01, 01, 01, 05, 09, 03, 01, 06, 01, 02, 0f, 05, 03, 09, 01, 0f, 02, 02, 05, 03, 02]
 Number of files: 1
-- file 0 => global file 1
+- file 0 => $DIR/issue-83601.rs
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 3
