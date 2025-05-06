@@ -10,6 +10,7 @@ use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
+use crate::sys::api::SetFileInformation;
 use crate::sys::handle::Handle;
 use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
 use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
@@ -23,6 +24,10 @@ mod remove_dir_all;
 use remove_dir_all::remove_dir_all_iterative;
 
 pub struct File {
+    handle: Handle,
+}
+
+pub struct Dir {
     handle: Handle,
 }
 
@@ -848,6 +853,217 @@ impl File {
     }
 }
 
+unsafe fn nt_create_file(
+    access: u32,
+    object_attributes: &c::OBJECT_ATTRIBUTES,
+    share: u32,
+    dir: bool,
+) -> Result<Handle, WinError> {
+    let mut handle = ptr::null_mut();
+    let mut io_status = c::IO_STATUS_BLOCK::PENDING;
+    let disposition = match (access & c::GENERIC_READ > 0, access & c::GENERIC_WRITE > 0) {
+        (true, true) => c::FILE_OPEN_IF,
+        (true, false) => c::FILE_OPEN,
+        (false, true) => c::FILE_CREATE,
+        (false, false) => {
+            return Err(WinError::new(c::ERROR_INVALID_PARAMETER));
+        }
+    };
+    let status = unsafe {
+        c::NtCreateFile(
+            &mut handle,
+            access,
+            object_attributes,
+            &mut io_status,
+            ptr::null(),
+            c::FILE_ATTRIBUTE_NORMAL,
+            share,
+            disposition,
+            if dir { c::FILE_DIRECTORY_FILE } else { c::FILE_NON_DIRECTORY_FILE },
+            ptr::null(),
+            0,
+        )
+    };
+    if c::nt_success(status) {
+        // SAFETY: nt_success guarantees that handle is no longer null
+        unsafe { Ok(Handle::from_raw_handle(handle)) }
+    } else {
+        let win_error = if status == c::STATUS_DELETE_PENDING {
+            // We make a special exception for `STATUS_DELETE_PENDING` because
+            // otherwise this will be mapped to `ERROR_ACCESS_DENIED` which is
+            // very unhelpful because that can also mean a permission error.
+            WinError::DELETE_PENDING
+        } else {
+            WinError::new(unsafe { c::RtlNtStatusToDosError(status) })
+        };
+        Err(win_error)
+    }
+}
+
+fn run_path_with_wcstr<T, P: AsRef<Path>>(
+    path: P,
+    f: &dyn Fn(&WCStr) -> io::Result<T>,
+) -> io::Result<T> {
+    let path = maybe_verbatim(path.as_ref())?;
+    // SAFETY: maybe_verbatim returns null-terminated strings
+    let path = unsafe { WCStr::from_wchars_with_null_unchecked(&path) };
+    f(path)
+}
+
+impl Dir {
+    pub fn new<P: AsRef<Path>>(path: P) -> io::Result<Self> {
+        let opts = OpenOptions::new();
+        run_path_with_wcstr(path, &|path| Self::new_native(path, &opts))
+    }
+
+    pub fn new_with<P: AsRef<Path>>(path: P, opts: &OpenOptions) -> io::Result<Self> {
+        run_path_with_wcstr(path, &|path| Self::new_native(path, &opts))
+    }
+
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
+        let mut opts = OpenOptions::new();
+        opts.read(true);
+        Ok(File { handle: run_path_with_wcstr(path, &|path| self.open_native(path, &opts))? })
+    }
+
+    pub fn open_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        Ok(File { handle: run_path_with_wcstr(path, &|path| self.open_native(path, &opts))? })
+    }
+
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_wcstr(path, &|path| {
+            self.create_dir_native(path, &OpenOptions::new()).map(|_| ())
+        })
+    }
+
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_wcstr(path, &|path| self.remove_native(path, false))
+    }
+
+    pub fn remove_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_wcstr(path, &|path| self.remove_native(path, true))
+    }
+
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        from: P,
+        to_dir: &Self,
+        to: Q,
+    ) -> io::Result<()> {
+        run_path_with_wcstr(from.as_ref(), &|from| {
+            run_path_with_wcstr(to.as_ref(), &|to| self.rename_native(from, to_dir, to))
+        })
+    }
+
+    fn new_native(path: &WCStr, opts: &OpenOptions) -> io::Result<Self> {
+        let name = c::UNICODE_STRING {
+            Length: path.count_bytes() as _,
+            MaximumLength: path.count_bytes() as _,
+            Buffer: path.as_ptr() as *mut _,
+        };
+        let object_attributes = c::OBJECT_ATTRIBUTES {
+            Length: size_of::<c::OBJECT_ATTRIBUTES>() as _,
+            RootDirectory: ptr::null_mut(),
+            ObjectName: &name,
+            Attributes: 0,
+            SecurityDescriptor: ptr::null(),
+            SecurityQualityOfService: ptr::null(),
+        };
+        let share = c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE;
+        let handle =
+            unsafe { nt_create_file(opts.get_access_mode()?, &object_attributes, share, true) }
+                .io_result()?;
+        Ok(Self { handle })
+    }
+
+    fn open_native(&self, path: &WCStr, opts: &OpenOptions) -> io::Result<Handle> {
+        let name = c::UNICODE_STRING {
+            Length: path.count_bytes() as _,
+            MaximumLength: path.count_bytes() as _,
+            Buffer: path.as_ptr() as *mut _,
+        };
+        let object_attributes = c::OBJECT_ATTRIBUTES {
+            Length: size_of::<c::OBJECT_ATTRIBUTES>() as _,
+            RootDirectory: self.handle.as_raw_handle(),
+            ObjectName: &name,
+            Attributes: 0,
+            SecurityDescriptor: ptr::null(),
+            SecurityQualityOfService: ptr::null(),
+        };
+        let share = c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE;
+        unsafe { nt_create_file(opts.get_access_mode()?, &object_attributes, share, false) }
+            .io_result()
+    }
+
+    fn create_dir_native(&self, path: &WCStr, opts: &OpenOptions) -> io::Result<Handle> {
+        let name = c::UNICODE_STRING {
+            Length: path.count_bytes() as _,
+            MaximumLength: path.count_bytes() as _,
+            Buffer: path.as_ptr() as *mut _,
+        };
+        let object_attributes = c::OBJECT_ATTRIBUTES {
+            Length: size_of::<c::OBJECT_ATTRIBUTES>() as _,
+            RootDirectory: self.handle.as_raw_handle(),
+            ObjectName: &name,
+            Attributes: 0,
+            SecurityDescriptor: ptr::null(),
+            SecurityQualityOfService: ptr::null(),
+        };
+        let share = c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE;
+        unsafe { nt_create_file(opts.get_access_mode()?, &object_attributes, share, true) }
+            .io_result()
+    }
+
+    fn remove_native(&self, path: &WCStr, dir: bool) -> io::Result<()> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::GENERIC_WRITE);
+        let handle =
+            if dir { self.create_dir_native(path, &opts) } else { self.open_native(path, &opts) }?;
+        let info = c::FILE_DISPOSITION_INFO_EX { Flags: c::FILE_DISPOSITION_FLAG_DELETE };
+        let result = unsafe {
+            c::SetFileInformationByHandle(
+                handle.as_raw_handle(),
+                c::FileDispositionInfoEx,
+                (&info).as_ptr(),
+                size_of::<c::FILE_DISPOSITION_INFO_EX>() as _,
+            )
+        };
+        if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
+    }
+
+    fn rename_native(&self, from: &WCStr, to_dir: &Self, to: &WCStr) -> io::Result<()> {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::GENERIC_WRITE);
+        let handle = self.open_native(from, &opts)?;
+        let info = c::FILE_RENAME_INFO {
+            Anonymous: c::FILE_RENAME_INFO_0 { ReplaceIfExists: true },
+            RootDirectory: to_dir.handle.as_raw_handle(),
+            FileNameLength: to.count_bytes() as _,
+            FileName: [to.as_ptr() as u16],
+        };
+        let result = unsafe {
+            c::SetFileInformationByHandle(
+                handle.as_raw_handle(),
+                c::FileRenameInfo,
+                ptr::addr_of!(info) as _,
+                size_of::<c::FILE_RENAME_INFO>() as _,
+            )
+        };
+        if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
+    }
+}
+
+impl fmt::Debug for Dir {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut b = f.debug_struct("Dir");
+        b.field("handle", &self.handle.as_raw_handle());
+        if let Ok(path) = get_path(self.handle.as_handle()) {
+            b.field("path", &path);
+        }
+        b.finish()
+    }
+}
+
 /// A buffer for holding directory entries.
 struct DirBuff {
     buffer: Box<Align8<[MaybeUninit<u8>; Self::BUFFER_SIZE]>>,
@@ -997,7 +1213,7 @@ impl fmt::Debug for File {
         // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.as_raw_handle());
-        if let Ok(path) = get_path(self) {
+        if let Ok(path) = get_path(self.handle.as_handle()) {
             b.field("path", &path);
         }
         b.finish()
@@ -1486,10 +1702,10 @@ pub fn set_perm(p: &WCStr, perm: FilePermissions) -> io::Result<()> {
     }
 }
 
-fn get_path(f: &File) -> io::Result<PathBuf> {
+fn get_path(f: impl AsRawHandle) -> io::Result<PathBuf> {
     fill_utf16_buf(
         |buf, sz| unsafe {
-            c::GetFinalPathNameByHandleW(f.handle.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
+            c::GetFinalPathNameByHandleW(f.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
         },
         |buf| PathBuf::from(OsString::from_wide(buf)),
     )
@@ -1502,7 +1718,7 @@ pub fn canonicalize(p: &WCStr) -> io::Result<PathBuf> {
     // This flag is so we can open directories too
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
     let f = File::open_native(p, &opts)?;
-    get_path(&f)
+    get_path(f.handle)
 }
 
 pub fn copy(from: &WCStr, to: &WCStr) -> io::Result<u64> {
