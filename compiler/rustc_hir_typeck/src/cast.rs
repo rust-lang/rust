@@ -1051,20 +1051,19 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn check_ref_cast(
         &self,
         fcx: &FnCtxt<'a, 'tcx>,
-        m_expr: ty::TypeAndMut<'tcx>,
-        m_cast: ty::TypeAndMut<'tcx>,
+        mut m_expr: ty::TypeAndMut<'tcx>,
+        mut m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError<'tcx>> {
         // array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
+        m_expr.ty = fcx.try_structurally_resolve_type(self.expr_span, m_expr.ty);
+        m_cast.ty = fcx.try_structurally_resolve_type(self.cast_span, m_cast.ty);
+
         if m_expr.mutbl >= m_cast.mutbl
             && let ty::Array(ety, _) = m_expr.ty.kind()
             && fcx.can_eq(fcx.param_env, *ety, m_cast.ty)
         {
-            // Due to the limitations of LLVM global constants,
-            // region pointers end up pointing at copies of
-            // vector elements instead of the original values.
-            // To allow raw pointers to work correctly, we
-            // need to special-case obtaining a raw pointer
-            // from a region pointer to a vector.
+            // Due to historical reasons we allow directly casting references of
+            // arrays into raw pointers of their element type.
 
             // Coerce to a raw pointer so that we generate RawPtr in MIR.
             let array_ptr_type = Ty::new_ptr(fcx.tcx, m_expr.ty, m_expr.mutbl);
