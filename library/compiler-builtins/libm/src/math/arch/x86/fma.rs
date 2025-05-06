@@ -4,7 +4,8 @@ use core::arch::asm;
 
 use super::super::super::generic;
 use super::detect::{cpu_flags, get_cpu_features};
-use crate::support::{Round, select_once};
+use crate::support::Round;
+use crate::support::feature_detect::select_once;
 
 pub fn fma(x: f64, y: f64, z: f64) -> f64 {
     select_once! {

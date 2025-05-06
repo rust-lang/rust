@@ -1,5 +1,9 @@
 //! Helpers for runtime target feature detection that are shared across architectures.
 
+// `AtomicU32` is preferred for a consistent size across targets.
+#[cfg(all(target_has_atomic = "ptr", not(target_has_atomic = "32")))]
+compile_error!("currently all targets that support `AtomicPtr` also support `AtomicU32`");
+
 use core::sync::atomic::{AtomicU32, Ordering};
 
 /// Given a list of identifiers, assign each one a unique sequential single-bit mask.
@@ -72,6 +76,7 @@ macro_rules! select_once {
     }}
 }
 
+#[allow(unused_imports)]
 pub(crate) use {select_once, unique_masks};
 
 use crate::support::cold_path;

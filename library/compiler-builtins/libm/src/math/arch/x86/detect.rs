@@ -1,13 +1,16 @@
+// Using runtime feature detection requires atomics. Currently there are no x86 targets
+// that support sse but not `AtomicPtr`.
+
 #[cfg(target_arch = "x86")]
 use core::arch::x86::{__cpuid, __cpuid_count, _xgetbv, CpuidResult};
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64::{__cpuid, __cpuid_count, _xgetbv, CpuidResult};
 
-use crate::support::{Flags, get_or_init_flags_cache};
+use crate::support::feature_detect::{Flags, get_or_init_flags_cache, unique_masks};
 
 /// CPU features that get cached (doesn't correlate to anything on the CPU).
 pub mod cpu_flags {
-    use crate::support::unique_masks;
+    use super::unique_masks;
 
     unique_masks! {
         u32,
