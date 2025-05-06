@@ -40,7 +40,7 @@ pub struct TransparentI128(i128);
 pub struct TransparentStr(&'static str);
 
 #[repr(transparent)]
-pub struct TransparentBadFn(RustBadRet);
+pub struct TransparentBadFn(RustBadRet); // note: non-null ptr assumption
 
 #[repr(transparent)]
 pub struct TransparentInt(u32);
@@ -131,7 +131,8 @@ pub extern "C" fn transparent_str(p: TransparentStr) { }
 //~^ ERROR: uses type `TransparentStr`
 
 pub extern "C" fn transparent_fn(p: TransparentBadFn) { }
-// ^ FIXME it doesn't see the error... but at least it reports it elsewhere?
+//~^ ERROR: uses type `TransparentBadFn`
+// ^ FIXME it doesn't see the actual FnPtr's error... but at least it reports it elsewhere?
 
 pub extern "C" fn good3(fptr: Option<extern "C" fn()>) { }
 
