@@ -117,6 +117,8 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         Self::fast_reject_assumption(ecx, goal, assumption)?;
 
+        // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
+        // check whether the candidate is global.
         ecx.probe(|candidate: &Result<Candidate<I>, NoSolution>| match candidate {
             Ok(candidate) => inspect::ProbeKind::TraitCandidate {
                 source: candidate.source,
@@ -128,12 +130,12 @@ where
             },
         })
         .enter(|ecx| {
-            Self::match_assumption(ecx, goal, assumption)?;
-            let source = ecx.characterize_param_env_assumption(goal.param_env, assumption)?;
-            Ok(Candidate {
-                source,
-                result: ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)?,
-            })
+            let mut source = CandidateSource::ParamEnv(ParamEnvSource::Global);
+            let result = Self::match_assumption(ecx, goal, assumption, |ecx| {
+                source = ecx.characterize_param_env_assumption(goal.param_env, assumption)?;
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            })?;
+            Ok(Candidate { source, result })
         })
     }
 
@@ -150,10 +152,8 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         Self::fast_reject_assumption(ecx, goal, assumption)?;
 
-        ecx.probe_trait_candidate(source).enter(|ecx| {
-            Self::match_assumption(ecx, goal, assumption)?;
-            then(ecx)
-        })
+        ecx.probe_trait_candidate(source)
+            .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
     }
 
     /// Try to reject the assumption based off of simple heuristics, such as [`ty::ClauseKind`]
@@ -169,7 +169,8 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<(), NoSolution>;
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I>;
 
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
