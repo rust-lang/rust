@@ -1,5 +1,4 @@
 #![feature(array_windows)]
-#![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(f128)]
@@ -7,7 +6,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(iter_partition_in_place)]
-#![feature(let_chains)]
 #![feature(never_type)]
 #![feature(round_char_boundary)]
 #![feature(rustc_private)]

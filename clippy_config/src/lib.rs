@@ -1,4 +1,4 @@
-#![feature(rustc_private, array_windows, let_chains)]
+#![feature(rustc_private)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
