@@ -214,7 +214,9 @@ impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
                 if attrs.iter().any(|attr| attr.has_name(sym::const_continue)) {
                     if let Some(break_label) = break_label.label {
                         let is_target_label = |cx: &Context| match cx {
-                            Context::LoopMatch { labeled_block } => break_label == *labeled_block,
+                            Context::LoopMatch { labeled_block } => {
+                                break_label.ident.name == labeled_block.ident.name
+                            }
                             _ => false,
                         };
 

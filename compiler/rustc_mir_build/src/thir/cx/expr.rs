@@ -898,9 +898,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         dcx.emit_fatal(LoopMatchBadRhs { span: rhs_expr.span })
                     };
 
-                    if let Some(first) = block_body.stmts.first() {
-                        let span = first.span.to(block_body.stmts.last().unwrap().span);
-                        dcx.emit_fatal(LoopMatchBadStatements { span })
+                    // The labeled block should contain one match expression, but defining items is
+                    // allowed.
+                    for stmt in block_body.stmts {
+                        if !matches!(stmt.kind, rustc_hir::StmtKind::Item(_)) {
+                            dcx.emit_fatal(LoopMatchBadStatements { span: stmt.span })
+                        }
                     }
 
                     let Some(block_body_expr) = block_body.expr else {
