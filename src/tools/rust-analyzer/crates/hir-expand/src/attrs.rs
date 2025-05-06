@@ -466,7 +466,7 @@ pub fn collect_attrs(
             Either::Left(attr) => attr.kind().is_outer(),
             Either::Right(comment) => comment.is_outer(),
         })
-        .map(|attr| (attr, false));
+        .zip(iter::repeat(false));
     outer_attrs
         .chain(inner_attrs)
         .enumerate()
