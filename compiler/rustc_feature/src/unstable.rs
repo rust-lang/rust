@@ -510,6 +510,8 @@ declare_features! (
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Allows impls for the Freeze trait.
     (internal, freeze_impls, "1.78.0", Some(121675)),
+    /// Frontmatter `---` blocks for use by external tools.
+    (unstable, frontmatter, "CURRENT_RUSTC_VERSION", Some(136889)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Infer generic args for both consts and types.
