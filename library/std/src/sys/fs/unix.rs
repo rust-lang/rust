@@ -54,8 +54,8 @@ use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
     dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
-    lstat as lstat64, off64_t, open as open64, openat as openat64, renameat, stat as stat64,
-    unlinkat,
+    lstat as lstat64, mkdirat, off64_t, open as open64, openat as openat64, renameat,
+    stat as stat64, unlinkat,
 };
 #[cfg(not(any(
     all(target_os = "linux", not(target_env = "musl")),
@@ -65,7 +65,7 @@ use libc::{
 )))]
 use libc::{
     dirent as dirent64, fstat as fstat64, ftruncate as ftruncate64, lseek as lseek64,
-    lstat as lstat64, off_t as off64_t, open as open64, openat as openat64, renameat,
+    lstat as lstat64, mkdirat, off_t as off64_t, open as open64, openat as openat64, renameat,
     stat as stat64, unlinkat,
 };
 #[cfg(any(
@@ -74,8 +74,8 @@ use libc::{
     target_os = "hurd"
 ))]
 use libc::{
-    dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, openat64, renameat, stat64,
-    unlinkat,
+    dirent64, fstat64, ftruncate64, lseek64, lstat64, mkdirat, off64_t, open64, openat64, renameat,
+    stat64, unlinkat,
 };
 
 use crate::ffi::{CStr, OsStr, OsString};
@@ -294,6 +294,10 @@ impl Dir {
         run_path_with_cstr(path.as_ref(), &|path| self.open_c(path, opts))
     }
 
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        run_path_with_cstr(path.as_ref(), &|path| self.create_dir_c(path))
+    }
+
     pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         run_path_with_cstr(path.as_ref(), &|path| self.remove_c(path, false))
     }
@@ -332,6 +336,10 @@ impl Dir {
             | (opts.custom_flags as c_int & !libc::O_ACCMODE);
         let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
         Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
+    }
+
+    pub fn create_dir_c(&self, path: &CStr) -> io::Result<()> {
+        cvt(unsafe { mkdirat(self.0.as_raw_fd(), path.as_ptr(), 0o777) }).map(|_| ())
     }
 
     pub fn remove_c(&self, path: &CStr, remove_dir: bool) -> io::Result<()> {
