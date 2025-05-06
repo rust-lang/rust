@@ -91,6 +91,59 @@ fn main() {
         )),
         dwarf_test: DwarfDump::ParentTest,
     });
+
+    check_dwarf_deps("macro", DwarfDump::AvoidSrcPath);
+    check_dwarf_deps("diagnostics", DwarfDump::AvoidSrcPath);
+    check_dwarf_deps("macro,diagnostics", DwarfDump::AvoidSrcPath);
+    check_dwarf_deps("object", DwarfDump::ContainsSrcPath);
+}
+
+#[track_caller]
+fn check_dwarf_deps(scope: &str, dwarf_test: DwarfDump) {
+    // build some_value.rs
+    let mut rustc_sm = rustc();
+    rustc_sm.input(cwd().join("src/some_value.rs"));
+    rustc_sm.arg("-Cdebuginfo=2");
+    rustc_sm.arg(format!("-Zremap-path-scope={}", scope));
+    rustc_sm.arg("--remap-path-prefix");
+    rustc_sm.arg(format!("{}=/REMAPPED", cwd().display()));
+    rustc_sm.arg("-Csplit-debuginfo=off");
+    rustc_sm.run();
+
+    // build print_value.rs
+    let print_value_rlib = rust_lib_name(&format!("print_value.{scope}"));
+    let mut rustc_pv = rustc();
+    rustc_pv.input(cwd().join("src/print_value.rs"));
+    rustc_pv.output(&print_value_rlib);
+    rustc_pv.arg("-Cdebuginfo=2");
+    rustc_pv.arg(format!("-Zremap-path-scope={}", scope));
+    rustc_pv.arg("--remap-path-prefix");
+    rustc_pv.arg(format!("{}=/REMAPPED", cwd().display()));
+    rustc_pv.arg("-Csplit-debuginfo=off");
+    rustc_pv.run();
+
+    match dwarf_test {
+        DwarfDump::AvoidSrcPath => {
+            llvm_dwarfdump()
+                .input(print_value_rlib)
+                .run()
+                .assert_stdout_not_contains("REMAPPED/src/some_value.rs")
+                .assert_stdout_not_contains("REMAPPED/src/print_value.rs")
+                .assert_stdout_not_contains("REMAPPED/REMAPPED")
+                .assert_stdout_contains(cwd().join("src/some_value.rs").display().to_string())
+                .assert_stdout_contains(cwd().join("src/print_value.rs").display().to_string());
+        }
+        DwarfDump::ContainsSrcPath => {
+            llvm_dwarfdump()
+                .input(print_value_rlib)
+                .run()
+                .assert_stdout_contains("REMAPPED/src/some_value.rs")
+                .assert_stdout_contains("REMAPPED/src/print_value.rs")
+                .assert_stdout_not_contains(cwd().join("src/some_value.rs").display().to_string())
+                .assert_stdout_not_contains(cwd().join("src/print_value.rs").display().to_string());
+        }
+        _ => unreachable!(),
+    }
 }
 
 #[track_caller]
