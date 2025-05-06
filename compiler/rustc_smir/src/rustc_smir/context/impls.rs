@@ -143,24 +143,6 @@ impl<'tcx, B: Bridge> SmirCtxt<'tcx, B> {
         self.tcx.valtree_to_const_val(key)
     }
 
-    pub fn layout_of(
-        &self,
-        key: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
-    ) -> Result<rustc_abi::TyAndLayout<'tcx, Ty<'tcx>>, &ty::layout::LayoutError<'tcx>> {
-        self.tcx.layout_of(key)
-    }
-
-    pub fn as_query_input<T>(
-        &self,
-        typing_env: ty::TypingEnv<'tcx>,
-        value: T,
-    ) -> ty::PseudoCanonicalInput<'tcx, T>
-    where
-        T: ty::TypeVisitable<TyCtxt<'tcx>>,
-    {
-        typing_env.as_query_input(value)
-    }
-
     pub fn target_endian(&self) -> Endian {
         self.tcx.data_layout.endian
     }
