@@ -666,7 +666,7 @@ where
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
                         self.nested_goals.push((source, with_resolved_vars));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
             } else {
@@ -680,7 +680,7 @@ where
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
                         self.nested_goals.push((source, goal));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
             }
