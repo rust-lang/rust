@@ -8,7 +8,7 @@ license = "MIT"
 name = "libm"
 readme = "README.md"
 repository = "https://github.com/rust-lang/compiler-builtins"
-version = "0.2.14"
+version = "0.2.15"
 edition = "2021"
 rust-version = "1.63"
 
