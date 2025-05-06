@@ -937,9 +937,9 @@ impl Dir {
     }
 
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        run_path_with_wcstr(path, &|path| {
-            self.create_dir_native(path, &OpenOptions::new()).map(|_| ())
-        })
+        let mut opts = OpenOptions::new();
+        opts.write(true);
+        run_path_with_wcstr(path, &|path| self.create_dir_native(path, &opts).map(|_| ()))
     }
 
     pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {

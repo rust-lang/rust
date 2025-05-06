@@ -1613,6 +1613,33 @@ impl Dir {
         self.inner.open_with(path, &opts.0).map(|f| File { inner: f })
     }
 
+    /// Attempts to create a directory relative to this directory.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error in these (and other) situations:
+    /// * The path exists
+    /// * The process doesn't have permission to create the directory
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io::Read};
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::new("foo")?;
+    ///     let mut f = dir.open_with("bar.txt", OpenOptions::new().read(true))?;
+    ///     let mut data = vec![];
+    ///     f.read_to_end(&mut data)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.create_dir(path)
+    }
+
     /// Attempts to remove a file relative to this directory.
     ///
     /// # Errors
