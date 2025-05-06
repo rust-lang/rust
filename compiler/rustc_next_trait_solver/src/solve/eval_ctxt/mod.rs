@@ -19,6 +19,7 @@ use tracing::{debug, instrument, trace};
 use super::has_only_region_constraints;
 use crate::coherence;
 use crate::delegate::SolverDelegate;
+use crate::resolve::EagerResolver;
 use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
@@ -998,6 +999,13 @@ where
         T: TypeFoldable<I>,
     {
         self.delegate.resolve_vars_if_possible(value)
+    }
+
+    pub(super) fn eager_resolve<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<I>,
+    {
+        value.fold_with(&mut EagerResolver::new(self.delegate))
     }
 
     pub(super) fn fresh_args_for_item(&mut self, def_id: I::DefId) -> I::GenericArgs {

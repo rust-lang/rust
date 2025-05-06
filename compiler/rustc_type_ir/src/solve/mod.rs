@@ -160,7 +160,7 @@ pub enum CandidateSource<I: Interner> {
     ///     (x.clone(), x)
     /// }
     /// ```
-    ParamEnv(usize),
+    ParamEnv(ParamEnvSource),
     /// If the self type is an alias type, e.g. an opaque type or a projection,
     /// we know the bounds on that alias to hold even without knowing its concrete
     /// underlying type.
@@ -187,6 +187,14 @@ pub enum CandidateSource<I: Interner> {
     /// rules.
     // FIXME: Merge this with the forced ambiguity candidates, so those don't use `Misc`.
     CoherenceUnknowable,
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+pub enum ParamEnvSource {
+    /// Preferred eagerly.
+    NonGlobal,
+    // Not considered unless there are non-global param-env candidates too.
+    Global,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
