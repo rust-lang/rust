@@ -48,20 +48,17 @@ pub(crate) fn try_new_allocation<'tcx>(
     tables: &mut Tables<'tcx, BridgeTys>,
     cx: &SmirCtxt<'tcx, BridgeTys>,
 ) -> Result<Allocation, Error> {
-    use rustc_smir::context::SmirTypingEnv;
-    let layout = cx
-        .layout_of(cx.fully_monomorphized().as_query_input(ty))
-        .map_err(|e| Error::from_internal(e))?;
+    let layout = alloc::create_ty_and_layout(cx, ty).map_err(|e| Error::from_internal(e))?;
     match const_value {
         ConstValue::Scalar(scalar) => {
-            alloc::try_new_scalar(layout, scalar, tables).map(|alloc| alloc.stable(tables, cx))
+            alloc::try_new_scalar(layout, scalar, cx).map(|alloc| alloc.stable(tables, cx))
         }
         ConstValue::ZeroSized => Ok(new_empty_allocation(layout.align.abi)),
         ConstValue::Slice { data, meta } => {
-            alloc::try_new_slice(layout, data, meta, tables).map(|alloc| alloc.stable(tables, cx))
+            alloc::try_new_slice(layout, data, meta, cx).map(|alloc| alloc.stable(tables, cx))
         }
         ConstValue::Indirect { alloc_id, offset } => {
-            let alloc = alloc::try_new_indirect(alloc_id, tables);
+            let alloc = alloc::try_new_indirect(alloc_id, cx);
             use rustc_smir::context::SmirAllocRange;
             Ok(allocation_filter(&alloc.0, cx.alloc_range(offset, layout.size), tables, cx))
         }
