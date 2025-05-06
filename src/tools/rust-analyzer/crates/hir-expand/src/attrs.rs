@@ -1,4 +1,5 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
+use std::iter;
 use std::{borrow::Cow, fmt, ops};
 
 use base_db::Crate;
