@@ -20,5 +20,4 @@ fn main() {
     //~^ ERROR E0038
     //~| ERROR E0038
     foo(test);
-    //~^ ERROR E0038
 }

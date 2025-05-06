@@ -270,6 +270,18 @@ LL |     let _: Struct3<usize, usize> = Struct3 { field1: 0, field2: 0 };
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
+warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
+  --> $DIR/generics-default-stability.rs:71:39
+   |
+LL |     let _: Struct4<isize> = Struct4 { field: 1 };
+   |                                       ^^^^^^^^
+
+warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
+  --> $DIR/generics-default-stability.rs:78:39
+   |
+LL |     let _: Struct4<isize> = Struct4 { field: 0 };
+   |                                       ^^^^^^^^
+
 error[E0658]: use of unstable library feature `unstable_default`
   --> $DIR/generics-default-stability.rs:84:20
    |
@@ -278,6 +290,12 @@ LL |     let _: Struct5<isize> = Struct5 { field: 1 };
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
+  --> $DIR/generics-default-stability.rs:84:39
+   |
+LL |     let _: Struct5<isize> = Struct5 { field: 1 };
+   |                                       ^^^^^^^^
 
 error[E0658]: use of unstable library feature `unstable_default`
   --> $DIR/generics-default-stability.rs:90:20
@@ -296,6 +314,12 @@ LL |     let _: Struct5<isize> = Struct5 { field: 0 };
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
+  --> $DIR/generics-default-stability.rs:92:39
+   |
+LL |     let _: Struct5<isize> = Struct5 { field: 0 };
+   |                                       ^^^^^^^^
 
 error[E0658]: use of unstable library feature `unstable_default`
   --> $DIR/generics-default-stability.rs:100:19
@@ -467,30 +491,6 @@ LL |     let _: Box1<isize, System> = Box1::new(1);
    |
    = help: add `#![feature(box_alloc_param)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
-  --> $DIR/generics-default-stability.rs:71:39
-   |
-LL |     let _: Struct4<isize> = Struct4 { field: 1 };
-   |                                       ^^^^^^^^
-
-warning: use of deprecated field `unstable_generic_param::Struct4::field`: test
-  --> $DIR/generics-default-stability.rs:78:39
-   |
-LL |     let _: Struct4<isize> = Struct4 { field: 0 };
-   |                                       ^^^^^^^^
-
-warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
-  --> $DIR/generics-default-stability.rs:84:39
-   |
-LL |     let _: Struct5<isize> = Struct5 { field: 1 };
-   |                                       ^^^^^^^^
-
-warning: use of deprecated field `unstable_generic_param::Struct5::field`: test
-  --> $DIR/generics-default-stability.rs:92:39
-   |
-LL |     let _: Struct5<isize> = Struct5 { field: 0 };
-   |                                       ^^^^^^^^
 
 error: aborting due to 28 previous errors; 40 warnings emitted
 

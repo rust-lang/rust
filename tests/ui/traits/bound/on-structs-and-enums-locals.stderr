@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `usize: Trait` is not satisfied
-  --> $DIR/on-structs-and-enums-locals.rs:15:14
+error[E0277]: the trait bound `{integer}: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-locals.rs:11:12
    |
-LL |     let baz: Foo<usize> = loop { };
-   |              ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`
+LL |         x: 3
+   |            ^ the trait `Trait` is not implemented for `{integer}`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/on-structs-and-enums-locals.rs:1:1
@@ -15,11 +15,11 @@ note: required by a bound in `Foo`
 LL | struct Foo<T:Trait> {
    |              ^^^^^ required by this bound in `Foo`
 
-error[E0277]: the trait bound `{integer}: Trait` is not satisfied
-  --> $DIR/on-structs-and-enums-locals.rs:11:12
+error[E0277]: the trait bound `usize: Trait` is not satisfied
+  --> $DIR/on-structs-and-enums-locals.rs:15:14
    |
-LL |         x: 3
-   |            ^ the trait `Trait` is not implemented for `{integer}`
+LL |     let baz: Foo<usize> = loop { };
+   |              ^^^^^^^^^^ the trait `Trait` is not implemented for `usize`
    |
 help: this trait has no implementations, consider adding one
   --> $DIR/on-structs-and-enums-locals.rs:1:1
