@@ -3902,3 +3902,27 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn regression_19734() {
+    check_infer(
+        r#"
+trait Foo {
+    type Gat<'o>;
+}
+
+trait Bar {
+    fn baz() -> <Self::Xyz as Foo::Gat<'_>>;
+}
+
+fn foo<T: Bar>() {
+    T::baz();
+}
+    "#,
+        expect![[r#"
+            110..127 '{     ...z(); }': ()
+            116..122 'T::baz': fn baz<T>() -> <{unknown} as Foo>::Gat<'?>
+            116..124 'T::baz()': Foo::Gat<'?, {unknown}>
+        "#]],
+    );
+}
