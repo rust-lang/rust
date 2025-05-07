@@ -69,15 +69,14 @@ pub fn main_inner(profile: Profile) {
         .test_dir("tests/run")
         .test_path_filter(filter)
         .test_extract(|path| {
-            let lines = std::fs::read_to_string(path)
+            std::fs::read_to_string(path)
                 .expect("read file")
                 .lines()
                 .skip_while(|l| !l.starts_with("//"))
                 .take_while(|l| l.starts_with("//"))
                 .map(|l| &l[2..])
                 .collect::<Vec<_>>()
-                .join("\n");
-            lines
+                .join("\n")
         })
         .test_cmds(move |path| {
             // Test command 1: Compile `x.rs` into `tempdir/x`.
