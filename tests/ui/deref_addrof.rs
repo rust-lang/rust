@@ -113,14 +113,22 @@ fn issue14386() {
         //~^ deref_addrof
 
         (*&mut a.data).num = 42;
-        (*&mut a.tup).0.num = 42;
+        //~^ deref_addrof
         (*&mut a.indirect.md)[3] = 1;
+        //~^ deref_addrof
         (*&mut a.indirect_arr[1].md)[3] = 1;
+        //~^ deref_addrof
         (*&mut a.indirect_ref.md)[3] = 1;
+        //~^ deref_addrof
 
         // Check that raw pointers are properly considered as well
         **&raw mut a.prim = 0;
         //~^ deref_addrof
         (*&raw mut a.data).num = 42;
+        //~^ deref_addrof
+
+        // Do not lint, as the dereference happens later, we cannot
+        // just remove `&mut`
+        (*&mut a.tup).0.num = 42;
     }
 }

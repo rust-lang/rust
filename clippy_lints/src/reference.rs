@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SpanRangeExt, snippet_with_applicability};
 use clippy_utils::ty::adjust_derefs_manually_drop;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, Node, UnOp};
+use rustc_hir::{Expr, ExprKind, HirId, Mutability, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span};
@@ -45,10 +45,18 @@ impl LateLintPass<'_> for DerefAddrOf {
             // NOTE(tesuji): `*&` forces rustc to const-promote the array to `.rodata` section.
             // See #12854 for details.
             && !matches!(addrof_target.kind, ExprKind::Array(_))
-            && !is_manually_drop_through_union(cx, addrof_target)
             && deref_target.span.eq_ctxt(e.span)
             && !addrof_target.span.from_expansion()
         {
+            // If this expression is an explicit `DerefMut` of a `ManuallyDrop` reached through a
+            // union, we may remove the reference if we are at the point where the implicit
+            // dereference would take place. Otherwise, we should not lint.
+            let keep_deref = match is_manually_drop_through_union(cx, e.hir_id, addrof_target) {
+                ManuallyDropThroughUnion::Directly => true,
+                ManuallyDropThroughUnion::Indirect => return,
+                ManuallyDropThroughUnion::No => false,
+            };
+
             let mut applicability = Applicability::MachineApplicable;
             let sugg = if e.span.from_expansion() {
                 if let Some(macro_source) = e.span.get_source_text(cx) {
@@ -97,7 +105,11 @@ impl LateLintPass<'_> for DerefAddrOf {
                     e.span,
                     "immediately dereferencing a reference",
                     "try",
-                    sugg.to_string(),
+                    if keep_deref {
+                        format!("(*{sugg})")
+                    } else {
+                        sugg.to_string()
+                    },
                     applicability,
                 );
             }
@@ -105,21 +117,43 @@ impl LateLintPass<'_> for DerefAddrOf {
     }
 }
 
-/// Check if `expr` is part of an access to a `ManuallyDrop` entity reached through a union
-fn is_manually_drop_through_union(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if is_reached_through_union(cx, expr) {
+/// Is this a `ManuallyDrop` reached through a union, and when is `DerefMut` called on it?
+enum ManuallyDropThroughUnion {
+    /// `ManuallyDrop` reached through a union and immediately explicitely dereferenced
+    Directly,
+    /// `ManuallyDrop` reached through a union, and dereferenced later on
+    Indirect,
+    /// Any other situation
+    No,
+}
+
+/// Check if `addrof_target` is part of an access to a `ManuallyDrop` entity reached through a
+/// union, and when it is dereferenced using `DerefMut` starting from `expr_id` and going up.
+fn is_manually_drop_through_union(
+    cx: &LateContext<'_>,
+    expr_id: HirId,
+    addrof_target: &Expr<'_>,
+) -> ManuallyDropThroughUnion {
+    if is_reached_through_union(cx, addrof_target) {
         let typeck = cx.typeck_results();
-        for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
-            if let Node::Expr(expr) = node {
+        for (idx, id) in std::iter::once(expr_id)
+            .chain(cx.tcx.hir_parent_id_iter(expr_id))
+            .enumerate()
+        {
+            if let Node::Expr(expr) = cx.tcx.hir_node(id) {
                 if adjust_derefs_manually_drop(typeck.expr_adjustments(expr), typeck.expr_ty(expr)) {
-                    return true;
+                    return if idx == 0 {
+                        ManuallyDropThroughUnion::Directly
+                    } else {
+                        ManuallyDropThroughUnion::Indirect
+                    };
                 }
             } else {
                 break;
             }
         }
     }
-    false
+    ManuallyDropThroughUnion::No
 }
 
 /// Checks whether `expr` denotes an object reached through a union
