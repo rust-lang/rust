@@ -4,6 +4,7 @@ use std::cmp;
 use libc::c_uint;
 use rustc_abi::{BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size};
 use rustc_codegen_ssa::MemFlags;
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
@@ -308,7 +309,12 @@ impl<'ll, 'tcx> ArgAbiBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 }
 
 pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
+    fn llvm_type(
+        &self,
+        cx: &CodegenCx<'ll, 'tcx>,
+        name: &[u8],
+        is_llvm_intrinsic: bool,
+    ) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self, cx: &CodegenCx<'ll, 'tcx>) -> llvm::CallConv;
 
@@ -325,18 +331,37 @@ pub(crate) trait FnAbiLlvmExt<'ll, 'tcx> {
 }
 
 impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
+    fn llvm_type(
+        &self,
+        cx: &CodegenCx<'ll, 'tcx>,
+        name: &[u8],
+        is_llvm_intrinsic: bool,
+    ) -> &'ll Type {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
         let args =
             if self.c_variadic { &self.args[..self.fixed_count as usize] } else { &self.args };
+
+        let amx_intrinsic =
+            is_llvm_intrinsic && name.starts_with(b"llvm.x86.") && name.ends_with(b".internal");
+        let adjust_ty = |ty| {
+            // Change type to `x86amx` from `i32x256` for x86_64 AMX intrinsics
+            if amx_intrinsic && cx.type_kind(ty) == TypeKind::Vector && cx.vector_length(ty) == 256
+            {
+                let element_ty = cx.element_type(ty);
+                if cx.type_kind(element_ty) == TypeKind::Integer && cx.int_width(element_ty) == 32 {
+                    return cx.type_x86amx();
+                }
+            }
+            ty
+        };
 
         // This capacity calculation is approximate.
         let mut llargument_tys = Vec::with_capacity(
             self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 },
         );
 
-        let llreturn_ty = match &self.ret.mode {
+        let llreturn_ty = adjust_ty(match &self.ret.mode {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
             PassMode::Cast { cast, pad_i32: _ } => cast.llvm_type(cx),
@@ -344,7 +369,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 llargument_tys.push(cx.type_ptr());
                 cx.type_void()
             }
-        };
+        });
 
         for arg in args {
             // Note that the exact number of arguments pushed here is carefully synchronized with
@@ -388,7 +413,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     cast.llvm_type(cx)
                 }
             };
-            llargument_tys.push(llarg_ty);
+            llargument_tys.push(adjust_ty(llarg_ty));
         }
 
         if self.c_variadic {
