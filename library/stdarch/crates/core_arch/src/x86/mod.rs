@@ -772,5 +772,5 @@ mod avx512fp16;
 pub use self::avx512fp16::*;
 
 mod kl;
-#[unstable(feature = "keylocker_x86", issue = "134813")]
+#[stable(feature = "keylocker_x86", since = "CURRENT_RUSTC_VERSION")]
 pub use self::kl::*;
