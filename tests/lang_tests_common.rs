@@ -42,7 +42,9 @@ pub fn main_inner(profile: Profile) {
         .expect("failed to get absolute path of `gcc-path`")
         .display()
         .to_string();
-    env::set_var("LD_LIBRARY_PATH", gcc_path);
+    unsafe {
+        env::set_var("LD_LIBRARY_PATH", gcc_path);
+    }
 
     fn rust_filter(path: &Path) -> bool {
         path.is_file() && path.extension().expect("extension").to_str().expect("to_str") == "rs"
