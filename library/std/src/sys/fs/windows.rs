@@ -414,10 +414,7 @@ impl File {
 
         match result {
             Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
+            Err(err) if err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) => {
                 Err(io::ErrorKind::WouldBlock.into())
             }
             Err(err) => Err(err),
@@ -439,10 +436,7 @@ impl File {
 
         match result {
             Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
+            Err(err) if err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) => {
                 Err(io::ErrorKind::WouldBlock.into())
             }
             Err(err) => Err(err),
