@@ -459,6 +459,7 @@ symbols! {
         anonymous_lifetime_in_impl_trait,
         any,
         append_const_msg,
+        apx_target_feature,
         arbitrary_enum_discriminant,
         arbitrary_self_types,
         arbitrary_self_types_pointers,
