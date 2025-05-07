@@ -111,6 +111,17 @@ enum PatBoundCtx {
     Or,
 }
 
+/// Tracks bindings resolved within a pattern. This serves two purposes:
+///
+/// - This tracks when identifiers are bound multiple times within a pattern. In a product context,
+///   this is an error. In an or-pattern, this lets us reuse the same resolution for each instance.
+///   See `fresh_binding` and `resolve_pattern_inner` for more information.
+///
+/// - The guard expression of a guard pattern may use bindings from within the guard pattern, but
+///   not from elsewhere in the pattern containing it. This allows us to isolate the bindings in the
+///   subpattern to construct the scope for the guard.
+type PatternBindings = SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>;
+
 /// Does this the item (from the item rib scope) allow generic parameters?
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum HasGenericParams {
@@ -3857,7 +3868,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         pat: &'ast Pat,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+        bindings: &mut PatternBindings,
     ) {
         // We walk the pattern before declaring the pattern's inner bindings,
         // so that we avoid resolving a literal expression to a binding defined
@@ -3892,7 +3903,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         &mut self,
         pat: &Pat,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+        bindings: &mut PatternBindings,
     ) {
         // Visit all direct subpatterns of this pattern.
         pat.walk(&mut |pat| {
@@ -3988,7 +3999,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ident: Ident,
         pat_id: NodeId,
         pat_src: PatternSource,
-        bindings: &mut SmallVec<[(PatBoundCtx, FxHashSet<Ident>); 1]>,
+        bindings: &mut PatternBindings,
     ) -> Res {
         // Add the binding to the local ribs, if it doesn't already exist in the bindings map.
         // (We must not add it if it's in the bindings map because that breaks the assumptions
