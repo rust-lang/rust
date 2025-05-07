@@ -413,7 +413,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::lto::optimize_thin_module(thin, cgcx)
+        unsafe { back::lto::optimize_thin_module(thin, cgcx) }
     }
 
     unsafe fn codegen(
@@ -422,7 +422,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, dcx, module, config)
+        unsafe { back::write::codegen(cgcx, dcx, module, config) }
     }
 
     fn prepare_thin(
@@ -454,7 +454,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     #[cfg(feature = "master")]
     let info = {
