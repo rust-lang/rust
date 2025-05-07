@@ -224,12 +224,11 @@ pub(crate) fn handle_opaque_type_uses<'tcx>(
         &opaque_types,
     );
 
-    if let Some((key, hidden_type)) = infcx
+    for (key, hidden_type) in infcx
         .inner
         .borrow_mut()
         .opaque_types()
         .opaque_types_added_since(opaque_types_storage_num_entries)
-        .next()
     {
         let opaque_type_string = tcx.def_path_str(key.def_id);
         let msg = format!("unexpected cyclic definition of `{opaque_type_string}`");
