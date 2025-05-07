@@ -217,22 +217,27 @@ fn explain_lint_level_source(
     src: LintLevelSource,
     err: &mut Diag<'_, ()>,
 ) {
+    /// Find the name of the lint group that contains the given lint.
+    /// Assumes the lint only belongs to one group.
     fn lint_group_name(
         lint: &'static Lint,
         sess: &Session,
         allow_external: bool,
     ) -> Option<&'static str> {
-        let mut lint_groups_iter = sess.lint_groups();
+        let mut lint_groups_iter = sess.lint_groups_iter();
         let lint_id = LintId::of(lint);
         lint_groups_iter
             .find(|lint_group| {
-                let lints = &lint_group.1;
-                if !allow_external && lint_group.2 {
+                if !allow_external && lint_group.is_externally_loaded {
                     return false;
                 }
-                lints.iter().find(|lint_group_lint| **lint_group_lint == lint_id).is_some()
+                lint_group
+                    .lints
+                    .iter()
+                    .find(|lint_group_lint| **lint_group_lint == lint_id)
+                    .is_some()
             })
-            .map(|lint_group| lint_group.0)
+            .map(|lint_group| lint_group.name)
     }
     let name = lint.name_lower();
     if let Level::Allow = level {
