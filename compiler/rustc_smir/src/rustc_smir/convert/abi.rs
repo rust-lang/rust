@@ -117,6 +117,7 @@ impl<'tcx> Stable<'tcx> for callconv::Conv {
             Conv::AvrInterrupt => CallConvention::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => CallConvention::AvrNonBlockingInterrupt,
             Conv::RiscvInterrupt { .. } => CallConvention::RiscvInterrupt,
+            Conv::Custom => CallConvention::Custom,
         }
     }
 }

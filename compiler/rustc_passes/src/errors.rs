@@ -1045,6 +1045,57 @@ pub(crate) struct AbiInvalidAttribute {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_abi_custom_safe_foreign_function)]
+pub(crate) struct AbiCustomSafeForeignFunction {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "",
+        style = "verbose"
+    )]
+    pub safe_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_custom_safe_function)]
+pub(crate) struct AbiCustomSafeFunction {
+    #[primary_span]
+    pub span: Span,
+
+    #[suggestion(
+        passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "unsafe ",
+        style = "verbose"
+    )]
+    pub unsafe_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_custom_clothed_function)]
+pub(crate) struct AbiCustomClothedFunction {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(
+        passes_suggestion,
+        applicability = "maybe-incorrect",
+        code = "#[unsafe(naked)]\n",
+        style = "short"
+    )]
+    pub naked_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_abi_custom_call)]
+pub(crate) struct AbiCustomCall {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_unrecognized_argument)]
 pub(crate) struct UnrecognizedArgument {
     #[primary_span]

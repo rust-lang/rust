@@ -68,6 +68,11 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
         Conv::Msp430Intr | Conv::GpuKernel | Conv::AvrInterrupt | Conv::AvrNonBlockingInterrupt => {
             unreachable!("tried to use {c:?} call conv which only exists on an unsupported target");
         }
+
+        // Functions with this calling convention can only be called from assembly, but it is
+        // possible to declare an `extern "custom"` block, so the backend still needs a calling
+        // convention for declaring foreign functions.
+        Conv::Custom => default_call_conv,
     }
 }
 

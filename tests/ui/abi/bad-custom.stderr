@@ -1,0 +1,125 @@
+error: functions with the `"custom"` ABI must be unsafe
+  --> $DIR/bad-custom.rs:6:1
+   |
+LL | extern "custom" fn must_be_unsafe(a: i64) -> i64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword this function definition
+   |
+LL | unsafe extern "custom" fn must_be_unsafe(a: i64) -> i64 {
+   | ++++++
+
+error: functions with the `"custom"` ABI must be naked
+  --> $DIR/bad-custom.rs:11:1
+   |
+LL | unsafe extern "custom" fn double(a: i64) -> i64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `#[unsafe(naked)]` attribute to this function
+   |
+LL + #[unsafe(naked)]
+LL | unsafe extern "custom" fn double(a: i64) -> i64 {
+   |
+
+error: foreign functions with the `"custom"` ABI cannot be safe
+  --> $DIR/bad-custom.rs:50:5
+   |
+LL |     safe fn extern_cannot_be_safe();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: remove the `safe` keyword from this definition
+   |
+LL -     safe fn extern_cannot_be_safe();
+LL +     fn extern_cannot_be_safe();
+   |
+
+error: functions with the `"custom"` ABI cannot be called
+  --> $DIR/bad-custom.rs:55:14
+   |
+LL |     unsafe { f(x) }
+   |              ^^^^
+
+error: functions with the `"custom"` ABI cannot be called
+  --> $DIR/bad-custom.rs:61:20
+   |
+LL |         assert_eq!(double(21), 42);
+   |                    ^^^^^^^^^^
+
+error: functions with the `"custom"` ABI cannot be called
+  --> $DIR/bad-custom.rs:64:29
+   |
+LL |         assert_eq!(unsafe { increment(41) }, 42);
+   |                             ^^^^^^^^^^^^^
+
+error: functions with the `"custom"` ABI cannot be called
+  --> $DIR/bad-custom.rs:67:27
+   |
+LL |         assert!(Thing(41).is_even());
+   |                           ^^^^^^^^^
+
+error: functions with the `"custom"` ABI cannot be called
+  --> $DIR/bad-custom.rs:70:20
+   |
+LL |         assert_eq!(Thing::bitwise_not(42), !42);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+
+error: functions with the `"custom"` ABI must be naked
+  --> $DIR/bad-custom.rs:26:5
+   |
+LL |     unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `#[unsafe(naked)]` attribute to this function
+   |
+LL +     #[unsafe(naked)]
+LL |     unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
+   |
+
+error: functions with the `"custom"` ABI must be unsafe
+  --> $DIR/bad-custom.rs:35:5
+   |
+LL |     extern "custom" fn negate(a: i64) -> i64;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword this function definition
+   |
+LL |     unsafe extern "custom" fn negate(a: i64) -> i64;
+   |     ++++++
+
+error: functions with the `"custom"` ABI must be naked
+  --> $DIR/bad-custom.rs:19:5
+   |
+LL |     unsafe extern "custom" fn is_even(self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `#[unsafe(naked)]` attribute to this function
+   |
+LL +     #[unsafe(naked)]
+LL |     unsafe extern "custom" fn is_even(self) -> bool {
+   |
+
+error: functions with the `"custom"` ABI must be naked
+  --> $DIR/bad-custom.rs:40:5
+   |
+LL |     extern "custom" fn negate(a: i64) -> i64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `#[unsafe(naked)]` attribute to this function
+   |
+LL +     #[unsafe(naked)]
+LL |     extern "custom" fn negate(a: i64) -> i64 {
+   |
+
+error: functions with the `"custom"` ABI must be unsafe
+  --> $DIR/bad-custom.rs:40:5
+   |
+LL |     extern "custom" fn negate(a: i64) -> i64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword this function definition
+   |
+LL |     unsafe extern "custom" fn negate(a: i64) -> i64 {
+   |     ++++++
+
+error: aborting due to 13 previous errors
+

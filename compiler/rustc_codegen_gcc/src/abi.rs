@@ -291,6 +291,11 @@ pub fn conv_to_fn_attribute<'gcc>(conv: Conv, arch: &str) -> Option<FnAttribute<
         Conv::X86VectorCall => return None,
         Conv::X86_64SysV => FnAttribute::X86SysvAbi,
         Conv::X86_64Win64 => FnAttribute::X86MsAbi,
+
+        // Functions with this calling convention can only be called from assembly, but it is
+        // possible to declare an `extern "custom"` block, so the backend still needs a calling
+        // convention for declaring foreign functions.
+        Conv::Custom => return None,
     };
     Some(attribute)
 }
