@@ -13,6 +13,7 @@ note: consider changing this parameter type in function `send` to borrow instead
    |
 LL | fn send<T:Send + std::fmt::Debug>(ch: Chan<T>, data: T) {
    |    ---- in this function                             ^ this parameter takes ownership of the value
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |     send(ch, message.clone());

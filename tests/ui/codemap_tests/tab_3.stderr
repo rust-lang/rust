@@ -11,6 +11,7 @@ LL |         println!("{:?}", some_vec);
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves `some_vec`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     some_vec.clone().into_iter();
