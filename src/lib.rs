@@ -413,7 +413,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         cgcx: &CodegenContext<Self>,
         thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        unsafe { back::lto::optimize_thin_module(thin, cgcx) }
+        back::lto::optimize_thin_module(thin, cgcx)
     }
 
     unsafe fn codegen(
@@ -422,7 +422,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
-        unsafe { back::write::codegen(cgcx, dcx, module, config) }
+        back::write::codegen(cgcx, dcx, module, config)
     }
 
     fn prepare_thin(
