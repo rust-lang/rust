@@ -96,9 +96,12 @@ fn parse_repr(cx: &AcceptContext<'_>, param: &MetaItemParser<'_>) -> Option<Repr
 
     // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
     // structure.
-    let ident = param.path_without_args().word();
-    let ident_span = ident.map_or(rustc_span::DUMMY_SP, |ident| ident.span);
-    let name = ident.map(|ident| ident.name);
+    let (name, ident_span) = if let Some(ident) = param.path_without_args().word() {
+        (Some(ident.name), ident.span)
+    } else {
+        (None, rustc_span::DUMMY_SP)
+    };
+
     let args = param.args();
 
     match (name, args) {
@@ -115,15 +118,15 @@ fn parse_repr(cx: &AcceptContext<'_>, param: &MetaItemParser<'_>) -> Option<Repr
             parse_repr_align(cx, l, param.span(), AlignKind::Packed)
         }
 
-        (Some(sym::align | sym::packed), ArgParser::NameValue(l)) => {
+        (Some(name @ sym::align | name @ sym::packed), ArgParser::NameValue(l)) => {
             cx.emit_err(session_diagnostics::IncorrectReprFormatGeneric {
                 span: param.span(),
                 // FIXME(jdonszelmann) can just be a string in the diag type
-                repr_arg: &ident.unwrap().to_string(),
+                repr_arg: name,
                 cause: IncorrectReprFormatGenericCause::from_lit_kind(
                     param.span(),
                     &l.value_as_lit().kind,
-                    ident.unwrap().as_str(),
+                    name,
                 ),
             });
             None
@@ -133,29 +136,35 @@ fn parse_repr(cx: &AcceptContext<'_>, param: &MetaItemParser<'_>) -> Option<Repr
         (Some(sym::C), ArgParser::NoArgs) => Some(ReprC),
         (Some(sym::simd), ArgParser::NoArgs) => Some(ReprSimd),
         (Some(sym::transparent), ArgParser::NoArgs) => Some(ReprTransparent),
-        (Some(i @ int_pat!()), ArgParser::NoArgs) => {
+        (Some(name @ int_pat!()), ArgParser::NoArgs) => {
             // int_pat!() should make sure it always parses
-            Some(ReprInt(int_type_of_word(i).unwrap()))
+            Some(ReprInt(int_type_of_word(name).unwrap()))
         }
 
         (
-            Some(sym::Rust | sym::C | sym::simd | sym::transparent | int_pat!()),
+            Some(
+                name @ sym::Rust
+                | name @ sym::C
+                | name @ sym::simd
+                | name @ sym::transparent
+                | name @ int_pat!(),
+            ),
             ArgParser::NameValue(_),
         ) => {
-            cx.emit_err(session_diagnostics::InvalidReprHintNoValue {
-                span: param.span(),
-                name: ident.unwrap().to_string(),
-            });
+            cx.emit_err(session_diagnostics::InvalidReprHintNoValue { span: param.span(), name });
             None
         }
         (
-            Some(sym::Rust | sym::C | sym::simd | sym::transparent | int_pat!()),
+            Some(
+                name @ sym::Rust
+                | name @ sym::C
+                | name @ sym::simd
+                | name @ sym::transparent
+                | name @ int_pat!(),
+            ),
             ArgParser::List(_),
         ) => {
-            cx.emit_err(session_diagnostics::InvalidReprHintNoParen {
-                span: param.span(),
-                name: ident.unwrap().to_string(),
-            });
+            cx.emit_err(session_diagnostics::InvalidReprHintNoParen { span: param.span(), name });
             None
         }
 
