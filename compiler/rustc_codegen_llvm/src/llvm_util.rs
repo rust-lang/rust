@@ -19,6 +19,7 @@ use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_span::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy, SmallDataThresholdSupport};
 use rustc_target::target_features::{RUSTC_SPECIAL_FEATURES, RUSTC_SPECIFIC_FEATURES};
+use smallvec::{SmallVec, smallvec};
 
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
@@ -180,27 +181,27 @@ impl<'a> TargetFeatureFoldStrength<'a> {
 
 pub(crate) struct LLVMFeature<'a> {
     llvm_feature_name: &'a str,
-    dependency: Option<TargetFeatureFoldStrength<'a>>,
+    dependencies: SmallVec<[TargetFeatureFoldStrength<'a>; 1]>,
 }
 
 impl<'a> LLVMFeature<'a> {
     fn new(llvm_feature_name: &'a str) -> Self {
-        Self { llvm_feature_name, dependency: None }
+        Self { llvm_feature_name, dependencies: SmallVec::new() }
     }
 
-    fn with_dependency(
+    fn with_dependencies(
         llvm_feature_name: &'a str,
-        dependency: TargetFeatureFoldStrength<'a>,
+        dependencies: SmallVec<[TargetFeatureFoldStrength<'a>; 1]>,
     ) -> Self {
-        Self { llvm_feature_name, dependency: Some(dependency) }
+        Self { llvm_feature_name, dependencies }
     }
 
-    fn contains(&self, feat: &str) -> bool {
+    fn contains(&'a self, feat: &str) -> bool {
         self.iter().any(|dep| dep == feat)
     }
 
     fn iter(&'a self) -> impl Iterator<Item = &'a str> {
-        let dependencies = self.dependency.iter().map(|feat| feat.as_str());
+        let dependencies = self.dependencies.iter().map(|feat| feat.as_str());
         std::iter::once(self.llvm_feature_name).chain(dependencies)
     }
 }
@@ -210,7 +211,7 @@ impl<'a> IntoIterator for LLVMFeature<'a> {
     type IntoIter = impl Iterator<Item = &'a str>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let dependencies = self.dependency.into_iter().map(|feat| feat.as_str());
+        let dependencies = self.dependencies.into_iter().map(|feat| feat.as_str());
         std::iter::once(self.llvm_feature_name).chain(dependencies)
     }
 }
@@ -240,9 +241,9 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         &*sess.target.arch
     };
     match (arch, s) {
-        ("x86", "sse4.2") => Some(LLVMFeature::with_dependency(
+        ("x86", "sse4.2") => Some(LLVMFeature::with_dependencies(
             "sse4.2",
-            TargetFeatureFoldStrength::EnableOnly("crc32"),
+            smallvec![TargetFeatureFoldStrength::EnableOnly("crc32")],
         )),
         ("x86", "pclmulqdq") => Some(LLVMFeature::new("pclmul")),
         ("x86", "rdrand") => Some(LLVMFeature::new("rdrnd")),
@@ -262,9 +263,10 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("aarch64", "sme-b16b16") if get_version().0 < 20 => Some(LLVMFeature::new("b16b16")),
         ("aarch64", "flagm2") => Some(LLVMFeature::new("altnzcv")),
         // Rust ties fp and neon together.
-        ("aarch64", "neon") => {
-            Some(LLVMFeature::with_dependency("neon", TargetFeatureFoldStrength::Both("fp-armv8")))
-        }
+        ("aarch64", "neon") => Some(LLVMFeature::with_dependencies(
+            "neon",
+            smallvec![TargetFeatureFoldStrength::Both("fp-armv8")],
+        )),
         // In LLVM neon implicitly enables fp, but we manually enable
         // neon when a feature only implicitly enables fp
         ("aarch64", "fhm") => Some(LLVMFeature::new("fp16fml")),
@@ -281,9 +283,10 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Filter out features that are not supported by the current LLVM version
         ("riscv32" | "riscv64", "zacas") if get_version().0 < 20 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
-        ("x86", s) if s.starts_with("avx512") => {
-            Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
-        }
+        ("x86", s) if s.starts_with("avx512") => Some(LLVMFeature::with_dependencies(
+            s,
+            smallvec![TargetFeatureFoldStrength::EnableOnly("evex512")],
+        )),
         // Support for `wide-arithmetic` will first land in LLVM 20 as part of
         // llvm/llvm-project#111598
         ("wasm32" | "wasm64", "wide-arithmetic") if get_version() < (20, 0, 0) => None,
@@ -304,6 +307,18 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("x86", "avx10.1") => Some(LLVMFeature::new("avx10.1-512")),
         ("x86", "avx10.2") if get_version().0 < 20 => None,
         ("x86", "avx10.2") if get_version().0 >= 20 => Some(LLVMFeature::new("avx10.2-512")),
+        ("x86", "apxf") => Some(LLVMFeature::with_dependencies(
+            "egpr",
+            smallvec![
+                TargetFeatureFoldStrength::Both("push2pop2"),
+                TargetFeatureFoldStrength::Both("ppx"),
+                TargetFeatureFoldStrength::Both("ndd"),
+                TargetFeatureFoldStrength::Both("ccmp"),
+                TargetFeatureFoldStrength::Both("cf"),
+                TargetFeatureFoldStrength::Both("nf"),
+                TargetFeatureFoldStrength::Both("zu"),
+            ],
+        )),
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }
@@ -853,7 +868,7 @@ pub(crate) fn global_llvm_features(
                         "{}{}",
                         enable_disable, llvm_feature.llvm_feature_name
                     ))
-                    .chain(llvm_feature.dependency.into_iter().filter_map(
+                    .chain(llvm_feature.dependencies.into_iter().filter_map(
                         move |feat| match (enable, feat) {
                             (_, TargetFeatureFoldStrength::Both(f))
                             | (true, TargetFeatureFoldStrength::EnableOnly(f)) => {

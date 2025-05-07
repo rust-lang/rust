@@ -27,6 +27,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `amx-tf32`
 `amx-tile`
 `amx-transpose`
+`apxf`
 `atomics`
 `avx`
 `avx10.1`

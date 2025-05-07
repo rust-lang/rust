@@ -594,28 +594,13 @@ impl Span {
         !self.is_dummy() && sm.is_span_accessible(self)
     }
 
-    /// Returns whether `span` originates in a foreign crate's external macro.
+    /// Returns whether this span originates in a foreign crate's external macro.
     ///
     /// This is used to test whether a lint should not even begin to figure out whether it should
     /// be reported on the current node.
+    #[inline]
     pub fn in_external_macro(self, sm: &SourceMap) -> bool {
-        let expn_data = self.ctxt().outer_expn_data();
-        match expn_data.kind {
-            ExpnKind::Root
-            | ExpnKind::Desugaring(
-                DesugaringKind::ForLoop
-                | DesugaringKind::WhileLoop
-                | DesugaringKind::OpaqueTy
-                | DesugaringKind::Async
-                | DesugaringKind::Await,
-            ) => false,
-            ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
-            ExpnKind::Macro(MacroKind::Bang, _) => {
-                // Dummy span for the `def_site` means it's an external macro.
-                expn_data.def_site.is_dummy() || sm.is_imported(expn_data.def_site)
-            }
-            ExpnKind::Macro { .. } => true, // definitely a plugin
-        }
+        self.ctxt().in_external_macro(sm)
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.

@@ -41,6 +41,7 @@ use tracing::{debug, trace};
 
 use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, StableCrateId};
 use crate::edition::Edition;
+use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
 use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
@@ -906,6 +907,30 @@ impl SyntaxContext {
 
     pub fn edition(self) -> Edition {
         HygieneData::with(|data| data.expn_data(data.outer_expn(self)).edition)
+    }
+
+    /// Returns whether this context originates in a foreign crate's external macro.
+    ///
+    /// This is used to test whether a lint should not even begin to figure out whether it should
+    /// be reported on the current node.
+    pub fn in_external_macro(self, sm: &SourceMap) -> bool {
+        let expn_data = self.outer_expn_data();
+        match expn_data.kind {
+            ExpnKind::Root
+            | ExpnKind::Desugaring(
+                DesugaringKind::ForLoop
+                | DesugaringKind::WhileLoop
+                | DesugaringKind::OpaqueTy
+                | DesugaringKind::Async
+                | DesugaringKind::Await,
+            ) => false,
+            ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
+            ExpnKind::Macro(MacroKind::Bang, _) => {
+                // Dummy span for the `def_site` means it's an external macro.
+                expn_data.def_site.is_dummy() || sm.is_imported(expn_data.def_site)
+            }
+            ExpnKind::Macro { .. } => true, // definitely a plugin
+        }
     }
 }
 
