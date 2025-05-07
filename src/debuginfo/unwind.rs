@@ -32,15 +32,36 @@ impl UnwindContext {
         let mut frame_table = FrameTable::default();
 
         let cie_id = if let Some(mut cie) = module.isa().create_systemv_cie() {
-            if pic_eh_frame {
-                cie.fde_address_encoding =
-                    gimli::DwEhPe(gimli::DW_EH_PE_pcrel.0 | gimli::DW_EH_PE_sdata4.0);
-                cie.lsda_encoding =
-                    Some(gimli::DwEhPe(gimli::DW_EH_PE_pcrel.0 | gimli::DW_EH_PE_sdata4.0));
+            let ptr_encoding = if pic_eh_frame {
+                gimli::DwEhPe(gimli::DW_EH_PE_pcrel.0 | gimli::DW_EH_PE_sdata4.0)
             } else {
-                cie.fde_address_encoding = gimli::DW_EH_PE_absptr;
-                cie.lsda_encoding = Some(gimli::DW_EH_PE_absptr);
-            }
+                gimli::DW_EH_PE_absptr
+            };
+            let code_ptr_encoding = if pic_eh_frame {
+                if module.isa().triple().architecture == target_lexicon::Architecture::X86_64 {
+                    gimli::DwEhPe(
+                        gimli::DW_EH_PE_indirect.0
+                            | gimli::DW_EH_PE_pcrel.0
+                            | gimli::DW_EH_PE_sdata4.0,
+                    )
+                } else if let target_lexicon::Architecture::Aarch64(_) =
+                    module.isa().triple().architecture
+                {
+                    gimli::DwEhPe(
+                        gimli::DW_EH_PE_indirect.0
+                            | gimli::DW_EH_PE_pcrel.0
+                            | gimli::DW_EH_PE_sdata8.0,
+                    )
+                } else {
+                    todo!()
+                }
+            } else {
+                gimli::DwEhPe(gimli::DW_EH_PE_indirect.0 | gimli::DW_EH_PE_absptr.0)
+            };
+
+            cie.fde_address_encoding = ptr_encoding;
+            cie.lsda_encoding = Some(ptr_encoding);
+
             // FIXME use eh_personality lang item instead
             let personality = module
                 .declare_function(
@@ -77,26 +98,7 @@ impl UnwindContext {
 
             module.define_data(personality_ref, &personality_ref_data).unwrap();
 
-            cie.personality = Some((
-                if module.isa().triple().architecture == target_lexicon::Architecture::X86_64 {
-                    gimli::DwEhPe(
-                        gimli::DW_EH_PE_indirect.0
-                            | gimli::DW_EH_PE_pcrel.0
-                            | gimli::DW_EH_PE_sdata4.0,
-                    )
-                } else if let target_lexicon::Architecture::Aarch64(_) =
-                    module.isa().triple().architecture
-                {
-                    gimli::DwEhPe(
-                        gimli::DW_EH_PE_indirect.0
-                            | gimli::DW_EH_PE_pcrel.0
-                            | gimli::DW_EH_PE_sdata8.0,
-                    )
-                } else {
-                    todo!()
-                },
-                address_for_data(personality_ref),
-            ));
+            cie.personality = Some((code_ptr_encoding, address_for_data(personality_ref)));
             Some(frame_table.add_cie(cie))
         } else {
             None
