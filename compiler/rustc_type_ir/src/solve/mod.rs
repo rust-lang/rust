@@ -147,9 +147,8 @@ pub enum CandidateSource<I: Interner> {
     /// For a list of all traits with builtin impls, check out the
     /// `EvalCtxt::assemble_builtin_impl_candidates` method.
     BuiltinImpl(BuiltinImplSource),
-    /// An assumption from the environment.
-    ///
-    /// More precisely we've used the `n-th` assumption in the `param_env`.
+    /// An assumption from the environment. Stores a [`ParamEnvSource`], since we
+    /// prefer non-global param-env candidates in candidate assembly.
     ///
     /// ## Examples
     ///

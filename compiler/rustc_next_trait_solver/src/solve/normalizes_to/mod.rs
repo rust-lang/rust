@@ -130,9 +130,7 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        let Some(projection_pred) = assumption.as_projection_clause() else {
-            panic!("fast_reject_assumption should have avoided this");
-        };
+        let projection_pred = assumption.as_projection_clause().unwrap();
 
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;

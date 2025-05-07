@@ -123,7 +123,7 @@ where
                 result: Ok(candidate.result),
             },
             Err(NoSolution) => inspect::ProbeKind::TraitCandidate {
-                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                source: CandidateSource::ParamEnv(ParamEnvSource::Global),
                 result: Err(NoSolution),
             },
         })
@@ -157,7 +157,7 @@ where
     }
 
     /// Try to reject the assumption based off of simple heuristics, such as [`ty::ClauseKind`]
-    /// and [`I::DefId`].
+    /// and `DefId`.
     fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -990,12 +990,26 @@ where
         }
     }
 
+    /// Compute whether a param-env assumption is global or non-global after normalizing it.
+    ///
+    /// This is necessary because, for example, given:
+    ///
+    /// ```ignore,rust
+    /// where
+    ///     T: Trait<Assoc = u32>,
+    ///     i32: From<T::Assoc>,
+    /// ```
+    ///
+    /// The `i32: From<T::Assoc>` bound is non-global before normalization, but is global after.
+    /// Since the old trait solver normalized param-envs eagerly, we want to emulate this
+    /// behavior lazily.
     fn characterize_param_env_assumption(
         &mut self,
         param_env: I::ParamEnv,
         assumption: I::Clause,
     ) -> Result<CandidateSource<I>, NoSolution> {
-        // FIXME:
+        // FIXME: This should be fixed, but it also requires changing the behavior
+        // in the old solver which is currently relied on.
         if assumption.has_bound_vars() {
             return Ok(CandidateSource::ParamEnv(ParamEnvSource::NonGlobal));
         }
@@ -1030,7 +1044,6 @@ where
         let Ok(ty) = self.ecx.structurally_normalize_ty(self.param_env, ty) else {
             return ControlFlow::Break(Err(NoSolution));
         };
-        let ty = self.ecx.eager_resolve(ty);
 
         if let ty::Placeholder(_) = ty.kind() {
             ControlFlow::Break(Ok(()))
@@ -1043,7 +1056,6 @@ where
         let Ok(ct) = self.ecx.structurally_normalize_const(self.param_env, ct) else {
             return ControlFlow::Break(Err(NoSolution));
         };
-        let ct = self.ecx.eager_resolve(ct);
 
         if let ty::ConstKind::Placeholder(_) = ct.kind() {
             ControlFlow::Break(Ok(()))
@@ -1053,7 +1065,7 @@ where
     }
 
     fn visit_region(&mut self, r: I::Region) -> Self::Result {
-        match r.kind() {
+        match self.ecx.eager_resolve_region(r).kind() {
             ty::ReStatic | ty::ReError(_) => ControlFlow::Continue(()),
             ty::ReVar(_) | ty::RePlaceholder(_) => ControlFlow::Break(Ok(())),
             ty::ReErased | ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReBound(..) => {

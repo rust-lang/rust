@@ -151,9 +151,7 @@ where
         goal: Goal<I, Self>,
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
-        let Some(trait_clause) = assumption.as_trait_clause() else {
-            panic!("fast_reject_assumption should have avoided this");
-        };
+        let trait_clause = assumption.as_trait_clause().unwrap();
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
