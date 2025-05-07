@@ -189,10 +189,10 @@
 // Target features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(avx512_target_feature))]
+#![cfg_attr(bootstrap, feature(keylocker_x86))]
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(hexagon_target_feature)]
-#![feature(keylocker_x86)]
 #![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
