@@ -114,6 +114,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
         c::ERROR_FILENAME_EXCED_RANGE => return InvalidFilename,
         c::ERROR_CANT_RESOLVE_FILENAME => return FilesystemLoop,
+        c::ERROR_LOCK_VIOLATION => return WouldBlock,
         _ => {}
     }
 

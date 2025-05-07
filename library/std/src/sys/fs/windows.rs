@@ -400,7 +400,7 @@ impl File {
     }
 
     pub fn try_lock(&self) -> io::Result<()> {
-        let result = cvt(unsafe {
+        cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
                 self.handle.as_raw_handle(),
@@ -410,22 +410,13 @@ impl File {
                 u32::MAX,
                 &mut overlapped,
             )
-        });
+        })?;
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
-                Err(io::ErrorKind::WouldBlock.into())
-            }
-            Err(err) => Err(err),
-        }
+        Ok(())
     }
 
     pub fn try_lock_shared(&self) -> io::Result<()> {
-        let result = cvt(unsafe {
+        cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
                 self.handle.as_raw_handle(),
@@ -435,18 +426,9 @@ impl File {
                 u32::MAX,
                 &mut overlapped,
             )
-        });
+        })?;
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
-                Err(io::ErrorKind::WouldBlock.into())
-            }
-            Err(err) => Err(err),
-        }
+        Ok(())
     }
 
     pub fn unlock(&self) -> io::Result<()> {
