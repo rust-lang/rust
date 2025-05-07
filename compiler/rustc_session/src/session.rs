@@ -1372,6 +1372,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    if sess.opts.unstable_opts.indirect_branch_cs_prefix {
+        if sess.target.arch != "x86" && sess.target.arch != "x86_64" {
+            sess.dcx().emit_err(errors::IndirectBranchCsPrefixRequiresX86OrX8664);
+        }
+    }
+
     if let Some(regparm) = sess.opts.unstable_opts.regparm {
         if regparm > 3 {
             sess.dcx().emit_err(errors::UnsupportedRegparm { regparm });
