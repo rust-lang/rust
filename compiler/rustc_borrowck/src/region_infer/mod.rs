@@ -1611,8 +1611,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         from_region: RegionVid,
         to_region: RegionVid,
-    ) -> Option<(Vec<OutlivesConstraint<'tcx>>, RegionVid)> {
-        self.constraint_path_to(from_region, |to| to == to_region, true)
+    ) -> Option<Vec<OutlivesConstraint<'tcx>>> {
+        self.constraint_path_to(from_region, |to| to == to_region, true).map(|o| o.0)
     }
 
     /// Walks the graph of constraints (where `'a: 'b` is considered
@@ -1805,15 +1805,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// r2 has a larger universe or if r1 and r2 both come from
     /// placeholder regions.
     ///
-    /// Returns the path and the target region, which may or may
-    /// not be the original `to`. It panics if there is no such
-    /// path.
+    /// Returns the path. It panics if there is no such path.
     fn path_to_modulo_placeholders(
         &self,
         from: RegionVid,
         to: RegionVid,
-    ) -> (Vec<OutlivesConstraint<'tcx>>, RegionVid) {
-        let path = self.constraint_path_between_regions(from, to).unwrap().0;
+    ) -> Vec<OutlivesConstraint<'tcx>> {
+        let path = self.constraint_path_between_regions(from, to).unwrap();
 
         // If we are looking for a path to 'static, and we are passing
         // through a constraint synthesised from an illegal placeholder
@@ -1826,13 +1824,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             };
 
             debug!("{culprit:?} is the reason {from:?}: 'static!");
-            // FIXME: think: this may be for transitive reasons and
-            // we may have to do this arbitrarily many times. Or may we?
-            return self.constraint_path_to(cl_fr, |r| r == culprit, false).unwrap();
+            return self.constraint_path_to(cl_fr, |r| r == culprit, false).unwrap().0;
         }
 
         // No funny business; just return the path!
-        (path, to)
+        path
     }
 
     /// Tries to find the best constraint to blame for the fact that
@@ -1851,7 +1847,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // Find all paths
         assert!(from_region != to_region, "Trying to blame a region for itself!");
 
-        let (path, new_to_region) = self.path_to_modulo_placeholders(from_region, to_region);
+        let path = self.path_to_modulo_placeholders(from_region, to_region);
         debug!(
             "path={:#?}",
             path.iter()
@@ -1954,7 +1950,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 ConstraintCategory::Cast {
                     unsize_to: Some(unsize_ty),
                     is_implicit_coercion: true,
-                } if new_to_region == self.universal_regions().fr_static
+                } if to_region == self.universal_regions().fr_static
                     // Mirror the note's condition, to minimize how often this diverts blame.
                     && let ty::Adt(_, args) = unsize_ty.kind()
                     && args.iter().any(|arg| arg.as_type().is_some_and(|ty| ty.is_trait()))
@@ -2028,6 +2024,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         } else {
             path[best_choice]
         };
+
+        assert!(
+            !matches!(best_constraint.category, ConstraintCategory::IllegalPlaceholder(_, _)),
+            "Illegal placeholder constraint blamed; should have redirected to other region relation"
+        );
 
         let blame_constraint = BlameConstraint {
             category: best_constraint.category,
