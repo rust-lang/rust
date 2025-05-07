@@ -1647,6 +1647,30 @@ pub(crate) struct ExpectedFnPathFoundFnKeyword {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_path_found_named_params)]
+pub(crate) struct FnPathFoundNamedParams {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub named_param_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_found_c_variadic_params)]
+pub(crate) struct PathFoundCVariadicParams {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_path_found_attribute_in_params)]
+pub(crate) struct PathFoundAttributeInParams {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_path_double_colon)]
 pub(crate) struct PathSingleColon {
     #[primary_span]

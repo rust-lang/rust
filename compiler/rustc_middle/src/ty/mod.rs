@@ -309,7 +309,10 @@ impl Visibility {
                 } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
                     "pub(self)".to_string()
                 } else {
-                    format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
+                    format!(
+                        "pub(in crate{})",
+                        tcx.def_path(restricted_id.to_def_id()).to_string_no_crate_verbose()
+                    )
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
