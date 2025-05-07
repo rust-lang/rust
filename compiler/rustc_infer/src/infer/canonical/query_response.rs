@@ -13,9 +13,7 @@ use std::iter;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::{
-    self, BoundVar, CanonicalVarKind, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable,
-};
+use rustc_middle::ty::{self, BoundVar, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
 
@@ -422,16 +420,7 @@ impl<'tcx> InferCtxt<'tcx> {
         for (original_value, result_value) in iter::zip(&original_values.var_values, result_values)
         {
             match result_value.unpack() {
-                GenericArgKind::Type(result_value) => {
-                    // e.g., here `result_value` might be `?0` in the example above...
-                    if let ty::Bound(debruijn, b) = *result_value.kind() {
-                        // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
-
-                        // We only allow a `ty::INNERMOST` index in generic parameters.
-                        assert_eq!(debruijn, ty::INNERMOST);
-                        opt_values[b.var] = Some(*original_value);
-                    }
-                }
+                GenericArgKind::Type(_) => {}
                 GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
                     if let ty::ReBound(debruijn, br) = result_value.kind() {
@@ -457,7 +446,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // Create result arguments: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let mut var_values = Vec::new();
+        let mut var_values = Vec::with_capacity(query_response.variables.len());
         for (index, info) in query_response.variables.iter().enumerate() {
             let value = if info.universe() != ty::UniverseIndex::ROOT {
                 // A variable from inside a binder of the query. While ideally these shouldn't
@@ -470,27 +459,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // We need to still make sure to register any subtype relations returned by the
                 // query.
                 match opt_values[BoundVar::new(index)] {
-                    Some(v) => {
-                        if let CanonicalVarKind::Ty { universe: _, sub_root } = info.kind {
-                            if let Some(prev) = var_values.get(sub_root.as_usize()) {
-                                // We cannot simply assume that previous `var_values`
-                                // are inference variables, see the comment in
-                                // `instantiate_canonical_var`.
-                                let v = self.shallow_resolve(v.expect_ty());
-                                let prev = self.shallow_resolve(prev.expect_ty());
-                                match (v.kind(), prev.kind()) {
-                                    (
-                                        &ty::Infer(ty::TyVar(vid)),
-                                        &ty::Infer(ty::TyVar(sub_root)),
-                                    ) => {
-                                        self.inner.borrow_mut().type_variables().sub(vid, sub_root)
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-                        v
-                    }
+                    Some(v) => v,
                     None => self.instantiate_canonical_var(cause.span, info, &var_values, |u| {
                         universe_map[u.as_usize()]
                     }),
