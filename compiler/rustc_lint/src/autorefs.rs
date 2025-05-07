@@ -15,9 +15,9 @@ declare_lint! {
     ///
     /// ```rust
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
-    ///     &raw mut (*ptr)[..16]
-    ///     //             ^^^^^^ this calls `IndexMut::index_mut(&mut ..., ..16)`,
-    ///     //                    implicitly creating a reference
+    ///     unsafe { &raw mut (*ptr)[..16] }
+    ///     //                      ^^^^^^ this calls `IndexMut::index_mut(&mut ..., ..16)`,
+    ///     //                             implicitly creating a reference
     /// }
     /// ```
     ///
@@ -34,17 +34,17 @@ declare_lint! {
     ///
     /// ```rust
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
-    ///     &raw mut (&mut *ptr)[..16]
+    ///     unsafe { &raw mut (&mut *ptr)[..16] }
     /// }
     /// ```
     ///
     /// Otherwise try to find an alternative way to achive your goals using only raw pointers:
     ///
     /// ```rust
-    /// use std::slice;
+    /// use std::ptr;
     ///
-    /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
-    ///     slice::from_raw_parts_mut(ptr.cast(), 16)
+    /// fn fun(ptr: *mut [u8]) -> *mut [u8] {
+    ///     ptr::slice_from_raw_parts_mut(ptr.cast(), 16)
     /// }
     /// ```
     pub DANGEROUS_IMPLICIT_AUTOREFS,
