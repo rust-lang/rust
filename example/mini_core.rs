@@ -537,6 +537,7 @@ fn panic_in_cleanup() -> ! {
     loop {}
 }
 
+#[cfg(all(unix, not(target_vendor = "apple")))]
 #[link(name = "gcc_s")]
 extern "C" {
     fn _Unwind_Resume(exc: *mut ()) -> !;
