@@ -217,12 +217,19 @@ fn explain_lint_level_source(
     src: LintLevelSource,
     err: &mut Diag<'_, ()>,
 ) {
-    fn lint_group_name(lint: &'static Lint, sess: &Session) -> Option<&'static str> {
+    fn lint_group_name(
+        lint: &'static Lint,
+        sess: &Session,
+        allow_external: bool,
+    ) -> Option<&'static str> {
         let mut lint_groups_iter = sess.lint_groups();
         let lint_id = LintId::of(lint);
         lint_groups_iter
             .find(|lint_group| {
                 let lints = &lint_group.1;
+                if !allow_external && lint_group.2 {
+                    return false;
+                }
                 lints.iter().find(|lint_group_lint| **lint_group_lint == lint_id).is_some()
             })
             .map(|lint_group| lint_group.0)
@@ -236,7 +243,7 @@ fn explain_lint_level_source(
     match src {
         LintLevelSource::Default => {
             let level_str = level.as_str();
-            match lint_group_name(lint, sess) {
+            match lint_group_name(lint, sess, false) {
                 Some(group_name) => {
                     err.note_once(format!("`#[{level_str}({name})]` (part of `#[{level_str}({group_name})]`) on by default"));
                 }
