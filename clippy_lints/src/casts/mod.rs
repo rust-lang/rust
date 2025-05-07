@@ -789,7 +789,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for casts of a primitive method pointer to any integer type.
+    /// Checks for casts of a primitive method pointer like `max`/`min` to any integer type.
     ///
     /// ### Why restrict this?
     /// Casting a function pointer to an integer can have surprising results and can occur
