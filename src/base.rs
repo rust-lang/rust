@@ -308,6 +308,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
         }
 
         if bb_data.is_cleanup {
+            if cfg!(not(feature = "unwinding")) {
+                continue;
+            }
+
             fx.bcx.set_cold_block(block);
         }
 
@@ -542,13 +546,15 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 codegen_unwind_terminate(fx, source_info.span, *reason);
             }
             TerminatorKind::UnwindResume => {
-                let exception_ptr = fx.bcx.use_var(fx.exception_slot);
-                fx.lib_call(
-                    "_Unwind_Resume",
-                    vec![AbiParam::new(fx.pointer_type)],
-                    vec![],
-                    &[exception_ptr],
-                );
+                if cfg!(feature = "unwinding") {
+                    let exception_ptr = fx.bcx.use_var(fx.exception_slot);
+                    fx.lib_call(
+                        "_Unwind_Resume",
+                        vec![AbiParam::new(fx.pointer_type)],
+                        vec![],
+                        &[exception_ptr],
+                    );
+                }
                 fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
             }
             TerminatorKind::Unreachable => {

@@ -19,6 +19,7 @@ pub(crate) fn run(
     cg_clif_dylib: &CodegenBackend,
     rustup_toolchain_name: Option<&str>,
     bootstrap_host_compiler: &Compiler,
+    panic_unwind_support: bool,
 ) {
     std::fs::create_dir_all(&dirs.download_dir).unwrap();
     ABI_CAFE_REPO.fetch(dirs);
@@ -32,6 +33,7 @@ pub(crate) fn run(
         bootstrap_host_compiler,
         rustup_toolchain_name,
         bootstrap_host_compiler.triple.clone(),
+        panic_unwind_support,
     );
 
     eprintln!("Running abi-cafe");

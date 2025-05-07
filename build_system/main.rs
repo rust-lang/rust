@@ -83,6 +83,7 @@ fn main() {
     let mut download_dir = None;
     let mut sysroot_kind = SysrootKind::Clif;
     let mut use_unstable_features = true;
+    let mut panic_unwind_support = false;
     let mut frozen = false;
     let mut skip_tests = vec![];
     let mut use_backend = None;
@@ -108,6 +109,7 @@ fn main() {
                 }
             }
             "--no-unstable-features" => use_unstable_features = false,
+            "--panic-unwind-support" => panic_unwind_support = true,
             "--frozen" => frozen = true,
             "--skip-test" => {
                 // FIXME check that all passed in tests actually exist
@@ -201,6 +203,7 @@ fn main() {
             &dirs,
             &bootstrap_host_compiler,
             use_unstable_features,
+            panic_unwind_support,
         ))
     };
     match command {
@@ -212,6 +215,7 @@ fn main() {
                 &dirs,
                 sysroot_kind,
                 use_unstable_features,
+                panic_unwind_support,
                 &skip_tests.iter().map(|test| &**test).collect::<Vec<_>>(),
                 &cg_clif_dylib,
                 &bootstrap_host_compiler,
@@ -230,6 +234,7 @@ fn main() {
                 &cg_clif_dylib,
                 rustup_toolchain_name.as_deref(),
                 &bootstrap_host_compiler,
+                panic_unwind_support,
             );
         }
         Command::Build => {
@@ -240,6 +245,7 @@ fn main() {
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),
                 target_triple,
+                panic_unwind_support,
             );
         }
         Command::Bench => {
@@ -250,6 +256,7 @@ fn main() {
                 &bootstrap_host_compiler,
                 rustup_toolchain_name.as_deref(),
                 target_triple,
+                panic_unwind_support,
             );
             bench::benchmark(&dirs, &compiler);
         }

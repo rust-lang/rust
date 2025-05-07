@@ -17,6 +17,7 @@ pub(crate) fn build_sysroot(
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
     target_triple: String,
+    panic_unwind_support: bool,
 ) -> Compiler {
     let _guard = LogGroup::guard("Build sysroot");
 
@@ -52,6 +53,9 @@ pub(crate) fn build_sysroot(
             .arg("-o")
             .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");
+        if panic_unwind_support {
+            build_cargo_wrapper_cmd.arg("--cfg").arg("support_panic_unwind");
+        }
         if let Some(rustup_toolchain_name) = &rustup_toolchain_name {
             build_cargo_wrapper_cmd
                 .env("TOOLCHAIN_NAME", rustup_toolchain_name)
@@ -77,6 +81,7 @@ pub(crate) fn build_sysroot(
         bootstrap_host_compiler.clone(),
         &cg_clif_dylib_path,
         sysroot_kind,
+        panic_unwind_support,
     );
     host.install_into_sysroot(dist_dir);
 
@@ -91,6 +96,7 @@ pub(crate) fn build_sysroot(
             },
             &cg_clif_dylib_path,
             sysroot_kind,
+            panic_unwind_support,
         )
         .install_into_sysroot(dist_dir);
     }
@@ -141,12 +147,15 @@ fn build_sysroot_for_triple(
     compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
     sysroot_kind: SysrootKind,
+    panic_unwind_support: bool,
 ) -> SysrootTarget {
     match sysroot_kind {
         SysrootKind::None => build_rtstartup(dirs, &compiler)
             .unwrap_or(SysrootTarget { triple: compiler.triple, libs: vec![] }),
         SysrootKind::Llvm => build_llvm_sysroot_for_triple(compiler),
-        SysrootKind::Clif => build_clif_sysroot_for_triple(dirs, compiler, cg_clif_dylib_path),
+        SysrootKind::Clif => {
+            build_clif_sysroot_for_triple(dirs, compiler, cg_clif_dylib_path, panic_unwind_support)
+        }
     }
 }
 
@@ -188,6 +197,7 @@ fn build_clif_sysroot_for_triple(
     dirs: &Dirs,
     mut compiler: Compiler,
     cg_clif_dylib_path: &CodegenBackend,
+    panic_unwind_support: bool,
 ) -> SysrootTarget {
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
@@ -206,7 +216,10 @@ fn build_clif_sysroot_for_triple(
     }
 
     // Build sysroot
-    let mut rustflags = vec!["-Zforce-unstable-if-unmarked".to_owned(), "-Cpanic=abort".to_owned()];
+    let mut rustflags = vec!["-Zforce-unstable-if-unmarked".to_owned()];
+    if !panic_unwind_support {
+        rustflags.push("-Cpanic=abort".to_owned());
+    }
     match cg_clif_dylib_path {
         CodegenBackend::Local(path) => {
             rustflags.push(format!("-Zcodegen-backend={}", path.to_str().unwrap()));

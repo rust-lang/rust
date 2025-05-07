@@ -37,68 +37,74 @@ impl UnwindContext {
             } else {
                 gimli::DW_EH_PE_absptr
             };
-            let code_ptr_encoding = if pic_eh_frame {
-                if module.isa().triple().architecture == target_lexicon::Architecture::X86_64 {
-                    gimli::DwEhPe(
-                        gimli::DW_EH_PE_indirect.0
-                            | gimli::DW_EH_PE_pcrel.0
-                            | gimli::DW_EH_PE_sdata4.0,
-                    )
-                } else if let target_lexicon::Architecture::Aarch64(_) =
-                    module.isa().triple().architecture
-                {
-                    gimli::DwEhPe(
-                        gimli::DW_EH_PE_indirect.0
-                            | gimli::DW_EH_PE_pcrel.0
-                            | gimli::DW_EH_PE_sdata8.0,
-                    )
-                } else {
-                    todo!()
-                }
-            } else {
-                gimli::DwEhPe(gimli::DW_EH_PE_indirect.0 | gimli::DW_EH_PE_absptr.0)
-            };
 
             cie.fde_address_encoding = ptr_encoding;
-            cie.lsda_encoding = Some(ptr_encoding);
 
-            // FIXME use eh_personality lang item instead
-            let personality = module
-                .declare_function(
-                    "rust_eh_personality",
-                    Linkage::Import,
-                    &Signature {
-                        params: vec![
-                            AbiParam::new(types::I32),
-                            AbiParam::new(types::I32),
-                            AbiParam::new(types::I64),
-                            AbiParam::new(module.target_config().pointer_type()),
-                            AbiParam::new(module.target_config().pointer_type()),
-                        ],
-                        returns: vec![AbiParam::new(types::I32)],
-                        call_conv: module.target_config().default_call_conv,
-                    },
-                )
-                .unwrap();
+            // FIXME only add personality function and lsda when necessary: https://github.com/rust-lang/rust/blob/1f76d219c906f0112bb1872f33aa977164c53fa6/compiler/rustc_codegen_ssa/src/mir/mod.rs#L200-L204
+            if cfg!(feature = "unwinding") {
+                let code_ptr_encoding = if pic_eh_frame {
+                    if module.isa().triple().architecture == target_lexicon::Architecture::X86_64 {
+                        gimli::DwEhPe(
+                            gimli::DW_EH_PE_indirect.0
+                                | gimli::DW_EH_PE_pcrel.0
+                                | gimli::DW_EH_PE_sdata4.0,
+                        )
+                    } else if let target_lexicon::Architecture::Aarch64(_) =
+                        module.isa().triple().architecture
+                    {
+                        gimli::DwEhPe(
+                            gimli::DW_EH_PE_indirect.0
+                                | gimli::DW_EH_PE_pcrel.0
+                                | gimli::DW_EH_PE_sdata8.0,
+                        )
+                    } else {
+                        todo!()
+                    }
+                } else {
+                    gimli::DwEhPe(gimli::DW_EH_PE_indirect.0 | gimli::DW_EH_PE_absptr.0)
+                };
 
-            // Use indirection here to support PIC the case where rust_eh_personality is defined in
-            // another DSO.
-            let personality_ref = module
-                .declare_data("DW.ref.rust_eh_personality", Linkage::Local, false, false)
-                .unwrap();
+                cie.lsda_encoding = Some(ptr_encoding);
 
-            let mut personality_ref_data = DataDescription::new();
-            // Note: Must not use define_zeroinit. The unwinder can't handle this being in the .bss
-            // section.
-            let pointer_bytes = usize::from(module.target_config().pointer_bytes());
-            personality_ref_data.define(vec![0; pointer_bytes].into_boxed_slice());
-            let personality_func_ref =
-                module.declare_func_in_data(personality, &mut personality_ref_data);
-            personality_ref_data.write_function_addr(0, personality_func_ref);
+                // FIXME use eh_personality lang item instead
+                let personality = module
+                    .declare_function(
+                        "rust_eh_personality",
+                        Linkage::Import,
+                        &Signature {
+                            params: vec![
+                                AbiParam::new(types::I32),
+                                AbiParam::new(types::I32),
+                                AbiParam::new(types::I64),
+                                AbiParam::new(module.target_config().pointer_type()),
+                                AbiParam::new(module.target_config().pointer_type()),
+                            ],
+                            returns: vec![AbiParam::new(types::I32)],
+                            call_conv: module.target_config().default_call_conv,
+                        },
+                    )
+                    .unwrap();
 
-            module.define_data(personality_ref, &personality_ref_data).unwrap();
+                // Use indirection here to support PIC the case where rust_eh_personality is defined in
+                // another DSO.
+                let personality_ref = module
+                    .declare_data("DW.ref.rust_eh_personality", Linkage::Local, false, false)
+                    .unwrap();
 
-            cie.personality = Some((code_ptr_encoding, address_for_data(personality_ref)));
+                let mut personality_ref_data = DataDescription::new();
+                // Note: Must not use define_zeroinit. The unwinder can't handle this being in the .bss
+                // section.
+                let pointer_bytes = usize::from(module.target_config().pointer_bytes());
+                personality_ref_data.define(vec![0; pointer_bytes].into_boxed_slice());
+                let personality_func_ref =
+                    module.declare_func_in_data(personality, &mut personality_ref_data);
+                personality_ref_data.write_function_addr(0, personality_func_ref);
+
+                module.define_data(personality_ref, &personality_ref_data).unwrap();
+
+                cie.personality = Some((code_ptr_encoding, address_for_data(personality_ref)));
+            }
+
             Some(frame_table.add_cie(cie))
         } else {
             None
@@ -134,88 +140,93 @@ impl UnwindContext {
         match unwind_info {
             UnwindInfo::SystemV(unwind_info) => {
                 let mut fde = unwind_info.to_fde(address_for_func(func_id));
-                // FIXME use unique symbol name derived from function name
-                let lsda = module.declare_anonymous_data(false, false).unwrap();
 
-                let encoding = Encoding {
-                    format: Format::Dwarf32,
-                    version: 1,
-                    address_size: module.isa().frontend_config().pointer_bytes(),
-                };
+                // FIXME only add personality function and lsda when necessary: https://github.com/rust-lang/rust/blob/1f76d219c906f0112bb1872f33aa977164c53fa6/compiler/rustc_codegen_ssa/src/mir/mod.rs#L200-L204
+                if cfg!(feature = "unwinding") {
+                    // FIXME use unique symbol name derived from function name
+                    let lsda = module.declare_anonymous_data(false, false).unwrap();
 
-                let mut gcc_except_table_data = GccExceptTable {
-                    call_sites: CallSiteTable(vec![]),
-                    actions: ActionTable::new(),
-                    type_info: TypeInfoTable::new(gimli::DW_EH_PE_udata4),
-                };
-
-                let catch_type = gcc_except_table_data.type_info.add(Address::Constant(0));
-                let catch_action = gcc_except_table_data
-                    .actions
-                    .add(Action { kind: ActionKind::Catch(catch_type), next_action: None });
-
-                for call_site in context.compiled_code().unwrap().buffer.call_sites() {
-                    if call_site.exception_handlers.is_empty() {
-                        gcc_except_table_data.call_sites.0.push(CallSite {
-                            start: u64::from(call_site.ret_addr - 1),
-                            length: 1,
-                            landing_pad: 0,
-                            action_entry: None,
-                        });
-                    }
-                    for &(tag, landingpad) in call_site.exception_handlers {
-                        match tag.expand().unwrap().as_u32() {
-                            EXCEPTION_HANDLER_CLEANUP => {
-                                gcc_except_table_data.call_sites.0.push(CallSite {
-                                    start: u64::from(call_site.ret_addr - 1),
-                                    length: 1,
-                                    landing_pad: u64::from(landingpad),
-                                    action_entry: None,
-                                })
-                            }
-                            EXCEPTION_HANDLER_CATCH => {
-                                gcc_except_table_data.call_sites.0.push(CallSite {
-                                    start: u64::from(call_site.ret_addr - 1),
-                                    length: 1,
-                                    landing_pad: u64::from(landingpad),
-                                    action_entry: Some(catch_action),
-                                })
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-                }
-
-                let mut gcc_except_table = super::emit::WriterRelocate::new(self.endian);
-
-                gcc_except_table_data.write(&mut gcc_except_table, encoding).unwrap();
-
-                let mut data = DataDescription::new();
-                data.define(gcc_except_table.writer.into_vec().into_boxed_slice());
-                data.set_segment_section("", ".gcc_except_table");
-
-                for reloc in &gcc_except_table.relocs {
-                    match reloc.name {
-                        DebugRelocName::Section(_id) => unreachable!(),
-                        DebugRelocName::Symbol(id) => {
-                            let id = id.try_into().unwrap();
-                            if id & 1 << 31 == 0 {
-                                let func_ref =
-                                    module.declare_func_in_data(FuncId::from_u32(id), &mut data);
-                                data.write_function_addr(reloc.offset, func_ref);
-                            } else {
-                                let gv = module.declare_data_in_data(
-                                    DataId::from_u32(id & !(1 << 31)),
-                                    &mut data,
-                                );
-                                data.write_data_addr(reloc.offset, gv, 0);
-                            }
-                        }
+                    let encoding = Encoding {
+                        format: Format::Dwarf32,
+                        version: 1,
+                        address_size: module.isa().frontend_config().pointer_bytes(),
                     };
+
+                    let mut gcc_except_table_data = GccExceptTable {
+                        call_sites: CallSiteTable(vec![]),
+                        actions: ActionTable::new(),
+                        type_info: TypeInfoTable::new(gimli::DW_EH_PE_udata4),
+                    };
+
+                    let catch_type = gcc_except_table_data.type_info.add(Address::Constant(0));
+                    let catch_action = gcc_except_table_data
+                        .actions
+                        .add(Action { kind: ActionKind::Catch(catch_type), next_action: None });
+
+                    for call_site in context.compiled_code().unwrap().buffer.call_sites() {
+                        if call_site.exception_handlers.is_empty() {
+                            gcc_except_table_data.call_sites.0.push(CallSite {
+                                start: u64::from(call_site.ret_addr - 1),
+                                length: 1,
+                                landing_pad: 0,
+                                action_entry: None,
+                            });
+                        }
+                        for &(tag, landingpad) in call_site.exception_handlers {
+                            match tag.expand().unwrap().as_u32() {
+                                EXCEPTION_HANDLER_CLEANUP => {
+                                    gcc_except_table_data.call_sites.0.push(CallSite {
+                                        start: u64::from(call_site.ret_addr - 1),
+                                        length: 1,
+                                        landing_pad: u64::from(landingpad),
+                                        action_entry: None,
+                                    })
+                                }
+                                EXCEPTION_HANDLER_CATCH => {
+                                    gcc_except_table_data.call_sites.0.push(CallSite {
+                                        start: u64::from(call_site.ret_addr - 1),
+                                        length: 1,
+                                        landing_pad: u64::from(landingpad),
+                                        action_entry: Some(catch_action),
+                                    })
+                                }
+                                _ => unreachable!(),
+                            }
+                        }
+                    }
+
+                    let mut gcc_except_table = super::emit::WriterRelocate::new(self.endian);
+
+                    gcc_except_table_data.write(&mut gcc_except_table, encoding).unwrap();
+
+                    let mut data = DataDescription::new();
+                    data.define(gcc_except_table.writer.into_vec().into_boxed_slice());
+                    data.set_segment_section("", ".gcc_except_table");
+
+                    for reloc in &gcc_except_table.relocs {
+                        match reloc.name {
+                            DebugRelocName::Section(_id) => unreachable!(),
+                            DebugRelocName::Symbol(id) => {
+                                let id = id.try_into().unwrap();
+                                if id & 1 << 31 == 0 {
+                                    let func_ref = module
+                                        .declare_func_in_data(FuncId::from_u32(id), &mut data);
+                                    data.write_function_addr(reloc.offset, func_ref);
+                                } else {
+                                    let gv = module.declare_data_in_data(
+                                        DataId::from_u32(id & !(1 << 31)),
+                                        &mut data,
+                                    );
+                                    data.write_data_addr(reloc.offset, gv, 0);
+                                }
+                            }
+                        };
+                    }
+
+                    module.define_data(lsda, &data).unwrap();
+                    fde.lsda = Some(address_for_data(lsda));
                 }
 
-                module.define_data(lsda, &data).unwrap();
-                fde.lsda = Some(address_for_data(lsda));
                 self.frame_table.add_fde(self.cie_id.unwrap(), fde);
             }
             UnwindInfo::WindowsX64(_) | UnwindInfo::WindowsArm64(_) => {

@@ -844,7 +844,7 @@ pub(crate) fn codegen_call_with_unwind_action(
     fx: &mut FunctionCx<'_, '_, '_>,
     span: Span,
     func_ref: CallTarget,
-    unwind: UnwindAction,
+    mut unwind: UnwindAction,
     call_args: &[Value],
     target_block: Option<Block>,
 ) -> SmallVec<[Value; 2]> {
@@ -856,6 +856,11 @@ pub(crate) fn codegen_call_with_unwind_action(
     if target_block.is_some() {
         assert!(fx.bcx.func.dfg.signatures[sig_ref].returns.is_empty());
     }
+
+    if cfg!(not(feature = "unwinding")) {
+        unwind = UnwindAction::Unreachable;
+    }
+
     match unwind {
         UnwindAction::Continue | UnwindAction::Unreachable => {
             let call_inst = match func_ref {
