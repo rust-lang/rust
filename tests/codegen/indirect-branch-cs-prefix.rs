@@ -1,5 +1,5 @@
-// Test that the `indirect_branch_cs_prefix` module attribute is (not) emitted when the
-// `-Zindirect-branch-cs-prefix` flag is (not) set.
+// Test that the `indirect_branch_cs_prefix` module attribute is (not)
+// emitted when the `-Zindirect-branch-cs-prefix` flag is (not) set.
 
 //@ add-core-stubs
 //@ revisions: unset set
@@ -11,8 +11,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // unset-NOT: !{{[0-9]+}} = !{i32 4, !"indirect_branch_cs_prefix", i32 1}
 // set: !{{[0-9]+}} = !{i32 4, !"indirect_branch_cs_prefix", i32 1}

@@ -2258,7 +2258,7 @@ options! {
         - hash collisions of query keys
         - hash collisions when creating dep-nodes"),
     indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
-        "add cs prefix to call and jmp to indirect thunk (default: no)"),
+        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],
