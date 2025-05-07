@@ -57,7 +57,7 @@ object = { version = "0.36.0", default-features = false, optional = true, featur
     'archive',
 ] }
 
-[target.'cfg(windows)'.dependencies.windows-targets]
+[target.'cfg(any(windows, target_os = "cygwin"))'.dependencies.windows-targets]
 path = "../windows_targets"
 
 [dev-dependencies]
