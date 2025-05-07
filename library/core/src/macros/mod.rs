@@ -1661,7 +1661,6 @@ pub(crate) mod builtin {
     #[unstable(
         feature = "test",
         issue = "50297",
-        soft,
         reason = "`bench` is a part of custom test frameworks which are unstable"
     )]
     #[allow_internal_unstable(test, rustc_attrs, coverage_attribute)]
