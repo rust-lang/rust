@@ -12,6 +12,7 @@
 // strange.
 
 use std::io::Read;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use run_make_support::env_var;
@@ -67,11 +68,21 @@ fn check_broken_pipe_handled_gracefully(bin: Binary, mut cmd: Command) {
 }
 
 fn main() {
+    // We need to set the runtime libs for rpath-less rustc. This mirrors the logic
+    // in run-make-support::util::set_host_compiler_dylib_path
+    let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
+    let mut paths =
+        vec![std::env::current_dir().unwrap(), PathBuf::from(env_var("HOST_RUSTC_DYLIB_PATH"))];
+    paths.extend(std::env::split_paths(&env_var(&ld_lib_path_envvar)));
+    let ld_path = std::env::join_paths(paths.iter()).unwrap();
+
     let mut rustc = Command::new(env_var("RUSTC"));
     rustc.arg("--print=sysroot");
+    rustc.env(&ld_lib_path_envvar, ld_path.clone());
     check_broken_pipe_handled_gracefully(Binary::Rustc, rustc);
 
     let mut rustdoc = Command::new(env_var("RUSTDOC"));
     rustdoc.arg("--version");
+    rustdoc.env(&ld_lib_path_envvar, ld_path.clone());
     check_broken_pipe_handled_gracefully(Binary::Rustdoc, rustdoc);
 }
