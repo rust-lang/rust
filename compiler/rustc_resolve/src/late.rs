@@ -799,7 +799,14 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
     fn visit_pat(&mut self, p: &'ast Pat) {
         let prev = self.diag_metadata.current_pat;
         self.diag_metadata.current_pat = Some(p);
-        visit::walk_pat(self, p);
+
+        if let PatKind::Guard(subpat, _) = &p.kind {
+            // We walk the guard expression in `resolve_pattern_inner`. Don't resolve it twice.
+            self.visit_pat(subpat);
+        } else {
+            visit::walk_pat(self, p);
+        }
+
         self.diag_metadata.current_pat = prev;
     }
     fn visit_local(&mut self, local: &'ast Local) {
@@ -3922,7 +3929,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     #[tracing::instrument(skip(self, bindings), level = "debug")]
     fn resolve_pattern_inner(
         &mut self,
-        pat: &Pat,
+        pat: &'ast Pat,
         pat_src: PatternSource,
         bindings: &mut PatternBindings,
     ) {
@@ -3980,6 +3987,31 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     bindings.last_mut().unwrap().1.extend(collected);
 
                     // Prevent visiting `ps` as we've already done so above.
+                    return false;
+                }
+                PatKind::Guard(ref subpat, ref guard) => {
+                    // Add a new set of bindings to the stack to collect bindings in `subpat`.
+                    bindings.push((PatBoundCtx::Product, Default::default()));
+                    // Resolving `subpat` adds bindings onto the newly-pushed context. After, the
+                    // total number of contexts on the stack should be the same as before.
+                    let binding_ctx_stack_len = bindings.len();
+                    self.resolve_pattern_inner(subpat, pat_src, bindings);
+                    assert_eq!(bindings.len(), binding_ctx_stack_len);
+                    // These bindings, but none from the surrounding pattern, are visible in the
+                    // guard; put them in scope and resolve `guard`.
+                    let subpat_bindings = bindings.pop().unwrap().1;
+                    self.with_rib(ValueNS, RibKind::Normal, |this| {
+                        *this.innermost_rib_bindings(ValueNS) = subpat_bindings.clone();
+                        this.resolve_expr(guard, None);
+                    });
+                    // Propagate the subpattern's bindings upwards.
+                    // FIXME(guard_patterns): For `if let` guards, we'll also need to get the
+                    // bindings introduced by the guard from its rib and propagate them upwards.
+                    // This will require checking the identifiers for overlaps with `bindings`, like
+                    // what `fresh_binding` does (ideally sharing its logic). To keep them separate
+                    // from `subpat_bindings`, we can introduce a fresh rib for the guard.
+                    bindings.last_mut().unwrap().1.extend(subpat_bindings);
+                    // Prevent visiting `subpat` as we've already done so above.
                     return false;
                 }
                 _ => {}
