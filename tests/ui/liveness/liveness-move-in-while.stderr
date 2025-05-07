@@ -35,7 +35,6 @@ LL |         while true { while true { while true { x = y; x.clone(); } } }
    |         |            inside of this loop
    |         inside of this loop
    |
-   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |         while true { while true { while true { x = y.clone(); x.clone(); } } }
