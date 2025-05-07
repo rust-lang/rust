@@ -1,3 +1,5 @@
+#![allow(unpredictable_function_pointer_comparisons)]
+
 use std::mem;
 
 trait Answer {

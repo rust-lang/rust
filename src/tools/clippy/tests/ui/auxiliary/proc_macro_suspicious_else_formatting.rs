@@ -1,5 +1,5 @@
 extern crate proc_macro;
-use proc_macro::{token_stream, Delimiter, Group, Ident, Span, TokenStream, TokenTree};
+use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree, token_stream};
 
 fn read_ident(iter: &mut token_stream::IntoIter) -> Ident {
     match iter.next() {

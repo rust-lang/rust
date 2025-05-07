@@ -10,7 +10,8 @@ fn main() {
     let y;
     let x : char = last(y);
     //~^ ERROR mismatched types
-    //~| expected type `char`
-    //~| found enum `Option<_>`
-    //~| expected `char`, found `Option<_>`
+    //~| NOTE expected type `char`
+    //~| NOTE found enum `Option<_>`
+    //~| NOTE expected `char`, found `Option<_>`
+    //~| NOTE expected due to this
 }

@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(dead_code)]
 #![allow(clippy::zero_ptr)]
 #![allow(clippy::transmute_ptr_to_ref)]

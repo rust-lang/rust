@@ -52,19 +52,19 @@ use crate::cmp::min;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
 use crate::io::{
-    BufRead, BufReader, BufWriter, Error, Read, Result, StderrLock, StdinLock, StdoutLock, Take,
-    Write,
+    BufRead, BufReader, BufWriter, Error, PipeReader, PipeWriter, Read, Result, StderrLock,
+    StdinLock, StdoutLock, Take, Write,
 };
 use crate::mem::ManuallyDrop;
 use crate::net::TcpStream;
 use crate::os::unix::fs::FileTypeExt;
 use crate::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use crate::os::unix::net::UnixStream;
-use crate::pipe::{PipeReader, PipeWriter};
 use crate::process::{ChildStderr, ChildStdin, ChildStdout};
 use crate::ptr;
-use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
+use crate::sys::fs::CachedFileMetadata;
 use crate::sys::weak::syscall;
 
 #[cfg(test)]
@@ -192,7 +192,7 @@ impl<R: CopyRead, W: CopyWrite> SpecCopy for Copier<'_, '_, R, W> {
         let w_cfg = writer.properties();
 
         // before direct operations on file descriptors ensure that all source and sink buffers are empty
-        let mut flush = || -> crate::io::Result<u64> {
+        let mut flush = || -> Result<u64> {
             let bytes = reader.drain_to(writer, u64::MAX)?;
             // BufWriter buffered bytes have already been accounted for in earlier write() calls
             writer.flush()?;
@@ -537,6 +537,18 @@ impl<T: ?Sized + CopyWrite> CopyWrite for BufWriter<T> {
     }
 }
 
+impl CopyRead for CachedFileMetadata {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Metadata(self.1.clone()), Some(self.0.as_raw_fd()))
+    }
+}
+
+impl CopyWrite for CachedFileMetadata {
+    fn properties(&self) -> CopyParams {
+        CopyParams(FdMeta::Metadata(self.1.clone()), Some(self.0.as_raw_fd()))
+    }
+}
+
 fn fd_to_meta<T: AsRawFd>(fd: &T) -> FdMeta {
     let fd = fd.as_raw_fd();
     let file: ManuallyDrop<File> = ManuallyDrop::new(unsafe { File::from_raw_fd(fd) });
@@ -584,7 +596,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
 
     // Kernel prior to 4.5 don't have copy_file_range
     // We store the availability in a global to avoid unnecessary syscalls
-    static HAS_COPY_FILE_RANGE: AtomicU8 = AtomicU8::new(NOT_PROBED);
+    static HAS_COPY_FILE_RANGE: Atomic<u8> = AtomicU8::new(NOT_PROBED);
 
     let mut have_probed = match HAS_COPY_FILE_RANGE.load(Ordering::Relaxed) {
         NOT_PROBED => false,
@@ -592,16 +604,16 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
         _ => true,
     };
 
-    syscall! {
+    syscall!(
         fn copy_file_range(
             fd_in: libc::c_int,
             off_in: *mut libc::loff_t,
             fd_out: libc::c_int,
             off_out: *mut libc::loff_t,
             len: libc::size_t,
-            flags: libc::c_uint
-        ) -> libc::ssize_t
-    }
+            flags: libc::c_uint,
+        ) -> libc::ssize_t;
+    );
 
     fn probe_copy_file_range_support() -> u8 {
         // In some cases, we cannot determine availability from the first
@@ -709,22 +721,22 @@ enum SpliceMode {
 /// performs splice or sendfile between file descriptors
 /// Does _not_ fall back to a generic copy loop.
 fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> CopyResult {
-    static HAS_SENDFILE: AtomicBool = AtomicBool::new(true);
-    static HAS_SPLICE: AtomicBool = AtomicBool::new(true);
+    static HAS_SENDFILE: Atomic<bool> = AtomicBool::new(true);
+    static HAS_SPLICE: Atomic<bool> = AtomicBool::new(true);
 
     // Android builds use feature level 14, but the libc wrapper for splice is
     // gated on feature level 21+, so we have to invoke the syscall directly.
     #[cfg(target_os = "android")]
-    syscall! {
+    syscall!(
         fn splice(
             srcfd: libc::c_int,
             src_offset: *const i64,
             dstfd: libc::c_int,
             dst_offset: *const i64,
             len: libc::size_t,
-            flags: libc::c_int
-        ) -> libc::ssize_t
-    }
+            flags: libc::c_int,
+        ) -> libc::ssize_t;
+    );
 
     #[cfg(target_os = "linux")]
     use libc::splice;

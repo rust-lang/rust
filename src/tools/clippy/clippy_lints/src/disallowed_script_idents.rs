@@ -69,7 +69,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
         // Implementation is heavily inspired by the implementation of [`non_ascii_idents`] lint:
         // https://github.com/rust-lang/rust/blob/master/compiler/rustc_lint/src/non_ascii_idents.rs
 
-        let check_disallowed_script_idents = cx.builder.lint_level(DISALLOWED_SCRIPT_IDENTS).0 != Level::Allow;
+        let check_disallowed_script_idents = cx.builder.lint_level(DISALLOWED_SCRIPT_IDENTS).level != Level::Allow;
         if !check_disallowed_script_idents {
             return;
         }
@@ -80,7 +80,7 @@ impl EarlyLintPass for DisallowedScriptIdents {
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_unstable_by_key(|k| k.1);
 
-        for (symbol, &span) in &symbols {
+        for &(symbol, &span) in &symbols {
             // Note: `symbol.as_str()` is an expensive operation, thus should not be called
             // more than once for a single symbol.
             let symbol_str = symbol.as_str();

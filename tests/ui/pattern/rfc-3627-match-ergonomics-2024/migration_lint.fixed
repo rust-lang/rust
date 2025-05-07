@@ -1,0 +1,253 @@
+//@ edition: 2021
+//@ run-rustfix
+//@ rustfix-only-machine-applicable
+//@ aux-build:migration_lint_macros.rs
+#![feature(mut_ref)]
+#![allow(incomplete_features, unused)]
+#![deny(rust_2024_incompatible_pat)]
+
+extern crate migration_lint_macros;
+
+struct Foo<T>(T);
+
+// Tests type equality in a way that avoids coercing `&&T` to `&T`.
+trait Eq<T> {}
+impl<T> Eq<T> for T {}
+fn assert_type_eq<T, U: Eq<T>>(_: T, _: U) {}
+
+fn main() {
+    let Foo(x) = &Foo(0);
+    assert_type_eq(x, &0u8);
+
+    let Foo(x) = &mut Foo(0);
+    assert_type_eq(x, &mut 0u8);
+
+    let &Foo(mut x) = &Foo(0);
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, 0u8);
+
+    let &mut Foo(mut x) = &mut Foo(0);
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, 0u8);
+
+    let Foo(x) = &Foo(0);
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, &0u8);
+
+    let &mut Foo(ref x) = &mut Foo(0);
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, &0u8);
+
+    let &Foo(x) = &Foo(0);
+    assert_type_eq(x, 0u8);
+
+    let &mut Foo(x) = &mut Foo(0);
+    assert_type_eq(x, 0u8);
+
+    let &Foo(x) = &Foo(&0);
+    assert_type_eq(x, &0u8);
+
+    let &mut Foo(x) = &mut Foo(&0);
+    assert_type_eq(x, &0u8);
+
+    let &Foo(&x) = &Foo(&0);
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, 0u8);
+
+    let &Foo(&mut x) = &Foo(&mut 0);
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, 0u8);
+
+    let &mut Foo(&x) = &mut Foo(&0);
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, 0u8);
+
+    let &mut Foo(&mut x) = &mut Foo(&mut 0);
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(x, 0u8);
+
+    if let Some(x) = &&&&&Some(&0u8) {
+        assert_type_eq(x, &&0u8);
+    }
+
+    if let &&&&&Some(&x) = &&&&&Some(&0u8) {
+        //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+        //~| WARN: this changes meaning in Rust 2024
+        assert_type_eq(x, 0u8);
+    }
+
+    if let &&&&&Some(&mut x) = &&&&&Some(&mut 0u8) {
+        //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+        //~| WARN: this changes meaning in Rust 2024
+        assert_type_eq(x, 0u8);
+    }
+
+    if let &&&&&mut Some(&x) = &&&&&mut Some(&0u8) {
+        //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+        //~| WARN: this changes meaning in Rust 2024
+        assert_type_eq(x, 0u8);
+    }
+
+    if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+        //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+        //~| WARN: this changes meaning in Rust 2024
+        assert_type_eq(x, &mut 0u8);
+    }
+
+    struct Struct<A, B, C> {
+        a: A,
+        b: B,
+        c: C,
+    }
+
+    let &Struct { ref a, mut b, ref c } = &Struct { a: 0, b: 0, c: 0 };
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+    assert_type_eq(b, 0u32);
+
+    let &Struct { a: &a, ref b, ref c } = &Struct { a: &0, b: &0, c: &0 };
+    //~^ ERROR: binding modifiers and reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, 0u32);
+    assert_type_eq(b, &&0u32);
+    assert_type_eq(c, &&0u32);
+
+    if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
+        //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+        //~| WARN: this changes meaning in Rust 2024
+        &(Struct { a: &Some(&0), b: &Some(&0), c: &Some(&0) })
+    {
+        assert_type_eq(a, &0u32);
+        assert_type_eq(b, 0u32);
+        assert_type_eq(c, &&0u32);
+    }
+
+    match &(Some(0), Some(0)) {
+        // The two patterns are the same syntactically, but because they're defined in different
+        // editions they don't mean the same thing.
+        &(Some(mut x), migration_lint_macros::mixed_edition_pat!(y)) => {
+            //~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
+            assert_type_eq(x, 0u32);
+            assert_type_eq(y, 0u32);
+        }
+        _ => {}
+    }
+
+    let &mut [&mut &[ref a]] = &mut [&mut &[0]];
+    //~^ ERROR: binding modifiers and reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+
+    let &[&(_)] = &[&0];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+
+    // NB: Most of the following tests are for possible future improvements to migration suggestions
+
+    // Test removing multiple binding modifiers.
+    let Struct { a, b, c } = &Struct { a: 0, b: 0, c: 0 };
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+    assert_type_eq(c, &0u32);
+
+    // Test that we don't change bindings' modes when removing binding modifiers.
+    let &mut Struct { ref a, ref mut b, ref mut c } = &mut Struct { a: 0, b: 0, c: 0 };
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+    assert_type_eq(b, &mut 0u32);
+    assert_type_eq(c, &mut 0u32);
+
+    // Test removing multiple reference patterns of various mutabilities, plus a binding modifier.
+    let &mut &Struct { a: &[ref a], b: &mut [&[ref b]], ref c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+    assert_type_eq(b, &0u32);
+    assert_type_eq(c, &0u32);
+
+    // Test that we don't change bindings' types when removing reference patterns.
+    let &Foo(&ref a) = &Foo(&0);
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+
+    // Test that we don't change bindings' modes when adding reference paterns (caught early).
+    let &(&a, ref b, &[ref c], &mut [&mut (ref d, &[ref e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, 0u32);
+    assert_type_eq(b, &0u32);
+    assert_type_eq(c, &0u32);
+    assert_type_eq(d, &0u32);
+    assert_type_eq(e, &0u32);
+
+    // Test that we don't change bindings' modes when adding reference patterns (caught late).
+    let &(ref a, &mut [ref b], &[mut c]) = &(0, &mut [0], &[0]);
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+    assert_type_eq(b, &0u32);
+    assert_type_eq(c, 0u32);
+
+    // Test featuring both additions and removals.
+    let &(&a, &mut (ref b, &[ref c])) = &(&0, &mut (0, &[0]));
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, 0u32);
+    assert_type_eq(b, &0u32);
+    assert_type_eq(c, &0u32);
+
+    // Test that bindings' subpatterns' modes are updated properly.
+    let &[mut a @ ref b] = &[0];
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, 0u32);
+    assert_type_eq(b, &0u32);
+
+    // Test that bindings' subpatterns' modes are checked properly.
+    let &[ref a @ mut b] = &[0];
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+    assert_type_eq(b, 0u32);
+
+    // Test that we respect bindings' subpatterns' types when rewriting `&ref x` to `x`.
+    let [&Foo(&ref a @ ref b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+    assert_type_eq(b, &0u32);
+    assert_type_eq(c, &0u32);
+    assert_type_eq(d, 0u32);
+
+    // Test that we respect bindings' subpatterns' modes when rewriting `&ref x` to `x`.
+    let [&Foo(&ref a @ [ref b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &[0u32]);
+    assert_type_eq(b, &0u32);
+    assert_type_eq(c, &[0u32]);
+    assert_type_eq(d, 0u32);
+
+    // Test that we use the correct message and suggestion style when pointing inside expansions.
+    let &[migration_lint_macros::bind_ref!(a)] = &[0];
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
+    assert_type_eq(a, &0u32);
+
+    // Test that we use the correct span when labeling a `&` whose subpattern is from an expansion.
+    let &[&migration_lint_macros::bind_ref!(a)] = &[&0];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+}

@@ -28,15 +28,15 @@ fn main() {
     // Err, reference to a &String
     let _: &&String = match Some(&x) {
         Some(ref x) => x,
-        //~^ ERROR: this pattern creates a reference to a reference
-        //~| NOTE: `-D clippy::ref-binding-to-reference` implied by `-D warnings`
+        //~^ ref_binding_to_reference
         None => return,
     };
 
     // Err, reference to a &String
     let _: &&String = match Some(&x) {
         Some(ref x) => {
-            //~^ ERROR: this pattern creates a reference to a reference
+            //~^ ref_binding_to_reference
+
             f1(x);
             f1(*x);
             x
@@ -47,20 +47,22 @@ fn main() {
     // Err, reference to a &String
     match Some(&x) {
         Some(ref x) => m2!(x),
-        //~^ ERROR: this pattern creates a reference to a reference
+        //~^ ref_binding_to_reference
         None => return,
     }
 
     // Err, reference to a &String
     let _ = |&ref x: &&String| {
-        //~^ ERROR: this pattern creates a reference to a reference
+        //~^ ref_binding_to_reference
+
         let _: &&String = x;
     };
 }
 
 // Err, reference to a &String
 fn f2<'a>(&ref x: &&'a String) -> &'a String {
-    //~^ ERROR: this pattern creates a reference to a reference
+    //~^ ref_binding_to_reference
+
     let _: &&String = x;
     *x
 }
@@ -68,7 +70,8 @@ fn f2<'a>(&ref x: &&'a String) -> &'a String {
 trait T1 {
     // Err, reference to a &String
     fn f(&ref x: &&String) {
-        //~^ ERROR: this pattern creates a reference to a reference
+        //~^ ref_binding_to_reference
+
         let _: &&String = x;
     }
 }
@@ -77,7 +80,8 @@ struct S;
 impl T1 for S {
     // Err, reference to a &String
     fn f(&ref x: &&String) {
-        //~^ ERROR: this pattern creates a reference to a reference
+        //~^ ref_binding_to_reference
+
         let _: &&String = x;
     }
 }

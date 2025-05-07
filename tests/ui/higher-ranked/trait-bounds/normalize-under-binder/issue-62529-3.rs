@@ -23,7 +23,7 @@ impl WithDefault for () {
         //f(());
         // Going through another generic function works fine.
         call(f, ());
-        //~^ expected a
+        //~^ ERROR expected a
     }
 }
 

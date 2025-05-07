@@ -1,15 +1,14 @@
 use std::ops::Deref;
 
-use field_offset::FieldOffset;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_macros::HashStable;
+use rustc_query_system::HandleCycleError;
 use rustc_query_system::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
 pub(crate) use rustc_query_system::query::QueryJobId;
 use rustc_query_system::query::*;
-use rustc_query_system::HandleCycleError;
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
 use crate::dep_graph;
 use crate::dep_graph::DepKind;
@@ -24,8 +23,10 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub eval_always: bool,
     pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
-    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key>>,
-    pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
+    // Offset of this query's state field in the QueryStates struct
+    pub query_state: usize,
+    // Offset of this query's cache field in the QueryCaches struct
+    pub query_cache: usize,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
@@ -44,16 +45,16 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub format_value: fn(&C::Value) -> String,
 }
 
-pub struct QuerySystemFns<'tcx> {
+pub struct QuerySystemFns {
     pub engine: QueryEngine,
     pub local_providers: Providers,
     pub extern_providers: ExternProviders,
-    pub encode_query_results: fn(
+    pub encode_query_results: for<'tcx> fn(
         tcx: TyCtxt<'tcx>,
         encoder: &mut CacheEncoder<'_, 'tcx>,
         query_result_index: &mut EncodedDepNodeIndex,
     ),
-    pub try_mark_green: fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
+    pub try_mark_green: for<'tcx> fn(tcx: TyCtxt<'tcx>, dep_node: &dep_graph::DepNode) -> bool,
 }
 
 pub struct QuerySystem<'tcx> {
@@ -66,9 +67,9 @@ pub struct QuerySystem<'tcx> {
     /// Do not access this directly. It is only meant to be used by
     /// `DepGraph::try_mark_green()` and the query infrastructure.
     /// This is `None` if we are not incremental compilation mode
-    pub on_disk_cache: Option<OnDiskCache<'tcx>>,
+    pub on_disk_cache: Option<OnDiskCache>,
 
-    pub fns: QuerySystemFns<'tcx>,
+    pub fns: QuerySystemFns,
 
     pub jobs: AtomicU64,
 }
@@ -88,30 +89,68 @@ impl<'tcx> Deref for TyCtxtAt<'tcx> {
 }
 
 #[derive(Copy, Clone)]
-pub struct TyCtxtEnsure<'tcx> {
+#[must_use]
+pub struct TyCtxtEnsureOk<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
 #[derive(Copy, Clone)]
-pub struct TyCtxtEnsureWithValue<'tcx> {
+#[must_use]
+pub struct TyCtxtEnsureDone<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
-    /// are executed instead of just returning their results.
+    /// Wrapper that calls queries in a special "ensure OK" mode, for callers
+    /// that don't need the return value and just want to invoke a query for
+    /// its potential side-effect of emitting fatal errors.
+    ///
+    /// This can be more efficient than a normal query call, because if the
+    /// query's inputs are all green, the call can return immediately without
+    /// needing to obtain a value (by decoding one from disk or by executing
+    /// the query).
+    ///
+    /// (As with all query calls, execution is also skipped if the query result
+    /// is already cached in memory.)
+    ///
+    /// ## WARNING
+    /// A subsequent normal call to the same query might still cause it to be
+    /// executed! This can occur when the inputs are all green, but the query's
+    /// result is not cached on disk, so the query must be executed to obtain a
+    /// return value.
+    ///
+    /// Therefore, this call mode is not appropriate for callers that want to
+    /// ensure that the query is _never_ executed in the future.
+    ///
+    /// ## `return_result_from_ensure_ok`
+    /// If a query has the `return_result_from_ensure_ok` modifier, calls via
+    /// `ensure_ok` will instead return `Result<(), ErrorGuaranteed>`. If the
+    /// query needs to be executed, and execution returns an error, that error
+    /// is returned to the caller.
     #[inline(always)]
-    pub fn ensure(self) -> TyCtxtEnsure<'tcx> {
-        TyCtxtEnsure { tcx: self }
+    pub fn ensure_ok(self) -> TyCtxtEnsureOk<'tcx> {
+        TyCtxtEnsureOk { tcx: self }
     }
 
-    /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
-    /// are executed instead of just returning their results.
+    /// Wrapper that calls queries in a special "ensure done" mode, for callers
+    /// that don't need the return value and just want to guarantee that the
+    /// query won't be executed in the future, by executing it now if necessary.
     ///
-    /// This version verifies that the computed result exists in the cache before returning.
+    /// This is useful for queries that read from a [`Steal`] value, to ensure
+    /// that they are executed before the query that will steal the value.
+    ///
+    /// Unlike [`Self::ensure_ok`], a query with all-green inputs will only be
+    /// skipped if its return value is stored in the disk-cache. This is still
+    /// more efficient than a regular query, because in that situation the
+    /// return value doesn't necessarily need to be decoded.
+    ///
+    /// (As with all query calls, execution is also skipped if the query result
+    /// is already cached in memory.)
+    ///
+    /// [`Steal`]: rustc_data_structures::steal::Steal
     #[inline(always)]
-    pub fn ensure_with_value(self) -> TyCtxtEnsureWithValue<'tcx> {
-        TyCtxtEnsureWithValue { tcx: self }
+    pub fn ensure_done(self) -> TyCtxtEnsureDone<'tcx> {
+        TyCtxtEnsureDone { tcx: self }
     }
 
     /// Returns a transparent wrapper for `TyCtxt` which uses
@@ -126,7 +165,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn query_get_at<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
@@ -193,7 +232,7 @@ macro_rules! query_ensure {
     ([]$($args:tt)*) => {
         query_ensure($($args)*)
     };
-    ([(ensure_forwards_result_if_red) $($rest:tt)*]$($args:tt)*) => {
+    ([(return_result_from_ensure_ok) $($rest:tt)*]$($args:tt)*) => {
         query_ensure_error_guaranteed($($args)*).map(|_| ())
     };
     ([$other:tt $($modifiers:tt)*]$($args:tt)*) => {
@@ -219,7 +258,7 @@ macro_rules! query_if_arena {
     };
 }
 
-/// If `separate_provide_if_extern`, then the key can be projected to its
+/// If `separate_provide_extern`, then the key can be projected to its
 /// local key via `<$K as AsLocalKey>::LocalKey`.
 macro_rules! local_key_if_separate_extern {
     ([] $($K:tt)*) => {
@@ -248,15 +287,15 @@ macro_rules! separate_provide_extern_decl {
     };
 }
 
-macro_rules! ensure_result {
-    ([][$ty:ty]) => {
+macro_rules! ensure_ok_result {
+    ( [] ) => {
         ()
     };
-    ([(ensure_forwards_result_if_red) $($rest:tt)*][$ty:ty]) => {
+    ( [(return_result_from_ensure_ok) $($rest:tt)*] ) => {
         Result<(), ErrorGuaranteed>
     };
-    ([$other:tt $($modifiers:tt)*][$($args:tt)*]) => {
-        ensure_result!([$($modifiers)*][$($args)*])
+    ( [$other:tt $($modifiers:tt)*] ) => {
+        ensure_ok_result!( [$($modifiers)*] )
     };
 }
 
@@ -274,8 +313,11 @@ macro_rules! separate_provide_extern_default {
 
 macro_rules! define_callbacks {
     (
-     $($(#[$attr:meta])*
-        [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        $(
+            $(#[$attr:meta])*
+            [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,
+        )*
+    ) => {
 
         #[allow(unused_lifetimes)]
         pub mod queries {
@@ -289,10 +331,10 @@ macro_rules! define_callbacks {
 
                 /// This type alias specifies the type returned from query providers and the type
                 /// used for decoding. For regular queries this is the declared returned type `V`,
-                /// but `arena_cache` will use `<V as Deref>::Target` instead.
+                /// but `arena_cache` will use `<V as ArenaCached>::Provided` instead.
                 pub type ProvidedValue<'tcx> = query_if_arena!(
                     [$($modifiers)*]
-                    (<$V as Deref>::Target)
+                    (<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Provided)
                     ($V)
                 );
 
@@ -307,10 +349,18 @@ macro_rules! define_callbacks {
                 ) -> Erase<Value<'tcx>> {
                     erase(query_if_arena!([$($modifiers)*]
                         {
-                            if mem::needs_drop::<ProvidedValue<'tcx>>() {
-                                &*_tcx.query_system.arenas.$name.alloc(value)
+                            use $crate::query::arena_cached::ArenaCached;
+
+                            if mem::needs_drop::<<$V as ArenaCached<'tcx>>::Allocated>() {
+                                <$V as ArenaCached>::alloc_in_arena(
+                                    |v| _tcx.query_system.arenas.$name.alloc(v),
+                                    value,
+                                )
                             } else {
-                                &*_tcx.arena.dropless.alloc(value)
+                                <$V as ArenaCached>::alloc_in_arena(
+                                    |v| _tcx.arena.dropless.alloc(v),
+                                    value,
+                                )
                             }
                         }
                         (value)
@@ -319,11 +369,11 @@ macro_rules! define_callbacks {
 
                 pub type Storage<'tcx> = <$($K)* as keys::Key>::Cache<Erase<$V>>;
 
-                // Ensure that keys grow no larger than 72 bytes by accident.
+                // Ensure that keys grow no larger than 88 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
                 const _: () = {
-                    if mem::size_of::<Key<'static>>() > 72 {
+                    if size_of::<Key<'static>>() > 88 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),
@@ -337,8 +387,9 @@ macro_rules! define_callbacks {
                 // Ensure that values grow no larger than 64 bytes by accident.
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
+                #[cfg(not(feature = "rustc_randomized_layouts"))]
                 const _: () = {
-                    if mem::size_of::<Value<'static>>() > 64 {
+                    if size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),
@@ -353,7 +404,7 @@ macro_rules! define_callbacks {
 
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
-                (TypedArena<<$V as Deref>::Target>)
+                (TypedArena<<$V as $crate::query::arena_cached::ArenaCached<'tcx>>::Allocated>)
                 ()
             ),)*
         }
@@ -374,10 +425,13 @@ macro_rules! define_callbacks {
             $($(#[$attr])* pub $name: queries::$name::Storage<'tcx>,)*
         }
 
-        impl<'tcx> TyCtxtEnsure<'tcx> {
+        impl<'tcx> TyCtxtEnsureOk<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
-            pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> ensure_result!([$($modifiers)*][$V]) {
+            pub fn $name(
+                self,
+                key: query_helper_param_ty!($($K)*),
+            ) -> ensure_ok_result!([$($modifiers)*]) {
                 query_ensure!(
                     [$($modifiers)*]
                     self.tcx,
@@ -389,7 +443,7 @@ macro_rules! define_callbacks {
             })*
         }
 
-        impl<'tcx> TyCtxtEnsureWithValue<'tcx> {
+        impl<'tcx> TyCtxtEnsureDone<'tcx> {
             $($(#[$attr])*
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
@@ -437,7 +491,7 @@ macro_rules! define_callbacks {
         #[derive(Default)]
         pub struct QueryStates<'tcx> {
             $(
-                pub $name: QueryState<$($K)*>,
+                pub $name: QueryState<$($K)*, QueryStackDeferred<'tcx>>,
             )*
         }
 
@@ -547,7 +601,6 @@ macro_rules! define_feedable {
                         let dep_node_index = tcx.dep_graph.with_feed_task(
                             dep_node,
                             tcx,
-                            key,
                             &value,
                             hash_result!([$($modifiers)*]),
                         );

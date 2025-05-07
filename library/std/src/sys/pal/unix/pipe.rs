@@ -23,9 +23,11 @@ pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
             target_os = "dragonfly",
             target_os = "freebsd",
             target_os = "hurd",
+            target_os = "illumos",
             target_os = "linux",
             target_os = "netbsd",
             target_os = "openbsd",
+            target_os = "cygwin",
             target_os = "redox"
         ))] {
             unsafe {

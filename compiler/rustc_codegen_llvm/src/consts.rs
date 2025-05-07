@@ -1,25 +1,25 @@
 use std::ops::Range;
 
+use rustc_abi::{
+    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
+};
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::interpret::{
-    read_target_uint, Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer,
-    Scalar as InterpScalar,
+    Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
+    read_target_uint,
 };
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::mir::mono::{Linkage, MonoItem};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::Lto;
-use rustc_target::abi::{
-    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
-};
 use tracing::{debug, instrument, trace};
 
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::errors::{
     InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
 };
@@ -29,7 +29,7 @@ use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
 use crate::{base, debuginfo};
 
-pub fn const_alloc_to_llvm<'ll>(
+pub(crate) fn const_alloc_to_llvm<'ll>(
     cx: &CodegenCx<'ll, '_>,
     alloc: ConstAllocation<'_>,
     is_static: bool,
@@ -73,8 +73,8 @@ pub fn const_alloc_to_llvm<'ll>(
 
         // Generating partially-uninit consts is limited to small numbers of chunks,
         // to avoid the cost of generating large complex const expressions.
-        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element,
-        // and would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
+        // For example, `[(u32, u8); 1024 * 1024]` contains uninit padding in each element, and
+        // would result in `{ [5 x i8] zeroinitializer, [3 x i8] undef, ...repeat 1M times... }`.
         let max = cx.sess().opts.unstable_opts.uninit_const_chunk_threshold;
         let allow_uninit_chunks = chunks.clone().take(max.saturating_add(1)).count() <= max;
 
@@ -129,7 +129,12 @@ pub fn const_alloc_to_llvm<'ll>(
         append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, range);
     }
 
-    cx.const_struct(&llvals, true)
+    // Avoid wrapping in a struct if there is only a single value. This ensures
+    // that LLVM is able to perform the string merging optimization if the constant
+    // is a valid C string. LLVM only considers bare arrays for this optimization,
+    // not arrays wrapped in a struct. LLVM handles this at:
+    // https://github.com/rust-lang/llvm-project/blob/acaea3d2bb8f351b740db7ebce7d7a40b9e21488/llvm/lib/Target/TargetLoweringObjectFile.cpp#L249-L280
+    if let &[data] = &*llvals { data } else { cx.const_struct(&llvals, true) }
 }
 
 fn codegen_static_initializer<'ll, 'tcx>(
@@ -172,40 +177,51 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        unsafe {
-            // Declare a symbol `foo` with the desired linkage.
-            let g1 = cx.declare_global(sym, cx.type_i8());
-            llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
+        // Declare a symbol `foo`. If `foo` is an extern_weak symbol, we declare
+        // an extern_weak function, otherwise a global with the desired linkage.
+        let g1 = if matches!(attrs.import_linkage, Some(Linkage::ExternalWeak)) {
+            // An `extern_weak` function is represented as an `Option<unsafe extern ...>`,
+            // we extract the function signature and declare it as an extern_weak function
+            // instead of an extern_weak i8.
+            let instance = Instance::mono(cx.tcx, def_id);
+            if let ty::Adt(struct_def, args) = instance.ty(cx.tcx, cx.typing_env()).kind()
+                && cx.tcx.is_lang_item(struct_def.did(), LangItem::Option)
+                && let ty::FnPtr(sig, header) = args.type_at(0).kind()
+            {
+                let fn_sig = sig.with(*header);
 
-            // Declare an internal global `extern_with_linkage_foo` which
-            // is initialized with the address of `foo`. If `foo` is
-            // discarded during linking (for example, if `foo` has weak
-            // linkage and there are no definitions), then
-            // `extern_with_linkage_foo` will instead be initialized to
-            // zero.
-            let mut real_name = "_rust_extern_with_linkage_".to_string();
-            real_name.push_str(sym);
-            let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
-                cx.sess().dcx().emit_fatal(SymbolAlreadyDefined {
-                    span: cx.tcx.def_span(def_id),
-                    symbol_name: sym,
-                })
-            });
-            llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
-            llvm::LLVMSetInitializer(g2, g1);
-            g2
-        }
+                let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
+                cx.declare_fn(sym, &fn_abi, None)
+            } else {
+                cx.declare_global(sym, cx.type_i8())
+            }
+        } else {
+            cx.declare_global(sym, cx.type_i8())
+        };
+        llvm::set_linkage(g1, base::linkage_to_llvm(linkage));
+
+        // Declare an internal global `extern_with_linkage_foo` which
+        // is initialized with the address of `foo`. If `foo` is
+        // discarded during linking (for example, if `foo` has weak
+        // linkage and there are no definitions), then
+        // `extern_with_linkage_foo` will instead be initialized to
+        // zero.
+        let mut real_name = "_rust_extern_with_linkage_".to_string();
+        real_name.push_str(sym);
+        let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
+            cx.sess().dcx().emit_fatal(SymbolAlreadyDefined {
+                span: cx.tcx.def_span(def_id),
+                symbol_name: sym,
+            })
+        });
+        llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
+        llvm::set_initializer(g2, g1);
+        g2
     } else if cx.tcx.sess.target.arch == "x86"
+        && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
-        cx.declare_global(
-            &common::i686_decorated_name(
-                dllimport,
-                common::is_mingw_gnu_toolchain(&cx.tcx.sess.target),
-                true,
-            ),
-            llty,
-        )
+        cx.declare_global(&common::i686_decorated_name(dllimport, true, true, false), llty)
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global
@@ -218,29 +234,63 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
+    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMConstPointerCast(val, ty) }
+    }
+
+    /// Create a global variable.
+    ///
+    /// The returned global variable is a pointer in the default address space for globals.
+    /// Fails if a symbol with the given name already exists.
     pub(crate) fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
         align: Align,
         kind: Option<&str>,
     ) -> &'ll Value {
-        unsafe {
-            let gv = match kind {
-                Some(kind) if !self.tcx.sess.fewer_names() => {
-                    let name = self.generate_local_symbol_name(kind);
-                    let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
-                        bug!("symbol `{}` is already defined", name);
-                    });
-                    llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
-                    gv
+        let gv = match kind {
+            Some(kind) if !self.tcx.sess.fewer_names() => {
+                let name = self.generate_local_symbol_name(kind);
+                let gv = self.define_global(&name, self.val_ty(cv)).unwrap_or_else(|| {
+                    bug!("symbol `{}` is already defined", name);
+                });
+                llvm::set_linkage(gv, llvm::Linkage::PrivateLinkage);
+                gv
+            }
+            _ => self.define_private_global(self.val_ty(cv)),
+        };
+        llvm::set_initializer(gv, cv);
+        set_global_alignment(self, gv, align);
+        llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+        gv
+    }
+
+    /// Create a global constant.
+    ///
+    /// The returned global variable is a pointer in the default address space for globals.
+    pub(crate) fn static_addr_of_impl(
+        &self,
+        cv: &'ll Value,
+        align: Align,
+        kind: Option<&str>,
+    ) -> &'ll Value {
+        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                let llalign = align.bytes() as u32;
+                if llalign > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, llalign);
                 }
-                _ => self.define_private_global(self.val_ty(cv)),
-            };
-            llvm::LLVMSetInitializer(gv, cv);
-            set_global_alignment(self, gv, align);
-            llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
-            gv
+            }
+            return gv;
         }
+        let gv = self.static_addr_of_mut(cv, align, kind);
+        unsafe {
+            llvm::LLVMSetGlobalConstant(gv, True);
+        }
+        self.const_globals.borrow_mut().insert(cv, gv);
+        gv
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -249,12 +299,12 @@ impl<'ll> CodegenCx<'ll, '_> {
         trace!(?instance);
 
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
-        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
-        // the llvm type from the actual evaluated initializer.
+        // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure
+        // out the llvm type from the actual evaluated initializer.
         let llty = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            let ty = instance.ty(self.tcx, self.typing_env());
             trace!(?ty);
             self.layout_of(ty).llvm_type(self)
         };
@@ -262,7 +312,7 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 
     #[instrument(level = "debug", skip(self, llty))]
-    pub(crate) fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
+    fn get_static_inner(&self, def_id: DefId, llty: &'ll Type) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             trace!("used cached value");
@@ -292,9 +342,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             let g = self.declare_global(sym, llty);
 
             if !self.tcx.is_reachable_non_generic(def_id) {
-                unsafe {
-                    llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
-                }
+                llvm::set_visibility(g, llvm::Visibility::Hidden);
             }
 
             g
@@ -312,23 +360,19 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
-        let dso_local = unsafe { self.should_assume_dso_local(g, true) };
-        if dso_local {
-            unsafe {
-                llvm::LLVMRustSetDSOLocal(g, true);
-            }
-        }
+        let dso_local = self.assume_dso_local(g, true);
 
         if !def_id.is_local() {
-            let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
+            let needs_dll_storage_attr = self.use_dll_storage_attrs
+                && !self.tcx.is_foreign_item(def_id)
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
-                !dso_local &&
-                // ThinLTO can't handle this workaround in all cases, so we don't
-                // emit the attrs. Instead we make them unnecessary by disallowing
-                // dynamic linking when linker plugin based LTO is enabled.
-                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
-                self.tcx.sess.lto() != Lto::Thin;
+                && !dso_local
+                // Linker plugin ThinLTO doesn't create the self-dllimport Rust uses for rlibs
+                // as the code generation happens out of process. Instead we assume static linkage
+                // and disallow dynamic linking when linker plugin based LTO is enabled.
+                // Regular in-process ThinLTO doesn't need this workaround.
+                && !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
@@ -350,9 +394,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // is actually present in the current crate. We can find out via the
                 // is_codegened_item query.
                 if !self.tcx.is_codegened_item(def_id) {
-                    unsafe {
-                        llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-                    }
+                    llvm::set_dllimport_storage_class(g);
                 }
             }
         }
@@ -362,9 +404,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             && library.kind.is_dllimport()
         {
             // For foreign (native) libs we know the exact storage type to use.
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-            }
+            llvm::set_dllimport_storage_class(g);
         }
 
         self.instances.borrow_mut().insert(instance, g);
@@ -390,28 +430,34 @@ impl<'ll> CodegenCx<'ll, '_> {
             let val_llty = self.val_ty(v);
 
             let g = self.get_static_inner(def_id, val_llty);
-            let llty = self.val_ty(g);
+            let llty = self.get_type_of_global(g);
 
             let g = if val_llty == llty {
                 g
             } else {
-                // If we created the global with the wrong type,
-                // correct the type.
+                // codegen_static_initializer creates the global value just from the
+                // `Allocation` data by generating one big struct value that is just
+                // all the bytes and pointers after each other. This will almost never
+                // match the type that the static was declared with. Unfortunately
+                // we can't just LLVMConstBitCast our way out of it because that has very
+                // specific rules on what can be cast. So instead of adding a new way to
+                // generate static initializers that match the static's type, we picked
+                // the easier option and retroactively change the type of the static item itself.
                 let name = llvm::get_value_name(g).to_vec();
                 llvm::set_value_name(g, b"");
 
-                let linkage = llvm::LLVMRustGetLinkage(g);
-                let visibility = llvm::LLVMRustGetVisibility(g);
+                let linkage = llvm::get_linkage(g);
+                let visibility = llvm::get_visibility(g);
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
                     self.llmod,
-                    name.as_ptr().cast(),
+                    name.as_c_char_ptr(),
                     name.len(),
                     val_llty,
                 );
 
-                llvm::LLVMRustSetLinkage(new_g, linkage);
-                llvm::LLVMRustSetVisibility(new_g, visibility);
+                llvm::set_linkage(new_g, linkage);
+                llvm::set_visibility(new_g, visibility);
 
                 // The old global has had its name removed but is returned by
                 // get_static since it is in the instance cache. Provide an
@@ -427,11 +473,9 @@ impl<'ll> CodegenCx<'ll, '_> {
                 new_g
             };
             set_global_alignment(self, g, alloc.align);
-            llvm::LLVMSetInitializer(g, v);
+            llvm::set_initializer(g, v);
 
-            if self.should_assume_dso_local(g, true) {
-                llvm::LLVMRustSetDSOLocal(g, true);
-            }
+            self.assume_dso_local(g, true);
 
             // Forward the allocation's mutability (picked by the const interner) to LLVM.
             if alloc.mutability.is_not() {
@@ -442,58 +486,6 @@ impl<'ll> CodegenCx<'ll, '_> {
 
             if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
                 llvm::set_thread_local_mode(g, self.tls_model);
-
-                // Do not allow LLVM to change the alignment of a TLS on macOS.
-                //
-                // By default a global's alignment can be freely increased.
-                // This allows LLVM to generate more performant instructions
-                // e.g., using load-aligned into a SIMD register.
-                //
-                // However, on macOS 10.10 or below, the dynamic linker does not
-                // respect any alignment given on the TLS (radar 24221680).
-                // This will violate the alignment assumption, and causing segfault at runtime.
-                //
-                // This bug is very easy to trigger. In `println!` and `panic!`,
-                // the `LOCAL_STDOUT`/`LOCAL_STDERR` handles are stored in a TLS,
-                // which the values would be `mem::replace`d on initialization.
-                // The implementation of `mem::replace` will use SIMD
-                // whenever the size is 32 bytes or higher. LLVM notices SIMD is used
-                // and tries to align `LOCAL_STDOUT`/`LOCAL_STDERR` to a 32-byte boundary,
-                // which macOS's dyld disregarded and causing crashes
-                // (see issues #51794, #51758, #50867, #48866 and #44056).
-                //
-                // To workaround the bug, we trick LLVM into not increasing
-                // the global's alignment by explicitly assigning a section to it
-                // (equivalent to automatically generating a `#[link_section]` attribute).
-                // See the comment in the `GlobalValue::canIncreaseAlignment()` function
-                // of `lib/IR/Globals.cpp` for why this works.
-                //
-                // When the alignment is not increased, the optimized `mem::replace`
-                // will use load-unaligned instructions instead, and thus avoiding the crash.
-                //
-                // We could remove this hack whenever we decide to drop macOS 10.10 support.
-                if self.tcx.sess.target.is_like_osx {
-                    // The `inspect` method is okay here because we checked for provenance, and
-                    // because we are doing this access to inspect the final interpreter state
-                    // (not as part of the interpreter execution).
-                    //
-                    // FIXME: This check requires that the (arbitrary) value of undefined bytes
-                    // happens to be zero. Instead, we should only check the value of defined bytes
-                    // and set all undefined bytes to zero if this allocation is headed for the
-                    // BSS.
-                    let all_bytes_are_zero = alloc.provenance().ptrs().is_empty()
-                        && alloc
-                            .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
-                            .iter()
-                            .all(|&byte| byte == 0);
-
-                    let sect_name = if all_bytes_are_zero {
-                        c"__DATA,__thread_bss"
-                    } else {
-                        c"__DATA,__thread_data"
-                    };
-                    llvm::LLVMSetSection(g, sect_name.as_ptr());
-                }
             }
 
             // Wasm statics with custom link sections get special treatment as they
@@ -508,7 +500,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext2(
                         self.llcx,
-                        section.as_str().as_ptr().cast(),
+                        section.as_str().as_c_char_ptr(),
                         section.as_str().len(),
                     );
                     assert!(alloc.provenance().ptrs().is_empty());
@@ -519,19 +511,21 @@ impl<'ll> CodegenCx<'ll, '_> {
                     let bytes =
                         alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
                     let alloc =
-                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_ptr().cast(), bytes.len());
+                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len());
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
-                    let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
+                    let val = self.get_metadata_value(meta);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
-                        c"wasm.custom_sections".as_ptr().cast(),
+                        c"wasm.custom_sections".as_ptr(),
                         val,
                     );
                 }
             } else {
                 base::set_link_section(g, attrs);
             }
+
+            base::set_variable_sanitizer_attrs(g, attrs);
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
                 // `USED` and `USED_LINKER` can't be used together.
@@ -551,8 +545,8 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
                 // on other targets, in particular MachO targets have *their* static constructor
                 // lists broken if `llvm.compiler.used` is emitted rather than `llvm.used`. However,
-                // that check happens when assigning the `CodegenFnAttrFlags` in `rustc_hir_analysis`,
-                // so we don't need to take care of it here.
+                // that check happens when assigning the `CodegenFnAttrFlags` in
+                // `rustc_hir_analysis`, so we don't need to take care of it here.
                 self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
@@ -565,25 +559,16 @@ impl<'ll> CodegenCx<'ll, '_> {
     }
 }
 
-impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
+impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
+    /// Get a pointer to a global variable.
+    ///
+    /// The pointer will always be in the default address space. If global variables default to a
+    /// different address space, an addrspacecast is inserted.
     fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }
-            return gv;
-        }
-        let gv = self.static_addr_of_mut(cv, align, kind);
-        unsafe {
-            llvm::LLVMSetGlobalConstant(gv, True);
-        }
-        self.const_globals.borrow_mut().insert(cv, gv);
-        gv
+        let gv = self.static_addr_of_impl(cv, align, kind);
+        // static_addr_of_impl returns the bare global variable, which might not be in the default
+        // address space. Cast to the default address space if necessary.
+        self.const_pointercast(gv, self.type_ptr())
     }
 
     fn codegen_static(&self, def_id: DefId) {

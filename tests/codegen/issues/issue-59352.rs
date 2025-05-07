@@ -6,7 +6,7 @@
 // test case should be removed as it will become redundant.
 
 // mir-opt-level=3 enables inlining and enables LLVM to optimize away the unreachable panic call.
-//@ compile-flags: -O -Z mir-opt-level=3
+//@ compile-flags: -Copt-level=3 -Z mir-opt-level=3
 
 #![crate_type = "rlib"]
 

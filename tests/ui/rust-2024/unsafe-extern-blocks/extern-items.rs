@@ -2,7 +2,6 @@
 //@[edition2021] edition:2021
 //@[edition2021] check-pass
 //@[edition2024] edition:2024
-//@[edition2024] compile-flags: -Zunstable-options
 
 extern "C" {
     //[edition2024]~^ ERROR extern blocks must be unsafe

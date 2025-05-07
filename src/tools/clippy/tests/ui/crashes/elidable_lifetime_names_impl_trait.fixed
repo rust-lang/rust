@@ -1,0 +1,23 @@
+#![deny(clippy::elidable_lifetime_names)]
+#![allow(dead_code)]
+
+trait Foo {}
+
+struct Bar;
+
+struct Baz<'a> {
+    bar: &'a Bar,
+}
+
+impl Foo for Baz<'_> {}
+//~^ elidable_lifetime_names
+
+impl Bar {
+    fn baz(&self) -> impl Foo + '_ {
+        //~^ elidable_lifetime_names
+
+        Baz { bar: self }
+    }
+}
+
+fn main() {}

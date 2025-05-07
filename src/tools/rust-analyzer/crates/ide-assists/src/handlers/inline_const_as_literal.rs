@@ -1,6 +1,7 @@
-use syntax::{ast, AstNode};
+use hir::HasCrate;
+use syntax::{AstNode, ast};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: inline_const_as_literal
 //
@@ -38,27 +39,12 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
         // FIXME: Add support to handle type aliases for builtin scalar types.
         validate_type_recursively(ctx, Some(&konst_ty), false, fuel)?;
 
-        let expr = konst.value(ctx.sema.db)?;
+        let value = konst
+            .eval(ctx.sema.db)
+            .ok()?
+            .render(ctx.sema.db, konst.krate(ctx.sema.db).to_display_target(ctx.sema.db));
 
-        let value = match expr {
-            ast::Expr::BlockExpr(_)
-            | ast::Expr::Literal(_)
-            | ast::Expr::RefExpr(_)
-            | ast::Expr::ArrayExpr(_)
-            | ast::Expr::TupleExpr(_)
-            | ast::Expr::IfExpr(_)
-            | ast::Expr::ParenExpr(_)
-            | ast::Expr::MatchExpr(_)
-            | ast::Expr::MacroExpr(_)
-            | ast::Expr::BinExpr(_)
-            | ast::Expr::CallExpr(_) => match konst.render_eval(ctx.sema.db) {
-                Ok(result) => result,
-                Err(_) => return None,
-            },
-            _ => return None,
-        };
-
-        let id = AssistId("inline_const_as_literal", AssistKind::RefactorInline);
+        let id = AssistId::refactor_inline("inline_const_as_literal");
 
         let label = "Inline const as literal".to_owned();
         let target = variable.syntax().text_range();
@@ -124,12 +110,14 @@ mod tests {
         ("u64", "0", NUMBER),
         ("u128", "0", NUMBER),
         ("usize", "0", NUMBER),
+        ("usize", "16", NUMBER),
         ("i8", "0", NUMBER),
         ("i16", "0", NUMBER),
         ("i32", "0", NUMBER),
         ("i64", "0", NUMBER),
         ("i128", "0", NUMBER),
         ("isize", "0", NUMBER),
+        ("isize", "16", NUMBER),
         ("bool", "false", BOOL),
         ("&str", "\"str\"", STR),
         ("char", "'c'", CHAR),

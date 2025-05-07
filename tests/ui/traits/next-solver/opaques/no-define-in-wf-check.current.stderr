@@ -1,0 +1,54 @@
+error: item does not constrain `ex1::Tait1::{opaque#0}`
+  --> $DIR/no-define-in-wf-check.rs:21:8
+   |
+LL |     fn foo(x: Tait1) -> impl Sized {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/no-define-in-wf-check.rs:19:18
+   |
+LL |     type Tait1 = impl Sized;
+   |                  ^^^^^^^^^^
+
+error: item does not constrain `ex2::Tait1::{opaque#0}`
+  --> $DIR/no-define-in-wf-check.rs:31:8
+   |
+LL |     fn foo(x: Tait1) -> Tait2 {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/no-define-in-wf-check.rs:28:18
+   |
+LL |     type Tait1 = impl Sized;
+   |                  ^^^^^^^^^^
+
+error: item does not constrain `ex3::Tait1::{opaque#0}`
+  --> $DIR/no-define-in-wf-check.rs:43:8
+   |
+LL |     fn foo(x: Tait1) -> Tait2 {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/no-define-in-wf-check.rs:38:18
+   |
+LL |     type Tait1 = impl Sized;
+   |                  ^^^^^^^^^^
+
+error: item does not constrain `ex4::Tait1::{opaque#0}`
+  --> $DIR/no-define-in-wf-check.rs:64:8
+   |
+LL |     fn foo(x: Tait1) -> Tait2 {
+   |        ^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/no-define-in-wf-check.rs:50:18
+   |
+LL |     type Tait1 = impl Sized;
+   |                  ^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

@@ -1,5 +1,4 @@
 //@ check-pass
-//@ pretty-expanded FIXME #23616
 
 trait A {
     fn a_method(&self);

@@ -1,7 +1,7 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_const_context;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_isize_or_usize;
 use rustc_errors::Applicability;
@@ -10,7 +10,7 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_span::hygiene;
 
-use super::{utils, CAST_LOSSLESS};
+use super::{CAST_LOSSLESS, utils};
 
 pub(super) fn check(
     cx: &LateContext<'_>,
@@ -19,7 +19,7 @@ pub(super) fn check(
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
     cast_to_hir: &rustc_hir::Ty<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if !should_lint(cx, cast_from, cast_to, msrv) {
         return;
@@ -34,15 +34,15 @@ pub(super) fn check(
             diag.help("an `as` cast can become silently lossy if the types change in the future");
             let mut applicability = Applicability::MachineApplicable;
             let from_sugg = Sugg::hir_with_context(cx, cast_from_expr, expr.span.ctxt(), "<from>", &mut applicability);
-            let Some(ty) = snippet_opt(cx, hygiene::walk_chain(cast_to_hir.span, expr.span.ctxt())) else {
+            let Some(ty) = hygiene::walk_chain(cast_to_hir.span, expr.span.ctxt()).get_source_text(cx) else {
                 return;
             };
             match cast_to_hir.kind {
-                TyKind::Infer => {
+                TyKind::Infer(()) => {
                     diag.span_suggestion_verbose(
                         expr.span,
                         "use `Into::into` instead",
-                        format!("{}.into()", from_sugg.maybe_par()),
+                        format!("{}.into()", from_sugg.maybe_paren()),
                         applicability,
                     );
                 },
@@ -70,7 +70,7 @@ pub(super) fn check(
     );
 }
 
-fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &Msrv) -> bool {
+fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: Msrv) -> bool {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
     if is_in_const_context(cx) {
         return false;
@@ -96,7 +96,7 @@ fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &
             };
             !is_isize_or_usize(cast_from) && from_nbits < to_nbits
         },
-        (false, true) if matches!(cast_from.kind(), ty::Bool) && msrv.meets(msrvs::FROM_BOOL) => true,
+        (false, true) if matches!(cast_from.kind(), ty::Bool) && msrv.meets(cx, msrvs::FROM_BOOL) => true,
         (_, _) => {
             matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64))
         },

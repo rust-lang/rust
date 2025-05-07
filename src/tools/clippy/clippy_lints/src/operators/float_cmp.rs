@@ -1,7 +1,7 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_item_name;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::{parent_item_name, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
@@ -17,8 +17,7 @@ pub(crate) fn check<'tcx>(
     right: &'tcx Expr<'_>,
 ) {
     if (op == BinOpKind::Eq || op == BinOpKind::Ne) && is_float(cx, left) {
-        let typeck = cx.typeck_results();
-        let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck);
+        let ecx = ConstEvalCtxt::new(cx);
         let left_is_local = match ecx.eval_with_source(left) {
             Some((c, s)) if !is_allowed(&c) => s.is_local(),
             Some(_) => return,
@@ -35,7 +34,7 @@ pub(crate) fn check<'tcx>(
             return;
         }
 
-        if let Some(name) = get_item_name(cx, expr) {
+        if let Some(name) = parent_item_name(cx, expr) {
             let name = name.as_str();
             if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") || name.ends_with("_eq") {
                 return;
@@ -106,8 +105,8 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         return is_signum(cx, child_expr);
     }
 
-    if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind
-        && sym!(signum) == method_name.ident.name
+    if let ExprKind::MethodCall(method_name, self_arg, [], _) = expr.kind
+        && method_name.ident.name == sym::signum
     // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
     // the method call)
     {
@@ -121,7 +120,7 @@ fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
     if let ty::Array(arr_ty, _) = value {
         return matches!(arr_ty.kind(), ty::Float(_));
-    };
+    }
 
     matches!(value, ty::Float(_))
 }

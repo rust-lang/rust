@@ -1,5 +1,3 @@
-//@ min-lldb-version: 310
-
 //@ aux-build:cross_crate_debuginfo_type_uniquing.rs
 extern crate cross_crate_debuginfo_type_uniquing;
 

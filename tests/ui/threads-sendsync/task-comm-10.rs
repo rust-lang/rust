@@ -3,8 +3,8 @@
 #![allow(unused_mut)]
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::{channel, Sender};
+use std::thread;
 
 fn start(tx: &Sender<Sender<String>>) {
     let (tx2, rx) = channel();
@@ -22,7 +22,7 @@ fn start(tx: &Sender<Sender<String>>) {
 
 pub fn main() {
     let (tx, rx) = channel();
-    let child = thread::spawn(move|| { start(&tx) });
+    let child = thread::spawn(move || start(&tx));
 
     let mut c = rx.recv().unwrap();
     c.send("A".to_string()).unwrap();

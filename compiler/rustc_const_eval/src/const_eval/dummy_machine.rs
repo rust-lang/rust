@@ -1,12 +1,15 @@
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult};
 use rustc_middle::mir::*;
 use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::def_id::DefId;
+use rustc_target::callconv::FnAbi;
 
 use crate::interpret::{
-    self, throw_machine_stop, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic,
+    self, HasStaticRootDefId, ImmTy, Immediate, InterpCx, PointerArithmetic, interp_ok,
+    throw_machine_stop,
 };
 
 /// Macro for machine-specific `InterpError` without allocation.
@@ -79,13 +82,13 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
             throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
-        Ok(())
+        interp_ok(())
     }
 
     fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'tcx, Self>,
         _instance: ty::Instance<'tcx>,
-        _abi: rustc_target::spec::abi::Abi,
+        _abi: &FnAbi<'tcx, Ty<'tcx>>,
         _args: &[interpret::FnArg<'tcx, Self::Provenance>],
         _destination: &interpret::MPlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
@@ -127,10 +130,10 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         right: &interpret::ImmTy<'tcx, Self::Provenance>,
     ) -> interpret::InterpResult<'tcx, ImmTy<'tcx, Self::Provenance>> {
         use rustc_middle::mir::BinOp::*;
-        Ok(match bin_op {
+        interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
                 // Types can differ, e.g. fn ptrs with different `for`.
-                assert_eq!(left.layout.abi, right.layout.abi);
+                assert_eq!(left.layout.backend_repr, right.layout.backend_repr);
                 let size = ecx.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
@@ -167,9 +170,9 @@ impl<'tcx> interpret::Machine<'tcx> for DummyMachine {
         })
     }
 
-    fn expose_ptr(
-        _ecx: &mut InterpCx<'tcx, Self>,
-        _ptr: interpret::Pointer<Self::Provenance>,
+    fn expose_provenance(
+        _ecx: &InterpCx<'tcx, Self>,
+        _provenance: Self::Provenance,
     ) -> interpret::InterpResult<'tcx> {
         unimplemented!()
     }

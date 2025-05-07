@@ -53,7 +53,7 @@ xflags::xflags! {
 
         /// Batch typecheck project and print summary statistics
         cmd analysis-stats {
-            /// Directory with Cargo.toml.
+            /// Directory with Cargo.toml or rust-project.json.
             required path: PathBuf
 
             optional --output format: OutputFormat
@@ -62,8 +62,6 @@ xflags::xflags! {
             optional --randomize
             /// Run type inference in parallel.
             optional --parallel
-            /// Print the total length of all source and macro files (whitespace is not counted).
-            optional --source-stats
 
             /// Only analyze items matching this path.
             optional -o, --only path: String
@@ -71,11 +69,15 @@ xflags::xflags! {
             optional --with-deps
             /// Don't load sysroot crates (`std`, `core` & friends).
             optional --no-sysroot
+            /// Don't set #[cfg(test)].
+            optional --no-test
 
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
-            /// Don't use expand proc macros.
+            /// Don't expand proc macros.
             optional --disable-proc-macros
+            /// Run the proc-macro-srv binary at the specified path.
+            optional --proc-macro-srv path: PathBuf
             /// Skip body lowering.
             optional --skip-lowering
             /// Skip type inference.
@@ -99,7 +101,7 @@ xflags::xflags! {
 
         /// Run unit tests of the project using mir interpreter
         cmd run-tests {
-            /// Directory with Cargo.toml.
+            /// Directory with Cargo.toml or rust-project.json.
             required path: PathBuf
         }
 
@@ -113,15 +115,43 @@ xflags::xflags! {
         }
 
         cmd diagnostics {
-            /// Directory with Cargo.toml.
+            /// Directory with Cargo.toml or rust-project.json.
             required path: PathBuf
 
             /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
             optional --disable-build-scripts
-            /// Don't use expand proc macros.
+            /// Don't expand proc macros.
             optional --disable-proc-macros
-            /// Run a custom proc-macro-srv binary.
+            /// Run the proc-macro-srv binary at the specified path.
             optional --proc-macro-srv path: PathBuf
+        }
+
+        /// Report unresolved references
+        cmd unresolved-references {
+            /// Directory with Cargo.toml or rust-project.json.
+            required path: PathBuf
+
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't expand proc macros.
+            optional --disable-proc-macros
+            /// Run the proc-macro-srv binary at the specified path.
+            optional --proc-macro-srv path: PathBuf
+        }
+
+        /// Prime caches, as rust-analyzer does typically at startup in interactive sessions.
+        cmd prime-caches {
+            /// Directory with Cargo.toml or rust-project.json.
+            required path: PathBuf
+
+            /// Don't run build scripts or load `OUT_DIR` values by running `cargo check` before analysis.
+            optional --disable-build-scripts
+            /// Don't expand proc macros.
+            optional --disable-proc-macros
+            /// Run the proc-macro-srv binary at the specified path.
+            optional --proc-macro-srv path: PathBuf
+            /// Run cache priming in parallel.
+            optional --parallel
         }
 
         cmd ssr {
@@ -138,6 +168,9 @@ xflags::xflags! {
 
         cmd lsif {
             required path: PathBuf
+
+            /// Exclude code from vendored libraries from the resulting index.
+            optional --exclude-vendored-libraries
         }
 
         cmd scip {
@@ -148,6 +181,9 @@ xflags::xflags! {
 
             /// A path to an json configuration file that can be used to customize cargo behavior.
             optional --config-path config_path: PathBuf
+
+            /// Exclude code from vendored libraries from the resulting index.
+            optional --exclude-vendored-libraries
         }
     }
 }
@@ -175,6 +211,8 @@ pub enum RustAnalyzerCmd {
     RunTests(RunTests),
     RustcTests(RustcTests),
     Diagnostics(Diagnostics),
+    UnresolvedReferences(UnresolvedReferences),
+    PrimeCaches(PrimeCaches),
     Ssr(Ssr),
     Search(Search),
     Lsif(Lsif),
@@ -207,12 +245,13 @@ pub struct AnalysisStats {
     pub output: Option<OutputFormat>,
     pub randomize: bool,
     pub parallel: bool,
-    pub source_stats: bool,
     pub only: Option<String>,
     pub with_deps: bool,
     pub no_sysroot: bool,
+    pub no_test: bool,
     pub disable_build_scripts: bool,
     pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
     pub skip_lowering: bool,
     pub skip_inference: bool,
     pub skip_mir_stats: bool,
@@ -245,6 +284,25 @@ pub struct Diagnostics {
 }
 
 #[derive(Debug)]
+pub struct UnresolvedReferences {
+    pub path: PathBuf,
+
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
+}
+
+#[derive(Debug)]
+pub struct PrimeCaches {
+    pub path: PathBuf,
+
+    pub disable_build_scripts: bool,
+    pub disable_proc_macros: bool,
+    pub proc_macro_srv: Option<PathBuf>,
+    pub parallel: bool,
+}
+
+#[derive(Debug)]
 pub struct Ssr {
     pub rule: Vec<SsrRule>,
 }
@@ -259,6 +317,8 @@ pub struct Search {
 #[derive(Debug)]
 pub struct Lsif {
     pub path: PathBuf,
+
+    pub exclude_vendored_libraries: bool,
 }
 
 #[derive(Debug)]
@@ -267,6 +327,7 @@ pub struct Scip {
 
     pub output: Option<PathBuf>,
     pub config_path: Option<PathBuf>,
+    pub exclude_vendored_libraries: bool,
 }
 
 impl RustAnalyzer {

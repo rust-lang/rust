@@ -1,4 +1,3 @@
-//@ error-pattern: unresolved
-use main::bar;
+use main::bar; //~ ERROR unresolved import `main`
 
 fn main() { println!("foo"); }

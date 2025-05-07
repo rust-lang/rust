@@ -1,15 +1,16 @@
 //@ check-pass
-//@ aux-build: another-proc-macro.rs
+//@ proc-macro: another-proc-macro.rs
 //@ compile-flags: -Zunpretty=expanded
+//@ edition:2015
 
-#![feature(derive_smart_pointer)]
+#![feature(derive_coerce_pointee)]
 
 #[macro_use]
 extern crate another_proc_macro;
 
-use another_proc_macro::{pointee, AnotherMacro};
+use another_proc_macro::{AnotherMacro, pointee};
 
-#[derive(core::marker::SmartPointer)]
+#[derive(core::marker::CoercePointee)]
 #[repr(transparent)]
 pub struct Ptr<'a, #[pointee] T: ?Sized> {
     data: &'a mut T,

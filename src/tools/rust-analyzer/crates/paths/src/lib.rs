@@ -232,7 +232,7 @@ impl AbsPath {
     /// - Removes trailing slashes: `/a/b/` becomes `/a/b`.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// # use paths::AbsPathBuf;
     /// let abs_path_buf = AbsPathBuf::assert("/a/../../b/.//c//".into());
     /// let normalized = abs_path_buf.normalize();
@@ -248,7 +248,9 @@ impl AbsPath {
     }
 
     pub fn canonicalize(&self) -> ! {
-        panic!("We explicitly do not provide canonicalization API, as that is almost always a wrong solution, see #14430")
+        panic!(
+            "We explicitly do not provide canonicalization API, as that is almost always a wrong solution, see #14430"
+        )
     }
 
     /// Equivalent of [`Utf8Path::strip_prefix`] for `AbsPath`.

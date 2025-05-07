@@ -4,9 +4,9 @@
 use either::Either;
 
 use crate::{
-    ast::{self, support, AstChildren, AstNode, AstToken},
-    syntax_node::SyntaxElementChildren,
     SyntaxElement, SyntaxToken, T,
+    ast::{self, AstChildren, AstNode, AstToken, support},
+    syntax_node::SyntaxElementChildren,
 };
 
 pub trait HasName: AstNode {
@@ -75,6 +75,33 @@ pub trait HasAttrs: AstNode {
     fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
     }
+
+    /// Returns all attributes of this node, including inner attributes that may not be directly under this node
+    /// but under a child.
+    fn attrs_including_inner(self) -> impl Iterator<Item = ast::Attr>
+    where
+        Self: Sized,
+    {
+        let inner_attrs_node = if let Some(it) =
+            support::child::<ast::BlockExpr>(self.syntax()).and_then(|it| it.stmt_list())
+        {
+            Some(it.syntax)
+        } else if let Some(it) = support::child::<ast::MatchArmList>(self.syntax()) {
+            Some(it.syntax)
+        } else if let Some(it) = support::child::<ast::AssocItemList>(self.syntax()) {
+            Some(it.syntax)
+        } else if let Some(it) = support::child::<ast::ItemList>(self.syntax()) {
+            Some(it.syntax)
+        } else if let Some(it) = support::child::<ast::ExternItemList>(self.syntax()) {
+            Some(it.syntax)
+        } else if let Some(it) = support::child::<ast::MacroItems>(self.syntax()) {
+            Some(it.syntax)
+        } else {
+            None
+        };
+
+        self.attrs().chain(inner_attrs_node.into_iter().flat_map(|it| support::children(&it)))
+    }
 }
 
 pub trait HasDocComments: HasAttrs {
@@ -94,11 +121,7 @@ impl DocCommentIter {
             &mut self.filter_map(|comment| comment.doc_comment().map(ToOwned::to_owned)),
             "\n",
         );
-        if docs.is_empty() {
-            None
-        } else {
-            Some(docs)
-        }
+        if docs.is_empty() { None } else { Some(docs) }
     }
 }
 

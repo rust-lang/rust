@@ -93,12 +93,10 @@ incremental_undefined_clean_dirty_assertions =
 incremental_undefined_clean_dirty_assertions_item =
     clean/dirty auto-assertions not yet defined for Node::Item.node={$kind}
 
-incremental_unknown_item = unknown item `{$name}`
+incremental_unknown_rustc_clean_argument = unknown `rustc_clean` argument
 
 incremental_unrecognized_depnode = unrecognized `DepNode` variant: {$name}
 
 incremental_unrecognized_depnode_label = dep-node label `{$label}` not recognized
-
-incremental_write_dep_graph = failed to write dependency graph to `{$path}`: {$err}
 
 incremental_write_new = failed to write {$name} to `{$path}`: {$err}

@@ -1,13 +1,13 @@
 use std::iter::successors;
 
-use hir::{DescendPreference, Semantics};
+use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
-    algo::{self, skip_trivia_token},
-    ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, T,
+    SyntaxNode, SyntaxToken, T, TextRange, TextSize, TokenAtOffset,
+    algo::{self, skip_trivia_token},
+    ast::{self, AstNode, AstToken},
 };
 
 use crate::FileRange;
@@ -17,13 +17,11 @@ use crate::FileRange;
 // Extends or shrinks the current selection to the encompassing syntactic construct
 // (expression, statement, item, module, etc). It works with multiple cursors.
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Alt+Shift+→</kbd>, <kbd>Alt+Shift+←</kbd> |
 //
-// | VS Code | kbd:[Alt+Shift+→], kbd:[Alt+Shift+←]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020651-b42fc800-917a-11eb-8a4f-cf1a07859fac.gif[]
+// ![Expand and Shrink Selection](https://user-images.githubusercontent.com/48062697/113020651-b42fc800-917a-11eb-8a4f-cf1a07859fac.gif)
 pub(crate) fn extend_selection(db: &RootDatabase, frange: FileRange) -> TextRange {
     let sema = Semantics::new(db);
     let src = sema.parse_guess_edition(frange.file_id);
@@ -140,10 +138,8 @@ fn extend_tokens_from_range(
 
     // compute original mapped token range
     let extended = {
-        let fst_expanded =
-            sema.descend_into_macros_single(DescendPreference::None, first_token.clone());
-        let lst_expanded =
-            sema.descend_into_macros_single(DescendPreference::None, last_token.clone());
+        let fst_expanded = sema.descend_into_macros_single_exact(first_token.clone());
+        let lst_expanded = sema.descend_into_macros_single_exact(last_token.clone());
         let mut lca =
             algo::least_common_ancestor(&fst_expanded.parent()?, &lst_expanded.parent()?)?;
         lca = shallowest_node(&lca);
@@ -157,7 +153,7 @@ fn extend_tokens_from_range(
     let validate = || {
         let extended = &extended;
         move |token: &SyntaxToken| -> bool {
-            let expanded = sema.descend_into_macros_single(DescendPreference::None, token.clone());
+            let expanded = sema.descend_into_macros_single_exact(token.clone());
             let parent = match expanded.parent() {
                 Some(it) => it,
                 None => return false,
@@ -182,11 +178,7 @@ fn extend_tokens_from_range(
     .last()?;
 
     let range = first.text_range().cover(last.text_range());
-    if range.contains_range(original_range) && original_range != range {
-        Some(range)
-    } else {
-        None
-    }
+    if range.contains_range(original_range) && original_range != range { Some(range) } else { None }
 }
 
 /// Find the shallowest node with same range, which allows us to traverse siblings.
@@ -220,11 +212,7 @@ fn extend_single_word_in_comment_or_string(
     let to: TextSize = (cursor_position + end_idx).into();
 
     let range = TextRange::new(from, to);
-    if range.is_empty() {
-        None
-    } else {
-        Some(range + leaf.text_range().start())
-    }
+    if range.is_empty() { None } else { Some(range + leaf.text_range().start()) }
 }
 
 fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextSize) -> TextRange {

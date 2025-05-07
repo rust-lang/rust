@@ -2,11 +2,11 @@ use hir::{PathResolution, Semantics};
 use ide_db::{FxHashMap, RootDatabase};
 use itertools::Itertools;
 use syntax::{
+    AstNode, SyntaxElement,
     ast::{self, HasName},
-    ted, AstNode,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: reorder_impl_items
 //
@@ -46,6 +46,11 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
     let items = impl_ast.assoc_item_list()?;
 
+    let parent_node = match ctx.covering_element() {
+        SyntaxElement::Node(n) => n,
+        SyntaxElement::Token(t) => t.parent()?,
+    };
+
     // restrict the range
     // if cursor is in assoc_items, abort
     let assoc_range = items.syntax().text_range();
@@ -77,7 +82,8 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 ast::AssocItem::MacroCall(_) => None,
             };
 
-            name.and_then(|n| ranks.get(&n.to_string()).copied()).unwrap_or(usize::MAX)
+            name.and_then(|n| ranks.get(n.text().as_str().trim_start_matches("r#")).copied())
+                .unwrap_or(usize::MAX)
         })
         .collect();
 
@@ -89,16 +95,18 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     let target = items.syntax().text_range();
     acc.add(
-        AssistId("reorder_impl_items", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("reorder_impl_items"),
         "Sort items by trait definition",
         target,
         |builder| {
-            let assoc_items =
-                assoc_items.into_iter().map(|item| builder.make_mut(item)).collect::<Vec<_>>();
+            let mut editor = builder.make_editor(&parent_node);
+
             assoc_items
                 .into_iter()
                 .zip(sorted)
-                .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
+                .for_each(|(old, new)| editor.replace(old.syntax(), new.syntax()));
+
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -114,7 +122,7 @@ fn compute_item_ranks(
             .iter()
             .flat_map(|i| i.name(ctx.db()))
             .enumerate()
-            .map(|(idx, name)| (name.display(ctx.db()).to_string(), idx))
+            .map(|(idx, name)| (name.as_str().to_owned(), idx))
             .collect(),
     )
 }

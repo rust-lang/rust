@@ -9,44 +9,11 @@ help: add `for` here
 LL | impl Trait for Type {}
    |            +++
 
-error: missing `for` in a trait impl
-  --> $DIR/impl-parsing.rs:5:11
-   |
-LL | impl Trait .. {}
-   |           ^
-   |
-help: add `for` here
-   |
-LL | impl Trait for .. {}
-   |            +++
-
 error: expected a trait, found type
-  --> $DIR/impl-parsing.rs:6:6
+  --> $DIR/impl-parsing.rs:5:6
    |
 LL | impl ?Sized for Type {}
    |      ^^^^^^
 
-error: expected a trait, found type
-  --> $DIR/impl-parsing.rs:7:6
-   |
-LL | impl ?Sized for .. {}
-   |      ^^^^^^
-
-error: `default` is not followed by an item
-  --> $DIR/impl-parsing.rs:9:1
-   |
-LL | default unsafe FAIL
-   | ^^^^^^^ the `default` qualifier
-   |
-   = note: only `fn`, `const`, `type`, or `impl` items may be prefixed by `default`
-
-error: expected item, found keyword `unsafe`
-  --> $DIR/impl-parsing.rs:9:9
-   |
-LL | default unsafe FAIL
-   |         ^^^^^^ expected item
-   |
-   = note: for a full list of items that can appear in modules, see <https://doc.rust-lang.org/reference/items.html>
-
-error: aborting due to 6 previous errors
+error: aborting due to 2 previous errors
 

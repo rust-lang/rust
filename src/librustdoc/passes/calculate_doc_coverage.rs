@@ -5,21 +5,22 @@ use std::ops;
 
 use rustc_hir as hir;
 use rustc_lint::builtin::MISSING_DOCS;
-use rustc_middle::lint::LintLevelSource;
+use rustc_middle::lint::{LevelAndSource, LintLevelSource};
 use rustc_session::lint;
 use rustc_span::FileName;
 use serde::Serialize;
+use tracing::debug;
 
 use crate::clean;
 use crate::core::DocContext;
-use crate::html::markdown::{find_testable_code, ErrorCodes};
-use crate::passes::check_doc_test_visibility::{should_have_doc_example, Tests};
+use crate::html::markdown::{ErrorCodes, find_testable_code};
 use crate::passes::Pass;
+use crate::passes::check_doc_test_visibility::{Tests, should_have_doc_example};
 use crate::visit::DocVisitor;
 
 pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
     name: "calculate-doc-coverage",
-    run: calculate_doc_coverage,
+    run: Some(calculate_doc_coverage),
     description: "counts the number of items with and without documentation",
 };
 
@@ -117,7 +118,7 @@ fn limit_filename_len(filename: String) -> String {
     }
 }
 
-impl<'a, 'b> CoverageCalculator<'a, 'b> {
+impl CoverageCalculator<'_, '_> {
     fn to_json(&self) -> String {
         serde_json::to_string(
             &self
@@ -131,6 +132,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
 
     fn print_results(&self) {
         let output_format = self.ctx.output_format;
+        // In this case we want to ensure that the `OutputFormat` is JSON and NOT the `DocContext`.
         if output_format.is_json() {
             println!("{}", self.to_json());
             return;
@@ -186,7 +188,7 @@ impl<'a, 'b> CoverageCalculator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
+impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
     fn visit_item(&mut self, i: &clean::Item) {
         if !i.item_id.is_local() {
             // non-local items are skipped because they can be out of the users control,
@@ -194,7 +196,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
             return;
         }
 
-        match *i.kind {
+        match i.kind {
             clean::StrippedItem(..) => {
                 // don't count items in stripped modules
                 return;
@@ -210,11 +212,12 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
 
-                find_testable_code(&i.doc_value(), &mut tests, ErrorCodes::No, false, None);
+                find_testable_code(&i.doc_value(), &mut tests, ErrorCodes::No, None);
 
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
-                let (level, source) = self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
+                let LevelAndSource { level, src, .. } =
+                    self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
 
                 // In case we have:
                 //
@@ -230,7 +233,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                     .item_id
                     .as_def_id()
                     .and_then(|def_id| self.ctx.tcx.opt_parent(def_id))
-                    .and_then(|def_id| self.ctx.tcx.hir().get_if_local(def_id))
+                    .and_then(|def_id| self.ctx.tcx.hir_get_if_local(def_id))
                     .map(|node| {
                         matches!(
                             node,
@@ -238,7 +241,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                                 data: hir::VariantData::Tuple(_, _, _),
                                 ..
                             }) | hir::Node::Item(hir::Item {
-                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _, _), _),
+                                kind: hir::ItemKind::Struct(_, hir::VariantData::Tuple(_, _, _), _),
                                 ..
                             })
                         )
@@ -249,7 +252,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                 // unless the user had an explicit `allow`.
                 //
                 let should_have_docs = !should_be_ignored
-                    && (level != lint::Level::Allow || matches!(source, LintLevelSource::Default));
+                    && (level != lint::Level::Allow || matches!(src, LintLevelSource::Default));
 
                 if let Some(span) = i.span(self.ctx.tcx) {
                     let filename = span.filename(self.ctx.sess());

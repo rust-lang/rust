@@ -11,9 +11,9 @@ const EXPECTED = [
     {
         query: '-> generic:T',
         others: [
-            { path: 'foo', name: 'beta' },
             { path: 'foo', name: 'bet' },
             { path: 'foo', name: 'alef' },
+            { path: 'foo', name: 'beta' },
         ],
     },
     {
@@ -50,8 +50,8 @@ const EXPECTED = [
     {
         query: 'generic:T',
         in_args: [
-            { path: 'foo', name: 'beta' },
             { path: 'foo', name: 'bet' },
+            { path: 'foo', name: 'beta' },
             { path: 'foo', name: 'alternate' },
             { path: 'foo', name: 'other' },
         ],
@@ -59,8 +59,8 @@ const EXPECTED = [
     {
         query: 'generic:Other',
         in_args: [
-            { path: 'foo', name: 'beta' },
             { path: 'foo', name: 'bet' },
+            { path: 'foo', name: 'beta' },
             { path: 'foo', name: 'alternate' },
             { path: 'foo', name: 'other' },
         ],

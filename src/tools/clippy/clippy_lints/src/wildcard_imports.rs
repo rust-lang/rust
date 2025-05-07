@@ -10,7 +10,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
-use rustc_span::{sym, BytePos};
+use rustc_span::{BytePos, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -68,6 +68,8 @@ declare_clippy_lint! {
     /// (including the standard library) provide modules named "prelude" specifically designed
     /// for wildcard import.
     ///
+    /// Wildcard imports reexported through `pub use` are also allowed.
+    ///
     /// `use super::*` is allowed in test modules. This is defined as any module with "test" in the name.
     ///
     /// These exceptions can be disabled using the `warn-on-all-wildcard-imports` configuration flag.
@@ -100,14 +102,14 @@ declare_clippy_lint! {
 
 pub struct WildcardImports {
     warn_on_all: bool,
-    allowed_segments: &'static FxHashSet<String>,
+    allowed_segments: FxHashSet<String>,
 }
 
 impl WildcardImports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             warn_on_all: conf.warn_on_all_wildcard_imports,
-            allowed_segments: &conf.allowed_wildcard_imports,
+            allowed_segments: conf.allowed_wildcard_imports.iter().cloned().collect(),
         }
     }
 }
@@ -121,7 +123,9 @@ impl LateLintPass<'_> for WildcardImports {
         }
 
         let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
-        if cx.tcx.visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module.to_def_id()) {
+        if cx.tcx.visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module.to_def_id())
+            && !self.warn_on_all
+        {
             return;
         }
         if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind
@@ -150,7 +154,7 @@ impl LateLintPass<'_> for WildcardImports {
                 (span, false)
             };
 
-            let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord();
+            let mut imports: Vec<_> = used_imports.iter().map(ToString::to_string).collect();
             let imports_string = if imports.len() == 1 {
                 imports.pop().unwrap()
             } else if braced_glob {
@@ -181,7 +185,7 @@ impl WildcardImports {
     fn check_exceptions(&self, cx: &LateContext<'_>, item: &Item<'_>, segments: &[PathSegment<'_>]) -> bool {
         item.span.from_expansion()
             || is_prelude_import(segments)
-            || is_allowed_via_config(segments, self.allowed_segments)
+            || is_allowed_via_config(segments, &self.allowed_segments)
             || (is_super_only_import(segments) && is_in_test(cx.tcx, item.hir_id()))
     }
 }

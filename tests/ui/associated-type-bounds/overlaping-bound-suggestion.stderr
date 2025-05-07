@@ -4,18 +4,6 @@ error[E0191]: the value of the associated types `Item` and `IntoIter` in `IntoIt
 LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated types: `IntoIterator<Item: IntoIterator<Item: >, Item = Type, IntoIter = Type>`
 
-error[E0223]: ambiguous associated type
-  --> $DIR/overlaping-bound-suggestion.rs:6:13
-   |
-LL |     inner: <IntoIterator<Item: IntoIterator<Item: >>::IntoIterator as Item>::Core,
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: if there were a trait named `Example` with associated type `IntoIterator` implemented for `(dyn IntoIterator + 'static)`, you could use the fully-qualified path
-   |
-LL |     inner: <<(dyn IntoIterator + 'static) as Example>::IntoIterator as Item>::Core,
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0191, E0223.
-For more information about an error, try `rustc --explain E0191`.
+For more information about this error, try `rustc --explain E0191`.

@@ -1,32 +1,47 @@
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::CRATE_DEF_ID;
-use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::sym;
+use std::fmt::Write;
+
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_middle::ty::{GenericArgs, TyCtxt};
+use rustc_span::sym;
+
+fn format_variances(tcx: TyCtxt<'_>, def_id: LocalDefId) -> String {
+    let variances = tcx.variances_of(def_id);
+    let generics = GenericArgs::identity_for_item(tcx, def_id);
+    // 7 = 2-letter parameter + ": " + 1-letter variance + ", "
+    let mut ret = String::with_capacity(2 + 7 * variances.len());
+    ret.push('[');
+    for (arg, variance) in generics.iter().zip(variances.iter()) {
+        write!(ret, "{arg}: {variance:?}, ").unwrap();
+    }
+    // Remove trailing `, `.
+    if !variances.is_empty() {
+        ret.pop();
+        ret.pop();
+    }
+    ret.push(']');
+    ret
+}
 
 pub(crate) fn variances(tcx: TyCtxt<'_>) {
+    let crate_items = tcx.hir_crate_items(());
+
     if tcx.has_attr(CRATE_DEF_ID, sym::rustc_variance_of_opaques) {
-        for id in tcx.hir().items() {
-            let DefKind::OpaqueTy = tcx.def_kind(id.owner_id) else { continue };
-
-            let variances = tcx.variances_of(id.owner_id);
-
+        for id in crate_items.opaques() {
             tcx.dcx().emit_err(crate::errors::VariancesOf {
-                span: tcx.def_span(id.owner_id),
-                variances: format!("{variances:?}"),
+                span: tcx.def_span(id),
+                variances: format_variances(tcx, id),
             });
         }
     }
 
-    for id in tcx.hir().items() {
+    for id in crate_items.free_items() {
         if !tcx.has_attr(id.owner_id, sym::rustc_variance) {
             continue;
         }
 
-        let variances = tcx.variances_of(id.owner_id);
-
         tcx.dcx().emit_err(crate::errors::VariancesOf {
             span: tcx.def_span(id.owner_id),
-            variances: format!("{variances:?}"),
+            variances: format_variances(tcx, id.owner_id.def_id),
         });
     }
 }

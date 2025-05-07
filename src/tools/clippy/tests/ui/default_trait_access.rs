@@ -11,16 +11,20 @@ use std::{default, string};
 
 fn main() {
     let s1: String = Default::default();
+    //~^ default_trait_access
 
     let s2 = String::default();
 
     let s3: String = D2::default();
+    //~^ default_trait_access
 
     let s4: String = std::default::Default::default();
+    //~^ default_trait_access
 
     let s5 = string::String::default();
 
     let s6: String = default::Default::default();
+    //~^ default_trait_access
 
     let s7 = std::string::String::default();
 
@@ -31,18 +35,22 @@ fn main() {
     let s10 = DerivedDefault::default();
 
     let s11: GenericDerivedDefault<String> = Default::default();
+    //~^ default_trait_access
 
     let s12 = GenericDerivedDefault::<String>::default();
 
     let s13 = TupleDerivedDefault::default();
 
     let s14: TupleDerivedDefault = Default::default();
+    //~^ default_trait_access
 
     let s15: ArrayDerivedDefault = Default::default();
+    //~^ default_trait_access
 
     let s16 = ArrayDerivedDefault::default();
 
     let s17: TupleStructDerivedDefault = Default::default();
+    //~^ default_trait_access
 
     let s18 = TupleStructDerivedDefault::default();
 

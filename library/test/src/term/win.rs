@@ -5,7 +5,7 @@
 use std::io;
 use std::io::prelude::*;
 
-use super::{color, Terminal};
+use super::{Terminal, color};
 
 /// A Terminal implementation that uses the Win32 Console API.
 pub(crate) struct WinConsole<T> {
@@ -52,7 +52,7 @@ struct CONSOLE_SCREEN_BUFFER_INFO {
 
 #[allow(non_snake_case)]
 #[link(name = "kernel32")]
-extern "system" {
+unsafe extern "system" {
     fn SetConsoleTextAttribute(handle: HANDLE, attr: WORD) -> BOOL;
     fn GetStdHandle(which: DWORD) -> HANDLE;
     fn GetConsoleScreenBufferInfo(handle: HANDLE, info: *mut CONSOLE_SCREEN_BUFFER_INFO) -> BOOL;

@@ -23,9 +23,7 @@ use std::hash::Hash;
 use derive_where::derive_where;
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
-use crate::solve::{
-    CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, QueryInput, QueryResult,
-};
+use crate::solve::{CandidateSource, CanonicalInput, Certainty, Goal, GoalSource, QueryResult};
 use crate::{Canonical, CanonicalVarValues, Interner};
 
 /// Some `data` together with information about how they relate to the input
@@ -69,15 +67,10 @@ pub struct CanonicalGoalEvaluation<I: Interner> {
 #[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
 pub enum CanonicalGoalEvaluationKind<I: Interner> {
     Overflow,
-    Evaluation { final_revision: CanonicalGoalEvaluationStep<I> },
-}
-
-#[derive_where(PartialEq, Eq, Hash, Debug; I: Interner)]
-pub struct CanonicalGoalEvaluationStep<I: Interner> {
-    pub instantiated_goal: QueryInput<I, I::Predicate>,
-
-    /// The actual evaluation of the goal, always `ProbeKind::Root`.
-    pub evaluation: Probe<I>,
+    Evaluation {
+        /// This is always `ProbeKind::Root`.
+        final_revision: Probe<I>,
+    },
 }
 
 /// A self-contained computation during trait solving. This either
@@ -118,8 +111,6 @@ pub enum ProbeStep<I: Interner> {
 pub enum ProbeKind<I: Interner> {
     /// The root inference context while proving a goal.
     Root { result: QueryResult<I> },
-    /// Trying to normalize an alias by at least one step in `NormalizesTo`.
-    TryNormalizeNonRigid { result: QueryResult<I> },
     /// Probe entered when normalizing the self ty during candidate assembly
     NormalizedSelfTyAssembly,
     /// A candidate for proving a trait or alias-relate goal.
@@ -127,12 +118,16 @@ pub enum ProbeKind<I: Interner> {
     /// Used in the probe that wraps normalizing the non-self type for the unsize
     /// trait, which is also structurally matched on.
     UnsizeAssembly,
-    /// During upcasting from some source object to target object type, used to
-    /// do a probe to find out what projection type(s) may be used to prove that
-    /// the source type upholds all of the target type's object bounds.
-    UpcastProjectionCompatibility,
+    /// Used to do a probe to find out what projection type(s) match a given
+    /// alias bound or projection predicate. For trait upcasting, this is used
+    /// to prove that the source type upholds all of the target type's object
+    /// bounds. For object type bounds, this is used when eagerly replacing
+    /// supertrait aliases.
+    ProjectionCompatibility,
     /// Looking for param-env candidates that satisfy the trait ref for a projection.
     ShadowedEnvProbing,
     /// Try to unify an opaque type with an existing key in the storage.
     OpaqueTypeStorageLookup { result: QueryResult<I> },
+    /// Checking that a rigid alias is well-formed.
+    RigidAlias { result: QueryResult<I> },
 }

@@ -8,7 +8,7 @@
       let mut _4: i32;
   
       bb0: {
-          switchInt(_1) -> [1: bb1, otherwise: bb2];
+          switchInt(copy _1) -> [1: bb1, otherwise: bb2];
       }
   
       bb1: {
@@ -28,7 +28,7 @@
   
       bb4: {
           _4 = const 15_i32;
--         switchInt(_2) -> [5: bb5, otherwise: bb6];
+-         switchInt(copy _2) -> [5: bb5, otherwise: bb6];
 +         goto -> bb5;
       }
   

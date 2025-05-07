@@ -7,6 +7,8 @@ CT_ARCH_LOONGARCH=y
 # CT_DEMULTILIB is not set
 CT_ARCH_USE_MMU=y
 CT_ARCH_ARCH="loongarch64"
+CT_TARGET_CFLAGS="-mcmodel=medium"
+CT_TARGET_LDFLAGS="-mcmodel=medium"
 CT_KERNEL_LINUX=y
 CT_LINUX_V_5_19=y
 CT_GLIBC_V_2_36=y

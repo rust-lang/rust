@@ -5,8 +5,8 @@
 #![unstable(issue = "none", feature = "windows_c")]
 #![allow(clippy::style)]
 
-use core::ffi::{c_uint, c_ulong, c_ushort, c_void, CStr};
-use core::{mem, ptr};
+use core::ffi::{CStr, c_uint, c_ulong, c_ushort, c_void};
+use core::ptr;
 
 mod windows_sys;
 pub use windows_sys::*;
@@ -39,15 +39,15 @@ pub fn nt_success(status: NTSTATUS) -> bool {
 
 impl UNICODE_STRING {
     pub fn from_ref(slice: &[u16]) -> Self {
-        let len = mem::size_of_val(slice);
+        let len = size_of_val(slice);
         Self { Length: len as _, MaximumLength: len as _, Buffer: slice.as_ptr() as _ }
     }
 }
 
-impl Default for OBJECT_ATTRIBUTES {
-    fn default() -> Self {
+impl OBJECT_ATTRIBUTES {
+    pub fn with_length() -> Self {
         Self {
-            Length: mem::size_of::<Self>() as _,
+            Length: size_of::<Self>() as _,
             RootDirectory: ptr::null_mut(),
             ObjectName: ptr::null_mut(),
             Attributes: 0,
@@ -109,19 +109,15 @@ if #[cfg(not(target_vendor = "uwp"))] {
 }
 
 // Use raw-dylib to import ProcessPrng as we can't rely on there being an import library.
-cfg_if::cfg_if! {
-if #[cfg(not(target_vendor = "win7"))] {
-    #[cfg(target_arch = "x86")]
-    #[link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")]
-    extern "system" {
-        pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
-    }
-    #[cfg(not(target_arch = "x86"))]
-    #[link(name = "bcryptprimitives", kind = "raw-dylib")]
-    extern "system" {
-        pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
-    }
-}}
+#[cfg(not(target_vendor = "win7"))]
+#[cfg_attr(
+    target_arch = "x86",
+    link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")
+)]
+#[cfg_attr(not(target_arch = "x86"), link(name = "bcryptprimitives", kind = "raw-dylib"))]
+unsafe extern "system" {
+    pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
+}
 
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
@@ -168,7 +164,7 @@ compat_fn_with_fallback! {
     not(target_arch = "x86"),
     link(name = "api-ms-win-core-synch-l1-2-0", kind = "raw-dylib")
 )]
-extern "system" {
+unsafe extern "system" {
     pub fn WaitOnAddress(
         address: *const c_void,
         compareaddress: *const c_void,
@@ -179,9 +175,9 @@ extern "system" {
     pub fn WakeByAddressAll(address: *const c_void);
 }
 
+// These are loaded by `load_synch_functions`.
 #[cfg(target_vendor = "win7")]
 compat_fn_optional! {
-    crate::sys::compat::load_synch_functions();
     pub fn WaitOnAddress(
         address: *const c_void,
         compareaddress: *const c_void,
@@ -208,7 +204,7 @@ compat_fn_with_fallback! {
     pub fn NtReleaseKeyedEvent(
         EventHandle: HANDLE,
         Key: *const c_void,
-        Alertable: BOOLEAN,
+        Alertable: bool,
         Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
@@ -217,7 +213,7 @@ compat_fn_with_fallback! {
     pub fn NtWaitForKeyedEvent(
         EventHandle: HANDLE,
         Key: *const c_void,
-        Alertable: BOOLEAN,
+        Alertable: bool,
         Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
@@ -237,6 +233,17 @@ compat_fn_with_fallback! {
         createoptions: NTCREATEFILE_CREATE_OPTIONS,
         eabuffer: *const c_void,
         ealength: u32
+    ) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+    #[cfg(target_vendor = "uwp")]
+    pub fn NtOpenFile(
+        filehandle: *mut HANDLE,
+        desiredaccess: u32,
+        objectattributes: *const OBJECT_ATTRIBUTES,
+        iostatusblock: *mut IO_STATUS_BLOCK,
+        shareaccess: u32,
+        openoptions: u32
     ) -> NTSTATUS {
         STATUS_NOT_IMPLEMENTED
     }

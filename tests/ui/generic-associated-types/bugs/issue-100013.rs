@@ -1,5 +1,5 @@
 //@ check-fail
-//@ known-bug: unknown
+//@ known-bug: #100013
 //@ edition: 2021
 
 // We really should accept this, but we need implied bounds between the regions

@@ -1,3 +1,5 @@
+//@ dont-require-annotations: NOTE
+
 #![feature(never_type)]
 
 enum Helper<T, U> {
@@ -9,7 +11,7 @@ enum Helper<T, U> {
 fn transmute<T, U>(t: T) -> U {
     let Helper::U(u) = Helper::T(t, []);
     //~^ ERROR refutable pattern in local binding
-    //~| `Helper::T(_, _)` not covered
+    //~| NOTE `Helper::T(_, _)` not covered
     u
 }
 

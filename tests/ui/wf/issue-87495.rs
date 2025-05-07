@@ -2,7 +2,7 @@
 
 trait T {
     const CONST: (bool, dyn T);
-    //~^ ERROR: the trait `T` cannot be made into an object [E0038]
+    //~^ ERROR: the trait `T` is not dyn compatible [E0038]
 }
 
 fn main() {}

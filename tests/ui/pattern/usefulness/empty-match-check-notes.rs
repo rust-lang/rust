@@ -16,10 +16,12 @@ fn empty_enum(x: EmptyEnum) {
     match x {
         _ => {} //~ ERROR unreachable pattern
                 //~^ NOTE matches no values
+                //~| NOTE to learn more about uninhabited types, see
     }
     match x {
         _ if false => {} //~ ERROR unreachable pattern
                          //~^ NOTE matches no values
+                         //~| NOTE to learn more about uninhabited types, see
     }
 }
 
@@ -28,10 +30,12 @@ fn empty_foreign_enum(x: empty::EmptyForeignEnum) {
     match x {
         _ => {} //~ ERROR unreachable pattern
                 //~^ NOTE matches no values
+                //~| NOTE to learn more about uninhabited types, see
     }
     match x {
         _ if false => {} //~ ERROR unreachable pattern
                          //~^ NOTE matches no values
+                         //~| NOTE to learn more about uninhabited types, see
     }
 }
 

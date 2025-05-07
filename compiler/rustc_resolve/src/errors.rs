@@ -1,11 +1,10 @@
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ElidedLifetimeInPathSubdiag, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Ident, Span, Symbol};
 
-use crate::late::PatternSource;
 use crate::Res;
+use crate::late::PatternSource;
 
 #[derive(Diagnostic)]
 #[diag(resolve_generic_params_from_outer_item, code = E0401)]
@@ -60,7 +59,7 @@ pub(crate) struct NameAlreadyUsedInParameterList {
     pub(crate) span: Span,
     #[label(resolve_first_use_of_name)]
     pub(crate) first_use_span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -143,7 +142,7 @@ pub(crate) struct VariableBoundWithDifferentMode {
     pub(crate) span: Span,
     #[label(resolve_first_binding_span)]
     pub(crate) first_binding_span: Span,
-    pub(crate) variable_name: Symbol,
+    pub(crate) variable_name: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -152,7 +151,7 @@ pub(crate) struct IdentifierBoundMoreThanOnceInParameterList {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    pub(crate) identifier: Symbol,
+    pub(crate) identifier: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -161,7 +160,7 @@ pub(crate) struct IdentifierBoundMoreThanOnceInSamePattern {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    pub(crate) identifier: Symbol,
+    pub(crate) identifier: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -339,6 +338,16 @@ pub(crate) struct ForwardDeclaredGenericParam {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
+    pub(crate) param: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_forward_declared_generic_in_const_param_ty)]
+pub(crate) struct ForwardDeclaredGenericInConstParamTy {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) param: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -348,26 +357,19 @@ pub(crate) struct ParamInTyOfConstParam {
     #[label]
     pub(crate) span: Span,
     pub(crate) name: Symbol,
-    #[subdiagnostic]
-    pub(crate) param_kind: Option<ParamKindInTyOfConstParam>,
-}
-
-#[derive(Debug)]
-#[derive(Subdiagnostic)]
-pub(crate) enum ParamKindInTyOfConstParam {
-    #[note(resolve_type_param_in_ty_of_const_param)]
-    Type,
-    #[note(resolve_const_param_in_ty_of_const_param)]
-    Const,
-    #[note(resolve_lifetime_param_in_ty_of_const_param)]
-    Lifetime,
 }
 
 #[derive(Diagnostic)]
 #[diag(resolve_self_in_generic_param_default, code = E0735)]
 pub(crate) struct SelfInGenericParamDefault {
     #[primary_span]
-    #[label]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_self_in_const_generic_ty)]
+pub(crate) struct SelfInConstGenericTy {
+    #[primary_span]
     pub(crate) span: Span,
 }
 
@@ -479,7 +481,7 @@ pub(crate) struct TraitImplDuplicate {
     pub(crate) old_span: Span,
     #[label(resolve_trait_item_span)]
     pub(crate) trait_item_span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -666,6 +668,22 @@ pub(crate) struct MacroSuggMovePosition {
 }
 
 #[derive(Subdiagnostic)]
+pub(crate) enum MacroRulesNot {
+    #[label(resolve_macro_cannot_use_as_attr)]
+    Attr {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+    #[label(resolve_macro_cannot_use_as_derive)]
+    Derive {
+        #[primary_span]
+        span: Span,
+        ident: Ident,
+    },
+}
+
+#[derive(Subdiagnostic)]
 #[note(resolve_missing_macro_rules_name)]
 pub(crate) struct MaybeMissingMacroRulesName {
     #[primary_span]
@@ -763,22 +781,6 @@ pub(crate) struct CannotGlobImportAllCrates {
     pub(crate) span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(resolve_items_in_traits_are_not_importable)]
-pub(crate) struct ItemsInTraitsAreNotImportable {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(resolve_is_not_directly_importable, code = E0253)]
-pub(crate) struct IsNotDirectlyImportable {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-    pub(crate) target: Ident,
-}
-
 #[derive(Subdiagnostic)]
 #[suggestion(
     resolve_unexpected_res_change_ty_to_const_param_sugg,
@@ -850,7 +852,7 @@ pub(crate) struct MacroExternDeprecated {
     #[primary_span]
     pub(crate) span: Span,
     #[help]
-    pub inner_attribute: Option<()>,
+    pub inner_attribute: bool,
 }
 
 #[derive(Diagnostic)]
@@ -894,7 +896,7 @@ pub(crate) struct LendingIteratorReportError {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_anonymous_livetime_non_gat_report_error)]
+#[diag(resolve_anonymous_lifetime_non_gat_report_error)]
 pub(crate) struct AnonymousLivetimeNonGatReportError {
     #[primary_span]
     #[label]
@@ -948,20 +950,11 @@ pub(crate) struct StaticLifetimeIsReserved {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_attempt_to_define_builtin_macro_twice, code = E0773)]
-pub(crate) struct AttemptToDefineBuiltinMacroTwice {
-    #[primary_span]
-    pub(crate) span: Span,
-    #[note]
-    pub(crate) note_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_variable_is_not_bound_in_all_patterns, code = E0408)]
 pub(crate) struct VariableIsNotBoundInAllPatterns {
     #[primary_span]
     pub(crate) multispan: MultiSpan,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Subdiagnostic, Debug, Clone)]
@@ -969,7 +962,7 @@ pub(crate) struct VariableIsNotBoundInAllPatterns {
 pub(crate) struct PatternDoesntBindName {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Subdiagnostic, Debug, Clone)]
@@ -1245,7 +1238,7 @@ pub(crate) struct TraitImplMismatch {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
     pub(crate) kind: &'static str,
     pub(crate) trait_path: String,
     #[label(resolve_trait_impl_mismatch_label_item)]

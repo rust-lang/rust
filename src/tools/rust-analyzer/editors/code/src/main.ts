@@ -6,6 +6,7 @@ import { type CommandFactory, Ctx, fetchWorkspace } from "./ctx";
 import * as diagnostics from "./diagnostics";
 import { activateTaskProvider } from "./tasks";
 import { setContextValue } from "./util";
+import { initializeDebugSessionTrackingAndRebuild } from "./debug";
 
 const RUST_PROJECT_CONTEXT_NAME = "inRustProject";
 
@@ -102,7 +103,18 @@ async function activateServer(ctx: Ctx): Promise<RustAnalyzerExtensionApi> {
         ctx.subscriptions,
     );
 
-    await ctx.start();
+    if (ctx.config.debug.buildBeforeRestart) {
+        initializeDebugSessionTrackingAndRebuild(ctx);
+    }
+
+    if (ctx.config.initializeStopped) {
+        ctx.setServerStatus({
+            health: "stopped",
+        });
+    } else {
+        await ctx.start();
+    }
+
     return ctx;
 }
 
@@ -146,7 +158,7 @@ function createCommands(): Record<string, CommandFactory> {
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },
         parentModule: { enabled: commands.parentModule },
-        syntaxTree: { enabled: commands.syntaxTree },
+        childModules: { enabled: commands.childModules },
         viewHir: { enabled: commands.viewHir },
         viewMir: { enabled: commands.viewMir },
         interpretFunction: { enabled: commands.interpretFunction },
@@ -176,7 +188,9 @@ function createCommands(): Record<string, CommandFactory> {
         openWalkthrough: { enabled: commands.openWalkthrough },
         // Internal commands which are invoked by the server.
         applyActionGroup: { enabled: commands.applyActionGroup },
-        applySnippetWorkspaceEdit: { enabled: commands.applySnippetWorkspaceEditCommand },
+        applySnippetWorkspaceEdit: {
+            enabled: commands.applySnippetWorkspaceEditCommand,
+        },
         debugSingle: { enabled: commands.debugSingle },
         gotoLocation: { enabled: commands.gotoLocation },
         hoverRefCommandProxy: { enabled: commands.hoverRefCommandProxy },
@@ -187,6 +201,14 @@ function createCommands(): Record<string, CommandFactory> {
         rename: { enabled: commands.rename },
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
+        syntaxTreeReveal: { enabled: commands.syntaxTreeReveal },
+        syntaxTreeCopy: { enabled: commands.syntaxTreeCopy },
+        syntaxTreeHideWhitespace: {
+            enabled: commands.syntaxTreeHideWhitespace,
+        },
+        syntaxTreeShowWhitespace: {
+            enabled: commands.syntaxTreeShowWhitespace,
+        },
     };
 }
 
@@ -199,6 +221,7 @@ function checkConflictingExtensions() {
                     "both plugins to not work correctly. You should disable one of them.",
                 "Got it",
             )
+            // eslint-disable-next-line no-console
             .then(() => {}, console.error);
     }
 }

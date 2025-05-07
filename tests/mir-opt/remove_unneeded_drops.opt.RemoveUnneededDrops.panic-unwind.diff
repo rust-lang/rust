@@ -12,7 +12,7 @@
       bb0: {
 -         nop;
           StorageLive(_3);
-          _3 = _1;
+          _3 = copy _1;
 -         drop(_3) -> [return: bb1, unwind continue];
 -     }
 - 

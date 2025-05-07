@@ -1,5 +1,5 @@
 error: expected `;`, found keyword `as`
-  --> $DIR/import-from-rename.rs:3:16
+  --> $DIR/import-from-rename.rs:1:16
    |
 LL | use foo::{bar} as baz;
    |                ^^ expected `;`

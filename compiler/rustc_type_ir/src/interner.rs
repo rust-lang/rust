@@ -3,7 +3,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use smallvec::SmallVec;
 
 use crate::fold::TypeFoldable;
@@ -11,14 +11,11 @@ use crate::inherent::*;
 use crate::ir_print::IrPrint;
 use crate::lang_items::TraitSolverLangItem;
 use crate::relate::Relate;
-use crate::solve::{
-    CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult, SolverMode,
-};
+use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesData, QueryResult};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
-use crate::{
-    search_graph, {self as ty},
-};
+use crate::{self as ty, search_graph};
 
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
     Sized
     + Copy
@@ -26,6 +23,7 @@ pub trait Interner:
     + IrPrint<ty::AliasTerm<Self>>
     + IrPrint<ty::TraitRef<Self>>
     + IrPrint<ty::TraitPredicate<Self>>
+    + IrPrint<ty::HostEffectPredicate<Self>>
     + IrPrint<ty::ExistentialTraitRef<Self>>
     + IrPrint<ty::ExistentialProjection<Self>>
     + IrPrint<ty::ProjectionPredicate<Self>>
@@ -33,10 +31,11 @@ pub trait Interner:
     + IrPrint<ty::SubtypePredicate<Self>>
     + IrPrint<ty::CoercePredicate<Self>>
     + IrPrint<ty::FnSig<Self>>
+    + IrPrint<ty::PatternKind<Self>>
 {
     type DefId: DefId<Self>;
     type LocalDefId: Copy + Debug + Hash + Eq + Into<Self::DefId> + TypeFoldable<Self>;
-    type Span: Copy + Debug + Hash + Eq + TypeFoldable<Self>;
+    type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
     type GenericArgsSlice: Copy + Debug + Hash + Eq + SliceLike<Item = Self::GenericArg>;
@@ -57,7 +56,7 @@ pub trait Interner:
         data: PredefinedOpaquesData<Self>,
     ) -> Self::PredefinedOpaques;
 
-    type DefiningOpaqueTypes: Copy
+    type LocalDefIds: Copy
         + Debug
         + Hash
         + Default
@@ -106,7 +105,21 @@ pub trait Interner:
     type ErrorGuaranteed: Copy + Debug + Hash + Eq;
     type BoundExistentialPredicates: BoundExistentialPredicates<Self>;
     type AllocId: Copy + Debug + Hash + Eq;
-    type Pat: Copy + Debug + Hash + Eq + Debug + Relate<Self>;
+    type Pat: Copy
+        + Debug
+        + Hash
+        + Eq
+        + Debug
+        + Relate<Self>
+        + Flags
+        + IntoKind<Kind = ty::PatternKind<Self>>;
+    type PatList: Copy
+        + Debug
+        + Hash
+        + Default
+        + Eq
+        + TypeVisitable<Self>
+        + SliceLike<Item = Self::Pat>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
@@ -115,8 +128,9 @@ pub trait Interner:
     type PlaceholderConst: PlaceholderLike;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type BoundConst: Copy + Debug + Hash + Eq + BoundVarLike<Self>;
-    type ValueConst: Copy + Debug + Hash + Eq;
+    type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
+    type ValTree: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
     type Region: Region<Self>;
@@ -131,11 +145,9 @@ pub trait Interner:
     type Clause: Clause<Self>;
     type Clauses: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
 
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
-    ) -> R;
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R;
+
+    fn evaluation_is_concurrent(&self) -> bool;
 
     fn expand_abstract_consts<T: TypeFoldable<Self>>(self, t: T) -> T;
 
@@ -145,7 +157,15 @@ pub trait Interner:
     type VariancesOf: Copy + Debug + SliceLike<Item = ty::Variance>;
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
+    fn opt_alias_variances(
+        self,
+        kind: impl Into<ty::AliasTermKind>,
+        def_id: Self::DefId,
+    ) -> Option<Self::VariancesOf>;
+
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
+    fn type_of_opaque_hir_typeck(self, def_id: Self::LocalDefId)
+    -> ty::EarlyBinder<Self, Self::Ty>;
 
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::DefId) -> Self::AdtDef;
@@ -171,6 +191,10 @@ pub trait Interner:
 
     fn debug_assert_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
 
+    /// Assert that the args from an `ExistentialTraitRef` or `ExistentialProjection`
+    /// are compatible with the `DefId`.
+    fn debug_assert_existential_args_compatible(self, def_id: Self::DefId, args: Self::GenericArgs);
+
     fn mk_type_list_from_iter<I, T>(self, args: I) -> T::Output
     where
         I: Iterator<Item = T>,
@@ -183,10 +207,10 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
-    fn bound_coroutine_hidden_types(
+    fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> impl IntoIterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
 
     fn fn_sig(
         self,
@@ -200,6 +224,16 @@ pub trait Interner:
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool;
 
     fn item_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn item_self_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
+
+    fn item_non_self_bounds(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
@@ -224,11 +258,27 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
+    fn impl_is_const(self, def_id: Self::DefId) -> bool;
+    fn fn_is_const(self, def_id: Self::DefId) -> bool;
+    fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
+    fn const_conditions(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
+    fn explicit_implied_const_bounds(
+        self,
+        def_id: Self::DefId,
+    ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = ty::Binder<Self, ty::TraitRef<Self>>>>;
+
+    fn impl_self_is_guaranteed_unsized(self, def_id: Self::DefId) -> bool;
+
     fn has_target_features(self, def_id: Self::DefId) -> bool;
 
     fn require_lang_item(self, lang_item: TraitSolverLangItem) -> Self::DefId;
 
     fn is_lang_item(self, def_id: Self::DefId, lang_item: TraitSolverLangItem) -> bool;
+
+    fn is_default_trait(self, def_id: Self::DefId) -> bool;
 
     fn as_lang_item(self, def_id: Self::DefId) -> Option<TraitSolverLangItem>;
 
@@ -243,6 +293,8 @@ pub trait Interner:
 
     fn has_item_definition(self, def_id: Self::DefId) -> bool;
 
+    fn impl_specializes(self, impl_def_id: Self::DefId, victim_def_id: Self::DefId) -> bool;
+
     fn impl_is_default(self, impl_def_id: Self::DefId) -> bool;
 
     fn impl_trait_ref(self, impl_def_id: Self::DefId) -> ty::EarlyBinder<Self, ty::TraitRef<Self>>;
@@ -251,13 +303,20 @@ pub trait Interner:
 
     fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
 
+    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool;
+
     fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
 
-    fn trait_is_object_safe(self, trait_def_id: Self::DefId) -> bool;
+    fn trait_is_dyn_compatible(self, trait_def_id: Self::DefId) -> bool;
 
     fn trait_is_fundamental(self, def_id: Self::DefId) -> bool;
 
     fn trait_may_be_implemented_via_object(self, trait_def_id: Self::DefId) -> bool;
+
+    /// Returns `true` if this is an `unsafe trait`.
+    fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool;
+
+    fn is_impl_trait_in_trait(self, def_id: Self::DefId) -> bool;
 
     fn delay_bug(self, msg: impl ToString) -> Self::ErrorGuaranteed;
 
@@ -266,9 +325,7 @@ pub trait Interner:
     fn coroutine_is_gen(self, coroutine_def_id: Self::DefId) -> bool;
     fn coroutine_is_async_gen(self, coroutine_def_id: Self::DefId) -> bool;
 
-    fn layout_is_pointer_like(self, param_env: Self::ParamEnv, ty: Self::Ty) -> bool;
-
-    type UnsizingParams: Deref<Target = BitSet<u32>>;
+    type UnsizingParams: Deref<Target = DenseBitSet<u32>>;
     fn unsizing_params_for_adt(self, adt_def_id: Self::DefId) -> Self::UnsizingParams;
 
     fn find_const_ty_from_env(
@@ -281,6 +338,13 @@ pub trait Interner:
         self,
         binder: ty::Binder<Self, T>,
     ) -> ty::Binder<Self, T>;
+
+    fn opaque_types_defined_by(self, defining_anchor: Self::LocalDefId) -> Self::LocalDefIds;
+
+    fn opaque_types_and_generators_defined_by(
+        self,
+        defining_anchor: Self::LocalDefId,
+    ) -> Self::LocalDefIds;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`
@@ -397,11 +461,10 @@ impl<I: Interner> search_graph::Cx for I {
     fn with_cached_task<T>(self, task: impl FnOnce() -> T) -> (T, I::DepNodeIndex) {
         I::with_cached_task(self, task)
     }
-    fn with_global_cache<R>(
-        self,
-        mode: SolverMode,
-        f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R,
-    ) -> R {
-        I::with_global_cache(self, mode, f)
+    fn with_global_cache<R>(self, f: impl FnOnce(&mut search_graph::GlobalCache<Self>) -> R) -> R {
+        I::with_global_cache(self, f)
+    }
+    fn evaluation_is_concurrent(&self) -> bool {
+        self.evaluation_is_concurrent()
     }
 }

@@ -215,6 +215,6 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                 },
                 _ => (),
             }
-        };
+        }
     }
 }

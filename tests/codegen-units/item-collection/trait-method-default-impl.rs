@@ -1,7 +1,7 @@
-//@ compile-flags:-Zprint-mono-items=eager -Zpolymorphize=on -Zinline-mir=no
+//@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 trait SomeTrait {
     fn foo(&self) {}
@@ -29,7 +29,7 @@ impl SomeGenericTrait<u64> for i32 {
 
     // For the non-generic foo(), we should generate a codegen-item even if it
     // is not called anywhere
-    //~ MONO_ITEM fn <i32 as SomeGenericTrait<T1>>::foo
+    //~ MONO_ITEM fn <i32 as SomeGenericTrait<u64>>::foo
 }
 
 // Non-generic impl of generic trait
@@ -39,8 +39,8 @@ impl<T1> SomeGenericTrait<T1> for u32 {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn <i8 as SomeTrait>::bar::<char>
     let _ = 1i8.bar('c');
 

@@ -1,0 +1,30 @@
+- // MIR for `impossible_predicate` before ImpossiblePredicates
++ // MIR for `impossible_predicate` after ImpossiblePredicates
+  
+  fn impossible_predicate(_1: &mut i32) -> (&mut i32, &mut i32) {
+-     debug x => _1;
+      let mut _0: (&mut i32, &mut i32);
+-     let _2: &mut i32;
+-     let mut _3: &mut i32;
+-     let mut _4: &mut i32;
+      scope 1 {
+-         debug y => _2;
+      }
+  
+      bb0: {
+-         StorageLive(_2);
+-         _2 = copy _1;
+-         FakeRead(ForLet(None), _2);
+-         StorageLive(_3);
+-         _3 = &mut (*_2);
+-         StorageLive(_4);
+-         _4 = &mut (*_1);
+-         _0 = (move _3, move _4);
+-         StorageDead(_4);
+-         StorageDead(_3);
+-         StorageDead(_2);
+-         return;
++         unreachable;
+      }
+  }
+  

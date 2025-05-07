@@ -1,7 +1,7 @@
+use rustc_abi::{Integer, Primitive, Size, TagEncoding, Variants};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_target::abi::{Integer, Primitive, Size, TagEncoding, Variants};
 
 // FIXME(eddyb) find a place for this (or a way to replace it).
 pub mod type_names;
@@ -54,7 +54,7 @@ pub fn tag_base_type<'tcx>(tcx: TyCtxt<'tcx>, enum_type_and_layout: TyAndLayout<
     })
 }
 
-pub fn tag_base_type_opt<'tcx>(
+fn tag_base_type_opt<'tcx>(
     tcx: TyCtxt<'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> Option<Ty<'tcx>> {
@@ -65,8 +65,8 @@ pub fn tag_base_type_opt<'tcx>(
     });
 
     match enum_type_and_layout.layout.variants() {
-        // A single-variant enum has no discriminant.
-        Variants::Single { .. } => None,
+        // A single-variant or no-variant enum has no discriminant.
+        Variants::Single { .. } | Variants::Empty => None,
 
         Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, tag, .. } => {
             // Niche tags are always normalized to unsized integers of the correct size.
@@ -76,9 +76,9 @@ pub fn tag_base_type_opt<'tcx>(
                     Primitive::Float(f) => Integer::from_size(f.size()).unwrap(),
                     // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
                     Primitive::Pointer(_) => {
-                        // If the niche is the NULL value of a reference, then `discr_enum_ty` will be
-                        // a RawPtr. CodeView doesn't know what to do with enums whose base type is a
-                        // pointer so we fix this up to just be `usize`.
+                        // If the niche is the NULL value of a reference, then `discr_enum_ty` will
+                        // be a RawPtr. CodeView doesn't know what to do with enums whose base type
+                        // is a pointer so we fix this up to just be `usize`.
                         // DWARF might be able to deal with this but with an integer type we are on
                         // the safe side there too.
                         tcx.data_layout.ptr_sized_integer()

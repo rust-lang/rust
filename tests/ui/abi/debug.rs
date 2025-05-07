@@ -1,9 +1,10 @@
-//@ normalize-stderr-test: "(abi|pref|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
-//@ normalize-stderr-test: "(size): Size\([48] bytes\)" -> "$1: $$SOME_SIZE"
-//@ normalize-stderr-test: "(can_unwind): (true|false)" -> "$1: $$SOME_BOOL"
-//@ normalize-stderr-test: "(valid_range): 0\.\.=(4294967295|18446744073709551615)" -> "$1: $$FULL"
+//@ normalize-stderr: "(abi|pref|unadjusted_abi_align): Align\([1-8] bytes\)" -> "$1: $$SOME_ALIGN"
+//@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
+//@ normalize-stderr: "(size): Size\([48] bytes\)" -> "$1: $$SOME_SIZE"
+//@ normalize-stderr: "(can_unwind): (true|false)" -> "$1: $$SOME_BOOL"
+//@ normalize-stderr: "(valid_range): 0\.\.=(4294967295|18446744073709551615)" -> "$1: $$FULL"
 // This pattern is prepared for when we account for alignment in the niche.
-//@ normalize-stderr-test: "(valid_range): [1-9]\.\.=(429496729[0-9]|1844674407370955161[0-9])" -> "$1: $$NON_NULL"
+//@ normalize-stderr: "(valid_range): [1-9]\.\.=(429496729[0-9]|1844674407370955161[0-9])" -> "$1: $$NON_NULL"
 // Some attributes are only computed for release builds:
 //@ compile-flags: -O
 #![feature(rustc_attrs)]
@@ -51,3 +52,6 @@ type TestAbiNeSign = (fn(i32), fn(u32)); //~ ERROR: ABIs are not compatible
 
 #[rustc_abi(assert_eq)]
 type TestAbiEqNonsense = (fn((str, str)), fn((str, str))); //~ ERROR: cannot be known at compilation time
+
+#[rustc_abi("assert_eq")] //~ ERROR unrecognized argument
+type Bad = u32;

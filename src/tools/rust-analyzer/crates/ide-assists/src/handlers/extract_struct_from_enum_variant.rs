@@ -1,27 +1,28 @@
 use std::iter;
 
 use either::Either;
-use hir::{Module, ModuleDef, Name, Variant};
+use hir::{HasCrate, Module, ModuleDef, Name, Variant};
 use ide_db::{
+    FxHashSet, RootDatabase,
     defs::Definition,
     helpers::mod_path_to_ast,
-    imports::insert_use::{insert_use, ImportScope, InsertUseConfig},
+    imports::insert_use::{ImportScope, InsertUseConfig, insert_use},
     path_transform::PathTransform,
     search::FileReference,
-    FxHashSet, RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
-        HasName, HasVisibility,
-    },
-    match_ast, ted, SyntaxElement,
+    Edition, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, T,
+    ast::{
+        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::IndentLevel,
+        edit_in_place::Indent, make,
+    },
+    match_ast, ted,
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: extract_struct_from_enum_variant
 //
@@ -54,10 +55,11 @@ pub(crate) fn extract_struct_from_enum_variant(
     let enum_hir = ctx.sema.to_def(&enum_ast)?;
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("extract_struct_from_enum_variant", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("extract_struct_from_enum_variant"),
         "Extract struct from enum variant",
         target,
         |builder| {
+            let edition = enum_hir.krate(ctx.db()).edition(ctx.db());
             let variant_hir_name = variant_hir.name(ctx.db());
             let enum_module_def = ModuleDef::from(enum_hir);
             let usages = Definition::Variant(variant_hir).usages(&ctx.sema).all();
@@ -72,7 +74,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     def_file_references = Some(references);
                     continue;
                 }
-                builder.edit_file(file_id.file_id());
+                builder.edit_file(file_id.file_id(ctx.db()));
                 let processed = process_references(
                     ctx,
                     builder,
@@ -82,10 +84,10 @@ pub(crate) fn extract_struct_from_enum_variant(
                     references,
                 );
                 processed.into_iter().for_each(|(path, node, import)| {
-                    apply_references(ctx.config.insert_use, path, node, import)
+                    apply_references(ctx.config.insert_use, path, node, import, edition)
                 });
             }
-            builder.edit_file(ctx.file_id());
+            builder.edit_file(ctx.vfs_file_id());
 
             let variant = builder.make_mut(variant.clone());
             if let Some(references) = def_file_references {
@@ -98,7 +100,7 @@ pub(crate) fn extract_struct_from_enum_variant(
                     references,
                 );
                 processed.into_iter().for_each(|(path, node, import)| {
-                    apply_references(ctx.config.insert_use, path, node, import)
+                    apply_references(ctx.config.insert_use, path, node, import, edition)
                 });
             }
 
@@ -169,7 +171,7 @@ fn existing_definition(db: &RootDatabase, variant_name: &ast::Name, variant: &Va
             ),
             _ => false,
         })
-        .any(|(name, _)| name.display(db).to_string() == variant_name.to_string())
+        .any(|(name, _)| name.as_str() == variant_name.text().trim_start_matches("r#"))
 }
 
 fn extract_generic_params(
@@ -359,9 +361,10 @@ fn apply_references(
     segment: ast::PathSegment,
     node: SyntaxNode,
     import: Option<(ImportScope, hir::ModPath)>,
+    edition: Edition,
 ) {
     if let Some((scope, path)) = import {
-        insert_use(&scope, mod_path_to_ast(&path), &insert_use_cfg);
+        insert_use(&scope, mod_path_to_ast(&path, edition), &insert_use_cfg);
     }
     // deep clone to prevent cycle
     let path = make::path_from_segments(iter::once(segment.clone_subtree()), false);

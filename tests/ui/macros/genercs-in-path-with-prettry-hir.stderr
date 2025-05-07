@@ -1,5 +1,5 @@
 error: unexpected generic arguments in path
-  --> $DIR/genercs-in-path-with-prettry-hir.rs:12:10
+  --> $DIR/genercs-in-path-with-prettry-hir.rs:13:10
    |
 LL | m!(inline<u8>);
    |          ^^^^

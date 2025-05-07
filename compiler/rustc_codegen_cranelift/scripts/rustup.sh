@@ -64,7 +64,7 @@ case $1 in
         cg_clif=$(pwd)
         pushd ../rust
         git fetch origin master
-        git checkout "$RUST_VERS"
+        git -c advice.detachedHead=false checkout "$RUST_VERS"
         "$cg_clif/git-fixed-subtree.sh" push --prefix=compiler/rustc_codegen_cranelift/ "$cg_clif" sync_from_rust
         popd
         git merge sync_from_rust -m "Sync from rust $RUST_VERS"

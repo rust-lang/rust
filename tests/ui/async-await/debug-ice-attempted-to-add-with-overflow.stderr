@@ -7,7 +7,7 @@ LL |     [0usize; 0xffff_ffff_ffff_ffff].await;
    |                                    |`[usize; usize::MAX]` is not a future
    |                                    help: remove the `.await`
    |
-   = help: the trait `Future` is not implemented for `[usize; usize::MAX]`, which is required by `[usize; usize::MAX]: IntoFuture`
+   = help: the trait `Future` is not implemented for `[usize; usize::MAX]`
    = note: [usize; usize::MAX] must be a future or must implement `IntoFuture` to be awaited
    = note: required for `[usize; usize::MAX]` to implement `IntoFuture`
 

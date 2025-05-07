@@ -6,13 +6,13 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_type_diagnostic_item};
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
-    contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks,
+    contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment, peel_blocks, sym,
 };
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{self, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};
@@ -59,17 +59,15 @@ pub(super) fn check<'tcx>(
                 let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_binder().output();
                 cx.tcx
                     .get_diagnostic_item(sym::Default)
-                    .map_or(false, |default_trait_id| {
-                        implements_trait(cx, output_ty, default_trait_id, &[])
-                    })
+                    .is_some_and(|default_trait_id| implements_trait(cx, output_ty, default_trait_id, &[]))
             } else {
                 false
             }
         };
 
         let sugg = match (name, call_expr.is_some()) {
-            ("unwrap_or", true) | ("unwrap_or_else", false) => sym!(unwrap_or_default),
-            ("or_insert", true) | ("or_insert_with", false) => sym!(or_default),
+            ("unwrap_or", true) | ("unwrap_or_else", false) => sym::unwrap_or_default,
+            ("or_insert", true) | ("or_insert_with", false) => sym::or_default,
             _ => return false,
         };
 
@@ -77,12 +75,10 @@ pub(super) fn check<'tcx>(
         let Some(suggested_method_def_id) = receiver_ty.ty_adt_def().and_then(|adt_def| {
             cx.tcx
                 .inherent_impls(adt_def.did())
-                .into_iter()
-                .flatten()
+                .iter()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
                 .find_map(|assoc| {
-                    if assoc.fn_has_self_parameter
-                        && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
+                    if assoc.is_method() && cx.tcx.fn_sig(assoc.def_id).skip_binder().inputs().skip_binder().len() == 1
                     {
                         Some(assoc.def_id)
                     } else {
@@ -95,7 +91,7 @@ pub(super) fn check<'tcx>(
         let in_sugg_method_implementation = {
             matches!(
                 suggested_method_def_id.as_local(),
-                Some(local_def_id) if local_def_id == cx.tcx.hir().get_parent_item(receiver.hir_id).def_id
+                Some(local_def_id) if local_def_id == cx.tcx.hir_get_parent_item(receiver.hir_id).def_id
             )
         };
         if in_sugg_method_implementation {
@@ -107,7 +103,7 @@ pub(super) fn check<'tcx>(
         if (is_new(fun) && output_type_implements_default(fun))
             || match call_expr {
                 Some(call_expr) => is_default_equivalent(cx, call_expr),
-                None => is_default_equivalent_call(cx, fun) || closure_body_returns_empty_to_string(cx, fun),
+                None => is_default_equivalent_call(cx, fun, None) || closure_body_returns_empty_to_string(cx, fun),
             }
         {
             span_lint_and_sugg(
@@ -184,7 +180,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 OR_FUN_CALL,
                 span_replace_word,
-                format!("use of `{name}` followed by a function call"),
+                format!("function call inside of `{name}`"),
                 "try",
                 format!("{name}_{suffix}({sugg})"),
                 app,
@@ -256,11 +252,11 @@ pub(super) fn check<'tcx>(
 
 fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = e.kind {
-        let body = cx.tcx.hir().body(body);
+        let body = cx.tcx.hir_body(body);
 
         if body.params.is_empty()
             && let hir::Expr { kind, .. } = &body.value
-            && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, _, _) = kind
+            && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, [], _) = kind
             && ident.name == sym::to_string
             && let hir::Expr { kind, .. } = self_arg
             && let hir::ExprKind::Lit(lit) = kind

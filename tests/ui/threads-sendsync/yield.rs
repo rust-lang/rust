@@ -17,5 +17,9 @@ pub fn main() {
 }
 
 fn child() {
-    println!("4"); thread::yield_now(); println!("5"); thread::yield_now(); println!("6");
+    println!("4");
+    thread::yield_now();
+    println!("5");
+    thread::yield_now();
+    println!("6");
 }

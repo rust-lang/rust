@@ -14,10 +14,12 @@ Target triplets available:
 - `powerpc-wrs-vxworks`
 - `powerpc64-wrs-vxworks`
 - `powerpc-wrs-vxworks-spe`
+- `riscv32-wrs-vxworks`
+- `riscv64-wrs-vxworks`
 
 ## Target maintainers
 
-- B I Mohammed Abbas ([@biabbas](https://github.com/biabbas))
+[@biabbas](https://github.com/biabbas)
 
 ## Requirements
 
@@ -31,7 +33,7 @@ Rust for each target can be cross-compiled with its specific target vsb configur
 
 ## Building the target
 
-You can build Rust with support for the targets by adding it to the `target` list in `config.toml`. In addition the workbench and wr-cc have to configured and activated.
+You can build Rust with support for the targets by adding it to the `target` list in `bootstrap.toml`. In addition the workbench and wr-cc have to configured and activated.
 
 ```toml
 [build]

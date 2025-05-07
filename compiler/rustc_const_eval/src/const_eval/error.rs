@@ -1,8 +1,8 @@
 use std::mem;
 
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, Diagnostic, IntoDiagArg};
-use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
 use rustc_middle::mir::AssertKind;
+use rustc_middle::mir::interpret::{Provenance, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{ConstInt, TyCtxt};
@@ -11,7 +11,8 @@ use rustc_span::{Span, Symbol};
 use super::CompileTimeMachine;
 use crate::errors::{self, FrameNote, ReportErrorExt};
 use crate::interpret::{
-    err_inval, err_machine_stop, ErrorHandled, Frame, InterpError, InterpErrorInfo, MachineStopType,
+    ErrorHandled, Frame, InterpErrorInfo, InterpErrorKind, MachineStopType, err_inval,
+    err_machine_stop,
 };
 
 /// The CTFE machine has some custom error kinds.
@@ -22,6 +23,7 @@ pub enum ConstEvalErrKind {
     RecursiveStatic,
     AssertFailure(AssertKind<ConstInt>),
     Panic { msg: Symbol, line: u32, col: u32, file: Symbol },
+    WriteThroughImmutablePointer,
 }
 
 impl MachineStopType for ConstEvalErrKind {
@@ -35,24 +37,25 @@ impl MachineStopType for ConstEvalErrKind {
             Panic { .. } => const_eval_panic,
             RecursiveStatic => const_eval_recursive_static,
             AssertFailure(x) => x.diagnostic_message(),
+            WriteThroughImmutablePointer => const_eval_write_through_immutable_pointer,
         }
     }
     fn add_args(self: Box<Self>, adder: &mut dyn FnMut(DiagArgName, DiagArgValue)) {
         use ConstEvalErrKind::*;
         match *self {
-            RecursiveStatic | ConstAccessesMutGlobal | ModifiedGlobal => {}
+            RecursiveStatic
+            | ConstAccessesMutGlobal
+            | ModifiedGlobal
+            | WriteThroughImmutablePointer => {}
             AssertFailure(kind) => kind.add_args(adder),
-            Panic { msg, line, col, file } => {
-                adder("msg".into(), msg.into_diag_arg());
-                adder("file".into(), file.into_diag_arg());
-                adder("line".into(), line.into_diag_arg());
-                adder("col".into(), col.into_diag_arg());
+            Panic { msg, .. } => {
+                adder("msg".into(), msg.into_diag_arg(&mut None));
             }
         }
     }
 }
 
-/// The errors become [`InterpError::MachineStop`] when being raised.
+/// The errors become [`InterpErrorKind::MachineStop`] when being raised.
 impl<'tcx> Into<InterpErrorInfo<'tcx>> for ConstEvalErrKind {
     fn into(self) -> InterpErrorInfo<'tcx> {
         err_machine_stop!(self).into()
@@ -66,7 +69,7 @@ pub fn get_span_and_frames<'tcx>(
     let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
-    let span = stacktrace.first().map(|f| f.span).unwrap_or(tcx.span);
+    let span = stacktrace.last().map(|f| f.span).unwrap_or(tcx.span);
 
     let mut frames = Vec::new();
 
@@ -109,6 +112,20 @@ pub fn get_span_and_frames<'tcx>(
         }
     }
 
+    // In `rustc`, we present const-eval errors from the outer-most place first to the inner-most.
+    // So we reverse the frames here. The first frame will be the same as the span from the current
+    // `TyCtxtAt<'_>`, so we remove it as it would be redundant.
+    frames.reverse();
+    if frames.len() > 0 {
+        frames.remove(0);
+    }
+    if let Some(last) = frames.last_mut()
+        // If the span is not going to be printed, we don't want the span label for `is_last`.
+        && tcx.sess.source_map().span_to_snippet(last.span.source_callsite()).is_ok()
+    {
+        last.has_label = true;
+    }
+
     (span, frames)
 }
 
@@ -119,7 +136,7 @@ pub fn get_span_and_frames<'tcx>(
 /// `get_span_and_frames`.
 pub(super) fn report<'tcx, C, F, E>(
     tcx: TyCtxt<'tcx>,
-    error: InterpError<'tcx>,
+    error: InterpErrorKind<'tcx>,
     span: Span,
     get_span_and_frames: C,
     mk: F,
@@ -133,12 +150,14 @@ where
     match error {
         // Don't emit a new diagnostic for these errors, they are already reported elsewhere or
         // should remain silent.
-        err_inval!(Layout(LayoutError::Unknown(_))) | err_inval!(TooGeneric) => {
+        err_inval!(AlreadyReported(info)) => ErrorHandled::Reported(info, span),
+        err_inval!(Layout(LayoutError::TooGeneric(_))) | err_inval!(TooGeneric) => {
             ErrorHandled::TooGeneric(span)
         }
-        err_inval!(AlreadyReported(guar)) => ErrorHandled::Reported(guar, span),
         err_inval!(Layout(LayoutError::ReferencesError(guar))) => {
-            ErrorHandled::Reported(ReportedErrorInfo::tainted_by_errors(guar), span)
+            // This can occur in infallible promoteds e.g. when a non-existent type or field is
+            // encountered.
+            ErrorHandled::Reported(ReportedErrorInfo::allowed_in_infallible(guar), span)
         }
         // Report remaining errors.
         _ => {
@@ -146,19 +165,32 @@ where
             let span = span.substitute_dummy(our_span);
             let err = mk(span, frames);
             let mut err = tcx.dcx().create_err(err);
+            // We allow invalid programs in infallible promoteds since invalid layouts can occur
+            // anyway (e.g. due to size overflow). And we allow OOM as that can happen any time.
+            let allowed_in_infallible = matches!(
+                error,
+                InterpErrorKind::ResourceExhaustion(_) | InterpErrorKind::InvalidProgram(_)
+            );
 
             let msg = error.diagnostic_message();
             error.add_args(&mut err);
 
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);
-            ErrorHandled::Reported(err.emit().into(), span)
+            let g = err.emit();
+            let reported = if allowed_in_infallible {
+                ReportedErrorInfo::allowed_in_infallible(g)
+            } else {
+                ReportedErrorInfo::const_eval_error(g)
+            };
+            ErrorHandled::Reported(reported, span)
         }
     }
 }
 
 /// Emit a lint from a const-eval situation, with a backtrace.
 // Even if this is unused, please don't remove it -- chances are we will need to emit a lint during const-eval again in the future!
+#[allow(unused)]
 pub(super) fn lint<'tcx, L>(
     tcx: TyCtxtAt<'tcx>,
     machine: &CompileTimeMachine<'tcx>,

@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Target};
+use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
     base.cpu = "hexagonv60".into();
     base.max_atomic_width = Some(32);
@@ -15,7 +15,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "hexagon-unknown-linux-musl".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Hexagon Linux with musl 1.2.3".into()),
             tier: Some(3),
             host_tools: Some(false),

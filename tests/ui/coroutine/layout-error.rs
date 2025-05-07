@@ -16,22 +16,20 @@ impl<F: Future> Task<F> {
     }
 }
 
-mod helper {
-    use super::*;
-    pub type F = impl Future;
-    fn foo()
-    where
-        F:,
-    {
-        async fn cb() {
-            let a = Foo; //~ ERROR cannot find value `Foo` in this scope
-        }
-
-        Task::spawn(&POOL, || cb());
+pub type F = impl Future;
+#[define_opaque(F)]
+fn foo()
+where
+    F:,
+{
+    async fn cb() {
+        let a = Foo; //~ ERROR cannot find value `Foo` in this scope
     }
+
+    Task::spawn(&POOL, || cb());
 }
 
 // Check that statics are inhabited computes they layout.
-static POOL: Task<helper::F> = Task::new();
+static POOL: Task<F> = Task::new();
 
 fn main() {}

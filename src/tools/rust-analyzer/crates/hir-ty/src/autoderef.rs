@@ -3,19 +3,20 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in rustc_hir_analysis/check/autoderef.rs).
 
+use std::mem;
+
 use chalk_ir::cast::Cast;
 use hir_def::lang_item::LangItem;
 use hir_expand::name::Name;
 use intern::sym;
-use limit::Limit;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, infer::unify::InferenceTable, Canonical, Goal, Interner, ProjectionTyExt,
-    TraitEnvironment, Ty, TyBuilder, TyKind,
+    Canonical, Goal, Interner, ProjectionTyExt, TraitEnvironment, Ty, TyBuilder, TyKind,
+    db::HirDatabase, infer::unify::InferenceTable,
 };
 
-static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(10);
+const AUTODEREF_RECURSION_LIMIT: usize = 20;
 
 #[derive(Debug)]
 pub(crate) enum AutoderefKind {
@@ -37,7 +38,7 @@ pub fn autoderef(
 ) -> impl Iterator<Item = Ty> {
     let mut table = InferenceTable::new(db, env);
     let ty = table.instantiate_canonical(ty);
-    let mut autoderef = Autoderef::new(&mut table, ty, false);
+    let mut autoderef = Autoderef::new_no_tracking(&mut table, ty, false, false);
     let mut v = Vec::new();
     while let Some((ty, _steps)) = autoderef.next() {
         // `ty` may contain unresolved inference variables. Since there's no chance they would be
@@ -47,7 +48,7 @@ pub fn autoderef(
         // If the deref chain contains a cycle (e.g. `A` derefs to `B` and `B` derefs to `A`), we
         // would revisit some already visited types. Stop here to avoid duplication.
         //
-        // XXX: The recursion limit for `Autoderef` is currently 10, so `Vec::contains()` shouldn't
+        // XXX: The recursion limit for `Autoderef` is currently 20, so `Vec::contains()` shouldn't
         // be too expensive. Replace this duplicate check with `FxHashSet` if it proves to be more
         // performant.
         if v.contains(&resolved) {
@@ -58,27 +59,70 @@ pub fn autoderef(
     v.into_iter()
 }
 
-#[derive(Debug)]
-pub(crate) struct Autoderef<'a, 'db> {
-    pub(crate) table: &'a mut InferenceTable<'db>,
-    ty: Ty,
-    at_start: bool,
-    steps: Vec<(AutoderefKind, Ty)>,
-    explicit: bool,
+trait TrackAutoderefSteps {
+    fn len(&self) -> usize;
+    fn push(&mut self, kind: AutoderefKind, ty: &Ty);
 }
 
-impl<'a, 'db> Autoderef<'a, 'db> {
-    pub(crate) fn new(table: &'a mut InferenceTable<'db>, ty: Ty, explicit: bool) -> Self {
-        let ty = table.resolve_ty_shallow(&ty);
-        Autoderef { table, ty, at_start: true, steps: Vec::new(), explicit }
+impl TrackAutoderefSteps for usize {
+    fn len(&self) -> usize {
+        *self
     }
+    fn push(&mut self, _: AutoderefKind, _: &Ty) {
+        *self += 1;
+    }
+}
+impl TrackAutoderefSteps for Vec<(AutoderefKind, Ty)> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+    fn push(&mut self, kind: AutoderefKind, ty: &Ty) {
+        self.push((kind, ty.clone()));
+    }
+}
 
-    pub(crate) fn step_count(&self) -> usize {
-        self.steps.len()
+#[derive(Debug)]
+pub(crate) struct Autoderef<'table, 'db, T = Vec<(AutoderefKind, Ty)>> {
+    pub(crate) table: &'table mut InferenceTable<'db>,
+    ty: Ty,
+    at_start: bool,
+    steps: T,
+    explicit: bool,
+    use_receiver_trait: bool,
+}
+
+impl<'table, 'db> Autoderef<'table, 'db> {
+    pub(crate) fn new(
+        table: &'table mut InferenceTable<'db>,
+        ty: Ty,
+        explicit: bool,
+        use_receiver_trait: bool,
+    ) -> Self {
+        let ty = table.resolve_ty_shallow(&ty);
+        Autoderef { table, ty, at_start: true, steps: Vec::new(), explicit, use_receiver_trait }
     }
 
     pub(crate) fn steps(&self) -> &[(AutoderefKind, Ty)] {
         &self.steps
+    }
+}
+
+impl<'table, 'db> Autoderef<'table, 'db, usize> {
+    pub(crate) fn new_no_tracking(
+        table: &'table mut InferenceTable<'db>,
+        ty: Ty,
+        explicit: bool,
+        use_receiver_trait: bool,
+    ) -> Self {
+        let ty = table.resolve_ty_shallow(&ty);
+        Autoderef { table, ty, at_start: true, steps: 0, explicit, use_receiver_trait }
+    }
+}
+
+#[allow(private_bounds)]
+impl<T: TrackAutoderefSteps> Autoderef<'_, '_, T> {
+    pub(crate) fn step_count(&self) -> usize {
+        self.steps.len()
     }
 
     pub(crate) fn final_ty(&self) -> Ty {
@@ -86,23 +130,23 @@ impl<'a, 'db> Autoderef<'a, 'db> {
     }
 }
 
-impl Iterator for Autoderef<'_, '_> {
+impl<T: TrackAutoderefSteps> Iterator for Autoderef<'_, '_, T> {
     type Item = (Ty, usize);
 
     #[tracing::instrument(skip_all)]
     fn next(&mut self) -> Option<Self::Item> {
-        if self.at_start {
-            self.at_start = false;
+        if mem::take(&mut self.at_start) {
             return Some((self.ty.clone(), 0));
         }
 
-        if AUTODEREF_RECURSION_LIMIT.check(self.steps.len() + 1).is_err() {
+        if self.steps.len() > AUTODEREF_RECURSION_LIMIT {
             return None;
         }
 
-        let (kind, new_ty) = autoderef_step(self.table, self.ty.clone(), self.explicit)?;
+        let (kind, new_ty) =
+            autoderef_step(self.table, self.ty.clone(), self.explicit, self.use_receiver_trait)?;
 
-        self.steps.push((kind, self.ty.clone()));
+        self.steps.push(kind, &self.ty);
         self.ty = new_ty;
 
         Some((self.ty.clone(), self.step_count()))
@@ -113,11 +157,12 @@ pub(crate) fn autoderef_step(
     table: &mut InferenceTable<'_>,
     ty: Ty,
     explicit: bool,
+    use_receiver_trait: bool,
 ) -> Option<(AutoderefKind, Ty)> {
     if let Some(derefed) = builtin_deref(table.db, &ty, explicit) {
         Some((AutoderefKind::Builtin, table.resolve_ty_shallow(derefed)))
     } else {
-        Some((AutoderefKind::Overloaded, deref_by_trait(table, ty)?))
+        Some((AutoderefKind::Overloaded, deref_by_trait(table, ty, use_receiver_trait)?))
     }
 }
 
@@ -129,12 +174,8 @@ pub(crate) fn builtin_deref<'ty>(
     match ty.kind(Interner) {
         TyKind::Ref(.., ty) => Some(ty),
         TyKind::Raw(.., ty) if explicit => Some(ty),
-        &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) => {
-            if crate::lang_items::is_box(db, adt) {
-                substs.at(Interner, 0).ty(Interner)
-            } else {
-                None
-            }
+        &TyKind::Adt(chalk_ir::AdtId(adt), ref substs) if crate::lang_items::is_box(db, adt) => {
+            substs.at(Interner, 0).ty(Interner)
         }
         _ => None,
     }
@@ -143,6 +184,7 @@ pub(crate) fn builtin_deref<'ty>(
 pub(crate) fn deref_by_trait(
     table @ &mut InferenceTable { db, .. }: &mut InferenceTable<'_>,
     ty: Ty,
+    use_receiver_trait: bool,
 ) -> Option<Ty> {
     let _p = tracing::info_span!("deref_by_trait").entered();
     if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
@@ -150,14 +192,26 @@ pub(crate) fn deref_by_trait(
         return None;
     }
 
-    let deref_trait =
-        db.lang_item(table.trait_env.krate, LangItem::Deref).and_then(|l| l.as_trait())?;
-    let target = db
-        .trait_data(deref_trait)
-        .associated_type_by_name(&Name::new_symbol_root(sym::Target.clone()))?;
+    let trait_id = || {
+        // FIXME: Remove the `false` once `Receiver` needs to be stabilized, doing so will
+        // effectively bump the MSRV of rust-analyzer to 1.84 due to 1.83 and below lacking the
+        // blanked impl on `Deref`.
+        #[expect(clippy::overly_complex_bool_expr)]
+        if use_receiver_trait && false {
+            if let Some(receiver) = LangItem::Receiver.resolve_trait(db, table.trait_env.krate) {
+                return Some(receiver);
+            }
+        }
+        // Old rustc versions might not have `Receiver` trait.
+        // Fallback to `Deref` if they don't
+        LangItem::Deref.resolve_trait(db, table.trait_env.krate)
+    };
+    let trait_id = trait_id()?;
+    let target =
+        db.trait_items(trait_id).associated_type_by_name(&Name::new_symbol_root(sym::Target))?;
 
     let projection = {
-        let b = TyBuilder::subst_for_def(db, deref_trait, None);
+        let b = TyBuilder::subst_for_def(db, trait_id, None);
         if b.remaining() != 1 {
             // the Target type + Deref trait should only have one generic parameter,
             // namely Deref's Self type

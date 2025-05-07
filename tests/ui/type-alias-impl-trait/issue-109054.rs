@@ -10,13 +10,15 @@ type FnType = impl Fn(&u32) -> ReturnType;
 impl std::ops::Deref for CallMe {
     type Target = FnType;
 
+    #[define_opaque(FnType)]
     fn deref(&self) -> &Self::Target {
         //~^ ERROR: item does not constrain `ReturnType
+        #[define_opaque(ReturnType)]
         fn inner(val: &u32) -> ReturnType {
             async move { *val * 2 }
         }
 
-        &inner //~ ERROR: expected generic lifetime parameter, found `'_`
+        &inner
     }
 }
 

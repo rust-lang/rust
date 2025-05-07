@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/associated-types-eq-3.rs:23:18
+  --> $DIR/associated-types-eq-3.rs:25:18
    |
 LL |     let _: Bar = x.boo();
    |            ---   ^^^^^^^ expected `Bar`, found associated type
@@ -14,7 +14,7 @@ LL | fn foo2<I: Foo<A = Bar>>(x: I) {
    |               +++++++++
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
-  --> $DIR/associated-types-eq-3.rs:38:10
+  --> $DIR/associated-types-eq-3.rs:40:10
    |
 LL |     foo1(a);
    |     ---- ^ type mismatch resolving `<isize as Foo>::A == Bar`
@@ -22,24 +22,24 @@ LL |     foo1(a);
    |     required by a bound introduced by this call
    |
 note: expected this to be `Bar`
-  --> $DIR/associated-types-eq-3.rs:12:14
+  --> $DIR/associated-types-eq-3.rs:14:14
    |
 LL |     type A = usize;
    |              ^^^^^
 note: required by a bound in `foo1`
-  --> $DIR/associated-types-eq-3.rs:18:16
+  --> $DIR/associated-types-eq-3.rs:20:16
    |
 LL | fn foo1<I: Foo<A=Bar>>(x: I) {
    |                ^^^^^ required by this bound in `foo1`
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
-  --> $DIR/associated-types-eq-3.rs:40:9
+  --> $DIR/associated-types-eq-3.rs:42:9
    |
 LL |     baz(&a);
    |         ^^ type mismatch resolving `<isize as Foo>::A == Bar`
    |
 note: expected this to be `Bar`
-  --> $DIR/associated-types-eq-3.rs:12:14
+  --> $DIR/associated-types-eq-3.rs:14:14
    |
 LL |     type A = usize;
    |              ^^^^^

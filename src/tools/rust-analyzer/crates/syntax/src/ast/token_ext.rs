@@ -2,14 +2,14 @@
 
 use std::{borrow::Cow, num::ParseIntError};
 
-use rustc_lexer::unescape::{
-    unescape_byte, unescape_char, unescape_mixed, unescape_unicode, EscapeError, MixedUnit, Mode,
+use rustc_literal_escaper::{
+    EscapeError, MixedUnit, Mode, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
 };
 use stdx::always;
 
 use crate::{
-    ast::{self, AstToken},
     TextRange, TextSize,
+    ast::{self, AstToken},
 };
 
 impl ast::Comment {
@@ -116,7 +116,7 @@ impl CommentKind {
 impl ast::Whitespace {
     pub fn spans_multiple_lines(&self) -> bool {
         let text = self.text();
-        text.find('\n').map_or(false, |idx| text[idx + 1..].contains('\n'))
+        text.find('\n').is_some_and(|idx| text[idx + 1..].contains('\n'))
     }
 }
 
@@ -269,7 +269,7 @@ impl ast::ByteString {
             }
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
-                buf.extend_from_slice(text[..prev_end].as_bytes());
+                buf.extend_from_slice(&text.as_bytes()[..prev_end]);
                 buf.push(c as u8);
             }
             (Err(e), _) => has_error = Some(e),
@@ -333,7 +333,7 @@ impl ast::CString {
             }
             (Ok(u), true) => {
                 buf.reserve_exact(text.len());
-                buf.extend(text[..prev_end].as_bytes());
+                buf.extend(&text.as_bytes()[..prev_end]);
                 extend_unit(&mut buf, u);
             }
             (Err(e), _) => has_error = Some(e),
@@ -383,11 +383,7 @@ impl ast::IntNumber {
 
     pub fn suffix(&self) -> Option<&str> {
         let (_, _, suffix) = self.split_into_parts();
-        if suffix.is_empty() {
-            None
-        } else {
-            Some(suffix)
-        }
+        if suffix.is_empty() { None } else { Some(suffix) }
     }
 
     pub fn value_string(&self) -> String {
@@ -422,11 +418,7 @@ impl ast::FloatNumber {
 
     pub fn suffix(&self) -> Option<&str> {
         let (_, suffix) = self.split_into_parts();
-        if suffix.is_empty() {
-            None
-        } else {
-            Some(suffix)
-        }
+        if suffix.is_empty() { None } else { Some(suffix) }
     }
 
     pub fn value_string(&self) -> String {
@@ -491,7 +483,7 @@ impl ast::Byte {
 mod tests {
     use rustc_apfloat::ieee::Quad as f128;
 
-    use crate::ast::{self, make, FloatNumber, IntNumber};
+    use crate::ast::{self, FloatNumber, IntNumber, make};
 
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());

@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
-  --> $DIR/dyn_size.rs:LL:CC
+  --> tests/fail/dangling_pointers/dyn_size.rs:LL:CC
    |
 LL |     let _ptr = unsafe { &*ptr };
    |                         ^^^^^ constructing invalid value: encountered a dangling reference (going beyond the bounds of its allocation)
@@ -7,7 +7,7 @@ LL |     let _ptr = unsafe { &*ptr };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/dyn_size.rs:LL:CC
+   = note: inside `main` at tests/fail/dangling_pointers/dyn_size.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

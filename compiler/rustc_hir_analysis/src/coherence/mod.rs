@@ -7,13 +7,15 @@
 
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
-use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::LangItem;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, elaborate};
 use rustc_session::parse::feature_err;
-use rustc_span::{sym, ErrorGuaranteed};
+use rustc_span::{ErrorGuaranteed, sym};
+use tracing::debug;
 
+use crate::check::always_applicable;
 use crate::errors;
 
 mod builtin;
@@ -22,11 +24,12 @@ mod inherent_impls_overlap;
 mod orphan;
 mod unsafety;
 
-fn check_impl(
-    tcx: TyCtxt<'_>,
+fn check_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
-    trait_ref: ty::TraitRef<'_>,
-    trait_def: &ty::TraitDef,
+    trait_ref: ty::TraitRef<'tcx>,
+    trait_def: &'tcx ty::TraitDef,
+    polarity: ty::ImplPolarity,
 ) -> Result<(), ErrorGuaranteed> {
     debug!(
         "(checking implementation) adding impl for trait '{:?}', item '{}'",
@@ -42,6 +45,12 @@ fn check_impl(
 
     enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id, trait_def)
         .and(enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id, trait_def))
+        .and(always_applicable::check_negative_auto_trait_impl(
+            tcx,
+            impl_def_id,
+            trait_ref,
+            polarity,
+        ))
 }
 
 fn enforce_trait_manually_implementable(
@@ -52,17 +61,15 @@ fn enforce_trait_manually_implementable(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_header_span = tcx.def_span(impl_def_id);
 
-    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) {
-        if !tcx.features().freeze_impls {
-            feature_err(
-                &tcx.sess,
-                sym::freeze_impls,
-                impl_header_span,
-                "explicit impls for the `Freeze` trait are not permitted",
-            )
-            .with_span_label(impl_header_span, format!("impl of `Freeze` not allowed"))
-            .emit();
-        }
+    if tcx.is_lang_item(trait_def_id, LangItem::Freeze) && !tcx.features().freeze_impls() {
+        feature_err(
+            &tcx.sess,
+            sym::freeze_impls,
+            impl_header_span,
+            "explicit impls for the `Freeze` trait are not permitted",
+        )
+        .with_span_label(impl_header_span, format!("impl of `Freeze` not allowed"))
+        .emit();
     }
 
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
@@ -87,8 +94,8 @@ fn enforce_trait_manually_implementable(
 
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable = trait_def.specialization_kind
     {
-        if !tcx.features().specialization
-            && !tcx.features().min_specialization
+        if !tcx.features().specialization()
+            && !tcx.features().min_specialization()
             && !impl_header_span.allows_unstable(sym::specialization)
             && !impl_header_span.allows_unstable(sym::min_specialization)
         {
@@ -123,9 +130,12 @@ fn enforce_empty_impls_for_marker_traits(
     .emit())
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     use self::builtin::coerce_unsized_info;
-    use self::inherent_impls::{crate_incoherent_impls, crate_inherent_impls, inherent_impls};
+    use self::inherent_impls::{
+        crate_incoherent_impls, crate_inherent_impls, crate_inherent_impls_validity_check,
+        inherent_impls,
+    };
     use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
     use self::orphan::orphan_check_impl;
 
@@ -134,6 +144,7 @@ pub fn provide(providers: &mut Providers) {
         crate_inherent_impls,
         crate_incoherent_impls,
         inherent_impls,
+        crate_inherent_impls_validity_check,
         crate_inherent_impls_overlap_check,
         coerce_unsized_info,
         orphan_check_impl,
@@ -142,24 +153,27 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed> {
+    let impls = tcx.local_trait_impls(def_id);
     // If there are no impls for the trait, then "all impls" are trivially coherent and we won't check anything
     // anyway. Thus we bail out even before the specialization graph, avoiding the dep_graph edge.
-    let Some(impls) = tcx.all_local_trait_impls(()).get(&def_id) else { return Ok(()) };
+    if impls.is_empty() {
+        return Ok(());
+    }
     // Trigger building the specialization graph for the trait. This will detect and report any
     // overlap errors.
-    let mut res = tcx.ensure().specialization_graph_of(def_id);
+    let mut res = tcx.ensure_ok().specialization_graph_of(def_id);
 
     for &impl_def_id in impls {
-        let trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
-        let trait_ref = trait_header.trait_ref.instantiate_identity();
+        let impl_header = tcx.impl_trait_header(impl_def_id).unwrap();
+        let trait_ref = impl_header.trait_ref.instantiate_identity();
         let trait_def = tcx.trait_def(trait_ref.def_id);
 
-        res = res.and(check_impl(tcx, impl_def_id, trait_ref, trait_def));
-        res = res.and(check_object_overlap(tcx, impl_def_id, trait_ref));
-
-        res = res.and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def));
-        res = res.and(tcx.ensure().orphan_check_impl(impl_def_id));
-        res = res.and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
+        res = res
+            .and(check_impl(tcx, impl_def_id, trait_ref, trait_def, impl_header.polarity))
+            .and(check_object_overlap(tcx, impl_def_id, trait_ref))
+            .and(unsafety::check_item(tcx, impl_def_id, impl_header, trait_def))
+            .and(tcx.ensure_ok().orphan_check_impl(impl_def_id))
+            .and(builtin::check_trait(tcx, def_id, impl_def_id, impl_header));
     }
 
     res
@@ -180,8 +194,8 @@ fn check_object_overlap<'tcx>(
 
     // check for overlap with the automatic `impl Trait for dyn Trait`
     if let ty::Dynamic(data, ..) = trait_ref.self_ty().kind() {
-        // This is something like impl Trait1 for Trait2. Illegal
-        // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
+        // This is something like `impl Trait1 for Trait2`. Illegal if
+        // Trait1 is a supertrait of Trait2 or Trait2 is not dyn compatible.
 
         let component_def_ids = data.iter().flat_map(|predicate| {
             match predicate.skip_binder() {
@@ -194,15 +208,13 @@ fn check_object_overlap<'tcx>(
         });
 
         for component_def_id in component_def_ids {
-            if !tcx.is_object_safe(component_def_id) {
-                // Without the 'object_safe_for_dispatch' feature this is an error
-                // which will be reported by wfcheck. Ignore it here.
-                // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
-                // With the feature enabled, the trait is not implemented automatically,
-                // so this is valid.
+            if !tcx.is_dyn_compatible(component_def_id) {
+                // This is a WF error tested by `coherence-impl-trait-for-trait-dyn-compatible.rs`.
             } else {
-                let mut supertrait_def_ids = tcx.supertrait_def_ids(component_def_id);
-                if supertrait_def_ids.any(|d| d == trait_def_id) {
+                let mut supertrait_def_ids = elaborate::supertrait_def_ids(tcx, component_def_id);
+                if supertrait_def_ids
+                    .any(|d| d == trait_def_id && tcx.trait_def(d).implement_via_object)
+                {
                     let span = tcx.def_span(impl_def_id);
                     return Err(struct_span_code_err!(
                         tcx.dcx(),

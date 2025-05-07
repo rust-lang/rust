@@ -5,6 +5,14 @@
     feature(stdarch_arm_feature_detection)
 )]
 #![cfg_attr(
+    all(target_arch = "aarch64", any(target_os = "linux", target_os = "android")),
+    feature(stdarch_aarch64_feature_detection)
+)]
+#![cfg_attr(
+    all(target_arch = "s390x", target_os = "linux"),
+    feature(stdarch_s390x_feature_detection)
+)]
+#![cfg_attr(
     all(target_arch = "powerpc", target_os = "linux"),
     feature(stdarch_powerpc_feature_detection)
 )]
@@ -36,21 +44,34 @@ fn aarch64_linux() {
     println!("bf16: {}", is_aarch64_feature_detected!("bf16"));
     println!("bti: {}", is_aarch64_feature_detected!("bti"));
     println!("crc: {}", is_aarch64_feature_detected!("crc"));
+    println!("cssc: {}", is_aarch64_feature_detected!("cssc"));
     println!("dit: {}", is_aarch64_feature_detected!("dit"));
     println!("dotprod: {}", is_aarch64_feature_detected!("dotprod"));
     println!("dpb2: {}", is_aarch64_feature_detected!("dpb2"));
     println!("dpb: {}", is_aarch64_feature_detected!("dpb"));
+    println!("ecv: {}", is_aarch64_feature_detected!("ecv"));
     println!("f32mm: {}", is_aarch64_feature_detected!("f32mm"));
     println!("f64mm: {}", is_aarch64_feature_detected!("f64mm"));
+    println!("faminmax: {}", is_aarch64_feature_detected!("faminmax"));
     println!("fcma: {}", is_aarch64_feature_detected!("fcma"));
     println!("fhm: {}", is_aarch64_feature_detected!("fhm"));
+    println!("flagm2: {}", is_aarch64_feature_detected!("flagm2"));
     println!("flagm: {}", is_aarch64_feature_detected!("flagm"));
     println!("fp16: {}", is_aarch64_feature_detected!("fp16"));
+    println!("fp8: {}", is_aarch64_feature_detected!("fp8"));
+    println!("fp8dot2: {}", is_aarch64_feature_detected!("fp8dot2"));
+    println!("fp8dot4: {}", is_aarch64_feature_detected!("fp8dot4"));
+    println!("fp8fma: {}", is_aarch64_feature_detected!("fp8fma"));
+    println!("fpmr: {}", is_aarch64_feature_detected!("fpmr"));
     println!("frintts: {}", is_aarch64_feature_detected!("frintts"));
+    println!("hbc: {}", is_aarch64_feature_detected!("hbc"));
     println!("i8mm: {}", is_aarch64_feature_detected!("i8mm"));
     println!("jsconv: {}", is_aarch64_feature_detected!("jsconv"));
+    println!("lse128: {}", is_aarch64_feature_detected!("lse128"));
     println!("lse2: {}", is_aarch64_feature_detected!("lse2"));
     println!("lse: {}", is_aarch64_feature_detected!("lse"));
+    println!("lut: {}", is_aarch64_feature_detected!("lut"));
+    println!("mops: {}", is_aarch64_feature_detected!("mops"));
     println!("mte: {}", is_aarch64_feature_detected!("mte"));
     println!("neon: {}", is_aarch64_feature_detected!("neon"));
     println!("paca: {}", is_aarch64_feature_detected!("paca"));
@@ -58,20 +79,38 @@ fn aarch64_linux() {
     println!("pmull: {}", is_aarch64_feature_detected!("pmull"));
     println!("rand: {}", is_aarch64_feature_detected!("rand"));
     println!("rcpc2: {}", is_aarch64_feature_detected!("rcpc2"));
+    println!("rcpc3: {}", is_aarch64_feature_detected!("rcpc3"));
     println!("rcpc: {}", is_aarch64_feature_detected!("rcpc"));
     println!("rdm: {}", is_aarch64_feature_detected!("rdm"));
     println!("sb: {}", is_aarch64_feature_detected!("sb"));
     println!("sha2: {}", is_aarch64_feature_detected!("sha2"));
     println!("sha3: {}", is_aarch64_feature_detected!("sha3"));
     println!("sm4: {}", is_aarch64_feature_detected!("sm4"));
+    println!("sme-b16b16: {}", is_aarch64_feature_detected!("sme-b16b16"));
+    println!("sme-f16f16: {}", is_aarch64_feature_detected!("sme-f16f16"));
+    println!("sme-f64f64: {}", is_aarch64_feature_detected!("sme-f64f64"));
+    println!("sme-f8f16: {}", is_aarch64_feature_detected!("sme-f8f16"));
+    println!("sme-f8f32: {}", is_aarch64_feature_detected!("sme-f8f32"));
+    println!("sme-fa64: {}", is_aarch64_feature_detected!("sme-fa64"));
+    println!("sme-i16i64: {}", is_aarch64_feature_detected!("sme-i16i64"));
+    println!("sme-lutv2: {}", is_aarch64_feature_detected!("sme-lutv2"));
+    println!("sme2: {}", is_aarch64_feature_detected!("sme2"));
+    println!("sme2p1: {}", is_aarch64_feature_detected!("sme2p1"));
+    println!("sme: {}", is_aarch64_feature_detected!("sme"));
     println!("ssbs: {}", is_aarch64_feature_detected!("ssbs"));
+    println!("ssve-fp8dot2: {}", is_aarch64_feature_detected!("ssve-fp8dot2"));
+    println!("ssve-fp8dot4: {}", is_aarch64_feature_detected!("ssve-fp8dot4"));
+    println!("ssve-fp8fma: {}", is_aarch64_feature_detected!("ssve-fp8fma"));
+    println!("sve-b16b16: {}", is_aarch64_feature_detected!("sve-b16b16"));
     println!("sve2-aes: {}", is_aarch64_feature_detected!("sve2-aes"));
     println!("sve2-bitperm: {}", is_aarch64_feature_detected!("sve2-bitperm"));
     println!("sve2-sha3: {}", is_aarch64_feature_detected!("sve2-sha3"));
     println!("sve2-sm4: {}", is_aarch64_feature_detected!("sve2-sm4"));
     println!("sve2: {}", is_aarch64_feature_detected!("sve2"));
+    println!("sve2p1: {}", is_aarch64_feature_detected!("sve2p1"));
     println!("sve: {}", is_aarch64_feature_detected!("sve"));
     println!("tme: {}", is_aarch64_feature_detected!("tme"));
+    println!("wfxt: {}", is_aarch64_feature_detected!("wfxt"));
     // tidy-alphabetical-end
 }
 
@@ -94,6 +133,32 @@ fn powerpc64_linux() {
     println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
     println!("power8: {}", is_powerpc64_feature_detected!("power8"));
     println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
+    // tidy-alphabetical-end
+}
+
+#[test]
+#[cfg(all(target_arch = "s390x", target_os = "linux"))]
+fn s390x_linux() {
+    use std::arch::is_s390x_feature_detected;
+    // tidy-alphabetical-start
+    println!("deflate-conversion: {}", is_s390x_feature_detected!("deflate-conversion"));
+    println!("enhanced-sort: {}", is_s390x_feature_detected!("enhanced-sort"));
+    println!("guarded-storage: {}", is_s390x_feature_detected!("guarded-storage"));
+    println!("high-word: {}", is_s390x_feature_detected!("high-word"));
+    println!("nnp-assist: {}", is_s390x_feature_detected!("nnp-assist"));
+    println!("transactional-execution: {}", is_s390x_feature_detected!("transactional-execution"));
+    println!("vector-enhancements-1: {}", is_s390x_feature_detected!("vector-enhancements-1"));
+    println!("vector-enhancements-2: {}", is_s390x_feature_detected!("vector-enhancements-2"));
+    println!(
+        "vector-packed-decimal-enhancement-2: {}",
+        is_s390x_feature_detected!("vector-packed-decimal-enhancement-2")
+    );
+    println!(
+        "vector-packed-decimal-enhancement: {}",
+        is_s390x_feature_detected!("vector-packed-decimal-enhancement")
+    );
+    println!("vector-packed-decimal: {}", is_s390x_feature_detected!("vector-packed-decimal"));
+    println!("vector: {}", is_s390x_feature_detected!("vector"));
     // tidy-alphabetical-end
 }
 

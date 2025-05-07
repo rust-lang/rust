@@ -3,27 +3,33 @@
 //! fn g() {
 //! } /* fn g */
 //! ```
-use hir::{HirDisplay, Semantics};
+use hir::{DisplayTarget, HirDisplay, Semantics};
 use ide_db::{FileRange, RootDatabase};
 use span::EditionedFileId;
 use syntax::{
+    SyntaxKind, SyntaxNode, T,
     ast::{self, AstNode, HasLoopBody, HasName},
-    match_ast, SyntaxKind, SyntaxNode, T,
+    match_ast,
 };
 
-use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{
+    InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,
+    inlay_hints::LazyProperty,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
-    mut node: SyntaxNode,
+    display_target: DisplayTarget,
+    original_node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
 
     let name = |it: ast::Name| it.syntax().text_range();
 
+    let mut node = original_node.clone();
     let mut closing_token;
     let (label, name_range) = if let Some(item_list) = ast::AssocItemList::cast(node.clone()) {
         closing_token = item_list.r_curly_token()?;
@@ -36,8 +42,12 @@ pub(super) fn hints(
                     let ty = imp.self_ty(sema.db);
                     let trait_ = imp.trait_(sema.db);
                     let hint_text = match trait_ {
-                        Some(tr) => format!("impl {} for {}", tr.name(sema.db).display(sema.db), ty.display_truncated(sema.db, config.max_length)),
-                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length)),
+                        Some(tr) => format!(
+                            "impl {} for {}",
+                            tr.name(sema.db).display(sema.db, file_id.edition()),
+                            ty.display_truncated(sema.db, config.max_length, display_target,
+                        )),
+                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, display_target)),
                     };
                     (hint_text, None)
                 },
@@ -73,7 +83,7 @@ pub(super) fn hints(
         }
         closing_token = block.r_curly_token()?;
 
-        let lifetime = label.lifetime().map_or_else(String::new, |it| it.to_string());
+        let lifetime = label.lifetime()?.to_string();
 
         (lifetime, Some(label.syntax().text_range()))
     } else if let Some(block) = ast::BlockExpr::cast(node.clone()) {
@@ -136,11 +146,12 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
-        label: InlayHintLabel::simple(label, None, linked_location),
+        label: InlayHintLabel::simple(label, None, linked_location.map(LazyProperty::Computed)),
         text_edit: None,
         position: InlayHintPosition::After,
         pad_left: true,
         pad_right: false,
+        resolve_parent: Some(original_node.text_range()),
     });
 
     None
@@ -149,8 +160,8 @@ pub(super) fn hints(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[test]
@@ -183,7 +194,7 @@ impl Tr for () {
 //^ impl Tr for ()
 impl dyn Tr {
   }
-//^ impl dyn Tr
+//^ impl dyn Tr + 'static
 
 static S0: () = 0;
 static S1: () = {};

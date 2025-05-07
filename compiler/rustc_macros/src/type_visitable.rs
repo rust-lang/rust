@@ -1,12 +1,12 @@
 use quote::quote;
 use syn::parse_quote;
 
-pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(super) fn type_visitable_derive(
+    mut s: synstructure::Structure<'_>,
+) -> proc_macro2::TokenStream {
     if let syn::Data::Union(_) = s.ast().data {
         panic!("cannot derive on union")
     }
-
-    s.underscore_const(true);
 
     // ignore fields with #[type_visitable(ignore)]
     s.filter(|bi| {
@@ -34,12 +34,12 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     s.add_bounds(synstructure::AddBounds::Generics);
     let body_visit = s.each(|bind| {
         quote! {
-            match ::rustc_ast_ir::visit::VisitorResult::branch(
-                ::rustc_middle::ty::visit::TypeVisitable::visit_with(#bind, __visitor)
+            match ::rustc_middle::ty::VisitorResult::branch(
+                ::rustc_middle::ty::TypeVisitable::visit_with(#bind, __visitor)
             ) {
                 ::core::ops::ControlFlow::Continue(()) => {},
                 ::core::ops::ControlFlow::Break(r) => {
-                    return ::rustc_ast_ir::visit::VisitorResult::from_residual(r);
+                    return ::rustc_middle::ty::VisitorResult::from_residual(r);
                 },
             }
         }
@@ -47,14 +47,14 @@ pub fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
     s.bind_with(|_| synstructure::BindStyle::Move);
 
     s.bound_impl(
-        quote!(::rustc_middle::ty::visit::TypeVisitable<::rustc_middle::ty::TyCtxt<'tcx>>),
+        quote!(::rustc_middle::ty::TypeVisitable<::rustc_middle::ty::TyCtxt<'tcx>>),
         quote! {
-            fn visit_with<__V: ::rustc_middle::ty::visit::TypeVisitor<::rustc_middle::ty::TyCtxt<'tcx>>>(
+            fn visit_with<__V: ::rustc_middle::ty::TypeVisitor<::rustc_middle::ty::TyCtxt<'tcx>>>(
                 &self,
                 __visitor: &mut __V
             ) -> __V::Result {
                 match *self { #body_visit }
-                <__V::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
+                <__V::Result as ::rustc_middle::ty::VisitorResult>::output()
             }
         },
     )

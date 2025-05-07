@@ -1,8 +1,6 @@
 //@ run-pass
 //@ aux-build:const_mut_refs_crate.rs
 
-#![feature(const_mut_refs)]
-
 //! Regression test for https://github.com/rust-lang/rust/issues/79738
 //! Show how we are not duplicating allocations anymore. Statics that
 //! copy their value from another static used to also duplicate

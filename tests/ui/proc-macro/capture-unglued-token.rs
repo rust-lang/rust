@@ -1,4 +1,4 @@
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 //@ compile-flags: -Z span-debug
 //@ check-pass
 

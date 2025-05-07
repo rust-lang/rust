@@ -1,6 +1,6 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
+#![feature(arbitrary_self_types_pointers, unsize, coerce_unsized, dispatch_from_dyn)]
 #![feature(rustc_attrs)]
 
 fn pin_box_dyn() {
@@ -21,7 +21,9 @@ fn pin_box_dyn() {
 }
 
 fn stdlib_pointers() {
-    use std::{pin::Pin, rc::Rc, sync::Arc};
+    use std::pin::Pin;
+    use std::rc::Rc;
+    use std::sync::Arc;
 
     trait Trait {
         fn by_rc(self: Rc<Self>) -> i64;
@@ -60,10 +62,8 @@ fn stdlib_pointers() {
 }
 
 fn pointers_and_wrappers() {
-    use std::{
-        marker::Unsize,
-        ops::{CoerceUnsized, Deref, DispatchFromDyn},
-    };
+    use std::marker::Unsize;
+    use std::ops::{CoerceUnsized, Deref, DispatchFromDyn};
 
     struct Ptr<T: ?Sized>(Box<T>);
 

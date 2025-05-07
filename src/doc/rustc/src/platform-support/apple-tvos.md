@@ -10,8 +10,8 @@ Apple tvOS targets.
 
 ## Target maintainers
 
-- [@thomcc](https://github.com/thomcc)
-- [@madsmtm](https://github.com/madsmtm)
+[@thomcc](https://github.com/thomcc)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
@@ -20,7 +20,8 @@ These targets are cross-compiled, and require the corresponding tvOS SDK
 ARM64 targets, Xcode 12 or higher is required.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk appletvos --show-sdk-path`.
 
 ### OS version
 
@@ -52,7 +53,7 @@ The following APIs are currently known to have missing or incomplete support:
 ## Building the target
 
 The targets can be built by enabling them for a `rustc` build in
-`config.toml`, by adding, for example:
+`bootstrap.toml`, by adding, for example:
 
 ```toml
 [build]

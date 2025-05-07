@@ -1,5 +1,4 @@
 //@ check-pass
-
 #![deny(unreachable_patterns)]
 #![feature(never_type)]
 
@@ -9,11 +8,12 @@ pub enum UninhabitedEnum {
 
 #[non_exhaustive]
 pub struct UninhabitedStruct {
-    _priv: !,
+    pub never: !,
+    _priv: (),
 }
 
 #[non_exhaustive]
-pub struct UninhabitedTupleStruct(!);
+pub struct UninhabitedTupleStruct(pub !);
 
 pub enum UninhabitedVariants {
     #[non_exhaustive] Tuple(!),
@@ -22,24 +22,21 @@ pub enum UninhabitedVariants {
 
 struct A;
 
-// This test checks that an empty match on a non-exhaustive uninhabited type from the defining crate
-// will compile. In particular, this enables the `exhaustive_patterns` feature as this can
-// change the branch used in the compiler to determine this.
-// Codegen is skipped because tests with long names can cause issues on Windows CI, see #60648.
-
-fn cannot_empty_match_on_empty_enum_to_anything(x: UninhabitedEnum) -> A {
+// This checks that `non_exhaustive` annotations do not affect exhaustiveness checking within the
+// defining crate.
+fn empty_match_on_empty_enum(x: UninhabitedEnum) -> A {
     match x {}
 }
 
-fn cannot_empty_match_on_empty_struct_to_anything(x: UninhabitedStruct) -> A {
+fn empty_match_on_empty_struct(x: UninhabitedStruct) -> A {
     match x {}
 }
 
-fn cannot_empty_match_on_empty_tuple_struct_to_anything(x: UninhabitedTupleStruct) -> A {
+fn empty_match_on_empty_tuple_struct(x: UninhabitedTupleStruct) -> A {
     match x {}
 }
 
-fn cannot_empty_match_on_enum_with_empty_variants_struct_to_anything(x: UninhabitedVariants) -> A {
+fn empty_match_on_enum_with_empty_variants_struct(x: UninhabitedVariants) -> A {
     match x {}
 }
 

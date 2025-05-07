@@ -10,8 +10,6 @@
 // See also ../const-mut-refs-crate.rs for more details
 // about this test.
 
-#![feature(const_mut_refs)]
-
 // if we used immutable references here, then promotion would
 // turn the `&42` into a promoted, which gets duplicated arbitrarily.
 pub static mut FOO: &'static mut i32 = &mut 42;

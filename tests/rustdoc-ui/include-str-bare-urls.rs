@@ -13,3 +13,5 @@
 
 #![deny(rustdoc::bare_urls)]
 #![doc=include_str!("auxiliary/include-str-bare-urls.md")]
+
+//~? ERROR this URL is not a hyperlink

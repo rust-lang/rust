@@ -1,14 +1,4 @@
-#![feature(
-    no_core,
-    lang_items,
-    never_type,
-    linkage,
-    extern_types,
-    naked_functions,
-    thread_local,
-    repr_simd,
-    raw_ref_op
-)]
+#![feature(no_core, lang_items, never_type, linkage, extern_types, thread_local, repr_simd)]
 #![no_core]
 #![allow(dead_code, non_camel_case_types, internal_features)]
 
@@ -275,7 +265,7 @@ fn main() {
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
-    #[cfg(not(any(jit, windows)))]
+    #[cfg(not(any(jit, target_vendor = "apple", windows)))]
     {
         extern "C" {
             #[linkage = "extern_weak"]
@@ -388,11 +378,9 @@ global_asm! {
 }
 
 #[cfg(all(not(jit), target_arch = "x86_64"))]
-#[naked]
+#[unsafe(naked)]
 extern "C" fn naked_test() {
-    unsafe {
-        asm!("ret", options(noreturn));
-    }
+    naked_asm!("ret")
 }
 
 #[repr(C)]

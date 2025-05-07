@@ -3,21 +3,22 @@
 use std::{collections::hash_map::Entry, fmt::Display, iter};
 
 use crate::{
+    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
+    Substitution, TraitEnvironment, Ty, TyExt, TyKind,
     consteval::usize_const,
     db::HirDatabase,
-    display::HirDisplay,
-    infer::{normalize, PointerCast},
+    display::{DisplayTarget, HirDisplay},
+    infer::{PointerCast, normalize},
     lang_items::is_box,
     mapping::ToChalk,
-    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyKind,
 };
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
-    hir::{BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
+    expr_store::Body,
+    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
@@ -27,20 +28,21 @@ mod lower;
 mod monomorphization;
 mod pretty;
 
-pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
+pub use borrowck::{BorrowckResult, MutabilityReason, borrowck_query};
 pub use eval::{
-    interpret_mir, pad16, render_const_using_debug_impl, Evaluator, MirEvalError, VTableMap,
+    Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };
-pub use lower::{
-    lower_to_mir, mir_body_for_closure_query, mir_body_query, mir_body_recover, MirLowerError,
-};
+pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_body_query};
 pub use monomorphization::{
     monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
-    monomorphized_mir_body_query, monomorphized_mir_body_recover,
+    monomorphized_mir_body_query,
 };
 use rustc_hash::FxHashMap;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
+
+pub(crate) use lower::mir_body_cycle_result;
+pub(crate) use monomorphization::monomorphized_mir_body_cycle_result;
 
 use super::consteval::{intern_const_scalar, try_const_usize};
 
@@ -75,7 +77,14 @@ pub struct Local {
 /// currently implements it, but it seems like this may be something to check against in the
 /// validator.
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Operand {
+pub struct Operand {
+    kind: OperandKind,
+    // FIXME : This should actually just be of type `MirSpan`.
+    span: Option<MirSpan>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum OperandKind {
     /// Creates a value by loading the given place.
     ///
     /// Before drop elaboration, the type of the place must be `Copy`. After drop elaboration there
@@ -99,7 +108,13 @@ pub enum Operand {
 
 impl Operand {
     fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap, ty: Ty) -> Self {
-        Operand::Constant(intern_const_scalar(ConstScalar::Bytes(data, memory_map), ty))
+        Operand {
+            kind: OperandKind::Constant(intern_const_scalar(
+                ConstScalar::Bytes(data, memory_map),
+                ty,
+            )),
+            span: None,
+        }
     }
 
     fn from_bytes(data: Box<[u8]>, ty: Ty) -> Self {
@@ -141,8 +156,15 @@ impl<V, T> ProjectionElem<V, T> {
         mut base: Ty,
         db: &dyn HirDatabase,
         closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
-        krate: CrateId,
+        krate: Crate,
     ) -> Ty {
+        // we only bail on mir building when there are type mismatches
+        // but error types may pop up resulting in us still attempting to build the mir
+        // so just propagate the error type
+        if base.is_unknown() {
+            return TyKind::Error.intern(Interner);
+        }
+
         if matches!(base.kind(Interner), TyKind::Alias(_) | TyKind::AssociatedType(..)) {
             base = normalize(
                 db,
@@ -158,11 +180,14 @@ impl<V, T> ProjectionElem<V, T> {
                     subst.at(Interner, 0).assert_ty_ref(Interner).clone()
                 }
                 _ => {
-                    never!("Overloaded deref on type {} is not a projection", base.display(db));
+                    never!(
+                        "Overloaded deref on type {} is not a projection",
+                        base.display(db, DisplayTarget::from_crate(db, krate))
+                    );
                     TyKind::Error.intern(Interner)
                 }
             },
-            ProjectionElem::Field(Either::Left(f)) => match &base.kind(Interner) {
+            ProjectionElem::Field(Either::Left(f)) => match base.kind(Interner) {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
@@ -181,8 +206,8 @@ impl<V, T> ProjectionElem<V, T> {
                         never!("Out of bound tuple field");
                         TyKind::Error.intern(Interner)
                     }),
-                _ => {
-                    never!("Only tuple has tuple field");
+                ty => {
+                    never!("Only tuple has tuple field: {:?}", ty);
                     TyKind::Error.intern(Interner)
                 }
             },
@@ -633,6 +658,7 @@ pub enum TerminatorKind {
     },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
@@ -663,15 +689,16 @@ pub enum BorrowKind {
     Mut { kind: MutBorrowKind },
 }
 
+// Order of variants in this enum matter: they are used to compare borrow kinds.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum MutBorrowKind {
+    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
+    /// be expressed by the user and is used only in implicit closure bindings.
+    ClosureCapture,
     Default,
     /// This borrow arose from method-call auto-ref
     /// (i.e., adjustment::Adjust::Borrow).
     TwoPhasedBorrow,
-    /// Data must be immutable but not aliasable. This kind of borrow cannot currently
-    /// be expressed by the user and is used only in implicit closure bindings.
-    ClosureCapture,
 }
 
 impl BorrowKind {
@@ -831,7 +858,9 @@ pub enum CastKind {
     PointerFromExposedAddress,
     /// All sorts of pointer-to-pointer casts. Note that reference-to-raw-ptr casts are
     /// translated into `&raw mut/const *r`, i.e., they are not actually casts.
-    Pointer(PointerCast),
+    PtrToPtr,
+    /// Pointer related casts that are done by coercions.
+    PointerCoercion(PointerCast),
     /// Cast into a dyn* object.
     DynStar,
     IntToInt,
@@ -871,7 +900,8 @@ pub enum Rvalue {
     ///
     /// **Needs clarification**: Are there weird additional semantics here related to the runtime
     /// nature of this operation?
-    //ThreadLocalRef(DefId),
+    // ThreadLocalRef(DefId),
+    ThreadLocalRef(std::convert::Infallible),
 
     /// Creates a pointer with the indicated mutability to the place.
     ///
@@ -880,7 +910,8 @@ pub enum Rvalue {
     ///
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
-    //AddressOf(Mutability, Place),
+    // AddressOf(Mutability, Place),
+    AddressOf(std::convert::Infallible),
 
     /// Yields the length of the place, as a `usize`.
     ///
@@ -898,19 +929,21 @@ pub enum Rvalue {
     Cast(CastKind, Operand, Ty),
 
     // FIXME link to `pointer::offset` when it hits stable.
-    // /// * `Offset` has the same semantics as `pointer::offset`, except that the second
-    // ///   parameter may be a `usize` as well.
-    // /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
-    // ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
-    // ///   matching, up to the usual caveat of the lifetimes in function pointers.
-    // /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
-    // ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
-    // ///   truncated as needed.
-    // /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
-    // ///   types and return a value of that type.
-    // /// * The remaining operations accept signed integers, unsigned integers, or floats with
-    // ///   matching types and return a value of that type.
+    /// * `Offset` has the same semantics as `pointer::offset`, except that the second
+    ///   parameter may be a `usize` as well.
+    /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
+    ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
+    ///   matching, up to the usual caveat of the lifetimes in function pointers.
+    /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
+    ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
+    ///   truncated as needed.
+    /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
+    ///   types and return a value of that type.
+    /// * The remaining operations accept signed integers, unsigned integers, or floats with
+    ///   matching types and return a value of that type.
     //BinaryOp(BinOp, Box<(Operand, Operand)>),
+    BinaryOp(std::convert::Infallible),
+
     /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
     ///
     /// When overflow checking is disabled and we are generating run-time code, the error condition
@@ -929,6 +962,7 @@ pub enum Rvalue {
 
     /// Computes a value as described by the operation.
     //NullaryOp(NullOp, Ty),
+    NullaryOp(std::convert::Infallible),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
@@ -1055,11 +1089,11 @@ impl MirBody {
             f: &mut impl FnMut(&mut Place, &mut ProjectionStore),
             store: &mut ProjectionStore,
         ) {
-            match op {
-                Operand::Copy(p) | Operand::Move(p) => {
+            match &mut op.kind {
+                OperandKind::Copy(p) | OperandKind::Move(p) => {
                     f(p, store);
                 }
-                Operand::Constant(_) | Operand::Static(_) => (),
+                OperandKind::Constant(_) | OperandKind::Static(_) => (),
             }
         }
         for (_, block) in self.basic_blocks.iter_mut() {
@@ -1087,6 +1121,10 @@ impl MirBody {
                                     for_operand(op, &mut f, &mut self.projection_store);
                                 }
                             }
+                            Rvalue::ThreadLocalRef(n)
+                            | Rvalue::AddressOf(n)
+                            | Rvalue::BinaryOp(n)
+                            | Rvalue::NullaryOp(n) => match *n {},
                         }
                     }
                     StatementKind::FakeRead(p) | StatementKind::Deinit(p) => {
@@ -1167,6 +1205,20 @@ pub enum MirSpan {
     BindingId(BindingId),
     SelfParam,
     Unknown,
+}
+
+impl MirSpan {
+    pub fn is_ref_span(&self, body: &Body) -> bool {
+        match *self {
+            MirSpan::ExprId(expr) => matches!(body[expr], Expr::Ref { .. }),
+            // FIXME: Figure out if this is correct wrt. match ergonomics.
+            MirSpan::BindingId(binding) => matches!(
+                body.bindings[binding].mode,
+                BindingAnnotation::Ref | BindingAnnotation::RefMut
+            ),
+            MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
+        }
+    }
 }
 
 impl_from!(ExprId, PatId for MirSpan);

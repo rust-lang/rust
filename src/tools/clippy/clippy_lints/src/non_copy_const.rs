@@ -1,26 +1,22 @@
-//! Checks for usage of const which the type is not `Freeze` (`Cell`-free).
-//!
-//! This lint is **warn** by default.
-
 use std::ptr;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_const_context;
 use clippy_utils::macros::macro_backtrace;
-use clippy_utils::ty::{implements_trait, InteriorMut};
+use clippy_utils::ty::{InteriorMut, implements_trait};
+use rustc_abi::VariantIdx;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass, Lint};
-use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult, GlobalId, ReportedErrorInfo};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
+use rustc_span::{DUMMY_SP, Span, sym};
 
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
@@ -92,16 +88,6 @@ declare_clippy_lint! {
     /// these types in the first place.
     ///
     /// The `const` value should be stored inside a `static` item.
-    ///
-    /// ### Known problems
-    /// When an enum has variants with interior mutability, use of its non
-    /// interior mutable variants can generate false positives. See issue
-    /// [#3962](https://github.com/rust-lang/rust-clippy/issues/3962)
-    ///
-    /// Types that have underlying or potential interior mutability trigger the lint whether
-    /// the interior mutable field is used or not. See issues
-    /// [#5812](https://github.com/rust-lang/rust-clippy/issues/5812) and
-    /// [#3825](https://github.com/rust-lang/rust-clippy/issues/3825)
     ///
     /// ### Example
     /// ```no_run
@@ -188,11 +174,15 @@ impl_lint_pass!(NonCopyConst<'_> => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTE
 impl<'tcx> NonCopyConst<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf) -> Self {
         Self {
-            interior_mut: InteriorMut::new(tcx, &conf.ignore_interior_mutability),
+            interior_mut: InteriorMut::without_pointers(tcx, &conf.ignore_interior_mutability),
         }
     }
 
     fn is_value_unfrozen_raw_inner(cx: &LateContext<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> bool {
+        // No branch that we check (yet) should continue if val isn't a branch
+        let Some(branched_val) = val.try_to_branch() else {
+            return false;
+        };
         match *ty.kind() {
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
@@ -200,13 +190,15 @@ impl<'tcx> NonCopyConst<'tcx> {
             // As of 2022-09-08 miri doesn't track which union field is active so there's no safe way to check the
             // contained value.
             ty::Adt(def, ..) if def.is_union() => false,
-            ty::Array(ty, _) => val
-                .unwrap_branch()
+            ty::Array(ty, _) => branched_val
                 .iter()
                 .any(|field| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Adt(def, args) if def.is_enum() => {
-                let (&variant_index, fields) = val.unwrap_branch().split_first().unwrap();
-                let variant_index = VariantIdx::from_u32(variant_index.unwrap_leaf().to_u32());
+                let Some((&variant_valtree, fields)) = branched_val.split_first() else {
+                    return false;
+                };
+                let variant_index = variant_valtree.unwrap_leaf();
+                let variant_index = VariantIdx::from_u32(variant_index.to_u32());
                 fields
                     .iter()
                     .copied()
@@ -218,16 +210,18 @@ impl<'tcx> NonCopyConst<'tcx> {
                     )
                     .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, field, ty))
             },
-            ty::Adt(def, args) => val
-                .unwrap_branch()
+            ty::Adt(def, args) => branched_val
                 .iter()
                 .zip(def.non_enum_variant().fields.iter().map(|field| field.ty(cx.tcx, args)))
                 .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
-            ty::Tuple(tys) => val
-                .unwrap_branch()
+            ty::Tuple(tys) => branched_val
                 .iter()
                 .zip(tys)
                 .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
+            ty::Alias(ty::Projection, _) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
+                Ok(normalized_ty) if ty != normalized_ty => Self::is_value_unfrozen_raw_inner(cx, val, normalized_ty),
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -269,39 +263,47 @@ impl<'tcx> NonCopyConst<'tcx> {
     fn is_value_unfrozen_poly(cx: &LateContext<'tcx>, body_id: BodyId, ty: Ty<'tcx>) -> bool {
         let def_id = body_id.hir_id.owner.to_def_id();
         let args = ty::GenericArgs::identity_for_item(cx.tcx, def_id);
-        let instance = ty::Instance::new(def_id, args);
+        let instance = ty::Instance::new_raw(def_id, args);
         let cid = GlobalId {
             instance,
             promoted: None,
         };
-        let param_env = cx.tcx.param_env(def_id).with_reveal_all_normalized(cx.tcx);
-        let result = cx.tcx.const_eval_global_id_for_typeck(param_env, cid, DUMMY_SP);
+        let typing_env = ty::TypingEnv::post_analysis(cx.tcx, def_id);
+        let result = cx.tcx.const_eval_global_id_for_typeck(typing_env, cid, DUMMY_SP);
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
     fn is_value_unfrozen_expr(cx: &LateContext<'tcx>, hir_id: HirId, def_id: DefId, ty: Ty<'tcx>) -> bool {
         let args = cx.typeck_results().node_args(hir_id);
 
-        let result = Self::const_eval_resolve(cx.tcx, cx.param_env, ty::UnevaluatedConst::new(def_id, args), DUMMY_SP);
+        let result = Self::const_eval_resolve(
+            cx.tcx,
+            cx.typing_env(),
+            ty::UnevaluatedConst::new(def_id, args),
+            DUMMY_SP,
+        );
         Self::is_value_unfrozen_raw(cx, result, ty)
     }
 
     pub fn const_eval_resolve(
         tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         ct: ty::UnevaluatedConst<'tcx>,
         span: Span,
     ) -> EvalToValTreeResult<'tcx> {
-        match ty::Instance::try_resolve(tcx, param_env, ct.def, ct.args) {
+        match ty::Instance::try_resolve(tcx, typing_env, ct.def, ct.args) {
             Ok(Some(instance)) => {
                 let cid = GlobalId {
                     instance,
                     promoted: None,
                 };
-                tcx.const_eval_global_id_for_typeck(param_env, cid, span)
+                tcx.const_eval_global_id_for_typeck(typing_env, cid, span)
             },
             Ok(None) => Err(ErrorHandled::TooGeneric(span)),
-            Err(err) => Err(ErrorHandled::Reported(err.into(), span)),
+            Err(err) => Err(ErrorHandled::Reported(
+                ReportedErrorInfo::non_const_eval_error(err),
+                span,
+            )),
         }
     }
 }
@@ -325,7 +327,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
             // Normalize assoc types because ones originated from generic params
             // bounded other traits could have their bound.
-            let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+            let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
             if self.interior_mut.is_interior_mut_ty(cx, normalized)
                 // When there's no default value, lint it only according to its type;
                 // in other words, lint consts whose value *could* be unfrozen, not definitely is.
@@ -339,7 +341,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 // i.e. having an enum doesn't necessary mean a type has a frozen variant.
                 // And, implementing it isn't a trivial task; it'll probably end up
                 // re-implementing the trait predicate evaluation specific to `Freeze`.
-                && body_id_opt.map_or(true, |body_id| Self::is_value_unfrozen_poly(cx, body_id, normalized))
+                && body_id_opt.is_none_or(|body_id| Self::is_value_unfrozen_poly(cx, body_id, normalized))
             {
                 lint(cx, Source::Assoc { item: trait_item.span });
             }
@@ -348,8 +350,8 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Const(_, body_id) = &impl_item.kind {
-            let item_def_id = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
-            let item = cx.tcx.hir().expect_item(item_def_id);
+            let item_def_id = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
+            let item = cx.tcx.hir_expect_item(item_def_id);
 
             match &item.kind {
                 ItemKind::Impl(Impl {
@@ -365,12 +367,12 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                             .trait_item_def_id
                         && cx
                             .tcx
-                            .layout_of(cx.tcx.param_env(of_trait_def_id).and(
+                            .layout_of(ty::TypingEnv::post_analysis(cx.tcx, of_trait_def_id).as_query_input(
                                 // Normalize assoc types because ones originated from generic params
                                 // bounded other traits could have their bound at the trait defs;
                                 // and, in that case, the definition is *not* generic.
                                 cx.tcx.normalize_erasing_regions(
-                                    cx.tcx.param_env(of_trait_def_id),
+                                    ty::TypingEnv::post_analysis(cx.tcx, of_trait_def_id),
                                     cx.tcx.type_of(of_assoc_item).instantiate_identity(),
                                 ),
                             ))
@@ -380,7 +382,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                             // similar to unknown layouts.
                             // e.g. `layout_of(...).is_err() || has_frozen_variant(...);`
                         && let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity()
-                        && let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty)
+                        && let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty)
                         && self.interior_mut.is_interior_mut_ty(cx, normalized)
                         && Self::is_value_unfrozen_poly(cx, *body_id, normalized)
                     {
@@ -390,7 +392,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                 ItemKind::Impl(Impl { of_trait: None, .. }) => {
                     let ty = cx.tcx.type_of(impl_item.owner_id).instantiate_identity();
                     // Normalize assoc types originated from generic params.
-                    let normalized = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+                    let normalized = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
 
                     if self.interior_mut.is_interior_mut_ty(cx, normalized)
                         && Self::is_value_unfrozen_poly(cx, *body_id, normalized)
@@ -447,7 +449,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
                             dereferenced_expr = parent_expr;
                         },
-                        ExprKind::Index(e, _, _) if ptr::eq(&**e, cur_expr) => {
+                        ExprKind::Index(e, _, _) if ptr::eq(&raw const **e, cur_expr) => {
                             // `e[i]` => desugared to `*Index::index(&e, i)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.

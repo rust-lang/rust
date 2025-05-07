@@ -14,7 +14,7 @@ const NOT_UTF8: &[u8] = &[0xff, 0xff, 0xff];
 
 fn main() {
     // echo $HELLO_WORLD | rustc -
-    rustc().arg("-").stdin(HELLO_WORLD).run();
+    rustc().arg("-").stdin_buf(HELLO_WORLD).run();
     assert!(
         PathBuf::from(if !is_windows() { "rust_out" } else { "rust_out.exe" })
             .try_exists()
@@ -22,7 +22,7 @@ fn main() {
     );
 
     // echo $NOT_UTF8 | rustc -
-    rustc().arg("-").stdin(NOT_UTF8).run_fail().assert_stderr_contains(
+    rustc().arg("-").stdin_buf(NOT_UTF8).run_fail().assert_stderr_contains(
         "error: couldn't read from stdin, as it did not contain valid UTF-8",
     );
 }

@@ -1,28 +1,30 @@
 use hir::{
-    Adt, AsAssocItem, HasSource, HirDisplay, HirFileIdExt, Module, PathResolution, Semantics,
-    StructKind, Type, TypeInfo,
+    Adt, AsAssocItem, HasSource, HirDisplay, Module, PathResolution, Semantics, StructKind, Type,
+    TypeInfo,
 };
 use ide_db::{
+    FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    assists::ExprFillDefaultMode,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
     path_transform::PathTransform,
     source_change::SourceChangeBuilder,
-    FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
+    Edition, SyntaxKind, SyntaxNode, T, TextRange,
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, BlockExpr, CallExpr,
-        HasArgList, HasGenericParams, HasModuleItem, HasTypeBounds,
+        self, AstNode, BlockExpr, CallExpr, HasArgList, HasGenericParams, HasModuleItem,
+        HasTypeBounds, edit::IndentLevel, edit_in_place::Indent, make,
     },
-    ted, SyntaxKind, SyntaxNode, TextRange, T,
+    ted,
 };
 
 use crate::{
+    AssistContext, AssistId, Assists,
     utils::{convert_reference_type, find_struct_impl},
-    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: generate_function
@@ -45,7 +47,7 @@ use crate::{
 //     bar("", baz());
 // }
 //
-// fn bar(arg: &str, baz: Baz) ${0:-> _} {
+// fn bar(arg: &'static str, baz: Baz) ${0:-> _} {
 //     todo!()
 // }
 //
@@ -171,19 +173,19 @@ fn add_func_to_accumulator(
     adt_info: Option<AdtInfo>,
     label: String,
 ) -> Option<()> {
-    acc.add(AssistId("generate_function", AssistKind::Generate), label, text_range, |edit| {
+    acc.add(AssistId::generate("generate_function"), label, text_range, |edit| {
         edit.edit_file(file);
 
         let target = function_builder.target.clone();
+        let edition = function_builder.target_edition;
         let func = function_builder.render(ctx.config.snippet_cap, edit);
 
-        if let Some(adt) =
-            adt_info
-                .and_then(|adt_info| if adt_info.impl_exists { None } else { Some(adt_info.adt) })
+        if let Some(adt) = adt_info
+            .and_then(|adt_info| if adt_info.impl_exists { None } else { Some(adt_info.adt) })
         {
             let name = make::ty_path(make::ext::ident_path(&format!(
                 "{}",
-                adt.name(ctx.db()).display(ctx.db())
+                adt.name(ctx.db()).display(ctx.db(), edition)
             )));
 
             // FIXME: adt may have generic params.
@@ -204,11 +206,12 @@ fn get_adt_source(
     fn_name: &str,
 ) -> Option<(Option<ast::Impl>, FileId)> {
     let range = adt.source(ctx.sema.db)?.syntax().original_file_range_rooted(ctx.sema.db);
+
     let file = ctx.sema.parse(range.file_id);
     let adt_source =
         ctx.sema.find_node_at_offset_with_macros(file.syntax(), range.range.start())?;
     find_struct_impl(ctx, &adt_source, &[fn_name.to_owned()])
-        .map(|impl_| (impl_, range.file_id.file_id()))
+        .map(|impl_| (impl_, range.file_id.file_id(ctx.db())))
 }
 
 struct FunctionBuilder {
@@ -222,6 +225,7 @@ struct FunctionBuilder {
     should_focus_return_type: bool,
     visibility: Visibility,
     is_async: bool,
+    target_edition: Edition,
 }
 
 impl FunctionBuilder {
@@ -237,6 +241,7 @@ impl FunctionBuilder {
     ) -> Option<Self> {
         let target_module =
             target_module.or_else(|| ctx.sema.scope(target.syntax()).map(|it| it.module()))?;
+        let target_edition = target_module.krate().edition(ctx.db());
 
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
@@ -258,7 +263,9 @@ impl FunctionBuilder {
 
         // If generated function has the name "new" and is an associated function, we generate fn body
         // as a constructor and assume a "Self" return type.
-        if let Some(body) = make_fn_body_as_new_function(ctx, &fn_name.text(), adt_info) {
+        if let Some(body) =
+            make_fn_body_as_new_function(ctx, &fn_name.text(), adt_info, target_edition)
+        {
             ret_type = Some(make::ret_type(make::ty_path(make::ext::ident_path("Self"))));
             should_focus_return_type = false;
             fn_body = body;
@@ -270,7 +277,11 @@ impl FunctionBuilder {
                 target_module,
                 &mut necessary_generic_params,
             );
-            let placeholder_expr = make::ext::expr_todo();
+            let placeholder_expr = match ctx.config.expr_fill_default {
+                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                ExprFillDefaultMode::Default => make::ext::expr_todo(),
+            };
             fn_body = make::block_expr(vec![], Some(placeholder_expr));
         };
 
@@ -288,6 +299,7 @@ impl FunctionBuilder {
             should_focus_return_type,
             visibility,
             is_async,
+            target_edition,
         })
     }
 
@@ -299,6 +311,8 @@ impl FunctionBuilder {
         target_module: Module,
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
+        let target_edition = target_module.krate().edition(ctx.db());
+
         let current_module = ctx.sema.scope(call.syntax())?.module();
         let visibility = calculate_necessary_visibility(current_module, target_module, ctx);
 
@@ -322,7 +336,11 @@ impl FunctionBuilder {
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
 
-        let placeholder_expr = make::ext::expr_todo();
+        let placeholder_expr = match ctx.config.expr_fill_default {
+            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+            ExprFillDefaultMode::Default => make::ext::expr_todo(),
+        };
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
 
         Some(Self {
@@ -336,6 +354,7 @@ impl FunctionBuilder {
             should_focus_return_type,
             visibility,
             is_async,
+            target_edition,
         })
     }
 
@@ -356,6 +375,7 @@ impl FunctionBuilder {
             self.is_async,
             false, // FIXME : const and unsafe are not handled yet.
             false,
+            false,
         )
         .clone_for_update();
 
@@ -372,14 +392,14 @@ impl FunctionBuilder {
                 // Focus the return type if there is one
                 match ret_type {
                     Some(ret_type) => {
-                        edit.add_placeholder_snippet(cap, ret_type.clone());
+                        edit.add_placeholder_snippet(cap, ret_type);
                     }
                     None => {
-                        edit.add_placeholder_snippet(cap, tail_expr.clone());
+                        edit.add_placeholder_snippet(cap, tail_expr);
                     }
                 }
             } else {
-                edit.add_placeholder_snippet(cap, tail_expr.clone());
+                edit.add_placeholder_snippet(cap, tail_expr);
             }
         }
 
@@ -425,6 +445,7 @@ fn make_fn_body_as_new_function(
     ctx: &AssistContext<'_>,
     fn_name: &str,
     adt_info: &Option<AdtInfo>,
+    edition: Edition,
 ) -> Option<ast::BlockExpr> {
     if fn_name != "new" {
         return None;
@@ -432,7 +453,11 @@ fn make_fn_body_as_new_function(
     let adt_info = adt_info.as_ref()?;
 
     let path_self = make::ext::ident_path("Self");
-    let placeholder_expr = make::ext::expr_todo();
+    let placeholder_expr = match ctx.config.expr_fill_default {
+        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+    };
     let tail_expr = if let Some(strukt) = adt_info.adt.as_struct() {
         match strukt.kind(ctx.db()) {
             StructKind::Record => {
@@ -441,7 +466,10 @@ fn make_fn_body_as_new_function(
                     .iter()
                     .map(|field| {
                         make::record_expr_field(
-                            make::name_ref(&format!("{}", field.name(ctx.db()).display(ctx.db()))),
+                            make::name_ref(&format!(
+                                "{}",
+                                field.name(ctx.db()).display(ctx.db(), edition)
+                            )),
                             Some(placeholder_expr.clone()),
                         )
                     })
@@ -456,7 +484,7 @@ fn make_fn_body_as_new_function(
                     .map(|_| placeholder_expr.clone())
                     .collect::<Vec<_>>();
 
-                make::expr_call(make::expr_path(path_self), make::arg_list(args))
+                make::expr_call(make::expr_path(path_self), make::arg_list(args)).into()
             }
             StructKind::Unit => make::expr_path(path_self),
         }
@@ -482,7 +510,7 @@ fn get_fn_target(
     target_module: Option<Module>,
     call: CallExpr,
 ) -> Option<(GeneratedFunctionTarget, FileId)> {
-    let mut file = ctx.file_id().into();
+    let mut file = ctx.vfs_file_id();
     let target = match target_module {
         Some(target_module) => {
             let (in_file, target) = next_space_for_fn_in_module(ctx.db(), target_module);
@@ -710,9 +738,9 @@ fn fn_generic_params(
     filter_unnecessary_bounds(&mut generic_params, &mut where_preds, necessary_params);
     filter_bounds_in_scope(&mut generic_params, &mut where_preds, ctx, target);
 
-    let generic_params: Vec<_> =
+    let generic_params: Vec<ast::GenericParam> =
         generic_params.into_iter().map(|it| it.node.clone_for_update()).collect();
-    let where_preds: Vec<_> =
+    let where_preds: Vec<ast::WherePred> =
         where_preds.into_iter().map(|it| it.node.clone_for_update()).collect();
 
     // 4. Rewrite paths
@@ -1023,7 +1051,7 @@ fn filter_bounds_in_scope(
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
 ///
-/// ```
+/// ```ignore
 /// let mut names: Vec<String> =
 ///     vec!["foo".into(), "foo".into(), "bar".into(), "baz".into(), "bar".into()];
 /// deduplicate_arg_names(&mut names);
@@ -1063,7 +1091,7 @@ fn fn_arg_name(sema: &Semantics<'_, RootDatabase>, arg_expr: &ast::Expr) -> Stri
                 .filter_map(ast::NameRef::cast)
                 .filter(|name| name.ident_token().is_some())
                 .last()?;
-            if let Some(NameRefClass::Definition(Definition::Const(_) | Definition::Static(_))) =
+            if let Some(NameRefClass::Definition(Definition::Const(_) | Definition::Static(_), _)) =
                 NameRefClass::classify(sema, &name_ref)
             {
                 return Some(name_ref.to_string().to_lowercase());
@@ -1103,7 +1131,11 @@ fn fn_arg_type(
         if ty.is_reference() || ty.is_mutable_reference() {
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
-                .map(|conversion| conversion.convert_type(ctx.db()).to_string())
+                .map(|conversion| {
+                    conversion
+                        .convert_type(ctx.db(), target_module.krate().to_display_target(ctx.db()))
+                        .to_string()
+                })
                 .or_else(|| ty.display_source_code(ctx.db(), target_module.into(), true).ok())
         } else {
             ty.display_source_code(ctx.db(), target_module.into(), true).ok()
@@ -1143,7 +1175,7 @@ fn next_space_for_fn_in_module(
     target_module: hir::Module,
 ) -> (FileId, GeneratedFunctionTarget) {
     let module_source = target_module.definition_source(db);
-    let file = module_source.file_id.original_file(db.upcast());
+    let file = module_source.file_id.original_file(db);
     let assist_item = match &module_source.value {
         hir::ModuleSource::SourceFile(it) => match it.items().last() {
             Some(last_item) => GeneratedFunctionTarget::AfterItem(last_item.syntax().clone()),
@@ -1168,7 +1200,7 @@ fn next_space_for_fn_in_module(
         }
     };
 
-    (file.file_id(), assist_item)
+    (file.file_id(db), assist_item)
 }
 
 #[derive(Clone, Copy)]
@@ -1486,7 +1518,7 @@ fn foo() {
     bar("bar")
 }
 
-fn bar(arg: &str) {
+fn bar(arg: &'static str) {
     ${0:todo!()}
 }
 "#,
@@ -2040,7 +2072,7 @@ fn bar(closure: impl Fn(i64) -> i64) {
     }
 
     #[test]
-    fn unresolveable_types_default_to_placeholder() {
+    fn unresolvable_types_default_to_placeholder() {
         check_assist(
             generate_function,
             r"
@@ -2103,7 +2135,7 @@ fn foo() {
     bar(baz(), baz(), "foo", "bar")
 }
 
-fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
+fn bar(baz_1: Baz, baz_2: Baz, arg_1: &'static str, arg_2: &'static str) {
     ${0:todo!()}
 }
 "#,
@@ -3071,7 +3103,7 @@ pub struct Foo {
     field_2: String,
 }
 impl Foo {
-    fn new(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) -> Self {
+    fn new(baz_1: Baz, baz_2: Baz, arg_1: &'static str, arg_2: &'static str) -> Self {
         ${0:Self { field_1: todo!(), field_2: todo!() }}
     }
 }

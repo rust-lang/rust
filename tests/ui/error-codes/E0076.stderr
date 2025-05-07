@@ -1,8 +1,8 @@
-error[E0076]: SIMD vector should be homogeneous
+error[E0076]: SIMD vector's only field must be an array
   --> $DIR/E0076.rs:4:1
    |
-LL | struct Bad(u16, u32, u32);
-   | ^^^^^^^^^^ SIMD elements must have the same type
+LL | struct Bad(u32);
+   | ^^^^^^^^^^ --- not an array
 
 error: aborting due to 1 previous error
 

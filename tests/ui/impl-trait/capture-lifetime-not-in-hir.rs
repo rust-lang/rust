@@ -6,13 +6,13 @@ trait Bar<'a> {
 }
 
 fn foo<'a, T: Bar<'a>>() -> impl Into<T::Assoc> {
-    //~^ ERROR [o, o]
+    //~^ ERROR ['a: o, T: o]
     // captures both T and 'a invariantly
     ()
 }
 
 fn foo2<'a, T: Bar<'a>>() -> impl Into<T::Assoc> + 'a {
-    //~^ ERROR [o, o, o]
+    //~^ ERROR ['a: o, T: o, 'a: o]
     // captures both T and 'a invariantly, and also duplicates `'a`
     // i.e. the opaque looks like `impl Into<<T as Bar<'a>>::Assoc> + 'a_duplicated`
     ()

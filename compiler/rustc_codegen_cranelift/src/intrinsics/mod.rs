@@ -1,4 +1,4 @@
-//! Codegen of intrinsics. This includes `extern "rust-intrinsic"`, `extern "platform-intrinsic"`
+//! Codegen of intrinsics. This includes functions marked with the `#[rustc_intrinsic]` attribute
 //! and LLVM intrinsics that have symbol names starting with `llvm.`.
 
 macro_rules! intrinsic_args {
@@ -19,11 +19,11 @@ mod simd;
 
 use cranelift_codegen::ir::AtomicRmwOp;
 use rustc_middle::ty;
-use rustc_middle::ty::layout::{HasParamEnv, ValidityRequirement};
-use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::GenericArgsRef;
+use rustc_middle::ty::layout::ValidityRequirement;
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::{Symbol, sym};
 
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
 use crate::cast::clif_intcast;
@@ -47,12 +47,12 @@ fn report_atomic_type_validation_error<'tcx>(
         ),
     );
     // Prevent verifier error
-    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+    fx.bcx.ins().trap(TrapCode::user(1 /* unreachable */).unwrap());
 }
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
-    let (element, count) = match layout.abi {
-        Abi::Vector { element, count } => (element, count),
+    let (element, count) = match layout.backend_repr {
+        BackendRepr::SimdVector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
@@ -328,6 +328,9 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::fabsf64 => ("fabs", 1, fx.tcx.types.f64, types::F64),
         sym::fmaf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32),
         sym::fmaf64 => ("fma", 3, fx.tcx.types.f64, types::F64),
+        // FIXME: calling `fma` from libc without FMA target feature uses expensive sofware emulation
+        sym::fmuladdf32 => ("fmaf", 3, fx.tcx.types.f32, types::F32), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f32
+        sym::fmuladdf64 => ("fma", 3, fx.tcx.types.f64, types::F64), // TODO: use cranelift intrinsic analogous to llvm.fmuladd.f64
         sym::copysignf32 => ("copysignf", 2, fx.tcx.types.f32, types::F32),
         sym::copysignf64 => ("copysign", 2, fx.tcx.types.f64, types::F64),
         sym::floorf32 => ("floorf", 1, fx.tcx.types.f32, types::F32),
@@ -336,14 +339,10 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64, types::F64),
         sym::truncf32 => ("truncf", 1, fx.tcx.types.f32, types::F32),
         sym::truncf64 => ("trunc", 1, fx.tcx.types.f64, types::F64),
-        sym::rintf32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
-        sym::rintf64 => ("rint", 1, fx.tcx.types.f64, types::F64),
+        sym::round_ties_even_f32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
+        sym::round_ties_even_f64 => ("rint", 1, fx.tcx.types.f64, types::F64),
         sym::roundf32 => ("roundf", 1, fx.tcx.types.f32, types::F32),
         sym::roundf64 => ("round", 1, fx.tcx.types.f64, types::F64),
-        sym::roundevenf32 => ("roundevenf", 1, fx.tcx.types.f32, types::F32),
-        sym::roundevenf64 => ("roundeven", 1, fx.tcx.types.f64, types::F64),
-        sym::nearbyintf32 => ("nearbyintf", 1, fx.tcx.types.f32, types::F32),
-        sym::nearbyintf64 => ("nearbyint", 1, fx.tcx.types.f64, types::F64),
         sym::sinf32 => ("sinf", 1, fx.tcx.types.f32, types::F32),
         sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
         sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
@@ -381,7 +380,7 @@ fn codegen_float_intrinsic_call<'tcx>(
 
     let layout = fx.layout_of(ty);
     let res = match intrinsic {
-        sym::fmaf32 | sym::fmaf64 => {
+        sym::fmaf32 | sym::fmaf64 | sym::fmuladdf32 | sym::fmuladdf64 => {
             CValue::by_val(fx.bcx.ins().fma(args[0], args[1], args[2]), layout)
         }
         sym::copysignf32 | sym::copysignf64 => {
@@ -395,8 +394,8 @@ fn codegen_float_intrinsic_call<'tcx>(
         | sym::ceilf64
         | sym::truncf32
         | sym::truncf64
-        | sym::nearbyintf32
-        | sym::nearbyintf64
+        | sym::round_ties_even_f32
+        | sym::round_ties_even_f64
         | sym::sqrtf32
         | sym::sqrtf64 => {
             let val = match intrinsic {
@@ -404,7 +403,9 @@ fn codegen_float_intrinsic_call<'tcx>(
                 sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
                 sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
                 sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
-                sym::nearbyintf32 | sym::nearbyintf64 => fx.bcx.ins().nearest(args[0]),
+                sym::round_ties_even_f32 | sym::round_ties_even_f64 => {
+                    fx.bcx.ins().nearest(args[0])
+                }
                 sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
                 _ => unreachable!(),
             };
@@ -446,13 +447,9 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
     match intrinsic {
         sym::abort => {
-            fx.bcx.ins().trap(TrapCode::User(0));
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+            fx.bcx.ins().trap(TrapCode::user(2).unwrap());
             return Ok(());
-        }
-        sym::likely | sym::unlikely => {
-            intrinsic_args!(fx, args => (a); intrinsic);
-
-            ret.write_cvalue(fx, a);
         }
         sym::breakpoint => {
             intrinsic_args!(fx, args => (); intrinsic);
@@ -502,7 +499,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+            let meta = if let BackendRepr::ScalarPair(_, _) = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
@@ -516,7 +513,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+            let meta = if let BackendRepr::ScalarPair(_, _) = ptr.layout().backend_repr {
                 Some(ptr.load_scalar_pair(fx).1)
             } else {
                 None
@@ -600,9 +597,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         sym::ptr_mask => {
             intrinsic_args!(fx, args => (ptr, mask); intrinsic);
+            let ptr_layout = ptr.layout();
             let ptr = ptr.load_scalar(fx);
             let mask = mask.load_scalar(fx);
-            fx.bcx.ins().band(ptr, mask);
+            let res = fx.bcx.ins().band(ptr, mask);
+            ret.write_cvalue(fx, CValue::by_val(res, ptr_layout));
         }
 
         sym::write_bytes | sym::volatile_set_memory => {
@@ -681,14 +680,17 @@ fn codegen_regular_intrinsic_call<'tcx>(
             if let Some(requirement) = requirement {
                 let do_panic = !fx
                     .tcx
-                    .check_validity_requirement((requirement, fx.param_env().and(ty)))
+                    .check_validity_requirement((
+                        requirement,
+                        ty::TypingEnv::fully_monomorphized().as_query_input(ty),
+                    ))
                     .expect("expect to have layout during codegen");
 
                 if do_panic {
                     let layout = fx.layout_of(ty);
                     let msg_str = with_no_visible_paths!({
                         with_no_trimmed_paths!({
-                            if layout.abi.is_uninhabited() {
+                            if layout.is_uninhabited() {
                                 // Use this error even for the other intrinsics as it is more precise.
                                 format!("attempted to instantiate uninhabited type `{}`", ty)
                             } else if intrinsic == sym::assert_zero_valid {
@@ -740,7 +742,11 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let const_val = fx
                 .tcx
-                .const_eval_instance(ParamEnv::reveal_all(), instance, source_info.span)
+                .const_eval_instance(
+                    ty::TypingEnv::fully_monomorphized(),
+                    instance,
+                    source_info.span,
+                )
                 .unwrap();
             let val = crate::constant::codegen_const_value(fx, const_val, ret.layout().ty);
             ret.write_cvalue(fx, val);
@@ -1024,7 +1030,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Int(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1045,7 +1051,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Uint(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1066,7 +1072,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Int(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1087,7 +1093,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Uint(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1261,6 +1267,10 @@ fn codegen_regular_intrinsic_call<'tcx>(
             );
         }
 
+        sym::cold_path => {
+            fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+        }
+
         // Unimplemented intrinsics must have a fallback body. The fallback body is obtained
         // by converting the `InstanceKind::Intrinsic` to an `InstanceKind::Item`.
         _ => {
@@ -1272,7 +1282,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     intrinsic.name,
                 );
             }
-            return Err(Instance::new(instance.def_id(), instance.args));
+            return Err(Instance::new_raw(instance.def_id(), instance.args));
         }
     }
 

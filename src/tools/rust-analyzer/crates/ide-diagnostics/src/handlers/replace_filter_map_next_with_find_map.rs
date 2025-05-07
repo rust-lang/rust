@@ -1,12 +1,12 @@
-use hir::{db::ExpandDatabase, HirFileIdExt, InFile};
+use hir::{InFile, db::ExpandDatabase};
 use ide_db::source_change::SourceChange;
+use ide_db::text_edit::TextEdit;
 use syntax::{
-    ast::{self, HasArgList},
     AstNode, TextRange,
+    ast::{self, HasArgList},
 };
-use text_edit::TextEdit;
 
-use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: replace-filter-map-next-with-find-map
 //
@@ -43,7 +43,8 @@ fn fixes(
 
     let edit = TextEdit::replace(range_to_replace, replacement);
 
-    let source_change = SourceChange::from_text_edit(d.file.original_file(ctx.sema.db), edit);
+    let source_change =
+        SourceChange::from_text_edit(d.file.original_file(ctx.sema.db).file_id(ctx.sema.db), edit);
 
     Some(vec![fix(
         "replace_with_find_map",
@@ -56,12 +57,12 @@ fn fixes(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics_with_config, check_fix},
         DiagnosticsConfig,
+        tests::{check_diagnostics_with_config, check_fix},
     };
 
     #[track_caller]
-    pub(crate) fn check_diagnostics(ra_fixture: &str) {
+    pub(crate) fn check_diagnostics(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let mut config = DiagnosticsConfig::test_sample();
         config.disabled.insert("inactive-code".to_owned());
         config.disabled.insert("E0599".to_owned());
@@ -84,7 +85,7 @@ fn foo() {
     fn replace_filter_map_next_dont_work_for_not_sized_issues_16596() {
         check_diagnostics(
             r#"
-//- minicore: iterators
+//- minicore: iterators, dispatch_from_dyn
 fn foo() {
     let mut j = [0].into_iter();
     let i: &mut dyn Iterator<Item = i32>  = &mut j;

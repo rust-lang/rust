@@ -1,9 +1,7 @@
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 //@ run-pass
 
 #![feature(gen_blocks, async_iterator)]
-#![feature(noop_waker)]
 
 // make sure that a ridiculously simple async gen fn works as an iterator.
 

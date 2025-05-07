@@ -1,12 +1,12 @@
 //! A utility module for working with threads that automatically joins threads upon drop
-//! and abstracts over operating system quality of service (QoS) APIs
+//! and abstracts over operating system quality of service (`QoS`) APIs
 //! through the concept of a “thread intent”.
 //!
 //! The intent of a thread is frozen at thread creation time,
 //! i.e. there is no API to change the intent of a thread once it has been spawned.
 //!
 //! As a system, rust-analyzer should have the property that
-//! old manual scheduling APIs are replaced entirely by QoS.
+//! old manual scheduling APIs are replaced entirely by `QoS`.
 //! To maintain this invariant, we panic when it is clear that
 //! old scheduling APIs have been used.
 //!
@@ -23,13 +23,15 @@ mod pool;
 pub use intent::ThreadIntent;
 pub use pool::Pool;
 
-pub fn spawn<F, T>(intent: ThreadIntent, f: F) -> JoinHandle<T>
+/// # Panics
+///
+/// Panics if failed to spawn the thread.
+pub fn spawn<F, T>(intent: ThreadIntent, name: String, f: F) -> JoinHandle<T>
 where
-    F: FnOnce() -> T,
-    F: Send + 'static,
+    F: (FnOnce() -> T) + Send + 'static,
     T: Send + 'static,
 {
-    Builder::new(intent).spawn(f).expect("failed to spawn thread")
+    Builder::new(intent, name).spawn(f).expect("failed to spawn thread")
 }
 
 pub struct Builder {
@@ -39,26 +41,26 @@ pub struct Builder {
 }
 
 impl Builder {
-    pub fn new(intent: ThreadIntent) -> Builder {
-        Builder { intent, inner: jod_thread::Builder::new(), allow_leak: false }
+    #[must_use]
+    pub fn new(intent: ThreadIntent, name: impl Into<String>) -> Self {
+        Self { intent, inner: jod_thread::Builder::new().name(name.into()), allow_leak: false }
     }
 
-    pub fn name(self, name: String) -> Builder {
-        Builder { inner: self.inner.name(name), ..self }
+    #[must_use]
+    pub fn stack_size(self, size: usize) -> Self {
+        Self { inner: self.inner.stack_size(size), ..self }
     }
 
-    pub fn stack_size(self, size: usize) -> Builder {
-        Builder { inner: self.inner.stack_size(size), ..self }
-    }
-
-    pub fn allow_leak(self, b: bool) -> Builder {
-        Builder { allow_leak: b, ..self }
+    /// Whether dropping should detach the thread
+    /// instead of joining it.
+    #[must_use]
+    pub fn allow_leak(self, allow_leak: bool) -> Self {
+        Self { allow_leak, ..self }
     }
 
     pub fn spawn<F, T>(self, f: F) -> std::io::Result<JoinHandle<T>>
     where
-        F: FnOnce() -> T,
-        F: Send + 'static,
+        F: (FnOnce() -> T) + Send + 'static,
         T: Send + 'static,
     {
         let inner_handle = self.inner.spawn(move || {
@@ -78,6 +80,10 @@ pub struct JoinHandle<T = ()> {
 }
 
 impl<T> JoinHandle<T> {
+    /// # Panics
+    ///
+    /// Panics if there is no thread to join.
+    #[must_use]
     pub fn join(mut self) -> T {
         self.inner.take().unwrap().join()
     }
@@ -95,6 +101,7 @@ impl<T> Drop for JoinHandle<T> {
     }
 }
 
+#[expect(clippy::min_ident_chars, reason = "trait impl")]
 impl<T> fmt::Debug for JoinHandle<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("JoinHandle { .. }")

@@ -1,9 +1,0 @@
-error[E0080]: could not evaluate static initializer
-  --> $DIR/static_mut_containing_mut_ref2.rs:8:5
-   |
-LL |     *(&mut STDERR_BUFFER_SPACE) = 42;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ modifying a static's initial value from another static's initializer
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0080`.

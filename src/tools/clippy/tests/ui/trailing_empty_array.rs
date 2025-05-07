@@ -1,41 +1,42 @@
 #![warn(clippy::trailing_empty_array)]
+#![allow(clippy::repr_packed_without_abi)]
 
 // Do lint:
 
 struct RarelyUseful {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     field: i32,
     last: [usize; 0],
 }
 
 struct OnlyField {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     first_and_last: [usize; 0],
 }
 
 struct GenericArrayType<T> {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     field: i32,
     last: [T; 0],
 }
 
 #[must_use]
 struct OnlyAnotherAttribute {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     field: i32,
     last: [usize; 0],
 }
 
 #[derive(Debug)]
 struct OnlyADeriveAttribute {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     field: i32,
     last: [usize; 0],
 }
 
 const ZERO: usize = 0;
 struct ZeroSizedWithConst {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     field: i32,
     last: [usize; ZERO],
 }
@@ -45,7 +46,7 @@ const fn compute_zero() -> usize {
     (4 + 6) - (2 * 5)
 }
 struct ZeroSizedWithConstFunction {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     field: i32,
     last: [usize; compute_zero()],
 }
@@ -54,19 +55,19 @@ const fn compute_zero_from_arg(x: usize) -> usize {
     x - 1
 }
 struct ZeroSizedWithConstFunction2 {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     field: i32,
     last: [usize; compute_zero_from_arg(1)],
 }
 
 struct ZeroSizedArrayWrapper([usize; 0]);
-//~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+//~^ trailing_empty_array
 
 struct TupleStruct(i32, [usize; 0]);
-//~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+//~^ trailing_empty_array
 
 struct LotsOfFields {
-    //~^ ERROR: trailing zero-sized array in a struct which is not marked with a `repr` attrib
+    //~^ trailing_empty_array
     f1: u32,
     f2: u32,
     f3: u32,
@@ -192,3 +193,17 @@ type C = ConstParamNoDefault<0>;
 type D = ConstParamNonZeroDefault<0>;
 
 fn main() {}
+
+#[cfg(test)]
+mod tests {
+    pub struct Friend {
+        age: u8,
+    }
+
+    #[test]
+    fn oldest_empty_is_none() {
+        struct Michael {
+            friends: [Friend; 0],
+        }
+    }
+}

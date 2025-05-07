@@ -1,6 +1,5 @@
 // Issue #117720
-
-#![feature(let_chains)]
+//@ edition: 2024
 
 fn main() {
     if let () = ()

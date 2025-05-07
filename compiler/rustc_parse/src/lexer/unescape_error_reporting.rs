@@ -4,7 +4,7 @@ use std::iter::once;
 use std::ops::Range;
 
 use rustc_errors::{Applicability, DiagCtxtHandle, ErrorGuaranteed};
-use rustc_lexer::unescape::{EscapeError, Mode};
+use rustc_literal_escaper::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
 
@@ -40,8 +40,8 @@ pub(crate) fn emit_unescape_error(
             dcx.emit_err(UnescapeError::InvalidUnicodeEscape { span: err_span, surrogate: false })
         }
         EscapeError::MoreThanOneChar => {
-            use unicode_normalization::char::is_combining_mark;
             use unicode_normalization::UnicodeNormalization;
+            use unicode_normalization::char::is_combining_mark;
             let mut sugg = None;
             let mut note = None;
 

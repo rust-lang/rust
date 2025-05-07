@@ -1,11 +1,6 @@
-//@ force-host
-//@ no-prefer-dynamic
-
 // Proc macro helper for issue #89699, used by tests/ui/proc-macro/edition-gated-async-move-
 // syntax-issue89699.rs, emitting an `async move` closure. This syntax is only available in
 // editions 2018 and up, but is used in edition 2015 in the test.
-
-#![crate_type = "proc-macro"]
 
 extern crate proc_macro;
 use proc_macro::*;

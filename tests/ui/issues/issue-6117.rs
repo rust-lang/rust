@@ -1,6 +1,5 @@
 //@ run-pass
 #![allow(dead_code)]
-//@ pretty-expanded FIXME #23616
 
 enum Either<T, U> { Left(T), Right(U) }
 

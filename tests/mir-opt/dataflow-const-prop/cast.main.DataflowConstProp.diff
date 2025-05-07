@@ -20,7 +20,7 @@
           StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
--         _4 = _1;
+-         _4 = copy _1;
 -         _3 = move _4 as u8 (IntToInt);
 +         _4 = const 257_i32;
 +         _3 = const 1_u8;

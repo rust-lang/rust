@@ -1,14 +1,14 @@
 //! Complete fields in record literals and patterns.
 use ide_db::SymbolKind;
 use syntax::{
-    ast::{self, Expr},
     SmolStr,
+    ast::{self, Expr},
 };
 
 use crate::{
-    context::{DotAccess, DotAccessExprCtx, DotAccessKind, PatternContext},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
     CompletionRelevancePostfixMatch, Completions,
+    context::{DotAccess, DotAccessExprCtx, DotAccessKind, PatternContext},
 };
 
 pub(crate) fn complete_record_pattern_fields(
@@ -73,6 +73,7 @@ pub(crate) fn complete_record_expr_fields(
                     CompletionItemKind::Snippet,
                     ctx.source_range(),
                     SmolStr::new_static(".."),
+                    ctx.edition,
                 );
                 item.insert_text(".");
                 item.add_to(acc, ctx.db);
@@ -92,7 +93,7 @@ pub(crate) fn add_default_update(
     let default_trait = ctx.famous_defs().core_default_Default();
     let impls_default_trait = default_trait
         .zip(ty.as_ref())
-        .map_or(false, |(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
+        .is_some_and(|(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
     if impls_default_trait {
         // FIXME: This should make use of scope_def like completions so we get all the other goodies
         // that is we should handle this like actually completing the default function
@@ -101,6 +102,7 @@ pub(crate) fn add_default_update(
             SymbolKind::Field,
             ctx.source_range(),
             SmolStr::new_static(completion_text),
+            ctx.edition,
         );
         let completion_text =
             completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
@@ -142,8 +144,8 @@ mod tests {
     use ide_db::SnippetCap;
 
     use crate::{
-        tests::{check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig,
+        tests::{TEST_CONFIG, check_edit, check_edit_with_config},
     };
 
     #[test]

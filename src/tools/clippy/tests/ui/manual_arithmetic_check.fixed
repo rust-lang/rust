@@ -1,0 +1,26 @@
+#![warn(clippy::implicit_saturating_sub, clippy::inverted_saturating_sub)]
+#![allow(clippy::if_same_then_else)]
+
+fn main() {
+    let a = 12u32;
+    let b = 13u32;
+    let c = 8u32;
+
+    let result = a.saturating_sub(b);
+    //~^ implicit_saturating_sub
+
+    let result = a.saturating_sub(b);
+    //~^ implicit_saturating_sub
+
+    let result = a.saturating_sub(b);
+    //~^ implicit_saturating_sub
+
+    let result = a.saturating_sub(b);
+    //~^ implicit_saturating_sub
+
+    // Should not warn!
+    let result = if a > b { a - b } else { a - c };
+
+    // Just to check it won't break clippy.
+    let result = if b > a { 0 } else { 0 };
+}

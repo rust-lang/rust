@@ -29,7 +29,7 @@
 -     bb4: {
 +         StorageLive(_3);
 +         _3 = move _2;
-+         _0 = _3 as u8 (IntToInt);
++         _0 = copy _3 as u8 (IntToInt);
 +         StorageDead(_3);
           return;
       }

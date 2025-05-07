@@ -140,6 +140,31 @@ pub macro unreachable_2021 {
     ),
 }
 
+/// Invokes a closure, aborting if the closure unwinds.
+///
+/// When compiled with aborting panics, this function is effectively a no-op.
+/// With unwinding panics, an unwind results in another call into the panic
+/// hook followed by a process abort.
+///
+/// # Notes
+///
+/// Instead of using this function, code should attempt to support unwinding.
+/// Implementing [`Drop`] allows you to restore invariants uniformly in both
+/// return and unwind paths.
+///
+/// If an unwind can lead to logical issues but not soundness issues, you
+/// should allow the unwind. Opting out of [`UnwindSafe`] indicates to your
+/// consumers that they need to consider correctness in the face of unwinds.
+///
+/// If an unwind would be unsound, then this function should be used in order
+/// to prevent unwinds. However, note that `extern "C" fn` will automatically
+/// convert unwinds to aborts, so using this function isn't necessary for FFI.
+#[unstable(feature = "abort_unwind", issue = "130338")]
+#[rustc_nounwind]
+pub fn abort_unwind<F: FnOnce() -> R, R>(f: F) -> R {
+    f()
+}
+
 /// An internal trait used by std to pass data from std to `panic_unwind` and
 /// other panic runtimes. Not intended to be stabilized any time soon, do not
 /// use.
@@ -163,4 +188,60 @@ pub unsafe trait PanicPayload: crate::fmt::Display {
     fn as_str(&mut self) -> Option<&str> {
         None
     }
+}
+
+/// Helper macro for panicking in a `const fn`.
+/// Invoke as:
+/// ```rust,ignore (just an example)
+/// core::macros::const_panic!("boring message", "flavored message {a} {b:?}", a: u32 = foo.len(), b: Something = bar);
+/// ```
+/// where the first message will be printed in const-eval,
+/// and the second message will be printed at runtime.
+// All uses of this macro are FIXME(const-hack).
+#[unstable(feature = "panic_internals", issue = "none")]
+#[doc(hidden)]
+pub macro const_panic {
+    ($const_msg:literal, $runtime_msg:literal, $($arg:ident : $ty:ty = $val:expr),* $(,)?) => {{
+        // Wrap call to `const_eval_select` in a function so that we can
+        // add the `rustc_allow_const_fn_unstable`. This is okay to do
+        // because both variants will panic, just with different messages.
+        #[rustc_allow_const_fn_unstable(const_eval_select)]
+        #[inline(always)] // inline the wrapper
+        #[track_caller]
+        const fn do_panic($($arg: $ty),*) -> ! {
+            $crate::intrinsics::const_eval_select!(
+                @capture { $($arg: $ty = $arg),* } -> !:
+                #[noinline]
+                if const #[track_caller] #[inline] { // Inline this, to prevent codegen
+                    $crate::panic!($const_msg)
+                } else #[track_caller] { // Do not inline this, it makes perf worse
+                    $crate::panic!($runtime_msg)
+                }
+            )
+        }
+
+        do_panic($($val),*)
+    }},
+    // We support leaving away the `val` expressions for *all* arguments
+    // (but not for *some* arguments, that's too tricky).
+    ($const_msg:literal, $runtime_msg:literal, $($arg:ident : $ty:ty),* $(,)?) => {
+        $crate::panic::const_panic!(
+            $const_msg,
+            $runtime_msg,
+            $($arg: $ty = $arg),*
+        )
+    },
+}
+
+/// A version of `assert` that prints a non-formatting message in const contexts.
+///
+/// See [`const_panic!`].
+#[unstable(feature = "panic_internals", issue = "none")]
+#[doc(hidden)]
+pub macro const_assert {
+    ($condition: expr, $const_msg:literal, $runtime_msg:literal, $($arg:tt)*) => {{
+        if !$crate::intrinsics::likely($condition) {
+            $crate::panic::const_panic!($const_msg, $runtime_msg, $($arg)*)
+        }
+    }}
 }

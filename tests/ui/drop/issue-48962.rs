@@ -1,6 +1,9 @@
 //@ run-pass
 #![allow(unused_must_use)]
 // Test that we are able to reinitialize box with moved referent
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
 static mut ORDER: [usize; 3] = [0, 0, 0];
 static mut INDEX: usize = 0;
 

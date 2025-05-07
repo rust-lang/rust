@@ -1,8 +1,7 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-
-#![feature(do_not_recommend)]
+//@ reference: attributes.diagnostic.do_not_recommend.intro
 
 #[diagnostic::on_unimplemented(message = "Very important message!")]
 trait TheImportantOne {}

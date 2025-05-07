@@ -31,8 +31,9 @@ fn main() {
 
     let me = Person {
         gender: gender,
+        //~^ redundant_field_names
         age: age,
-
+        //~^ redundant_field_names
         name,          //should be ok
         buzz: fizz,    //should be ok
         foo: foo::BAR, //should be ok
@@ -53,10 +54,15 @@ fn main() {
 
     // hand-written Range family structs are linted
     let _ = RangeFrom { start: start };
+    //~^ redundant_field_names
     let _ = RangeTo { end: end };
+    //~^ redundant_field_names
     let _ = Range { start: start, end: end };
+    //~^ redundant_field_names
+    //~| redundant_field_names
     let _ = RangeInclusive::new(start, end);
     let _ = RangeToInclusive { end: end };
+    //~^ redundant_field_names
 
     external! {
         let v = 1;
@@ -69,6 +75,7 @@ fn main() {
     macro_rules! internal {
         ($i:ident) => {
             let _ = S { v: v };
+            //~^ redundant_field_names
             let _ = S { $i: v };
             let _ = S { v: $i };
             let _ = S { $i: $i };
@@ -97,4 +104,5 @@ fn msrv_1_16() {
 fn msrv_1_17() {
     let start = 0;
     let _ = RangeFrom { start: start };
+    //~^ redundant_field_names
 }

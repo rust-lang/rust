@@ -1,6 +1,6 @@
 use super::TRANSMUTE_PTR_TO_PTR;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     match (from_ty.kind(), to_ty.kind()) {
         (ty::RawPtr(from_pointee_ty, from_mutbl), ty::RawPtr(to_pointee_ty, to_mutbl)) => {
@@ -27,13 +27,13 @@ pub(super) fn check<'tcx>(
                 |diag| {
                     if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         if from_mutbl == to_mutbl
-                            && to_pointee_ty.is_sized(cx.tcx, cx.param_env)
-                            && msrv.meets(msrvs::POINTER_CAST)
+                            && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
+                            && msrv.meets(cx, msrvs::POINTER_CAST)
                         {
                             diag.span_suggestion_verbose(
                                 e.span,
                                 "use `pointer::cast` instead",
-                                format!("{}.cast::<{to_pointee_ty}>()", arg.maybe_par()),
+                                format!("{}.cast::<{to_pointee_ty}>()", arg.maybe_paren()),
                                 Applicability::MaybeIncorrect,
                             );
                         } else if from_pointee_ty == to_pointee_ty
@@ -43,12 +43,12 @@ pub(super) fn check<'tcx>(
                                 _ => None,
                             }
                             && !from_pointee_ty.has_erased_regions()
-                            && msrv.meets(msrvs::POINTER_CAST_CONSTNESS)
+                            && msrv.meets(cx, msrvs::POINTER_CAST_CONSTNESS)
                         {
                             diag.span_suggestion_verbose(
                                 e.span,
                                 format!("use `pointer::{method}` instead"),
-                                format!("{}.{method}()", arg.maybe_par()),
+                                format!("{}.{method}()", arg.maybe_paren()),
                                 Applicability::MaybeIncorrect,
                             );
                         } else {

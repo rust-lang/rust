@@ -2,16 +2,14 @@
 use gccjit::FnAttribute;
 use gccjit::Function;
 #[cfg(feature = "master")]
-use rustc_attr::InlineAttr;
-use rustc_attr::InstructionSetAttr;
+use rustc_attr_parsing::InlineAttr;
+use rustc_attr_parsing::InstructionSetAttr;
 #[cfg(feature = "master")]
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty;
-use rustc_span::symbol::sym;
 
 use crate::context::CodegenCx;
-use crate::errors::TiedTargetFeatures;
-use crate::gcc_util::{check_tied_features, to_gcc_features};
+use crate::gcc_util::to_gcc_features;
 
 /// Get GCC attribute for the provided inline heuristic.
 #[cfg(feature = "master")]
@@ -22,7 +20,7 @@ fn inline_attr<'gcc, 'tcx>(
 ) -> Option<FnAttribute<'gcc>> {
     match inline {
         InlineAttr::Hint => Some(FnAttribute::Inline),
-        InlineAttr::Always => Some(FnAttribute::AlwaysInline),
+        InlineAttr::Always | InlineAttr::Force { .. } => Some(FnAttribute::AlwaysInline),
         InlineAttr::Never => {
             if cx.sess().target.arch != "amdgpu" {
                 Some(FnAttribute::NoInline)
@@ -72,26 +70,10 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
         }
     }
 
-    let function_features = codegen_fn_attrs
+    let mut function_features = codegen_fn_attrs
         .target_features
         .iter()
         .map(|features| features.name.as_str())
-        .collect::<Vec<&str>>();
-
-    if let Some(features) = check_tied_features(
-        cx.tcx.sess,
-        &function_features.iter().map(|features| (*features, true)).collect(),
-    ) {
-        let span = cx
-            .tcx
-            .get_attr(instance.def_id(), sym::target_feature)
-            .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        cx.tcx.dcx().create_err(TiedTargetFeatures { features: features.join(", "), span }).emit();
-        return;
-    }
-
-    let mut function_features = function_features
-        .iter()
         .flat_map(|feat| to_gcc_features(cx.tcx.sess, feat).into_iter())
         .chain(codegen_fn_attrs.instruction_set.iter().map(|x| match *x {
             InstructionSetAttr::ArmA32 => "-thumb-mode", // TODO(antoyo): support removing feature.

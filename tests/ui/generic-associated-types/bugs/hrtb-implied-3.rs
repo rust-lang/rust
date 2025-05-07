@@ -17,7 +17,7 @@ where
 
 fn fails(iter: &str) {
     trivial_bound(iter);
-    //~^ borrowed data escapes
+    //~^ ERROR borrowed data escapes
 }
 
 fn main() {}

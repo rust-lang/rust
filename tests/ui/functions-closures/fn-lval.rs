@@ -2,7 +2,6 @@
 
 
 
-//@ pretty-expanded FIXME #23616
 
 fn foo(_f: fn(isize) -> isize) { }
 

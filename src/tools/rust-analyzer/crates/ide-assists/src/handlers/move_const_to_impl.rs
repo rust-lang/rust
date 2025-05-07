@@ -1,8 +1,8 @@
 use hir::{AsAssocItem, AssocItemContainer, FileRange, HasCrate, HasSource};
 use ide_db::{assists::AssistId, defs::Definition, search::SearchScope};
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, AstNode},
     SyntaxKind,
+    ast::{self, AstNode, edit::IndentLevel, edit_in_place::Indent},
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -83,7 +83,7 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     }
 
     acc.add(
-        AssistId("move_const_to_impl", crate::AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("move_const_to_impl"),
         "Move const to impl block",
         const_.syntax().text_range(),
         |builder| {
@@ -104,9 +104,13 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             };
             builder.delete(range_to_delete);
 
-            let const_ref = format!("Self::{}", name.display(ctx.db()));
-            for range in usages.file_ranges().map(|it| it.range) {
-                builder.replace(range, const_ref.clone());
+            let usages = usages.iter().flat_map(|(file_id, usages)| {
+                let edition = file_id.edition(ctx.db());
+                usages.iter().map(move |usage| (edition, usage.range))
+            });
+            for (edition, range) in usages {
+                let const_ref = format!("Self::{}", name.display(ctx.db(), edition));
+                builder.replace(range, const_ref);
             }
 
             // Heuristically inserting the extracted const after the consecutive existing consts

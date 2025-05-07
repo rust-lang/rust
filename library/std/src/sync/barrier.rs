@@ -1,7 +1,5 @@
-#[cfg(test)]
-mod tests;
-
 use crate::fmt;
+// FIXME(nonpoison_mutex,nonpoison_condvar): switch to nonpoison versions once they are available
 use crate::sync::{Condvar, Mutex};
 
 /// A barrier enables multiple threads to synchronize the beginning
@@ -10,26 +8,22 @@ use crate::sync::{Condvar, Mutex};
 /// # Examples
 ///
 /// ```
-/// use std::sync::{Arc, Barrier};
+/// use std::sync::Barrier;
 /// use std::thread;
 ///
 /// let n = 10;
-/// let mut handles = Vec::with_capacity(n);
-/// let barrier = Arc::new(Barrier::new(n));
-/// for _ in 0..n {
-///     let c = Arc::clone(&barrier);
-///     // The same messages will be printed together.
-///     // You will NOT see any interleaving.
-///     handles.push(thread::spawn(move || {
-///         println!("before wait");
-///         c.wait();
-///         println!("after wait");
-///     }));
-/// }
-/// // Wait for other threads to finish.
-/// for handle in handles {
-///     handle.join().unwrap();
-/// }
+/// let barrier = Barrier::new(n);
+/// thread::scope(|s| {
+///     for _ in 0..n {
+///         // The same messages will be printed together.
+///         // You will NOT see any interleaving.
+///         s.spawn(|| {
+///             println!("before wait");
+///             barrier.wait();
+///             println!("after wait");
+///         });
+///     }
+/// });
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Barrier {
@@ -105,26 +99,22 @@ impl Barrier {
     /// # Examples
     ///
     /// ```
-    /// use std::sync::{Arc, Barrier};
+    /// use std::sync::Barrier;
     /// use std::thread;
     ///
     /// let n = 10;
-    /// let mut handles = Vec::with_capacity(n);
-    /// let barrier = Arc::new(Barrier::new(n));
-    /// for _ in 0..n {
-    ///     let c = Arc::clone(&barrier);
-    ///     // The same messages will be printed together.
-    ///     // You will NOT see any interleaving.
-    ///     handles.push(thread::spawn(move || {
-    ///         println!("before wait");
-    ///         c.wait();
-    ///         println!("after wait");
-    ///     }));
-    /// }
-    /// // Wait for other threads to finish.
-    /// for handle in handles {
-    ///     handle.join().unwrap();
-    /// }
+    /// let barrier = Barrier::new(n);
+    /// thread::scope(|s| {
+    ///     for _ in 0..n {
+    ///         // The same messages will be printed together.
+    ///         // You will NOT see any interleaving.
+    ///         s.spawn(|| {
+    ///             println!("before wait");
+    ///             barrier.wait();
+    ///             println!("after wait");
+    ///         });
+    ///     }
+    /// });
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn wait(&self) -> BarrierWaitResult {

@@ -24,3 +24,11 @@ pub fn env_var_os(name: &str) -> OsString {
 pub fn no_debug_assertions() -> bool {
     std::env::var_os("NO_DEBUG_ASSERTIONS").is_some()
 }
+
+/// A wrapper around [`std::env::set_current_dir`] which includes the directory
+/// path in the panic message.
+#[track_caller]
+pub fn set_current_dir<P: AsRef<std::path::Path>>(dir: P) {
+    std::env::set_current_dir(dir.as_ref())
+        .expect(&format!("could not set current directory to \"{}\"", dir.as_ref().display()));
+}

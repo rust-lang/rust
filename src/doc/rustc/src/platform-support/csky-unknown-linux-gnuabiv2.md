@@ -22,7 +22,7 @@ other links:
 
 ## Target maintainers
 
-* [@Dirreke](https://github.com/Dirreke)
+[@Dirreke](https://github.com/Dirreke)
 
 ## Requirements
 
@@ -36,7 +36,7 @@ If you don't already have a suitable toolchain, you can download from [here](htt
 
 ### Configure rust
 
-The target can be built by enabling it for a `rustc` build, by placing the following in `config.toml`:
+The target can be built by enabling it for a `rustc` build, by placing the following in `bootstrap.toml`:
 
 ```toml
 [build]
@@ -80,7 +80,7 @@ cd hello_world
 ```sh
 CARGO_TARGET_CSKY_UNKNOWN_LINUX_GNUABIV2_RUNNER=${QEMU_PATH}/bin/qemu-cskyv2 -L ${TOOLCHAIN_PATH}/csky-linux-gnuabiv2/libc \
 CARGO_TARGET_CSKY_UNKNOWN_LINUX_GNUABIV2_LINKER=${TOOLCHAIN_PATH}/bin/csky-linux-gnuabiv2-gcc \
-RUSTFLAGS="-C target-features=+crt-static" \
+RUSTFLAGS="-C target-feature=+crt-static" \
 cargo +stage2 run --target csky-unknown-linux-gnuabiv2
 ```
 

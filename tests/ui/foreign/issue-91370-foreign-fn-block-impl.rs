@@ -1,10 +1,11 @@
 // Regression test for issue #91370.
 
-extern {
-    //~^ `extern` blocks define existing foreign functions
+extern "C" {
+    //~^ NOTE `extern` blocks define existing foreign functions
     fn f() {
-        //~^ incorrect function inside `extern` block
-        //~| cannot have a body
+        //~^ ERROR incorrect function inside `extern` block
+        //~| NOTE cannot have a body
+        //~| NOTE for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
         impl Copy for u8 {}
     }
 }

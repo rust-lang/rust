@@ -2,16 +2,16 @@
 //
 //@ check-fail
 //@ no-auto-check-cfg
-//@ revisions: anything_else boolean
+//@ revisions: anything_else boolean_after_values
 //@ revisions: string_for_name_1 string_for_name_2 multiple_any multiple_values
 //@ revisions: multiple_values_any not_empty_any not_empty_values_any
 //@ revisions: values_any_missing_values values_any_before_ident ident_in_values_1
 //@ revisions: ident_in_values_2 unknown_meta_item_1 unknown_meta_item_2 unknown_meta_item_3
 //@ revisions: mixed_values_any mixed_any any_values giberich unterminated
-//@ revisions: none_not_empty cfg_none
+//@ revisions: none_not_empty cfg_none unsafe_attr
 //
 //@ [anything_else]compile-flags: --check-cfg=anything_else(...)
-//@ [boolean]compile-flags: --check-cfg=cfg(true)
+//@ [boolean_after_values]compile-flags: --check-cfg=cfg(values(),true)
 //@ [string_for_name_1]compile-flags: --check-cfg=cfg("NOT_IDENT")
 //@ [string_for_name_2]compile-flags: --check-cfg=cfg(foo,"NOT_IDENT",bar)
 //@ [multiple_any]compile-flags: --check-cfg=cfg(any(),any())
@@ -33,5 +33,8 @@
 //@ [cfg_none]compile-flags: --check-cfg=cfg(none())
 //@ [giberich]compile-flags: --check-cfg=cfg(...)
 //@ [unterminated]compile-flags: --check-cfg=cfg(
+//@ [unsafe_attr]compile-flags: --check-cfg=unsafe(cfg(foo))
 
 fn main() {}
+
+//~? ERROR invalid `--check-cfg` argument

@@ -45,11 +45,11 @@ $DIR/doctest.rs:
    LL|      1|//!     if *res.as_ref().unwrap_err() == *res.as_ref().unwrap_err() {
    LL|      1|//!         println!("{:?}", res);
    LL|      1|//!     }
-                   ^0
+                  ^0
    LL|      1|//!     if *res.as_ref().unwrap_err() == *res.as_ref().unwrap_err() {
    LL|      1|//!         res = Ok(1);
    LL|      1|//!     }
-                   ^0
+                  ^0
    LL|      1|//!     res = Ok(0);
    LL|       |//! }
    LL|       |//! // need to be explicit because rustdoc cant infer the return type
@@ -58,21 +58,21 @@ $DIR/doctest.rs:
    LL|       |//!
    LL|       |//! doctest with custom main:
    LL|       |//! ```
-   LL|      1|//! fn some_func() {
-   LL|      1|//!     println!("called some_func()");
-   LL|      1|//! }
-   LL|       |//!
-   LL|       |//! #[derive(Debug)]
-   LL|       |//! struct SomeError;
+   LL|       |//! fn some_func() {
+   LL|       |//!     println!("called some_func()");
+   LL|       |//! }
+   LL|      1|//!
+   LL|      1|//! #[derive(Debug)]
+   LL|      1|//! struct SomeError;
    LL|       |//!
    LL|       |//! extern crate doctest_crate;
    LL|       |//!
-   LL|      1|//! fn doctest_main() -> Result<(), SomeError> {
+   LL|       |//! fn doctest_main() -> Result<(), SomeError> {
    LL|      1|//!     some_func();
    LL|      1|//!     doctest_crate::fn_run_in_doctests(2);
    LL|      1|//!     Ok(())
    LL|      1|//! }
-   LL|       |//!
+   LL|      1|//!
    LL|       |//! // this `main` is not shown as covered, as it clashes with all the other
    LL|       |//! // `main` functions that were automatically generated for doctests
    LL|       |//! fn main() -> Result<(), SomeError> {

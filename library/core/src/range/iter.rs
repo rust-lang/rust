@@ -2,7 +2,7 @@ use crate::iter::{
     FusedIterator, Step, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
 };
 use crate::num::NonZero;
-use crate::range::{legacy, Range, RangeFrom, RangeInclusive};
+use crate::range::{Range, RangeFrom, RangeInclusive, legacy};
 
 /// By-value [`Range`] iterator.
 #[unstable(feature = "new_range_api", issue = "125687")]

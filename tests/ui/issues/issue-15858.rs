@@ -1,4 +1,6 @@
 //@ run-pass
+// FIXME(static_mut_refs): this could use an atomic
+#![allow(static_mut_refs)]
 static mut DROP_RAN: bool = false;
 
 trait Bar {

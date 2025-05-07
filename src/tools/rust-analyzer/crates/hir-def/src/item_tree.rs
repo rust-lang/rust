@@ -40,31 +40,27 @@ use std::{
     fmt::{self, Debug},
     hash::{Hash, Hasher},
     ops::{Index, Range},
+    sync::OnceLock,
 };
 
 use ast::{AstNode, StructKind};
-use base_db::CrateId;
-use either::Either;
-use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
+use base_db::Crate;
+use hir_expand::{
+    ExpandTo, HirFileId, InFile,
+    attrs::RawAttrs,
+    mod_path::{ModPath, PathKind},
+    name::Name,
+};
 use intern::{Interned, Symbol};
 use la_arena::{Arena, Idx, RawIdx};
-use once_cell::sync::OnceCell;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
-use span::{AstIdNode, FileAstId, SyntaxContextId};
+use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::never;
-use syntax::{ast, match_ast, SyntaxKind};
+use syntax::{SyntaxKind, ast, match_ast};
 use triomphe::Arc;
 
-use crate::{
-    attr::Attrs,
-    db::DefDatabase,
-    generics::GenericParams,
-    path::{GenericArgs, ImportAlias, ModPath, Path, PathKind},
-    type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
-    visibility::{RawVisibility, VisibilityExplicitness},
-    BlockId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
-};
+use crate::{BlockId, Lookup, attr::Attrs, db::DefDatabase};
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct RawVisibilityId(u32);
@@ -101,16 +97,15 @@ pub struct ItemTree {
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
         let _p = tracing::info_span!("file_item_tree_query", ?file_id).entered();
-        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
-
-        let syntax = db.parse_or_expand(file_id);
+        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
         let ctx = lower::Ctx::new(db, file_id);
+        let syntax = db.parse_or_expand(file_id);
         let mut top_attrs = None;
         let mut item_tree = match_ast! {
             match syntax {
                 ast::SourceFile(file) => {
-                    top_attrs = Some(RawAttrs::new(db.upcast(), &file, ctx.span_map()));
+                    top_attrs = Some(RawAttrs::new(db, &file, ctx.span_map()));
                     ctx.lower_module_items(&file)
                 },
                 ast::MacroItems(items) => {
@@ -152,10 +147,10 @@ impl ItemTree {
 
     pub(crate) fn block_item_tree_query(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
         let _p = tracing::info_span!("block_item_tree_query", ?block).entered();
-        static EMPTY: OnceCell<Arc<ItemTree>> = OnceCell::new();
+        static EMPTY: OnceLock<Arc<ItemTree>> = OnceLock::new();
 
         let loc = block.lookup(db);
-        let block = loc.ast_id.to_node(db.upcast());
+        let block = loc.ast_id.to_node(db);
 
         let ctx = lower::Ctx::new(db, loc.ast_id.file_id);
         let mut item_tree = ctx.lower_block(&block);
@@ -183,8 +178,8 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: CrateId) -> Attrs {
-        Attrs::filter(
+    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
+        Attrs::expand_cfg_attr(
             db,
             krate,
             self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&RawAttrs::EMPTY).clone(),
@@ -195,12 +190,28 @@ impl ItemTree {
         self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
     }
 
-    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
-        Attrs::filter(db, krate, self.raw_attrs(of).clone())
+    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: Crate, of: AttrOwner) -> Attrs {
+        Attrs::expand_cfg_attr(db, krate, self.raw_attrs(of).clone())
     }
 
-    pub fn pretty_print(&self, db: &dyn DefDatabase) -> String {
-        pretty::print_item_tree(db, self)
+    /// Returns a count of a few, expensive items.
+    ///
+    /// For more detail, see [`ItemTreeDataStats`].
+    pub fn item_tree_stats(&self) -> ItemTreeDataStats {
+        match self.data {
+            Some(ref data) => ItemTreeDataStats {
+                traits: data.traits.len(),
+                impls: data.impls.len(),
+                mods: data.mods.len(),
+                macro_calls: data.macro_calls.len(),
+                macro_rules: data.macro_rules.len(),
+            },
+            None => ItemTreeDataStats::default(),
+        }
+    }
+
+    pub fn pretty_print(&self, db: &dyn DefDatabase, edition: Edition) -> String {
+        pretty::print_item_tree(db, self, edition)
     }
 
     fn data(&self) -> &ItemTreeData {
@@ -212,7 +223,10 @@ impl ItemTree {
     }
 
     fn shrink_to_fit(&mut self) {
-        if let Some(data) = &mut self.data {
+        let ItemTree { top_level, attrs, data } = self;
+        top_level.shrink_to_fit();
+        attrs.shrink_to_fit();
+        if let Some(data) = data {
             let ItemTreeData {
                 uses,
                 extern_crates,
@@ -309,6 +323,15 @@ struct ItemTreeData {
     vis: ItemVisibilities,
 }
 
+#[derive(Default, Debug, Eq, PartialEq)]
+pub struct ItemTreeDataStats {
+    pub traits: usize,
+    pub impls: usize,
+    pub mods: usize,
+    pub macro_calls: usize,
+    pub macro_rules: usize,
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum AttrOwner {
     /// Attributes on an item.
@@ -317,10 +340,8 @@ pub enum AttrOwner {
     TopLevel,
 
     Variant(FileItemTreeId<Variant>),
+    // while not relevant to early name resolution, fields can contain visibility
     Field(FieldParent, ItemTreeFieldId),
-    Param(FileItemTreeId<Function>, ItemTreeParamId),
-    TypeOrConstParamData(GenericModItem, LocalTypeOrConstParamId),
-    LifetimeParamData(GenericModItem, LocalLifetimeParamId),
 }
 
 impl AttrOwner {
@@ -333,10 +354,9 @@ impl AttrOwner {
 pub enum FieldParent {
     Struct(FileItemTreeId<Struct>),
     Union(FileItemTreeId<Union>),
-    Variant(FileItemTreeId<Variant>),
+    EnumVariant(FileItemTreeId<Variant>),
 }
 
-pub type ItemTreeParamId = Idx<Param>;
 pub type ItemTreeFieldId = Idx<Field>;
 
 macro_rules! from_attrs {
@@ -362,9 +382,6 @@ pub trait ItemTreeNode: Clone {
     /// Looks up an instance of `Self` in an item tree.
     fn lookup(tree: &ItemTree, index: Idx<Self>) -> &Self;
     fn attr_owner(id: FileItemTreeId<Self>) -> AttrOwner;
-}
-pub trait GenericsItemTreeNode: ItemTreeNode {
-    fn generic_params(&self) -> &Interned<GenericParams>;
 }
 
 pub struct FileItemTreeId<N>(Idx<N>);
@@ -418,7 +435,7 @@ pub struct TreeId {
 }
 
 impl TreeId {
-    pub(crate) fn new(file: HirFileId, block: Option<BlockId>) -> Self {
+    pub fn new(file: HirFileId, block: Option<BlockId>) -> Self {
         Self { file, block }
     }
 
@@ -492,21 +509,11 @@ impl<N> Hash for ItemTreeId<N> {
 }
 
 macro_rules! mod_items {
-    ( $( $typ:ident $(<$generic_params:ident>)? in $fld:ident -> $ast:ty ),+ $(,)? ) => {
+    ( $( $typ:ident in $fld:ident -> $ast:ty ),+ $(,)? ) => {
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
         pub enum ModItem {
             $(
                 $typ(FileItemTreeId<$typ>),
-            )+
-        }
-
-        #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-        pub enum GenericModItem {
-            $(
-                $(
-                    #[cfg_attr(ignore_fragment, $generic_params)]
-                    $typ(FileItemTreeId<$typ>),
-                )?
             )+
         }
 
@@ -518,52 +525,12 @@ macro_rules! mod_items {
             }
         }
 
-        impl GenericModItem {
-            pub fn ast_id(&self, tree: &ItemTree) -> FileAstId<ast::AnyHasGenericParams> {
-                match self {
-                    $(
-                        $(
-                            #[cfg_attr(ignore_fragment, $generic_params)]
-                            GenericModItem::$typ(it) => tree[it.index()].ast_id().upcast(),
-                        )?
-                    )+
-                }
-            }
-        }
-
-        impl From<GenericModItem> for ModItem {
-            fn from(id: GenericModItem) -> ModItem {
-                match id {
-                    $(
-                        $(
-                            #[cfg_attr(ignore_fragment, $generic_params)]
-                            GenericModItem::$typ(id) => ModItem::$typ(id),
-                        )?
-                    )+
-                }
-            }
-        }
-
-        impl From<GenericModItem> for AttrOwner {
-            fn from(t: GenericModItem) -> AttrOwner {
-                AttrOwner::ModItem(t.into())
-            }
-        }
-
         $(
             impl From<FileItemTreeId<$typ>> for ModItem {
                 fn from(id: FileItemTreeId<$typ>) -> ModItem {
                     ModItem::$typ(id)
                 }
             }
-            $(
-                #[cfg_attr(ignore_fragment, $generic_params)]
-                impl From<FileItemTreeId<$typ>> for GenericModItem {
-                    fn from(id: FileItemTreeId<$typ>) -> GenericModItem {
-                        GenericModItem::$typ(id)
-                    }
-                }
-            )?
         )+
 
         $(
@@ -590,14 +557,6 @@ macro_rules! mod_items {
                     &self.data().$fld[index]
                 }
             }
-
-            $(
-                impl GenericsItemTreeNode for $typ {
-                    fn generic_params(&self) -> &Interned<GenericParams> {
-                        &self.$generic_params
-                    }
-                }
-            )?
         )+
     };
 }
@@ -606,16 +565,16 @@ mod_items! {
     Use in uses -> ast::Use,
     ExternCrate in extern_crates -> ast::ExternCrate,
     ExternBlock in extern_blocks -> ast::ExternBlock,
-    Function<explicit_generic_params> in functions -> ast::Fn,
-    Struct<generic_params> in structs -> ast::Struct,
-    Union<generic_params> in unions -> ast::Union,
-    Enum<generic_params> in enums -> ast::Enum,
+    Function in functions -> ast::Fn,
+    Struct in structs -> ast::Struct,
+    Union in unions -> ast::Union,
+    Enum in enums -> ast::Enum,
     Const in consts -> ast::Const,
     Static in statics -> ast::Static,
-    Trait<generic_params> in traits -> ast::Trait,
-    TraitAlias<generic_params> in trait_aliases -> ast::TraitAlias,
-    Impl<generic_params> in impls -> ast::Impl,
-    TypeAlias<generic_params> in type_aliases -> ast::TypeAlias,
+    Trait in traits -> ast::Trait,
+    TraitAlias in trait_aliases -> ast::TraitAlias,
+    Impl in impls -> ast::Impl,
+    TypeAlias in type_aliases -> ast::TypeAlias,
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
     MacroRules in macro_rules -> ast::MacroRules,
@@ -626,9 +585,9 @@ impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         static VIS_PUB: RawVisibility = RawVisibility::Public;
-        static VIS_PRIV_IMPLICIT: OnceCell<RawVisibility> = OnceCell::new();
-        static VIS_PRIV_EXPLICIT: OnceCell<RawVisibility> = OnceCell::new();
-        static VIS_PUB_CRATE: OnceCell<RawVisibility> = OnceCell::new();
+        static VIS_PRIV_IMPLICIT: OnceLock<RawVisibility> = OnceLock::new();
+        static VIS_PRIV_EXPLICIT: OnceLock<RawVisibility> = OnceLock::new();
+        static VIS_PUB_CRATE: OnceLock<RawVisibility> = OnceLock::new();
 
         match index {
             RawVisibilityId::PRIV_IMPLICIT => VIS_PRIV_IMPLICIT.get_or_init(|| {
@@ -691,22 +650,50 @@ pub struct UseTree {
     kind: UseTreeKind,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImportAlias {
+    /// Unnamed alias, as in `use Foo as _;`
+    Underscore,
+    /// Named alias
+    Alias(Name),
+}
+
+impl ImportAlias {
+    pub fn display(&self, edition: Edition) -> impl fmt::Display + '_ {
+        ImportAliasDisplay { value: self, edition }
+    }
+}
+
+struct ImportAliasDisplay<'a> {
+    value: &'a ImportAlias,
+    edition: Edition,
+}
+
+impl fmt::Display for ImportAliasDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.value {
+            ImportAlias::Underscore => f.write_str("_"),
+            ImportAlias::Alias(name) => fmt::Display::fmt(&name.display_no_db(self.edition), f),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum UseTreeKind {
-    /// ```
+    /// ```ignore
     /// use path::to::Item;
     /// use path::to::Item as Renamed;
     /// use path::to::Trait as _;
     /// ```
     Single { path: Interned<ModPath>, alias: Option<ImportAlias> },
 
-    /// ```
+    /// ```ignore
     /// use *;  // (invalid, but can occur in nested tree)
     /// use path::*;
     /// ```
     Glob { path: Option<Interned<ModPath>> },
 
-    /// ```
+    /// ```ignore
     /// use prefix::{self, Item, ...};
     /// ```
     Prefixed { prefix: Option<Interned<ModPath>>, list: Box<[UseTree]> },
@@ -731,37 +718,13 @@ pub struct ExternBlock {
 pub struct Function {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub explicit_generic_params: Interned<GenericParams>,
-    pub abi: Option<Symbol>,
-    pub params: Box<[Param]>,
-    pub ret_type: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Fn>,
-    pub(crate) flags: FnFlags,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Param {
-    pub type_ref: Option<Interned<TypeRef>>,
-}
-
-bitflags::bitflags! {
-    #[derive(Debug, Clone, Copy, Eq, PartialEq, Default)]
-    pub(crate) struct FnFlags: u8 {
-        const HAS_SELF_PARAM = 1 << 0;
-        const HAS_BODY = 1 << 1;
-        const HAS_DEFAULT_KW = 1 << 2;
-        const HAS_CONST_KW = 1 << 3;
-        const HAS_ASYNC_KW = 1 << 4;
-        const HAS_UNSAFE_KW = 1 << 5;
-        const IS_VARARGS = 1 << 6;
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Struct {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
     pub fields: Box<[Field]>,
     pub shape: FieldsShape,
     pub ast_id: FileAstId<ast::Struct>,
@@ -771,7 +734,6 @@ pub struct Struct {
 pub struct Union {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
     pub fields: Box<[Field]>,
     pub ast_id: FileAstId<ast::Union>,
 }
@@ -780,7 +742,6 @@ pub struct Union {
 pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
     pub variants: Range<FileItemTreeId<Variant>>,
     pub ast_id: FileAstId<ast::Enum>,
 }
@@ -800,12 +761,38 @@ pub enum FieldsShape {
     Unit,
 }
 
+/// Visibility of an item, not yet resolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RawVisibility {
+    /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
+    /// equivalent to `pub(self)`.
+    Module(Interned<ModPath>, VisibilityExplicitness),
+    /// `pub`.
+    Public,
+}
+
+/// Whether the item was imported through an explicit `pub(crate) use` or just a `use` without
+/// visibility.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum VisibilityExplicitness {
+    Explicit,
+    Implicit,
+}
+
+impl VisibilityExplicitness {
+    pub fn is_explicit(&self) -> bool {
+        matches!(self, Self::Explicit)
+    }
+}
+
+// FIXME: Remove this from item tree?
 /// A single field of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
     pub name: Name,
-    pub type_ref: Interned<TypeRef>,
     pub visibility: RawVisibilityId,
+    // FIXME: Not an item tree property
+    pub is_unsafe: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -813,17 +800,13 @@ pub struct Const {
     /// `None` for `const _: () = ();`
     pub name: Option<Name>,
     pub visibility: RawVisibilityId,
-    pub type_ref: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Const>,
-    pub has_body: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Static {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub mutable: bool,
-    pub type_ref: Interned<TypeRef>,
     pub ast_id: FileAstId<ast::Static>,
 }
 
@@ -831,9 +814,6 @@ pub struct Static {
 pub struct Trait {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
-    pub is_auto: bool,
-    pub is_unsafe: bool,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Trait>,
 }
@@ -842,17 +822,11 @@ pub struct Trait {
 pub struct TraitAlias {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    pub generic_params: Interned<GenericParams>,
     pub ast_id: FileAstId<ast::TraitAlias>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Impl {
-    pub generic_params: Interned<GenericParams>,
-    pub target_trait: Option<Interned<TraitRef>>,
-    pub self_ty: Interned<TypeRef>,
-    pub is_negative: bool,
-    pub is_unsafe: bool,
     pub items: Box<[AssocItem]>,
     pub ast_id: FileAstId<ast::Impl>,
 }
@@ -861,10 +835,6 @@ pub struct Impl {
 pub struct TypeAlias {
     pub name: Name,
     pub visibility: RawVisibilityId,
-    /// Bounds on the type alias itself. Only valid in trait declarations, eg. `type Assoc: Copy;`.
-    pub bounds: Box<[Interned<TypeBound>]>,
-    pub generic_params: Interned<GenericParams>,
-    pub type_ref: Option<Interned<TypeRef>>,
     pub ast_id: FileAstId<ast::TypeAlias>,
 }
 
@@ -890,7 +860,7 @@ pub struct MacroCall {
     pub path: Interned<ModPath>,
     pub ast_id: FileAstId<ast::MacroCall>,
     pub expand_to: ExpandTo,
-    pub ctxt: SyntaxContextId,
+    pub ctxt: SyntaxContext,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -918,7 +888,7 @@ impl Use {
     ) -> ast::UseTree {
         // Re-lower the AST item and get the source map.
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
-        let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
+        let ast = InFile::new(file_id, self.ast_id).to_node(db);
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
         let (_, source_map) = lower::lower_use_tree(db, ast_use_tree, &mut |range| {
             db.span_map(file_id).span_for_range(range).ctx
@@ -935,7 +905,7 @@ impl Use {
     ) -> Arena<ast::UseTree> {
         // Re-lower the AST item and get the source map.
         // Note: The AST unwraps are fine, since if they fail we should have never obtained `index`.
-        let ast = InFile::new(file_id, self.ast_id).to_node(db.upcast());
+        let ast = InFile::new(file_id, self.ast_id).to_node(db);
         let ast_use_tree = ast.use_tree().expect("missing `use_tree`");
         lower::lower_use_tree(db, ast_use_tree, &mut |range| {
             db.span_map(file_id).span_for_range(range).ctx
@@ -962,6 +932,11 @@ impl UseTree {
         mut cb: impl FnMut(Idx<ast::UseTree>, ModPath, ImportKind, Option<ImportAlias>),
     ) {
         self.expand_impl(None, &mut cb)
+    }
+
+    /// The [`UseTreeKind`] of this `UseTree`.
+    pub fn kind(&self) -> &UseTreeKind {
+        &self.kind
     }
 
     fn expand_impl(

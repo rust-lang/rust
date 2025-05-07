@@ -16,13 +16,13 @@ fn main() {
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         let _x = p.x;
         //~^ NOTE: Capturing p[(0, 0)] -> ByValue
         //~| NOTE: p[] captured as ByValue here
         println!("{:?}", p);
-        //~^ NOTE: Capturing p[] -> ImmBorrow
+        //~^ NOTE: Capturing p[] -> Immutable
         //~| NOTE: Min Capture p[] -> ByValue
         //~| NOTE: p[] used here
     };

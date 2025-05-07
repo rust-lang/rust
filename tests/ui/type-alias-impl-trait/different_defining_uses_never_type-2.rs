@@ -2,6 +2,7 @@
 
 type Tait<'a> = impl Sized + 'a;
 
+#[define_opaque(Tait)]
 fn foo<'a, 'b>() -> Tait<'a> {
     if false {
         if { return } {
@@ -11,7 +12,6 @@ fn foo<'a, 'b>() -> Tait<'a> {
     }
     let x: Tait<'a> = ();
     x
-    //~^ ERROR concrete type differs from previous defining opaque type use
 }
 
 fn main() {}

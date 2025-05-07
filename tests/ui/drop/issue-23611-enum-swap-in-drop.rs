@@ -1,5 +1,7 @@
 //@ run-pass
 #![allow(non_upper_case_globals)]
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
 
 // Issue 23611: this test is ensuring that, for an instance `X` of the
 // enum `E`, if you swap in a different variant during the execution
@@ -187,7 +189,6 @@ pub mod d {
     pub fn max_width() -> u32 {
         unsafe {
             (mem::size_of_val(&trails) * 8) as u32
-            //~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
         }
     }
 

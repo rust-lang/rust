@@ -16,15 +16,7 @@ error[E0605]: non-primitive cast: `usize` as `Foo`
 LL |     let _: [u8; (N / 2) as Foo] = [0; (N / 2) as usize];
    |                 ^^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
-error: unconstrained opaque type
-  --> $DIR/opaque_type.rs:4:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0308, E0605.
 For more information about an error, try `rustc --explain E0308`.

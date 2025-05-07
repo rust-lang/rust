@@ -94,7 +94,7 @@ impl<'data> BorrowedBuf<'data> {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked(..self.filled);
-            MaybeUninit::slice_assume_init_ref(buf)
+            buf.assume_init_ref()
         }
     }
 
@@ -104,7 +104,27 @@ impl<'data> BorrowedBuf<'data> {
         // SAFETY: We only slice the filled part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.get_unchecked_mut(..self.filled);
-            MaybeUninit::slice_assume_init_mut(buf)
+            buf.assume_init_mut()
+        }
+    }
+
+    /// Returns a shared reference to the filled portion of the buffer with its original lifetime.
+    #[inline]
+    pub fn into_filled(self) -> &'data [u8] {
+        // SAFETY: We only slice the filled part of the buffer, which is always valid
+        unsafe {
+            let buf = self.buf.get_unchecked(..self.filled);
+            buf.assume_init_ref()
+        }
+    }
+
+    /// Returns a mutable reference to the filled portion of the buffer with its original lifetime.
+    #[inline]
+    pub fn into_filled_mut(self) -> &'data mut [u8] {
+        // SAFETY: We only slice the filled part of the buffer, which is always valid
+        unsafe {
+            let buf = self.buf.get_unchecked_mut(..self.filled);
+            buf.assume_init_mut()
         }
     }
 
@@ -213,7 +233,7 @@ impl<'a> BorrowedCursor<'a> {
         // SAFETY: We only slice the initialized part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.buf.get_unchecked(self.buf.filled..self.buf.init);
-            MaybeUninit::slice_assume_init_ref(buf)
+            buf.assume_init_ref()
         }
     }
 
@@ -223,7 +243,7 @@ impl<'a> BorrowedCursor<'a> {
         // SAFETY: We only slice the initialized part of the buffer, which is always valid
         unsafe {
             let buf = self.buf.buf.get_unchecked_mut(self.buf.filled..self.buf.init);
-            MaybeUninit::slice_assume_init_mut(buf)
+            buf.assume_init_mut()
         }
     }
 
@@ -324,7 +344,7 @@ impl<'a> BorrowedCursor<'a> {
 
         // SAFETY: we do not de-initialize any of the elements of the slice
         unsafe {
-            MaybeUninit::copy_from_slice(&mut self.as_mut()[..buf.len()], buf);
+            self.as_mut()[..buf.len()].write_copy_of_slice(buf);
         }
 
         // SAFETY: We just added the entire contents of buf to the filled section.

@@ -24,7 +24,7 @@ LL | |     T: Anything<'b>,
    = note: defining type: no_relationships_late::<'?1, T>
 
 error: lifetime may not live long enough
-  --> $DIR/projection-one-region-trait-bound-closure.rs:37:39
+  --> $DIR/projection-one-region-trait-bound-closure.rs:37:5
    |
 LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                          --  -- lifetime `'b` defined here
@@ -32,9 +32,12 @@ LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                          lifetime `'a` defined here
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&'?6 ()>`, which makes the generic argument `&'?6 ()` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 note: external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:47:29
@@ -62,7 +65,7 @@ LL | |     'a: 'a,
    = note: defining type: no_relationships_early::<'?1, '?2, T>
 
 error: lifetime may not live long enough
-  --> $DIR/projection-one-region-trait-bound-closure.rs:47:39
+  --> $DIR/projection-one-region-trait-bound-closure.rs:47:5
    |
 LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                           --  -- lifetime `'b` defined here
@@ -70,9 +73,12 @@ LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                           lifetime `'a` defined here
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Cell<&'?7 ()>`, which makes the generic argument `&'?7 ()` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 note: external requirements
   --> $DIR/projection-one-region-trait-bound-closure.rs:60:29

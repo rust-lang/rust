@@ -17,21 +17,21 @@
       let mut _15: <B as std::ptr::Pointee>::Metadata;
   
       bb0: {
-          _4 = _1 as *const T (PtrToPtr);
-          _5 = PtrMetadata(_4);
-          _6 = _1 as *const (&A, [T]) (PtrToPtr);
--         _7 = PtrMetadata(_6);
-+         _7 = PtrMetadata(_1);
-          _8 = _2 as *const (T, B) (PtrToPtr);
-          _9 = PtrMetadata(_8);
-          _10 = _2 as *const (T, A) (PtrToPtr);
--         _11 = PtrMetadata(_10);
-+         _11 = PtrMetadata(_2);
-          _12 = _3 as *mut A (PtrToPtr);
-          _13 = PtrMetadata(_12);
-          _14 = _3 as *mut B (PtrToPtr);
--         _15 = PtrMetadata(_14);
-+         _15 = PtrMetadata(_3);
+          _4 = copy _1 as *const T (PtrToPtr);
+          _5 = PtrMetadata(copy _4);
+          _6 = copy _1 as *const (&A, [T]) (PtrToPtr);
+-         _7 = PtrMetadata(copy _6);
++         _7 = PtrMetadata(copy _1);
+          _8 = copy _2 as *const (T, B) (PtrToPtr);
+          _9 = PtrMetadata(copy _8);
+          _10 = copy _2 as *const (T, A) (PtrToPtr);
+-         _11 = PtrMetadata(copy _10);
++         _11 = PtrMetadata(copy _2);
+          _12 = copy _3 as *mut A (PtrToPtr);
+          _13 = PtrMetadata(copy _12);
+          _14 = copy _3 as *mut B (PtrToPtr);
+-         _15 = PtrMetadata(copy _14);
++         _15 = PtrMetadata(copy _3);
           return;
       }
   }

@@ -68,7 +68,7 @@ LL | fn wants_write(_: impl Write) {}
 help: consider changing this borrow's mutability
    |
 LL |     wants_write(&mut [0u8][..]);
-   |                 ~~~~
+   |                  +++
 
 error: aborting due to 4 previous errors
 

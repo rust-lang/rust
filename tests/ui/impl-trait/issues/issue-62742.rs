@@ -2,7 +2,8 @@ use std::marker::PhantomData;
 
 fn a() {
     WrongImpl::foo(0i32);
-    //~^ ERROR overflow assigning `_` to `[_]`
+    //~^ ERROR the function or associated item `foo` exists for struct `SafeImpl<_, RawImpl<_>>`, but its trait bounds were not satisfied
+    //~| ERROR the trait bound `RawImpl<_>: Raw<_>` is not satisfied
 }
 
 fn b() {

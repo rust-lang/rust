@@ -1,5 +1,5 @@
 error[E0381]: used binding `x` isn't initialized
-  --> $DIR/type-check-5.rs:15:28
+  --> $DIR/type-check-5.rs:12:28
    |
 LL |         let x: u64;
    |             - binding declared here but left uninitialized
@@ -12,7 +12,7 @@ LL |         let x: u64 = 42;
    |                    ++++
 
 error[E0381]: used binding `y` isn't initialized
-  --> $DIR/type-check-5.rs:18:9
+  --> $DIR/type-check-5.rs:15:9
    |
 LL |         let mut y: u64;
    |             ----- binding declared here but left uninitialized
@@ -25,7 +25,7 @@ LL |         let mut y: u64 = 42;
    |                        ++++
 
 error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
-  --> $DIR/type-check-5.rs:24:13
+  --> $DIR/type-check-5.rs:21:13
    |
 LL |         let v: Vec<u64> = vec![0, 1, 2];
    |             ^ not mutable

@@ -29,7 +29,7 @@
       }
   
       bb2: {
-          switchInt(((_2 as A).0: i32)) -> [1: bb6, 2: bb5, otherwise: bb1];
+          switchInt(copy ((_2 as A).0: i32)) -> [1: bb6, 2: bb5, otherwise: bb1];
       }
   
       bb3: {

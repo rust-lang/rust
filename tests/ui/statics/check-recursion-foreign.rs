@@ -4,7 +4,6 @@
 
 //@ aux-build:check_static_recursion_foreign_helper.rs
 
-//@ pretty-expanded FIXME #23616
 
 extern crate check_static_recursion_foreign_helper;
 

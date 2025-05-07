@@ -17,3 +17,5 @@
 //@ [bad] compile-flags: -Zcoverage-options=bad
 
 fn main() {}
+
+//[bad]~? ERROR incorrect value `bad` for unstable option `coverage-options`

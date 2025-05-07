@@ -75,7 +75,7 @@ or if you modify a test file to add a test case.
 > _Note:_ This command may update more files than you intended. In that case
 > only commit the files you wanted to update.
 
-[UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#guide-to-the-ui-tests
+[UI test]: https://rustc-dev-guide.rust-lang.org/tests/adding.html#ui-test-walkthrough
 
 ## `cargo dev`
 
@@ -147,7 +147,7 @@ following:
 
 First, take note of the toolchain
 [override](https://rust-lang.github.io/rustup/overrides.html) in
-`/rust-toolchain`. We will use this override to install Clippy into the right
+`/rust-toolchain.toml`. We will use this override to install Clippy into the right
 toolchain.
 
 > Tip: You can view the active toolchain for the current directory with `rustup

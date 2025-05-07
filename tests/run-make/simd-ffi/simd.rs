@@ -8,7 +8,7 @@
 
 #[derive(Copy)]
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4([f32; 4]);
 
 extern "C" {
     #[link_name = "llvm.sqrt.v4f32"]
@@ -21,11 +21,11 @@ pub fn foo(x: f32x4) -> f32x4 {
 
 #[derive(Copy)]
 #[repr(simd)]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct i32x4([i32; 4]);
 
 extern "C" {
     // _mm_sll_epi32
-    #[cfg(any(target_arch = "x86", target_arch = "x86-64"))]
+    #[cfg(all(any(target_arch = "x86", target_arch = "x86-64"), target_feature = "sse2"))]
     #[link_name = "llvm.x86.sse2.psll.d"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 
@@ -38,15 +38,13 @@ extern "C" {
     #[link_name = "llvm.aarch64.neon.maxs.v4i32"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 
-    // just some substitute foreign symbol, not an LLVM intrinsic; so
-    // we still get type checking, but not as detailed as (ab)using
-    // LLVM.
+    // Use a generic LLVM intrinsic to do type checking on other platforms
     #[cfg(not(any(
-        target_arch = "x86",
-        target_arch = "x86-64",
+        all(any(target_arch = "x86", target_arch = "x86-64"), target_feature = "sse2"),
         target_arch = "arm",
         target_arch = "aarch64"
     )))]
+    #[link_name = "llvm.smax.v4i32"]
     fn integer(a: i32x4, b: i32x4) -> i32x4;
 }
 
@@ -62,6 +60,8 @@ pub trait Copy {}
 
 impl Copy for f32 {}
 impl Copy for i32 {}
+impl Copy for [f32; 4] {}
+impl Copy for [i32; 4] {}
 
 pub mod marker {
     pub use Copy;

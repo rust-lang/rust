@@ -1,5 +1,3 @@
-#![feature(const_mut_refs)]
-
 enum E {
     A(u8),
     B,
@@ -12,7 +10,7 @@ const _: u8 = {
     e = E::B;
     unsafe { *p }
     //~^ ERROR evaluation of constant value failed
-    //~| uninitialized
+    //~| NOTE uninitialized
 };
 
 fn main() {}

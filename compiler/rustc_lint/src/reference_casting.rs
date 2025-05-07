@@ -6,6 +6,7 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::lints::InvalidReferenceCastingDiag;
+use crate::utils::peel_casts;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -54,8 +55,6 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
                 && let Some(ty_has_interior_mutability) =
                     is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
             {
-                let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
-
                 cx.emit_span_lint(
                     INVALID_REFERENCE_CASTING,
                     expr.span,
@@ -170,7 +169,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
         // Except on the presence of non concrete skeleton types (ie generics)
         // since there is no way to make it safe for arbitrary types.
         let inner_ty_has_interior_mutability =
-            !inner_ty.is_freeze(cx.tcx, cx.param_env) && inner_ty.has_concrete_skeleton();
+            !inner_ty.is_freeze(cx.tcx, cx.typing_env()) && inner_ty.has_concrete_skeleton();
         (!need_check_freeze || !inner_ty_has_interior_mutability)
             .then_some(inner_ty_has_interior_mutability)
     } else {
@@ -236,47 +235,4 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
     } else {
         None
     }
-}
-
-fn peel_casts<'tcx>(cx: &LateContext<'tcx>, mut e: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, bool) {
-    let mut gone_trough_unsafe_cell_raw_get = false;
-
-    loop {
-        e = e.peel_blocks();
-        // <expr> as ...
-        e = if let ExprKind::Cast(expr, _) = e.kind {
-            expr
-        // <expr>.cast(), <expr>.cast_mut() or <expr>.cast_const()
-        } else if let ExprKind::MethodCall(_, expr, [], _) = e.kind
-            && let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-            && matches!(
-                cx.tcx.get_diagnostic_name(def_id),
-                Some(sym::ptr_cast | sym::const_ptr_cast | sym::ptr_cast_mut | sym::ptr_cast_const)
-            )
-        {
-            expr
-        // ptr::from_ref(<expr>), UnsafeCell::raw_get(<expr>) or mem::transmute<_, _>(<expr>)
-        } else if let ExprKind::Call(path, [arg]) = e.kind
-            && let ExprKind::Path(ref qpath) = path.kind
-            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && matches!(
-                cx.tcx.get_diagnostic_name(def_id),
-                Some(sym::ptr_from_ref | sym::unsafe_cell_raw_get | sym::transmute)
-            )
-        {
-            if cx.tcx.is_diagnostic_item(sym::unsafe_cell_raw_get, def_id) {
-                gone_trough_unsafe_cell_raw_get = true;
-            }
-            arg
-        } else {
-            let init = cx.expr_or_init(e);
-            if init.hir_id != e.hir_id {
-                init
-            } else {
-                break;
-            }
-        };
-    }
-
-    (e, gone_trough_unsafe_cell_raw_get)
 }

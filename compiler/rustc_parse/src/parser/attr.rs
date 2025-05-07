@@ -1,15 +1,17 @@
 use rustc_ast as ast;
-use rustc_ast::attr;
-use rustc_ast::token::{self, Delimiter};
+use rustc_ast::token::{self, MetaVarKind};
+use rustc_ast::tokenstream::ParserRange;
+use rustc_ast::{Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult};
-use rustc_span::symbol::kw;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, ParserRange, PathStyle};
-use crate::{errors, fluent_generated as fluent, maybe_whole};
+use super::{
+    AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle, Trailing, UsePreAttrPos,
+};
+use crate::{errors, exp, fluent_generated as fluent};
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -44,8 +46,8 @@ impl<'a> Parser<'a> {
         let mut just_parsed_doc_comment = false;
         let start_pos = self.num_bump_calls;
         loop {
-            let attr = if self.check(&token::Pound) {
-                let prev_outer_attr_sp = outer_attrs.last().map(|attr| attr.span);
+            let attr = if self.check(exp!(Pound)) {
+                let prev_outer_attr_sp = outer_attrs.last().map(|attr: &Attribute| attr.span);
 
                 let inner_error_reason = if just_parsed_doc_comment {
                     Some(InnerAttrForbiddenReason::AfterOuterDocComment {
@@ -73,6 +75,7 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Line => OuterAttributeType::DocComment,
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
+                        true,
                     ) {
                         err.note(fluent::parse_note);
                         err.span_suggestion_verbose(
@@ -124,19 +127,40 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         // Attributes can't have attributes of their own [Editor's note: not with that attitude]
         self.collect_tokens_no_attrs(|this| {
-            assert!(this.eat(&token::Pound), "parse_attribute called in non-attribute position");
+            let pound_hi = this.token.span.hi();
+            assert!(this.eat(exp!(Pound)), "parse_attribute called in non-attribute position");
 
+            let not_lo = this.token.span.lo();
             let style =
-                if this.eat(&token::Not) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
+                if this.eat(exp!(Bang)) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
 
-            this.expect(&token::OpenDelim(Delimiter::Bracket))?;
+            let mut bracket_res = this.expect(exp!(OpenBracket));
+            // If `#!` is not followed by `[`
+            if let Err(err) = &mut bracket_res
+                && style == ast::AttrStyle::Inner
+                && pound_hi == not_lo
+            {
+                err.note(
+                    "the token sequence `#!` here looks like the start of \
+                    a shebang interpreter directive but it is not",
+                );
+                err.help(
+                    "if you meant this to be a shebang interpreter directive, \
+                    move it to the very start of the file",
+                );
+            }
+            bracket_res?;
             let item = this.parse_attr_item(ForceCollect::No)?;
-            this.expect(&token::CloseDelim(Delimiter::Bracket))?;
+            this.expect(exp!(CloseBracket))?;
             let attr_sp = lo.to(this.prev_token.span);
 
             // Emit error if inner attribute is encountered and forbidden.
             if style == ast::AttrStyle::Inner {
-                this.error_on_forbidden_inner_attr(attr_sp, inner_parse_policy);
+                this.error_on_forbidden_inner_attr(
+                    attr_sp,
+                    inner_parse_policy,
+                    item.is_valid_for_outer_style(),
+                );
             }
 
             Ok(attr::mk_attr_from_item(&self.psess.attr_id_generator, item, None, style, attr_sp))
@@ -148,6 +172,7 @@ impl<'a> Parser<'a> {
         err: &mut Diag<'_>,
         span: Span,
         attr_type: OuterAttributeType,
+        suggest_to_outer: bool,
     ) -> Option<Span> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         let lo = span.lo()
@@ -182,16 +207,18 @@ impl<'a> Parser<'a> {
                 // FIXME(#100717)
                 err.arg("item", item.kind.descr());
                 err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
-                err.span_suggestion_verbose(
-                    replacement_span,
-                    fluent::parse_sugg_change_inner_to_outer,
-                    match attr_type {
-                        OuterAttributeType::Attribute => "",
-                        OuterAttributeType::DocBlockComment => "*",
-                        OuterAttributeType::DocComment => "/",
-                    },
-                    rustc_errors::Applicability::MachineApplicable,
-                );
+                if suggest_to_outer {
+                    err.span_suggestion_verbose(
+                        replacement_span,
+                        fluent::parse_sugg_change_inner_to_outer,
+                        match attr_type {
+                            OuterAttributeType::Attribute => "",
+                            OuterAttributeType::DocBlockComment => "*",
+                            OuterAttributeType::DocComment => "/",
+                        },
+                        rustc_errors::Applicability::MachineApplicable,
+                    );
+                }
                 return None;
             }
             Err(item_err) => {
@@ -202,7 +229,12 @@ impl<'a> Parser<'a> {
         Some(replacement_span)
     }
 
-    pub(super) fn error_on_forbidden_inner_attr(&self, attr_sp: Span, policy: InnerAttrPolicy) {
+    pub(super) fn error_on_forbidden_inner_attr(
+        &self,
+        attr_sp: Span,
+        policy: InnerAttrPolicy,
+        suggest_to_outer: bool,
+    ) {
         if let InnerAttrPolicy::Forbidden(reason) = policy {
             let mut diag = match reason.as_ref().copied() {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
@@ -236,6 +268,7 @@ impl<'a> Parser<'a> {
                     &mut diag,
                     attr_sp,
                     OuterAttributeType::Attribute,
+                    suggest_to_outer,
                 )
                 .is_some()
             {
@@ -255,14 +288,19 @@ impl<'a> Parser<'a> {
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
-        maybe_whole!(self, NtMeta, |attr| attr.into_inner());
+        if let Some(item) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Meta { .. }),
+            |this| this.parse_attr_item(force_collect),
+        ) {
+            return Ok(item);
+        }
 
-        let do_parse = |this: &mut Self, _empty_attrs| {
-            let is_unsafe = this.eat_keyword(kw::Unsafe);
+        // Attr items don't have attributes.
+        self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _empty_attrs| {
+            let is_unsafe = this.eat_keyword(exp!(Unsafe));
             let unsafety = if is_unsafe {
                 let unsafe_span = this.prev_token.span;
-                this.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
-                this.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+                this.expect(exp!(OpenParen))?;
                 ast::Safety::Unsafe(unsafe_span)
             } else {
                 ast::Safety::Default
@@ -271,12 +309,14 @@ impl<'a> Parser<'a> {
             let path = this.parse_path(PathStyle::Mod)?;
             let args = this.parse_attr_args()?;
             if is_unsafe {
-                this.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+                this.expect(exp!(CloseParen))?;
             }
-            Ok((ast::AttrItem { unsafety, path, args, tokens: None }, false))
-        };
-        // Attr items don't have attributes.
-        self.collect_tokens_trailing_token(AttrWrapper::empty(), force_collect, do_parse)
+            Ok((
+                ast::AttrItem { unsafety, path, args, tokens: None },
+                Trailing::No,
+                UsePreAttrPos::No,
+            ))
+        })
     }
 
     /// Parses attributes that appear after the opening of an item. These should
@@ -289,7 +329,7 @@ impl<'a> Parser<'a> {
         loop {
             let start_pos = self.num_bump_calls;
             // Only try to parse if it is an inner attribute (has `!`).
-            let attr = if self.check(&token::Pound) && self.look_ahead(1, |t| t == &token::Not) {
+            let attr = if self.check(exp!(Pound)) && self.look_ahead(1, |t| t == &token::Bang) {
                 Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style == ast::AttrStyle::Inner {
@@ -309,8 +349,8 @@ impl<'a> Parser<'a> {
             };
             if let Some(attr) = attr {
                 // If we are currently capturing tokens (i.e. we are within a call to
-                // `Parser::collect_tokens_trailing_tokens`) record the token positions of this
-                // inner attribute, for possible later processing in a `LazyAttrTokenStream`.
+                // `Parser::collect_tokens`) record the token positions of this inner attribute,
+                // for possible later processing in a `LazyAttrTokenStream`.
                 if let Capturing::Yes = self.capture_state.capturing {
                     let end_pos = self.num_bump_calls;
                     let parser_range = ParserRange(start_pos..end_pos);
@@ -337,9 +377,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
-    pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
-        let cfg_predicate = self.parse_meta_item(AllowLeadingUnsafe::No)?;
-        self.expect(&token::Comma)?;
+    pub fn parse_cfg_attr(
+        &mut self,
+    ) -> PResult<'a, (ast::MetaItemInner, Vec<(ast::AttrItem, Span)>)> {
+        let cfg_predicate = self.parse_meta_item_inner()?;
+        self.expect(exp!(Comma))?;
 
         // Presumably, the majority of the time there will only be one attr.
         let mut expanded_attrs = Vec::with_capacity(1);
@@ -347,7 +389,7 @@ impl<'a> Parser<'a> {
             let lo = self.token.span;
             let item = self.parse_attr_item(ForceCollect::Yes)?;
             expanded_attrs.push((item, lo.to(self.prev_token.span)));
-            if !self.eat(&token::Comma) {
+            if !self.eat(exp!(Comma)) {
                 break;
             }
         }
@@ -356,12 +398,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `COMMASEP(meta_item_inner)`.
-    pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, ThinVec<ast::NestedMetaItem>> {
+    pub(crate) fn parse_meta_seq_top(&mut self) -> PResult<'a, ThinVec<ast::MetaItemInner>> {
         // Presumably, the majority of the time there will only be one attr.
         let mut nmis = ThinVec::with_capacity(1);
         while self.token != token::Eof {
             nmis.push(self.parse_meta_item_inner()?);
-            if !self.eat(&token::Comma) {
+            if !self.eat(exp!(Comma)) {
                 break;
             }
         }
@@ -378,30 +420,28 @@ impl<'a> Parser<'a> {
         &mut self,
         unsafe_allowed: AllowLeadingUnsafe,
     ) -> PResult<'a, ast::MetaItem> {
-        // We can't use `maybe_whole` here because it would bump in the `None`
-        // case, which we don't want.
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtMeta(attr_item) = &**nt
-        {
-            match attr_item.meta(attr_item.path.span) {
-                Some(meta) => {
-                    self.bump();
-                    return Ok(meta);
-                }
-                None => self.unexpected()?,
-            }
+        if let Some(MetaVarKind::Meta { has_meta_form }) = self.token.is_metavar_seq() {
+            return if has_meta_form {
+                let attr_item = self
+                    .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
+                        this.parse_attr_item(ForceCollect::No)
+                    })
+                    .unwrap();
+                Ok(attr_item.meta(attr_item.path.span).unwrap())
+            } else {
+                self.unexpected_any()
+            };
         }
 
         let lo = self.token.span;
         let is_unsafe = if unsafe_allowed == AllowLeadingUnsafe::Yes {
-            self.eat_keyword(kw::Unsafe)
+            self.eat_keyword(exp!(Unsafe))
         } else {
             false
         };
         let unsafety = if is_unsafe {
             let unsafe_span = self.prev_token.span;
-            self.psess.gated_spans.gate(sym::unsafe_attributes, unsafe_span);
-            self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
+            self.expect(exp!(OpenParen))?;
 
             ast::Safety::Unsafe(unsafe_span)
         } else {
@@ -411,7 +451,7 @@ impl<'a> Parser<'a> {
         let path = self.parse_path(PathStyle::Mod)?;
         let kind = self.parse_meta_item_kind()?;
         if is_unsafe {
-            self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+            self.expect(exp!(CloseParen))?;
         }
         let span = lo.to(self.prev_token.span);
 
@@ -419,9 +459,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
-        Ok(if self.eat(&token::Eq) {
+        Ok(if self.eat(exp!(Eq)) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_meta_item_lit()?)
-        } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
+        } else if self.check(exp!(OpenParen)) {
             let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
             ast::MetaItemKind::List(list)
         } else {
@@ -434,20 +474,20 @@ impl<'a> Parser<'a> {
     /// ```ebnf
     /// MetaItemInner = UNSUFFIXED_LIT | MetaItem ;
     /// ```
-    fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
+    pub fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::MetaItemInner> {
         match self.parse_unsuffixed_meta_item_lit() {
-            Ok(lit) => return Ok(ast::NestedMetaItem::Lit(lit)),
+            Ok(lit) => return Ok(ast::MetaItemInner::Lit(lit)),
             Err(err) => err.cancel(), // we provide a better error below
         }
 
         match self.parse_meta_item(AllowLeadingUnsafe::No) {
-            Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
+            Ok(mi) => return Ok(ast::MetaItemInner::MetaItem(mi)),
             Err(err) => err.cancel(), // we provide a better error below
         }
 
         let mut err = errors::InvalidMetaItem {
             span: self.token.span,
-            token: self.token.clone(),
+            descr: super::token_descr(&self.token),
             quote_ident_sugg: None,
         };
 

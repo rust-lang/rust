@@ -1,5 +1,3 @@
-#![feature(const_mut_refs)]
-
 static OH_NO: &mut i32 = &mut 42; //~ ERROR mutable references are not allowed
 fn main() {
     assert_eq!(*OH_NO, 42);

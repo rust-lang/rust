@@ -105,7 +105,12 @@ def_regs! {
         #error = ["SP", "SPL", "SPH"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r0", "r1", "r1r0"] =>
-            "r0 and r1 are not available due to an issue in LLVM",
+            "LLVM reserves r0 (scratch register) and r1 (zero register)",
+            // If this changes within LLVM, the compiler might use the registers
+            // in the future. This must be reflected in the set of clobbered
+            // registers, else the clobber ABI implementation is *unsound*, as
+            // this generates invalid code (register is not marked as clobbered
+            // but may change the register content).
     }
 }
 

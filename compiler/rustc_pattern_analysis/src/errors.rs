@@ -1,4 +1,4 @@
-use rustc_errors::{Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
+use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
@@ -55,11 +55,7 @@ pub struct Overlap {
 }
 
 impl Subdiagnostic for Overlap {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let Overlap { span, range } = self;
 
         // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`
@@ -103,11 +99,7 @@ pub struct GappedRange {
 }
 
 impl Subdiagnostic for GappedRange {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let GappedRange { span, gap, first_range } = self;
 
         // FIXME(mejrs) unfortunately `#[derive(LintDiagnostic)]`

@@ -6,7 +6,7 @@ trait Foo {
 
 impl Foo for () {
     fn foo<U: Debug>(&self, _: &U) { }
-    //~^ Error method `foo` has incompatible signature for trait
+    //~^ ERROR method `foo` has incompatible signature for trait
 }
 
 trait Bar {
@@ -15,7 +15,7 @@ trait Bar {
 
 impl Bar for () {
     fn bar(&self, _: &impl Debug) { }
-    //~^ Error method `bar` has incompatible signature for trait
+    //~^ ERROR method `bar` has incompatible signature for trait
 }
 
 trait Baz {
@@ -24,7 +24,7 @@ trait Baz {
 
 impl Baz for () {
     fn baz<T: Debug>(&self, _: &impl Debug, _: &T) { }
-    //~^ Error method `baz` has incompatible signature for trait
+    //~^ ERROR method `baz` has incompatible signature for trait
 }
 
 // With non-local trait (#49841):
@@ -35,7 +35,7 @@ struct X;
 
 impl Hash for X {
     fn hash(&self, hasher: &mut impl Hasher) {}
-    //~^ Error method `hash` has incompatible signature for trait
+    //~^ ERROR method `hash` has incompatible signature for trait
 }
 
 fn main() {}

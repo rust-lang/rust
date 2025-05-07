@@ -3,12 +3,13 @@ use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_lint::Level;
 use rustc_middle::bug;
-use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -21,8 +22,10 @@ use rustc_pattern_analysis::rustc::{
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{sym, Span};
+use rustc_span::{Ident, Span};
+use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::instrument;
 
 use crate::errors::*;
@@ -38,7 +41,8 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
         tcx,
         thir: &*thir,
         typeck_results,
-        param_env: tcx.param_env(def_id),
+        // FIXME(#132279): We're in a body, should handle opaques.
+        typing_env: ty::TypingEnv::non_body_analysis(tcx, def_id),
         lint_level: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
         pattern_arena: &pattern_arena,
@@ -79,11 +83,13 @@ enum LetSource {
     IfLetGuard,
     LetElse,
     WhileLet,
+    Else,
+    ElseIfLet,
 }
 
 struct MatchVisitor<'p, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
     thir: &'p Thir<'tcx>,
     lint_level: HirId,
@@ -129,18 +135,23 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 // Give a specific `let_source` for the condition.
                 let let_source = match ex.span.desugaring_kind() {
                     Some(DesugaringKind::WhileLoop) => LetSource::WhileLet,
-                    _ => LetSource::IfLet,
+                    _ => match self.let_source {
+                        LetSource::Else => LetSource::ElseIfLet,
+                        _ => LetSource::IfLet,
+                    },
                 };
                 self.with_let_source(let_source, |this| this.visit_expr(&self.thir[cond]));
                 self.with_let_source(LetSource::None, |this| {
                     this.visit_expr(&this.thir[then]);
-                    if let Some(else_) = else_opt {
-                        this.visit_expr(&this.thir[else_]);
-                    }
                 });
+                if let Some(else_) = else_opt {
+                    self.with_let_source(LetSource::Else, |this| {
+                        this.visit_expr(&this.thir[else_])
+                    });
+                }
                 return;
             }
-            ExprKind::Match { scrutinee, scrutinee_hir_id: _, box ref arms, match_source } => {
+            ExprKind::Match { scrutinee, box ref arms, match_source } => {
                 self.check_match(scrutinee, arms, match_source, ex.span);
             }
             ExprKind::Let { box ref pat, expr } => {
@@ -314,9 +325,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Use { source }
             | PointerCoercion { source, .. }
             | PlaceTypeAscription { source, .. }
-            | ValueTypeAscription { source, .. } => {
-                self.is_known_valid_scrutinee(&self.thir()[*source])
-            }
+            | ValueTypeAscription { source, .. }
+            | PlaceUnwrapUnsafeBinder { source }
+            | ValueUnwrapUnsafeBinder { source }
+            | WrapUnsafeBinder { source } => self.is_known_valid_scrutinee(&self.thir()[*source]),
 
             // These diverge.
             Become { .. } | Break { .. } | Continue { .. } | Return { .. } => true,
@@ -325,7 +337,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             Assign { .. } | AssignOp { .. } | InlineAsm { .. } | Let { .. } => true,
 
             // These evaluate to a value.
-            AddressOf { .. }
+            RawBorrow { .. }
             | Adt { .. }
             | Array { .. }
             | Binary { .. }
@@ -333,6 +345,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Borrow { .. }
             | Box { .. }
             | Call { .. }
+            | ByUse { .. }
             | Closure { .. }
             | ConstBlock { .. }
             | ConstParam { .. }
@@ -374,7 +387,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         PatCtxt {
             tcx: self.tcx,
             typeck_results: self.typeck_results,
-            param_env: self.param_env,
+            typing_env: self.typing_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
             dropless_arena: self.dropless_arena,
             match_lint_level: self.lint_level,
@@ -391,18 +404,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         arms: &[MatchArm<'p, 'tcx>],
         scrut_ty: Ty<'tcx>,
     ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
-        let pattern_complexity_limit =
-            get_limit_size(cx.tcx.hir().krate_attrs(), cx.tcx.sess, sym::pattern_complexity);
-        let report = rustc_pattern_analysis::rustc::analyze_match(
-            &cx,
-            &arms,
-            scrut_ty,
-            pattern_complexity_limit,
-        )
-        .map_err(|err| {
-            self.error = Err(err);
-            err
-        })?;
+        let report =
+            rustc_pattern_analysis::rustc::analyze_match(&cx, &arms, scrut_ty).map_err(|err| {
+                self.error = Err(err);
+                err
+            })?;
 
         // Warn unreachable subpatterns.
         for (arm, is_useful) in report.arm_usefulness.iter() {
@@ -413,7 +419,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 // Emit lints in the order in which they occur in the file.
                 redundant_subpats.sort_unstable_by_key(|(pat, _)| pat.data().span);
                 for (pat, explanation) in redundant_subpats {
-                    report_unreachable_pattern(cx, arm.arm_data, pat, &explanation)
+                    report_unreachable_pattern(cx, arm.arm_data, pat, &explanation, None)
                 }
             }
         }
@@ -474,7 +480,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             hir::MatchSource::ForLoopDesugar
             | hir::MatchSource::Postfix
             | hir::MatchSource::Normal
-            | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
+            | hir::MatchSource::FormatArgs => {
+                let is_match_arm =
+                    matches!(source, hir::MatchSource::Postfix | hir::MatchSource::Normal);
+                report_arm_reachability(&cx, &report, is_match_arm);
+            }
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
             hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar(_) => {}
@@ -569,9 +579,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // and we shouldn't lint.
             // For let guards inside a match, prefixes might use bindings of the match pattern,
             // so can't always be moved out.
+            // For `else if let`, an extra indentation level would be required to move the bindings.
             // FIXME: Add checking whether the bindings are actually used in the prefix,
             // and lint if they are not.
-            if !matches!(self.let_source, LetSource::WhileLet | LetSource::IfLetGuard) {
+            if !matches!(
+                self.let_source,
+                LetSource::WhileLet | LetSource::IfLetGuard | LetSource::ElseIfLet
+            ) {
                 // Emit the lint
                 let prefix = &chain_refutabilities[..until];
                 let span_start = prefix[0].unwrap().0;
@@ -626,7 +640,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     ) -> Result<RefutableFlag, ErrorGuaranteed> {
         let (cx, report) = self.analyze_binding(pat, Refutable, scrut)?;
         // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
-        report_arm_reachability(&cx, &report);
+        report_arm_reachability(&cx, &report, false);
         // If the list of witnesses is empty, the match is exhaustive, i.e. the `if let` pattern is
         // irrefutable.
         Ok(if report.non_exhaustiveness_witnesses.is_empty() { Irrefutable } else { Refutable })
@@ -653,12 +667,27 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut let_suggestion = None;
         let mut misc_suggestion = None;
         let mut interpreted_as_const = None;
+        let mut interpreted_as_const_sugg = None;
 
-        if let PatKind::Constant { .. }
-        | PatKind::AscribeUserType {
-            subpattern: box Pat { kind: PatKind::Constant { .. }, .. },
-            ..
-        } = pat.kind
+        // These next few matches want to peek through `AscribeUserType` to see
+        // the underlying pattern.
+        let mut unpeeled_pat = pat;
+        while let PatKind::AscribeUserType { ref subpattern, .. } = unpeeled_pat.kind {
+            unpeeled_pat = subpattern;
+        }
+
+        if let PatKind::ExpandedConstant { def_id, .. } = unpeeled_pat.kind
+            && let DefKind::Const = self.tcx.def_kind(def_id)
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
+            // We filter out paths with multiple path::segments.
+            && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
+        {
+            let span = self.tcx.def_span(def_id);
+            let variable = self.tcx.item_name(def_id).to_string();
+            // When we encounter a constant as the binding name, point at the `const` definition.
+            interpreted_as_const = Some(span);
+            interpreted_as_const_sugg = Some(InterpretedAsConst { span: pat.span, variable });
+        } else if let PatKind::Constant { .. } = unpeeled_pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
             // If the pattern to match is an integer literal:
@@ -667,9 +696,6 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 misc_suggestion = Some(MiscPatternSuggestion::AttemptedIntegerLiteral {
                     start_span: pat.span.shrink_to_lo(),
                 });
-            } else if snippet.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                interpreted_as_const =
-                    Some(InterpretedAsConst { span: pat.span, variable: snippet });
             }
         }
 
@@ -706,8 +732,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 .variant(*variant_index)
                 .inhabited_predicate(self.tcx, *adt)
                 .instantiate(self.tcx, args);
-            variant_inhabited.apply(self.tcx, cx.param_env, cx.module)
-                && !variant_inhabited.apply_ignore_module(self.tcx, cx.param_env)
+            variant_inhabited.apply(self.tcx, cx.typing_env, cx.module)
+                && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env)
         } else {
             false
         };
@@ -718,7 +744,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
             inform,
             interpreted_as_const,
-            witness_1_is_privately_uninhabited: witness_1_is_privately_uninhabited.then_some(()),
+            interpreted_as_const_sugg,
+            witness_1_is_privately_uninhabited,
             _p: (),
             pattern_ty,
             let_suggestion,
@@ -745,7 +772,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
         return;
     };
 
-    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
+    let is_binding_by_move = |ty: Ty<'tcx>| !cx.tcx.type_is_copy_modulo_regions(cx.typing_env, ty);
 
     let sess = cx.tcx.sess;
 
@@ -763,7 +790,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
                 sess.dcx().emit_err(BorrowOfMovedValue {
                     binding_span: pat.span,
                     conflicts_ref,
-                    name,
+                    name: Ident::new(name, pat.span),
                     ty,
                     suggest_borrowing: Some(pat.span.shrink_to_lo()),
                 });
@@ -869,7 +896,7 @@ fn check_for_bindings_named_same_as_variants(
                     None
                 },
                 ty_path,
-                name,
+                name: Ident::new(name, pat.span),
             },
         )
     }
@@ -902,8 +929,8 @@ fn report_irrefutable_let_patterns(
     }
 
     match source {
-        LetSource::None | LetSource::PlainLet => bug!(),
-        LetSource::IfLet => emit_diag!(IrrefutableLetPatternsIfLet),
+        LetSource::None | LetSource::PlainLet | LetSource::Else => bug!(),
+        LetSource::IfLet | LetSource::ElseIfLet => emit_diag!(IrrefutableLetPatternsIfLet),
         LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
         LetSource::LetElse => emit_diag!(IrrefutableLetPatternsLetElse),
         LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
@@ -916,23 +943,36 @@ fn report_unreachable_pattern<'p, 'tcx>(
     hir_id: HirId,
     pat: &DeconstructedPat<'p, 'tcx>,
     explanation: &RedundancyExplanation<'p, 'tcx>,
+    whole_arm_span: Option<Span>,
 ) {
+    static CAP_COVERED_BY_MANY: usize = 4;
     let pat_span = pat.data().span;
     let mut lint = UnreachablePattern {
         span: Some(pat_span),
         matches_no_values: None,
+        matches_no_values_ty: **pat.ty(),
+        uninhabited_note: None,
         covered_by_catchall: None,
         covered_by_one: None,
         covered_by_many: None,
+        covered_by_many_n_more_count: 0,
+        wanted_constant: None,
+        accessible_constant: None,
+        inaccessible_constant: None,
+        pattern_let_binding: None,
+        suggest_remove: None,
     };
     match explanation.covered_by.as_slice() {
         [] => {
             // Empty pattern; we report the uninhabited type that caused the emptiness.
             lint.span = None; // Don't label the pattern itself
+            lint.uninhabited_note = Some(()); // Give a link about empty types
+            lint.matches_no_values = Some(pat_span);
+            lint.suggest_remove = whole_arm_span; // Suggest to remove the match arm
             pat.walk(&mut |subpat| {
                 let ty = **subpat.ty();
                 if cx.is_uninhabited(ty) {
-                    lint.matches_no_values = Some(UnreachableMatchesNoValues { ty });
+                    lint.matches_no_values_ty = ty;
                     false // No need to dig further.
                 } else if matches!(subpat.ctor(), Constructor::Ref | Constructor::UnionField) {
                     false // Don't explore further since they are not by-value.
@@ -942,32 +982,211 @@ fn report_unreachable_pattern<'p, 'tcx>(
             });
         }
         [covering_pat] if pat_is_catchall(covering_pat) => {
-            lint.covered_by_catchall = Some(covering_pat.data().span);
+            // A binding pattern that matches all, a single binding name.
+            let pat = covering_pat.data();
+            lint.covered_by_catchall = Some(pat.span);
+            find_fallback_pattern_typo(cx, hir_id, pat, &mut lint);
         }
         [covering_pat] => {
             lint.covered_by_one = Some(covering_pat.data().span);
         }
         covering_pats => {
+            let mut iter = covering_pats.iter();
             let mut multispan = MultiSpan::from_span(pat_span);
-            for p in covering_pats {
+            for p in iter.by_ref().take(CAP_COVERED_BY_MANY) {
                 multispan.push_span_label(
                     p.data().span,
                     fluent::mir_build_unreachable_matches_same_values,
                 );
             }
-            multispan
-                .push_span_label(pat_span, fluent::mir_build_unreachable_making_this_unreachable);
+            let remain = iter.count();
+            if remain == 0 {
+                multispan.push_span_label(
+                    pat_span,
+                    fluent::mir_build_unreachable_making_this_unreachable,
+                );
+            } else {
+                lint.covered_by_many_n_more_count = remain;
+                multispan.push_span_label(
+                    pat_span,
+                    fluent::mir_build_unreachable_making_this_unreachable_n_more,
+                );
+            }
             lint.covered_by_many = Some(multispan);
         }
     }
     cx.tcx.emit_node_span_lint(UNREACHABLE_PATTERNS, hir_id, pat_span, lint);
 }
 
+/// Detect typos that were meant to be a `const` but were interpreted as a new pattern binding.
+fn find_fallback_pattern_typo<'tcx>(
+    cx: &PatCtxt<'_, 'tcx>,
+    hir_id: HirId,
+    pat: &Pat<'tcx>,
+    lint: &mut UnreachablePattern<'_>,
+) {
+    if let Level::Allow = cx.tcx.lint_level_at_node(UNREACHABLE_PATTERNS, hir_id).level {
+        // This is because we use `with_no_trimmed_paths` later, so if we never emit the lint we'd
+        // ICE. At the same time, we don't really need to do all of this if we won't emit anything.
+        return;
+    }
+    if let PatKind::Binding { name, subpattern: None, ty, .. } = pat.kind {
+        // See if the binding might have been a `const` that was mistyped or out of scope.
+        let mut accessible = vec![];
+        let mut accessible_path = vec![];
+        let mut inaccessible = vec![];
+        let mut imported = vec![];
+        let mut imported_spans = vec![];
+        let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env);
+        let parent = cx.tcx.hir_get_parent_item(hir_id);
+
+        for item in cx.tcx.hir_crate_items(()).free_items() {
+            if let DefKind::Use = cx.tcx.def_kind(item.owner_id) {
+                // Look for consts being re-exported.
+                let item = cx.tcx.hir_expect_item(item.owner_id.def_id);
+                let hir::ItemKind::Use(path, _) = item.kind else {
+                    continue;
+                };
+                for res in &path.res {
+                    if let Res::Def(DefKind::Const, id) = res
+                        && infcx.can_eq(param_env, ty, cx.tcx.type_of(id).instantiate_identity())
+                    {
+                        if cx.tcx.visibility(id).is_accessible_from(parent, cx.tcx) {
+                            // The original const is accessible, suggest using it directly.
+                            let item_name = cx.tcx.item_name(*id);
+                            accessible.push(item_name);
+                            accessible_path.push(with_no_trimmed_paths!(cx.tcx.def_path_str(id)));
+                        } else if cx
+                            .tcx
+                            .visibility(item.owner_id)
+                            .is_accessible_from(parent, cx.tcx)
+                        {
+                            // The const is accessible only through the re-export, point at
+                            // the `use`.
+                            let ident = item.kind.ident().unwrap();
+                            imported.push(ident.name);
+                            imported_spans.push(ident.span);
+                        }
+                    }
+                }
+            }
+            if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
+                && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
+            {
+                // Look for local consts.
+                let item_name = cx.tcx.item_name(item.owner_id.into());
+                let vis = cx.tcx.visibility(item.owner_id);
+                if vis.is_accessible_from(parent, cx.tcx) {
+                    accessible.push(item_name);
+                    // FIXME: the line below from PR #135310 is a workaround for the ICE in issue
+                    // #135289, where a macro in a dependency can create unreachable patterns in the
+                    // current crate. Path trimming expects diagnostics for a typoed const, but no
+                    // diagnostics are emitted and we ICE. See
+                    // `tests/ui/resolve/const-with-typo-in-pattern-binding-ice-135289.rs` for a
+                    // test that reproduces the ICE if we don't use `with_no_trimmed_paths!`.
+                    let path = with_no_trimmed_paths!(cx.tcx.def_path_str(item.owner_id));
+                    accessible_path.push(path);
+                } else if name == item_name {
+                    // The const exists somewhere in this crate, but it can't be imported
+                    // from this pattern's scope. We'll just point at its definition.
+                    inaccessible.push(cx.tcx.def_span(item.owner_id));
+                }
+            }
+        }
+        if let Some((i, &const_name)) =
+            accessible.iter().enumerate().find(|&(_, &const_name)| const_name == name)
+        {
+            // The pattern name is an exact match, so the pattern needed to be imported.
+            lint.wanted_constant = Some(WantedConstant {
+                span: pat.span,
+                is_typo: false,
+                const_name: const_name.to_string(),
+                const_path: accessible_path[i].clone(),
+            });
+        } else if let Some(name) = find_best_match_for_name(&accessible, name, None) {
+            // The pattern name is likely a typo.
+            lint.wanted_constant = Some(WantedConstant {
+                span: pat.span,
+                is_typo: true,
+                const_name: name.to_string(),
+                const_path: name.to_string(),
+            });
+        } else if let Some(i) =
+            imported.iter().enumerate().find(|&(_, &const_name)| const_name == name).map(|(i, _)| i)
+        {
+            // The const with the exact name wasn't re-exported from an import in this
+            // crate, we point at the import.
+            lint.accessible_constant = Some(imported_spans[i]);
+        } else if let Some(name) = find_best_match_for_name(&imported, name, None) {
+            // The typoed const wasn't re-exported by an import in this crate, we suggest
+            // the right name (which will likely require another follow up suggestion).
+            lint.wanted_constant = Some(WantedConstant {
+                span: pat.span,
+                is_typo: true,
+                const_path: name.to_string(),
+                const_name: name.to_string(),
+            });
+        } else if !inaccessible.is_empty() {
+            for span in inaccessible {
+                // The const with the exact name match isn't accessible, we just point at it.
+                lint.inaccessible_constant = Some(span);
+            }
+        } else {
+            // Look for local bindings for people that might have gotten confused with how
+            // `let` and `const` works.
+            for (_, node) in cx.tcx.hir_parent_iter(hir_id) {
+                match node {
+                    hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Let(let_stmt), .. }) => {
+                        if let hir::PatKind::Binding(_, _, binding_name, _) = let_stmt.pat.kind {
+                            if name == binding_name.name {
+                                lint.pattern_let_binding = Some(binding_name.span);
+                            }
+                        }
+                    }
+                    hir::Node::Block(hir::Block { stmts, .. }) => {
+                        for stmt in *stmts {
+                            if let hir::StmtKind::Let(let_stmt) = stmt.kind {
+                                if let hir::PatKind::Binding(_, _, binding_name, _) =
+                                    let_stmt.pat.kind
+                                {
+                                    if name == binding_name.name {
+                                        lint.pattern_let_binding = Some(binding_name.span);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    hir::Node::Item(_) => break,
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
 /// Report unreachable arms, if any.
-fn report_arm_reachability<'p, 'tcx>(cx: &PatCtxt<'p, 'tcx>, report: &UsefulnessReport<'p, 'tcx>) {
+fn report_arm_reachability<'p, 'tcx>(
+    cx: &PatCtxt<'p, 'tcx>,
+    report: &UsefulnessReport<'p, 'tcx>,
+    is_match_arm: bool,
+) {
+    let sm = cx.tcx.sess.source_map();
     for (arm, is_useful) in report.arm_usefulness.iter() {
         if let Usefulness::Redundant(explanation) = is_useful {
-            report_unreachable_pattern(cx, arm.arm_data, arm.pat, explanation)
+            let hir_id = arm.arm_data;
+            let arm_span = cx.tcx.hir_span(hir_id);
+            let whole_arm_span = if is_match_arm {
+                // If the arm is followed by a comma, extend the span to include it.
+                let with_whitespace = sm.span_extend_while_whitespace(arm_span);
+                if let Some(comma) = sm.span_look_ahead(with_whitespace, ",", Some(1)) {
+                    Some(arm_span.to(comma))
+                } else {
+                    Some(arm_span)
+                }
+            } else {
+                None
+            };
+            report_unreachable_pattern(cx, hir_id, arm.pat, explanation, whole_arm_span)
         }
     }
 }
@@ -1048,13 +1267,13 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             if ty.is_ptr_sized_integral() {
                 if ty.inner() == cx.tcx.types.usize {
                     err.note(format!(
-                        "`{ty}` does not have a fixed maximum value, so half-open ranges are necessary to match \
-                             exhaustively",
+                        "`{ty}` does not have a fixed maximum value, so half-open ranges are \
+                         necessary to match exhaustively",
                     ));
                 } else if ty.inner() == cx.tcx.types.isize {
                     err.note(format!(
-                        "`{ty}` does not have fixed minimum and maximum values, so half-open ranges are necessary to match \
-                             exhaustively",
+                        "`{ty}` does not have fixed minimum and maximum values, so half-open \
+                         ranges are necessary to match exhaustively",
                     ));
                 }
             } else if ty.inner() == cx.tcx.types.str_ {
@@ -1070,8 +1289,34 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     }
 
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
+        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.typing_env) {
             err.note("references are always considered inhabited");
+        }
+    }
+
+    for &arm in arms {
+        let arm = &thir.arms[arm];
+        if let PatKind::ExpandedConstant { def_id, .. } = arm.pattern.kind
+            && !matches!(cx.tcx.def_kind(def_id), DefKind::InlineConst)
+            && let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(arm.pattern.span)
+            // We filter out paths with multiple path::segments.
+            && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
+        {
+            let const_name = cx.tcx.item_name(def_id);
+            err.span_label(
+                arm.pattern.span,
+                format!(
+                    "this pattern doesn't introduce a new catch-all binding, but rather pattern \
+                     matches against the value of constant `{const_name}`",
+                ),
+            );
+            err.span_note(cx.tcx.def_span(def_id), format!("constant `{const_name}` defined here"));
+            err.span_suggestion_verbose(
+                arm.pattern.span.shrink_to_hi(),
+                "if you meant to introduce a binding, use a different name",
+                "_var".to_string(),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 
@@ -1083,7 +1328,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             .map(|witness| cx.print_witness_pat(witness))
             .collect::<Vec<String>>()
             .join(" | ");
-        if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns {
+        if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns() {
             // Arms with a never pattern don't take a body.
             pattern
         } else {
@@ -1243,7 +1488,7 @@ fn report_adt_defined_here<'tcx>(
         return None;
     };
     let adt_def_span =
-        tcx.hir().get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
+        tcx.hir_get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
     let adt_def_span = if point_at_non_local_ty {
         adt_def_span.unwrap_or_else(|| tcx.def_span(def.did()))
     } else {

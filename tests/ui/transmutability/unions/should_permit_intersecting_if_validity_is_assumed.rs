@@ -7,11 +7,11 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_maybe_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src, { Assume::SAFETY.and(Assume::VALIDITY) }>
+        Dst: TransmuteFrom<Src, { Assume::SAFETY.and(Assume::VALIDITY) }>
     {}
 }
 
@@ -34,4 +34,19 @@ fn test() {
 
     assert::is_maybe_transmutable::<A, B>();
     assert::is_maybe_transmutable::<B, A>();
+
+    #[repr(C)]
+    struct C {
+        a: Ox00,
+        b: Ox00,
+    }
+
+    #[repr(C, align(2))]
+    struct D {
+        a: Ox00,
+    }
+
+    assert::is_maybe_transmutable::<C, D>();
+    // With Assume::VALIDITY a padding byte can hold any value.
+    assert::is_maybe_transmutable::<D, C>();
 }

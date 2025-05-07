@@ -1,6 +1,5 @@
 //@ check-pass
 #![allow(dead_code)]
-//@ pretty-expanded FIXME #23616
 
 pub mod a {
     pub struct Foo { a: usize }

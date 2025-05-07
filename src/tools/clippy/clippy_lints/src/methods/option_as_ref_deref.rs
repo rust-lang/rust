@@ -1,13 +1,13 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{match_def_path, path_to_local_id, paths, peel_blocks};
+use clippy_utils::{path_to_local_id, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::sym;
+use rustc_span::{Symbol, sym};
 
 use super::OPTION_AS_REF_DEREF;
 
@@ -18,12 +18,8 @@ pub(super) fn check(
     as_ref_recv: &hir::Expr<'_>,
     map_arg: &hir::Expr<'_>,
     is_mut: bool,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if !msrv.meets(msrvs::OPTION_AS_DEREF) {
-        return;
-    }
-
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
     let option_ty = cx.typeck_results().expr_ty(as_ref_recv);
@@ -31,28 +27,30 @@ pub(super) fn check(
         return;
     }
 
-    let deref_aliases: [&[&str]; 7] = [
-        &paths::CSTRING_AS_C_STR,
-        &paths::OS_STRING_AS_OS_STR,
-        &paths::PATH_BUF_AS_PATH,
-        &paths::STRING_AS_STR,
-        &paths::STRING_AS_MUT_STR,
-        &paths::VEC_AS_SLICE,
-        &paths::VEC_AS_MUT_SLICE,
+    let deref_aliases: [Symbol; 7] = [
+        sym::cstring_as_c_str,
+        sym::os_string_as_os_str,
+        sym::pathbuf_as_path,
+        sym::string_as_str,
+        sym::string_as_mut_str,
+        sym::vec_as_slice,
+        sym::vec_as_mut_slice,
     ];
 
     let is_deref = match map_arg.kind {
         hir::ExprKind::Path(ref expr_qpath) => {
             cx.qpath_res(expr_qpath, map_arg.hir_id)
                 .opt_def_id()
-                .map_or(false, |fun_def_id| {
+                .is_some_and(|fun_def_id| {
                     cx.tcx.is_diagnostic_item(sym::deref_method, fun_def_id)
                         || cx.tcx.is_diagnostic_item(sym::deref_mut_method, fun_def_id)
-                        || deref_aliases.iter().any(|path| match_def_path(cx, fun_def_id, path))
+                        || deref_aliases
+                            .iter()
+                            .any(|&sym| cx.tcx.is_diagnostic_item(sym, fun_def_id))
                 })
         },
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
-            let closure_body = cx.tcx.hir().body(body);
+            let closure_body = cx.tcx.hir_body(body);
             let closure_expr = peel_blocks(closure_body.value);
 
             match &closure_expr.kind {
@@ -69,7 +67,9 @@ pub(super) fn check(
                         let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap();
                         cx.tcx.is_diagnostic_item(sym::deref_method, method_did)
                             || cx.tcx.is_diagnostic_item(sym::deref_mut_method, method_did)
-                            || deref_aliases.iter().any(|path| match_def_path(cx, method_did, path))
+                            || deref_aliases
+                                .iter()
+                                .any(|&sym| cx.tcx.is_diagnostic_item(sym, method_did))
                     } else {
                         false
                     }
@@ -89,7 +89,7 @@ pub(super) fn check(
         _ => false,
     };
 
-    if is_deref {
+    if is_deref && msrv.meets(cx, msrvs::OPTION_AS_DEREF) {
         let current_method = if is_mut {
             format!(".as_mut().map({})", snippet(cx, map_arg.span, ".."))
         } else {

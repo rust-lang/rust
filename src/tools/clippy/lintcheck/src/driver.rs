@@ -1,4 +1,4 @@
-use crate::recursive::{deserialize_line, serialize_line, DriverInfo};
+use crate::recursive::{DriverInfo, deserialize_line, serialize_line};
 
 use std::io::{self, BufReader, Write};
 use std::net::TcpStream;

@@ -8,19 +8,19 @@ LL | #[cfg(all(windows))]
    = help: to override `-D warnings` add `#[allow(clippy::non_minimal_cfg)]`
 
 error: unneeded sub `cfg` when there is only one condition
-  --> tests/ui/non_minimal_cfg.rs:6:7
+  --> tests/ui/non_minimal_cfg.rs:7:7
    |
 LL | #[cfg(any(windows))]
    |       ^^^^^^^^^^^^ help: try: `windows`
 
 error: unneeded sub `cfg` when there is only one condition
-  --> tests/ui/non_minimal_cfg.rs:9:11
+  --> tests/ui/non_minimal_cfg.rs:11:11
    |
 LL | #[cfg(all(any(unix), all(not(windows))))]
    |           ^^^^^^^^^ help: try: `unix`
 
 error: unneeded sub `cfg` when there is only one condition
-  --> tests/ui/non_minimal_cfg.rs:9:22
+  --> tests/ui/non_minimal_cfg.rs:11:22
    |
 LL | #[cfg(all(any(unix), all(not(windows))))]
    |                      ^^^^^^^^^^^^^^^^^ help: try: `not(windows)`

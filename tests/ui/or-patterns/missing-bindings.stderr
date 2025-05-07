@@ -219,7 +219,6 @@ LL | |                 A(
 LL | |                     A(_, a) |
 LL | |                     B(b),
 ...  |
-LL | |
 LL | |             ) |
    | |_____________^ pattern doesn't bind `c`
 LL |               V3(c),

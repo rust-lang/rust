@@ -1,10 +1,9 @@
-use std::alloc;
 use std::alloc::Layout;
 use std::borrow::Cow;
-use std::slice;
+use std::{alloc, slice};
 
+use rustc_abi::{Align, Size};
 use rustc_middle::mir::interpret::AllocBytes;
-use rustc_target::abi::{Align, Size};
 
 /// Allocation bytes that explicitly handle the layout of the data they're storing.
 /// This is necessary to interface with native code that accesses the program store in Miri.

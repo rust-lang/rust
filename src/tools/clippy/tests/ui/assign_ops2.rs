@@ -6,24 +6,32 @@
 fn main() {
     let mut a = 5;
     a += a + 1;
-    //~^ ERROR: variable appears on both sides of an assignment operation
-    //~| NOTE: `-D clippy::misrefactored-assign-op` implied by `-D warnings`
+    //~^ misrefactored_assign_op
+
     a += 1 + a;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a -= a - 1;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a *= a * 99;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a *= 42 * a;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a /= a / 2;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a %= a % 5;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a &= a & 1;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a *= a * a;
-    //~^ ERROR: variable appears on both sides of an assignment operation
+    //~^ misrefactored_assign_op
+
     a = a * a * a;
     a = a * 42 * a;
     a = a * 2 + a;
@@ -61,8 +69,7 @@ fn cow_add_assign() {
 
     // this can be linted
     buf = buf + cows.clone();
-    //~^ ERROR: manual implementation of an assign operation
-    //~| NOTE: `-D clippy::assign-op-pattern` implied by `-D warnings`
+    //~^ assign_op_pattern
 
     // this should not as cow<str> Add is not commutative
     buf = cows + buf;

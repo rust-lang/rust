@@ -1,19 +1,19 @@
 //! A pass that eliminates branches on uninhabited or unreachable enum variants.
 
+use rustc_abi::Variants;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, BasicBlocks, Body, Local, Operand, Rvalue, StatementKind,
     TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
-use rustc_target::abi::{Abi, Variants};
+use tracing::trace;
 
-use crate::MirPass;
+use crate::patch::MirPatch;
 
-pub struct UnreachableEnumBranching;
+pub(super) struct UnreachableEnumBranching;
 
 fn get_discriminant_local(terminator: &TerminatorKind<'_>) -> Option<Local> {
     if let TerminatorKind::SwitchInt { discr: Operand::Move(p), .. } = terminator {
@@ -55,6 +55,10 @@ fn variant_discriminants<'tcx>(
     tcx: TyCtxt<'tcx>,
 ) -> FxHashSet<u128> {
     match &layout.variants {
+        Variants::Empty => {
+            // Uninhabited, no valid discriminant.
+            FxHashSet::default()
+        }
         Variants::Single { index } => {
             let mut res = FxHashSet::default();
             res.insert(
@@ -66,14 +70,14 @@ fn variant_discriminants<'tcx>(
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
-                (layout.abi != Abi::Uninhabited)
+                (!layout.is_uninhabited())
                     .then(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
             })
             .collect(),
     }
 }
 
-impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
+impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() > 0
     }
@@ -93,9 +97,7 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
 
             let Some(discriminant_ty) = get_switched_on_type(bb_data, tcx, body) else { continue };
 
-            let layout = tcx.layout_of(
-                tcx.param_env_reveal_all_normalized(body.source.def_id()).and(discriminant_ty),
-            );
+            let layout = tcx.layout_of(body.typing_env(tcx).as_query_input(discriminant_ty));
 
             let mut allowed_variants = if let Ok(layout) = layout {
                 // Find allowed variants based on uninhabited.
@@ -157,9 +159,9 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
                 };
                 true
             }
-            // If and only if there is a variant that does not have a branch set,
-            // change the current of otherwise as the variant branch and set otherwise to unreachable.
-            // It transforms following code
+            // If and only if there is a variant that does not have a branch set, change the
+            // current of otherwise as the variant branch and set otherwise to unreachable. It
+            // transforms following code
             // ```rust
             // match c {
             //     Ordering::Less => 1,
@@ -206,5 +208,9 @@ impl<'tcx> MirPass<'tcx> for UnreachableEnumBranching {
         }
 
         patch.apply(body);
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }

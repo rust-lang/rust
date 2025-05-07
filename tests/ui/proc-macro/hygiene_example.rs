@@ -1,5 +1,4 @@
 //@ check-pass
-//@ aux-build:hygiene_example_codegen.rs
 //@ aux-build:hygiene_example.rs
 
 extern crate hygiene_example;

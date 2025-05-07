@@ -38,7 +38,8 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::FnPtr(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Dynamic(_, _, _) => self.pretty_print_type(ty),
+            | ty::Dynamic(_, _, _)
+            | ty::UnsafeBinder(_) => self.pretty_print_type(ty),
 
             // Placeholders (all printed as `_` to uniformize them).
             ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) | ty::Error(_) => {
@@ -55,7 +56,7 @@ impl<'tcx> Printer<'tcx> for AbsolutePathPrinter<'tcx> {
             | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
-            ty::Alias(ty::Weak, _) => bug!("type_name: unexpected weak projection"),
+            ty::Alias(ty::Free, _) => bug!("type_name: unexpected free alias"),
             ty::Alias(ty::Inherent, _) => bug!("type_name: unexpected inherent projection"),
             ty::CoroutineWitness(..) => bug!("type_name: unexpected `CoroutineWitness`"),
         }

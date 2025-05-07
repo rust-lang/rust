@@ -26,7 +26,7 @@ fn main() {
 
     match None {
         NO_PARTIAL_EQ_NONE => println!("NO_PARTIAL_EQ_NONE"),
-        //~^ ERROR must implement `PartialEq`
+        //~^ ERROR constant of non-structural type `Option<NoPartialEq>` in a pattern
         _ => panic!("whoops"),
     }
 }

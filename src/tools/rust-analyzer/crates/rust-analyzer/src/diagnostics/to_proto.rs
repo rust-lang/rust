@@ -170,7 +170,7 @@ fn resolve_path(
 
 struct SubDiagnostic {
     related: lsp_types::DiagnosticRelatedInformation,
-    suggested_fix: Option<Fix>,
+    suggested_fix: Option<Box<Fix>>,
 }
 
 enum MappedRustChildDiagnostic {
@@ -241,7 +241,7 @@ fn map_rust_child_diagnostic(
                 location: location(config, workspace_root, spans[0], snap),
                 message: message.clone(),
             },
-            suggested_fix: Some(Fix {
+            suggested_fix: Some(Box::new(Fix {
                 ranges: spans
                     .iter()
                     .map(|&span| location(config, workspace_root, span, snap).range)
@@ -260,7 +260,7 @@ fn map_rust_child_diagnostic(
                     data: None,
                     command: None,
                 },
-            }),
+            })),
         })
     }
 }
@@ -269,7 +269,7 @@ fn map_rust_child_diagnostic(
 pub(crate) struct MappedRustDiagnostic {
     pub(crate) url: lsp_types::Url,
     pub(crate) diagnostic: lsp_types::Diagnostic,
-    pub(crate) fix: Option<Fix>,
+    pub(crate) fix: Option<Box<Fix>>,
 }
 
 /// Converts a Rust root diagnostic to LSP form
@@ -455,11 +455,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                             .cloned()
                             .chain(subdiagnostics.iter().map(|sub| sub.related.clone()))
                             .collect::<Vec<_>>();
-                        if info.is_empty() {
-                            None
-                        } else {
-                            Some(info)
-                        }
+                        if info.is_empty() { None } else { Some(info) }
                     },
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
                     data: Some(serde_json::json!({ "rendered": rd.rendered })),
@@ -500,7 +496,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
 fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
     code.filter(|code| {
         let mut chars = code.chars();
-        chars.next().map_or(false, |c| c == 'E')
+        chars.next() == Some('E')
             && chars.by_ref().take(4).all(|c| c.is_ascii_digit())
             && chars.next().is_none()
     })
@@ -528,7 +524,7 @@ mod tests {
 
     use super::*;
 
-    use expect_test::{expect_file, ExpectFile};
+    use expect_test::{ExpectFile, expect_file};
     use lsp_types::ClientCapabilities;
     use paths::Utf8Path;
 
@@ -547,7 +543,6 @@ mod tests {
                 workspace_root.to_path_buf(),
                 ClientCapabilities::default(),
                 Vec::new(),
-                None,
                 None,
             ),
         );

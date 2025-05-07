@@ -8,7 +8,7 @@ fn arrays() -> usize {
     bb0: {
         _1 = [const 5_i32; C];
         _2 = Len(_1);
-        _0 = _2;
+        _0 = copy _2;
         return;
     }
 }

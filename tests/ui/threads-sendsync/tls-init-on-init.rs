@@ -1,14 +1,14 @@
 //@ run-pass
 #![allow(stable_features)]
-
 //@ needs-threads
-
 #![feature(thread_local_try_with)]
 
-use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread;
 
-struct Foo { cnt: usize }
+struct Foo {
+    cnt: usize,
+}
 
 thread_local!(static FOO: Foo = Foo::init());
 
@@ -40,5 +40,7 @@ impl Drop for Foo {
 fn main() {
     thread::spawn(|| {
         FOO.with(|_| {});
-    }).join().unwrap();
+    })
+    .join()
+    .unwrap();
 }

@@ -6,7 +6,7 @@ Sony PlayStation 1 (psx)
 
 ## Designated Developer
 
-* [@ayrtonm](https://github.com/ayrtonm)
+[@ayrtonm](https://github.com/ayrtonm)
 
 ## Requirements
 

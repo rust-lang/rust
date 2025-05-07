@@ -4,7 +4,7 @@
 
 fn assert_transmutable<T>()
 where
-    (): std::mem::BikeshedIntrinsicFrom<T>
+    (): std::mem::TransmuteFrom<T>
 {}
 
 enum Uninhabited {}

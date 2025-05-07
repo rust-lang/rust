@@ -1,0 +1,15 @@
+error[E0599]: no associated item named `Out` found for unit type `()` in the current scope
+  --> $DIR/invalid-ctor.rs:17:15
+   |
+LL |         Self::Out(1)
+   |               ^^^ associated item not found in `()`
+   |
+help: to construct a value of type `Constructor`, use the explicit path
+   |
+LL -         Self::Out(1)
+LL +         Constructor(1)
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

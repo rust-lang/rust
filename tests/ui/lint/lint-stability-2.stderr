@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:40:13
    |
 LL |         foo.method_deprecated_unstable();
@@ -7,7 +7,7 @@ LL |         foo.method_deprecated_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:42:9
    |
 LL |         Foo::method_deprecated_unstable(&foo);
@@ -16,7 +16,7 @@ LL |         Foo::method_deprecated_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:44:9
    |
 LL |         <Foo>::method_deprecated_unstable(&foo);
@@ -25,7 +25,7 @@ LL |         <Foo>::method_deprecated_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:46:13
    |
 LL |         foo.trait_deprecated_unstable();
@@ -34,7 +34,7 @@ LL |         foo.trait_deprecated_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:48:9
    |
 LL |         <Foo>::trait_deprecated_unstable(&foo);
@@ -43,7 +43,7 @@ LL |         <Foo>::trait_deprecated_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:51:13
    |
 LL |         foo.method_deprecated_unstable_text();
@@ -52,7 +52,7 @@ LL |         foo.method_deprecated_unstable_text();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:53:9
    |
 LL |         Foo::method_deprecated_unstable_text(&foo);
@@ -61,7 +61,7 @@ LL |         Foo::method_deprecated_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:55:9
    |
 LL |         <Foo>::method_deprecated_unstable_text(&foo);
@@ -70,7 +70,7 @@ LL |         <Foo>::method_deprecated_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:57:13
    |
 LL |         foo.trait_deprecated_unstable_text();
@@ -79,7 +79,7 @@ LL |         foo.trait_deprecated_unstable_text();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:59:9
    |
 LL |         <Foo>::trait_deprecated_unstable_text(&foo);
@@ -88,7 +88,7 @@ LL |         <Foo>::trait_deprecated_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:62:13
    |
 LL |         foo.method_unstable();
@@ -97,7 +97,7 @@ LL |         foo.method_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:63:9
    |
 LL |         Foo::method_unstable(&foo);
@@ -106,7 +106,7 @@ LL |         Foo::method_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:64:9
    |
 LL |         <Foo>::method_unstable(&foo);
@@ -115,7 +115,7 @@ LL |         <Foo>::method_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:65:13
    |
 LL |         foo.trait_unstable();
@@ -124,7 +124,7 @@ LL |         foo.trait_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:66:9
    |
 LL |         <Foo>::trait_unstable(&foo);
@@ -133,7 +133,7 @@ LL |         <Foo>::trait_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:68:13
    |
 LL |         foo.method_unstable_text();
@@ -142,7 +142,7 @@ LL |         foo.method_unstable_text();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:70:9
    |
 LL |         Foo::method_unstable_text(&foo);
@@ -151,7 +151,7 @@ LL |         Foo::method_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:72:9
    |
 LL |         <Foo>::method_unstable_text(&foo);
@@ -160,7 +160,7 @@ LL |         <Foo>::method_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:74:13
    |
 LL |         foo.trait_unstable_text();
@@ -169,7 +169,7 @@ LL |         foo.trait_unstable_text();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:76:9
    |
 LL |         <Foo>::trait_unstable_text(&foo);
@@ -178,7 +178,7 @@ LL |         <Foo>::trait_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:131:13
    |
 LL |         foo.trait_deprecated_unstable();
@@ -187,7 +187,7 @@ LL |         foo.trait_deprecated_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:133:9
    |
 LL |         <Foo>::trait_deprecated_unstable(&foo);
@@ -196,7 +196,7 @@ LL |         <Foo>::trait_deprecated_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:135:13
    |
 LL |         foo.trait_deprecated_unstable_text();
@@ -205,7 +205,7 @@ LL |         foo.trait_deprecated_unstable_text();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:137:9
    |
 LL |         <Foo>::trait_deprecated_unstable_text(&foo);
@@ -214,7 +214,7 @@ LL |         <Foo>::trait_deprecated_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:139:13
    |
 LL |         foo.trait_unstable();
@@ -223,7 +223,7 @@ LL |         foo.trait_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:140:9
    |
 LL |         <Foo>::trait_unstable(&foo);
@@ -232,7 +232,7 @@ LL |         <Foo>::trait_unstable(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:141:13
    |
 LL |         foo.trait_unstable_text();
@@ -241,7 +241,7 @@ LL |         foo.trait_unstable_text();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:143:9
    |
 LL |         <Foo>::trait_unstable_text(&foo);
@@ -250,7 +250,7 @@ LL |         <Foo>::trait_unstable_text(&foo);
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:154:13
    |
 LL |         foo.trait_deprecated_unstable();
@@ -259,7 +259,7 @@ LL |         foo.trait_deprecated_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:156:13
    |
 LL |         foo.trait_deprecated_unstable_text();
@@ -268,7 +268,7 @@ LL |         foo.trait_deprecated_unstable_text();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature'
+error[E0658]: use of unstable library feature `unstable_test_feature`
   --> $DIR/lint-stability-2.rs:158:13
    |
 LL |         foo.trait_unstable();
@@ -277,7 +277,7 @@ LL |         foo.trait_unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'unstable_test_feature': text
+error[E0658]: use of unstable library feature `unstable_test_feature`: text
   --> $DIR/lint-stability-2.rs:159:13
    |
 LL |         foo.trait_unstable_text();

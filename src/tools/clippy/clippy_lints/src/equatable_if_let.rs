@@ -4,7 +4,6 @@ use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 
@@ -46,6 +45,7 @@ fn unary_pattern(pat: &Pat<'_>) -> bool {
         pats.iter().all(unary_pattern)
     }
     match &pat.kind {
+        PatKind::Missing => unreachable!(),
         PatKind::Slice(_, _, _)
         | PatKind::Range(_, _, _)
         | PatKind::Binding(..)
@@ -55,8 +55,8 @@ fn unary_pattern(pat: &Pat<'_>) -> bool {
         | PatKind::Err(_) => false,
         PatKind::Struct(_, a, etc) => !etc && a.iter().all(|x| unary_pattern(x.pat)),
         PatKind::Tuple(a, etc) | PatKind::TupleStruct(_, a, etc) => etc.as_opt_usize().is_none() && array_rec(a),
-        PatKind::Ref(x, _) | PatKind::Box(x) | PatKind::Deref(x) => unary_pattern(x),
-        PatKind::Path(_) | PatKind::Lit(_) => true,
+        PatKind::Ref(x, _) | PatKind::Box(x) | PatKind::Deref(x) | PatKind::Guard(x, _) => unary_pattern(x),
+        PatKind::Expr(_) => true,
     }
 }
 
@@ -68,17 +68,49 @@ fn is_structural_partial_eq<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, other: T
     }
 }
 
+/// Check if the pattern has any type mismatch that would prevent it from being used in an equality
+/// check. This can happen if the expr has a reference type and the corresponding pattern is a
+/// literal.
+fn contains_type_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
+    let mut result = false;
+    pat.walk(|p| {
+        if result {
+            return false;
+        }
+
+        if p.span.in_external_macro(cx.sess().source_map()) {
+            return true;
+        }
+
+        let adjust_pat = match p.kind {
+            PatKind::Or([p, ..]) => p,
+            _ => p,
+        };
+
+        if let Some(adjustments) = cx.typeck_results().pat_adjustments().get(adjust_pat.hir_id)
+            && adjustments.first().is_some_and(|first| first.source.is_ref())
+        {
+            result = true;
+            return false;
+        }
+
+        true
+    });
+
+    result
+}
+
 impl<'tcx> LateLintPass<'tcx> for PatternEquality {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Let(let_expr) = expr.kind
             && unary_pattern(let_expr.pat)
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             let exp_ty = cx.typeck_results().expr_ty(let_expr.init);
             let pat_ty = cx.typeck_results().pat_ty(let_expr.pat);
             let mut applicability = Applicability::MachineApplicable;
 
-            if is_structural_partial_eq(cx, exp_ty, pat_ty) {
+            if is_structural_partial_eq(cx, exp_ty, pat_ty) && !contains_type_mismatch(cx, let_expr.pat) {
                 let pat_str = match let_expr.pat.kind {
                     PatKind::Struct(..) => format!(
                         "({})",

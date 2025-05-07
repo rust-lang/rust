@@ -8,8 +8,8 @@ use rustc_span::edition::Edition;
 use rustc_span::sym;
 use tracing::debug;
 
-use crate::lints::MacroExprFragment2024;
 use crate::EarlyLintPass;
+use crate::lints::MacroExprFragment2024;
 
 declare_lint! {
     /// The `edition_2024_expr_fragment_specifier` lint detects the use of
@@ -84,7 +84,7 @@ impl Expr2024 {
         let mut prev_colon = false;
         let mut prev_identifier = false;
         let mut prev_dollar = false;
-        for tt in tokens.trees() {
+        for tt in tokens.iter() {
             debug!(
                 "check_tokens: {:?} - colon {prev_dollar} - ident {prev_identifier} - colon {prev_colon}",
                 tt

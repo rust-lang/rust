@@ -1,3 +1,6 @@
+use super::{SocketAddr, sockaddr_un};
+#[cfg(any(doc, target_os = "android", target_os = "linux"))]
+use super::{SocketAncillary, recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to};
 #[cfg(any(
     target_os = "android",
     target_os = "linux",
@@ -7,11 +10,9 @@
     target_os = "openbsd",
     target_os = "nto",
     target_vendor = "apple",
+    target_os = "cygwin"
 ))]
-use super::{peer_cred, UCred};
-#[cfg(any(doc, target_os = "android", target_os = "linux"))]
-use super::{recv_vectored_with_ancillary_from, send_vectored_with_ancillary_to, SocketAncillary};
-use super::{sockaddr_un, SocketAddr};
+use super::{UCred, peer_cred};
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::Shutdown;
@@ -84,7 +85,7 @@ impl UnixStream {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
 
-            cvt(libc::connect(inner.as_raw_fd(), core::ptr::addr_of!(addr) as *const _, len))?;
+            cvt(libc::connect(inner.as_raw_fd(), (&raw const addr) as *const _, len))?;
             Ok(UnixStream(inner))
         }
     }
@@ -118,7 +119,7 @@ impl UnixStream {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             cvt(libc::connect(
                 inner.as_raw_fd(),
-                core::ptr::addr_of!(socket_addr.addr) as *const _,
+                (&raw const socket_addr.addr) as *const _,
                 socket_addr.len,
             ))?;
             Ok(UnixStream(inner))
@@ -231,6 +232,7 @@ impl UnixStream {
         target_os = "openbsd",
         target_os = "nto",
         target_vendor = "apple",
+        target_os = "cygwin"
     ))]
     pub fn peer_cred(&self) -> io::Result<UCred> {
         peer_cred(self)

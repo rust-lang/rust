@@ -43,10 +43,10 @@ help: to link to the associated function, add parentheses
    |
 LL | /// [`Self::IDENT()`]
    |                  ++
-help: to link to the variant, prefix with `type@`
+help: to link to the variant, prefix with `variant@`
    |
-LL | /// [`type@Self::IDENT`]
-   |       +++++
+LL | /// [`variant@Self::IDENT`]
+   |       ++++++++
 
 error: `Self::IDENT2` is both an associated constant and an associated type
   --> $DIR/issue-108653-associated-items.rs:30:7

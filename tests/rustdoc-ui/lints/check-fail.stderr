@@ -31,8 +31,8 @@ LL | | //! let x = 12;
 LL | | //! ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `test_harness`
-   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 note: the lint level is defined here
   --> $DIR/check-fail.rs:6:9
    |
@@ -51,8 +51,8 @@ LL | | /// let x = 12;
 LL | | /// ```
    | |_______^
    |
-   = help: there is an attribute with a similar name: `test_harness`
-   = help: the code block will either not be tested if not marked as a rust one or the code will be wrapped inside a main function
+   = help: use `test_harness` to run functions marked `#[test]` instead of a potentially-implicit `main` function
+   = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 
 error: aborting due to 4 previous errors
 

@@ -9,20 +9,20 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(min_exhaustive_patterns))]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
+#![feature(debug_closure_helpers)]
 #![feature(iter_intersperse)]
-#![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};
 
-pub mod abi;
 pub mod asm;
+pub mod callconv;
 pub mod json;
 pub mod spec;
 pub mod target_features;
@@ -30,7 +30,7 @@ pub mod target_features;
 #[cfg(test)]
 mod tests;
 
-pub use rustc_abi::HashStableContext;
+use rustc_abi::HashStableContext;
 
 /// The name of rustc's own place to organize libraries.
 ///

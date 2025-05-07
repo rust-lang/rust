@@ -2,7 +2,7 @@ use std::char;
 use std::collections::BTreeMap;
 use std::fmt::{self, Write};
 
-use crate::{fmt_list, UnicodeData};
+use crate::{UnicodeData, fmt_list};
 
 const INDEX_MASK: u32 = 1 << 22;
 

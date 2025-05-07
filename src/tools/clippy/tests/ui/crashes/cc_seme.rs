@@ -1,6 +1,5 @@
-#[allow(dead_code)]
-
-/// Test for https://github.com/rust-lang/rust-clippy/issues/478
+//@ check-pass
+// Test for https://github.com/rust-lang/rust-clippy/issues/478
 
 enum Baz {
     One,

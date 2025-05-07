@@ -8,9 +8,9 @@
 
 ## Target maintainers
 
-- Chris Wailes ([@chriswailes](https://github.com/chriswailes))
-- Matthew Maurer ([@maurer](https://github.com/maurer))
-- Martin Geisler ([@mgeisler](https://github.com/mgeisler))
+[@chriswailes](https://github.com/chriswailes)
+[@maurer](https://github.com/maurer)
+[@mgeisler](https://github.com/mgeisler)
 
 ## Requirements
 
@@ -65,4 +65,4 @@ Currently the `riscv64-linux-android` target requires the following architecture
 ### aarch64-linux-android on Nightly compilers
 
 As soon as `-Zfixed-x18` compiler flag is supplied, the [`ShadowCallStack` sanitizer](https://releases.llvm.org/7.0.1/tools/clang/docs/ShadowCallStack.html)
-instrumentation is also made avaiable by supplying the second compiler flag `-Zsanitizer=shadow-call-stack`.
+instrumentation is also made available by supplying the second compiler flag `-Zsanitizer=shadow-call-stack`.

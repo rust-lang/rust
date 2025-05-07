@@ -1,5 +1,5 @@
 error: Undefined Behavior: interpreting an invalid 32-bit value as a char: $HEX
-  --> $DIR/invalid_char_cast.rs:LL:CC
+  --> tests/fail/validity/invalid_char_cast.rs:LL:CC
    |
 LL |             RET = *ptr as u32;
    |             ^^^^^^^^^^^^^^^^^ interpreting an invalid 32-bit value as a char: $HEX
@@ -7,9 +7,9 @@ LL |             RET = *ptr as u32;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `cast` at $DIR/invalid_char_cast.rs:LL:CC
+   = note: inside `cast` at tests/fail/validity/invalid_char_cast.rs:LL:CC
 note: inside `main`
-  --> $DIR/invalid_char_cast.rs:LL:CC
+  --> tests/fail/validity/invalid_char_cast.rs:LL:CC
    |
 LL |     cast(&v as *const u32 as *const char);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

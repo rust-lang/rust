@@ -5,9 +5,9 @@ import * as tasks from "./tasks";
 
 import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
-import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
+import type { Config } from "./config";
 import type { LanguageClient } from "vscode-languageclient/node";
-import { unwrapUndefinable, type RustEditor } from "./util";
+import { log, unwrapUndefinable, type RustEditor } from "./util";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -19,7 +19,7 @@ export async function selectRunnable(
     debuggeeOnly = false,
     showButtons: boolean = true,
 ): Promise<RunnableQuickPick | undefined> {
-    const editor = ctx.activeRustEditor;
+    const editor = ctx.activeRustEditor ?? ctx.activeCargoTomlEditor;
     if (!editor) return;
 
     // show a placeholder while we get the runnables from the server
@@ -36,7 +36,7 @@ export async function selectRunnable(
 
     if (runnables.length === 0) {
         // it is the debug case, run always has at least 'cargo check ...'
-        // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_runnables
+        // see crates\rust-analyzer\src\handlers\request.rs, handle_runnables
         await vscode.window.showErrorMessage("There's no debug target!");
         quickPick.dispose();
         return;
@@ -81,32 +81,13 @@ export function prepareBaseEnv(
 
 export function prepareEnv(
     inheritEnv: boolean,
-    label: string,
-    runnableArgs: ra.CargoRunnableArgs,
-    runnableEnvCfg?: RunnableEnvCfg,
+    runnableEnv?: Record<string, string>,
+    runnableEnvCfg?: Record<string, string>,
 ): Record<string, string> {
-    const env = prepareBaseEnv(inheritEnv, runnableArgs.environment);
-    const platform = process.platform;
-
-    const checkPlatform = (it: RunnableEnvCfgItem) => {
-        if (it.platform) {
-            const platforms = Array.isArray(it.platform) ? it.platform : [it.platform];
-            return platforms.indexOf(platform) >= 0;
-        }
-        return true;
-    };
+    const env = prepareBaseEnv(inheritEnv, runnableEnv);
 
     if (runnableEnvCfg) {
-        if (Array.isArray(runnableEnvCfg)) {
-            for (const it of runnableEnvCfg) {
-                const masked = !it.mask || new RegExp(it.mask).test(label);
-                if (masked && checkPlatform(it)) {
-                    Object.assign(env, it.env);
-                }
-            }
-        } else {
-            Object.assign(env, runnableEnvCfg);
-        }
+        Object.assign(env, runnableEnvCfg);
     }
 
     return env;
@@ -140,7 +121,11 @@ export async function createTaskFromRunnable(
         };
         options = {
             cwd: runnableArgs.workspaceRoot || ".",
-            env: prepareEnv(true, runnable.label, runnableArgs, config.runnablesExtraEnv),
+            env: prepareEnv(
+                true,
+                runnableArgs.environment,
+                config.runnablesExtraEnv(runnable.label),
+            ),
         };
     } else {
         const runnableArgs = runnable.args;
@@ -190,10 +175,17 @@ async function getRunnables(
         uri: editor.document.uri.toString(),
     };
 
-    const runnables = await client.sendRequest(ra.runnables, {
-        textDocument,
-        position: client.code2ProtocolConverter.asPosition(editor.selection.active),
-    });
+    const runnables = await client
+        .sendRequest(ra.runnables, {
+            textDocument,
+            position: client.code2ProtocolConverter.asPosition(editor.selection.active),
+        })
+        .catch((err) => {
+            // If this command is run for a virtual manifest at the workspace root, then this request
+            // will fail as we do not watch this file.
+            log.error(`${err}`);
+            return [];
+        });
     const items: RunnableQuickPick[] = [];
     if (prevRunnable) {
         items.push(prevRunnable);

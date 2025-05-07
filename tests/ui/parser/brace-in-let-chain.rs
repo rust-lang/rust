@@ -1,9 +1,9 @@
 // issue #117766
+//@ edition: 2024
 
-#![feature(let_chains)]
 fn main() {
     if let () = ()
-        && let () = () { //~ERROR: found a `{` in the middle of a let-chain
+        && let () = () {
         && let () = ()
     {
     }
@@ -11,7 +11,7 @@ fn main() {
 
 fn quux() {
     while let () = ()
-        && let () = () { //~ERROR: found a `{` in the middle of a let-chain
+        && let () = () {
         && let () = ()
     {
     }

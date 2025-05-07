@@ -19,16 +19,17 @@
 //! Errors are reported if we are in the suitable configuration but
 //! the required condition is not met.
 
-use rustc_ast::{self as ast, Attribute, NestedMetaItem};
+use rustc_ast::{self as ast, MetaItemInner};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{intravisit, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind};
-use rustc_middle::dep_graph::{label_strs, DepNode, DepNodeExt};
+use rustc_hir::{
+    Attribute, ImplItemKind, ItemKind as HirItem, Node as HirNode, TraitItemKind, intravisit,
+};
+use rustc_middle::dep_graph::{DepNode, DepNodeExt, label_strs};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -133,13 +134,13 @@ struct Assertion {
     loaded_from_disk: Labels,
 }
 
-pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
+pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
     if !tcx.sess.opts.unstable_opts.query_dep_graph {
         return;
     }
 
     // can't add `#[rustc_clean]` etc without opting into this feature
-    if !tcx.features().rustc_attrs {
+    if !tcx.features().rustc_attrs() {
         return;
     }
 
@@ -165,7 +166,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
-        tcx.hir().walk_attributes(&mut all_attrs);
+        tcx.hir_walk_attributes(&mut all_attrs);
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
@@ -174,7 +175,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
     })
 }
 
-pub struct DirtyCleanVisitor<'tcx> {
+struct DirtyCleanVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     checked_attrs: FxHashSet<ast::AttrId>,
 }
@@ -198,7 +199,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         let loaded_from_disk = self.loaded_from_disk(attr);
         for e in except.items().into_sorted_stable_ord() {
             if !auto.remove(e) {
-                self.tcx.dcx().emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
+                self.tcx.dcx().emit_fatal(errors::AssertionAuto { span: attr.span(), name, e });
             }
         }
         Assertion { clean: auto, dirty: except, loaded_from_disk }
@@ -251,7 +252,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     HirItem::Const(..) => ("ItemConst", LABELS_CONST),
 
                     // A function declaration
-                    HirItem::Fn(..) => ("ItemFn", LABELS_FN),
+                    HirItem::Fn { .. } => ("ItemFn", LABELS_FN),
 
                     // // A module
                     HirItem::Mod(..) => ("ItemMod", LABELS_HIR_ONLY),
@@ -260,7 +261,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     HirItem::ForeignMod { .. } => ("ItemForeignMod", LABELS_HIR_ONLY),
 
                     // Module-level inline assembly (from global_asm!)
-                    HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
+                    HirItem::GlobalAsm { .. } => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
                     // A type alias, e.g., `type Foo = Bar<u8>`
                     HirItem::TyAlias(..) => ("ItemTy", LABELS_HIR_ONLY),
@@ -281,7 +282,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
 
                     _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirtyItem {
-                        span: attr.span,
+                        span: attr.span(),
                         kind: format!("{:?}", item.kind),
                     }),
                 }
@@ -297,7 +298,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
             _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirty {
-                span: attr.span,
+                span: attr.span(),
                 kind: format!("{node:?}"),
             }),
         };
@@ -306,7 +307,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         (name, labels)
     }
 
-    fn resolve_labels(&self, item: &NestedMetaItem, value: Symbol) -> Labels {
+    fn resolve_labels(&self, item: &MetaItemInner, value: Symbol) -> Labels {
         let mut out = Labels::default();
         for label in value.as_str().split(',') {
             let label = label.trim();
@@ -374,7 +375,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
                 continue;
             };
-            self.checked_attrs.insert(attr.id);
+            self.checked_attrs.insert(attr.id());
             for label in assertion.clean.items().into_sorted_stable_ord() {
                 let dep_node = DepNode::from_label_string(self.tcx, label, def_path_hash).unwrap();
                 self.assert_clean(item_span, dep_node);
@@ -404,32 +405,30 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
         } else if !(item.has_name(EXCEPT) || item.has_name(LOADED_FROM_DISK)) {
-            tcx.dcx().emit_err(errors::UnknownItem { span: attr.span, name: item.name_or_empty() });
+            tcx.dcx().emit_err(errors::UnknownRustcCleanArgument { span: item.span() });
         }
     }
 
     match cfg {
-        None => tcx.dcx().emit_fatal(errors::NoCfg { span: attr.span }),
+        None => tcx.dcx().emit_fatal(errors::NoCfg { span: attr.span() }),
         Some(c) => c,
     }
 }
 
-fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
+fn expect_associated_value(tcx: TyCtxt<'_>, item: &MetaItemInner) -> Symbol {
     if let Some(value) = item.value_str() {
         value
+    } else if let Some(ident) = item.ident() {
+        tcx.dcx().emit_fatal(errors::AssociatedValueExpectedFor { span: item.span(), ident });
     } else {
-        if let Some(ident) = item.ident() {
-            tcx.dcx().emit_fatal(errors::AssociatedValueExpectedFor { span: item.span(), ident });
-        } else {
-            tcx.dcx().emit_fatal(errors::AssociatedValueExpected { span: item.span() });
-        }
+        tcx.dcx().emit_fatal(errors::AssociatedValueExpected { span: item.span() });
     }
 }
 
 /// A visitor that collects all `#[rustc_clean]` attributes from
 /// the HIR. It is used to verify that we really ran checks for all annotated
 /// nodes.
-pub struct FindAllAttrs<'tcx> {
+struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
     found_attrs: Vec<&'tcx Attribute>,
 }
@@ -445,9 +444,9 @@ impl<'tcx> FindAllAttrs<'tcx> {
 
     fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
-            if !checked_attrs.contains(&attr.id) {
-                self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span });
-                checked_attrs.insert(attr.id);
+            if !checked_attrs.contains(&attr.id()) {
+                self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span() });
+                checked_attrs.insert(attr.id());
             }
         }
     }
@@ -456,8 +455,8 @@ impl<'tcx> FindAllAttrs<'tcx> {
 impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

@@ -8,6 +8,6 @@
 use run_make_support::{run, rustc};
 
 fn main() {
-    rustc().arg("-").stdin("fn main() {}").run();
+    rustc().arg("-").stdin_buf("fn main() {}").run();
     run("rust_out");
 }

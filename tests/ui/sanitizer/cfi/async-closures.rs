@@ -13,7 +13,6 @@
 //@ [kcfi] compile-flags: -C panic=abort -Z panic-abort-tests -C prefer-dynamic=off
 //@ run-pass
 
-#![feature(async_closure)]
 #![feature(async_fn_traits)]
 
 use std::ops::AsyncFn;
@@ -21,7 +20,7 @@ use std::ops::AsyncFn;
 #[inline(never)]
 fn identity<T>(x: T) -> T { x }
 
-// We can't actually create a `dyn AsyncFn()`, because it's not object-safe, but we should check
+// We can't actually create a `dyn AsyncFn()`, because it's dyn-incompatible, but we should check
 // that we don't bug out when we encounter one.
 
 fn main() {

@@ -4,7 +4,7 @@ error: using raw pointers as const generic parameters is forbidden
 LL | struct Const<const P: *const u32>;
    |                       ^^^^^^^^^^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 
 error[E0308]: mismatched types
   --> $DIR/raw-ptr-const-param.rs:11:40

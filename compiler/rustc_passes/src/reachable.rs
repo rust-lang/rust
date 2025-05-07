@@ -25,10 +25,10 @@
 use hir::def_id::LocalDefIdSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
+use rustc_hir::Node;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::Node;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::middle::privacy::{self, Level};
@@ -66,7 +66,7 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
+        let body = self.tcx.hir_body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
@@ -141,7 +141,7 @@ impl<'tcx> ReachableContext<'tcx> {
 
         match self.tcx.hir_node_by_def_id(def_id) {
             Node::Item(item) => match item.kind {
-                hir::ItemKind::Fn(..) => recursively_reachable(self.tcx, def_id.into()),
+                hir::ItemKind::Fn { .. } => recursively_reachable(self.tcx, def_id.into()),
                 _ => false,
             },
             Node::TraitItem(trait_method) => match trait_method.kind {
@@ -184,9 +184,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 CodegenFnAttrs::EMPTY
             };
             let is_extern = codegen_attrs.contains_extern_indicator();
-            let std_internal =
-                codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
-            if is_extern || std_internal {
+            if is_extern {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
@@ -200,13 +198,13 @@ impl<'tcx> ReachableContext<'tcx> {
         match *node {
             Node::Item(item) => {
                 match item.kind {
-                    hir::ItemKind::Fn(.., body) => {
+                    hir::ItemKind::Fn { body, .. } => {
                         if recursively_reachable(self.tcx, item.owner_id.into()) {
                             self.visit_nested_body(body);
                         }
                     }
 
-                    hir::ItemKind::Const(_, _, init) => {
+                    hir::ItemKind::Const(_, _, _, init) => {
                         // Only things actually ending up in the final constant value are reachable
                         // for codegen. Everything else is only needed during const-eval, so even if
                         // const-eval happens in a downstream crate, all they need is
@@ -234,9 +232,8 @@ impl<'tcx> ReachableContext<'tcx> {
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    hir::ItemKind::ExternCrate(_)
+                    hir::ItemKind::ExternCrate(..)
                     | hir::ItemKind::Use(..)
-                    | hir::ItemKind::OpaqueTy(..)
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Macro(..)
                     | hir::ItemKind::Mod(..)
@@ -247,7 +244,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Struct(..)
                     | hir::ItemKind::Enum(..)
                     | hir::ItemKind::Union(..)
-                    | hir::ItemKind::GlobalAsm(..) => {}
+                    | hir::ItemKind::GlobalAsm { .. } => {}
                 }
             }
             Node::TraitItem(trait_method) => {
@@ -287,11 +284,12 @@ impl<'tcx> ReachableContext<'tcx> {
             | Node::Field(_)
             | Node::Ty(_)
             | Node::Crate(_)
-            | Node::Synthetic => {}
+            | Node::Synthetic
+            | Node::OpaqueTy(..) => {}
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
-                    self.tcx.hir().node_to_string(self.tcx.local_def_id_to_hir_id(search_item)),
+                    self.tcx.hir_id_to_string(self.tcx.local_def_id_to_hir_id(search_item)),
                     node,
                 );
             }
@@ -318,11 +316,11 @@ impl<'tcx> ReachableContext<'tcx> {
                     ));
                     self.visit(instance.args);
                 }
-                GlobalAlloc::VTable(ty, trait_ref) => {
+                GlobalAlloc::VTable(ty, dyn_ty) => {
                     self.visit(ty);
                     // Manually visit to actually see the trait's `DefId`. Type visitors won't see it
-                    if let Some(trait_ref) = trait_ref {
-                        let ExistentialTraitRef { def_id, args } = trait_ref.skip_binder();
+                    if let Some(trait_ref) = dyn_ty.principal() {
+                        let ExistentialTraitRef { def_id, args, .. } = trait_ref.skip_binder();
                         self.visit_def_id(def_id, "", &"");
                         self.visit(args);
                     }
@@ -426,7 +424,6 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     }
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     codegen_attrs.contains_extern_indicator()
-        || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
         // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
         // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
@@ -438,10 +435,12 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     let effective_visibilities = &tcx.effective_visibilities(());
 
-    let any_library = tcx
-        .crate_types()
-        .iter()
-        .any(|ty| *ty == CrateType::Rlib || *ty == CrateType::Dylib || *ty == CrateType::ProcMacro);
+    let any_library = tcx.crate_types().iter().any(|ty| {
+        *ty == CrateType::Rlib
+            || *ty == CrateType::Dylib
+            || *ty == CrateType::ProcMacro
+            || *ty == CrateType::Sdylib
+    });
     let mut reachable_context = ReachableContext {
         tcx,
         maybe_typeck_results: None,
@@ -500,6 +499,6 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     reachable_context.reachable_symbols
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { reachable_set, ..*providers };
 }

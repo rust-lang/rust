@@ -3,78 +3,83 @@
 //! Eventually this should probably be replaced with salsa-based interning.
 
 use std::{
+    borrow::Borrow,
     fmt::{self, Debug, Display},
-    hash::{BuildHasherDefault, Hash, Hasher},
+    hash::{BuildHasher, BuildHasherDefault, Hash, Hasher},
     ops::Deref,
     sync::OnceLock,
 };
 
 use dashmap::{DashMap, SharedValue};
-use hashbrown::{hash_map::RawEntryMut, HashMap};
+use hashbrown::raw::RawTable;
 use rustc_hash::FxHasher;
 use triomphe::Arc;
 
 type InternMap<T> = DashMap<Arc<T>, (), BuildHasherDefault<FxHasher>>;
-type Guard<T> = dashmap::RwLockWriteGuard<
-    'static,
-    HashMap<Arc<T>, SharedValue<()>, BuildHasherDefault<FxHasher>>,
->;
+type Guard<T> = dashmap::RwLockWriteGuard<'static, RawTable<(Arc<T>, SharedValue<()>)>>;
 
 mod symbol;
-pub use self::symbol::{symbols as sym, Symbol};
+pub use self::symbol::{Symbol, symbols as sym};
 
 pub struct Interned<T: Internable + ?Sized> {
     arc: Arc<T>,
 }
 
 impl<T: Internable> Interned<T> {
+    #[inline]
     pub fn new(obj: T) -> Self {
-        let (mut shard, hash) = Self::select(&obj);
-        // Atomically,
-        // - check if `obj` is already in the map
-        //   - if so, clone its `Arc` and return it
-        //   - if not, box it up, insert it, and return a clone
-        // This needs to be atomic (locking the shard) to avoid races with other thread, which could
-        // insert the same object between us looking it up and inserting it.
-        match shard.raw_entry_mut().from_key_hashed_nocheck(hash, &obj) {
-            RawEntryMut::Occupied(occ) => Self { arc: occ.key().clone() },
-            RawEntryMut::Vacant(vac) => Self {
-                arc: vac.insert_hashed_nocheck(hash, Arc::new(obj), SharedValue::new(())).0.clone(),
-            },
-        }
+        Self::new_generic(obj)
     }
 }
 
 impl Interned<str> {
+    #[inline]
     pub fn new_str(s: &str) -> Self {
-        let (mut shard, hash) = Self::select(s);
-        // Atomically,
-        // - check if `obj` is already in the map
-        //   - if so, clone its `Arc` and return it
-        //   - if not, box it up, insert it, and return a clone
-        // This needs to be atomic (locking the shard) to avoid races with other thread, which could
-        // insert the same object between us looking it up and inserting it.
-        match shard.raw_entry_mut().from_key_hashed_nocheck(hash, s) {
-            RawEntryMut::Occupied(occ) => Self { arc: occ.key().clone() },
-            RawEntryMut::Vacant(vac) => Self {
-                arc: vac.insert_hashed_nocheck(hash, Arc::from(s), SharedValue::new(())).0.clone(),
-            },
-        }
+        Self::new_generic(s)
     }
 }
 
 impl<T: Internable + ?Sized> Interned<T> {
     #[inline]
-    fn select(obj: &T) -> (Guard<T>, u64) {
+    pub fn new_generic<U>(obj: U) -> Self
+    where
+        U: Borrow<T>,
+        Arc<T>: From<U>,
+    {
         let storage = T::storage().get();
-        let hash = {
-            let mut hasher = std::hash::BuildHasher::build_hasher(storage.hasher());
-            obj.hash(&mut hasher);
-            hasher.finish()
+        let (mut shard, hash) = Self::select(storage, obj.borrow());
+        // Atomically,
+        // - check if `obj` is already in the map
+        //   - if so, clone its `Arc` and return it
+        //   - if not, box it up, insert it, and return a clone
+        // This needs to be atomic (locking the shard) to avoid races with other thread, which could
+        // insert the same object between us looking it up and inserting it.
+        let bucket = match shard.find_or_find_insert_slot(
+            hash,
+            |(other, _)| **other == *obj.borrow(),
+            |(x, _)| Self::hash(storage, x),
+        ) {
+            Ok(bucket) => bucket,
+            // SAFETY: The slot came from `find_or_find_insert_slot()`, and the table wasn't modified since then.
+            Err(insert_slot) => unsafe {
+                shard.insert_in_slot(hash, insert_slot, (Arc::from(obj), SharedValue::new(())))
+            },
         };
+        // SAFETY: We just retrieved/inserted this bucket.
+        unsafe { Self { arc: bucket.as_ref().0.clone() } }
+    }
+
+    #[inline]
+    fn select(storage: &'static InternMap<T>, obj: &T) -> (Guard<T>, u64) {
+        let hash = Self::hash(storage, obj);
         let shard_idx = storage.determine_shard(hash as usize);
         let shard = &storage.shards()[shard_idx];
         (shard.write(), hash)
+    }
+
+    #[inline]
+    fn hash(storage: &'static InternMap<T>, obj: &T) -> u64 {
+        storage.hasher().hash_one(obj)
     }
 }
 
@@ -93,21 +98,20 @@ impl<T: Internable + ?Sized> Drop for Interned<T> {
 impl<T: Internable + ?Sized> Interned<T> {
     #[cold]
     fn drop_slow(&mut self) {
-        let (mut shard, hash) = Self::select(&self.arc);
+        let storage = T::storage().get();
+        let (mut shard, hash) = Self::select(storage, &self.arc);
 
         if Arc::count(&self.arc) != 2 {
             // Another thread has interned another copy
             return;
         }
 
-        match shard.raw_entry_mut().from_key_hashed_nocheck(hash, &self.arc) {
-            RawEntryMut::Occupied(occ) => occ.remove(),
-            RawEntryMut::Vacant(_) => unreachable!(),
-        };
+        shard.remove_entry(hash, |(other, _)| **other == *self.arc);
 
         // Shrink the backing storage if the shard is less than 50% occupied.
         if shard.len() * 2 < shard.capacity() {
-            shard.shrink_to_fit();
+            let len = shard.len();
+            shard.shrink_to(len, |(x, _)| Self::hash(storage, x));
         }
     }
 }
@@ -177,7 +181,10 @@ pub struct InternStorage<T: ?Sized> {
     map: OnceLock<InternMap<T>>,
 }
 
-#[allow(clippy::new_without_default)] // this a const fn, so it can't be default
+#[allow(
+    clippy::new_without_default,
+    reason = "this a const fn, so it can't be default yet. See <https://github.com/rust-lang/rust/issues/63065>"
+)]
 impl<T: ?Sized> InternStorage<T> {
     pub const fn new() -> Self {
         Self { map: OnceLock::new() }

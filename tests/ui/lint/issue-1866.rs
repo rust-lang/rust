@@ -3,7 +3,6 @@
 #![allow(non_camel_case_types)]
 #![warn(clashing_extern_declarations)]
 
-//@ pretty-expanded FIXME #23616
 
 mod a {
     pub type rust_task = usize;

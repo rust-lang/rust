@@ -1,11 +1,11 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
 
 // Ensure that when val < base, we do not divide or multiply.
 
 // CHECK-LABEL: @checked_ilog
-// CHECK-SAME: (i16 noundef %val, i16 noundef %base)
+// CHECK-SAME: (i16{{.*}} %val, i16{{.*}} %base)
 #[no_mangle]
 pub fn checked_ilog(val: u16, base: u16) -> Option<u32> {
     // CHECK-NOT: udiv

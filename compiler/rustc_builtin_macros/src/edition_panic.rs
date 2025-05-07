@@ -4,8 +4,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::*;
 use rustc_expand::base::*;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 
 /// This expands to either
 /// - `$crate::panic::panic_2015!(...)` or
@@ -75,11 +74,11 @@ pub(crate) fn use_panic_2021(mut span: Span) -> bool {
     // (To avoid using the edition of e.g. the assert!() or debug_assert!() definition.)
     loop {
         let expn = span.ctxt().outer_expn_data();
-        if let Some(features) = expn.allow_internal_unstable {
-            if features.iter().any(|&f| f == sym::edition_panic) {
-                span = expn.call_site;
-                continue;
-            }
+        if let Some(features) = expn.allow_internal_unstable
+            && features.contains(&sym::edition_panic)
+        {
+            span = expn.call_site;
+            continue;
         }
         break expn.edition >= Edition::Edition2021;
     }

@@ -1,6 +1,7 @@
 // Test that encountering closures during coherence does not cause issues.
 #![feature(type_alias_impl_trait)]
 type OpaqueClosure = impl Sized;
+#[define_opaque(OpaqueClosure)]
 fn defining_use() -> OpaqueClosure {
     || ()
 }

@@ -1,0 +1,14 @@
+error: consider bringing this path into scope with the `use` keyword
+  --> tests/ui-toml/absolute_paths/absolute_paths_2015.rs:16:13
+   |
+LL |     let _ = ::m1::m2::X;
+   |             ^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> tests/ui-toml/absolute_paths/absolute_paths_2015.rs:7:9
+   |
+LL | #![deny(clippy::absolute_paths)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

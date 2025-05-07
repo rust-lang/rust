@@ -1,14 +1,14 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::last_path_segment;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::{indent_of, snippet};
+use clippy_utils::{last_path_segment, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -65,11 +65,11 @@ impl LateLintPass<'_> for RcCloneInVecInit {
 
 fn loop_init_suggestion(elem: &str, len: &str, indent: &str) -> String {
     format!(
-        r#"{{
+        r"{{
 {indent}    let mut v = Vec::with_capacity({len});
 {indent}    (0..{len}).for_each(|_| v.push({elem}));
 {indent}    v
-{indent}}}"#
+{indent}}}"
     )
 }
 
@@ -135,7 +135,7 @@ fn ref_init(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(Symbol, Span)> {
         if let ty::Adt(adt, _) = *cx.typeck_results().expr_ty(expr).kind()
             && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::RcWeak | sym::ArcWeak))
         {
-            return Some((Symbol::intern("Weak"), func.span));
+            return Some((sym::Weak, func.span));
         }
     }
 

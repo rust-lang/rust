@@ -1,14 +1,15 @@
-use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use rustc_abi::Endian;
 
-pub fn target() -> Target {
+use crate::spec::{Target, TargetMetadata, TargetOptions, base};
+
+pub(crate) fn target() -> Target {
     let mut base = base::netbsd::opts();
     base.max_atomic_width = Some(32);
     base.cpu = "mips32".into();
 
     Target {
         llvm_target: "mipsel-unknown-netbsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit MIPS (LE), requires mips32 cpu support".into()),
             tier: Some(3),
             host_tools: Some(true),

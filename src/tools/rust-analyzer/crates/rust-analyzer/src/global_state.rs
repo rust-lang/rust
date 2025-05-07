@@ -5,22 +5,21 @@
 
 use std::{ops::Not as _, time::Instant};
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabase, SourceRootDatabase};
+use ide_db::base_db::{Crate, ProcMacroPaths, SourceDatabase};
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
-use nohash_hasher::IntMap;
 use parking_lot::{
     MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard, RwLockUpgradableReadGuard,
     RwLockWriteGuard,
 };
-use proc_macro_api::ProcMacroServer;
+use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
-use tracing::{span, trace, Level};
+use tracing::{Level, span, trace};
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 
@@ -44,6 +43,16 @@ use crate::{
 pub(crate) struct FetchWorkspaceRequest {
     pub(crate) path: Option<AbsPathBuf>,
     pub(crate) force_crate_graph_reload: bool,
+}
+
+pub(crate) struct FetchWorkspaceResponse {
+    pub(crate) workspaces: Vec<anyhow::Result<ProjectWorkspace>>,
+    pub(crate) force_crate_graph_reload: bool,
+}
+
+pub(crate) struct FetchBuildDataResponse {
+    pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
+    pub(crate) build_scripts: Vec<anyhow::Result<WorkspaceBuildScripts>>,
 }
 
 // Enforces drop order
@@ -82,10 +91,10 @@ pub(crate) struct GlobalState {
 
     // status
     pub(crate) shutdown_requested: bool,
-    pub(crate) last_reported_status: Option<lsp_ext::ServerStatusParams>,
+    pub(crate) last_reported_status: lsp_ext::ServerStatusParams,
 
     // proc macros
-    pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroServer>]>,
+    pub(crate) proc_macro_clients: Arc<[anyhow::Result<ProcMacroClient>]>,
     pub(crate) build_deps_changed: bool,
 
     // Flycheck
@@ -107,10 +116,13 @@ pub(crate) struct GlobalState {
 
     // VFS
     pub(crate) loader: Handle<Box<dyn vfs::loader::Handle>, Receiver<vfs::loader::Message>>,
-    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
+    pub(crate) vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) vfs_config_version: u32,
     pub(crate) vfs_progress_config_version: u32,
     pub(crate) vfs_done: bool,
+    // used to track how long VFS loading takes. this can't be on `vfs::loader::Handle`,
+    // as that handle's lifetime is the same as `GlobalState` itself.
+    pub(crate) vfs_span: Option<tracing::span::EnteredSpan>,
     pub(crate) wants_to_switch: Option<Cause>,
 
     /// `workspaces` field stores the data we actually use, while the `OpQueue`
@@ -143,11 +155,9 @@ pub(crate) struct GlobalState {
     pub(crate) detached_files: FxHashSet<ManifestPath>,
 
     // op queues
-    pub(crate) fetch_workspaces_queue:
-        OpQueue<FetchWorkspaceRequest, Option<(Vec<anyhow::Result<ProjectWorkspace>>, bool)>>,
-    pub(crate) fetch_build_data_queue:
-        OpQueue<(), (Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
-    pub(crate) fetch_proc_macros_queue: OpQueue<Vec<ProcMacroPaths>, bool>,
+    pub(crate) fetch_workspaces_queue: OpQueue<FetchWorkspaceRequest, FetchWorkspaceResponse>,
+    pub(crate) fetch_build_data_queue: OpQueue<(), FetchBuildDataResponse>,
+    pub(crate) fetch_proc_macros_queue: OpQueue<(ChangeWithProcMacros, Vec<ProcMacroPaths>), bool>,
     pub(crate) prime_caches_queue: OpQueue,
     pub(crate) discover_workspace_queue: OpQueue,
 
@@ -170,7 +180,7 @@ pub(crate) struct GlobalStateSnapshot {
     pub(crate) check_fixes: CheckFixes,
     mem_docs: MemDocs,
     pub(crate) semantic_tokens_cache: Arc<Mutex<FxHashMap<Url, SemanticTokens>>>,
-    vfs: Arc<RwLock<(vfs::Vfs, IntMap<FileId, LineEndings>)>>,
+    vfs: Arc<RwLock<(vfs::Vfs, FxHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     // used to signal semantic highlighting to fall back to syntax based highlighting until
     // proc-macros have been loaded
@@ -227,7 +237,11 @@ impl GlobalState {
             mem_docs: MemDocs::default(),
             semantic_tokens_cache: Arc::new(Default::default()),
             shutdown_requested: false,
-            last_reported_status: None,
+            last_reported_status: lsp_ext::ServerStatusParams {
+                health: lsp_ext::Health::Ok,
+                quiescent: true,
+                message: None,
+            },
             source_root_config: SourceRootConfig::default(),
             local_roots_parent_map: Arc::new(FxHashMap::default()),
             config_errors: Default::default(),
@@ -250,9 +264,10 @@ impl GlobalState {
             discover_sender,
             discover_receiver,
 
-            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), IntMap::default()))),
+            vfs: Arc::new(RwLock::new((vfs::Vfs::default(), Default::default()))),
             vfs_config_version: 0,
             vfs_progress_config_version: 0,
+            vfs_span: None,
             vfs_done: true,
             wants_to_switch: None,
 
@@ -284,7 +299,7 @@ impl GlobalState {
             FxHashMap::default();
 
         let (change, modified_rust_files, workspace_structure_change) = {
-            let mut change = ChangeWithProcMacros::new();
+            let mut change = ChangeWithProcMacros::default();
             let mut guard = self.vfs.write();
             let changed_files = guard.0.take_changes();
             if changed_files.is_empty() {
@@ -380,7 +395,15 @@ impl GlobalState {
             || !self.config.same_source_root_parent_map(&self.local_roots_parent_map)
         {
             let config_change = {
-                let user_config_path = self.config.user_config_path();
+                let _p = span!(Level::INFO, "GlobalState::process_changes/config_change").entered();
+                let user_config_path = (|| {
+                    let mut p = Config::user_config_dir_path()?;
+                    p.push("rust-analyzer.toml");
+                    Some(p)
+                })();
+
+                let user_config_abs_path = user_config_path.as_deref();
+
                 let mut change = ConfigChange::default();
                 let db = self.analysis_host.raw_database();
 
@@ -398,50 +421,58 @@ impl GlobalState {
                     })
                     .collect_vec();
 
-                for (file_id, (_change_kind, vfs_path)) in modified_ratoml_files {
-                    if vfs_path == *user_config_path {
-                        change.change_user_config(Some(db.file_text(file_id)));
-                        continue;
+                for (file_id, (change_kind, vfs_path)) in modified_ratoml_files {
+                    tracing::info!(%vfs_path, ?change_kind, "Processing rust-analyzer.toml changes");
+                    if vfs_path.as_path() == user_config_abs_path {
+                        tracing::info!(%vfs_path, ?change_kind, "Use config rust-analyzer.toml changes");
+                        change.change_user_config(Some(db.file_text(file_id).text(db)));
                     }
 
                     // If change has been made to a ratoml file that
                     // belongs to a non-local source root, we will ignore it.
-                    let sr_id = db.file_source_root(file_id);
-                    let sr = db.source_root(sr_id);
+                    let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                    let source_root = db.source_root(source_root_id).source_root(db);
 
-                    if !sr.is_library {
+                    if !source_root.is_library {
                         let entry = if workspace_ratoml_paths.contains(&vfs_path) {
+                            tracing::info!(%vfs_path, ?source_root_id, "workspace rust-analyzer.toml changes");
                             change.change_workspace_ratoml(
-                                sr_id,
+                                source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id)),
+                                Some(db.file_text(file_id).text(db)),
                             )
                         } else {
+                            tracing::info!(%vfs_path, ?source_root_id, "crate rust-analyzer.toml changes");
                             change.change_ratoml(
-                                sr_id,
+                                source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id)),
+                                Some(db.file_text(file_id).text(db)),
                             )
                         };
 
                         if let Some((kind, old_path, old_text)) = entry {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
-                                span!(Level::ERROR, "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
+                                tracing::error!(
+                                    "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect."
+                                );
                                 // Put the old one back in.
                                 match kind {
                                     RatomlFileKind::Crate => {
-                                        change.change_ratoml(sr_id, old_path, old_text);
+                                        change.change_ratoml(source_root_id, old_path, old_text);
                                     }
                                     RatomlFileKind::Workspace => {
-                                        change.change_workspace_ratoml(sr_id, old_path, old_text);
+                                        change.change_workspace_ratoml(
+                                            source_root_id,
+                                            old_path,
+                                            old_text,
+                                        );
                                     }
                                 }
                             }
                         }
                     } else {
-                        // Mapping to a SourceRoot should always end up in `Ok`
-                        span!(Level::ERROR, "Mapping to SourceRootId failed.");
+                        tracing::info!(%vfs_path, "Ignoring library rust-analyzer.toml");
                     }
                 }
                 change.change_source_root_parent_map(self.local_roots_parent_map.clone());
@@ -480,7 +511,7 @@ impl GlobalState {
 
                 self.fetch_workspaces_queue.request_op(
                     format!("workspace vfs file change: {path}"),
-                    FetchWorkspaceRequest { path: Some(path.to_owned()), force_crate_graph_reload },
+                    FetchWorkspaceRequest { path: Some(path), force_crate_graph_reload },
                 );
             }
         }
@@ -498,7 +529,7 @@ impl GlobalState {
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
             proc_macros_loaded: !self.config.expand_proc_macros()
-                || *self.fetch_proc_macros_queue.last_op_result(),
+                || self.fetch_proc_macros_queue.last_op_result().copied().unwrap_or(false),
             flycheck: self.flycheck.clone(),
         }
     }
@@ -540,15 +571,15 @@ impl GlobalState {
     }
 
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
-        if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
+        if let Some((method, start)) = self.req_queue.incoming.complete(&response.id) {
             if let Some(err) = &response.error {
                 if err.message.starts_with("server panicked") {
-                    self.poke_rust_analyzer_developer(format!("{}, check the log", err.message))
+                    self.poke_rust_analyzer_developer(format!("{}, check the log", err.message));
                 }
             }
 
             let duration = start.elapsed();
-            tracing::debug!("handled {} - ({}) in {:0.2?}", method, response.id, duration);
+            tracing::debug!(name: "message response", method, %response.id, duration = format_args!("{:0.2?}", duration));
             self.send(response.into());
         }
     }
@@ -610,6 +641,25 @@ impl GlobalState {
             }
         });
     }
+
+    pub(crate) fn check_workspaces_msrv(&self) -> impl Iterator<Item = String> + '_ {
+        self.workspaces.iter().filter_map(|ws| {
+            if let Some(toolchain) = &ws.toolchain {
+                if *toolchain < crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION {
+                    return Some(format!(
+                        "Workspace `{}` is using an outdated toolchain version `{}` but \
+                        rust-analyzer only supports `{}` and higher.\n\
+                        Consider using the rust-analyzer rustup component for your toolchain or
+                        upgrade your toolchain to a supported version.\n\n",
+                        ws.manifest_or_root(),
+                        toolchain,
+                        crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION,
+                    ));
+                }
+            }
+            None
+        })
+    }
 }
 
 impl Drop for GlobalState {
@@ -623,12 +673,18 @@ impl GlobalStateSnapshot {
         RwLockReadGuard::map(self.vfs.read(), |(it, _)| it)
     }
 
-    pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<FileId> {
+    /// Returns `None` if the file was excluded.
+    pub(crate) fn url_to_file_id(&self, url: &Url) -> anyhow::Result<Option<FileId>> {
         url_to_file_id(&self.vfs_read(), url)
     }
 
     pub(crate) fn file_id_to_url(&self, id: FileId) -> Url {
         file_id_to_url(&self.vfs_read(), id)
+    }
+
+    /// Returns `None` if the file was excluded.
+    pub(crate) fn vfs_path_to_file_id(&self, vfs_path: &VfsPath) -> anyhow::Result<Option<FileId>> {
+        vfs_path_to_file_id(&self.vfs_read(), vfs_path)
     }
 
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
@@ -659,7 +715,7 @@ impl GlobalStateSnapshot {
         self.vfs_read().file_path(file_id).clone()
     }
 
-    pub(crate) fn target_spec_for_crate(&self, crate_id: CrateId) -> Option<TargetSpec> {
+    pub(crate) fn target_spec_for_crate(&self, crate_id: Crate) -> Option<TargetSpec> {
         let file_id = self.analysis.crate_root(crate_id).ok()?;
         let path = self.vfs_read().file_path(file_id).clone();
         let path = path.as_path()?;
@@ -667,7 +723,7 @@ impl GlobalStateSnapshot {
         for workspace in self.workspaces.iter() {
             match &workspace.kind {
                 ProjectWorkspaceKind::Cargo { cargo, .. }
-                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _)), .. } => {
+                | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, _, _)), .. } => {
                     let Some(target_idx) = cargo.target_by_root(path) else {
                         continue;
                     };
@@ -719,8 +775,21 @@ pub(crate) fn file_id_to_url(vfs: &vfs::Vfs, id: FileId) -> Url {
     url_from_abs_path(path)
 }
 
-pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<FileId> {
+/// Returns `None` if the file was excluded.
+pub(crate) fn url_to_file_id(vfs: &vfs::Vfs, url: &Url) -> anyhow::Result<Option<FileId>> {
     let path = from_proto::vfs_path(url)?;
-    let res = vfs.file_id(&path).ok_or_else(|| anyhow::format_err!("file not found: {path}"))?;
-    Ok(res)
+    vfs_path_to_file_id(vfs, &path)
+}
+
+/// Returns `None` if the file was excluded.
+pub(crate) fn vfs_path_to_file_id(
+    vfs: &vfs::Vfs,
+    vfs_path: &VfsPath,
+) -> anyhow::Result<Option<FileId>> {
+    let (file_id, excluded) =
+        vfs.file_id(vfs_path).ok_or_else(|| anyhow::format_err!("file not found: {vfs_path}"))?;
+    match excluded {
+        vfs::FileExcluded::Yes => Ok(None),
+        vfs::FileExcluded::No => Ok(Some(file_id)),
+    }
 }

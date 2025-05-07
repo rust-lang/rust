@@ -2,19 +2,18 @@ use std::cell::RefCell;
 use std::ops::Deref;
 
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{HirId, HirIdMap};
+use rustc_hir::{self as hir, HirId, HirIdMap, LangItem};
 use rustc_infer::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use rustc_middle::span_bug;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::def_id::LocalDefIdMap;
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefIdMap;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
     self, FulfillmentError, PredicateObligation, TraitEngine, TraitEngineExt as _,
 };
+use tracing::{debug, instrument};
 
 use super::callee::DeferredCallResolution;
 
@@ -59,7 +58,10 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, HirId)>>,
 
-    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>)>>,
+    pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, Ty<'tcx>)>>,
+
+    pub(super) deferred_repeat_expr_checks:
+        RefCell<Vec<(&'tcx hir::Expr<'tcx>, Ty<'tcx>, ty::Const<'tcx>)>>,
 
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
@@ -77,10 +79,11 @@ impl<'tcx> Deref for TypeckRootCtxt<'tcx> {
 }
 
 impl<'tcx> TypeckRootCtxt<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
         let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
-        let infcx = tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(def_id).build();
+        let infcx =
+            tcx.infer_ctxt().ignoring_regions().build(TypingMode::typeck_for_body(tcx, def_id));
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 
         TypeckRootCtxt {
@@ -94,6 +97,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_transmute_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_coroutine_interiors: RefCell::new(Vec::new()),
+            deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             infer_var_info: RefCell::new(Default::default()),
         }
@@ -124,7 +128,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
         infer_ok.value
     }
 
-    pub fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
+    fn update_infer_var_info(&self, obligation: &PredicateObligation<'tcx>) {
         let infer_var_info = &mut self.infer_var_info.borrow_mut();
 
         // (*) binder skipped
@@ -132,7 +136,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             obligation.predicate.kind().skip_binder()
             && let Some(ty) =
                 self.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| self.root_var(t))
-            && self.tcx.lang_items().sized_trait().is_some_and(|st| st != tpred.trait_ref.def_id)
+            && !self.tcx.is_lang_item(tpred.trait_ref.def_id, LangItem::Sized)
         {
             let new_self_ty = self.tcx.types.unit;
 

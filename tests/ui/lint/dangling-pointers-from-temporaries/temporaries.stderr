@@ -1,0 +1,115 @@
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/temporaries.rs:21:14
+   |
+LL |     string().as_ptr();
+   |     -------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+note: the lint level is defined here
+  --> $DIR/temporaries.rs:2:9
+   |
+LL | #![deny(dangling_pointers_from_temporaries)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/temporaries.rs:25:25
+   |
+LL |     "hello".to_string().as_ptr();
+   |     ------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/temporaries.rs:32:26
+   |
+LL |     (string() + "hello").as_ptr();
+   |     -------------------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/temporaries.rs:68:61
+   |
+LL |         (if true { String::new() } else { "hello".into() }).as_ptr();
+   |         --------------------------------------------------- ^^^^^^ this pointer will immediately be invalid
+   |         |
+   |         this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/temporaries.rs:77:10
+   |
+LL | /         (loop {
+LL | |             break String::new();
+LL | |         })
+   | |__________- this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+LL |           .as_ptr();
+   |            ^^^^^^ this pointer will immediately be invalid
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/temporaries.rs:86:10
+   |
+LL | /         match string() {
+LL | |             s => s,
+LL | |         }
+   | |_________- this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+LL |           .as_ptr();
+   |            ^^^^^^ this pointer will immediately be invalid
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `String` will be dropped
+  --> $DIR/temporaries.rs:94:18
+   |
+LL |     { string() }.as_ptr();
+   |     ------------ ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `String` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `String` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `String` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `String` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: a dangling pointer will be produced because the temporary `Vec<u8>` will be dropped
+  --> $DIR/temporaries.rs:134:15
+   |
+LL |     vec![0u8].as_ptr();
+   |     --------- ^^^^^^ this pointer will immediately be invalid
+   |     |
+   |     this `Vec<u8>` is deallocated at the end of the statement, bind it to a variable to extend its lifetime
+   |
+   = note: pointers do not have a lifetime; when calling `as_ptr` the `Vec<u8>` will be deallocated at the end of the statement because nothing is referencing it as far as the type system is concerned
+   = help: you must make sure that the variable you bind the `Vec<u8>` to lives at least as long as the pointer returned by the call to `as_ptr`
+   = help: in particular, if this pointer is returned from the current function, binding the `Vec<u8>` inside the function will not suffice
+   = help: for more information, see <https://doc.rust-lang.org/reference/destructors.html>
+
+error: aborting due to 8 previous errors
+

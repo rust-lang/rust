@@ -1,10 +1,11 @@
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::ty;
+use tracing::{debug, instrument};
 
-use super::region_constraints::RegionSnapshot;
 use super::InferCtxt;
+use super::region_constraints::RegionSnapshot;
 
-mod fudge;
+pub(crate) mod fudge;
 pub(crate) mod undo_log;
 
 use undo_log::{Snapshot, UndoLog};
@@ -16,7 +17,26 @@ pub struct CombinedSnapshot<'tcx> {
     universe: ty::UniverseIndex,
 }
 
+struct VariableLengths {
+    region_constraints_len: usize,
+    type_var_len: usize,
+    int_var_len: usize,
+    float_var_len: usize,
+    const_var_len: usize,
+}
+
 impl<'tcx> InferCtxt<'tcx> {
+    fn variable_lengths(&self) -> VariableLengths {
+        let mut inner = self.inner.borrow_mut();
+        VariableLengths {
+            region_constraints_len: inner.unwrap_region_constraints().num_region_vars(),
+            type_var_len: inner.type_variables().num_vars(),
+            int_var_len: inner.int_unification_table().len(),
+            float_var_len: inner.float_unification_table().len(),
+            const_var_len: inner.const_unification_table().len(),
+        }
+    }
+
     pub fn in_snapshot(&self) -> bool {
         UndoLogs::<UndoLog<'tcx>>::in_snapshot(&self.inner.borrow_mut().undo_log)
     }

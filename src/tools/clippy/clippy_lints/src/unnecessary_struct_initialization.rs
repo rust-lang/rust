@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_copy;
-use clippy_utils::{get_parent_expr, path_to_local};
-use rustc_hir::{BindingMode, Expr, ExprField, ExprKind, Node, PatKind, Path, QPath, UnOp};
+use clippy_utils::{get_parent_expr, is_mutable, path_to_local};
+use rustc_hir::{Expr, ExprField, ExprKind, Path, QPath, StructTailExpr, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -59,15 +59,17 @@ impl LateLintPass<'_> for UnnecessaryStruct {
         let field_path = same_path_in_all_fields(cx, expr, fields);
 
         let sugg = match (field_path, base) {
-            (Some(&path), None) => {
+            (Some(&path), StructTailExpr::None | StructTailExpr::DefaultFields(_)) => {
                 // all fields match, no base given
                 path.span
             },
-            (Some(path), Some(base)) if base_is_suitable(cx, expr, base) && path_matches_base(path, base) => {
+            (Some(path), StructTailExpr::Base(base))
+                if base_is_suitable(cx, expr, base) && path_matches_base(path, base) =>
+            {
                 // all fields match, has base: ensure that the path of the base matches
                 base.span
             },
-            (None, Some(base)) if fields.is_empty() && base_is_suitable(cx, expr, base) => {
+            (None, StructTailExpr::Base(base)) if fields.is_empty() && base_is_suitable(cx, expr, base) => {
                 // just the base, no explicit fields
                 base.span
             },
@@ -152,16 +154,6 @@ fn same_path_in_all_fields<'tcx>(
         Some(src_path)
     } else {
         None
-    }
-}
-
-fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(hir_id) = path_to_local(expr)
-        && let Node::Pat(pat) = cx.tcx.hir_node(hir_id)
-    {
-        matches!(pat.kind, PatKind::Binding(BindingMode::MUT, ..))
-    } else {
-        true
     }
 }
 

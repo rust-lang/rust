@@ -8,7 +8,7 @@ LL |     if a.to_string() != "bar" {
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/comparison_flip.rs:10:17
+  --> tests/ui/cmp_owned/comparison_flip.rs:11:17
    |
 LL |     if "bar" != a.to_string() {
    |        ---------^^^^^^^^^^^^^

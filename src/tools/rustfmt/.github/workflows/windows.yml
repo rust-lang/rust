@@ -33,7 +33,7 @@ jobs:
     - name: disable git eol translation
       run: git config --global core.autocrlf false
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
       # Run build
     - name: Install Rustup using win.rustup.rs

@@ -7,12 +7,31 @@
 
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty;
+use tracing::debug;
 
 use super::constraints::*;
 use super::terms::VarianceTerm::*;
 use super::terms::*;
-use super::xform::*;
 
+fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
+    // Greatest lower bound of the variance lattice as defined in The Paper:
+    //
+    //       *
+    //    -     +
+    //       o
+    match (v1, v2) {
+        (ty::Invariant, _) | (_, ty::Invariant) => ty::Invariant,
+
+        (ty::Covariant, ty::Contravariant) => ty::Invariant,
+        (ty::Contravariant, ty::Covariant) => ty::Invariant,
+
+        (ty::Covariant, ty::Covariant) => ty::Covariant,
+
+        (ty::Contravariant, ty::Contravariant) => ty::Contravariant,
+
+        (x, ty::Bivariant) | (ty::Bivariant, x) => x,
+    }
+}
 struct SolveContext<'a, 'tcx> {
     terms_cx: TermsContext<'a, 'tcx>,
     constraints: Vec<Constraint<'a>>,
@@ -21,7 +40,7 @@ struct SolveContext<'a, 'tcx> {
     solutions: Vec<ty::Variance>,
 }
 
-pub fn solve_constraints<'tcx>(
+pub(crate) fn solve_constraints<'tcx>(
     constraints_cx: ConstraintContext<'_, 'tcx>,
 ) -> ty::CrateVariancesMap<'tcx> {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;

@@ -1,18 +1,16 @@
 use std::iter;
-use std::ops::ControlFlow;
 
 use rustc_ast as ast;
 use rustc_ast::util::{classify, parser};
 use rustc_ast::{ExprKind, StmtKind};
-use rustc_errors::{pluralize, MultiSpan};
+use rustc_errors::{MultiSpan, pluralize};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_infer::traits::util::elaborate;
-use rustc_middle::ty::{self, adjustment, Ty};
+use rustc_middle::ty::{self, Ty, adjustment};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
-use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, Span, Symbol, kw, sym};
 use tracing::instrument;
 
 use crate::lints::{
@@ -276,16 +274,15 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 || !ty.is_inhabited_from(
                     cx.tcx,
                     cx.tcx.parent_module(expr.hir_id).to_def_id(),
-                    cx.param_env,
+                    cx.typing_env(),
                 )
             {
                 return Some(MustUsePath::Suppressed);
             }
 
             match *ty.kind() {
-                ty::Adt(..) if ty.is_box() => {
-                    let boxed_ty = ty.boxed_ty();
-                    is_ty_must_use(cx, boxed_ty, expr, span)
+                ty::Adt(..) if let Some(boxed) = ty.boxed_ty() => {
+                    is_ty_must_use(cx, boxed, expr, span)
                         .map(|inner| MustUsePath::Boxed(Box::new(inner)))
                 }
                 ty::Adt(def, args) if cx.tcx.is_lang_item(def.did(), LangItem::Pin) => {
@@ -295,25 +292,22 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Adt(def, _) => is_def_must_use(cx, def.did(), span),
                 ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
-                    elaborate(
-                        cx.tcx,
-                        cx.tcx.explicit_item_super_predicates(def).iter_identity_copied(),
-                    )
-                    // We only care about self bounds for the impl-trait
-                    .filter_only_self()
-                    .find_map(|(pred, _span)| {
-                        // We only look at the `DefId`, so it is safe to skip the binder here.
-                        if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
-                            pred.kind().skip_binder()
-                        {
-                            let def_id = poly_trait_predicate.trait_ref.def_id;
+                    elaborate(cx.tcx, cx.tcx.explicit_item_self_bounds(def).iter_identity_copied())
+                        // We only care about self bounds for the impl-trait
+                        .filter_only_self()
+                        .find_map(|(pred, _span)| {
+                            // We only look at the `DefId`, so it is safe to skip the binder here.
+                            if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
+                                pred.kind().skip_binder()
+                            {
+                                let def_id = poly_trait_predicate.trait_ref.def_id;
 
-                            is_def_must_use(cx, def_id, span)
-                        } else {
-                            None
-                        }
-                    })
-                    .map(|inner| MustUsePath::Opaque(Box::new(inner)))
+                                is_def_must_use(cx, def_id, span)
+                            } else {
+                                None
+                            }
+                        })
+                        .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                 }
                 ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
                     if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
@@ -351,7 +345,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         None
                     }
                 }
-                ty::Array(ty, len) => match len.try_eval_target_usize(cx.tcx, cx.param_env) {
+                ty::Array(ty, len) => match len.try_to_target_usize(cx.tcx) {
                     // If the array is empty we don't lint, to avoid false positives
                     Some(0) | None => None,
                     // If the array is definitely non-empty, we can do `#[must_use]` checking.
@@ -565,7 +559,7 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
         if let hir::StmtKind::Semi(expr) = s.kind {
             if let hir::ExprKind::Path(_) = expr.kind {
                 let ty = cx.typeck_results().expr_ty(expr);
-                if ty.needs_drop(cx.tcx, cx.param_env) {
+                if ty.needs_drop(cx.tcx, cx.typing_env()) {
                     let sub = if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span)
                     {
                         PathStatementDropSub::Suggestion { span: s.span, snippet }
@@ -593,6 +587,7 @@ enum UnusedDelimsCtx {
     MatchScrutineeExpr,
     ReturnValue,
     BlockRetValue,
+    BreakValue,
     LetScrutineeExpr,
     ArrayLenExpr,
     AnonConst,
@@ -614,6 +609,7 @@ impl From<UnusedDelimsCtx> for &'static str {
             UnusedDelimsCtx::MatchScrutineeExpr => "`match` scrutinee expression",
             UnusedDelimsCtx::ReturnValue => "`return` value",
             UnusedDelimsCtx::BlockRetValue => "block return value",
+            UnusedDelimsCtx::BreakValue => "`break` value",
             UnusedDelimsCtx::LetScrutineeExpr => "`let` scrutinee expression",
             UnusedDelimsCtx::ArrayLenExpr | UnusedDelimsCtx::AnonConst => "const expression",
             UnusedDelimsCtx::MatchArmExpr => "match arm expression",
@@ -734,7 +730,7 @@ trait UnusedDelimLint {
             return false;
         }
 
-        // Check if we need parens for `match &( Struct { feild:  }) {}`.
+        // Check if we need parens for `match &( Struct { field:  }) {}`.
         {
             let mut innermost = inner;
             loop {
@@ -784,36 +780,21 @@ trait UnusedDelimLint {
         right_pos: Option<BytePos>,
         is_kw: bool,
     ) {
-        // If `value` has `ExprKind::Err`, unused delim lint can be broken.
-        // For example, the following code caused ICE.
-        // This is because the `ExprKind::Call` in `value` has `ExprKind::Err` as its argument
-        // and this leads to wrong spans. #104897
-        //
-        // ```
-        // fn f(){(print!(á
-        // ```
-        use rustc_ast::visit::{walk_expr, Visitor};
-        struct ErrExprVisitor;
-        impl<'ast> Visitor<'ast> for ErrExprVisitor {
-            type Result = ControlFlow<()>;
-            fn visit_expr(&mut self, expr: &'ast ast::Expr) -> ControlFlow<()> {
-                if let ExprKind::Err(_) = expr.kind {
-                    ControlFlow::Break(())
-                } else {
-                    walk_expr(self, expr)
-                }
-            }
-        }
-        if ErrExprVisitor.visit_expr(value).is_break() {
-            return;
-        }
         let spans = match value.kind {
             ast::ExprKind::Block(ref block, None) if let [stmt] = block.stmts.as_slice() => stmt
                 .span
                 .find_ancestor_inside(value.span)
                 .map(|span| (value.span.with_hi(span.lo()), value.span.with_lo(span.hi()))),
             ast::ExprKind::Paren(ref expr) => {
-                expr.span.find_ancestor_inside(value.span).map(|expr_span| {
+                // For the expr with attributes, like `let _ = (#[inline] || println!("Hello!"));`,
+                // the span should contains the attributes, or the suggestion will remove them.
+                let expr_span_with_attrs =
+                    if let Some(attr_lo) = expr.attrs.iter().map(|attr| attr.span.lo()).min() {
+                        expr.span.with_lo(attr_lo)
+                    } else {
+                        expr.span
+                    };
+                expr_span_with_attrs.find_ancestor_inside(value.span).map(|expr_span| {
                     (value.span.with_hi(expr_span.lo()), value.span.with_lo(expr_span.hi()))
                 })
             }
@@ -914,6 +895,10 @@ trait UnusedDelimLint {
                 (value, UnusedDelimsCtx::ReturnValue, false, Some(left), None, true)
             }
 
+            Break(_, Some(ref value)) => {
+                (value, UnusedDelimsCtx::BreakValue, false, None, None, true)
+            }
+
             Index(_, ref value, _) => (value, UnusedDelimsCtx::IndexExpr, false, None, None, false),
 
             Assign(_, ref value, _) | AssignOp(.., ref value) => {
@@ -957,6 +942,22 @@ trait UnusedDelimLint {
         match s.kind {
             StmtKind::Let(ref local) if Self::LINT_EXPR_IN_PATTERN_MATCHING_CTX => {
                 if let Some((init, els)) = local.kind.init_else_opt() {
+                    if els.is_some()
+                        && let ExprKind::Paren(paren) = &init.kind
+                        && !init.span.eq_ctxt(paren.span)
+                    {
+                        // This branch prevents cases where parentheses wrap an expression
+                        // resulting from macro expansion, such as:
+                        // ```
+                        // macro_rules! x {
+                        // () => { None::<i32> };
+                        // }
+                        // let Some(_) = (x!{}) else { return };
+                        // // -> let Some(_) = (None::<i32>) else { return };
+                        // //                  ~           ~ No Lint
+                        // ```
+                        return;
+                    }
                     let ctx = match els {
                         None => UnusedDelimsCtx::AssignedValue,
                         Some(_) => UnusedDelimsCtx::AssignedValueLetElse,
@@ -1019,17 +1020,12 @@ declare_lint! {
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
 
-pub struct UnusedParens {
+#[derive(Default)]
+pub(crate) struct UnusedParens {
     with_self_ty_parens: bool,
     /// `1 as (i32) < 2` parses to ExprKind::Lt
     /// `1 as i32 < 2` parses to i32::<2[missing angle bracket]
     parens_in_cast_in_lt: Vec<ast::NodeId>,
-}
-
-impl UnusedParens {
-    pub fn new() -> Self {
-        Self { with_self_ty_parens: false, parens_in_cast_in_lt: Vec::new() }
-    }
 }
 
 impl_lint_pass!(UnusedParens => [UNUSED_PARENS]);
@@ -1064,6 +1060,9 @@ impl UnusedDelimLint for UnusedParens {
                                 _,
                                 _,
                             ) if node.is_lazy()))
+                    && !((ctx == UnusedDelimsCtx::ReturnValue
+                        || ctx == UnusedDelimsCtx::BreakValue)
+                        && matches!(inner.kind, ast::ExprKind::Assign(_, _, _)))
                 {
                     self.emit_unused_delims_expr(cx, value, ctx, left_pos, right_pos, is_kw)
                 }
@@ -1218,7 +1217,8 @@ impl EarlyLintPass for UnusedParens {
             // Do not lint on `(..)` as that will result in the other arms being useless.
             Paren(_)
             // The other cases do not contain sub-patterns.
-            | Wild | Never | Rest | Lit(..) | MacCall(..) | Range(..) | Ident(.., None) | Path(..) | Err(_) => {},
+            | Missing | Wild | Never | Rest | Expr(..) | MacCall(..) | Range(..) | Ident(.., None)
+            | Path(..) | Err(_) => {},
             // These are list-like patterns; parens can always be removed.
             TupleStruct(_, _, ps) | Tuple(ps) | Slice(ps) | Or(ps) => for p in ps {
                 self.check_unused_parens_pat(cx, p, false, false, keep_space);
@@ -1227,7 +1227,7 @@ impl EarlyLintPass for UnusedParens {
                 self.check_unused_parens_pat(cx, &f.pat, false, false, keep_space);
             },
             // Avoid linting on `i @ (p0 | .. | pn)` and `box (p0 | .. | pn)`, #64106.
-            Ident(.., Some(p)) | Box(p) | Deref(p) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
+            Ident(.., Some(p)) | Box(p) | Deref(p) | Guard(p, _) => self.check_unused_parens_pat(cx, p, true, false, keep_space),
             // Avoid linting on `&(mut x)` as `&mut x` has a different meaning, #55342.
             // Also avoid linting on `& mut? (p0 | .. | pn)`, #64106.
             Ref(p, m) => self.check_unused_parens_pat(cx, p, true, *m == Mutability::Not, keep_space),
@@ -1296,12 +1296,12 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn enter_where_predicate(&mut self, _: &EarlyContext<'_>, pred: &ast::WherePredicate) {
-        use rustc_ast::{WhereBoundPredicate, WherePredicate};
-        if let WherePredicate::BoundPredicate(WhereBoundPredicate {
+        use rustc_ast::{WhereBoundPredicate, WherePredicateKind};
+        if let WherePredicateKind::BoundPredicate(WhereBoundPredicate {
             bounded_ty,
             bound_generic_params,
             ..
-        }) = pred
+        }) = &pred.kind
             && let ast::TyKind::Paren(_) = &bounded_ty.kind
             && bound_generic_params.is_empty()
         {
@@ -1555,7 +1555,7 @@ impl UnusedImportBraces {
                     }
                     rename.unwrap_or(orig_ident).name
                 }
-                ast::UseTreeKind::Glob => Symbol::intern("*"),
+                ast::UseTreeKind::Glob => sym::asterisk,
                 ast::UseTreeKind::Nested { .. } => return,
             };
 
@@ -1613,7 +1613,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
         }
 
         for adj in cx.typeck_results().expr_adjustments(e) {
-            if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(_, m)) = adj.kind {
+            if let adjustment::Adjust::Borrow(adjustment::AutoBorrow::Ref(m)) = adj.kind {
                 match m {
                     adjustment::AutoBorrowMutability::Not => {
                         cx.emit_span_lint(UNUSED_ALLOCATION, e.span, UnusedAllocationDiag);

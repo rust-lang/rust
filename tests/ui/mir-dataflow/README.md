@@ -42,12 +42,3 @@ each generated output path.
    on *entry* to each block, as well as the gen- and kill-sets that
    were so-called "transfer functions" summarizing the effect of each
    basic block.
-
- * (In addition to the `borrowck_graphviz_postflow` attribute-key
-   noted above, there is also `borrowck_graphviz_preflow`; it has the
-   same interface and generates the same set of files, but it renders
-   the dataflow state after building the gen- and kill-sets but
-   *before* running the dataflow analysis itself, so each entry-set is
-   just the initial default state for that dataflow analysis. This is
-   less useful for understanding the error message output in these
-   tests.)

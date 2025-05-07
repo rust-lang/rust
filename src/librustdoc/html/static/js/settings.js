@@ -1,19 +1,39 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
-/* global addClass, removeClass, onEach, onEachLazy, blurHandler */
-/* global MAIN_ID, getVar, getSettingsButton */
+/* global addClass, removeClass, onEach, onEachLazy */
+/* global MAIN_ID, getVar, getSettingsButton, getHelpButton, nonnull */
 
 "use strict";
 
 (function() {
     const isSettingsPage = window.location.pathname.endsWith("/settings.html");
 
+    /**
+     * @param {Element} elem
+     * @param {EventTarget|null} target
+     */
+    function elemContainsTarget(elem, target) {
+        if (target instanceof Node) {
+            return elem.contains(target);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * @overload {"theme"|"preferred-dark-theme"|"preferred-light-theme"}
+     * @param {string} settingName
+     * @param {string} value
+     * @returns
+     * @param {string} settingName
+     * @param {string|boolean} value
+     */
     function changeSetting(settingName, value) {
         if (settingName === "theme") {
             const useSystem = value === "system preference" ? "true" : "false";
             updateLocalStorage("use-system-theme", useSystem);
         }
-        updateLocalStorage(settingName, value);
+        updateLocalStorage(settingName, "" + value);
 
         switch (settingName) {
             case "theme":
@@ -24,9 +44,15 @@
                 break;
             case "line-numbers":
                 if (value === true) {
-                    window.rustdoc_add_line_numbers_to_examples();
+                    const f = window.rustdoc_add_line_numbers_to_examples;
+                    if (f !== undefined) {
+                        f();
+                    }
                 } else {
-                    window.rustdoc_remove_line_numbers_from_examples();
+                    const f = window.rustdoc_remove_line_numbers_from_examples;
+                    if (f !== undefined) {
+                        f();
+                    }
                 }
                 break;
             case "hide-sidebar":
@@ -34,6 +60,34 @@
                     addClass(document.documentElement, "hide-sidebar");
                 } else {
                     removeClass(document.documentElement, "hide-sidebar");
+                }
+                break;
+            case "hide-toc":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-toc");
+                } else {
+                    removeClass(document.documentElement, "hide-toc");
+                }
+                break;
+            case "hide-modnav":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-modnav");
+                } else {
+                    removeClass(document.documentElement, "hide-modnav");
+                }
+                break;
+            case "sans-serif-fonts":
+                if (value === true) {
+                    addClass(document.documentElement, "sans-serif");
+                } else {
+                    removeClass(document.documentElement, "sans-serif");
+                }
+                break;
+            case "word-wrap-source-code":
+                if (value === true) {
+                    addClass(document.documentElement, "word-wrap-source-code");
+                } else {
+                    removeClass(document.documentElement, "word-wrap-source-code");
                 }
                 break;
         }
@@ -58,6 +112,9 @@
         }
     }
 
+    /**
+     * @param {HTMLElement} settingsElement
+     */
     function setEvents(settingsElement) {
         updateLightAndDark();
         onEachLazy(settingsElement.querySelectorAll("input[type=\"checkbox\"]"), toggle => {
@@ -70,23 +127,27 @@
                 changeSetting(toggle.id, toggle.checked);
             };
         });
-        onEachLazy(settingsElement.querySelectorAll("input[type=\"radio\"]"), elem => {
-            const settingId = elem.name;
-            let settingValue = getSettingValue(settingId);
-            if (settingId === "theme") {
-                const useSystem = getSettingValue("use-system-theme");
-                if (useSystem === "true" || settingValue === null) {
-                    // "light" is the default theme
-                    settingValue = useSystem === "false" ? "light" : "system preference";
+        onEachLazy(
+            settingsElement.querySelectorAll("input[type=\"radio\"]"),
+            /** @param {HTMLInputElement} elem */
+            elem => {
+                const settingId = elem.name;
+                let settingValue = getSettingValue(settingId);
+                if (settingId === "theme") {
+                    const useSystem = getSettingValue("use-system-theme");
+                    if (useSystem === "true" || settingValue === null) {
+                        // "light" is the default theme
+                        settingValue = useSystem === "false" ? "light" : "system preference";
+                    }
                 }
-            }
-            if (settingValue !== null && settingValue !== "null") {
-                elem.checked = settingValue === elem.value;
-            }
-            elem.addEventListener("change", ev => {
-                changeSetting(ev.target.name, ev.target.value);
-            });
-        });
+                if (settingValue !== null && settingValue !== "null") {
+                    elem.checked = settingValue === elem.value;
+                }
+                elem.addEventListener("change", () => {
+                    changeSetting(elem.name, elem.value);
+                });
+            },
+        );
     }
 
     /**
@@ -94,7 +155,7 @@
      * as argument which describes each setting and how to render it. It returns a string
      * representing the raw HTML.
      *
-     * @param {Array<Object>} settings
+     * @param {Array<rustdoc.Setting>} settings
      *
      * @return {string}
      */
@@ -146,7 +207,9 @@
      * @return {HTMLElement}
      */
     function buildSettingsPage() {
-        const theme_names = getVar("themes").split(",").filter(t => t);
+        const theme_list = getVar("themes");
+        const theme_names = (theme_list === null ? "" : theme_list)
+              .split(",").filter(t => t);
         theme_names.push("light", "dark", "ayu");
 
         const settings = [
@@ -199,8 +262,28 @@
                 "default": false,
             },
             {
+                "name": "Hide table of contents",
+                "js_name": "hide-toc",
+                "default": false,
+            },
+            {
+                "name": "Hide module navigation",
+                "js_name": "hide-modnav",
+                "default": false,
+            },
+            {
                 "name": "Disable keyboard shortcuts",
                 "js_name": "disable-shortcuts",
+                "default": false,
+            },
+            {
+                "name": "Use sans serif fonts",
+                "js_name": "sans-serif-fonts",
+                "default": false,
+            },
+            {
+                "name": "Word wrap source code",
+                "js_name": "word-wrap-source-code",
                 "default": false,
             },
         ];
@@ -216,10 +299,16 @@
         el.innerHTML = innerHTML;
 
         if (isSettingsPage) {
-            document.getElementById(MAIN_ID).appendChild(el);
+            const mainElem = document.getElementById(MAIN_ID);
+            if (mainElem !== null) {
+                mainElem.appendChild(el);
+            }
         } else {
             el.setAttribute("tabindex", "-1");
-            getSettingsButton().appendChild(el);
+            const settingsBtn = getSettingsButton();
+            if (settingsBtn !== null) {
+                settingsBtn.appendChild(el);
+            }
         }
         return el;
     }
@@ -237,33 +326,44 @@
         });
     }
 
+    /**
+     * @param {FocusEvent} event
+     */
     function settingsBlurHandler(event) {
-        blurHandler(event, getSettingsButton(), window.hidePopoverMenus);
+        const helpBtn = getHelpButton();
+        const settingsBtn = getSettingsButton();
+        const helpUnfocused = helpBtn === null ||
+              (!helpBtn.contains(document.activeElement) &&
+               !elemContainsTarget(helpBtn, event.relatedTarget));
+        const settingsUnfocused = settingsBtn === null ||
+              (!settingsBtn.contains(document.activeElement) &&
+               !elemContainsTarget(settingsBtn, event.relatedTarget));
+        if (helpUnfocused && settingsUnfocused) {
+            window.hidePopoverMenus();
+        }
     }
 
-    if (isSettingsPage) {
-        // We replace the existing "onclick" callback to do nothing if clicked.
-        getSettingsButton().onclick = event => {
-            event.preventDefault();
-        };
-    } else {
+    if (!isSettingsPage) {
         // We replace the existing "onclick" callback.
-        const settingsButton = getSettingsButton();
-        const settingsMenu = document.getElementById("settings");
+        // These elements must exist, as (outside of the settings page)
+        // `settings.js` is only loaded after the settings button is clicked.
+        const settingsButton = nonnull(getSettingsButton());
+        const settingsMenu = nonnull(document.getElementById("settings"));
         settingsButton.onclick = event => {
-            if (settingsMenu.contains(event.target)) {
+            if (elemContainsTarget(settingsMenu, event.target)) {
                 return;
             }
             event.preventDefault();
             const shouldDisplaySettings = settingsMenu.style.display === "none";
 
-            window.hideAllModals();
+            window.hideAllModals(false);
             if (shouldDisplaySettings) {
                 displaySettings();
             }
         };
         settingsButton.onblur = settingsBlurHandler;
-        settingsButton.querySelector("a").onblur = settingsBlurHandler;
+        // the settings button should always have a link in it
+        nonnull(settingsButton.querySelector("a")).onblur = settingsBlurHandler;
         onEachLazy(settingsMenu.querySelectorAll("input"), el => {
             el.onblur = settingsBlurHandler;
         });

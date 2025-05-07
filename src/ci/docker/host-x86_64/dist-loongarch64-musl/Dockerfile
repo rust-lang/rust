@@ -3,8 +3,8 @@ FROM ubuntu:22.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng-git.sh /scripts/
-RUN sh /scripts/crosstool-ng-git.sh
+COPY scripts/crosstool-ng.sh /scripts/
+RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
@@ -29,6 +29,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --enable-full-tools \
       --enable-profiler \
+      --enable-sanitizers \
       --disable-docs \
       --set target.loongarch64-unknown-linux-musl.crt-static=false \
       --musl-root-loongarch64=/x-tools/loongarch64-unknown-linux-musl/loongarch64-unknown-linux-musl/sysroot/usr

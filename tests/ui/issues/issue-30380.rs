@@ -3,7 +3,7 @@
 
 //@ run-fail
 //@ error-pattern:panicking destructors ftw!
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 struct Observer<'a>(&'a mut FilledOnDrop);
 

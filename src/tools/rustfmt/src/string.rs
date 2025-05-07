@@ -84,7 +84,7 @@ pub(crate) fn rewrite_string<'a>(
         stripped_str
             .len()
             .checked_next_power_of_two()
-            .unwrap_or(usize::max_value()),
+            .unwrap_or(usize::MAX),
     );
     result.push_str(fmt.opener);
 
@@ -375,7 +375,7 @@ fn graphemes_width(graphemes: &[&str]) -> usize {
 
 #[cfg(test)]
 mod test {
-    use super::{break_string, detect_url, rewrite_string, SnippetState, StringFormat};
+    use super::{SnippetState, StringFormat, break_string, detect_url, rewrite_string};
     use crate::config::Config;
     use crate::shape::{Indent, Shape};
     use unicode_segmentation::UnicodeSegmentation;

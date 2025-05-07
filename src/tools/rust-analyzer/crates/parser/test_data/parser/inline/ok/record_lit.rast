@@ -131,6 +131,53 @@ SOURCE_FILE
               L_CURLY "{"
               WHITESPACE " "
               RECORD_EXPR_FIELD
+                PATH_EXPR
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "x"
+              COMMA ","
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
+                NAME_REF
+                  IDENT "y"
+                COLON ":"
+                WHITESPACE " "
+                LITERAL
+                  INT_NUMBER "32"
+              COMMA ","
+              WHITESPACE " "
+              DOT2 ".."
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              DOT2 ".."
+              WHITESPACE " "
+              R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          RECORD_EXPR
+            PATH
+              PATH_SEGMENT
+                NAME_REF
+                  IDENT "S"
+            WHITESPACE " "
+            RECORD_EXPR_FIELD_LIST
+              L_CURLY "{"
+              WHITESPACE " "
+              RECORD_EXPR_FIELD
                 NAME_REF
                   IDENT "x"
                 COLON ":"

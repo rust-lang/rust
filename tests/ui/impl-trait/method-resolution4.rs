@@ -11,10 +11,9 @@
 fn foo(b: bool) -> impl Iterator<Item = ()> {
     if b {
         foo(false).next().unwrap();
-        //[next]~^ type annotations needed
+        //[next]~^ ERROR type annotations needed
     }
     std::iter::empty()
-    //[next]~^ mismatched types
 }
 
 fn main() {}

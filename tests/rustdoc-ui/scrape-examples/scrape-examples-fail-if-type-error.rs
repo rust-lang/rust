@@ -5,3 +5,5 @@ pub fn foo() {
   INVALID_FUNC();
   //~^ ERROR could not resolve path
 }
+
+//~? ERROR Compilation failed, aborting rustdoc

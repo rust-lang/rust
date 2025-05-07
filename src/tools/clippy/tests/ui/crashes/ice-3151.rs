@@ -1,4 +1,5 @@
-/// Test for https://github.com/rust-lang/rust-clippy/issues/3151
+//@ check-pass
+// Test for https://github.com/rust-lang/rust-clippy/issues/3151
 
 #[derive(Clone)]
 pub struct HashMap<V, S> {

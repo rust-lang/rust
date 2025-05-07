@@ -183,7 +183,6 @@ ui/async-await/issue-67252-unnamed-future.rs
 ui/async-await/issue-67651.rs
 ui/async-await/issue-67765-async-diagnostic.rs
 ui/async-await/issue-68112.rs
-ui/async-await/issue-68523-start.rs
 ui/async-await/issue-68523.rs
 ui/async-await/issue-69446-fnmut-capture.rs
 ui/async-await/issue-70594.rs
@@ -277,13 +276,7 @@ ui/auto-traits/issue-23080-2.rs
 ui/auto-traits/issue-23080.rs
 ui/auto-traits/issue-83857-ub.rs
 ui/auto-traits/issue-84075.rs
-ui/auxiliary/issue-13560-1.rs
-ui/auxiliary/issue-13560-2.rs
-ui/auxiliary/issue-13560-3.rs
 ui/auxiliary/issue-16822.rs
-ui/auxiliary/issue-18502.rs
-ui/auxiliary/issue-24106.rs
-ui/auxiliary/issue-76387.rs
 ui/bench/issue-32062.rs
 ui/binding/issue-40402-1.rs
 ui/binding/issue-40402-2.rs
@@ -410,7 +403,6 @@ ui/closure_context/issue-26046-fn-once.rs
 ui/closure_context/issue-42065.rs
 ui/closures/2229_closure_analysis/issue-118144.rs
 ui/closures/2229_closure_analysis/issue-87378.rs
-ui/closures/2229_closure_analysis/issue-87987.rs
 ui/closures/2229_closure_analysis/issue-88118-2.rs
 ui/closures/2229_closure_analysis/issue-88476.rs
 ui/closures/2229_closure_analysis/issue-89606.rs
@@ -467,7 +459,6 @@ ui/closures/issue-87814-2.rs
 ui/closures/issue-90871.rs
 ui/closures/issue-97607.rs
 ui/closures/issue-99565.rs
-ui/cmse-nonsecure/cmse-nonsecure-entry/issue-83475.rs
 ui/codegen/auxiliary/issue-97708-aux.rs
 ui/codegen/issue-101585-128bit-repeat.rs
 ui/codegen/issue-16602-1.rs
@@ -511,7 +502,6 @@ ui/confuse-field-and-method/issue-2392.rs
 ui/confuse-field-and-method/issue-32128.rs
 ui/confuse-field-and-method/issue-33784.rs
 ui/const-generics/generic_arg_infer/issue-91614.rs
-ui/const-generics/generic_const_exprs/auxiliary/issue-94287-aux.rs
 ui/const-generics/generic_const_exprs/const_kind_expr/issue_114151.rs
 ui/const-generics/generic_const_exprs/issue-100217.rs
 ui/const-generics/generic_const_exprs/issue-100360.rs
@@ -541,7 +531,6 @@ ui/const-generics/generic_const_exprs/issue-85848.rs
 ui/const-generics/generic_const_exprs/issue-86710.rs
 ui/const-generics/generic_const_exprs/issue-89851.rs
 ui/const-generics/generic_const_exprs/issue-90847.rs
-ui/const-generics/generic_const_exprs/issue-94287.rs
 ui/const-generics/generic_const_exprs/issue-94293.rs
 ui/const-generics/generic_const_exprs/issue-96699.rs
 ui/const-generics/generic_const_exprs/issue-97047-ice-1.rs
@@ -552,7 +541,6 @@ ui/const-generics/infer/issue-77092.rs
 ui/const-generics/issue-102124.rs
 ui/const-generics/issue-105689.rs
 ui/const-generics/issue-106419-struct-with-multiple-const-params.rs
-ui/const-generics/issue-112505-overflow.rs
 ui/const-generics/issue-46511.rs
 ui/const-generics/issue-66451.rs
 ui/const-generics/issue-70408.rs
@@ -675,8 +663,6 @@ ui/consts/auxiliary/issue-17718-aux.rs
 ui/consts/auxiliary/issue-63226.rs
 ui/consts/const-eval/issue-100878.rs
 ui/consts/const-eval/issue-104390.rs
-ui/consts/const-eval/issue-114994-fail.rs
-ui/consts/const-eval/issue-114994.rs
 ui/consts/const-eval/issue-43197.rs
 ui/consts/const-eval/issue-44578.rs
 ui/consts/const-eval/issue-47971.rs
@@ -768,7 +754,6 @@ ui/consts/issue-46553.rs
 ui/consts/issue-47789.rs
 ui/consts/issue-50439.rs
 ui/consts/issue-52023-array-size-pointer-cast.rs
-ui/consts/issue-52060.rs
 ui/consts/issue-54224.rs
 ui/consts/issue-54348.rs
 ui/consts/issue-54387.rs
@@ -800,7 +785,6 @@ ui/consts/issue-68684.rs
 ui/consts/issue-69191-ice-on-uninhabited-enum-field.rs
 ui/consts/issue-69310-array-size-lit-wrong-ty.rs
 ui/consts/issue-69312.rs
-ui/consts/issue-69488.rs
 ui/consts/issue-69532.rs
 ui/consts/issue-6991.rs
 ui/consts/issue-70773-mir-typeck-lt-norm.rs
@@ -808,7 +792,6 @@ ui/consts/issue-70942-trait-vs-impl-mismatch.rs
 ui/consts/issue-73976-monomorphic.rs
 ui/consts/issue-73976-polymorphic.rs
 ui/consts/issue-76064.rs
-ui/consts/issue-77062-large-zst-array.rs
 ui/consts/issue-78655.rs
 ui/consts/issue-79137-monomorphic.rs
 ui/consts/issue-79137-toogeneric.rs
@@ -1289,8 +1272,7 @@ ui/imports/auxiliary/issue-52891.rs
 ui/imports/auxiliary/issue-55811.rs
 ui/imports/auxiliary/issue-56125.rs
 ui/imports/auxiliary/issue-59764.rs
-ui/imports/auxiliary/issue-85992-extern-1.rs
-ui/imports/auxiliary/issue-85992-extern-2.rs
+ui/imports/auxiliary/issue-85992-extern.rs
 ui/imports/issue-109148.rs
 ui/imports/issue-109343.rs
 ui/imports/issue-113953.rs
@@ -1390,14 +1372,9 @@ ui/intrinsics/issue-28575.rs
 ui/intrinsics/issue-84297-reifying-copy.rs
 ui/invalid/issue-114435-layout-type-err.rs
 ui/issue-11881.rs
-ui/issue-13560.rs
 ui/issue-15924.rs
 ui/issue-16822.rs
-ui/issue-18502.rs
-ui/issue-24106.rs
-ui/issue-76387-llvm-miscompile.rs
 ui/issues-71798.rs
-ui/issues/auxiliary/issue-111011.rs
 ui/issues/auxiliary/issue-11224.rs
 ui/issues/auxiliary/issue-11508.rs
 ui/issues/auxiliary/issue-11529.rs
@@ -1410,7 +1387,6 @@ ui/issues/auxiliary/issue-13620-1.rs
 ui/issues/auxiliary/issue-13620-2.rs
 ui/issues/auxiliary/issue-14344-1.rs
 ui/issues/auxiliary/issue-14344-2.rs
-ui/issues/auxiliary/issue-14421.rs
 ui/issues/auxiliary/issue-14422.rs
 ui/issues/auxiliary/issue-15562.rs
 ui/issues/auxiliary/issue-16643.rs
@@ -1528,7 +1504,6 @@ ui/issues/issue-12567.rs
 ui/issues/issue-12612.rs
 ui/issues/issue-12660.rs
 ui/issues/issue-12677.rs
-ui/issues/issue-12699.rs
 ui/issues/issue-12729.rs
 ui/issues/issue-12744.rs
 ui/issues/issue-12860.rs
@@ -1578,7 +1553,6 @@ ui/issues/issue-14366.rs
 ui/issues/issue-14382.rs
 ui/issues/issue-14393.rs
 ui/issues/issue-14399.rs
-ui/issues/issue-14421.rs
 ui/issues/issue-14422.rs
 ui/issues/issue-14541.rs
 ui/issues/issue-14721.rs
@@ -1643,7 +1617,6 @@ ui/issues/issue-16774.rs
 ui/issues/issue-16783.rs
 ui/issues/issue-16819.rs
 ui/issues/issue-16922-rpass.rs
-ui/issues/issue-16939.rs
 ui/issues/issue-16966.rs
 ui/issues/issue-16994.rs
 ui/issues/issue-17001.rs
@@ -1652,7 +1625,6 @@ ui/issues/issue-17068.rs
 ui/issues/issue-17121.rs
 ui/issues/issue-17216.rs
 ui/issues/issue-17252.rs
-ui/issues/issue-17302.rs
 ui/issues/issue-17322.rs
 ui/issues/issue-17336.rs
 ui/issues/issue-17337.rs
@@ -1882,7 +1854,6 @@ ui/issues/issue-23550.rs
 ui/issues/issue-23589.rs
 ui/issues/issue-23699.rs
 ui/issues/issue-2380-b.rs
-ui/issues/issue-23808.rs
 ui/issues/issue-2383.rs
 ui/issues/issue-23891.rs
 ui/issues/issue-23898.rs
@@ -1998,7 +1969,6 @@ ui/issues/issue-27997.rs
 ui/issues/issue-28105.rs
 ui/issues/issue-28109.rs
 ui/issues/issue-28181.rs
-ui/issues/issue-2823.rs
 ui/issues/issue-28279.rs
 ui/issues/issue-28344.rs
 ui/issues/issue-28433.rs
@@ -2015,7 +1985,6 @@ ui/issues/issue-28586.rs
 ui/issues/issue-28600.rs
 ui/issues/issue-28625.rs
 ui/issues/issue-28776.rs
-ui/issues/issue-28777.rs
 ui/issues/issue-28828.rs
 ui/issues/issue-28839.rs
 ui/issues/issue-28936.rs
@@ -2078,7 +2047,6 @@ ui/issues/issue-3091.rs
 ui/issues/issue-31011.rs
 ui/issues/issue-3109.rs
 ui/issues/issue-3121.rs
-ui/issues/issue-31260.rs
 ui/issues/issue-31267-additional.rs
 ui/issues/issue-31267.rs
 ui/issues/issue-31299.rs
@@ -2217,7 +2185,6 @@ ui/issues/issue-3895.rs
 ui/issues/issue-38954.rs
 ui/issues/issue-38987.rs
 ui/issues/issue-39089.rs
-ui/issues/issue-39175.rs
 ui/issues/issue-39211.rs
 ui/issues/issue-39367.rs
 ui/issues/issue-39548.rs
@@ -2234,26 +2201,12 @@ ui/issues/issue-3993.rs
 ui/issues/issue-39970.rs
 ui/issues/issue-39984.rs
 ui/issues/issue-40000.rs
-ui/issues/issue-40136.rs
-ui/issues/issue-40235.rs
 ui/issues/issue-4025.rs
 ui/issues/issue-40288-2.rs
 ui/issues/issue-40288.rs
-ui/issues/issue-40350.rs
-ui/issues/issue-40408.rs
-ui/issues/issue-40610.rs
-ui/issues/issue-40749.rs
-ui/issues/issue-40782.rs
-ui/issues/issue-40827.rs
-ui/issues/issue-40845.rs
-ui/issues/issue-40861.rs
-ui/issues/issue-40883.rs
 ui/issues/issue-40951.rs
 ui/issues/issue-41053.rs
-ui/issues/issue-41139.rs
-ui/issues/issue-41213.rs
 ui/issues/issue-41229-ref-str.rs
-ui/issues/issue-41272.rs
 ui/issues/issue-41298.rs
 ui/issues/issue-41479.rs
 ui/issues/issue-41498.rs
@@ -2307,8 +2260,6 @@ ui/issues/issue-43853.rs
 ui/issues/issue-4387.rs
 ui/issues/issue-43910.rs
 ui/issues/issue-43923.rs
-ui/issues/issue-43925.rs
-ui/issues/issue-43926.rs
 ui/issues/issue-43988.rs
 ui/issues/issue-44023.rs
 ui/issues/issue-44056.rs
@@ -2378,7 +2329,6 @@ ui/issues/issue-4830.rs
 ui/issues/issue-48364.rs
 ui/issues/issue-48728.rs
 ui/issues/issue-4875.rs
-ui/issues/issue-48838.rs
 ui/issues/issue-48984.rs
 ui/issues/issue-49298.rs
 ui/issues/issue-4935.rs
@@ -2409,7 +2359,6 @@ ui/issues/issue-50618.rs
 ui/issues/issue-5062.rs
 ui/issues/issue-5067.rs
 ui/issues/issue-50688.rs
-ui/issues/issue-50714-1.rs
 ui/issues/issue-50714.rs
 ui/issues/issue-50761.rs
 ui/issues/issue-50781.rs
@@ -2557,8 +2506,6 @@ ui/issues/issue-6936.rs
 ui/issues/issue-69455.rs
 ui/issues/issue-69602-type-err-during-codegen-ice.rs
 ui/issues/issue-69683.rs
-ui/issues/issue-70093/issue-70093-link-directives.rs
-ui/issues/issue-70093/issue-70093.rs
 ui/issues/issue-7012.rs
 ui/issues/issue-70381.rs
 ui/issues/issue-7044.rs
@@ -2644,10 +2591,7 @@ ui/issues/issue-9243.rs
 ui/issues/issue-9249.rs
 ui/issues/issue-9259.rs
 ui/issues/issue-92741.rs
-ui/issues/issue-9382.rs
 ui/issues/issue-9446.rs
-ui/issues/issue-9575.rs
-ui/issues/issue-9719.rs
 ui/issues/issue-9725.rs
 ui/issues/issue-9737.rs
 ui/issues/issue-9814.rs
@@ -2661,7 +2605,6 @@ ui/issues/issue-9968.rs
 ui/issues/issue-99838.rs
 ui/iterators/issue-28098.rs
 ui/iterators/issue-58952-filter-type-length.rs
-ui/lang-items/issue-19660.rs
 ui/lang-items/issue-83471.rs
 ui/lang-items/issue-87573.rs
 ui/late-bound-lifetimes/issue-36381.rs
@@ -2721,14 +2664,15 @@ ui/limits/issue-15919-32.rs
 ui/limits/issue-15919-64.rs
 ui/limits/issue-17913.rs
 ui/limits/issue-55878.rs
-ui/limits/issue-56762.rs
 ui/limits/issue-69485-var-size-diffs-too-large.rs
 ui/limits/issue-75158-64.rs
+ui/link-native-libs/issue-109144.rs
+ui/link-native-libs/issue-43925.rs
+ui/link-native-libs/issue-43926.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib.rs
 ui/linkage-attr/auxiliary/issue-12133-dylib2.rs
 ui/linkage-attr/auxiliary/issue-12133-rlib.rs
 ui/linkage-attr/issue-10755.rs
-ui/linkage-attr/issue-109144.rs
 ui/linkage-attr/issue-12133-1.rs
 ui/linkage-attr/issue-12133-2.rs
 ui/linkage-attr/issue-12133-3.rs
@@ -2753,14 +2697,12 @@ ui/lint/issue-111359.rs
 ui/lint/issue-112489.rs
 ui/lint/issue-117949.rs
 ui/lint/issue-121070-let-range.rs
-ui/lint/issue-14309.rs
 ui/lint/issue-14837.rs
 ui/lint/issue-17718-const-naming.rs
 ui/lint/issue-1866.rs
 ui/lint/issue-19102.rs
 ui/lint/issue-20343.rs
 ui/lint/issue-30302.rs
-ui/lint/issue-34798.rs
 ui/lint/issue-35075.rs
 ui/lint/issue-47775-nested-macro-unnecessary-parens-arg.rs
 ui/lint/issue-49588-non-shorthand-field-patterns-in-pattern-macro.rs
@@ -2769,9 +2711,7 @@ ui/lint/issue-57410-1.rs
 ui/lint/issue-57410.rs
 ui/lint/issue-63364.rs
 ui/lint/issue-70819-dont-override-forbid-in-same-scope.rs
-ui/lint/issue-79546-fuel-ice.rs
 ui/lint/issue-79744.rs
-ui/lint/issue-80988.rs
 ui/lint/issue-81218.rs
 ui/lint/issue-83477.rs
 ui/lint/issue-87274-paren-parent.rs
@@ -2917,7 +2857,6 @@ ui/macros/rfc-3086-metavar-expr/issue-111904.rs
 ui/malformed/issue-107423-unused-delim-only-one-no-pair.rs
 ui/malformed/issue-69341-malformed-derive-inert.rs
 ui/marker_trait_attr/issue-61651-type-mismatch.rs
-ui/match/issue-112438.rs
 ui/match/issue-113012.rs
 ui/match/issue-11319.rs
 ui/match/issue-114691.rs
@@ -3172,7 +3111,6 @@ ui/nll/issue-97997.rs
 ui/nll/issue-98170.rs
 ui/nll/issue-98589-closures-relate-named-regions.rs
 ui/nll/issue-98693.rs
-ui/nll/polonius/issue-46589.rs
 ui/nll/relate_tys/issue-48071.rs
 ui/nll/ty-outlives/issue-53789-1.rs
 ui/nll/ty-outlives/issue-53789-2.rs
@@ -3183,13 +3121,7 @@ ui/nll/user-annotations/issue-55219.rs
 ui/nll/user-annotations/issue-55241.rs
 ui/nll/user-annotations/issue-55748-pat-types-constrain-bindings.rs
 ui/nll/user-annotations/issue-57731-ascibed-coupled-types.rs
-ui/numbers-arithmetic/issue-105626.rs
 ui/numbers-arithmetic/issue-8460.rs
-ui/object-safety/issue-102762.rs
-ui/object-safety/issue-102933.rs
-ui/object-safety/issue-106247.rs
-ui/object-safety/issue-19538.rs
-ui/on-unimplemented/issue-104140.rs
 ui/or-patterns/issue-64879-trailing-before-guard.rs
 ui/or-patterns/issue-67514-irrefutable-param.rs
 ui/or-patterns/issue-68785-irrefutable-param-with-at.rs
@@ -3239,7 +3171,6 @@ ui/parser/issues/issue-108495-dec.rs
 ui/parser/issues/issue-110014.rs
 ui/parser/issues/issue-111148.rs
 ui/parser/issues/issue-111416.rs
-ui/parser/issues/issue-111692.rs
 ui/parser/issues/issue-112188.rs
 ui/parser/issues/issue-112458.rs
 ui/parser/issues/issue-113110-non-item-at-module-root.rs
@@ -3501,8 +3432,6 @@ ui/pattern/usefulness/issue-80501-or-pat-and-macro.rs
 ui/pattern/usefulness/issue-82772-match-box-as-struct.rs
 ui/pattern/usefulness/issue-85222-types-containing-non-exhaustive-types.rs
 ui/pattern/usefulness/issue-88747.rs
-ui/polymorphization/issue-74614.rs
-ui/polymorphization/issue-74636.rs
 ui/privacy/auxiliary/issue-117997.rs
 ui/privacy/auxiliary/issue-119463-extern.rs
 ui/privacy/auxiliary/issue-17718-const-privacy.rs
@@ -3668,7 +3597,6 @@ ui/resolve/issue-21221-1.rs
 ui/resolve/issue-21221-2.rs
 ui/resolve/issue-21221-3.rs
 ui/resolve/issue-21221-4.rs
-ui/resolve/issue-22692.rs
 ui/resolve/issue-2330.rs
 ui/resolve/issue-23305.rs
 ui/resolve/issue-2356.rs
@@ -3728,7 +3656,6 @@ ui/rfcs/rfc-2005-default-binding-mode/issue-44912-or.rs
 ui/rfcs/rfc-2008-non-exhaustive/uninhabited/issue-65157-repeated-match-arm.rs
 ui/rfcs/rfc-2093-infer-outlives/issue-54467.rs
 ui/rfcs/rfc-2396-target_feature-11/issue-108645-target-feature-on-main.rs
-ui/rfcs/rfc-2396-target_feature-11/issue-108645-target-feature-on-start.rs
 ui/rfcs/rfc-2396-target_feature-11/issue-108655-inline-always-closure.rs
 ui/rfcs/rfc-2396-target_feature-11/issue-99876.rs
 ui/rfcs/rfc-2497-if-let-chains/issue-88498.rs
@@ -3739,16 +3666,6 @@ ui/rfcs/rfc-2497-if-let-chains/issue-99938.rs
 ui/rfcs/rfc-2528-type-changing-struct-update/issue-92010-trait-bound-not-satisfied.rs
 ui/rfcs/rfc-2528-type-changing-struct-update/issue-96878.rs
 ui/rfcs/rfc-2565-param-attrs/issue-64682-dropping-first-attrs-in-impl-fns.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-100222.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-102156.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-102985.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-103677.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-79450.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-88155.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-92111.rs
-ui/rfcs/rfc-2632-const-trait-impl/issue-92230-wf-super-trait-env.rs
-ui/rfcs/rfc-2632-const-trait-impl/specialization/issue-95186-specialize-on-tilde-const.rs
-ui/rfcs/rfc-2632-const-trait-impl/specialization/issue-95187-same-trait-bound-different-constness.rs
 ui/rust-2018/issue-51008-1.rs
 ui/rust-2018/issue-51008.rs
 ui/rust-2018/issue-52202-use-suggestions.rs
@@ -3838,7 +3755,6 @@ ui/stability-attribute/issue-28388-3.rs
 ui/stability-attribute/issue-99286-stable-intrinsics.rs
 ui/static/auxiliary/issue_24843.rs
 ui/static/issue-1660.rs
-ui/static/issue-18118-2.rs
 ui/static/issue-18118.rs
 ui/static/issue-24446.rs
 ui/static/issue-24843.rs
@@ -3889,7 +3805,6 @@ ui/suggestions/issue-103646.rs
 ui/suggestions/issue-104086-suggest-let.rs
 ui/suggestions/issue-104287.rs
 ui/suggestions/issue-104327.rs
-ui/suggestions/issue-104328.rs
 ui/suggestions/issue-104961.rs
 ui/suggestions/issue-105226.rs
 ui/suggestions/issue-105494.rs
@@ -3899,7 +3814,6 @@ ui/suggestions/issue-106443-sugg-clone-for-arg.rs
 ui/suggestions/issue-106443-sugg-clone-for-bound.rs
 ui/suggestions/issue-107860.rs
 ui/suggestions/issue-108470.rs
-ui/suggestions/issue-109195.rs
 ui/suggestions/issue-109291.rs
 ui/suggestions/issue-109396.rs
 ui/suggestions/issue-109436.rs
@@ -4003,6 +3917,16 @@ ui/traits/alias/issue-75983.rs
 ui/traits/alias/issue-83613.rs
 ui/traits/associated_type_bound/issue-51446.rs
 ui/traits/auxiliary/issue_89119_intercrate_caching.rs
+ui/traits/const-traits/issue-100222.rs
+ui/traits/const-traits/issue-102156.rs
+ui/traits/const-traits/issue-102985.rs
+ui/traits/const-traits/issue-103677.rs
+ui/traits/const-traits/issue-79450.rs
+ui/traits/const-traits/issue-88155.rs
+ui/traits/const-traits/issue-92111.rs
+ui/traits/const-traits/issue-92230-wf-super-trait-env.rs
+ui/traits/const-traits/specialization/issue-95186-specialize-on-tilde-const.rs
+ui/traits/const-traits/specialization/issue-95187-same-trait-bound-different-constness.rs
 ui/traits/issue-103563.rs
 ui/traits/issue-104322.rs
 ui/traits/issue-105231.rs
@@ -4086,7 +4010,6 @@ ui/traits/issue-96664.rs
 ui/traits/issue-96665.rs
 ui/traits/issue-97576.rs
 ui/traits/issue-97695-double-trivial-bound.rs
-ui/traits/issue-99875.rs
 ui/traits/next-solver/coherence/issue-102048.rs
 ui/traits/next-solver/issue-118950-root-region.rs
 ui/traits/object/issue-33140-traitobject-crate.rs
@@ -4113,7 +4036,6 @@ ui/type-alias-enum-variants/issue-63151-dead-code-lint-fields-in-patterns.rs
 ui/type-alias-impl-trait/issue-101750.rs
 ui/type-alias-impl-trait/issue-104817.rs
 ui/type-alias-impl-trait/issue-109054.rs
-ui/type-alias-impl-trait/issue-52843-closure-constrain.rs
 ui/type-alias-impl-trait/issue-52843.rs
 ui/type-alias-impl-trait/issue-53092-2.rs
 ui/type-alias-impl-trait/issue-53092.rs
@@ -4123,7 +4045,6 @@ ui/type-alias-impl-trait/issue-53678-coroutine-and-const-fn.rs
 ui/type-alias-impl-trait/issue-55099-lifetime-inference.rs
 ui/type-alias-impl-trait/issue-57188-associate-impl-capture.rs
 ui/type-alias-impl-trait/issue-57611-trait-alias.rs
-ui/type-alias-impl-trait/issue-57700.rs
 ui/type-alias-impl-trait/issue-57807-associated-type.rs
 ui/type-alias-impl-trait/issue-57961.rs
 ui/type-alias-impl-trait/issue-58662-coroutine-with-lifetime.rs

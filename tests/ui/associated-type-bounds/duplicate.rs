@@ -179,19 +179,25 @@ where
 
 type ETAI1<T: Iterator<Item: Copy, Item: Send>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
+//~| ERROR unconstrained opaque type
 type ETAI2<T: Iterator<Item: Copy, Item: Copy>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
+//~| ERROR unconstrained opaque type
 type ETAI3<T: Iterator<Item: 'static, Item: 'static>> = impl Copy;
 //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
+//~| ERROR unconstrained opaque type
 type ETAI4 = impl Iterator<Item: Copy, Item: Send>;
 //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
 //~| ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
+//~| ERROR unconstrained opaque type
 type ETAI5 = impl Iterator<Item: Copy, Item: Copy>;
 //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
 //~| ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
+//~| ERROR unconstrained opaque type
 type ETAI6 = impl Iterator<Item: 'static, Item: 'static>;
 //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
 //~| ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]
+//~| ERROR unconstrained opaque type
 
 trait TRI1<T: Iterator<Item: Copy, Item: Send>> {}
 //~^ ERROR the value of the associated type `Item` in trait `Iterator` is already specified [E0719]

@@ -20,8 +20,8 @@ TEEOS is open source in progress. [MORE about](https://gitee.com/opentrustee-gro
 
 ## Target maintainers
 
-- Petrochenkov Vadim
-- Sword-Destiny
+[@petrochenkov](https://github.com/petrochenkov)
+[@Sword-Destiny](https://github.com/Sword-Destiny)
 
 ## Setup
 We use OpenHarmony SDK for TEEOS.
@@ -54,7 +54,7 @@ exec /path/to/ohos-sdk/linux/native/llvm/bin/clang++ \
 
 ## Building the target
 
-To build a rust toolchain, create a `config.toml` with the following contents:
+To build a rust toolchain, create a `bootstrap.toml` with the following contents:
 
 ```toml
 profile = "compiler"

@@ -172,6 +172,19 @@
                     <!-- tool-rust-docs-end -->
                     <Directory Id="Cargo" Name="." />
                     <Directory Id="Std" Name="." />
+                    <?if $(env.CFG_RUSTFMT)="1" ?>
+                        <Directory Id="RustFmt" Name="." />
+                    <?endif?>
+                    <?if $(env.CFG_RA)="1" ?>
+                        <Directory Id="RustAnalyzer" Name="." />
+                    <?endif?>
+                    <?if $(env.CFG_MIRI)="1" ?>
+                        <Directory Id="Miri" Name="." />
+                    <?endif?>
+                    <Directory Id="Analysis" Name="." />
+                    <?if $(env.CFG_CLIPPY)="1" ?>
+                        <Directory Id="Clippy" Name="." />
+                    <?endif?>
                 </Directory>
             </Directory>
 
@@ -279,7 +292,49 @@
                  <ComponentRef Id="PathEnvPerMachine" />
                  <ComponentRef Id="PathEnvPerUser" />
         </Feature>
-
+        <?if $(env.CFG_RUSTFMT)="1" ?>
+            <Feature Id="RustFmt"
+                     Title="Formatter for rust"
+                     Display="7"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="RustFmtGroup" />
+            </Feature>
+        <?endif?>
+        <?if $(env.CFG_CLIPPY)="1" ?>
+            <Feature Id="Clippy"
+                     Title="Formatter and checker for rust"
+                     Display="8"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="ClippyGroup" />
+            </Feature>
+        <?endif?>
+        <?if $(env.CFG_MIRI)="1" ?>
+            <Feature Id="Miri"
+                     Title="Soundness checker for rust"
+                     Display="9"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="MiriGroup" />
+            </Feature>
+        <?endif?>
+        <?if $(env.CFG_RA)="1" ?>
+            <Feature Id="RustAnalyzer"
+                     Title="Analyzer for rust"
+                     Display="10"
+                     Level="1"
+                     AllowAdvertise="no">
+                     <ComponentGroupRef Id="RustAnalyzerGroup" />
+            </Feature>
+        <?endif?>
+        <Feature Id="Analysis"
+                 Title="Analysis for rust"
+                 Display="11"
+                 Level="1"
+                 AllowAdvertise="no">
+                 <ComponentGroupRef Id="AnalysisGroup" />
+        </Feature>
         <UIRef Id="RustUI" />
     </Product>
 </Wix>

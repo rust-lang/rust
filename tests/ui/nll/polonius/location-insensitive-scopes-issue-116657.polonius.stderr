@@ -25,10 +25,10 @@ LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne {
 LL |     <&mut i32 as Callable>::call(y)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: to declare that `impl PlusOne` captures `'a`, you can add an explicit `'a` lifetime bound
+help: add a `use<...>` bound to explicitly capture `'a`
    |
-LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + 'a {
-   |                                             ++++
+LL | fn test<'a>(y: &'a mut i32) -> impl PlusOne + use<'a> {
+   |                                             +++++++++
 
 error: aborting due to 3 previous errors
 

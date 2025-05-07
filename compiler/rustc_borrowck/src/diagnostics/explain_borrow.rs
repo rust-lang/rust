@@ -5,10 +5,9 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_errors::{Applicability, Diag};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir::{
@@ -17,19 +16,21 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
-use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, kw, sym};
 use rustc_trait_selection::error_reporting::traits::FindExprBySpan;
+use rustc_trait_selection::error_reporting::traits::call_kind::CallKind;
+use tracing::{debug, instrument};
 
-use super::{find_use, RegionName, UseSpans};
+use super::{RegionName, UseSpans, find_use};
 use crate::borrow_set::BorrowData;
+use crate::constraints::OutlivesConstraint;
 use crate::nll::ConstraintDescription;
-use crate::region_infer::{BlameConstraint, Cause, ExtraConstraintInfo};
+use crate::region_infer::{BlameConstraint, Cause};
 use crate::{MirBorrowckCtxt, WriteKind};
 
 #[derive(Debug)]
 pub(crate) enum BorrowExplanation<'tcx> {
-    UsedLater(LaterUseKind, Span, Option<Span>),
+    UsedLater(Local, LaterUseKind, Span, Option<Span>),
     UsedLaterInLoop(LaterUseKind, Span, Option<Span>),
     UsedLaterWhenDropped {
         drop_loc: Location,
@@ -42,7 +43,7 @@ pub(crate) enum BorrowExplanation<'tcx> {
         span: Span,
         region_name: RegionName,
         opt_place_desc: Option<String>,
-        extra_info: Vec<ExtraConstraintInfo>,
+        path: Vec<OutlivesConstraint<'tcx>>,
     },
     Unexplained,
 }
@@ -60,22 +61,24 @@ impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
-    pub(crate) fn add_explanation_to_diagnostic(
+    pub(crate) fn add_explanation_to_diagnostic<G: EmissionGuarantee>(
         &self,
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        local_names: &IndexSlice<Local, Option<Symbol>>,
-        err: &mut Diag<'_>,
+        cx: &MirBorrowckCtxt<'_, '_, 'tcx>,
+        err: &mut Diag<'_, G>,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
     ) {
+        let tcx = cx.infcx.tcx;
+        let body = cx.body;
+        let local_names = &cx.local_names;
+
         if let Some(span) = borrow_span {
             let def_id = body.source.def_id();
-            if let Some(node) = tcx.hir().get_if_local(def_id)
+            if let Some(node) = tcx.hir_get_if_local(def_id)
                 && let Some(body_id) = node.body_id()
             {
-                let body = tcx.hir().body(body_id);
+                let body = tcx.hir_body(body_id);
                 let mut expr_finder = FindExprBySpan::new(span, tcx);
                 expr_finder.visit_expr(body.value);
                 if let Some(mut expr) = expr_finder.result {
@@ -92,13 +95,20 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         && let hir::def::Res::Local(hir_id) = p.res
                         && let hir::Node::Pat(pat) = tcx.hir_node(hir_id)
                     {
-                        err.span_label(pat.span, format!("binding `{ident}` declared here"));
+                        if !ident.span.in_external_macro(tcx.sess.source_map()) {
+                            err.span_label(pat.span, format!("binding `{ident}` declared here"));
+                        }
                     }
                 }
             }
         }
         match *self {
-            BorrowExplanation::UsedLater(later_use_kind, var_or_use_span, path_span) => {
+            BorrowExplanation::UsedLater(
+                dropped_local,
+                later_use_kind,
+                var_or_use_span,
+                path_span,
+            ) => {
                 let message = match later_use_kind {
                     LaterUseKind::TraitCapture => "captured here by trait object",
                     LaterUseKind::ClosureCapture => "captured here by closure",
@@ -106,9 +116,27 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::FakeLetRead => "stored here",
                     LaterUseKind::Other => "used here",
                 };
-                // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
-                if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
-                    if borrow_span.map(|sp| !sp.overlaps(var_or_use_span)).unwrap_or(true) {
+                let local_decl = &body.local_decls[dropped_local];
+
+                if let &LocalInfo::IfThenRescopeTemp { if_then } = local_decl.local_info()
+                    && let Some((_, hir::Node::Expr(expr))) = tcx.hir_parent_iter(if_then).next()
+                    && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
+                    && let hir::ExprKind::Let(&hir::LetExpr {
+                        span: _,
+                        pat,
+                        init,
+                        // FIXME(#101728): enable rewrite when type ascription is stabilized again
+                        ty: None,
+                        recovered: _,
+                    }) = cond.kind
+                    && pat.span.can_be_used_for_suggestions()
+                    && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
+                {
+                    suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
+                } else if path_span.is_none_or(|path_span| path_span == var_or_use_span) {
+                    // We can use `var_or_use_span` if either `path_span` is not present, or both
+                    // spans are the same.
+                    if borrow_span.is_none_or(|sp| !sp.overlaps(var_or_use_span)) {
                         err.span_label(
                             var_or_use_span,
                             format!("{borrow_desc}borrow later {message}"),
@@ -142,7 +170,8 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     LaterUseKind::FakeLetRead => "borrow later stored here",
                     LaterUseKind::Other => "borrow used here, in later iteration of loop",
                 };
-                // We can use `var_or_use_span` if either `path_span` is not present, or both spans are the same
+                // We can use `var_or_use_span` if either `path_span` is not present, or both spans
+                // are the same.
                 if path_span.map(|path_span| path_span == var_or_use_span).unwrap_or(true) {
                     err.span_label(var_or_use_span, format!("{borrow_desc}{message}"));
                 } else {
@@ -221,7 +250,98 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         );
                         err.span_label(body.source_info(drop_loc).span, message);
 
-                        if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
+                        struct FindLetExpr<'hir> {
+                            span: Span,
+                            result: Option<(Span, &'hir hir::Pat<'hir>, &'hir hir::Expr<'hir>)>,
+                            tcx: TyCtxt<'hir>,
+                        }
+
+                        impl<'hir> rustc_hir::intravisit::Visitor<'hir> for FindLetExpr<'hir> {
+                            type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                                self.tcx
+                            }
+                            fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+                                if let hir::ExprKind::If(cond, _conseq, _alt)
+                                | hir::ExprKind::Loop(
+                                    &hir::Block {
+                                        expr:
+                                            Some(&hir::Expr {
+                                                kind: hir::ExprKind::If(cond, _conseq, _alt),
+                                                ..
+                                            }),
+                                        ..
+                                    },
+                                    _,
+                                    hir::LoopSource::While,
+                                    _,
+                                ) = expr.kind
+                                    && let hir::ExprKind::Let(hir::LetExpr {
+                                        init: let_expr_init,
+                                        span: let_expr_span,
+                                        pat: let_expr_pat,
+                                        ..
+                                    }) = cond.kind
+                                    && let_expr_init.span.contains(self.span)
+                                {
+                                    self.result =
+                                        Some((*let_expr_span, let_expr_pat, let_expr_init))
+                                } else {
+                                    hir::intravisit::walk_expr(self, expr);
+                                }
+                            }
+                        }
+
+                        if let &LocalInfo::IfThenRescopeTemp { if_then } = local_decl.local_info()
+                            && let hir::Node::Expr(expr) = tcx.hir_node(if_then)
+                            && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
+                            && let hir::ExprKind::Let(&hir::LetExpr {
+                                span: _,
+                                pat,
+                                init,
+                                // FIXME(#101728): enable rewrite when type ascription is
+                                // stabilized again.
+                                ty: None,
+                                recovered: _,
+                            }) = cond.kind
+                            && pat.span.can_be_used_for_suggestions()
+                            && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
+                        {
+                            suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
+                        } else if let Some((old, new)) = multiple_borrow_span
+                            && let def_id = body.source.def_id()
+                            && let Some(node) = tcx.hir_get_if_local(def_id)
+                            && let Some(body_id) = node.body_id()
+                            && let hir_body = tcx.hir_body(body_id)
+                            && let mut expr_finder = (FindLetExpr { span: old, result: None, tcx })
+                            && let Some((let_expr_span, let_expr_pat, let_expr_init)) = {
+                                expr_finder.visit_expr(hir_body.value);
+                                expr_finder.result
+                            }
+                            && !let_expr_span.contains(new)
+                        {
+                            // #133941: The `old` expression is at the conditional part of an
+                            // if/while let expression. Adding a semicolon won't work.
+                            // Instead, try suggesting the `matches!` macro or a temporary.
+                            if let_expr_pat
+                                .walk_short(|pat| !matches!(pat.kind, hir::PatKind::Binding(..)))
+                            {
+                                if let Ok(pat_snippet) =
+                                    tcx.sess.source_map().span_to_snippet(let_expr_pat.span)
+                                    && let Ok(init_snippet) =
+                                        tcx.sess.source_map().span_to_snippet(let_expr_init.span)
+                                {
+                                    err.span_suggestion_verbose(
+                                        let_expr_span,
+                                        "consider using the `matches!` macro",
+                                        format!("matches!({init_snippet}, {pat_snippet})"),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                } else {
+                                    err.note("consider using the `matches!` macro");
+                                }
+                            }
+                        } else if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
@@ -264,7 +384,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 ref region_name,
                 ref opt_place_desc,
                 from_closure: _,
-                ref extra_info,
+                ref path,
             } => {
                 region_name.highlight_region_name(err);
 
@@ -286,15 +406,14 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     );
                 };
 
-                for extra in extra_info {
-                    match extra {
-                        ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
-                            err.span_note(*span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
-                        }
-                    }
-                }
+                cx.add_placeholder_from_predicate_note(err, &path);
+                cx.add_sized_or_copy_bound_info(err, category, &path);
 
-                if let ConstraintCategory::Cast { unsize_to: Some(unsize_ty) } = category {
+                if let ConstraintCategory::Cast {
+                    is_implicit_coercion: true,
+                    unsize_to: Some(unsize_ty),
+                } = category
+                {
                     self.add_object_lifetime_default_note(tcx, err, unsize_ty);
                 }
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
@@ -303,15 +422,15 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_object_lifetime_default_note(
+    fn add_object_lifetime_default_note<G: EmissionGuarantee>(
         &self,
         tcx: TyCtxt<'tcx>,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         unsize_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(def, args) = unsize_ty.kind() {
-            // We try to elaborate the object lifetime defaults and present those to the user. This should
-            // make it clear where the region constraint is coming from.
+            // We try to elaborate the object lifetime defaults and present those to the user. This
+            // should make it clear where the region constraint is coming from.
             let generics = tcx.generics_of(def.did());
 
             let mut has_dyn = false;
@@ -360,9 +479,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
         }
     }
 
-    fn add_lifetime_bound_suggestion_to_diagnostic(
+    fn add_lifetime_bound_suggestion_to_diagnostic<G: EmissionGuarantee>(
         &self,
-        err: &mut Diag<'_>,
+        err: &mut Diag<'_, G>,
         category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
@@ -389,13 +508,61 @@ impl<'tcx> BorrowExplanation<'tcx> {
     }
 }
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+fn suggest_rewrite_if_let<G: EmissionGuarantee>(
+    tcx: TyCtxt<'_>,
+    expr: &hir::Expr<'_>,
+    pat: &str,
+    init: &hir::Expr<'_>,
+    conseq: &hir::Expr<'_>,
+    alt: Option<&hir::Expr<'_>>,
+    err: &mut Diag<'_, G>,
+) {
+    let source_map = tcx.sess.source_map();
+    err.span_note(
+        source_map.end_point(conseq.span),
+        "lifetimes for temporaries generated in `if let`s have been shortened in Edition 2024 so that they are dropped here instead",
+    );
+    if expr.span.can_be_used_for_suggestions() && conseq.span.can_be_used_for_suggestions() {
+        let needs_block = if let Some(hir::Node::Expr(expr)) =
+            alt.and_then(|alt| tcx.hir_parent_iter(alt.hir_id).next()).map(|(_, node)| node)
+        {
+            matches!(expr.kind, hir::ExprKind::If(..))
+        } else {
+            false
+        };
+        let mut sugg = vec![
+            (
+                expr.span.shrink_to_lo().between(init.span),
+                if needs_block { "{ match ".into() } else { "match ".into() },
+            ),
+            (conseq.span.shrink_to_lo(), format!(" {{ {pat} => ")),
+        ];
+        let expr_end = expr.span.shrink_to_hi();
+        let mut expr_end_code;
+        if let Some(alt) = alt {
+            sugg.push((conseq.span.between(alt.span), " _ => ".into()));
+            expr_end_code = "}".to_string();
+        } else {
+            expr_end_code = " _ => {} }".into();
+        }
+        expr_end_code.push('}');
+        sugg.push((expr_end, expr_end_code));
+        err.multipart_suggestion(
+            "consider rewriting the `if` into `match` which preserves the extended lifetime",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
+    }
+}
+
+impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     fn free_region_constraint_info(
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
-        let (blame_constraint, extra_info) = self.regioncx.best_blame_constraint(
+    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<OutlivesConstraint<'tcx>>)
+    {
+        let (blame_constraint, path) = self.regioncx.best_blame_constraint(
             borrow_region,
             NllRegionVariableOrigin::FreeRegion,
             |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
@@ -404,7 +571,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
 
         let outlived_fr_name = self.give_region_a_name(outlived_region);
 
-        (category, from_closure, cause.span, outlived_fr_name, extra_info)
+        (category, from_closure, cause.span, outlived_fr_name, path)
     }
 
     /// Returns structured explanation for *why* the borrow contains the
@@ -441,9 +608,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         let mut use_in_later_iteration_of_loop = false;
 
         if region_sub == borrow_region_vid {
-            // When `region_sub` is the same as `borrow_region_vid` (the location where the borrow is
-            // issued is the same location that invalidates the reference), this is likely a loop iteration
-            // - in this case, try using the loop terminator location in `find_sub_region_live_at`.
+            // When `region_sub` is the same as `borrow_region_vid` (the location where the borrow
+            // is issued is the same location that invalidates the reference), this is likely a
+            // loop iteration. In this case, try using the loop terminator location in
+            // `find_sub_region_live_at`.
             if let Some(loop_terminator_location) =
                 regioncx.find_loop_terminator_location(borrow.region, body)
             {
@@ -456,22 +624,46 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             }
         }
 
+        // NLL doesn't consider boring locals for liveness, and wouldn't encounter a
+        // `Cause::LiveVar` for such a local. Polonius can't avoid computing liveness for boring
+        // locals yet, and will encounter them when trying to explain why a borrow contains a given
+        // point.
+        //
+        // We want to focus on relevant live locals in diagnostics, so when polonius is enabled, we
+        // ensure that we don't emit live boring locals as explanations.
+        let is_local_boring = |local| {
+            if let Some(polonius_diagnostics) = self.polonius_diagnostics {
+                polonius_diagnostics.boring_nll_locals.contains(&local)
+            } else {
+                assert!(!tcx.sess.opts.unstable_opts.polonius.is_next_enabled());
+
+                // Boring locals are never the cause of a borrow explanation in NLLs.
+                false
+            }
+        };
         match find_use::find(body, regioncx, tcx, region_sub, use_location) {
-            Some(Cause::LiveVar(local, location)) => {
+            Some(Cause::LiveVar(local, location)) if !is_local_boring(local) => {
                 let span = body.source_info(location).span;
                 let spans = self
                     .move_spans(Place::from(local).as_ref(), location)
                     .or_else(|| self.borrow_spans(span, location));
 
                 if use_in_later_iteration_of_loop {
-                    let later_use = self.later_use_kind(borrow, spans, use_location);
-                    BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1, later_use.2)
+                    let (later_use_kind, var_or_use_span, path_span) =
+                        self.later_use_kind(borrow, spans, use_location);
+                    BorrowExplanation::UsedLaterInLoop(later_use_kind, var_or_use_span, path_span)
                 } else {
                     // Check if the location represents a `FakeRead`, and adapt the error
                     // message to the `FakeReadCause` it is from: in particular,
                     // the ones inserted in optimized `let var = <expr>` patterns.
-                    let later_use = self.later_use_kind(borrow, spans, location);
-                    BorrowExplanation::UsedLater(later_use.0, later_use.1, later_use.2)
+                    let (later_use_kind, var_or_use_span, path_span) =
+                        self.later_use_kind(borrow, spans, location);
+                    BorrowExplanation::UsedLater(
+                        borrow.borrowed_place.local,
+                        later_use_kind,
+                        var_or_use_span,
+                        path_span,
+                    )
                 }
             }
 
@@ -493,9 +685,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                 }
             }
 
-            None => {
+            Some(Cause::LiveVar(..)) | None => {
+                // Here, under NLL: no cause was found. Under polonius: no cause was found, or a
+                // boring local was found, which we ignore like NLLs do to match its diagnostics.
                 if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
-                    let (category, from_closure, span, region_name, extra_info) =
+                    let (category, from_closure, span, region_name, path) =
                         self.free_region_constraint_info(borrow_region_vid, region);
                     if let Some(region_name) = region_name {
                         let opt_place_desc = self.describe_place(borrow.borrowed_place.as_ref());
@@ -505,7 +699,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                             span,
                             region_name,
                             opt_place_desc,
-                            extra_info,
+                            path,
                         }
                     } else {
                         debug!("Could not generate a region name");
@@ -534,6 +728,39 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             UseSpans::ClosureUse { capture_kind_span, path_span, .. } => {
                 // Used in a closure.
                 (LaterUseKind::ClosureCapture, capture_kind_span, Some(path_span))
+            }
+            // In the case that the borrowed value (probably a temporary)
+            // overlaps with the method's receiver, then point at the method.
+            UseSpans::FnSelfUse {
+                var_span: span,
+                kind: CallKind::Normal { desugaring: None, .. },
+                ..
+            } if span
+                .overlaps(self.body.local_decls[borrow.assigned_place.local].source_info.span) =>
+            {
+                if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
+                    &self.body.basic_blocks[location.block].terminator().kind
+                {
+                    // Just point to the function, to reduce the chance of overlapping spans.
+                    let function_span = match func {
+                        Operand::Constant(c) => c.span,
+                        Operand::Copy(place) | Operand::Move(place) => {
+                            if let Some(l) = place.as_local() {
+                                let local_decl = &self.body.local_decls[l];
+                                if self.local_names[l].is_none() {
+                                    local_decl.source_info.span
+                                } else {
+                                    span
+                                }
+                            } else {
+                                span
+                            }
+                        }
+                    };
+                    (LaterUseKind::Call, function_span, None)
+                } else {
+                    (LaterUseKind::Other, span, None)
+                }
             }
             UseSpans::PatUse(span)
             | UseSpans::OtherUse(span)
@@ -647,7 +874,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                         // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
                         Rvalue::Cast(
-                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            CastKind::PointerCoercion(PointerCoercion::Unsize, _),
                             operand,
                             ty,
                         ) => {
@@ -661,9 +888,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
                                                 // `&dyn Trait`
                                                 ty::Ref(_, ty, _) if ty.is_trait() => true,
                                                 // `Box<dyn Trait>`
-                                                _ if ty.is_box() && ty.boxed_ty().is_trait() => {
+                                                _ if ty.boxed_ty().is_some_and(Ty::is_trait) => {
                                                     true
                                                 }
+
                                                 // `dyn Trait`
                                                 _ if ty.is_trait() => true,
                                                 // Anything else.

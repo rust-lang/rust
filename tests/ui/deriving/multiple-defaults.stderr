@@ -11,7 +11,6 @@ LL |     B,
    |     - additional default
    |
    = note: only one variant can be default
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: multiple declared defaults
   --> $DIR/multiple-defaults.rs:18:10
@@ -26,7 +25,6 @@ LL |     A,
    |     - additional default
    |
    = note: only one variant can be default
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0428]: the name `A` is defined multiple times
   --> $DIR/multiple-defaults.rs:23:5

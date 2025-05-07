@@ -1,8 +1,10 @@
 use std::borrow::Cow;
 
-use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
+use crate::spec::{
+    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs,
+};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     // We cannot use `-nodefaultlibs` because compiler-rt has to be passed
     // as a path since it's not added to linker search path by the default.
     // There were attempts to make it behave like libgcc (so one can just use -l<name>)
@@ -30,6 +32,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".into(),
         families: cvs!["windows"],
         is_like_windows: true,
+        binary_format: BinaryFormat::Coff,
         allows_weak_linkage: false,
         pre_link_args,
         late_link_args,
@@ -39,9 +42,11 @@ pub fn opts() -> TargetOptions {
         eh_frame_header: false,
         no_default_libraries: false,
         has_thread_local: true,
+        crt_static_allows_dylibs: true,
+        crt_static_respected: true,
+        debuginfo_kind: DebuginfoKind::Dwarf,
         // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
         // output DWO, despite using DWARF, doesn't use ELF..
-        debuginfo_kind: DebuginfoKind::Pdb,
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
         ..Default::default()
     }

@@ -17,8 +17,8 @@ mod tests;
 /// first value of the following element.
 #[derive(Debug, Clone)]
 pub struct IntervalSet<I> {
-    // Start, end
-    map: SmallVec<[(u32, u32); 4]>,
+    // Start, end (both inclusive)
+    map: SmallVec<[(u32, u32); 2]>,
     domain: usize,
     _data: PhantomData<I>,
 }
@@ -51,7 +51,7 @@ impl<I: Idx> IntervalSet<I> {
         self.map.clear();
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = I> + '_
+    pub fn iter(&self) -> impl Iterator<Item = I>
     where
         I: Step,
     {
@@ -59,7 +59,7 @@ impl<I: Idx> IntervalSet<I> {
     }
 
     /// Iterates through intervals stored in the set, in order.
-    pub fn iter_intervals(&self) -> impl Iterator<Item = std::ops::Range<I>> + '_
+    pub fn iter_intervals(&self) -> impl Iterator<Item = std::ops::Range<I>>
     where
         I: Step,
     {
@@ -258,7 +258,7 @@ impl<I: Idx> IntervalSet<I> {
             }
             current = Some(*end);
         }
-        current.map_or(true, |x| x < self.domain as u32)
+        current.is_none_or(|x| x < self.domain as u32)
     }
 }
 

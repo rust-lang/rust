@@ -15,7 +15,7 @@ LL |     None { value: (), ..Default::default() }.await;
    |                                             |`Option<_>` is not a future
    |                                             help: remove the `.await`
    |
-   = help: the trait `Future` is not implemented for `Option<_>`, which is required by `Option<_>: IntoFuture`
+   = help: the trait `Future` is not implemented for `Option<_>`
    = note: Option<_> must be a future or must implement `IntoFuture` to be awaited
    = note: required for `Option<_>` to implement `IntoFuture`
 

@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_must_use)]
 #![allow(dead_code)]
-//@ pretty-expanded FIXME #23616
 
 trait Matcher {
     fn next_match(&mut self) -> Option<(usize, usize)>;

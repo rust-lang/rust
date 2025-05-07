@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { strict as nativeAssert } from "assert";
-import { exec, type ExecOptions } from "child_process";
+import { exec, spawn, type SpawnOptionsWithoutStdio, type ExecOptions } from "child_process";
 import { inspect } from "util";
 import type { CargoRunnableArgs, ShellRunnableArgs } from "./lsp_ext";
 
@@ -14,11 +14,11 @@ export function assert(condition: boolean, explanation: string): asserts conditi
 }
 
 export type Env = {
-    [name: string]: string;
+    [name: string]: string | undefined;
 };
 
 class Log {
-    private readonly output = vscode.window.createOutputChannel("Rust Analyzer Client", {
+    private readonly output = vscode.window.createOutputChannel("rust-analyzer Extension", {
         log: true,
     });
 
@@ -90,6 +90,10 @@ export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
     return isRustDocument(editor.document);
 }
 
+export function isCargoTomlEditor(editor: vscode.TextEditor): editor is RustEditor {
+    return isCargoTomlDocument(editor.document);
+}
+
 export function isDocumentInWorkspace(document: RustDocument): boolean {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -104,6 +108,7 @@ export function isDocumentInWorkspace(document: RustDocument): boolean {
 }
 
 /** Sets ['when'](https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts) clause contexts */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setContextValue(key: string, value: any): Thenable<void> {
     return vscode.commands.executeCommand("setContext", key, value);
 }
@@ -167,27 +172,35 @@ export class LazyOutputChannel implements vscode.OutputChannel {
     append(value: string): void {
         this.channel.append(value);
     }
+
     appendLine(value: string): void {
         this.channel.appendLine(value);
     }
+
     replace(value: string): void {
         this.channel.replace(value);
     }
+
     clear(): void {
         if (this._channel) {
             this._channel.clear();
         }
     }
-    show(preserveFocus?: boolean): void;
-    show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
-    show(column?: any, preserveFocus?: any): void {
-        this.channel.show(column, preserveFocus);
+
+    show(columnOrPreserveFocus?: vscode.ViewColumn | boolean, preserveFocus?: boolean): void {
+        if (typeof columnOrPreserveFocus === "boolean") {
+            this.channel.show(columnOrPreserveFocus);
+        } else {
+            this.channel.show(columnOrPreserveFocus, preserveFocus);
+        }
     }
+
     hide(): void {
         if (this._channel) {
             this._channel.hide();
         }
     }
+
     dispose(): void {
         if (this._channel) {
             this._channel.dispose();
@@ -232,4 +245,86 @@ export function expectNotUndefined<T>(input: Undefinable<T>, msg: string): NotUn
 
 export function unwrapUndefinable<T>(input: Undefinable<T>): NotUndefined<T> {
     return expectNotUndefined(input, `unwrapping \`undefined\``);
+}
+
+interface SpawnAsyncReturns {
+    stdout: string;
+    stderr: string;
+    status: number | null;
+    error?: Error | undefined;
+}
+
+export async function spawnAsync(
+    path: string,
+    args?: ReadonlyArray<string>,
+    options?: SpawnOptionsWithoutStdio,
+): Promise<SpawnAsyncReturns> {
+    const child = spawn(path, args, options);
+    const stdout: Array<Buffer> = [];
+    const stderr: Array<Buffer> = [];
+    try {
+        const res = await new Promise<{ stdout: string; stderr: string; status: number | null }>(
+            (resolve, reject) => {
+                child.stdout.on("data", (chunk) => stdout.push(Buffer.from(chunk)));
+                child.stderr.on("data", (chunk) => stderr.push(Buffer.from(chunk)));
+                child.on("error", (error) =>
+                    reject({
+                        stdout: Buffer.concat(stdout).toString("utf8"),
+                        stderr: Buffer.concat(stderr).toString("utf8"),
+                        error,
+                    }),
+                );
+                child.on("close", (status) =>
+                    resolve({
+                        stdout: Buffer.concat(stdout).toString("utf8"),
+                        stderr: Buffer.concat(stderr).toString("utf8"),
+                        status,
+                    }),
+                );
+            },
+        );
+
+        return {
+            stdout: res.stdout,
+            stderr: res.stderr,
+            status: res.status,
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+        return {
+            stdout: e.stdout,
+            stderr: e.stderr,
+            status: e.status,
+            error: e.error,
+        };
+    }
+}
+
+export const isWindows = process.platform === "win32";
+
+export function isWindowsDriveLetter(code: number): boolean {
+    // Copied from https://github.com/microsoft/vscode/blob/02c2dba5f2669b924fd290dff7d2ff3460791996/src/vs/base/common/extpath.ts#L265-L267
+    return (
+        (code >= /* CharCode.A */ 65 && code <= /* CharCode.Z */ 90) ||
+        (code >= /* CharCode.a */ 97 && code <= /* CharCode.z */ 122)
+    );
+}
+export function hasDriveLetter(path: string, isWindowsOS: boolean = isWindows): boolean {
+    // Copied from https://github.com/microsoft/vscode/blob/02c2dba5f2669b924fd290dff7d2ff3460791996/src/vs/base/common/extpath.ts#L324-L330
+    if (isWindowsOS) {
+        return (
+            isWindowsDriveLetter(path.charCodeAt(0)) &&
+            path.charCodeAt(1) === /* CharCode.Colon */ 58
+        );
+    }
+
+    return false;
+}
+export function normalizeDriveLetter(path: string, isWindowsOS: boolean = isWindows): string {
+    // Copied from https://github.com/microsoft/vscode/blob/02c2dba5f2669b924fd290dff7d2ff3460791996/src/vs/base/common/labels.ts#L140-L146
+    if (hasDriveLetter(path, isWindowsOS)) {
+        return path.charAt(0).toUpperCase() + path.slice(1);
+    }
+
+    return path;
 }

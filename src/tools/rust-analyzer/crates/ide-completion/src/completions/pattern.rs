@@ -1,11 +1,12 @@
 //! Completes constants and paths in unqualified patterns.
 
-use hir::{db::DefDatabase, AssocItem, ScopeDef};
+use hir::{AssocItem, ScopeDef};
+use ide_db::syntax_helpers::suggest_name;
 use syntax::ast::Pat;
 
 use crate::{
-    context::{PathCompletionCtx, PatternContext, PatternRefutability, Qualified},
     CompletionContext, Completions,
+    context::{PathCompletionCtx, PatternContext, PatternRefutability, Qualified},
 };
 
 /// Completes constants and paths in unqualified patterns.
@@ -45,8 +46,21 @@ pub(crate) fn complete_pattern(
         return;
     }
 
+    // Suggest name only in let-stmt and fn param
+    if pattern_ctx.should_suggest_name {
+        let mut name_generator = suggest_name::NameGenerator::default();
+        if let Some(suggested) = ctx
+            .expected_type
+            .as_ref()
+            .map(|ty| ty.strip_references())
+            .and_then(|ty| name_generator.for_type(&ty, ctx.db, ctx.edition))
+        {
+            acc.suggest_name(ctx, &suggested);
+        }
+    }
+
     let refutable = pattern_ctx.refutability == PatternRefutability::Refutable;
-    let single_variant_enum = |enum_: hir::Enum| ctx.db.enum_data(enum_.into()).variants.len() == 1;
+    let single_variant_enum = |enum_: hir::Enum| enum_.num_variants(ctx.db) == 1;
 
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())

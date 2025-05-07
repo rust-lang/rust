@@ -106,6 +106,7 @@ impl<T: Sized> Exclusive<T> {
 
     /// Unwrap the value contained in the `Exclusive`
     #[unstable(feature = "exclusive_wrapper", issue = "98407")]
+    #[rustc_const_unstable(feature = "exclusive_wrapper", issue = "98407")]
     #[must_use]
     #[inline]
     pub const fn into_inner(self) -> T {

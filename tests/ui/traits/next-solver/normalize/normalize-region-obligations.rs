@@ -15,7 +15,7 @@ trait Mirror { type Assoc: ?Sized; }
 impl<T: ?Sized> Mirror for T { type Assoc = T; }
 
 trait MirrorRegion<'a> { type Assoc: ?Sized; }
-impl<'a, T> MirrorRegion<'a> for T { type Assoc = T; }
+impl<'a, T: ?Sized> MirrorRegion<'a> for T { type Assoc = T; }
 
 impl<T> Foo for T {
     #[cfg(normalize_param_env)]

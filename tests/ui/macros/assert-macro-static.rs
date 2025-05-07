@@ -1,7 +1,7 @@
 //@ run-fail
 //@ error-pattern:panicked
 //@ error-pattern:test-assert-static
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     assert!(false, "test-assert-static");

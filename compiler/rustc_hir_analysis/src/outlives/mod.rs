@@ -9,7 +9,7 @@ mod explicit;
 mod implicit_infer;
 mod utils;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
 }
 
@@ -23,9 +23,9 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
             let crate_map = tcx.inferred_outlives_crate(());
             crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[])
         }
-        DefKind::AnonConst if tcx.features().generic_const_exprs => {
+        DefKind::AnonConst if tcx.features().generic_const_exprs() => {
             let id = tcx.local_def_id_to_hir_id(item_def_id);
-            if tcx.hir().opt_const_param_default_param_def_id(id).is_some() {
+            if tcx.hir_opt_const_param_default_param_def_id(id).is_some() {
                 // In `generics_of` we set the generics' parent to be our parent's parent which means that
                 // we lose out on the predicates of our actual parent if we dont return those predicates here.
                 // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
@@ -37,7 +37,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
                 //        parent of generics returned by `generics_of`
                 //
                 // In the above code we want the anon const to have predicates in its param env for `'b: 'a`
-                let item_def_id = tcx.hir().get_parent_item(id);
+                let item_def_id = tcx.hir_get_parent_item(id);
                 // In the above code example we would be calling `inferred_outlives_of(Foo)` here
                 tcx.inferred_outlives_of(item_def_id)
             } else {

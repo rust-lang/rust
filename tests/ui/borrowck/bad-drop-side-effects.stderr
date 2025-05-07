@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/bad-drop-side-effects.rs:7:16
+   |
+LL | impl<U> B for &Missing {
+   |                ^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

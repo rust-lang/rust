@@ -1,8 +1,9 @@
 use crate::spec::{
-    base, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions,
+    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions,
+    base,
 };
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::android::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
@@ -15,7 +16,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit x86 Android".into()),
             tier: Some(2),
             host_tools: Some(false),

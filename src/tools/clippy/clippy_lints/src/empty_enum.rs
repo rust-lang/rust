@@ -1,5 +1,3 @@
-//! lint when there is an enum with no variants
-
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -62,11 +60,11 @@ declare_clippy_lint! {
 
 declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 
-impl<'tcx> LateLintPass<'tcx> for EmptyEnum {
+impl LateLintPass<'_> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if let ItemKind::Enum(..) = item.kind
             // Only suggest the `never_type` if the feature is enabled
-            && cx.tcx.features().never_type
+            && cx.tcx.features().never_type()
             && let Some(adt) = cx.tcx.type_of(item.owner_id).instantiate_identity().ty_adt_def()
             && adt.variants().is_empty()
         {

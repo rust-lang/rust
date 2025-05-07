@@ -3,18 +3,21 @@
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt::Display;
-use std::sync::atomic::AtomicUsize;
+use std::ptr;
 use std::sync::Once;
+use std::sync::atomic::AtomicUsize;
 
-const ATOMIC: AtomicUsize = AtomicUsize::new(5); //~ ERROR: interior mutable
-const CELL: Cell<usize> = Cell::new(6); //~ ERROR: interior mutable
+const ATOMIC: AtomicUsize = AtomicUsize::new(5);
+//~^ declare_interior_mutable_const
+const CELL: Cell<usize> = Cell::new(6);
+//~^ declare_interior_mutable_const
 const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
-//~^ ERROR: interior mutable
+//~^ declare_interior_mutable_const
 
 macro_rules! declare_const {
     ($name:ident: $ty:ty = $e:expr) => {
         const $name: $ty = $e;
-        //~^ ERROR: interior mutable
+        //~^ declare_interior_mutable_const
     };
 }
 declare_const!(_ONCE: Once = Once::new());
@@ -42,6 +45,7 @@ mod issue_8493 {
     macro_rules! issue_8493 {
         () => {
             const _BAZ: Cell<usize> = Cell::new(0);
+            //~^ declare_interior_mutable_const
             static _FOOBAR: () = {
                 thread_local! {
                     static _VAR: Cell<i32> = const { Cell::new(0) };
@@ -51,6 +55,22 @@ mod issue_8493 {
     }
 
     issue_8493!();
+}
+
+#[repr(C, align(8))]
+struct NoAtomic(usize);
+#[repr(C, align(8))]
+struct WithAtomic(AtomicUsize);
+
+const fn with_non_null() -> *const WithAtomic {
+    const NO_ATOMIC: NoAtomic = NoAtomic(0);
+    (&NO_ATOMIC as *const NoAtomic).cast()
+}
+const WITH_ATOMIC: *const WithAtomic = with_non_null();
+
+struct Generic<T>(T);
+impl<T> Generic<T> {
+    const RAW_POINTER: *const Cell<T> = ptr::null();
 }
 
 fn main() {}

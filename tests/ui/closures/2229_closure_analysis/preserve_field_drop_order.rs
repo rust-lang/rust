@@ -28,17 +28,17 @@ fn test_one() {
         //~^ ERROR: Min Capture analysis includes:
         //~| ERROR
         println!("{:?}", a.0);
-        //~^ NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(0, 0)] -> Immutable
         //~| NOTE
         println!("{:?}", a.1);
-        //~^ NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(1, 0)] -> Immutable
         //~| NOTE
 
         println!("{:?}", b.0);
-        //~^ NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(0, 0)] -> Immutable
         //~| NOTE
         println!("{:?}", b.1);
-        //~^ NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(1, 0)] -> Immutable
         //~| NOTE
     };
 }
@@ -55,17 +55,17 @@ fn test_two() {
         //~^ ERROR: Min Capture analysis includes:
         //~| ERROR
         println!("{:?}", a.1);
-        //~^ NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(1, 0)] -> Immutable
         //~| NOTE
         println!("{:?}", a.0);
-        //~^ NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(0, 0)] -> Immutable
         //~| NOTE
 
         println!("{:?}", b.1);
-        //~^ NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(1, 0)] -> Immutable
         //~| NOTE
         println!("{:?}", b.0);
-        //~^ NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(0, 0)] -> Immutable
         //~| NOTE
     };
 }
@@ -82,17 +82,17 @@ fn test_three() {
         //~^ ERROR: Min Capture analysis includes:
         //~| ERROR
         println!("{:?}", b.1);
-        //~^ NOTE: Min Capture b[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(1, 0)] -> Immutable
         //~| NOTE
         println!("{:?}", a.1);
-        //~^ NOTE: Min Capture a[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(1, 0)] -> Immutable
         //~| NOTE
         println!("{:?}", a.0);
-        //~^ NOTE: Min Capture a[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture a[(0, 0)] -> Immutable
         //~| NOTE
 
         println!("{:?}", b.0);
-        //~^ NOTE: Min Capture b[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Min Capture b[(0, 0)] -> Immutable
         //~| NOTE
     };
 }

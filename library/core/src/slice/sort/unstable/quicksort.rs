@@ -1,9 +1,15 @@
 //! This module contains an unstable quicksort and two partition implementations.
 
-use crate::mem::{self, ManuallyDrop};
+#[cfg(not(feature = "optimize_for_size"))]
+use crate::mem;
+use crate::mem::ManuallyDrop;
+#[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
+#[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::smallsort::UnstableSmallSortTypeImpl;
-use crate::{intrinsics, ptr};
+#[cfg(not(feature = "optimize_for_size"))]
+use crate::slice::sort::unstable::heapsort;
+use crate::{cfg_match, intrinsics, ptr};
 
 /// Sorts `v` recursively.
 ///
@@ -11,6 +17,7 @@ use crate::{intrinsics, ptr};
 ///
 /// `limit` is the number of allowed imbalanced partitions before switching to `heapsort`. If zero,
 /// this function will immediately switch to heapsort.
+#[cfg(not(feature = "optimize_for_size"))]
 pub(crate) fn quicksort<'a, T, F>(
     mut v: &'a mut [T],
     mut ancestor_pivot: Option<&'a T>,
@@ -28,10 +35,7 @@ pub(crate) fn quicksort<'a, T, F>(
         // If too many bad pivot choices were made, simply fall back to heapsort in order to
         // guarantee `O(N x log(N))` worst-case.
         if limit == 0 {
-            // SAFETY: We assume the `small_sort` threshold is at least 1.
-            unsafe {
-                crate::slice::sort::unstable::heapsort::heapsort(v, is_less);
-            }
+            heapsort::heapsort(v, is_less);
             return;
         }
 
@@ -98,13 +102,15 @@ where
         return 0;
     }
 
-    // Allows for panic-free code-gen by proving this property to the compiler.
     if pivot >= len {
         intrinsics::abort();
     }
 
-    // Place the pivot at the beginning of slice.
-    v.swap(0, pivot);
+    // SAFETY: We checked that `pivot` is in-bounds.
+    unsafe {
+        // Place the pivot at the beginning of slice.
+        v.swap_unchecked(0, pivot);
+    }
     let (pivot, v_without_pivot) = v.split_at_mut(1);
 
     // Assuming that Rust generates noalias LLVM IR we can be sure that a partition function
@@ -118,18 +124,32 @@ where
     // compile-time by only instantiating the code that is needed. Idea by Frank Steffahn.
     let num_lt = (const { inst_partition::<T, F>() })(v_without_pivot, pivot, is_less);
 
-    // Place the pivot between the two partitions.
-    v.swap(0, num_lt);
+    if num_lt >= len {
+        intrinsics::abort();
+    }
+
+    // SAFETY: We checked that `num_lt` is in-bounds.
+    unsafe {
+        // Place the pivot between the two partitions.
+        v.swap_unchecked(0, num_lt);
+    }
 
     num_lt
 }
 
 const fn inst_partition<T, F: FnMut(&T, &T) -> bool>() -> fn(&mut [T], &T, &mut F) -> usize {
     const MAX_BRANCHLESS_PARTITION_SIZE: usize = 96;
-    if mem::size_of::<T>() <= MAX_BRANCHLESS_PARTITION_SIZE {
+    if size_of::<T>() <= MAX_BRANCHLESS_PARTITION_SIZE {
         // Specialize for types that are relatively cheap to copy, where branchless optimizations
         // have large leverage e.g. `u64` and `String`.
-        partition_lomuto_branchless_cyclic::<T, F>
+        cfg_match! {
+            feature = "optimize_for_size" => {
+                partition_lomuto_branchless_simple::<T, F>
+            }
+            _ => {
+                partition_lomuto_branchless_cyclic::<T, F>
+            }
+        }
     } else {
         partition_hoare_branchy_cyclic::<T, F>
     }
@@ -207,7 +227,7 @@ where
             left = left.add(1);
         }
 
-        left.sub_ptr(v_base)
+        left.offset_from_unsigned(v_base)
 
         // `gap_opt` goes out of scope and overwrites the last wrong-side element on the right side
         // with the first wrong-side element of the left side that was initially overwritten by the
@@ -215,6 +235,7 @@ where
     }
 }
 
+#[cfg(not(feature = "optimize_for_size"))]
 struct PartitionState<T> {
     // The current element that is being looked at, scans left to right through slice.
     right: *mut T,
@@ -225,6 +246,7 @@ struct PartitionState<T> {
     gap: GapGuardRaw<T>,
 }
 
+#[cfg(not(feature = "optimize_for_size"))]
 fn partition_lomuto_branchless_cyclic<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 where
     F: FnMut(&T, &T) -> bool,
@@ -285,7 +307,7 @@ where
 
         // Manual unrolling that works well on x86, Arm and with opt-level=s without murdering
         // compile-times. Leaving this to the compiler yields ok to bad results.
-        let unroll_len = const { if mem::size_of::<T>() <= 16 { 2 } else { 1 } };
+        let unroll_len = const { if size_of::<T>() <= 16 { 2 } else { 1 } };
 
         let unroll_end = v_base.add(len - (unroll_len - 1));
         while state.right < unroll_end {
@@ -316,6 +338,27 @@ where
     }
 }
 
+#[cfg(feature = "optimize_for_size")]
+fn partition_lomuto_branchless_simple<T, F: FnMut(&T, &T) -> bool>(
+    v: &mut [T],
+    pivot: &T,
+    is_less: &mut F,
+) -> usize {
+    let mut left = 0;
+
+    for right in 0..v.len() {
+        // SAFETY: `left` can at max be incremented by 1 each loop iteration, which implies that
+        // left <= right and that both are in-bounds.
+        unsafe {
+            let right_is_lt = is_less(v.get_unchecked(right), pivot);
+            v.swap_unchecked(left, right);
+            left += right_is_lt as usize;
+        }
+    }
+
+    left
+}
+
 struct GapGuard<T> {
     pos: *mut T,
     value: ManuallyDrop<T>,
@@ -333,11 +376,13 @@ impl<T> Drop for GapGuard<T> {
 
 /// Ideally this wouldn't be needed and we could just use the regular GapGuard.
 /// See comment in [`partition_lomuto_branchless_cyclic`].
+#[cfg(not(feature = "optimize_for_size"))]
 struct GapGuardRaw<T> {
     pos: *mut T,
     value: *mut T,
 }
 
+#[cfg(not(feature = "optimize_for_size"))]
 impl<T> Drop for GapGuardRaw<T> {
     fn drop(&mut self) {
         // SAFETY: `self` MUST be constructed in a way that makes copying the gap value into

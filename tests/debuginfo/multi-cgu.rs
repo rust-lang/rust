@@ -1,9 +1,6 @@
 // This test case makes sure that we get proper break points for binaries
 // compiled with multiple codegen units. (see #39160)
 
-
-//@ min-lldb-version: 310
-
 //@ compile-flags:-g -Ccodegen-units=2
 
 // === GDB TESTS ===============================================================
@@ -24,13 +21,11 @@
 // lldb-command:run
 
 // lldb-command:v xxx
-// lldbg-check:[...] 12345
-// lldbr-check:(u32) xxx = 12345
+// lldb-check:[...] 12345
 // lldb-command:continue
 
 // lldb-command:v yyy
-// lldbg-check:[...] 67890
-// lldbr-check:(u64) yyy = 67890
+// lldb-check:[...] 67890
 // lldb-command:continue
 
 

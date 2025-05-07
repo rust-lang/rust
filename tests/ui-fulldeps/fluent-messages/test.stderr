@@ -103,5 +103,20 @@ LL |     rustc_fluent_macro::fluent_messages! { "./invalid-escape.ftl" }
    |
    = note: Fluent does not interpret these escape sequences (<https://projectfluent.org/fluent/guide/special.html>)
 
-error: aborting due to 13 previous errors
+error: could not parse Fluent resource
+  --> $DIR/test.rs:85:44
+   |
+LL |     rustc_fluent_macro::fluent_messages! { "./many-lines.ftl" }
+   |                                            ^^^^^^^^^^^^^^^^^^
+   |
+   = help: see additional errors emitted
+
+error: expected a message field for "no_crate_bar"
+ --> ./many-lines.ftl:8:1
+  |
+8 | no_crate_bar =
+  | ^^^^^^^^^^^^^^
+  |
+
+error: aborting due to 14 previous errors
 

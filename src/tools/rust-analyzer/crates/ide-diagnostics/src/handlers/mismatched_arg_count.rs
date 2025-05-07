@@ -2,11 +2,11 @@ use either::Either;
 use hir::InFile;
 use ide_db::FileRange;
 use syntax::{
-    ast::{self, HasArgList},
     AstNode, AstPtr,
+    ast::{self, HasArgList},
 };
 
-use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_range};
 
 // Diagnostic: mismatched-tuple-struct-pat-arg-count
 //
@@ -40,7 +40,7 @@ pub(crate) fn mismatched_arg_count(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0107"),
         message,
-        invalid_args_range(ctx, d.call_expr.map(AstPtr::wrap_left), d.expected, d.found),
+        invalid_args_range(ctx, d.call_expr, d.expected, d.found),
     )
 }
 

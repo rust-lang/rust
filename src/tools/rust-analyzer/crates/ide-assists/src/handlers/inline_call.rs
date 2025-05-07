@@ -2,27 +2,33 @@ use std::collections::BTreeSet;
 
 use ast::make;
 use either::Either;
-use hir::{db::HirDatabase, sym, FileRange, PathResolution, Semantics, TypeInfo};
+use hir::{
+    FileRange, PathResolution, Semantics, TypeInfo,
+    db::{ExpandDatabase, HirDatabase},
+    sym,
+};
 use ide_db::{
+    EditionedFileId, RootDatabase,
+    base_db::Crate,
     defs::Definition,
     imports::insert_use::remove_path_if_in_use_stmt,
     path_transform::PathTransform,
     search::{FileReference, FileReferenceNode, SearchScope},
     source_change::SourceChangeBuilder,
-    syntax_helpers::{insert_whitespace_into_node::insert_ws_into, node_ext::expr_as_name_ref},
-    EditionedFileId, RootDatabase,
+    syntax_helpers::{node_ext::expr_as_name_ref, prettify_macro_expansion},
 };
-use itertools::{izip, Itertools};
+use itertools::{Itertools, izip};
 use syntax::{
+    AstNode, NodeOrToken, SyntaxKind,
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, HasArgList, HasGenericArgs, Pat, PathExpr,
+        self, HasArgList, HasGenericArgs, Pat, PathExpr, edit::IndentLevel, edit_in_place::Indent,
     },
-    ted, AstNode, NodeOrToken, SyntaxKind,
+    ted,
 };
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
-    AssistId, AssistKind,
 };
 
 // Assist: inline_into_callers
@@ -65,6 +71,7 @@ use crate::{
 // ```
 pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let def_file = ctx.file_id();
+    let vfs_def_file = ctx.vfs_file_id();
     let name = ctx.find_node_at_offset::<ast::Name>()?;
     let ast_func = name.syntax().parent().and_then(ast::Fn::cast)?;
     let func_body = ast_func.body()?;
@@ -92,7 +99,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     }
 
     acc.add(
-        AssistId("inline_into_callers", AssistKind::RefactorInline),
+        AssistId::refactor_inline("inline_into_callers"),
         "Inline into all callers",
         name.syntax().text_range(),
         |builder| {
@@ -100,14 +107,16 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             let current_file_usage = usages.references.remove(&def_file);
 
             let mut remove_def = true;
-            let mut inline_refs_for_file = |file_id, refs: Vec<FileReference>| {
+            let mut inline_refs_for_file = |file_id: EditionedFileId, refs: Vec<FileReference>| {
+                let file_id = file_id.file_id(ctx.db());
                 builder.edit_file(file_id);
+                let call_krate = ctx.sema.file_to_module_def(file_id).map(|it| it.krate());
                 let count = refs.len();
                 // The collects are required as we are otherwise iterating while mutating 🙅‍♀️🙅‍♂️
                 let (name_refs, name_refs_use) = split_refs_and_uses(builder, refs, Some);
                 let call_infos: Vec<_> = name_refs
                     .into_iter()
-                    .filter_map(CallInfo::from_name_ref)
+                    .filter_map(|it| CallInfo::from_name_ref(it, call_krate?.into()))
                     // FIXME: do not handle callsites in macros' parameters, because
                     // directly inlining into macros may cause errors.
                     .filter(|call_info| !ctx.sema.hir_file_for(call_info.node.syntax()).is_macro())
@@ -136,7 +145,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             }
             match current_file_usage {
                 Some(refs) => inline_refs_for_file(def_file, refs),
-                None => builder.edit_file(def_file),
+                None => builder.edit_file(vfs_def_file),
             }
             if remove_def {
                 builder.delete(ast_func.syntax().text_range());
@@ -185,7 +194,10 @@ pub(super) fn split_refs_and_uses<T: ast::AstNode>(
 // ```
 pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let name_ref: ast::NameRef = ctx.find_node_at_offset()?;
-    let call_info = CallInfo::from_name_ref(name_ref.clone())?;
+    let call_info = CallInfo::from_name_ref(
+        name_ref.clone(),
+        ctx.sema.file_to_module_def(ctx.vfs_file_id())?.krate().into(),
+    )?;
     let (function, label) = match &call_info.node {
         ast::CallableExpr::Call(call) => {
             let path = match call.expr()? {
@@ -222,31 +234,27 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     }
 
     let syntax = call_info.node.syntax().clone();
-    acc.add(
-        AssistId("inline_call", AssistKind::RefactorInline),
-        label,
-        syntax.text_range(),
-        |builder| {
-            let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
-            builder.replace_ast(
-                match call_info.node {
-                    ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
-                    ast::CallableExpr::MethodCall(it) => ast::Expr::MethodCallExpr(it),
-                },
-                replacement,
-            );
-        },
-    )
+    acc.add(AssistId::refactor_inline("inline_call"), label, syntax.text_range(), |builder| {
+        let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
+        builder.replace_ast(
+            match call_info.node {
+                ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
+                ast::CallableExpr::MethodCall(it) => ast::Expr::MethodCallExpr(it),
+            },
+            replacement,
+        );
+    })
 }
 
 struct CallInfo {
     node: ast::CallableExpr,
     arguments: Vec<ast::Expr>,
     generic_arg_list: Option<ast::GenericArgList>,
+    krate: Crate,
 }
 
 impl CallInfo {
-    fn from_name_ref(name_ref: ast::NameRef) -> Option<CallInfo> {
+    fn from_name_ref(name_ref: ast::NameRef, krate: Crate) -> Option<CallInfo> {
         let parent = name_ref.syntax().parent()?;
         if let Some(call) = ast::MethodCallExpr::cast(parent.clone()) {
             let receiver = call.receiver()?;
@@ -256,6 +264,7 @@ impl CallInfo {
                 generic_arg_list: call.generic_arg_list(),
                 node: ast::CallableExpr::MethodCall(call),
                 arguments,
+                krate,
             })
         } else if let Some(segment) = ast::PathSegment::cast(parent) {
             let path = segment.syntax().parent().and_then(ast::Path::cast)?;
@@ -266,6 +275,7 @@ impl CallInfo {
                 arguments: call.arg_list()?.args().collect(),
                 node: ast::CallableExpr::Call(call),
                 generic_arg_list: segment.generic_arg_list(),
+                krate,
             })
         } else {
             None
@@ -307,11 +317,15 @@ fn inline(
     function: hir::Function,
     fn_body: &ast::BlockExpr,
     params: &[(ast::Pat, Option<ast::Type>, hir::Param)],
-    CallInfo { node, arguments, generic_arg_list }: &CallInfo,
+    CallInfo { node, arguments, generic_arg_list, krate }: &CallInfo,
 ) -> ast::Expr {
-    let mut body = if sema.hir_file_for(fn_body.syntax()).is_macro() {
+    let file_id = sema.hir_file_for(fn_body.syntax());
+    let mut body = if let Some(macro_file) = file_id.macro_file() {
         cov_mark::hit!(inline_call_defined_in_macro);
-        if let Some(body) = ast::BlockExpr::cast(insert_ws_into(fn_body.syntax().clone())) {
+        let span_map = sema.db.expansion_span_map(macro_file);
+        let body_prettified =
+            prettify_macro_expansion(sema.db, fn_body.syntax().clone(), &span_map, *krate);
+        if let Some(body) = ast::BlockExpr::cast(body_prettified) {
             body
         } else {
             fn_body.clone_for_update()
@@ -420,8 +434,16 @@ fn inline(
 
         let mut insert_let_stmt = || {
             let param_ty = param_ty.clone().map(|param_ty| {
-                if sema.hir_file_for(param_ty.syntax()).is_macro() {
-                    ast::Type::cast(insert_ws_into(param_ty.syntax().clone())).unwrap_or(param_ty)
+                let file_id = sema.hir_file_for(param_ty.syntax());
+                if let Some(macro_file) = file_id.macro_file() {
+                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let param_ty_prettified = prettify_macro_expansion(
+                        sema.db,
+                        param_ty.syntax().clone(),
+                        &span_map,
+                        *krate,
+                    );
+                    ast::Type::cast(param_ty_prettified).unwrap_or(param_ty)
                 } else {
                     param_ty
                 }
@@ -429,7 +451,7 @@ fn inline(
 
             let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty);
 
-            let is_self = param.name(sema.db).is_some_and(|name| name == sym::self_.clone());
+            let is_self = param.name(sema.db).is_some_and(|name| name == sym::self_);
 
             if is_self {
                 let mut this_pat = make::ident_pat(false, false, make::name("this"));
@@ -492,7 +514,7 @@ fn inline(
                     && usage.syntax().parent().and_then(ast::Expr::cast).is_some() =>
             {
                 cov_mark::hit!(inline_call_inline_closure);
-                let expr = make::expr_paren(expr.clone());
+                let expr = make::expr_paren(expr.clone()).into();
                 inline_direct(usage, &expr);
             }
             // inline single use literals
@@ -547,7 +569,7 @@ fn inline(
     let no_stmts = body.statements().next().is_none();
     match body.tail_expr() {
         Some(expr) if matches!(expr, ast::Expr::ClosureExpr(_)) && no_stmts => {
-            make::expr_paren(expr).clone_for_update()
+            make::expr_paren(expr).clone_for_update().into()
         }
         Some(expr) if !is_async_fn && no_stmts => expr,
         _ => match node
@@ -557,7 +579,7 @@ fn inline(
             .and_then(|bin_expr| bin_expr.lhs())
         {
             Some(lhs) if lhs.syntax() == node.syntax() => {
-                make::expr_paren(ast::Expr::BlockExpr(body)).clone_for_update()
+                make::expr_paren(ast::Expr::BlockExpr(body)).clone_for_update().into()
             }
             _ => ast::Expr::BlockExpr(body),
         },
@@ -1020,6 +1042,7 @@ fn main() {
         check_assist(
             inline_call,
             r#"
+//- minicore: sized
 fn foo(x: *const u32) -> u32 {
     x as u32
 }

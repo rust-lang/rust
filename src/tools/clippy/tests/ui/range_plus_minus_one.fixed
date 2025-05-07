@@ -27,29 +27,38 @@ fn main() {
     for _ in 0..=2 {}
 
     for _ in 0..=3 {}
+    //~^ range_plus_one
     for _ in 0..=3 + 1 {}
 
     for _ in 0..=5 {}
+    //~^ range_plus_one
     for _ in 0..=1 + 5 {}
 
     for _ in 1..=1 {}
+    //~^ range_plus_one
     for _ in 1..=1 + 1 {}
 
     for _ in 0..13 + 13 {}
     for _ in 0..=13 - 7 {}
 
     for _ in 0..=f() {}
+    //~^ range_plus_one
     for _ in 0..=(1 + f()) {}
 
     let _ = ..11 - 1;
     let _ = ..11;
+    //~^ range_minus_one
     let _ = ..11;
+    //~^ range_minus_one
     let _ = (1..=11);
+    //~^ range_plus_one
     let _ = ((f() + 1)..=f());
+    //~^ range_plus_one
 
     const ONE: usize = 1;
     // integer consts are linted, too
     for _ in 1..=ONE {}
+    //~^ range_plus_one
 
     let mut vec: Vec<()> = std::vec::Vec::new();
     vec.drain(..);

@@ -1,7 +1,7 @@
 use hir::HirDisplay;
-use syntax::{ast, match_ast, AstNode, SyntaxKind, SyntaxToken, TextRange, TextSize};
+use syntax::{AstNode, SyntaxKind, SyntaxToken, TextRange, TextSize, ast, match_ast};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_return_type
 //
@@ -25,7 +25,7 @@ pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     let ty = ty.display_source_code(ctx.db(), module.into(), true).ok()?;
 
     acc.add(
-        AssistId("add_return_type", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("add_return_type"),
         match fn_type {
             FnType::Function => "Add this function's return type",
             FnType::Closure { .. } => "Add this closure's return type",

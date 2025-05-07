@@ -36,9 +36,8 @@ fn function2<T: Trait<'static, Assoc = usize>>() {
     // does not use the leak check when trying the where-bound, causing us
     // to prefer it over the impl, resulting in a placeholder error.
     projection_bound::<T>();
-    //[next]~^ ERROR type mismatch resolving `<T as Trait<'a>>::Assoc == usize`
-    //[next]~| ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
-    //[current]~^^^ ERROR mismatched types
+    //[next]~^ ERROR the trait bound `for<'a> T: Trait<'a>` is not satisfied
+    //[current]~^^ ERROR mismatched types
 }
 
 fn function3<T: Trait<'static, Assoc = usize>>() {

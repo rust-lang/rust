@@ -17,7 +17,7 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    |                                                 outer `impl Trait`
 
 error[E0658]: `impl Trait` in associated types is unstable
-  --> $DIR/where-allowed.rs:122:16
+  --> $DIR/where-allowed.rs:121:16
    |
 LL |     type Out = impl Debug;
    |                ^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     type Out = impl Debug;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/where-allowed.rs:159:23
+  --> $DIR/where-allowed.rs:158:23
    |
 LL | type InTypeAlias<R> = impl Debug;
    |                       ^^^^^^^^^^
@@ -143,7 +143,7 @@ LL | fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:86:32
+  --> $DIR/where-allowed.rs:85:32
    |
 LL | struct InBraceStructField { x: impl Debug }
    |                                ^^^^^^^^^^
@@ -151,7 +151,7 @@ LL | struct InBraceStructField { x: impl Debug }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:90:41
+  --> $DIR/where-allowed.rs:89:41
    |
 LL | struct InAdtInBraceStructField { x: Vec<impl Debug> }
    |                                         ^^^^^^^^^^
@@ -159,7 +159,7 @@ LL | struct InAdtInBraceStructField { x: Vec<impl Debug> }
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:94:27
+  --> $DIR/where-allowed.rs:93:27
    |
 LL | struct InTupleStructField(impl Debug);
    |                           ^^^^^^^^^^
@@ -167,7 +167,7 @@ LL | struct InTupleStructField(impl Debug);
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:99:25
+  --> $DIR/where-allowed.rs:98:25
    |
 LL |     InBraceVariant { x: impl Debug },
    |                         ^^^^^^^^^^
@@ -175,7 +175,7 @@ LL |     InBraceVariant { x: impl Debug },
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in field types
-  --> $DIR/where-allowed.rs:101:20
+  --> $DIR/where-allowed.rs:100:20
    |
 LL |     InTupleVariant(impl Debug),
    |                    ^^^^^^^^^^
@@ -183,7 +183,7 @@ LL |     InTupleVariant(impl Debug),
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in `extern fn` parameters
-  --> $DIR/where-allowed.rs:143:33
+  --> $DIR/where-allowed.rs:142:33
    |
 LL |     fn in_foreign_parameters(_: impl Debug);
    |                                 ^^^^^^^^^^
@@ -191,7 +191,7 @@ LL |     fn in_foreign_parameters(_: impl Debug);
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
 
 error[E0562]: `impl Trait` is not allowed in `extern fn` return types
-  --> $DIR/where-allowed.rs:146:31
+  --> $DIR/where-allowed.rs:145:31
    |
 LL |     fn in_foreign_return() -> impl Debug;
    |                               ^^^^^^^^^^
@@ -333,6 +333,9 @@ LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in closure return types
   --> $DIR/where-allowed.rs:254:46
@@ -341,6 +344,48 @@ LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+
+error[E0053]: method `in_trait_impl_return` has an incompatible type for trait
+  --> $DIR/where-allowed.rs:128:34
+   |
+LL |     type Out = impl Debug;
+   |                ---------- the expected opaque type
+...
+LL |     fn in_trait_impl_return() -> impl Debug { () }
+   |                                  ^^^^^^^^^^ expected opaque type, found a different opaque type
+   |
+note: type in trait
+  --> $DIR/where-allowed.rs:118:34
+   |
+LL |     fn in_trait_impl_return() -> Self::Out;
+   |                                  ^^^^^^^^^
+   = note: expected signature `fn() -> <() as DummyTrait>::Out`
+              found signature `fn() -> impl Debug`
+   = note: distinct uses of `impl Trait` result in different opaque types
+help: change the output type to match the trait
+   |
+LL -     fn in_trait_impl_return() -> impl Debug { () }
+LL +     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
+   |
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/where-allowed.rs:246:36
+   |
+LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
+   |                                    ^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
+   = note: `#[deny(invalid_type_param_default)]` on by default
+
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/where-allowed.rs:239:7
+   |
+LL | impl <T = impl Debug> T {}
+   |       ^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
 
 error[E0283]: type annotations needed
   --> $DIR/where-allowed.rs:46:57
@@ -362,16 +407,6 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
 
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:239:7
-   |
-LL | impl <T = impl Debug> T {}
-   |       ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-   = note: `#[deny(invalid_type_param_default)]` on by default
-
 error[E0118]: no nominal type found for inherent implementation
   --> $DIR/where-allowed.rs:239:1
    |
@@ -380,65 +415,32 @@ LL | impl <T = impl Debug> T {}
    |
    = note: either implement a trait on it or create a newtype to wrap it instead
 
-error[E0599]: no function or associated item named `into_vec` found for slice `[_]` in the current scope
-  --> $DIR/where-allowed.rs:81:5
-   |
-LL |     vec![vec![0; 10], vec![12; 7], vec![8; 3]]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function or associated item not found in `[_]`
-   |
-help: there is an associated function `to_vec` with a similar name
-  --> $SRC_DIR/alloc/src/slice.rs:LL:COL
-   = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0053]: method `in_trait_impl_return` has an incompatible type for trait
-  --> $DIR/where-allowed.rs:129:34
-   |
-LL |     type Out = impl Debug;
-   |                ---------- the expected opaque type
-...
-LL |     fn in_trait_impl_return() -> impl Debug { () }
-   |                                  ^^^^^^^^^^ expected opaque type, found a different opaque type
-   |
-note: type in trait
-  --> $DIR/where-allowed.rs:119:34
-   |
-LL |     fn in_trait_impl_return() -> Self::Out;
-   |                                  ^^^^^^^^^
-   = note: expected signature `fn() -> <() as DummyTrait>::Out`
-              found signature `fn() -> impl Debug`
-   = note: distinct uses of `impl Trait` result in different opaque types
-help: change the output type to match the trait
-   |
-LL |     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
-   |                                  ~~~~~~~~~~~~~~~~~~~~~~~
-
 error: unconstrained opaque type
-  --> $DIR/where-allowed.rs:122:16
+  --> $DIR/where-allowed.rs:121:16
    |
 LL |     type Out = impl Debug;
    |                ^^^^^^^^^^
    |
    = note: `Out` must be used in combination with a concrete type within the same impl
 
+error: unconstrained opaque type
+  --> $DIR/where-allowed.rs:158:23
+   |
+LL | type InTypeAlias<R> = impl Debug;
+   |                       ^^^^^^^^^^
+   |
+   = note: `InTypeAlias` must be used in combination with a concrete type within the same crate
+
+error: aborting due to 50 previous errors
+
+Some errors have detailed explanations: E0053, E0118, E0283, E0562, E0658, E0666.
+For more information about an error, try `rustc --explain E0053`.
+Future incompatibility report: Future breakage diagnostic:
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
   --> $DIR/where-allowed.rs:246:36
    |
 LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
    |                                    ^^^^^^^^^^^^^^
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
-
-error: aborting due to 50 previous errors
-
-Some errors have detailed explanations: E0053, E0118, E0283, E0562, E0599, E0658, E0666.
-For more information about an error, try `rustc --explain E0053`.
-Future incompatibility report: Future breakage diagnostic:
-error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:239:7
-   |
-LL | impl <T = impl Debug> T {}
-   |       ^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>
@@ -446,10 +448,10 @@ LL | impl <T = impl Debug> T {}
 
 Future breakage diagnostic:
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
-  --> $DIR/where-allowed.rs:246:36
+  --> $DIR/where-allowed.rs:239:7
    |
-LL | fn in_method_generic_param_default<T = impl Debug>(_: T) {}
-   |                                    ^^^^^^^^^^^^^^
+LL | impl <T = impl Debug> T {}
+   |       ^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #36887 <https://github.com/rust-lang/rust/issues/36887>

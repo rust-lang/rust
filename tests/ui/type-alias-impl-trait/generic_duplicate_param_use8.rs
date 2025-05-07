@@ -6,12 +6,13 @@ fn main() {}
 
 type Two<T, U> = impl Debug;
 
+#[define_opaque(Two)]
 fn two<T: Debug, U: Debug>(t: T, _: U) -> Two<T, U> {
     (t, 4u32)
-    //~^ ERROR `T` doesn't implement `Debug`
 }
 
+#[define_opaque(Two)]
 fn three<T: Debug, U: Debug>(_: T, u: U) -> Two<T, U> {
+    //~^ ERROR concrete type differs
     (u, 4u32)
-    //~^ ERROR `U` doesn't implement `Debug`
 }

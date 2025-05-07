@@ -2,16 +2,16 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
+    SsrMatches,
     parsing::{Constraint, NodeKind, Placeholder, Var},
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
-    SsrMatches,
 };
 use hir::{FileRange, ImportPathConfig, Semantics};
-use ide_db::FxHashMap;
+use ide_db::{FxHashMap, base_db::RootQueryDb};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
-    ast::{self, AstNode, AstToken, HasGenericArgs},
     SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, AstToken, HasGenericArgs},
 };
 
 // Creates a match error. If we're currently attempting to match some code that we thought we were
@@ -358,8 +358,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 )?;
                 self.attempt_match_opt(
                     phase,
-                    pattern_segment.param_list(),
-                    code_segment.param_list(),
+                    pattern_segment.parenthesized_arg_list(),
+                    code_segment.parenthesized_arg_list(),
                 )?;
             }
             if matches!(phase, Phase::Second(_)) {
@@ -626,20 +626,24 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
             })?
             .original;
-        // Temporary needed to make the borrow checker happy.
-        let res = code_type
+        let krate = self.sema.scope(expr.syntax()).map(|it| it.krate()).unwrap_or_else(|| {
+            hir::Crate::from(*self.sema.db.all_crates().last().expect("no crate graph present"))
+        });
+
+        code_type
             .autoderef(self.sema.db)
             .enumerate()
             .find(|(_, deref_code_type)| pattern_type == deref_code_type)
             .map(|(count, _)| count)
             .ok_or_else(|| {
+                let display_target = krate.to_display_target(self.sema.db);
+                // Temporary needed to make the borrow checker happy.
                 match_error!(
                     "Pattern type `{}` didn't match code type `{}`",
-                    pattern_type.display(self.sema.db),
-                    code_type.display(self.sema.db)
+                    pattern_type.display(self.sema.db, display_target),
+                    code_type.display(self.sema.db, display_target)
                 )
-            });
-        res
+            })
     }
 
     fn get_placeholder_for_node(&self, node: &SyntaxNode) -> Option<&Placeholder> {
@@ -667,6 +671,7 @@ impl Match {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,
+                    allow_unstable: true,
                 };
                 let mod_path = module.find_path(sema.db, module_def, cfg).ok_or_else(|| {
                     match_error!("Failed to render template path `{}` at match location")
@@ -801,10 +806,20 @@ mod tests {
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
         let (db, position, selections) = crate::tests::single_file(input);
+        let position = ide_db::FilePosition {
+            file_id: position.file_id.file_id(&db),
+            offset: position.offset,
+        };
         let mut match_finder = MatchFinder::in_context(
             &db,
-            position.into(),
-            selections.into_iter().map(Into::into).collect(),
+            position,
+            selections
+                .into_iter()
+                .map(|frange| ide_db::FileRange {
+                    file_id: frange.file_id.file_id(&db),
+                    range: frange.range,
+                })
+                .collect(),
         )
         .unwrap();
         match_finder.add_rule(rule).unwrap();
@@ -815,7 +830,7 @@ mod tests {
 
         let edits = match_finder.edits();
         assert_eq!(edits.len(), 1);
-        let edit = &edits[&position.file_id.into()];
+        let edit = &edits[&position.file_id];
         let mut after = input.to_owned();
         edit.apply(&mut after);
         assert_eq!(after, "fn foo() {} fn bar() {} fn main() { bar(1+2); }");

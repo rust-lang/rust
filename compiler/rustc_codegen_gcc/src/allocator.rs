@@ -1,15 +1,18 @@
-#[cfg(feature = "master")]
-use gccjit::FnAttribute;
 use gccjit::{Context, FunctionType, GlobalKind, ToRValue, Type};
+#[cfg(feature = "master")]
+use gccjit::{FnAttribute, VarAttribute};
 use rustc_ast::expand::allocator::{
-    alloc_error_handler_name, default_fn_name, global_fn_name, AllocatorKind, AllocatorTy,
-    ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE,
+    ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
+    alloc_error_handler_name, default_fn_name, global_fn_name,
 };
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::OomStrategy;
+use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::GccContext;
+#[cfg(feature = "master")]
+use crate::base::symbol_visibility_to_gcc;
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
@@ -51,8 +54,8 @@ pub(crate) unsafe fn codegen(
                     panic!("invalid allocator output")
                 }
             };
-            let from_name = global_fn_name(method.name);
-            let to_name = default_fn_name(method.name);
+            let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
+            let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
 
             create_wrapper_function(tcx, context, &from_name, &to_name, &types, output);
         }
@@ -62,20 +65,28 @@ pub(crate) unsafe fn codegen(
     create_wrapper_function(
         tcx,
         context,
-        "__rust_alloc_error_handler",
-        alloc_error_handler_name(alloc_error_handler_kind),
+        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
+        &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
         &[usize, usize],
         None,
     );
 
-    let name = OomStrategy::SYMBOL.to_string();
+    let name = mangle_internal_symbol(tcx, OomStrategy::SYMBOL);
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
+    #[cfg(feature = "master")]
+    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(
+        tcx.sess.default_visibility(),
+    )));
     let value = tcx.sess.opts.unstable_opts.oom.should_panic();
     let value = context.new_rvalue_from_int(i8, value as i32);
     global.global_set_initializer_rvalue(value);
 
-    let name = NO_ALLOC_SHIM_IS_UNSTABLE.to_string();
+    let name = mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE);
     let global = context.new_global(None, GlobalKind::Exported, i8, name);
+    #[cfg(feature = "master")]
+    global.add_attribute(VarAttribute::Visibility(symbol_visibility_to_gcc(
+        tcx.sess.default_visibility(),
+    )));
     let value = context.new_rvalue_from_int(i8, 0);
     global.global_set_initializer_rvalue(value);
 }
@@ -104,10 +115,11 @@ fn create_wrapper_function(
         false,
     );
 
-    if tcx.sess.default_hidden_visibility() {
-        #[cfg(feature = "master")]
-        func.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
-    }
+    #[cfg(feature = "master")]
+    func.add_attribute(FnAttribute::Visibility(symbol_visibility_to_gcc(
+        tcx.sess.default_visibility(),
+    )));
+
     if tcx.sess.must_emit_unwind_tables() {
         // TODO(antoyo): emit unwind tables.
     }

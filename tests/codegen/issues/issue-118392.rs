@@ -1,5 +1,4 @@
-//@ compile-flags: -O
-//@ min-llvm-version: 18
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 
 // CHECK-LABEL: @div2

@@ -2,7 +2,8 @@
     dead_code,
     clippy::missing_safety_doc,
     clippy::extra_unused_lifetimes,
-    clippy::extra_unused_type_parameters
+    clippy::extra_unused_type_parameters,
+    clippy::needless_lifetimes
 )]
 #![warn(clippy::new_without_default)]
 
@@ -10,8 +11,8 @@ pub struct Foo;
 
 impl Foo {
     pub fn new() -> Foo {
-        //~^ ERROR: you should consider adding a `Default` implementation for `Foo`
-        //~| NOTE: `-D clippy::new-without-default` implied by `-D warnings`
+        //~^ new_without_default
+
         Foo
     }
 }
@@ -20,7 +21,8 @@ pub struct Bar;
 
 impl Bar {
     pub fn new() -> Self {
-        //~^ ERROR: you should consider adding a `Default` implementation for `Bar`
+        //~^ new_without_default
+
         Bar
     }
 }
@@ -85,7 +87,8 @@ pub struct LtKo<'a> {
 
 impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> {
-        //~^ ERROR: you should consider adding a `Default` implementation for `LtKo<'c>`
+        //~^ new_without_default
+
         unimplemented!()
     }
 }
@@ -118,6 +121,7 @@ pub struct Const;
 
 impl Const {
     pub const fn new() -> Const {
+        //~^ new_without_default
         Const
     } // While Default is not const, it can still call const functions, so we should lint this
 }
@@ -178,7 +182,8 @@ pub struct NewNotEqualToDerive {
 impl NewNotEqualToDerive {
     // This `new` implementation is not equal to a derived `Default`, so do not suggest deriving.
     pub fn new() -> Self {
-        //~^ ERROR: you should consider adding a `Default` implementation for `NewNotEqualToDe
+        //~^ new_without_default
+
         NewNotEqualToDerive { foo: 1 }
     }
 }
@@ -187,7 +192,8 @@ impl NewNotEqualToDerive {
 pub struct FooGenerics<T>(std::marker::PhantomData<T>);
 impl<T> FooGenerics<T> {
     pub fn new() -> Self {
-        //~^ ERROR: you should consider adding a `Default` implementation for `FooGenerics<T>`
+        //~^ new_without_default
+
         Self(Default::default())
     }
 }
@@ -195,7 +201,8 @@ impl<T> FooGenerics<T> {
 pub struct BarGenerics<T>(std::marker::PhantomData<T>);
 impl<T: Copy> BarGenerics<T> {
     pub fn new() -> Self {
-        //~^ ERROR: you should consider adding a `Default` implementation for `BarGenerics<T>`
+        //~^ new_without_default
+
         Self(Default::default())
     }
 }
@@ -207,7 +214,8 @@ pub mod issue7220 {
 
     impl<T> Foo<T> {
         pub fn new() -> Self {
-            //~^ ERROR: you should consider adding a `Default` implementation for `Foo<T>`
+            //~^ new_without_default
+
             todo!()
         }
     }
@@ -253,6 +261,7 @@ where
     K: std::hash::Hash + Eq + PartialEq,
 {
     pub fn new() -> Self {
+        //~^ new_without_default
         Self { _kv: None }
     }
 }

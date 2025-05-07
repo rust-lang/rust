@@ -70,9 +70,9 @@
           StorageLive(_3);
           StorageLive(_4);
           StorageLive(_5);
-          _5 = _1;
+          _5 = copy _1;
           StorageLive(_6);
-          _6 = _2;
+          _6 = copy _2;
           _4 = (move _5, move _6);
           StorageDead(_6);
           StorageDead(_5);
@@ -118,15 +118,15 @@
       bb6: {
           StorageLive(_27);
           _39 = deref_copy (_4.0: &ViewportPercentageLength);
-          _27 = (((*_39) as Vmax).0: f32);
+          _27 = copy (((*_39) as Vmax).0: f32);
           StorageLive(_28);
           _40 = deref_copy (_4.1: &ViewportPercentageLength);
-          _28 = (((*_40) as Vmax).0: f32);
+          _28 = copy (((*_40) as Vmax).0: f32);
           StorageLive(_29);
           StorageLive(_30);
-          _30 = _27;
+          _30 = copy _27;
           StorageLive(_31);
-          _31 = _28;
+          _31 = copy _28;
           _29 = Add(move _30, move _31);
           StorageDead(_31);
           StorageDead(_30);
@@ -140,15 +140,15 @@
       bb7: {
           StorageLive(_22);
           _41 = deref_copy (_4.0: &ViewportPercentageLength);
-          _22 = (((*_41) as Vmin).0: f32);
+          _22 = copy (((*_41) as Vmin).0: f32);
           StorageLive(_23);
           _42 = deref_copy (_4.1: &ViewportPercentageLength);
-          _23 = (((*_42) as Vmin).0: f32);
+          _23 = copy (((*_42) as Vmin).0: f32);
           StorageLive(_24);
           StorageLive(_25);
-          _25 = _22;
+          _25 = copy _22;
           StorageLive(_26);
-          _26 = _23;
+          _26 = copy _23;
           _24 = Add(move _25, move _26);
           StorageDead(_26);
           StorageDead(_25);
@@ -162,15 +162,15 @@
       bb8: {
           StorageLive(_17);
           _43 = deref_copy (_4.0: &ViewportPercentageLength);
-          _17 = (((*_43) as Vh).0: f32);
+          _17 = copy (((*_43) as Vh).0: f32);
           StorageLive(_18);
           _44 = deref_copy (_4.1: &ViewportPercentageLength);
-          _18 = (((*_44) as Vh).0: f32);
+          _18 = copy (((*_44) as Vh).0: f32);
           StorageLive(_19);
           StorageLive(_20);
-          _20 = _17;
+          _20 = copy _17;
           StorageLive(_21);
-          _21 = _18;
+          _21 = copy _18;
           _19 = Add(move _20, move _21);
           StorageDead(_21);
           StorageDead(_20);
@@ -184,15 +184,15 @@
       bb9: {
           StorageLive(_12);
           _45 = deref_copy (_4.0: &ViewportPercentageLength);
-          _12 = (((*_45) as Vw).0: f32);
+          _12 = copy (((*_45) as Vw).0: f32);
           StorageLive(_13);
           _46 = deref_copy (_4.1: &ViewportPercentageLength);
-          _13 = (((*_46) as Vw).0: f32);
+          _13 = copy (((*_46) as Vw).0: f32);
           StorageLive(_14);
           StorageLive(_15);
-          _15 = _12;
+          _15 = copy _12;
           StorageLive(_16);
-          _16 = _13;
+          _16 = copy _13;
           _14 = Add(move _15, move _16);
           StorageDead(_16);
           StorageDead(_15);

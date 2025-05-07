@@ -3,17 +3,17 @@
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::ErrorGuaranteed;
-use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::traits::{
     self, IsFirstInputType, OrphanCheckErr, OrphanCheckMode, UncoveredTyParams,
 };
+use tracing::{debug, instrument};
 
 use crate::errors;
 
@@ -108,16 +108,16 @@ pub(crate) fn orphan_check_impl(
         //
         //     auto trait AutoTrait {}
         //
-        //     trait ObjectSafeTrait {
+        //     trait DynCompatibleTrait {
         //         fn f(&self) where Self: AutoTrait;
         //     }
         //
-        // We can allow f to be called on `dyn ObjectSafeTrait + AutoTrait`.
+        // We can allow f to be called on `dyn DynCompatibleTrait + AutoTrait`.
         //
         // If we didn't deny `impl AutoTrait for dyn Trait`, it would be unsound
-        // for the ObjectSafeTrait shown above to be object safe because someone
-        // could take some type implementing ObjectSafeTrait but not AutoTrait,
-        // unsize it to `dyn ObjectSafeTrait`, and call .f() which has no
+        // for the `DynCompatibleTrait` shown above to be dyn-compatible because someone
+        // could take some type implementing `DynCompatibleTrait` but not `AutoTrait`,
+        // unsize it to `dyn DynCompatibleTrait`, and call `.f()` which has no
         // concrete implementation (issue #50781).
         enum LocalImpl {
             Allow,
@@ -171,7 +171,7 @@ pub(crate) fn orphan_check_impl(
             // impl<T> AutoTrait for T {}
             // impl<T: ?Sized> AutoTrait for T {}
             ty::Param(..) => (
-                if self_ty.is_sized(tcx, tcx.param_env(impl_def_id)) {
+                if self_ty.is_sized(tcx, ty::TypingEnv::non_body_analysis(tcx, impl_def_id)) {
                     LocalImpl::Allow
                 } else {
                     LocalImpl::Disallow { problematic_kind: "generic type" }
@@ -189,7 +189,7 @@ pub(crate) fn orphan_check_impl(
                     ty::Projection => "associated type",
                     // type Foo = (impl Sized, bool)
                     // impl AutoTrait for Foo {}
-                    ty::Weak => "type alias",
+                    ty::Free => "type alias",
                     // type Opaque = impl Trait;
                     // impl AutoTrait for Opaque {}
                     ty::Opaque => "opaque type",
@@ -224,7 +224,8 @@ pub(crate) fn orphan_check_impl(
             | ty::FnDef(..)
             | ty::FnPtr(..)
             | ty::Never
-            | ty::Tuple(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
+            | ty::Tuple(..)
+            | ty::UnsafeBinder(_) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
 
             ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -301,7 +302,7 @@ fn orphan_check<'tcx>(
     }
 
     // (1)  Instantiate all generic params with fresh inference vars.
-    let infcx = tcx.infer_ctxt().intercrate(true).build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::Coherence);
     let cause = traits::ObligationCause::dummy();
     let args = infcx.fresh_args_for_item(cause.span, impl_def_id.to_def_id());
     let trait_ref = trait_ref.instantiate(tcx, args);
@@ -318,7 +319,7 @@ fn orphan_check<'tcx>(
         }
 
         let ty = if infcx.next_trait_solver() {
-            ocx.structurally_normalize(
+            ocx.structurally_normalize_ty(
                 &cause,
                 ty::ParamEnv::empty(),
                 infcx.resolve_vars_if_possible(ty),
@@ -354,13 +355,20 @@ fn orphan_check<'tcx>(
             })
         }
         OrphanCheckErr::NonLocalInputType(tys) => {
-            let generics = tcx.generics_of(impl_def_id);
-            let tys = tys
-                .into_iter()
-                .map(|(ty, is_target_ty)| {
-                    (ty.fold_with(&mut TyVarReplacer { infcx: &infcx, generics }), is_target_ty)
-                })
-                .collect();
+            let tys = infcx.probe(|_| {
+                // Map the unconstrained args back to their params,
+                // ignoring any type unification errors.
+                for (arg, id_arg) in
+                    std::iter::zip(args, ty::GenericArgs::identity_for_item(tcx, impl_def_id))
+                {
+                    let _ = infcx.at(&cause, ty::ParamEnv::empty()).eq(
+                        DefineOpaqueTypes::No,
+                        arg,
+                        id_arg,
+                    );
+                }
+                infcx.resolve_vars_if_possible(tys)
+            });
             OrphanCheckErr::NonLocalInputType(tys)
         }
     })
@@ -374,7 +382,7 @@ fn emit_orphan_check_error<'tcx>(
 ) -> ErrorGuaranteed {
     match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
-            let item = tcx.hir().expect_item(impl_def_id);
+            let item = tcx.hir_expect_item(impl_def_id);
             let impl_ = item.expect_impl();
             let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
 
@@ -463,8 +471,8 @@ fn emit_orphan_check_error<'tcx>(
         traits::OrphanCheckErr::UncoveredTyParams(UncoveredTyParams { uncovered, local_ty }) => {
             let mut reported = None;
             for param_def_id in uncovered {
-                let span = tcx.def_ident_span(param_def_id).unwrap();
-                let name = tcx.item_name(param_def_id);
+                let name = tcx.item_ident(param_def_id);
+                let span = name.span;
 
                 reported.get_or_insert(match local_ty {
                     Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
@@ -490,7 +498,7 @@ fn lint_uncovered_ty_params<'tcx>(
 
     for param_def_id in uncovered {
         let span = tcx.def_ident_span(param_def_id).unwrap();
-        let name = tcx.item_name(param_def_id);
+        let name = tcx.item_ident(param_def_id);
 
         match local_ty {
             Some(local_type) => tcx.emit_node_span_lint(
@@ -532,42 +540,5 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for UncoveredTyParamCollector<'_, 'tcx> {
         if ct.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
             ct.super_visit_with(self)
         }
-    }
-}
-
-struct TyVarReplacer<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'tcx>,
-    generics: &'tcx ty::Generics,
-}
-
-impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for TyVarReplacer<'cx, 'tcx> {
-    fn cx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if !ty.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
-            return ty;
-        }
-        let ty::Infer(ty::TyVar(vid)) = *ty.kind() else {
-            return ty.super_fold_with(self);
-        };
-        let origin = self.infcx.type_var_origin(vid);
-        if let Some(def_id) = origin.param_def_id {
-            // The generics of an `impl` don't have a parent, we can index directly.
-            let index = self.generics.param_def_id_to_index[&def_id];
-            let name = self.generics.own_params[index as usize].name;
-
-            Ty::new_param(self.infcx.tcx, index, name)
-        } else {
-            ty
-        }
-    }
-
-    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if !ct.has_type_flags(ty::TypeFlags::HAS_TY_INFER) {
-            return ct;
-        }
-        ct.super_fold_with(self)
     }
 }

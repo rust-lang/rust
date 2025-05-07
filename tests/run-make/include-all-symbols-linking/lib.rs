@@ -1,5 +1,6 @@
 mod foo {
-    #[link_section = ".rodata.STATIC"]
+    #[cfg_attr(target_os = "linux", link_section = ".rodata.STATIC")]
+    #[cfg_attr(target_vendor = "apple", link_section = "__DATA,STATIC")]
     #[used]
     static STATIC: [u32; 10] = [1; 10];
 }

@@ -1,18 +1,25 @@
-#![allow(unused, clippy::needless_lifetimes, clippy::needless_pass_by_ref_mut)]
+#![allow(
+    unused,
+    clippy::needless_lifetimes,
+    clippy::needless_pass_by_ref_mut,
+    clippy::redundant_allocation,
+    clippy::boxed_local
+)]
 #![warn(clippy::mut_from_ref)]
 
 struct Foo;
 
 impl Foo {
     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
-        //~^ ERROR: mutable borrow from immutable input(s)
+        //~^ mut_from_ref
+
         unsafe { unimplemented!() }
     }
 }
 
 trait Ouch {
     fn ouch(x: &Foo) -> &mut Foo;
-    //~^ ERROR: mutable borrow from immutable input(s)
+    //~^ mut_from_ref
 }
 
 impl Ouch for Foo {
@@ -22,17 +29,32 @@ impl Ouch for Foo {
 }
 
 fn fail(x: &u32) -> &mut u16 {
-    //~^ ERROR: mutable borrow from immutable input(s)
+    //~^ mut_from_ref
+
     unsafe { unimplemented!() }
 }
 
 fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
-    //~^ ERROR: mutable borrow from immutable input(s)
+    //~^ mut_from_ref
+
     unsafe { unimplemented!() }
 }
 
 fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
-    //~^ ERROR: mutable borrow from immutable input(s)
+    //~^ mut_from_ref
+
+    unsafe { unimplemented!() }
+}
+
+fn fail_tuples<'a>(x: (&'a u32, &'a u32)) -> &'a mut u32 {
+    //~^ mut_from_ref
+
+    unsafe { unimplemented!() }
+}
+
+fn fail_box<'a>(x: Box<&'a u32>) -> &'a mut u32 {
+    //~^ mut_from_ref
+
     unsafe { unimplemented!() }
 }
 
@@ -46,8 +68,23 @@ fn also_works<'a>(x: &'a u32, y: &'a mut u32) -> &'a mut u32 {
     unsafe { unimplemented!() }
 }
 
+fn works_tuples<'a>(x: (&'a u32, &'a mut u32)) -> &'a mut u32 {
+    unsafe { unimplemented!() }
+}
+
+fn works_box<'a>(x: &'a u32, y: Box<&'a mut u32>) -> &'a mut u32 {
+    unsafe { unimplemented!() }
+}
+
+struct RefMut<'a>(&'a mut u32);
+
+fn works_parameter<'a>(x: &'a u32, y: RefMut<'a>) -> &'a mut u32 {
+    unsafe { unimplemented!() }
+}
+
 unsafe fn also_broken(x: &u32) -> &mut u32 {
-    //~^ ERROR: mutable borrow from immutable input(s)
+    //~^ mut_from_ref
+
     unimplemented!()
 }
 

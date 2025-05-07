@@ -18,7 +18,7 @@ pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
     rand::SeedableRng::from_seed(seed)
 }
 
-// Copied from std::sys_common::io
+// Copied from std::test_helpers
 pub(crate) struct TempDir(PathBuf);
 
 impl TempDir {

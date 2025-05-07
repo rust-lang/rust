@@ -2,13 +2,14 @@ use std::ops::ControlFlow;
 
 use crate::FxHashSet;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::{indent_of, snippet};
+use clippy_utils::source::{first_line_of_span, indent_of, snippet};
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{get_attr, is_lint_allowed};
 use itertools::Itertools;
 use rustc_ast::Mutability;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::{GenericArgKind, Region, RegionKind, Ty, TyCtxt, TypeVisitable, TypeVisitor};
@@ -151,7 +152,7 @@ fn set_suggestion<'tcx>(diag: &mut Diag<'_, ()>, cx: &LateContext<'tcx>, expr: &
     diag.multipart_suggestion(
         suggestion_message,
         vec![
-            (expr.span.shrink_to_lo(), replacement),
+            (first_line_of_span(cx, expr.span).shrink_to_lo(), replacement),
             (found.found_span, scrutinee_replacement),
         ],
         Applicability::MaybeIncorrect,
@@ -181,24 +182,23 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
     }
 
     fn has_sig_drop_attr_impl(&mut self, ty: Ty<'tcx>) -> bool {
-        if let Some(adt) = ty.ty_adt_def() {
-            if get_attr(
+        if let Some(adt) = ty.ty_adt_def()
+            && get_attr(
                 self.cx.sess(),
                 self.cx.tcx.get_attrs_unchecked(adt.did()),
                 "has_significant_drop",
             )
             .count()
                 > 0
-            {
-                return true;
-            }
+        {
+            return true;
         }
 
         if !self.seen_types.insert(ty) {
             return false;
         }
 
-        let result = match ty.kind() {
+        match ty.kind() {
             rustc_middle::ty::Adt(adt, args) => {
                 // if some field has significant drop,
                 adt.all_fields()
@@ -222,9 +222,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
             rustc_middle::ty::Tuple(tys) => tys.iter().any(|ty| self.has_sig_drop_attr_impl(ty)),
             rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr_impl(*ty),
             _ => false,
-        };
-
-        result
+        }
     }
 }
 
@@ -424,7 +422,7 @@ fn ty_has_erased_regions(ty: Ty<'_>) -> bool {
     ty.visit_with(&mut V).is_break()
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for SigDropHelper<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'_>) {
         // We've emitted a lint on some neighborhood expression. That lint will suggest to move out the
         // _parent_ expression (not the expression itself). Since we decide to move out the parent
@@ -440,8 +438,9 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
         let parent_expr_before = self.parent_expr.replace(ex);
 
         match ex.kind {
-            // Skip blocks because values in blocks will be dropped as usual.
-            ExprKind::Block(..) => (),
+            // Skip blocks because values in blocks will be dropped as usual, and await
+            // desugaring because temporary insides the future will have been dropped.
+            ExprKind::Block(..) | ExprKind::Match(_, _, MatchSource::AwaitDesugar) => (),
             _ => walk_expr(self, ex),
         }
 
@@ -475,19 +474,19 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
 
 struct ArmSigDropHelper<'a, 'tcx> {
     sig_drop_checker: SigDropChecker<'a, 'tcx>,
-    found_sig_drop_spans: FxHashSet<Span>,
+    found_sig_drop_spans: FxIndexSet<Span>,
 }
 
 impl<'a, 'tcx> ArmSigDropHelper<'a, 'tcx> {
     fn new(cx: &'a LateContext<'tcx>) -> ArmSigDropHelper<'a, 'tcx> {
         ArmSigDropHelper {
             sig_drop_checker: SigDropChecker::new(cx),
-            found_sig_drop_spans: FxHashSet::<Span>::default(),
+            found_sig_drop_spans: FxIndexSet::<Span>::default(),
         }
     }
 }
 
-fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &[&'tcx Expr<'_>]) -> FxHashSet<Span> {
+fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &[&'tcx Expr<'_>]) -> FxIndexSet<Span> {
     let mut helper = ArmSigDropHelper::new(cx);
     for arm in arms {
         helper.visit_expr(arm);
@@ -495,7 +494,7 @@ fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &[&'tcx Expr
     helper.found_sig_drop_spans
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ArmSigDropHelper<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ArmSigDropHelper<'_, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if self.sig_drop_checker.is_sig_drop_expr(ex) {
             self.found_sig_drop_spans.insert(ex.span);

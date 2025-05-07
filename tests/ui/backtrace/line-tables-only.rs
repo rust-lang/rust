@@ -10,6 +10,7 @@
 //@ compile-flags: -Cstrip=none -Cdebuginfo=line-tables-only
 //@ ignore-android FIXME #17520
 //@ ignore-fuchsia Backtraces not symbolized
+//@ ignore-emscripten Requires custom symbolization code
 //@ needs-unwind
 //@ aux-build: line-tables-only-helper.rs
 

@@ -1,7 +1,7 @@
-use ide_db::assists::{AssistId, AssistKind, GroupLabel};
+use ide_db::assists::{AssistId, GroupLabel};
 use syntax::{
-    ast::{self, ArithOp, BinaryOp},
     AstNode, TextRange,
+    ast::{self, ArithOp, BinaryOp},
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -132,7 +132,7 @@ impl ArithKind {
             ArithKind::Wrapping => "replace_arith_with_wrapping",
         };
 
-        AssistId(s, AssistKind::RefactorRewrite)
+        AssistId::refactor_rewrite(s)
     }
 
     fn label(&self) -> &'static str {

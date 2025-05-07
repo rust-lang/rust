@@ -1,3 +1,5 @@
+//@check-pass
+
 #![warn(clippy::path_ends_with_ext)]
 
 use std::path::Path;

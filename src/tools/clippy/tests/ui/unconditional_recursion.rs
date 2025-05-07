@@ -4,7 +4,8 @@
 #![allow(
     clippy::partialeq_ne_impl,
     clippy::default_constructed_unit_structs,
-    clippy::only_used_in_recursion
+    clippy::only_used_in_recursion,
+    clippy::needless_lifetimes
 )]
 
 enum Foo {
@@ -14,11 +15,13 @@ enum Foo {
 
 impl PartialEq for Foo {
     fn ne(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         self != other
     }
     fn eq(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         self == other
     }
 }
@@ -30,9 +33,11 @@ enum Foo2 {
 
 impl PartialEq for Foo2 {
     fn ne(&self, other: &Self) -> bool {
+        //~^ unconditional_recursion
         self != &Foo2::B // no error here
     }
     fn eq(&self, other: &Self) -> bool {
+        //~^ unconditional_recursion
         self == &Foo2::B // no error here
     }
 }
@@ -44,11 +49,14 @@ enum Foo3 {
 
 impl PartialEq for Foo3 {
     fn ne(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+        //~| ERROR: function cannot return without recursing
         self.ne(other)
     }
     fn eq(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+        //~| ERROR: function cannot return without recursing
+
         self.eq(other)
     }
 }
@@ -92,11 +100,13 @@ struct S;
 // Check the order doesn't matter.
 impl PartialEq for S {
     fn ne(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         other != self
     }
     fn eq(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         other == self
     }
 }
@@ -106,12 +116,16 @@ struct S2;
 // Check that if the same element is compared, it's also triggering the lint.
 impl PartialEq for S2 {
     fn ne(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         other != other
+        //~^ eq_op
     }
     fn eq(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         other == other
+        //~^ eq_op
     }
 }
 
@@ -119,12 +133,16 @@ struct S3;
 
 impl PartialEq for S3 {
     fn ne(&self, _other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         self != self
+        //~^ eq_op
     }
     fn eq(&self, _other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         self == self
+        //~^ eq_op
     }
 }
 
@@ -151,7 +169,8 @@ macro_rules! impl_partial_eq {
     ($ty:ident) => {
         impl PartialEq for $ty {
             fn eq(&self, other: &Self) -> bool {
-                //~^ ERROR: function cannot return without recursing
+                //~^ unconditional_recursion
+
                 self == other
             }
         }
@@ -180,7 +199,8 @@ struct S7<'a> {
 
 impl<'a> PartialEq for S7<'a> {
     fn eq(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         let mine = &self.field;
         let theirs = &other.field;
         mine == theirs
@@ -249,7 +269,8 @@ impl std::default::Default for S12 {
 
 impl S12 {
     fn new() -> Self {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         Self::default()
     }
 
@@ -288,7 +309,8 @@ struct S15<'a> {
 
 impl PartialEq for S15<'_> {
     fn eq(&self, other: &Self) -> bool {
-        //~^ ERROR: function cannot return without recursing
+        //~^ unconditional_recursion
+
         let mine = &self.field;
         let theirs = &other.field;
         mine.eq(theirs)
@@ -359,6 +381,7 @@ struct BadFromTy1<'a>(&'a ());
 struct BadIntoTy1<'b>(&'b ());
 impl<'a> From<BadFromTy1<'a>> for BadIntoTy1<'static> {
     fn from(f: BadFromTy1<'a>) -> Self {
+        //~^ unconditional_recursion
         f.into()
     }
 }
@@ -368,6 +391,7 @@ struct BadFromTy2<'a>(&'a ());
 struct BadIntoTy2<'b>(&'b ());
 impl<'a> From<BadFromTy2<'a>> for BadIntoTy2<'static> {
     fn from(f: BadFromTy2<'a>) -> Self {
+        //~^ unconditional_recursion
         Into::into(f)
     }
 }

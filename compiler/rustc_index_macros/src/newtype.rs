@@ -122,7 +122,7 @@ impl Parse for Newtype {
                 #gate_rustc_only
                 impl ::std::iter::Step for #name {
                     #[inline]
-                    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+                    fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
                         <usize as ::std::iter::Step>::steps_between(
                             &Self::index(*start),
                             &Self::index(*end),
@@ -257,6 +257,13 @@ impl Parse for Newtype {
                 }
             }
 
+            impl std::ops::AddAssign<usize> for #name {
+                #[inline]
+                fn add_assign(&mut self, other: usize) {
+                    *self = *self + other;
+                }
+            }
+
             impl rustc_index::Idx for #name {
                 #[inline]
                 fn new(value: usize) -> Self {
@@ -305,7 +312,7 @@ impl Parse for Newtype {
     }
 }
 
-pub fn newtype(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub(crate) fn newtype(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as Newtype);
     input.0.into()
 }

@@ -7,15 +7,19 @@ fn main() {
     let v = vec![1, 2, 3];
 
     let _ = s.first();
+    //~^ iter_next_slice
     // Should be replaced by s.first()
 
     let _ = s.get(2);
+    //~^ iter_next_slice
     // Should be replaced by s.get(2)
 
     let _ = v.get(5);
+    //~^ iter_next_slice
     // Should be replaced by v.get(5)
 
     let _ = v.first();
+    //~^ iter_next_slice
     // Should be replaced by v.first()
 
     let o = Some(5);

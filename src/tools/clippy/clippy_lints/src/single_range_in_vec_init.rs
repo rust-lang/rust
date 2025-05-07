@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_trait_def_id;
 use clippy_utils::higher::VecArgs;
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
+use clippy_utils::{get_trait_def_id, is_no_std_crate};
 use rustc_ast::{LitIntType, LitKind, UintTy};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, LangItem, QPath};
+use rustc_hir::{Expr, ExprKind, LangItem, QPath, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use std::fmt::{self, Display, Formatter};
@@ -86,18 +86,19 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
             return;
         };
 
-        let ExprKind::Struct(QPath::LangItem(lang_item, ..), [start, end], None) = inner_expr.kind else {
+        let ExprKind::Struct(QPath::LangItem(lang_item, ..), [start, end], StructTailExpr::None) = inner_expr.kind
+        else {
             return;
         };
 
         if matches!(lang_item, LangItem::Range)
             && let ty = cx.typeck_results().expr_ty(start.expr)
-            && let Some(snippet) = snippet_opt(cx, span)
+            && let Some(snippet) = span.get_source_text(cx)
             // `is_from_proc_macro` will skip any `vec![]`. Let's not!
             && snippet.starts_with(suggested_type.starts_with())
             && snippet.ends_with(suggested_type.ends_with())
-            && let Some(start_snippet) = snippet_opt(cx, start.span)
-            && let Some(end_snippet) = snippet_opt(cx, end.span)
+            && let Some(start_snippet) = start.span.get_source_text(cx)
+            && let Some(end_snippet) = end.span.get_source_text(cx)
         {
             let should_emit_every_value = if let Some(step_def_id) = get_trait_def_id(cx.tcx, &["core", "iter", "Step"])
                 && implements_trait(cx, ty, step_def_id, &[])
@@ -124,7 +125,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                     span,
                     format!("{suggested_type} of `Range` that is only one element"),
                     |diag| {
-                        if should_emit_every_value {
+                        if should_emit_every_value && !is_no_std_crate(cx) {
                             diag.span_suggestion(
                                 span,
                                 "if you wanted a `Vec` that contains the entire range, try",

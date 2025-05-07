@@ -9,6 +9,7 @@ trait LocalTrait {}
 impl<T> LocalTrait for foreign_crate::ForeignType<T> {}
 
 type AliasOfForeignType<T> = impl LocalTrait;
+#[define_opaque(AliasOfForeignType)]
 fn use_alias<T>(val: T) -> AliasOfForeignType<T> {
     foreign_crate::ForeignType(val)
 }

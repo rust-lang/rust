@@ -10,14 +10,12 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 camino.workspace = true
-serde = { workspace = true, optional = true }
 
 [features]
-serde1 = ["camino/serde1", "dep:serde"]
+serde1 = ["camino/serde1"]
 
 [lints]
 workspace = true

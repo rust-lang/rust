@@ -6,7 +6,7 @@ successes:
 
 ---- $DIR/display-output.rs - foo (line 9) stdout ----
 warning: unused variable: `x`
-  --> $DIR/display-output.rs:11:5
+  --> $DIR/display-output.rs:12:5
    |
 LL | let x = 12;
    |     ^ help: if this is intentional, prefix it with an underscore: `_x`
@@ -19,13 +19,13 @@ LL | #![warn(unused)]
    = note: `#[warn(unused_variables)]` implied by `#[warn(unused)]`
 
 warning: unused variable: `x`
-  --> $DIR/display-output.rs:13:8
+  --> $DIR/display-output.rs:14:8
    |
 LL | fn foo(x: &dyn std::fmt::Display) {}
    |        ^ help: if this is intentional, prefix it with an underscore: `_x`
 
 warning: function `foo` is never used
-  --> $DIR/display-output.rs:13:4
+  --> $DIR/display-output.rs:14:4
    |
 LL | fn foo(x: &dyn std::fmt::Display) {}
    |    ^^^

@@ -1,10 +1,8 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![allow(incomplete_features)] // for trait upcasting
-#![feature(allocator_api, trait_upcasting)]
+#![feature(allocator_api)]
 
-use std::alloc::Layout;
-use std::alloc::{AllocError, Allocator};
+use std::alloc::{AllocError, Allocator, Layout};
 use std::cell::Cell;
 use std::mem::MaybeUninit;
 use std::ptr::{self, NonNull};

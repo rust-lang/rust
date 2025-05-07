@@ -33,16 +33,16 @@
           StorageLive(_4);
           StorageLive(_5);
           StorageLive(_6);
--         switchInt(_1) -> [7: bb2, otherwise: bb1];
+-         switchInt(copy _1) -> [7: bb2, otherwise: bb1];
 -     }
 - 
 -     bb1: {
 -         _2 = const true;
 -         _3 = const false;
 +         StorageLive(_11);
-+         _11 = _1;
-+         _2 = Ne(_11, const 7_i32);
-+         _3 = Eq(_11, const 7_i32);
++         _11 = copy _1;
++         _2 = Ne(copy _11, const 7_i32);
++         _3 = Eq(copy _11, const 7_i32);
           _4 = const false;
           _5 = const true;
           _6 = ();
@@ -62,13 +62,13 @@
 +         StorageDead(_11);
           StorageDead(_6);
           StorageLive(_7);
-          _7 = _2;
+          _7 = copy _2;
           StorageLive(_8);
-          _8 = _3;
+          _8 = copy _3;
           StorageLive(_9);
-          _9 = _4;
+          _9 = copy _4;
           StorageLive(_10);
-          _10 = _5;
+          _10 = copy _5;
           _0 = (move _7, move _8, move _9, move _10);
           StorageDead(_10);
           StorageDead(_9);

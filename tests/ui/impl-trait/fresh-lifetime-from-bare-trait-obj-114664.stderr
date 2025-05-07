@@ -7,7 +7,7 @@ LL | fn ice() -> impl AsRef<Fn(&())> {
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: `#[warn(bare_trait_objects)]` on by default
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | fn ice() -> impl AsRef<dyn Fn(&())> {
    |                        +++
@@ -21,7 +21,7 @@ LL | fn ice() -> impl AsRef<Fn(&())> {
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-help: if this is an object-safe trait, use `dyn`
+help: if this is a dyn-compatible trait, use `dyn`
    |
 LL | fn ice() -> impl AsRef<dyn Fn(&())> {
    |                        +++

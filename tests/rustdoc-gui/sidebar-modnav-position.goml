@@ -1,0 +1,44 @@
+// Verifies that, when TOC is hidden, modnav is always in exactly the same spot
+// This is driven by a reasonably common use case:
+//
+// - There are three or more items that might meet my needs.
+// - I open the first one, decide it's not what I want, switch to the second one using the sidebar.
+// - The second one also doesn't meet my needs, so I switch to the third.
+// - The third also doesn't meet my needs, so...
+//
+// because the sibling module nav is in exactly the same place every time,
+// it's very easy to find and switch between pages that way.
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+show-text: true
+set-local-storage: {"rustdoc-hide-toc": "true"}
+
+define-function: (
+    "check-positions",
+    [url],
+    block {
+        go-to: "file://" + |DOC_PATH| + |url|
+        // Checking results colors.
+        assert-position: ("#rustdoc-modnav > h2", {"x": |h2_x|, "y": |h2_y|})
+        assert-position: (
+            "#rustdoc-modnav > ul:first-of-type > li:first-of-type",
+            {"x": |x|, "y": |y|}
+        )
+    },
+)
+
+// First, at test_docs root
+go-to: "file://" + |DOC_PATH| + "/test_docs/enum.WhoLetTheDogOut.html"
+store-position: ("#rustdoc-modnav > h2", {"x": h2_x, "y": h2_y})
+store-position: ("#rustdoc-modnav > ul:first-of-type > li:first-of-type", {"x": x, "y": y})
+call-function: ("check-positions", {"url": "/test_docs/enum.WhoLetTheDogOut.html"})
+call-function: ("check-positions", {"url": "/test_docs/struct.StructWithPublicUndocumentedFields.html"})
+call-function: ("check-positions", {"url": "/test_docs/codeblock_sub/index.html"})
+
+// Now in a submodule
+go-to: "file://" + |DOC_PATH| + "/test_docs/fields/struct.Struct.html"
+store-position: ("#rustdoc-modnav > h2", {"x": h2_x, "y": h2_y})
+store-position: ("#rustdoc-modnav > ul:first-of-type > li:first-of-type", {"x": x, "y": y})
+call-function: ("check-positions", {"url": "/test_docs/fields/struct.Struct.html"})
+call-function: ("check-positions", {"url": "/test_docs/fields/union.Union.html"})
+call-function: ("check-positions", {"url": "/test_docs/fields/enum.Enum.html"})

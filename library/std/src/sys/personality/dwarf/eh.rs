@@ -12,7 +12,7 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
 
-use core::{mem, ptr};
+use core::ptr;
 
 use super::DwarfReader;
 
@@ -54,10 +54,10 @@ pub enum EHAction {
     Terminate,
 }
 
-/// 32-bit Apple ARM uses SjLj exceptions, except for watchOS.
+/// 32-bit ARM Darwin platforms uses SjLj exceptions.
 ///
-/// I.e. iOS and tvOS, as those are the only Apple OSes that used 32-bit ARM
-/// devices.
+/// The exception is watchOS armv7k (specifically that subarchitecture), which
+/// instead uses DWARF Call Frame Information (CFI) unwinding.
 ///
 /// <https://github.com/llvm/llvm-project/blob/llvmorg-18.1.4/clang/lib/Driver/ToolChains/Darwin.cpp#L3107-L3119>
 pub const USING_SJLJ_EXCEPTIONS: bool =
@@ -245,8 +245,7 @@ unsafe fn read_encoded_pointer(
         DW_EH_PE_datarel => (*context.get_data_start)(),
         // aligned means the value is aligned to the size of a pointer
         DW_EH_PE_aligned => {
-            reader.ptr =
-                reader.ptr.with_addr(round_up(reader.ptr.addr(), mem::size_of::<*const u8>())?);
+            reader.ptr = reader.ptr.with_addr(round_up(reader.ptr.addr(), size_of::<*const u8>())?);
             core::ptr::null()
         }
         _ => return Err(()),

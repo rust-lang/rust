@@ -1,5 +1,5 @@
 error: Undefined Behavior: `fsub_fast` intrinsic called with non-finite value as both parameters
-  --> $DIR/fast_math_both.rs:LL:CC
+  --> tests/fail/intrinsics/fast_math_both.rs:LL:CC
    |
 LL | ...: f32 = core::intrinsics::fsub_fast(f32::NAN, f32::NAN);
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `fsub_fast` intrinsic called with non-finite value as both parameters
@@ -7,7 +7,7 @@ LL | ...: f32 = core::intrinsics::fsub_fast(f32::NAN, f32::NAN);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/fast_math_both.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/fast_math_both.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

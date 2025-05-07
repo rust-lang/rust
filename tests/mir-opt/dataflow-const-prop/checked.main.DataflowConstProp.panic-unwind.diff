@@ -36,11 +36,11 @@
           _2 = const 2_i32;
           StorageLive(_3);
           StorageLive(_4);
--         _4 = _1;
+-         _4 = copy _1;
 +         _4 = const 1_i32;
           StorageLive(_5);
--         _5 = _2;
--         _6 = AddWithOverflow(_4, _5);
+-         _5 = copy _2;
+-         _6 = AddWithOverflow(copy _4, copy _5);
 -         assert(!move (_6.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, move _5) -> [success: bb1, unwind continue];
 +         _5 = const 2_i32;
 +         _6 = const (3_i32, false);
@@ -56,8 +56,8 @@
           _7 = const core::num::<impl i32>::MAX;
           StorageLive(_8);
           StorageLive(_9);
--         _9 = _7;
--         _10 = AddWithOverflow(_9, const 1_i32);
+-         _9 = copy _7;
+-         _10 = AddWithOverflow(copy _9, const 1_i32);
 -         assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", move _9, const 1_i32) -> [success: bb2, unwind continue];
 +         _9 = const i32::MAX;
 +         _10 = const (i32::MIN, true);

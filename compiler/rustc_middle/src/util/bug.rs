@@ -1,22 +1,22 @@
-// These functions are used by macro expansion for bug! and span_bug!
+// These functions are used by macro expansion for `bug!` and `span_bug!`.
 
 use std::fmt;
-use std::panic::{panic_any, Location};
+use std::panic::{Location, panic_any};
 
 use rustc_errors::MultiSpan;
 use rustc_span::Span;
 
-use crate::ty::{tls, TyCtxt};
+use crate::ty::{TyCtxt, tls};
 
+// This wrapper makes for more compact code at callsites than calling `opt_span_buf_fmt` directly.
 #[cold]
 #[inline(never)]
 #[track_caller]
 pub fn bug_fmt(args: fmt::Arguments<'_>) -> ! {
-    // this wrapper mostly exists so I don't have to write a fully
-    // qualified path of None::<Span> inside the bug!() macro definition
     opt_span_bug_fmt(None::<Span>, args, Location::caller());
 }
 
+// This wrapper makes for more compact code at callsites than calling `opt_span_buf_fmt` directly.
 #[cold]
 #[inline(never)]
 #[track_caller]
@@ -49,7 +49,7 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
 pub fn trigger_delayed_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
     tcx.dcx().span_delayed_bug(
         tcx.def_span(key),
-        "delayed bug triggered by #[rustc_error(delayed_bug_from_inside_query)]",
+        "delayed bug triggered by #[rustc_delayed_bug_from_inside_query]",
     );
 }
 

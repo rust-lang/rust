@@ -1,0 +1,17 @@
+error: return type captures more lifetimes than trait definition
+  --> $DIR/rpitit-captures-more-method-lifetimes.rs:10:40
+   |
+LL |     fn bar<'im: 'im>(&'im mut self) -> impl Sized + use<'im> {}
+   |            ---                         ^^^^^^^^^^^^^^^^^^^^^
+   |            |
+   |            this lifetime was captured
+   |
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/rpitit-captures-more-method-lifetimes.rs:6:40
+   |
+LL |     fn bar<'tr: 'tr>(&'tr mut self) -> impl Sized + use<Self>;
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^
+   = note: hidden type inferred to be `impl Sized`
+
+error: aborting due to 1 previous error
+

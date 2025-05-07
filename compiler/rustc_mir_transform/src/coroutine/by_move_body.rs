@@ -3,8 +3,6 @@
 //!
 //! Consider an async closure like:
 //! ```rust
-//! #![feature(async_closure)]
-//!
 //! let x = vec![1, 2, 3];
 //!
 //! let closure = async move || {
@@ -69,161 +67,186 @@
 //! in case precise captures (edition 2021 closure capture rules) caused the inner coroutine
 //! to split one field capture into two.
 
+use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::mir::{self, dump_mir, MirPass};
+use rustc_middle::mir::{self, dump_mir};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
-use crate::pass_manager::validate_body;
+pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    coroutine_def_id: LocalDefId,
+) -> DefId {
+    let body = tcx.mir_built(coroutine_def_id).borrow();
 
-pub struct ByMoveBody;
-
-impl<'tcx> MirPass<'tcx> for ByMoveBody {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
-        // We only need to generate by-move coroutine bodies for coroutines that come
-        // from coroutine-closures.
-        let Some(coroutine_def_id) = body.source.def_id().as_local() else {
-            return;
-        };
-        let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
-            tcx.coroutine_kind(coroutine_def_id)
-        else {
-            return;
-        };
-
-        // Also, let's skip processing any bodies with errors, since there's no guarantee
-        // the MIR body will be constructed well.
-        let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
-        if coroutine_ty.references_error() {
-            return;
-        }
-
-        // We don't need to generate a by-move coroutine if the coroutine body was
-        // produced by the `CoroutineKindShim`, since it's already by-move.
-        if matches!(body.source.instance, ty::InstanceKind::CoroutineKindShim { .. }) {
-            return;
-        }
-
-        let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
-        let args = args.as_coroutine();
-
-        let coroutine_kind = args.kind_ty().to_opt_closure_kind().unwrap();
-
-        let parent_def_id = tcx.local_parent(coroutine_def_id);
-        let ty::CoroutineClosure(_, parent_args) =
-            *tcx.type_of(parent_def_id).instantiate_identity().kind()
-        else {
-            bug!();
-        };
-        let parent_closure_args = parent_args.as_coroutine_closure();
-        let num_args = parent_closure_args
-            .coroutine_closure_sig()
-            .skip_binder()
-            .tupled_inputs_ty
-            .tuple_fields()
-            .len();
-
-        let field_remapping: UnordMap<_, _> = ty::analyze_coroutine_closure_captures(
-            tcx.closure_captures(parent_def_id).iter().copied(),
-            tcx.closure_captures(coroutine_def_id).iter().skip(num_args).copied(),
-            |(parent_field_idx, parent_capture), (child_field_idx, child_capture)| {
-                // Store this set of additional projections (fields and derefs).
-                // We need to re-apply them later.
-                let mut child_precise_captures = child_capture.place.projections
-                    [parent_capture.place.projections.len()..]
-                    .to_vec();
-
-                // If the parent capture is by-ref, then we need to apply an additional
-                // deref before applying any further projections to this place.
-                if parent_capture.is_by_ref() {
-                    child_precise_captures.insert(
-                        0,
-                        Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
-                    );
-                }
-                // If the child capture is by-ref, then we need to apply a "ref"
-                // projection (i.e. `&`) at the end. But wait! We don't have that
-                // as a projection kind. So instead, we can apply its dual and
-                // *peel* a deref off of the place when it shows up in the MIR body.
-                // Luckily, by construction this is always possible.
-                let peel_deref = if child_capture.is_by_ref() {
-                    assert!(
-                        parent_capture.is_by_ref() || coroutine_kind != ty::ClosureKind::FnOnce,
-                        "`FnOnce` coroutine-closures return coroutines that capture from \
-                        their body; it will always result in a borrowck error!"
-                    );
-                    true
-                } else {
-                    false
-                };
-
-                // Regarding the behavior above, you may think that it's redundant to both
-                // insert a deref and then peel a deref if the parent and child are both
-                // captured by-ref. This would be correct, except for the case where we have
-                // precise capturing projections, since the inserted deref is to the *beginning*
-                // and the peeled deref is at the *end*. I cannot seem to actually find a
-                // case where this happens, though, but let's keep this code flexible.
-
-                // Finally, store the type of the parent's captured place. We need
-                // this when building the field projection in the MIR body later on.
-                let mut parent_capture_ty = parent_capture.place.ty();
-                parent_capture_ty = match parent_capture.info.capture_kind {
-                    ty::UpvarCapture::ByValue => parent_capture_ty,
-                    ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
-                        tcx,
-                        tcx.lifetimes.re_erased,
-                        parent_capture_ty,
-                        kind.to_mutbl_lossy(),
-                    ),
-                };
-
-                (
-                    FieldIdx::from_usize(child_field_idx + num_args),
-                    (
-                        FieldIdx::from_usize(parent_field_idx + num_args),
-                        parent_capture_ty,
-                        peel_deref,
-                        child_precise_captures,
-                    ),
-                )
-            },
-        )
-        .collect();
-
-        if coroutine_kind == ty::ClosureKind::FnOnce {
-            assert_eq!(field_remapping.len(), tcx.closure_captures(parent_def_id).len());
-            return;
-        }
-
-        let by_move_coroutine_ty = tcx
-            .instantiate_bound_regions_with_erased(parent_closure_args.coroutine_closure_sig())
-            .to_coroutine_given_kind_and_upvars(
-                tcx,
-                parent_closure_args.parent_args(),
-                coroutine_def_id.to_def_id(),
-                ty::ClosureKind::FnOnce,
-                tcx.lifetimes.re_erased,
-                parent_closure_args.tupled_upvars_ty(),
-                parent_closure_args.coroutine_captures_by_ref_ty(),
-            );
-
-        let mut by_move_body = body.clone();
-        MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
-        dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
-
-        // Let's just always validate this body.
-        validate_body(tcx, &mut by_move_body, "Initial coroutine_by_move body".to_string());
-
-        // FIXME: use query feeding to generate the body right here and then only store the `DefId` of the new body.
-        by_move_body.source = mir::MirSource::from_instance(InstanceKind::CoroutineKindShim {
-            coroutine_def_id: coroutine_def_id.to_def_id(),
-        });
-        body.coroutine.as_mut().unwrap().by_move_body = Some(by_move_body);
+    // If the typeck results are tainted, no need to make a by-ref body.
+    if body.tainted_by_errors.is_some() {
+        return coroutine_def_id.to_def_id();
     }
+
+    let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
+        tcx.coroutine_kind(coroutine_def_id)
+    else {
+        bug!("should only be invoked on coroutine-closures");
+    };
+
+    // Also, let's skip processing any bodies with errors, since there's no guarantee
+    // the MIR body will be constructed well.
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
+
+    let ty::Coroutine(_, args) = *coroutine_ty.kind() else {
+        bug!("tried to create by-move body of non-coroutine receiver");
+    };
+    let args = args.as_coroutine();
+
+    let coroutine_kind = args.kind_ty().to_opt_closure_kind().unwrap();
+
+    let parent_def_id = tcx.local_parent(coroutine_def_id);
+    let ty::CoroutineClosure(_, parent_args) =
+        *tcx.type_of(parent_def_id).instantiate_identity().kind()
+    else {
+        bug!("coroutine's parent was not a coroutine-closure");
+    };
+    if parent_args.references_error() {
+        return coroutine_def_id.to_def_id();
+    }
+
+    let parent_closure_args = parent_args.as_coroutine_closure();
+    let num_args = parent_closure_args
+        .coroutine_closure_sig()
+        .skip_binder()
+        .tupled_inputs_ty
+        .tuple_fields()
+        .len();
+
+    let field_remapping: UnordMap<_, _> = ty::analyze_coroutine_closure_captures(
+        tcx.closure_captures(parent_def_id).iter().copied(),
+        tcx.closure_captures(coroutine_def_id).iter().skip(num_args).copied(),
+        |(parent_field_idx, parent_capture), (child_field_idx, child_capture)| {
+            // Store this set of additional projections (fields and derefs).
+            // We need to re-apply them later.
+            let mut child_precise_captures =
+                child_capture.place.projections[parent_capture.place.projections.len()..].to_vec();
+
+            // If the parent capture is by-ref, then we need to apply an additional
+            // deref before applying any further projections to this place.
+            if parent_capture.is_by_ref() {
+                child_precise_captures.insert(
+                    0,
+                    Projection { ty: parent_capture.place.ty(), kind: ProjectionKind::Deref },
+                );
+            }
+            // If the child capture is by-ref, then we need to apply a "ref"
+            // projection (i.e. `&`) at the end. But wait! We don't have that
+            // as a projection kind. So instead, we can apply its dual and
+            // *peel* a deref off of the place when it shows up in the MIR body.
+            // Luckily, by construction this is always possible.
+            let peel_deref = if child_capture.is_by_ref() {
+                assert!(
+                    parent_capture.is_by_ref() || coroutine_kind != ty::ClosureKind::FnOnce,
+                    "`FnOnce` coroutine-closures return coroutines that capture from \
+                        their body; it will always result in a borrowck error!"
+                );
+                true
+            } else {
+                false
+            };
+
+            // Regarding the behavior above, you may think that it's redundant to both
+            // insert a deref and then peel a deref if the parent and child are both
+            // captured by-ref. This would be correct, except for the case where we have
+            // precise capturing projections, since the inserted deref is to the *beginning*
+            // and the peeled deref is at the *end*. I cannot seem to actually find a
+            // case where this happens, though, but let's keep this code flexible.
+
+            // Finally, store the type of the parent's captured place. We need
+            // this when building the field projection in the MIR body later on.
+            let mut parent_capture_ty = parent_capture.place.ty();
+            parent_capture_ty = match parent_capture.info.capture_kind {
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => parent_capture_ty,
+                ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
+                    tcx,
+                    tcx.lifetimes.re_erased,
+                    parent_capture_ty,
+                    kind.to_mutbl_lossy(),
+                ),
+            };
+
+            Some((
+                FieldIdx::from_usize(child_field_idx + num_args),
+                (
+                    FieldIdx::from_usize(parent_field_idx + num_args),
+                    parent_capture_ty,
+                    peel_deref,
+                    child_precise_captures,
+                ),
+            ))
+        },
+    )
+    .flatten()
+    .collect();
+
+    if coroutine_kind == ty::ClosureKind::FnOnce {
+        assert_eq!(field_remapping.len(), tcx.closure_captures(parent_def_id).len());
+        // The by-move body is just the body :)
+        return coroutine_def_id.to_def_id();
+    }
+
+    let by_move_coroutine_ty = tcx
+        .instantiate_bound_regions_with_erased(parent_closure_args.coroutine_closure_sig())
+        .to_coroutine_given_kind_and_upvars(
+            tcx,
+            parent_closure_args.parent_args(),
+            coroutine_def_id.to_def_id(),
+            ty::ClosureKind::FnOnce,
+            tcx.lifetimes.re_erased,
+            parent_closure_args.tupled_upvars_ty(),
+            parent_closure_args.coroutine_captures_by_ref_ty(),
+        );
+
+    let mut by_move_body = body.clone();
+    MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
+
+    // This path is unique since we're in a query so we'll only be called once with `parent_def_id`
+    // and this is the only location creating `SyntheticCoroutineBody`.
+    let body_def = tcx.create_def(
+        parent_def_id,
+        None,
+        DefKind::SyntheticCoroutineBody,
+        None,
+        &mut DisambiguatorState::new(),
+    );
+    by_move_body.source =
+        mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
+    dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));
+
+    // Feed HIR because we try to access this body's attrs in the inliner.
+    body_def.feed_hir();
+    // Inherited from the by-ref coroutine.
+    body_def.codegen_fn_attrs(tcx.codegen_fn_attrs(coroutine_def_id).clone());
+    body_def.coverage_attr_on(tcx.coverage_attr_on(coroutine_def_id));
+    body_def.constness(tcx.constness(coroutine_def_id));
+    body_def.coroutine_kind(tcx.coroutine_kind(coroutine_def_id));
+    body_def.def_ident_span(tcx.def_ident_span(coroutine_def_id));
+    body_def.def_span(tcx.def_span(coroutine_def_id));
+    body_def.explicit_predicates_of(tcx.explicit_predicates_of(coroutine_def_id));
+    body_def.generics_of(tcx.generics_of(coroutine_def_id).clone());
+    body_def.param_env(tcx.param_env(coroutine_def_id));
+    body_def.predicates_of(tcx.predicates_of(coroutine_def_id));
+
+    // The type of the coroutine is the `by_move_coroutine_ty`.
+    body_def.type_of(ty::EarlyBinder::bind(by_move_coroutine_ty));
+
+    body_def.mir_built(tcx.arena.alloc(Steal::new(by_move_body)));
+
+    body_def.def_id().to_def_id()
 }
 
 struct MakeByMoveBody<'tcx> {
@@ -300,10 +323,46 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         self.super_place(place, context, location);
     }
 
+    fn visit_statement(&mut self, statement: &mut mir::Statement<'tcx>, location: mir::Location) {
+        // Remove fake borrows of closure captures if that capture has been
+        // replaced with a by-move version of that capture.
+        //
+        // For example, imagine we capture `Foo` in the parent and `&Foo`
+        // in the child. We will emit two fake borrows like:
+        //
+        // ```
+        //    _2 = &fake shallow (*(_1.0: &Foo));
+        //    _3 = &fake shallow (_1.0: &Foo);
+        // ```
+        //
+        // However, since this transform is responsible for replacing
+        // `_1.0: &Foo` with `_1.0: Foo`, that makes the second fake borrow
+        // obsolete, and we should replace it with a nop.
+        //
+        // As a side-note, we don't actually even care about fake borrows
+        // here at all since they're fully a MIR borrowck artifact, and we
+        // don't need to borrowck by-move MIR bodies. But it's best to preserve
+        // as much as we can between these two bodies :)
+        if let mir::StatementKind::Assign(box (_, rvalue)) = &statement.kind
+            && let mir::Rvalue::Ref(_, mir::BorrowKind::Fake(mir::FakeBorrowKind::Shallow), place) =
+                rvalue
+            && let mir::PlaceRef {
+                local: ty::CAPTURE_STRUCT_LOCAL,
+                projection: [mir::ProjectionElem::Field(idx, _)],
+            } = place.as_ref()
+            && let Some(&(_, _, true, _)) = self.field_remapping.get(&idx)
+        {
+            statement.kind = mir::StatementKind::Nop;
+        }
+
+        self.super_statement(statement, location);
+    }
+
     fn visit_local_decl(&mut self, local: mir::Local, local_decl: &mut mir::LocalDecl<'tcx>) {
         // Replace the type of the self arg.
         if local == ty::CAPTURE_STRUCT_LOCAL {
             local_decl.ty = self.by_move_coroutine_ty;
         }
+        self.super_local_decl(local, local_decl);
     }
 }

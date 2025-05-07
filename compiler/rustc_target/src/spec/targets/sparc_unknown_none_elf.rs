@@ -1,13 +1,15 @@
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use rustc_abi::Endian;
 
-pub fn target() -> Target {
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+};
+
+pub(crate) fn target() -> Target {
     let options = TargetOptions {
         linker_flavor: LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         linker: Some("sparc-elf-gcc".into()),
         endian: Endian::Big,
         cpu: "v7".into(),
-        abi: "elf".into(),
         max_atomic_width: Some(32),
         atomic_cas: true,
         panic_strategy: PanicStrategy::Abort,
@@ -18,9 +20,9 @@ pub fn target() -> Target {
         ..Default::default()
     };
     Target {
-        data_layout: "E-m:e-p:32:32-i64:64-f128:64-n32-S64".into(),
+        data_layout: "E-m:e-p:32:32-i64:64-i128:128-f128:64-n32-S64".into(),
         llvm_target: "sparc-unknown-none-elf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare 32-bit SPARC V7+".into()),
             tier: Some(3),
             host_tools: Some(false),

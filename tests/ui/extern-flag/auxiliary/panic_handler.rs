@@ -1,14 +1,10 @@
-#![feature(lang_items)]
+#![feature(lang_items, panic_unwind)]
 #![no_std]
 
-// Since `rustc` generally passes `-nodefaultlibs` to the linker,
-// Rust programs link necessary system libraries via `#[link()]`
-// attributes in the `libc` crate. `libc` is a dependency of `std`,
-// but as we are `#![no_std]`, we need to include it manually.
-// Except on windows-msvc.
-#![feature(rustc_private)]
-#[cfg(not(all(windows, target_env = "msvc")))]
-extern crate libc;
+// Since the `unwind` crate is a dependency of the `std` crate, and we have
+// `#![no_std]`, the unwinder is not included in the link command by default.
+// We need to include crate `unwind` manually.
+extern crate unwind;
 
 #[panic_handler]
 pub fn begin_panic_handler(_info: &core::panic::PanicInfo<'_>) -> ! {

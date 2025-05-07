@@ -1,0 +1,55 @@
+error: attribute should be applied to a function or static
+  --> $DIR/linkage.rs:6:1
+   |
+LL | #[linkage = "weak"]
+   | ^^^^^^^^^^^^^^^^^^^
+LL | type InvalidTy = ();
+   | -------------------- not a function definition or static
+
+error: attribute should be applied to a function or static
+  --> $DIR/linkage.rs:9:1
+   |
+LL | #[linkage = "weak"]
+   | ^^^^^^^^^^^^^^^^^^^
+LL | mod invalid_module {}
+   | --------------------- not a function definition or static
+
+error: attribute should be applied to a function or static
+  --> $DIR/linkage.rs:12:1
+   |
+LL | #[linkage = "weak"]
+   | ^^^^^^^^^^^^^^^^^^^
+LL | struct F;
+   | --------- not a function definition or static
+
+error: attribute should be applied to a function or static
+  --> $DIR/linkage.rs:15:1
+   |
+LL |   #[linkage = "weak"]
+   |   ^^^^^^^^^^^^^^^^^^^
+LL | / impl F {
+LL | |     #[linkage = "weak"]
+LL | |     fn valid(&self) {}
+LL | | }
+   | |_- not a function definition or static
+
+error: attribute should be applied to a function or static
+  --> $DIR/linkage.rs:23:5
+   |
+LL |       #[linkage = "weak"]
+   |       ^^^^^^^^^^^^^^^^^^^
+LL | /     {
+LL | |         1
+LL | |     };
+   | |_____- not a function definition or static
+
+error: attribute should be applied to a function or static
+  --> $DIR/linkage.rs:39:13
+   |
+LL |     let _ = #[linkage = "weak"]
+   |             ^^^^^^^^^^^^^^^^^^^
+LL |     (|| 1);
+   |     ------ not a function definition or static
+
+error: aborting due to 6 previous errors
+

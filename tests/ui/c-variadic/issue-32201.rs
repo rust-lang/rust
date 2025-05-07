@@ -7,7 +7,8 @@ fn bar(_: *const u8) {}
 fn main() {
     unsafe {
         foo(0, bar);
-        //~^ ERROR can't pass `fn(*const u8) {bar}` to variadic function
-        //~| HELP cast the value to `fn(*const u8)`
+        //~^ ERROR can't pass a function item to a variadic function
+        //~| HELP a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+        ////~| HELP use a function pointer instead
     }
 }

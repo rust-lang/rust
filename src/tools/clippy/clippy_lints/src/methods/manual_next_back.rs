@@ -19,9 +19,7 @@ pub(super) fn check<'tcx>(
     if cx
         .tcx
         .get_diagnostic_item(sym::DoubleEndedIterator)
-        .map_or(false, |double_ended_iterator| {
-            implements_trait(cx, rev_recv_ty, double_ended_iterator, &[])
-        })
+        .is_some_and(|double_ended_iterator| implements_trait(cx, rev_recv_ty, double_ended_iterator, &[]))
         && is_trait_method(cx, rev_call, sym::Iterator)
         && is_trait_method(cx, expr, sym::Iterator)
     {

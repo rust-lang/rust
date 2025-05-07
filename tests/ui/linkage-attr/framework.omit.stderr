@@ -1,8 +1,0 @@
-error: linking with `LINKER` failed: exit status: 1
-   |
-           ld: Undefined symbols:
-             _CFRunLoopGetTypeID, referenced from:
-           clang: error: linker command failed with exit code 1 (use -v to see invocation)
-
-
-error: aborting due to 1 previous error

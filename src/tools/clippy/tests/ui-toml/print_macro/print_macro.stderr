@@ -8,7 +8,7 @@ LL |     print!("{n}");
    = help: to override `-D warnings` add `#[allow(clippy::print_stdout)]`
 
 error: use of `eprint!`
-  --> tests/ui-toml/print_macro/print_macro.rs:7:5
+  --> tests/ui-toml/print_macro/print_macro.rs:8:5
    |
 LL |     eprint!("{n}");
    |     ^^^^^^^^^^^^^^

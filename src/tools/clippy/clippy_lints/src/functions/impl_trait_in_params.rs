@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_test;
 
+use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, GenericParam, Generics, HirId, ImplItem, ImplItemKind, TraitItem, TraitItemKind};
@@ -18,20 +19,18 @@ fn report(cx: &LateContext<'_>, param: &GenericParam<'_>, generics: &Generics<'_
         |diag| {
             if let Some(gen_span) = generics.span_for_param_suggestion() {
                 // If there's already a generic param with the same bound, do not lint **this** suggestion.
-                diag.span_suggestion_with_style(
+                diag.span_suggestion_verbose(
                     gen_span,
                     "add a type parameter",
                     format!(", {{ /* Generic name */ }}: {}", &param.name.ident().as_str()[5..]),
-                    rustc_errors::Applicability::HasPlaceholders,
-                    rustc_errors::SuggestionStyle::ShowAlways,
+                    Applicability::HasPlaceholders,
                 );
             } else {
-                diag.span_suggestion_with_style(
+                diag.span_suggestion_verbose(
                     generics.span,
                     "add a type parameter",
                     format!("<{{ /* Generic name */ }}: {}>", &param.name.ident().as_str()[5..]),
-                    rustc_errors::Applicability::HasPlaceholders,
-                    rustc_errors::SuggestionStyle::ShowAlways,
+                    Applicability::HasPlaceholders,
                 );
             }
         },
@@ -40,13 +39,13 @@ fn report(cx: &LateContext<'_>, param: &GenericParam<'_>, generics: &Generics<'_
 
 pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body: &'tcx Body<'_>, hir_id: HirId) {
     if let FnKind::ItemFn(_, generics, _) = kind
-        && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
+        && cx.tcx.visibility(cx.tcx.hir_body_owner_def_id(body.id())).is_public()
         && !is_in_test(cx.tcx, hir_id)
     {
         for param in generics.params {
             if param.is_impl_trait() {
                 report(cx, param, generics);
-            };
+            }
         }
     }
 }
@@ -57,8 +56,8 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         && let hir::ItemKind::Impl(impl_) = item.kind
         && let hir::Impl { of_trait, .. } = *impl_
         && of_trait.is_none()
-        && let body = cx.tcx.hir().body(body_id)
-        && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
+        && let body = cx.tcx.hir_body(body_id)
+        && cx.tcx.visibility(cx.tcx.hir_body_owner_def_id(body.id())).is_public()
         && !is_in_test(cx.tcx, impl_item.hir_id())
     {
         for param in impl_item.generics.params {

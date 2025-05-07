@@ -4,7 +4,7 @@
 use hir::Semantics;
 use ide_assists::utils::test_related_attribute_syn;
 use ide_db::RootDatabase;
-use syntax::{ast, ast::HasName, AstNode, SyntaxNode, TextRange};
+use syntax::{AstNode, SyntaxNode, TextRange, ast, ast::HasName};
 
 use crate::FileId;
 
@@ -34,8 +34,8 @@ fn method_range(item: SyntaxNode) -> Option<(TextRange, Option<TextRange>)> {
 mod tests {
     use syntax::TextRange;
 
-    use crate::fixture;
     use crate::TextSize;
+    use crate::fixture;
     use std::ops::RangeInclusive;
 
     #[test]

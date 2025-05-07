@@ -76,7 +76,7 @@ impl Symbol {
                 .all(|b| matches!(b, b'_' | b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9'))
     }
 
-    // Mimics the behaviour of `Symbol::can_be_raw` from `rustc_span`
+    // Mimics the behavior of `Symbol::can_be_raw` from `rustc_span`
     fn can_be_raw(string: &str) -> bool {
         match string {
             "_" | "super" | "self" | "Self" | "crate" => false,
@@ -88,12 +88,6 @@ impl Symbol {
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.with(|s| fmt::Debug::fmt(s, f))
-    }
-}
-
-impl ToString for Symbol {
-    fn to_string(&self) -> String {
-        self.with(|s| s.to_owned())
     }
 }
 

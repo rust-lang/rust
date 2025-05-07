@@ -9,8 +9,9 @@ LL |     let z = NonCopyable{ p: () };
    |
 help: `NonCopyable` is a tuple struct, use the appropriate syntax
    |
-LL |     let z = NonCopyable(/* () */);
-   |             ~~~~~~~~~~~~~~~~~~~~~
+LL -     let z = NonCopyable{ p: () };
+LL +     let z = NonCopyable(/* () */);
+   |
 
 error: aborting due to 1 previous error
 

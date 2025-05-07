@@ -14,7 +14,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_hir as hir;
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::debug;
 
 use crate::ty::TyCtxt;
@@ -84,22 +84,23 @@ use crate::ty::TyCtxt;
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Scope {
-    pub id: hir::ItemLocalId,
+    pub local_id: hir::ItemLocalId,
     pub data: ScopeData,
 }
 
 impl fmt::Debug for Scope {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.data {
-            ScopeData::Node => write!(fmt, "Node({:?})", self.id),
-            ScopeData::CallSite => write!(fmt, "CallSite({:?})", self.id),
-            ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.id),
-            ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.id),
-            ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.id),
+            ScopeData::Node => write!(fmt, "Node({:?})", self.local_id),
+            ScopeData::CallSite => write!(fmt, "CallSite({:?})", self.local_id),
+            ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.local_id),
+            ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.local_id),
+            ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.local_id),
+            ScopeData::IfThenRescope => write!(fmt, "IfThen[edition2024]({:?})", self.local_id),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}}}",
-                self.id,
+                self.local_id,
                 fsi.as_u32(),
             ),
         }
@@ -125,6 +126,11 @@ pub enum ScopeData {
     /// Scope of the condition and then block of an if expression
     /// Used for variables introduced in an if-let expression.
     IfThen,
+
+    /// Scope of the condition and then block of an if expression
+    /// Used for variables introduced in an if-let expression,
+    /// whose lifetimes do not cross beyond this scope.
+    IfThenRescope,
 
     /// Scope following a `let id = expr;` binding in a block.
     Remainder(FirstStatementIndex),
@@ -158,18 +164,8 @@ rustc_index::newtype_index! {
 rustc_data_structures::static_assert_size!(ScopeData, 4);
 
 impl Scope {
-    /// Returns an item-local ID associated with this scope.
-    ///
-    /// N.B., likely to be replaced as API is refined; e.g., pnkfelix
-    /// anticipates `fn entry_node_id` and `fn each_exit_node_id`.
-    pub fn item_local_id(&self) -> hir::ItemLocalId {
-        self.id
-    }
-
     pub fn hir_id(&self, scope_tree: &ScopeTree) -> Option<HirId> {
-        scope_tree
-            .root_body
-            .map(|hir_id| HirId { owner: hir_id.owner, local_id: self.item_local_id() })
+        scope_tree.root_body.map(|hir_id| HirId { owner: hir_id.owner, local_id: self.local_id })
     }
 
     /// Returns the span of this `Scope`. Note that in general the
@@ -179,7 +175,7 @@ impl Scope {
         let Some(hir_id) = self.hir_id(scope_tree) else {
             return DUMMY_SP;
         };
-        let span = tcx.hir().span(hir_id);
+        let span = tcx.hir_span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
             if let Node::Block(blk) = tcx.hir_node(hir_id) {
                 // Want span for scope starting after the
@@ -203,8 +199,6 @@ impl Scope {
     }
 }
 
-pub type ScopeDepth = u32;
-
 /// The region scope tree encodes information about region relationships.
 #[derive(Default, Debug, HashStable)]
 pub struct ScopeTree {
@@ -217,7 +211,7 @@ pub struct ScopeTree {
     /// conditional expression or repeating block. (Note that the
     /// enclosing scope ID for the block associated with a closure is
     /// the closure itself.)
-    pub parent_map: FxIndexMap<Scope, (Scope, ScopeDepth)>,
+    pub parent_map: FxIndexMap<Scope, Scope>,
 
     /// Maps from a variable or binding ID to the block in which that
     /// variable is declared.
@@ -228,7 +222,12 @@ pub struct ScopeTree {
     /// and not the enclosing *statement*. Expressions that are not present in this
     /// table are not rvalue candidates. The set of rvalue candidates is computed
     /// during type check based on a traversal of the AST.
-    pub rvalue_candidates: HirIdMap<RvalueCandidateType>,
+    pub rvalue_candidates: HirIdMap<RvalueCandidate>,
+
+    /// Backwards incompatible scoping that will be introduced in future editions.
+    /// This information is used later for linting to identify locals and
+    /// temporary values that will receive backwards-incompatible drop orders.
+    pub backwards_incompatible_scope: UnordMap<hir::ItemLocalId, Scope>,
 
     /// If there are any `yield` nested within a scope, this map
     /// stores the `Span` of the last one and its index in the
@@ -307,15 +306,14 @@ pub struct ScopeTree {
     pub yield_in_scope: UnordMap<Scope, Vec<YieldData>>,
 }
 
-/// Identifies the reason that a given expression is an rvalue candidate
-/// (see the `rvalue_candidates` field for more information what rvalue
-/// candidates in general). In constants, the `lifetime` field is None
-/// to indicate that certain expressions escape into 'static and
-/// should have no local cleanup scope.
+/// See the `rvalue_candidates` field for more information on rvalue
+/// candidates in general.
+/// The `lifetime` field is None to indicate that certain expressions escape
+/// into 'static and should have no local cleanup scope.
 #[derive(Debug, Copy, Clone, HashStable)]
-pub enum RvalueCandidateType {
-    Borrow { target: hir::ItemLocalId, lifetime: Option<Scope> },
-    Pattern { target: hir::ItemLocalId, lifetime: Option<Scope> },
+pub struct RvalueCandidate {
+    pub target: hir::ItemLocalId,
+    pub lifetime: Option<Scope>,
 }
 
 #[derive(Debug, Copy, Clone, HashStable)]
@@ -328,7 +326,7 @@ pub struct YieldData {
 }
 
 impl ScopeTree {
-    pub fn record_scope_parent(&mut self, child: Scope, parent: Option<(Scope, ScopeDepth)>) {
+    pub fn record_scope_parent(&mut self, child: Scope, parent: Option<Scope>) {
         debug!("{:?}.parent = {:?}", child, parent);
 
         if let Some(p) = parent {
@@ -339,25 +337,21 @@ impl ScopeTree {
 
     pub fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
-        assert!(var != lifetime.item_local_id());
+        assert!(var != lifetime.local_id);
         self.var_map.insert(var, lifetime);
     }
 
-    pub fn record_rvalue_candidate(&mut self, var: HirId, candidate_type: RvalueCandidateType) {
-        debug!("record_rvalue_candidate(var={var:?}, type={candidate_type:?})");
-        match &candidate_type {
-            RvalueCandidateType::Borrow { lifetime: Some(lifetime), .. }
-            | RvalueCandidateType::Pattern { lifetime: Some(lifetime), .. } => {
-                assert!(var.local_id != lifetime.item_local_id())
-            }
-            _ => {}
+    pub fn record_rvalue_candidate(&mut self, var: HirId, candidate: RvalueCandidate) {
+        debug!("record_rvalue_candidate(var={var:?}, candidate={candidate:?})");
+        if let Some(lifetime) = &candidate.lifetime {
+            assert!(var.local_id != lifetime.local_id)
         }
-        self.rvalue_candidates.insert(var, candidate_type);
+        self.rvalue_candidates.insert(var, candidate);
     }
 
     /// Returns the narrowest scope that encloses `id`, if any.
     pub fn opt_encl_scope(&self, id: Scope) -> Option<Scope> {
-        self.parent_map.get(&id).cloned().map(|(p, _)| p)
+        self.parent_map.get(&id).cloned()
     }
 
     /// Returns the lifetime of the local variable `var_id`, if any.

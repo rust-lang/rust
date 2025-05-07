@@ -1,20 +1,20 @@
-use clippy_config::msrvs::Msrv;
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher::IfLetOrMatch;
+use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
-    is_res_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators, SpanlessEq,
+    SpanlessEq, is_res_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators,
 };
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, HirId, Pat, PatKind};
+use rustc_hir::{Arm, Expr, HirId, Pat, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
-use super::{pat_contains_disallowed_or, COLLAPSIBLE_MATCH};
+use super::{COLLAPSIBLE_MATCH, pat_contains_disallowed_or};
 
-pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], msrv: &Msrv) {
+pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], msrv: Msrv) {
     if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
         for arm in arms {
             check_arm(cx, true, arm.pat, arm.body, arm.guard, Some(els_arm.body), msrv);
@@ -27,7 +27,7 @@ pub(super) fn check_if_let<'tcx>(
     pat: &'tcx Pat<'_>,
     body: &'tcx Expr<'_>,
     else_expr: Option<&'tcx Expr<'_>>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     check_arm(cx, false, pat, body, None, else_expr, msrv);
 }
@@ -39,7 +39,7 @@ fn check_arm<'tcx>(
     outer_then_body: &'tcx Expr<'tcx>,
     outer_guard: Option<&'tcx Expr<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     let inner_expr = peel_blocks_with_stmt(outer_then_body);
     if let Some(inner) = IfLetOrMatch::parse(cx, inner_expr)
@@ -60,7 +60,7 @@ fn check_arm<'tcx>(
         // match expression must be a local binding
         // match <local> { .. }
         && let Some(binding_id) = path_to_local(peel_ref_operators(cx, inner_scrutinee))
-        && !pat_contains_disallowed_or(inner_then_pat, msrv)
+        && !pat_contains_disallowed_or(cx, inner_then_pat, msrv)
         // the binding must come from the pattern of the containing match arm
         // ..<local>.. => match <local> { .. }
         && let (Some(binding_span), is_innermost_parent_pat_struct)
@@ -72,14 +72,13 @@ fn check_arm<'tcx>(
             (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(a, b),
         }
         // the binding must not be used in the if guard
-        && outer_guard.map_or(
-            true,
+        && outer_guard.is_none_or(
             |e| !is_local_used(cx, e, binding_id)
         )
         // ...or anywhere in the inner expression
         && match inner {
             IfLetOrMatch::IfLet(_, _, body, els, _) => {
-                !is_local_used(cx, body, binding_id) && els.map_or(true, |e| !is_local_used(cx, e, binding_id))
+                !is_local_used(cx, body, binding_id) && els.is_none_or(|e| !is_local_used(cx, e, binding_id))
             },
             IfLetOrMatch::Match(_, arms, ..) => !arms.iter().any(|arm| is_local_used(cx, arm, binding_id)),
         }
@@ -96,11 +95,11 @@ fn check_arm<'tcx>(
         // collapsing patterns need an explicit field name in struct pattern matching
         // ex: Struct {x: Some(1)}
         let replace_msg = if is_innermost_parent_pat_struct {
-            format!(", prefixed by {}:", snippet(cx, binding_span, "their field name"))
+            format!(", prefixed by `{}`:", snippet(cx, binding_span, "their field name"))
         } else {
             String::new()
         };
-        span_lint_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.span, msg, |diag| {
+        span_lint_hir_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.hir_id, inner_expr.span, msg, |diag| {
             let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
             help_span.push_span_label(binding_span, "replace this binding");
             help_span.push_span_label(inner_then_pat.span, format!("with this pattern{replace_msg}"));
@@ -120,7 +119,11 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     }
     match arm.pat.kind {
         PatKind::Binding(..) | PatKind::Wild => true,
-        PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
+        PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(qpath),
+            hir_id,
+            ..
+        }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
         _ => false,
     }
 }

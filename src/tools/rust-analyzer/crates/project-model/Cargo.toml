@@ -10,7 +10,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 anyhow.workspace = true
@@ -19,6 +18,7 @@ rustc-hash.workspace = true
 semver.workspace = true
 serde_json.workspace = true
 serde.workspace = true
+serde_derive.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
 la-arena.workspace = true
@@ -34,7 +34,7 @@ stdx.workspace = true
 toolchain.workspace = true
 
 [dev-dependencies]
-expect-test = "1.4.0"
+expect-test = "1.5.1"
 
 [lints]
 workspace = true

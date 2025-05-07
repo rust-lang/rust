@@ -6,7 +6,6 @@ LL |     let _ = |A | B: E| ();
    |             |
    |             while parsing the body of this closure
    |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 help: you might have meant to open the body of the closure
    |
 LL |     let _ = |A | { B: E| ();

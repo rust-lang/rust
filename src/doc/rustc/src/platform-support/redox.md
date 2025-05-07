@@ -9,11 +9,11 @@ Target triplets available so far:
 
 - `x86_64-unknown-redox` (tier 2)
 - `aarch64-unknown-redox` (tier 3)
-- `i686-unknown-redox` (tier 3)
+- `i586-unknown-redox` (tier 3)
 
 ## Target maintainers
 
-- Jeremy Soller ([@jackpot51](https://github.com/jackpot51))
+[@jackpot51](https://github.com/jackpot51)
 
 ## Requirements
 
@@ -27,7 +27,7 @@ Redox OS binaries use ELF as file format.
 
 ## Building the target
 
-You can build Rust with support for the targets by adding it to the `target` list in `config.toml`. In addition a copy of [relibc] needs to be present in the linker search path.
+You can build Rust with support for the targets by adding it to the `target` list in `bootstrap.toml`. In addition a copy of [relibc] needs to be present in the linker search path.
 
 ```toml
 [build]
@@ -36,7 +36,7 @@ target = [
     "<HOST_TARGET>",
     "x86_64-unknown-redox",
     "aarch64-unknown-redox",
-    "i686-unknown-redox",
+    "i586-unknown-redox",
 ]
 ```
 

@@ -1,23 +1,22 @@
 //! Renderer for `enum` variants.
 
-use hir::{db::HirDatabase, StructKind};
+use hir::{StructKind, db::HirDatabase};
 use ide_db::{
-    documentation::{Documentation, HasDocs},
     SymbolKind,
+    documentation::{Documentation, HasDocs},
 };
 
 use crate::{
+    CompletionItemKind, CompletionRelevance, CompletionRelevanceReturnType,
     context::{CompletionContext, PathCompletionCtx, PathKind},
-    item::{Builder, CompletionItem},
+    item::{Builder, CompletionItem, CompletionRelevanceFn},
     render::{
-        compute_type_match,
+        RenderContext, compute_type_match,
         variant::{
-            format_literal_label, format_literal_lookup, render_record_lit, render_tuple_lit,
-            visible_fields, RenderedLiteral,
+            RenderedLiteral, format_literal_label, format_literal_lookup, render_record_lit,
+            render_tuple_lit, visible_fields,
         },
-        RenderContext,
     },
-    CompletionItemKind, CompletionRelevance,
 };
 
 pub(crate) fn render_variant_lit(
@@ -75,17 +74,17 @@ fn render(
         None => (name.clone().into(), name.into(), false),
     };
     let (qualified_name, escaped_qualified_name) = (
-        qualified_name.unescaped().display(ctx.db()).to_string(),
-        qualified_name.display(ctx.db()).to_string(),
+        qualified_name.display_verbatim(ctx.db()).to_string(),
+        qualified_name.display(ctx.db(), completion.edition).to_string(),
     );
     let snippet_cap = ctx.snippet_cap();
 
     let mut rendered = match kind {
         StructKind::Tuple if should_add_parens => {
-            render_tuple_lit(db, snippet_cap, &fields, &escaped_qualified_name)
+            render_tuple_lit(completion, snippet_cap, &fields, &escaped_qualified_name)
         }
         StructKind::Record if should_add_parens => {
-            render_record_lit(db, snippet_cap, &fields, &escaped_qualified_name)
+            render_record_lit(completion, snippet_cap, &fields, &escaped_qualified_name)
         }
         _ => RenderedLiteral {
             literal: escaped_qualified_name.clone(),
@@ -103,7 +102,10 @@ fn render(
     }
     let label = format_literal_label(&qualified_name, kind, snippet_cap);
     let lookup = if qualified {
-        format_literal_lookup(&short_qualified_name.display(ctx.db()).to_string(), kind)
+        format_literal_lookup(
+            &short_qualified_name.display(ctx.db(), completion.edition).to_string(),
+            kind,
+        )
     } else {
         format_literal_lookup(&qualified_name, kind)
     };
@@ -112,6 +114,7 @@ fn render(
         CompletionItemKind::SymbolKind(thing.symbol_kind()),
         ctx.source_range(),
         label,
+        completion.edition,
     );
 
     item.lookup_by(lookup);
@@ -127,6 +130,12 @@ fn render(
     let ty = thing.ty(db);
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, &ty),
+        // function is a misnomer here, this is more about constructor information
+        function: Some(CompletionRelevanceFn {
+            has_params: !fields.is_empty(),
+            has_self_param: false,
+            return_type: CompletionRelevanceReturnType::DirectConstructor,
+        }),
         ..ctx.completion_relevance()
     });
 
@@ -154,11 +163,7 @@ impl Variant {
             Variant::Struct(it) => visible_fields(ctx, &fields, it)?,
             Variant::EnumVariant(it) => visible_fields(ctx, &fields, it)?,
         };
-        if !fields_omitted {
-            Some(visible_fields)
-        } else {
-            None
-        }
+        if !fields_omitted { Some(visible_fields) } else { None }
     }
 
     fn kind(self, db: &dyn HirDatabase) -> StructKind {

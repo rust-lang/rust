@@ -25,7 +25,6 @@ extern crate ra_ap_rustc_lexer as rustc_lexer;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_lexer;
 
-mod edition;
 mod event;
 mod grammar;
 mod input;
@@ -36,13 +35,16 @@ mod shortcuts;
 mod syntax_kind;
 mod token_set;
 
+pub use T_ as T;
+
 #[cfg(test)]
 mod tests;
 
 pub(crate) use token_set::TokenSet;
 
+pub use edition::Edition;
+
 pub use crate::{
-    edition::Edition,
     input::Input,
     lexed_str::LexedStr,
     output::{Output, Step},
@@ -59,7 +61,7 @@ pub use crate::{
 ///
 /// That is, for something like
 ///
-/// ```
+/// ```ignore
 /// quick_check! {
 ///    fn prop() {}
 /// }

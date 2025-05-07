@@ -11,15 +11,12 @@ mod snippet;
 mod tests;
 
 use ide_db::{
-    helpers::mod_path_to_ast,
-    imports::{
-        import_assets::NameToImport,
-        insert_use::{self, ImportScope},
-    },
-    items_locator, FilePosition, RootDatabase,
+    FilePosition, FxHashSet, RootDatabase,
+    imports::insert_use::{self, ImportScope},
+    syntax_helpers::tree_diff::diff,
+    text_edit::TextEdit,
 };
-use syntax::algo;
-use text_edit::TextEdit;
+use syntax::ast::make;
 
 use crate::{
     completions::Completions,
@@ -30,12 +27,51 @@ use crate::{
 };
 
 pub use crate::{
-    config::{CallableSnippets, CompletionConfig},
+    config::{AutoImportExclusionType, CallableSnippets, CompletionConfig},
     item::{
-        CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
+        CompletionItem, CompletionItemKind, CompletionItemRefMode, CompletionRelevance,
+        CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
+        CompletionRelevanceTypeMatch,
     },
     snippet::{Snippet, SnippetScope},
 };
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CompletionFieldsToResolve {
+    pub resolve_label_details: bool,
+    pub resolve_tags: bool,
+    pub resolve_detail: bool,
+    pub resolve_documentation: bool,
+    pub resolve_filter_text: bool,
+    pub resolve_text_edit: bool,
+    pub resolve_command: bool,
+}
+
+impl CompletionFieldsToResolve {
+    pub fn from_client_capabilities(client_capability_fields: &FxHashSet<&str>) -> Self {
+        Self {
+            resolve_label_details: client_capability_fields.contains("labelDetails"),
+            resolve_tags: client_capability_fields.contains("tags"),
+            resolve_detail: client_capability_fields.contains("detail"),
+            resolve_documentation: client_capability_fields.contains("documentation"),
+            resolve_filter_text: client_capability_fields.contains("filterText"),
+            resolve_text_edit: client_capability_fields.contains("textEdit"),
+            resolve_command: client_capability_fields.contains("command"),
+        }
+    }
+
+    pub const fn empty() -> Self {
+        Self {
+            resolve_label_details: false,
+            resolve_tags: false,
+            resolve_detail: false,
+            resolve_documentation: false,
+            resolve_filter_text: false,
+            resolve_text_edit: false,
+            resolve_command: false,
+        }
+    }
+}
 
 //FIXME: split the following feature into fine-grained features.
 
@@ -70,11 +106,13 @@ pub use crate::{
 //
 // There also snippet completions:
 //
-// .Expressions
+// #### Expressions
+//
 // - `pd` -> `eprintln!(" = {:?}", );`
 // - `ppd` -> `eprintln!(" = {:#?}", );`
 //
-// .Items
+// #### Items
+//
 // - `tfn` -> `#[test] fn feature(){}`
 // - `tmod` ->
 // ```rust
@@ -91,7 +129,7 @@ pub use crate::{
 // Those are the additional completion options with automatic `use` import and options from all project importable items,
 // fuzzy matched against the completion input.
 //
-// image::https://user-images.githubusercontent.com/48062697/113020667-b72ab880-917a-11eb-8778-716cf26a0eb3.gif[]
+// ![Magic Completions](https://user-images.githubusercontent.com/48062697/113020667-b72ab880-917a-11eb-8778-716cf26a0eb3.gif)
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///
@@ -105,7 +143,7 @@ pub use crate::{
 /// already present, it should give all possible variants for the identifier at
 /// the caret. In other words, for
 ///
-/// ```no_run
+/// ```ignore
 /// fn f() {
 ///     let foo = 92;
 ///     let _ = bar$0
@@ -145,7 +183,7 @@ pub use crate::{
 /// analysis.
 pub fn completions(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     position: FilePosition,
     trigger_character: Option<char>,
 ) -> Option<Vec<CompletionItem>> {
@@ -230,14 +268,16 @@ pub fn completions(
 /// This is used for import insertion done via completions like flyimport and custom user snippets.
 pub fn resolve_completion_edits(
     db: &RootDatabase,
-    config: &CompletionConfig,
+    config: &CompletionConfig<'_>,
     FilePosition { file_id, offset }: FilePosition,
-    imports: impl IntoIterator<Item = (String, String)>,
+    imports: impl IntoIterator<Item = String>,
 ) -> Option<Vec<TextEdit>> {
     let _p = tracing::info_span!("resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
 
-    let original_file = sema.parse(sema.attach_first_edition(file_id)?);
+    let editioned_file_id = sema.attach_first_edition(file_id)?;
+
+    let original_file = sema.parse(editioned_file_id);
     let original_token =
         syntax::AstNode::syntax(&original_file).token_at_offset(offset).left_biased()?;
     let position_for_import = &original_token.parent()?;
@@ -245,28 +285,18 @@ pub fn resolve_completion_edits(
 
     let current_module = sema.scope(position_for_import)?.module();
     let current_crate = current_module.krate();
+    let current_edition = current_crate.edition(db);
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
-    let cfg = config.import_path_config();
-
-    imports.into_iter().for_each(|(full_import_path, imported_name)| {
-        let items_with_name = items_locator::items_with_name(
-            &sema,
-            current_crate,
-            NameToImport::exact_case_sensitive(imported_name),
-            items_locator::AssocSearchMode::Include,
+    imports.into_iter().for_each(|full_import_path| {
+        insert_use::insert_use(
+            &new_ast,
+            make::path_from_text_with_edition(&full_import_path, current_edition),
+            &config.insert_use,
         );
-        let import = items_with_name
-            .filter_map(|candidate| {
-                current_module.find_use_path(db, candidate, config.insert_use.prefix_kind, cfg)
-            })
-            .find(|mod_path| mod_path.display(db).to_string() == full_import_path);
-        if let Some(import_path) = import {
-            insert_use::insert_use(&new_ast, mod_path_to_ast(&import_path), &config.insert_use);
-        }
     });
 
-    algo::diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);
+    diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);
     Some(vec![import_insert.finish()])
 }

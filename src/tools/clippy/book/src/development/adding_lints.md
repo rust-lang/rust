@@ -99,6 +99,7 @@ struct A;
 impl A {
     pub fn fo(&self) {}
     pub fn foo(&self) {}
+    //~^ foo_functions
     pub fn food(&self) {}
 }
 
@@ -106,12 +107,14 @@ impl A {
 trait B {
     fn fo(&self) {}
     fn foo(&self) {}
+    //~^ foo_functions
     fn food(&self) {}
 }
 
 // Plain functions
 fn fo() {}
 fn foo() {}
+//~^ foo_functions
 fn food() {}
 
 fn main() {
@@ -122,17 +125,24 @@ fn main() {
 }
 ```
 
-Now we can run the test with `TESTNAME=foo_functions cargo uibless`, currently
-this test is meaningless though.
+Note that we are adding comment annotations with the name of our lint to mark
+lines where we expect an error. Except for very specific situations
+(`//@check-pass`), at least one error marker must be present in a test file for
+it to be accepted.
+
+Once we have implemented our lint we can run `TESTNAME=foo_functions cargo
+uibless` to generate the `.stderr` file. If our lint makes use of structured
+suggestions then this command will also generate the corresponding `.fixed`
+file.
 
 While we are working on implementing our lint, we can keep running the UI test.
 That allows us to check if the output is turning into what we want by checking the
 `.stderr` file that gets updated on every test run.
 
-Running `TESTNAME=foo_functions cargo uitest` should pass on its own. When we
-commit our lint, we need to commit the generated `.stderr` files, too. In
-general, you should only commit files changed by `cargo bless` for the
-specific lint you are creating/editing.
+Once we have implemented our lint running `TESTNAME=foo_functions cargo uitest`
+should pass on its own. When we commit our lint, we need to commit the generated
+ `.stderr` and if applicable `.fixed` files, too. In general, you should only
+ commit files changed by `cargo bless` for the specific lint you are creating/editing.
 
 > _Note:_ you can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,test2,test3`.
@@ -169,7 +179,7 @@ from the lint to the code of the test file and compare that to the contents of a
 Use `cargo bless` to automatically generate the `.fixed` file while running
 the tests.
 
-[rustfix]: https://github.com/rust-lang/rustfix
+[rustfix]: https://github.com/rust-lang/cargo/tree/master/crates/rustfix
 
 ## Testing manually
 
@@ -299,10 +309,11 @@ This is good, because it makes writing this particular lint less complicated.
 We have to make this decision with every new Clippy lint. It boils down to using
 either [`EarlyLintPass`][early_lint_pass] or [`LateLintPass`][late_lint_pass].
 
-In short, the `EarlyLintPass` runs before type checking and
-[HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering and the `LateLintPass`
-has access to type information. Consider using the `LateLintPass` unless you need
-something specific from the `EarlyLintPass`.
+`EarlyLintPass` runs before type checking and
+[HIR](https://rustc-dev-guide.rust-lang.org/hir.html) lowering, while `LateLintPass`
+runs after these stages, providing access to type information. The `cargo dev new_lint` command
+defaults to the recommended `LateLintPass`, but you can specify `--pass=early` if your lint
+only needs AST level analysis.
 
 Since we don't need type information for checking the function name, we used
 `--pass=early` when running the new lint automation and all the imports were
@@ -438,7 +449,7 @@ need to ensure that the MSRV configured for the project is >= the MSRV of the
 required Rust feature. If multiple features are required, just use the one with
 a lower MSRV.
 
-First, add an MSRV alias for the required feature in [`clippy_config::msrvs`].
+First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`].
 This can be accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
@@ -459,7 +470,7 @@ pub struct ManualStrip {
 
 impl ManualStrip {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv.clone() }
+        Self { msrv: conf.msrv }
     }
 }
 ```
@@ -468,24 +479,13 @@ The project's MSRV can then be matched against the feature MSRV in the LintPass
 using the `Msrv::meets` method.
 
 ``` rust
-if !self.msrv.meets(msrvs::STR_STRIP_PREFIX) {
+if !self.msrv.meets(cx, msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
 
-The project's MSRV can also be specified as an attribute, which overrides
-the value from `clippy.toml`. This can be accounted for using the
-`extract_msrv_attr!(LintContext)` macro and passing
-`LateContext`/`EarlyContext`.
-
-```rust,ignore
-impl<'tcx> LateLintPass<'tcx> for ManualStrip {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        ...
-    }
-    extract_msrv_attr!(LateContext);
-}
-```
+Early lint passes should instead use `MsrvStack` coupled with
+`extract_msrv_attr!()`
 
 Once the `msrv` is added to the lint, a relevant test case should be added to
 the lint's test file, `tests/ui/manual_strip.rs` in this example. It should
@@ -511,13 +511,21 @@ in `clippy_config/src/conf.rs`:
 
 ```rust
 define_Conf! {
-    /// Lint: LIST, OF, LINTS, <THE_NEWLY_ADDED_LINT>. The minimum rust version that the project supports
-    (msrv: Option<String> = None),
+    #[lints(
+        allow_attributes,
+        allow_attributes_without_reason,
+        ..
+        <the newly added lint name>,
+        ..
+        unused_trait_names,
+        use_self,
+    )]
+    msrv: Msrv = Msrv::default(),
     ...
 }
 ```
 
-[`clippy_config::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
+[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
 
 Afterwards update the documentation for the book as described in [Adding configuration to a lint](#adding-configuration-to-a-lint).
 
@@ -537,7 +545,7 @@ via `Tools -> Clippy` and you should see the generated code in the output below.
 If the command was executed successfully, you can copy the code over to where
 you are implementing your lint.
 
-[author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2018&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
+[author_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2024&gist=9a12cb60e5c6ad4e3003ac6d5e63cf55
 
 ## Print HIR lint
 
@@ -552,7 +560,7 @@ attribute to expressions you often need to enable
 _Clippy_.
 
 [_High-Level Intermediate Representation (HIR)_]: https://rustc-dev-guide.rust-lang.org/hir.html
-[print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2021&gist=daf14db3a7f39ca467cd1b86c34b9afb
+[print_hir_example]: https://play.rust-lang.org/?version=nightly&mode=debug&edition=2024&gist=daf14db3a7f39ca467cd1b86c34b9afb
 
 ## Documentation
 
@@ -739,7 +747,7 @@ for some users. Adding a configuration is done in the following steps:
 
 5. Update [Lint Configuration](../lint_configuration.md)
 
-   Run `cargo collect-metadata` to generate documentation changes for the book.
+   Run `cargo bless --test config-metadata` to generate documentation changes for the book.
 
 [`clippy_config::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_config/src/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
@@ -787,7 +795,7 @@ don't hesitate to ask on [Zulip] or in the issue/PR.
 [`snippet`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/source/fn.snippet.html
 [let-chains]: https://github.com/rust-lang/rust/pull/94927
 [from_expansion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.from_expansion
-[in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/lint/fn.in_external_macro.html
+[in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html#method.in_external_macro
 [span]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_span/struct.Span.html
 [applicability]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/enum.Applicability.html
 [rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org/

@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
 
@@ -10,7 +10,7 @@ pub fn noop(v: &mut Vec<u8>) {
     // CHECK: tail call void @llvm.assume
     // CHECK-NOT: grow_one
     // CHECK-NOT: call
-    // CHECK: ret
+    // CHECK: {{ret|[}]}}
     if let Some(x) = v.pop() {
         v.push(x)
     }

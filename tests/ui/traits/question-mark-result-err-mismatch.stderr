@@ -1,5 +1,5 @@
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:14:22
+  --> $DIR/question-mark-result-err-mismatch.rs:15:22
    |
 LL |   fn foo() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
@@ -11,13 +11,13 @@ LL | |             e;
 LL | |         })
    | |__________- this can't be annotated with `?` because it has type `Result<_, ()>`
 LL |           .map(|()| "")?;
-   |                        ^ the trait `From<()>` is not implemented for `String`, which is required by `Result<String, String>: FromResidual<Result<Infallible, ()>>`
+   |                        ^ the trait `From<()>` is not implemented for `String`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:28:25
+  --> $DIR/question-mark-result-err-mismatch.rs:29:25
    |
 LL | fn bar() -> Result<(), String> {
    |             ------------------ expected `String` because of this
@@ -25,7 +25,7 @@ LL |     let x = foo();
    |             ----- this has type `Result<_, String>`
 ...
 LL |         .map_err(|_| ())?;
-   |          ---------------^ the trait `From<()>` is not implemented for `String`, which is required by `Result<(), String>: FromResidual<Result<Infallible, ()>>`
+   |          ---------------^ the trait `From<()>` is not implemented for `String`
    |          |
    |          this can't be annotated with `?` because it has type `Result<_, ()>`
    |
@@ -35,12 +35,12 @@ LL |         .map_err(|_| ())?;
              `String` implements `From<&mut str>`
              `String` implements `From<&str>`
              `String` implements `From<Box<str>>`
-             `String` implements `From<Cow<'a, str>>`
+             `String` implements `From<Cow<'_, str>>`
              `String` implements `From<char>`
    = note: required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
 
 error[E0277]: `?` couldn't convert the error to `String`
-  --> $DIR/question-mark-result-err-mismatch.rs:48:11
+  --> $DIR/question-mark-result-err-mismatch.rs:49:11
    |
 LL |   fn baz() -> Result<String, String> {
    |               ---------------------- expected `String` because of this
@@ -50,7 +50,7 @@ LL |           .ok_or_else(|| {
 LL | |             "Couldn't split the test string";
    | |                                             - help: remove this semicolon
 LL | |         })?;
-   | |          -^ the trait `From<()>` is not implemented for `String`, which is required by `Result<String, String>: FromResidual<Result<Infallible, ()>>`
+   | |          -^ the trait `From<()>` is not implemented for `String`
    | |__________|
    |            this can't be annotated with `?` because it has type `Result<_, ()>`
    |

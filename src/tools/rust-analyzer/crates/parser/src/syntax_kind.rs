@@ -1,7 +1,10 @@
 //! Defines [`SyntaxKind`] -- a fieldless enum of all possible syntactic
 //! constructs of the Rust language.
 
+#[rustfmt::skip]
 mod generated;
+
+use crate::Edition;
 
 #[allow(unreachable_pub)]
 pub use self::generated::SyntaxKind;
@@ -25,5 +28,12 @@ impl SyntaxKind {
     #[inline]
     pub fn is_trivia(self) -> bool {
         matches!(self, SyntaxKind::WHITESPACE | SyntaxKind::COMMENT)
+    }
+
+    /// Returns true if this is an identifier or a keyword.
+    #[inline]
+    pub fn is_any_identifier(self) -> bool {
+        // Assuming no edition removed keywords...
+        self == SyntaxKind::IDENT || self.is_keyword(Edition::LATEST)
     }
 }

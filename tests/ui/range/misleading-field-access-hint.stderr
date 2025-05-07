@@ -1,0 +1,9 @@
+error[E0425]: cannot find value `w` in this scope
+  --> $DIR/misleading-field-access-hint.rs:5:17
+   |
+LL |     for _ in 0..w {
+   |                 ^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0425`.

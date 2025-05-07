@@ -1,18 +1,14 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ compile-flags: --target aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: ttbr0_el2:
 #[no_mangle]

@@ -13,15 +13,17 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
+use rustc_span::def_id::{CrateNum, DefId};
 use scoped_tls::scoped_thread_local;
-use stable_mir::abi::Layout;
-use stable_mir::ty::IndexedVal;
 use stable_mir::Error;
+use stable_mir::abi::Layout;
+use stable_mir::compiler_interface::SmirInterface;
+use stable_mir::ty::IndexedVal;
 
-use crate::rustc_smir::context::TablesWrapper;
+use crate::rustc_smir::context::SmirCtxt;
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 mod internal;
 pub mod pretty;
@@ -107,6 +109,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::CoroutineDef(self.create_def_id(did))
     }
 
+    pub fn coroutine_closure_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineClosureDef {
+        stable_mir::ty::CoroutineClosureDef(self.create_def_id(did))
+    }
+
     pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {
         stable_mir::ty::AliasDef(self.create_def_id(did))
     }
@@ -143,6 +149,14 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
     }
 
+    pub fn assoc_def(&mut self, did: DefId) -> stable_mir::ty::AssocDef {
+        stable_mir::ty::AssocDef(self.create_def_id(did))
+    }
+
+    pub fn opaque_def(&mut self, did: DefId) -> stable_mir::ty::OpaqueDef {
+        stable_mir::ty::OpaqueDef(self.create_def_id(did))
+    }
+
     pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }
@@ -170,7 +184,7 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::mir::mono::StaticDef(self.create_def_id(did))
     }
 
-    pub(crate) fn layout_id(&mut self, layout: rustc_target::abi::Layout<'tcx>) -> Layout {
+    pub(crate) fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> Layout {
         self.layouts.create_or_fetch(layout)
     }
 }
@@ -183,12 +197,12 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx, F, T>(tables: &TablesWrapper<'tcx>, f: F) -> T
+pub(crate) fn init<'tcx, F, T>(cx: &SmirCtxt<'tcx>, f: F) -> T
 where
     F: FnOnce() -> T,
 {
     assert!(!TLV.is_set());
-    let ptr = tables as *const _ as *const ();
+    let ptr = cx as *const _ as *const ();
     TLV.set(&Cell::new(ptr), || f())
 }
 
@@ -199,8 +213,8 @@ pub(crate) fn with_tables<R>(f: impl for<'tcx> FnOnce(&mut Tables<'tcx>) -> R) -
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let wrapper = ptr as *const TablesWrapper<'_>;
-        let mut tables = unsafe { (*wrapper).0.borrow_mut() };
+        let context = ptr as *const SmirCtxt<'_>;
+        let mut tables = unsafe { (*context).0.borrow_mut() };
         f(&mut *tables)
     })
 }
@@ -209,7 +223,7 @@ pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
 where
     F: FnOnce() -> T,
 {
-    let tables = TablesWrapper(RefCell::new(Tables {
+    let tables = SmirCtxt(RefCell::new(Tables {
         tcx,
         def_ids: IndexMap::default(),
         alloc_ids: IndexMap::default(),
@@ -220,7 +234,12 @@ where
         mir_consts: IndexMap::default(),
         layouts: IndexMap::default(),
     }));
-    stable_mir::compiler_interface::run(&tables, || init(&tables, f))
+
+    let interface = SmirInterface { cx: tables };
+
+    // Pass the `SmirInterface` to compiler_interface::run
+    // and initialize the rustc-specific TLS with tables.
+    stable_mir::compiler_interface::run(&interface, || init(&interface.cx, f))
 }
 
 /// Instantiate and run the compiler with the provided arguments and callback.
@@ -231,6 +250,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
@@ -242,7 +262,7 @@ where
 ///         // Your code goes in here.
 /// #       ControlFlow::Continue(())
 ///     }
-/// #   let args = vec!["--verbose".to_string()];
+/// #   let args = &["--verbose".to_string()];
 ///     let result = run!(args, analyze_code);
 /// #   assert_eq!(result, Err(CompilerError::Skipped))
 /// # }
@@ -251,6 +271,7 @@ where
 /// ```ignore(needs-extern-crate)
 /// # extern crate rustc_driver;
 /// # extern crate rustc_interface;
+/// # extern crate rustc_middle;
 /// # #[macro_use]
 /// # extern crate rustc_smir;
 /// # extern crate stable_mir;
@@ -263,7 +284,7 @@ where
 ///         // Your code goes in here.
 /// #       ControlFlow::Continue(())
 ///     }
-/// #   let args = vec!["--verbose".to_string()];
+/// #   let args = &["--verbose".to_string()];
 /// #   let extra_args = vec![];
 ///     let result = run!(args, || analyze_code(extra_args));
 /// #   assert_eq!(result, Err(CompilerError::Skipped))
@@ -312,8 +333,10 @@ macro_rules! optional {
 #[doc(hidden)]
 macro_rules! run_driver {
     ($args:expr, $callback:expr $(, $with_tcx:ident)?) => {{
-        use rustc_driver::{Callbacks, Compilation, RunCompiler};
-        use rustc_interface::{interface, Queries};
+        use rustc_driver::{Callbacks, Compilation, run_compiler};
+        use rustc_middle::ty::TyCtxt;
+        use rustc_interface::interface;
+        use rustc_smir::rustc_internal;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 
@@ -323,7 +346,6 @@ macro_rules! run_driver {
             C: Send,
             F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
-            args: Vec<String>,
             callback: Option<F>,
             result: Option<ControlFlow<B, C>>,
         }
@@ -335,14 +357,15 @@ macro_rules! run_driver {
             F: FnOnce($(optional!($with_tcx TyCtxt))?) -> ControlFlow<B, C> + Send,
         {
             /// Creates a new `StableMir` instance, with given test_function and arguments.
-            pub fn new(args: Vec<String>, callback: F) -> Self {
-                StableMir { args, callback: Some(callback), result: None }
+            pub fn new(callback: F) -> Self {
+                StableMir { callback: Some(callback), result: None }
             }
 
             /// Runs the compiler against given target and tests it with `test_function`
-            pub fn run(&mut self) -> Result<C, CompilerError<B>> {
-                let compiler_result = rustc_driver::catch_fatal_errors(|| {
-                    RunCompiler::new(&self.args.clone(), self).run()
+            pub fn run(&mut self, args: &[String]) -> Result<C, CompilerError<B>> {
+                let compiler_result = rustc_driver::catch_fatal_errors(|| -> interface::Result::<()> {
+                    run_compiler(&args, self);
+                    Ok(())
                 });
                 match (compiler_result, self.result.take()) {
                     (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
@@ -373,31 +396,29 @@ macro_rules! run_driver {
             fn after_analysis<'tcx>(
                 &mut self,
                 _compiler: &interface::Compiler,
-                queries: &'tcx Queries<'tcx>,
+                tcx: TyCtxt<'tcx>,
             ) -> Compilation {
-                queries.global_ctxt().unwrap().enter(|tcx| {
-                    if let Some(callback) = self.callback.take() {
-                        rustc_internal::run(tcx, || {
-                            self.result = Some(callback($(optional!($with_tcx tcx))?));
-                        })
-                        .unwrap();
-                        if self.result.as_ref().is_some_and(|val| val.is_continue()) {
-                            Compilation::Continue
-                        } else {
-                            Compilation::Stop
-                        }
-                    } else {
+                if let Some(callback) = self.callback.take() {
+                    rustc_internal::run(tcx, || {
+                        self.result = Some(callback($(optional!($with_tcx tcx))?));
+                    })
+                    .unwrap();
+                    if self.result.as_ref().is_some_and(|val| val.is_continue()) {
                         Compilation::Continue
+                    } else {
+                        Compilation::Stop
                     }
-                })
+                } else {
+                    Compilation::Continue
+                }
             }
         }
 
-        StableMir::new($args, $callback).run()
+        StableMir::new($callback).run($args)
     }};
 }
 
-/// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
+/// Similar to rustc's `FxIndexMap`, `IndexMap` with extra
 /// safety features added.
 pub struct IndexMap<K, V> {
     index_map: fx::FxIndexMap<K, V>,

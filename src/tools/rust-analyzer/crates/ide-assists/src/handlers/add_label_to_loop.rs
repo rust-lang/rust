@@ -1,10 +1,10 @@
 use ide_db::syntax_helpers::node_ext::for_each_break_and_continue_expr;
 use syntax::{
-    ast::{self, AstNode, HasLoopBody},
     T,
+    ast::{self, AstNode, HasLoopBody},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: add_label_to_loop
 //
@@ -35,7 +35,7 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     }
 
     acc.add(
-        AssistId("add_label_to_loop", AssistKind::Generate),
+        AssistId::generate("add_label_to_loop"),
         "Add Label",
         loop_expr.syntax().text_range(),
         |builder| {

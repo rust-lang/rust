@@ -21,11 +21,13 @@ impl TryFrom<AbsPathBuf> for ManifestPath {
     type Error = AbsPathBuf;
 
     fn try_from(file: AbsPathBuf) -> Result<Self, Self::Error> {
-        if file.parent().is_none() {
-            Err(file)
-        } else {
-            Ok(ManifestPath { file })
-        }
+        if file.parent().is_none() { Err(file) } else { Ok(ManifestPath { file }) }
+    }
+}
+
+impl From<ManifestPath> for AbsPathBuf {
+    fn from(it: ManifestPath) -> Self {
+        it.file
     }
 }
 
@@ -40,7 +42,7 @@ impl ManifestPath {
     }
 
     pub fn is_rust_manifest(&self) -> bool {
-        self.file.extension().map_or(false, |ext| ext == "rs")
+        self.file.extension() == Some("rs")
     }
 }
 

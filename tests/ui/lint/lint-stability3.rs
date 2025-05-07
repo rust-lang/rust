@@ -1,5 +1,4 @@
 //@ aux-build:lint_stability.rs
-//@ error-pattern: use of deprecated function
 
 #![deny(deprecated)]
 #![allow(warnings)]
@@ -11,4 +10,5 @@ use lint_stability::*;
 
 fn main() {
     macro_test_arg_nested!(deprecated_text);
+    //~^ ERROR use of deprecated function `lint_stability::deprecated_text`: text
 }

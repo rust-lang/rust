@@ -12,5 +12,5 @@ mod bar {
 
 // This makes the publicly accessible path
 // differ from the internal one.
-pub use bar::{bar, Bar};
+pub use bar::{Bar, bar};
 pub use foo::Foo;

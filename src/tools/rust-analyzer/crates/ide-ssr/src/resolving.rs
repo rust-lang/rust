@@ -4,11 +4,11 @@ use hir::AsAssocItem;
 use ide_db::FxHashMap;
 use parsing::Placeholder;
 use syntax::{
-    ast::{self, HasGenericArgs},
     SmolStr, SyntaxKind, SyntaxNode, SyntaxToken,
+    ast::{self, HasGenericArgs},
 };
 
-use crate::{errors::error, parsing, SsrError};
+use crate::{SsrError, errors::error, parsing};
 
 pub(crate) struct ResolutionScope<'db> {
     scope: hir::SemanticsScope<'db>,

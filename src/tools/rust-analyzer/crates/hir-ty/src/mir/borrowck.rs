@@ -12,15 +12,16 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::{HirDatabase, InternedClosure},
-    mir::Operand,
-    utils::ClosureSubst,
     ClosureId, Interner, Substitution, Ty, TyExt, TypeFlags,
+    db::{HirDatabase, InternedClosure},
+    display::DisplayTarget,
+    mir::OperandKind,
+    utils::ClosureSubst,
 };
 
 use super::{
-    BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, MutBorrowKind, Place,
-    ProjectionElem, Rvalue, StatementKind, TerminatorKind,
+    BasicBlockId, BorrowKind, LocalId, MirBody, MirLowerError, MirSpan, MutBorrowKind, Operand,
+    Place, ProjectionElem, Rvalue, StatementKind, TerminatorKind,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +71,7 @@ fn all_mir_bodies(
         c: ClosureId,
         cb: &mut impl FnMut(Arc<MirBody>),
     ) -> Result<(), MirLowerError> {
-        match db.mir_body_for_closure(c) {
+        match db.mir_body_for_closure(c.into()) {
             Ok(body) => {
                 cb(body.clone());
                 body.closures.iter().try_for_each(|&it| for_closure(db, it, cb))
@@ -119,8 +120,8 @@ fn make_fetch_closure_field(
 
 fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> {
     let mut result = vec![];
-    let mut for_operand = |op: &Operand, span: MirSpan| match op {
-        Operand::Copy(p) | Operand::Move(p) => {
+    let mut for_operand = |op: &Operand, span: MirSpan| match op.kind {
+        OperandKind::Copy(p) | OperandKind::Move(p) => {
             let mut ty: Ty = body.locals[p.local].ty.clone();
             let mut is_dereference_of_ref = false;
             for proj in p.projection.lookup(&body.projection_store) {
@@ -131,20 +132,20 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                     ty,
                     db,
                     make_fetch_closure_field(db),
-                    body.owner.module(db.upcast()).krate(),
+                    body.owner.module(db).krate(),
                 );
             }
             if is_dereference_of_ref
                 && !ty.clone().is_copy(db, body.owner)
                 && !ty.data(Interner).flags.intersects(TypeFlags::HAS_ERROR)
             {
-                result.push(MovedOutOfRef { span, ty });
+                result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty });
             }
         }
-        Operand::Constant(_) | Operand::Static(_) => (),
+        OperandKind::Constant(_) | OperandKind::Static(_) => (),
     };
     for (_, block) in body.basic_blocks.iter() {
-        db.unwind_if_cancelled();
+        db.unwind_if_revision_cancelled();
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(_, r) => match r {
@@ -167,6 +168,10 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                             for_operand(op, statement.span);
                         }
                     }
+                    Rvalue::ThreadLocalRef(n)
+                    | Rvalue::AddressOf(n)
+                    | Rvalue::BinaryOp(n)
+                    | Rvalue::NullaryOp(n) => match *n {},
                 },
                 StatementKind::FakeRead(_)
                 | StatementKind::Deinit(_)
@@ -210,15 +215,15 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
 
 fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> {
     let mut result = vec![];
-    let mut for_operand = |op: &Operand, span: MirSpan| match op {
-        Operand::Copy(p) | Operand::Move(p) => {
+    let mut for_operand = |op: &Operand, span: MirSpan| match op.kind {
+        OperandKind::Copy(p) | OperandKind::Move(p) => {
             let mut ty: Ty = body.locals[p.local].ty.clone();
             for proj in p.projection.lookup(&body.projection_store) {
                 ty = proj.projected_ty(
                     ty,
                     db,
                     make_fetch_closure_field(db),
-                    body.owner.module(db.upcast()).krate(),
+                    body.owner.module(db).krate(),
                 );
             }
             if !ty.clone().is_copy(db, body.owner)
@@ -227,10 +232,10 @@ fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> 
                 result.push(PartiallyMoved { span, ty, local: p.local });
             }
         }
-        Operand::Constant(_) | Operand::Static(_) => (),
+        OperandKind::Constant(_) | OperandKind::Static(_) => (),
     };
     for (_, block) in body.basic_blocks.iter() {
-        db.unwind_if_cancelled();
+        db.unwind_if_revision_cancelled();
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(_, r) => match r {
@@ -253,6 +258,10 @@ fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> 
                             for_operand(op, statement.span);
                         }
                     }
+                    Rvalue::ThreadLocalRef(n)
+                    | Rvalue::AddressOf(n)
+                    | Rvalue::BinaryOp(n)
+                    | Rvalue::NullaryOp(n) => match *n {},
                 },
                 StatementKind::FakeRead(_)
                 | StatementKind::Deinit(_)
@@ -297,7 +306,7 @@ fn partially_moved(db: &dyn HirDatabase, body: &MirBody) -> Vec<PartiallyMoved> 
 fn borrow_regions(db: &dyn HirDatabase, body: &MirBody) -> Vec<BorrowRegion> {
     let mut borrows = FxHashMap::default();
     for (_, block) in body.basic_blocks.iter() {
-        db.unwind_if_cancelled();
+        db.unwind_if_revision_cancelled();
         for statement in &block.statements {
             if let StatementKind::Assign(_, Rvalue::Ref(kind, p)) = &statement.kind {
                 borrows
@@ -360,18 +369,9 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
             }
             ProjectionElem::OpaqueCast(_) => (),
         }
-        ty = proj.projected_ty(
-            ty,
-            db,
-            make_fetch_closure_field(db),
-            body.owner.module(db.upcast()).krate(),
-        );
+        ty = proj.projected_ty(ty, db, make_fetch_closure_field(db), body.owner.module(db).krate());
     }
-    if is_part_of {
-        ProjectionCase::DirectPart
-    } else {
-        ProjectionCase::Direct
-    }
+    if is_part_of { ProjectionCase::DirectPart } else { ProjectionCase::Direct }
 }
 
 /// Returns a map from basic blocks to the set of locals that might be ever initialized before
@@ -386,82 +386,91 @@ fn ever_initialized_map(
     fn dfs(
         db: &dyn HirDatabase,
         body: &MirBody,
-        b: BasicBlockId,
         l: LocalId,
+        stack: &mut Vec<BasicBlockId>,
         result: &mut ArenaMap<BasicBlockId, ArenaMap<LocalId, bool>>,
     ) {
-        let mut is_ever_initialized = result[b][l]; // It must be filled, as we use it as mark for dfs
-        let block = &body.basic_blocks[b];
-        for statement in &block.statements {
-            match &statement.kind {
-                StatementKind::Assign(p, _) => {
-                    if p.projection.lookup(&body.projection_store).is_empty() && p.local == l {
+        while let Some(b) = stack.pop() {
+            let mut is_ever_initialized = result[b][l]; // It must be filled, as we use it as mark for dfs
+            let block = &body.basic_blocks[b];
+            for statement in &block.statements {
+                match &statement.kind {
+                    StatementKind::Assign(p, _) => {
+                        if p.projection.lookup(&body.projection_store).is_empty() && p.local == l {
+                            is_ever_initialized = true;
+                        }
+                    }
+                    StatementKind::StorageDead(p) => {
+                        if *p == l {
+                            is_ever_initialized = false;
+                        }
+                    }
+                    StatementKind::Deinit(_)
+                    | StatementKind::FakeRead(_)
+                    | StatementKind::Nop
+                    | StatementKind::StorageLive(_) => (),
+                }
+            }
+            let Some(terminator) = &block.terminator else {
+                never!(
+                    "Terminator should be none only in construction.\nThe body:\n{}",
+                    body.pretty_print(db, DisplayTarget::from_crate(db, body.owner.krate(db)))
+                );
+                return;
+            };
+            let mut process = |target, is_ever_initialized| {
+                if !result[target].contains_idx(l) || !result[target][l] && is_ever_initialized {
+                    result[target].insert(l, is_ever_initialized);
+                    stack.push(target);
+                }
+            };
+            match &terminator.kind {
+                TerminatorKind::Goto { target } => process(*target, is_ever_initialized),
+                TerminatorKind::SwitchInt { targets, .. } => {
+                    targets.all_targets().iter().for_each(|&it| process(it, is_ever_initialized));
+                }
+                TerminatorKind::UnwindResume
+                | TerminatorKind::Abort
+                | TerminatorKind::Return
+                | TerminatorKind::Unreachable => (),
+                TerminatorKind::Call { target, cleanup, destination, .. } => {
+                    if destination.projection.lookup(&body.projection_store).is_empty()
+                        && destination.local == l
+                    {
                         is_ever_initialized = true;
                     }
+                    target.iter().chain(cleanup).for_each(|&it| process(it, is_ever_initialized));
                 }
-                StatementKind::StorageDead(p) => {
-                    if *p == l {
-                        is_ever_initialized = false;
-                    }
+                TerminatorKind::Drop { target, unwind, place: _ } => {
+                    iter::once(target)
+                        .chain(unwind)
+                        .for_each(|&it| process(it, is_ever_initialized));
                 }
-                StatementKind::Deinit(_)
-                | StatementKind::FakeRead(_)
-                | StatementKind::Nop
-                | StatementKind::StorageLive(_) => (),
-            }
-        }
-        let Some(terminator) = &block.terminator else {
-            never!(
-                "Terminator should be none only in construction.\nThe body:\n{}",
-                body.pretty_print(db)
-            );
-            return;
-        };
-        let mut process = |target, is_ever_initialized| {
-            if !result[target].contains_idx(l) || !result[target][l] && is_ever_initialized {
-                result[target].insert(l, is_ever_initialized);
-                dfs(db, body, target, l, result);
-            }
-        };
-        match &terminator.kind {
-            TerminatorKind::Goto { target } => process(*target, is_ever_initialized),
-            TerminatorKind::SwitchInt { targets, .. } => {
-                targets.all_targets().iter().for_each(|&it| process(it, is_ever_initialized));
-            }
-            TerminatorKind::UnwindResume
-            | TerminatorKind::Abort
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable => (),
-            TerminatorKind::Call { target, cleanup, destination, .. } => {
-                if destination.projection.lookup(&body.projection_store).is_empty()
-                    && destination.local == l
-                {
-                    is_ever_initialized = true;
+                TerminatorKind::DropAndReplace { .. }
+                | TerminatorKind::Assert { .. }
+                | TerminatorKind::Yield { .. }
+                | TerminatorKind::CoroutineDrop
+                | TerminatorKind::FalseEdge { .. }
+                | TerminatorKind::FalseUnwind { .. } => {
+                    never!("We don't emit these MIR terminators yet");
                 }
-                target.iter().chain(cleanup).for_each(|&it| process(it, is_ever_initialized));
-            }
-            TerminatorKind::Drop { target, unwind, place: _ } => {
-                iter::once(target).chain(unwind).for_each(|&it| process(it, is_ever_initialized));
-            }
-            TerminatorKind::DropAndReplace { .. }
-            | TerminatorKind::Assert { .. }
-            | TerminatorKind::Yield { .. }
-            | TerminatorKind::CoroutineDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. } => {
-                never!("We don't emit these MIR terminators yet");
             }
         }
     }
+    let mut stack = Vec::new();
     for &l in &body.param_locals {
         result[body.start_block].insert(l, true);
-        dfs(db, body, body.start_block, l, &mut result);
+        stack.clear();
+        stack.push(body.start_block);
+        dfs(db, body, l, &mut stack, &mut result);
     }
     for l in body.locals.iter().map(|it| it.0) {
-        db.unwind_if_cancelled();
+        db.unwind_if_revision_cancelled();
         if !result[body.start_block].contains_idx(l) {
             result[body.start_block].insert(l, false);
-            dfs(db, body, body.start_block, l, &mut result);
+            stack.clear();
+            stack.push(body.start_block);
+            dfs(db, body, l, &mut stack, &mut result);
         }
     }
     result
@@ -483,7 +492,7 @@ fn record_usage(local: LocalId, result: &mut ArenaMap<LocalId, MutabilityReason>
 }
 
 fn record_usage_for_operand(arg: &Operand, result: &mut ArenaMap<LocalId, MutabilityReason>) {
-    if let Operand::Copy(p) | Operand::Move(p) = arg {
+    if let OperandKind::Copy(p) | OperandKind::Move(p) = arg.kind {
         record_usage(p.local, result);
     }
 }
@@ -539,6 +548,10 @@ fn mutability_of_locals(
                             }
                         }
                         Rvalue::ShallowInitBox(_, _) | Rvalue::ShallowInitBoxWithAlloc(_) => (),
+                        Rvalue::ThreadLocalRef(n)
+                        | Rvalue::AddressOf(n)
+                        | Rvalue::BinaryOp(n)
+                        | Rvalue::NullaryOp(n) => match *n {},
                     }
                     if let Rvalue::Ref(
                         BorrowKind::Mut {

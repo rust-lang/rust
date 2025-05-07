@@ -1,5 +1,5 @@
 error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
-  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+  --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
 LL |     unsafe { ptr.read() };
    |              ^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
@@ -7,9 +7,9 @@ LL |     unsafe { ptr.read() };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `change_arg` at $DIR/arg_inplace_observe_during.rs:LL:CC
+   = note: inside `change_arg` at tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
 note: inside `main`
-  --> $DIR/arg_inplace_observe_during.rs:LL:CC
+  --> tests/fail/function_calls/arg_inplace_observe_during.rs:LL:CC
    |
 LL |             Call(_unit = change_arg(Move(*ptr), ptr), ReturnTo(after_call), UnwindContinue())
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

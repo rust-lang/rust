@@ -1,5 +1,5 @@
 error: Undefined Behavior: using ALLOC+0x1 as function pointer but it does not point to a function
-  --> $DIR/fn_ptr_offset.rs:LL:CC
+  --> tests/fail/function_pointers/fn_ptr_offset.rs:LL:CC
    |
 LL |     x();
    |     ^^^ using ALLOC+0x1 as function pointer but it does not point to a function
@@ -7,7 +7,7 @@ LL |     x();
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/fn_ptr_offset.rs:LL:CC
+   = note: inside `main` at tests/fail/function_pointers/fn_ptr_offset.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

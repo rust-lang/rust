@@ -29,7 +29,7 @@ pub use impl_trait_aux::func4;
 //@ has impl_trait/fn.func5.html
 //@ has - '//pre[@class="rust item-decl"]' "func5("
 //@ has - '//pre[@class="rust item-decl"]' "_f: impl for<'any> Fn(&'any str, &'any str) -> bool + for<'r> Other<T<'r> = ()>,"
-//@ has - '//pre[@class="rust item-decl"]' "_a: impl for<'beta, 'alpha, '_gamma> Auxiliary<'alpha, Item<'beta> = fn(_: &'beta ())>"
+//@ has - '//pre[@class="rust item-decl"]' "_a: impl for<'beta, 'alpha, '_gamma> Auxiliary<'alpha, Item<'beta> = fn(&'beta ())>"
 //@ !has - '//pre[@class="rust item-decl"]' 'where'
 pub use impl_trait_aux::func5;
 

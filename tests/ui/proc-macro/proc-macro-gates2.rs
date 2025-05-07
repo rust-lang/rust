@@ -1,4 +1,4 @@
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #![feature(stmt_expr_attributes)]
 

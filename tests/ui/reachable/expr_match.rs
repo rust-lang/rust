@@ -21,9 +21,13 @@ fn d() {
 }
 
 fn e() {
-    // Here the compiler fails to figure out that the `println` is dead.
-    match () { () if return => (), () => return }
+    match () {
+        () if return => (),
+        //~^ ERROR unreachable expression
+        () => return,
+    }
     println!("I am dead");
+    //~^ ERROR unreachable statement
 }
 
 fn f() {

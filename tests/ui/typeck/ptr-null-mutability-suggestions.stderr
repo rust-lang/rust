@@ -15,8 +15,9 @@ LL | fn expecting_null_mut(_: *mut u8) {}
    |    ^^^^^^^^^^^^^^^^^^ ----------
 help: consider using `core::ptr::null_mut` instead
    |
-LL |     expecting_null_mut(core::ptr::null_mut());
-   |                        ~~~~~~~~~~~~~~~~~~~~~
+LL -     expecting_null_mut(ptr::null());
+LL +     expecting_null_mut(core::ptr::null_mut());
+   |
 
 error: aborting due to 1 previous error
 

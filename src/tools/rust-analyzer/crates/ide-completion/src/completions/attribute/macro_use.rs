@@ -3,7 +3,7 @@ use hir::ModuleDef;
 use ide_db::SymbolKind;
 use syntax::ast;
 
-use crate::{context::CompletionContext, item::CompletionItem, Completions};
+use crate::{Completions, context::CompletionContext, item::CompletionItem};
 
 pub(super) fn complete_macro_use(
     acc: &mut Completions,
@@ -28,7 +28,8 @@ pub(super) fn complete_macro_use(
                 continue;
             }
 
-            let item = CompletionItem::new(SymbolKind::Macro, ctx.source_range(), mac_name);
+            let item =
+                CompletionItem::new(SymbolKind::Macro, ctx.source_range(), mac_name, ctx.edition);
             item.add_to(acc, ctx.db);
         }
     }

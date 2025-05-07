@@ -6,15 +6,17 @@
 //! script is to check all relative links in our documentation to make sure they
 //! actually point to a valid place.
 //!
-//! Currently this doesn't actually do any HTML parsing or anything fancy like
-//! that, it just has a simple "regex" to search for `href` and `id` tags.
+//! Currently uses a combination of HTML parsing to
+//! extract the `href` and `id` attributes,
+//! and regex search on the original markdown to handle intra-doc links.
+//!
 //! These values are then translated to file URLs if possible and then the
 //! destination is asserted to exist.
 //!
 //! A few exceptions are allowed as there's known bugs in rustdoc, but this
 //! should catch the majority of "broken link" cases.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind;
 use std::path::{Component, Path, PathBuf};
@@ -48,6 +50,29 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     ("alloc/slice/trait.Concat.html", &["#method.concat"]),
     ("alloc/slice/index.html", &["#method.concat", "#method.join"]),
     ("alloc/vec/struct.Vec.html", &["#method.sort_by_key", "#method.sort_by_cached_key"]),
+    ("alloc/bstr/struct.ByteStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/slice::sort_by_key",
+        "core\\slice::sort_by_key",
+        "#method.sort_by_cached_key",
+        "#method.sort_by_key"
+    ]),
+    ("alloc/bstr/struct.ByteString.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/slice::sort_by_key",
+        "core\\slice::sort_by_key",
+        "#method.sort_by_cached_key",
+        "#method.sort_by_key"
+    ]),
+    ("core/bstr/struct.ByteStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/bstr/slice::sort_by_key",
+        "core\\bstr\\slice::sort_by_key",
+        "#method.sort_by_cached_key"
+    ]),
     ("core/primitive.str.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase"]),
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
                                     "core/slice::sort_by_key", "core\\slice::sort_by_key",
@@ -98,6 +123,7 @@ fn main() {
         links_ignored_external: 0,
         links_ignored_exception: 0,
         intra_doc_exceptions: 0,
+        has_broken_urls: false,
     };
     checker.walk(&docs, &mut report);
     report.report();
@@ -114,6 +140,8 @@ struct Checker {
 
 struct Report {
     errors: u32,
+    // Used to provide help message to remind the user to register a page in `SUMMARY.md`.
+    has_broken_urls: bool,
     start: Instant,
     html_files: u32,
     html_redirects: u32,
@@ -272,6 +300,7 @@ impl Checker {
                     report.links_ignored_exception += 1;
                 } else {
                     report.errors += 1;
+                    report.has_broken_urls = true;
                     println!("{}:{}: broken link - `{}`", pretty_path, i, target_pretty_path);
                 }
                 return;
@@ -436,6 +465,13 @@ impl Report {
         println!("number of links ignored due to exceptions: {}", self.links_ignored_exception);
         println!("number of intra doc links ignored: {}", self.intra_doc_exceptions);
         println!("errors found: {}", self.errors);
+
+        if self.has_broken_urls {
+            eprintln!(
+                "NOTE: if you are adding or renaming a markdown file in a mdBook, don't forget to \
+                register the page in SUMMARY.md"
+            );
+        }
     }
 }
 
@@ -508,7 +544,7 @@ fn parse_html<Sink: TokenSink>(source: &str, sink: Sink) -> Sink {
     let mut input = BufferQueue::default();
     input.push_back(tendril.try_reinterpret().unwrap());
 
-    let mut tok = Tokenizer::new(sink, TokenizerOpts::default());
+    let tok = Tokenizer::new(sink, TokenizerOpts::default());
     let _ = tok.feed(&mut input);
     assert!(input.is_empty());
     tok.end();
@@ -518,8 +554,8 @@ fn parse_html<Sink: TokenSink>(source: &str, sink: Sink) -> Sink {
 #[derive(Default)]
 struct AttrCollector {
     attr_name: &'static [u8],
-    base: Option<String>,
-    found_attrs: Vec<(u64, String)>,
+    base: Cell<Option<String>>,
+    found_attrs: RefCell<Vec<(u64, String)>>,
     /// Tracks whether or not it is inside a <script> tag.
     ///
     /// A lot of our sources have JSON script tags which have HTML embedded
@@ -528,13 +564,13 @@ struct AttrCollector {
     /// `TokenSinkResult::Script(…)` (and then maybe switch parser?), but I
     /// don't fully understand the best way to use that, and this seems good
     /// enough for now.
-    in_script: bool,
+    in_script: Cell<bool>,
 }
 
 impl TokenSink for AttrCollector {
     type Handle = ();
 
-    fn process_token(&mut self, token: Token, line_number: u64) -> TokenSinkResult<()> {
+    fn process_token(&self, token: Token, line_number: u64) -> TokenSinkResult<()> {
         match token {
             TagToken(tag) => {
                 let tag_name = tag.name.as_bytes();
@@ -542,20 +578,20 @@ impl TokenSink for AttrCollector {
                     if let Some(href) =
                         tag.attrs.iter().find(|attr| attr.name.local.as_bytes() == b"href")
                     {
-                        self.base = Some(href.value.to_string());
+                        self.base.set(Some(href.value.to_string()));
                     }
                     return TokenSinkResult::Continue;
                 } else if tag_name == b"script" {
-                    self.in_script = !self.in_script;
+                    self.in_script.set(!self.in_script.get());
                 }
-                if self.in_script {
+                if self.in_script.get() {
                     return TokenSinkResult::Continue;
                 }
                 for attr in tag.attrs.iter() {
                     let name = attr.name.local.as_bytes();
                     if name == self.attr_name {
                         let url = attr.value.to_string();
-                        self.found_attrs.push((line_number, url));
+                        self.found_attrs.borrow_mut().push((line_number, url));
                     }
                 }
             }
@@ -571,7 +607,7 @@ impl TokenSink for AttrCollector {
 fn get_urls(source: &str) -> (Option<String>, Vec<(u64, String)>) {
     let collector = AttrCollector { attr_name: b"href", ..AttrCollector::default() };
     let sink = parse_html(source, collector);
-    (sink.base, sink.found_attrs)
+    (sink.base.into_inner(), sink.found_attrs.into_inner())
 }
 
 /// Retrieves id="..." attributes from HTML elements.
@@ -583,7 +619,7 @@ fn parse_ids(ids: &mut HashSet<String>, file: &str, source: &str, report: &mut R
 
     let collector = AttrCollector { attr_name: b"id", ..AttrCollector::default() };
     let sink = parse_html(source, collector);
-    for (line_number, id) in sink.found_attrs {
+    for (line_number, id) in sink.found_attrs.into_inner() {
         let encoded = small_url_encode(&id);
         if let Some(id) = ids.replace(id) {
             report.errors += 1;

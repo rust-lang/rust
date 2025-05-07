@@ -7,17 +7,20 @@ use std::collections::{BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 fn main() {
     let sample = [1; 5];
     let indirect_iter = sample.iter().collect::<Vec<_>>();
-    //~^ ERROR: avoid using `collect()` when not needed
-    //~| NOTE: `-D clippy::needless-collect` implied by `-D warnings`
+    //~^ needless_collect
+
     indirect_iter.into_iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
     let indirect_len = sample.iter().collect::<VecDeque<_>>();
-    //~^ ERROR: avoid using `collect()` when not needed
+    //~^ needless_collect
+
     indirect_len.len();
     let indirect_empty = sample.iter().collect::<VecDeque<_>>();
-    //~^ ERROR: avoid using `collect()` when not needed
+    //~^ needless_collect
+
     indirect_empty.is_empty();
     let indirect_contains = sample.iter().collect::<VecDeque<_>>();
-    //~^ ERROR: avoid using `collect()` when not needed
+    //~^ needless_collect
+
     indirect_contains.contains(&&5);
     let indirect_negative = sample.iter().collect::<Vec<_>>();
     indirect_negative.len();
@@ -30,7 +33,8 @@ fn main() {
     let a = "a".to_string();
     let sample = vec![a.clone(), "b".to_string(), "c".to_string()];
     let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
-    //~^ ERROR: avoid using `collect()` when not needed
+    //~^ needless_collect
+
     non_copy_contains.contains(&a);
 
     // Fix #5991
@@ -60,25 +64,29 @@ mod issue7110 {
 
     fn lint_vec(string: &str) -> usize {
         let buffer: Vec<&str> = string.split('/').collect();
-        //~^ ERROR: avoid using `collect()` when not needed
+        //~^ needless_collect
+
         buffer.len()
     }
     fn lint_vec_deque() -> usize {
         let sample = [1; 5];
         let indirect_len: VecDeque<_> = sample.iter().collect();
-        //~^ ERROR: avoid using `collect()` when not needed
+        //~^ needless_collect
+
         indirect_len.len()
     }
     fn lint_linked_list() -> usize {
         let sample = [1; 5];
         let indirect_len: LinkedList<_> = sample.iter().collect();
-        //~^ ERROR: avoid using `collect()` when not needed
+        //~^ needless_collect
+
         indirect_len.len()
     }
     fn lint_binary_heap() -> usize {
         let sample = [1; 5];
         let indirect_len: BinaryHeap<_> = sample.iter().collect();
-        //~^ ERROR: avoid using `collect()` when not needed
+        //~^ needless_collect
+
         indirect_len.len()
     }
     fn dont_lint(string: &str) -> usize {
@@ -139,7 +147,8 @@ mod issue_8553 {
 
         for i in 0..2 {
             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
-            //~^ ERROR: avoid using `collect()` when not needed
+            //~^ needless_collect
+
             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
             // Do lint
             y.contains(&i);
@@ -165,7 +174,8 @@ mod issue_8553 {
 
         while n > 2 {
             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
-            //~^ ERROR: avoid using `collect()` when not needed
+            //~^ needless_collect
+
             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
             // Do lint
             y.contains(&n);
@@ -195,7 +205,8 @@ mod issue_8553 {
         loop {
             if n < 2 {
                 let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
-                //~^ ERROR: avoid using `collect()` when not needed
+                //~^ needless_collect
+
                 let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
                 // Do lint
                 y.contains(&n);
@@ -232,7 +243,8 @@ mod issue_8553 {
 
         while let Some(value) = optional {
             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
-            //~^ ERROR: avoid using `collect()` when not needed
+            //~^ needless_collect
+
             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
             if n < 2 {
                 // Do lint
@@ -258,7 +270,8 @@ mod issue_8553 {
         let vec = vec![1, 2];
         let v: Vec<usize> = vec.iter().map(|i| i * i).collect();
         let w = v.iter().collect::<Vec<_>>();
-        //~^ ERROR: avoid using `collect()` when not needed
+        //~^ needless_collect
+
         // Do lint
         for _ in 0..w.len() {
             todo!();
@@ -281,7 +294,8 @@ mod issue_8553 {
         let mut vec = vec![1, 2];
         let mut v: Vec<usize> = vec.iter().map(|i| i * i).collect();
         let mut w = v.iter().collect::<Vec<_>>();
-        //~^ ERROR: avoid using `collect()` when not needed
+        //~^ needless_collect
+
         // Do lint
         while 1 == w.len() {
             todo!();
@@ -304,7 +318,8 @@ mod issue_8553 {
         let mut vec = vec![1, 2];
         let mut v: Vec<usize> = vec.iter().map(|i| i * i).collect();
         let mut w = v.iter().collect::<Vec<_>>();
-        //~^ ERROR: avoid using `collect()` when not needed
+        //~^ needless_collect
+
         // Do lint
         while let Some(i) = Some(w.len()) {
             todo!();

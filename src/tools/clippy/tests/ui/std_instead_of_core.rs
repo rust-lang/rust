@@ -1,7 +1,7 @@
 //@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::std_instead_of_core)]
-#![allow(unused_imports)]
+#![allow(unused_imports, deprecated)]
 
 extern crate alloc;
 
@@ -89,3 +89,4 @@ fn msrv_1_76(_: std::net::IpAddr) {}
 
 #[clippy::msrv = "1.77"]
 fn msrv_1_77(_: std::net::IpAddr) {}
+//~^ std_instead_of_core

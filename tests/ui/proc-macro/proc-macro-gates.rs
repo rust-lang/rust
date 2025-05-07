@@ -1,4 +1,4 @@
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 // gate-test-proc_macro_hygiene
 
 #![feature(stmt_expr_attributes)]
@@ -47,7 +47,6 @@ fn attrs() {
 
 fn test_case() {
     #![test] //~ ERROR inner macro attributes are unstable
-             //~| WARN this was previously accepted
 }
 
 fn main() {}

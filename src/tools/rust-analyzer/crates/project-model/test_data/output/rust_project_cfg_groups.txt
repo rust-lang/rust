@@ -1,0 +1,102 @@
+{
+    0: CrateBuilder {
+        basic: CrateData {
+            root_file_id: FileId(
+                1,
+            ),
+            edition: Edition2018,
+            dependencies: [],
+            origin: Local {
+                repo: None,
+                name: Some(
+                    "hello_world",
+                ),
+            },
+            is_proc_macro: false,
+            proc_macro_cwd: AbsPathBuf(
+                "$ROOT$",
+            ),
+        },
+        extra: ExtraCrateData {
+            version: None,
+            display_name: Some(
+                CrateDisplayName {
+                    crate_name: CrateName(
+                        "hello_world",
+                    ),
+                    canonical_name: "hello_world",
+                },
+            ),
+            potential_cfg_options: None,
+        },
+        cfg_options: CfgOptions(
+            [
+                "group1_cfg=some_config",
+                "group1_other_cfg=other_config",
+                "group2_cfg=yet_another_config",
+                "rust_analyzer",
+                "test",
+                "true",
+            ],
+        ),
+        env: Env {
+            entries: {},
+        },
+        ws_data: CrateWorkspaceData {
+            data_layout: Err(
+                "test has no data layout",
+            ),
+            toolchain: None,
+        },
+    },
+    1: CrateBuilder {
+        basic: CrateData {
+            root_file_id: FileId(
+                1,
+            ),
+            edition: Edition2018,
+            dependencies: [],
+            origin: Local {
+                repo: None,
+                name: Some(
+                    "other_crate",
+                ),
+            },
+            is_proc_macro: false,
+            proc_macro_cwd: AbsPathBuf(
+                "$ROOT$",
+            ),
+        },
+        extra: ExtraCrateData {
+            version: None,
+            display_name: Some(
+                CrateDisplayName {
+                    crate_name: CrateName(
+                        "other_crate",
+                    ),
+                    canonical_name: "other_crate",
+                },
+            ),
+            potential_cfg_options: None,
+        },
+        cfg_options: CfgOptions(
+            [
+                "group2_cfg=fourth_config",
+                "group2_cfg=yet_another_config",
+                "rust_analyzer",
+                "test",
+                "true",
+                "unrelated_cfg",
+            ],
+        ),
+        env: Env {
+            entries: {},
+        },
+        ws_data: CrateWorkspaceData {
+            data_layout: Err(
+                "test has no data layout",
+            ),
+            toolchain: None,
+        },
+    },
+}

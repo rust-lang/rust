@@ -2,7 +2,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:12:15
    |
 LL |         asm!("invalid_instruction");
-   |               ^
+   |               ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -14,7 +14,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:16:13
    |
 LL |             invalid_instruction
-   |             ^
+   |             ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:13
@@ -26,7 +26,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:21:13
    |
 LL |             invalid_instruction
-   |             ^
+   |             ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:13
@@ -38,7 +38,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:27:13
    |
 LL |             invalid_instruction
-   |             ^
+   |             ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:3:13
@@ -50,7 +50,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:34:13
    |
 LL |             invalid_instruction
-   |             ^
+   |             ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:3:13
@@ -62,7 +62,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:39:14
    |
 LL |         asm!(concat!("invalid", "_", "instruction"));
-   |              ^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -74,7 +74,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:43:14
    |
 LL |             "invalid_instruction",
-   |              ^
+   |              ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -86,7 +86,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:49:14
    |
 LL |             "invalid_instruction",
-   |              ^
+   |              ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:1
@@ -98,7 +98,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:56:14
    |
 LL |             "invalid_instruction",
-   |              ^
+   |              ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:3:1
@@ -110,7 +110,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:63:13
    |
 LL |             concat!("invalid", "_", "instruction"),
-   |             ^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:1
@@ -122,7 +122,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:70:13
    |
 LL |             concat!("invalid", "_", "instruction"),
-   |             ^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:1
@@ -134,7 +134,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:77:14
    |
 LL |             "invalid_instruction1",
-   |              ^
+   |              ^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -146,7 +146,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:78:14
    |
 LL |             "invalid_instruction2",
-   |              ^
+   |              ^^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:1
@@ -157,8 +157,11 @@ LL | invalid_instruction2
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:84:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction1", "\n",
+LL | |                 "invalid", "_", "instruction2",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -169,8 +172,11 @@ LL |     invalid_instruction1
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:84:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction1", "\n",
+LL | |                 "invalid", "_", "instruction2",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:1
@@ -181,8 +187,11 @@ LL | invalid_instruction2
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:93:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction1", "\n",
+LL | |                 "invalid", "_", "instruction2",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -193,8 +202,11 @@ LL |     invalid_instruction1
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:93:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction1", "\n",
+LL | |                 "invalid", "_", "instruction2",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:1
@@ -205,8 +217,11 @@ LL | invalid_instruction2
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:97:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction3", "\n",
+LL | |                 "invalid", "_", "instruction4",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:3:1
@@ -217,8 +232,11 @@ LL | invalid_instruction3
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:97:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction3", "\n",
+LL | |                 "invalid", "_", "instruction4",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:4:1
@@ -229,8 +247,11 @@ LL | invalid_instruction4
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:108:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction1", "\n",
+LL | |                 "invalid", "_", "instruction2", "\n",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:1:2
@@ -241,8 +262,11 @@ LL |     invalid_instruction1
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:108:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction1", "\n",
+LL | |                 "invalid", "_", "instruction2", "\n",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:2:1
@@ -253,8 +277,11 @@ LL | invalid_instruction2
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:112:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction3", "\n",
+LL | |                 "invalid", "_", "instruction4", "\n",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:4:1
@@ -265,8 +292,11 @@ LL | invalid_instruction3
 error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:112:13
    |
-LL |             concat!(
-   |             ^
+LL | /             concat!(
+LL | |                 "invalid", "_", "instruction3", "\n",
+LL | |                 "invalid", "_", "instruction4", "\n",
+LL | |             ),
+   | |_____________^
    |
 note: instantiated into assembly here
   --> <inline asm>:5:1
@@ -278,7 +308,7 @@ error: unrecognized instruction mnemonic
   --> $DIR/srcloc.rs:125:14
    |
 LL |             "invalid_instruction"
-   |              ^
+   |              ^^^^^^^^^^^^^^^^^^^
    |
 note: instantiated into assembly here
   --> <inline asm>:4:1

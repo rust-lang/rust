@@ -5,21 +5,25 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use itertools::Itertools;
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
-    elf, pe, xcoff, Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection,
-    ObjectSymbol, SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope,
+    Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, ObjectSymbol,
+    SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope, elf, pe, xcoff,
 };
+use rustc_abi::Endian;
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
+use rustc_data_structures::owned_slice::{OwnedSlice, try_slice_owned};
+use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
-use rustc_metadata::EncodedMetadata;
 use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_span::sym;
-use rustc_target::abi::Endian;
-use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
+use rustc_target::spec::{RelocModel, Target, ef_avr_arch};
+use tracing::debug;
+
+use super::apple;
 
 /// The default metadata loader. This is used by cg_llvm and cg_clif.
 ///
@@ -32,7 +36,7 @@ use rustc_target::spec::{ef_avr_arch, RelocModel, Target};
 /// <dd>The metadata can be found in the `.rustc` section of the shared library.</dd>
 /// </dl>
 #[derive(Debug)]
-pub struct DefaultMetadataLoader;
+pub(crate) struct DefaultMetadataLoader;
 
 static AIX_METADATA_SYMBOL_NAME: &'static str = "__aix_rust_metadata";
 
@@ -50,6 +54,7 @@ fn load_metadata_with(
 
 impl MetadataLoader for DefaultMetadataLoader {
     fn get_rlib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+        debug!("getting rlib metadata for {}", path.display());
         load_metadata_with(path, |data| {
             let archive = object::read::archive::ArchiveFile::parse(&*data)
                 .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
@@ -74,8 +79,26 @@ impl MetadataLoader for DefaultMetadataLoader {
     }
 
     fn get_dylib_metadata(&self, target: &Target, path: &Path) -> Result<OwnedSlice, String> {
+        debug!("getting dylib metadata for {}", path.display());
         if target.is_like_aix {
-            load_metadata_with(path, |data| get_metadata_xcoff(path, data))
+            load_metadata_with(path, |data| {
+                let archive = object::read::archive::ArchiveFile::parse(&*data).map_err(|e| {
+                    format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                })?;
+
+                match archive.members().exactly_one() {
+                    Ok(lib) => {
+                        let lib = lib.map_err(|e| {
+                            format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                        })?;
+                        let data = lib.data(data).map_err(|e| {
+                            format!("failed to parse aix dylib '{}': {}", path.display(), e)
+                        })?;
+                        get_metadata_xcoff(path, data)
+                    }
+                    Err(e) => Err(format!("failed to parse aix dylib '{}': {}", path.display(), e)),
+                }
+            })
         } else {
             load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
         }
@@ -171,10 +194,10 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
                 "Metadata at offset {offset} with size {len} is beyond .info section"
             ));
         }
-        return Ok(&info_data[offset..(offset + len)]);
+        Ok(&info_data[offset..(offset + len)])
     } else {
-        return Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"));
-    };
+        Err(format!("Unable to find symbol {AIX_METADATA_SYMBOL_NAME}"))
+    }
 }
 
 pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static>> {
@@ -182,62 +205,21 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Little => Endianness::Little,
         Endian::Big => Endianness::Big,
     };
-    let (architecture, sub_architecture) = match &sess.target.arch[..] {
-        "arm" => (Architecture::Arm, None),
-        "aarch64" => (
-            if sess.target.pointer_width == 32 {
-                Architecture::Aarch64_Ilp32
-            } else {
-                Architecture::Aarch64
-            },
-            None,
-        ),
-        "x86" => (Architecture::I386, None),
-        "s390x" => (Architecture::S390x, None),
-        "mips" | "mips32r6" => (Architecture::Mips, None),
-        "mips64" | "mips64r6" => (Architecture::Mips64, None),
-        "x86_64" => (
-            if sess.target.pointer_width == 32 {
-                Architecture::X86_64_X32
-            } else {
-                Architecture::X86_64
-            },
-            None,
-        ),
-        "powerpc" => (Architecture::PowerPc, None),
-        "powerpc64" => (Architecture::PowerPc64, None),
-        "riscv32" => (Architecture::Riscv32, None),
-        "riscv64" => (Architecture::Riscv64, None),
-        "sparc" => (Architecture::Sparc32Plus, None),
-        "sparc64" => (Architecture::Sparc64, None),
-        "avr" => (Architecture::Avr, None),
-        "msp430" => (Architecture::Msp430, None),
-        "hexagon" => (Architecture::Hexagon, None),
-        "bpf" => (Architecture::Bpf, None),
-        "loongarch64" => (Architecture::LoongArch64, None),
-        "csky" => (Architecture::Csky, None),
-        "arm64ec" => (Architecture::Aarch64, Some(SubArchitecture::Arm64EC)),
-        // Unsupported architecture.
-        _ => return None,
+    let Some((architecture, sub_architecture)) =
+        sess.target.object_architecture(&sess.unstable_target_features)
+    else {
+        return None;
     };
-    let binary_format = if sess.target.is_like_osx {
-        BinaryFormat::MachO
-    } else if sess.target.is_like_windows {
-        BinaryFormat::Coff
-    } else if sess.target.is_like_aix {
-        BinaryFormat::Xcoff
-    } else {
-        BinaryFormat::Elf
-    };
+    let binary_format = sess.target.binary_format.to_object();
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     file.set_sub_architecture(sub_architecture);
-    if sess.target.is_like_osx {
+    if sess.target.is_like_darwin {
         if macho_is_arm64e(&sess.target) {
             file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
         }
 
-        file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
+        file.set_macho_build_version(macho_object_build_version_for_target(sess))
     }
     if binary_format == BinaryFormat::Coff {
         // Disable the default mangler to avoid mangling the special "@feat.00" symbol name.
@@ -268,44 +250,79 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
         file.set_mangling(original_mangling);
     }
-    let e_flags = match architecture {
-        Architecture::Mips => {
-            let arch = match sess.target.options.cpu.as_ref() {
-                "mips1" => elf::EF_MIPS_ARCH_1,
-                "mips2" => elf::EF_MIPS_ARCH_2,
+    let e_flags = elf_e_flags(architecture, sess);
+    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
+    let os_abi = elf_os_abi(sess);
+    let abi_version = 0;
+    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
+    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
+    Some(file)
+}
+
+pub(super) fn elf_os_abi(sess: &Session) -> u8 {
+    match sess.target.options.os.as_ref() {
+        "hermit" => elf::ELFOSABI_STANDALONE,
+        "freebsd" => elf::ELFOSABI_FREEBSD,
+        "solaris" => elf::ELFOSABI_SOLARIS,
+        _ => elf::ELFOSABI_NONE,
+    }
+}
+
+pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
+    match architecture {
+        Architecture::Mips | Architecture::Mips64 | Architecture::Mips64_N32 => {
+            // "N32" indicates an "ILP32" data model on a 64-bit MIPS CPU
+            // like SPARC's "v8+", x86_64's "x32", or the watchOS "arm64_32".
+            let is_32bit = architecture == Architecture::Mips;
+            let mut e_flags = match sess.target.options.cpu.as_ref() {
+                "mips1" if is_32bit => elf::EF_MIPS_ARCH_1,
+                "mips2" if is_32bit => elf::EF_MIPS_ARCH_2,
                 "mips3" => elf::EF_MIPS_ARCH_3,
                 "mips4" => elf::EF_MIPS_ARCH_4,
                 "mips5" => elf::EF_MIPS_ARCH_5,
-                s if s.contains("r6") => elf::EF_MIPS_ARCH_32R6,
-                _ => elf::EF_MIPS_ARCH_32R2,
+                "mips32r2" if is_32bit => elf::EF_MIPS_ARCH_32R2,
+                "mips32r6" if is_32bit => elf::EF_MIPS_ARCH_32R6,
+                "mips64r2" if !is_32bit => elf::EF_MIPS_ARCH_64R2,
+                "mips64r6" if !is_32bit => elf::EF_MIPS_ARCH_64R6,
+                s if s.starts_with("mips32") && !is_32bit => {
+                    sess.dcx().fatal(format!("invalid CPU `{}` for 64-bit MIPS target", s))
+                }
+                s if s.starts_with("mips64") && is_32bit => {
+                    sess.dcx().fatal(format!("invalid CPU `{}` for 32-bit MIPS target", s))
+                }
+                _ if is_32bit => elf::EF_MIPS_ARCH_32R2,
+                _ => elf::EF_MIPS_ARCH_64R2,
             };
 
-            let mut e_flags = elf::EF_MIPS_CPIC | arch;
-
-            // If the ABI is explicitly given, use it or default to O32.
-            match sess.target.options.llvm_abiname.to_lowercase().as_str() {
-                "n32" => e_flags |= elf::EF_MIPS_ABI2,
-                "o32" => e_flags |= elf::EF_MIPS_ABI_O32,
-                _ => e_flags |= elf::EF_MIPS_ABI_O32,
+            // If the ABI is explicitly given, use it, or default to O32 on 32-bit MIPS,
+            // which is the only "true" 32-bit option that LLVM supports.
+            match sess.target.options.llvm_abiname.as_ref() {
+                "o32" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
+                "n32" if !is_32bit => e_flags |= elf::EF_MIPS_ABI2,
+                "n64" if !is_32bit => {}
+                "" if is_32bit => e_flags |= elf::EF_MIPS_ABI_O32,
+                "" => sess.dcx().fatal("LLVM ABI must be specifed for 64-bit MIPS targets"),
+                s if is_32bit => {
+                    sess.dcx().fatal(format!("invalid LLVM ABI `{}` for 32-bit MIPS target", s))
+                }
+                s => sess.dcx().fatal(format!("invalid LLVM ABI `{}` for 64-bit MIPS target", s)),
             };
 
             if sess.target.options.relocation_model != RelocModel::Static {
-                e_flags |= elf::EF_MIPS_PIC;
+                // PIC means position-independent code. CPIC means "calls PIC".
+                // CPIC was mutually exclusive with PIC according to
+                // the SVR4 MIPS ABI https://refspecs.linuxfoundation.org/elf/mipsabi.pdf
+                // and should have only appeared on static objects with dynamically calls.
+                // At some point someone (GCC?) decided to set CPIC even for PIC.
+                // Nowadays various things expect both set on the same object file
+                // and may even error if you mix CPIC and non-CPIC object files,
+                // despite that being the entire point of the CPIC ABI extension!
+                // As we are in Rome, we do as the Romans do.
+                e_flags |= elf::EF_MIPS_PIC | elf::EF_MIPS_CPIC;
             }
             if sess.target.options.cpu.contains("r6") {
                 e_flags |= elf::EF_MIPS_NAN2008;
             }
-            e_flags
-        }
-        Architecture::Mips64 => {
-            // copied from `mips64el-linux-gnuabi64-gcc foo.c -c`
-            let e_flags = elf::EF_MIPS_CPIC
-                | elf::EF_MIPS_PIC
-                | if sess.target.options.cpu.contains("r6") {
-                    elf::EF_MIPS_ARCH_64R6 | elf::EF_MIPS_NAN2008
-                } else {
-                    elf::EF_MIPS_ARCH_64R2
-                };
             e_flags
         }
         Architecture::Riscv32 | Architecture::Riscv64 => {
@@ -321,10 +338,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             // Set the appropriate flag based on ABI
             // This needs to match LLVM `RISCVELFStreamer.cpp`
             match &*sess.target.llvm_abiname {
-                "" | "ilp32" | "lp64" => (),
+                "ilp32" | "lp64" => (),
                 "ilp32f" | "lp64f" => e_flags |= elf::EF_RISCV_FLOAT_ABI_SINGLE,
                 "ilp32d" | "lp64d" => e_flags |= elf::EF_RISCV_FLOAT_ABI_DOUBLE,
-                "ilp32e" => e_flags |= elf::EF_RISCV_RVE,
+                // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
+                "ilp32e" | "lp64e" => e_flags |= elf::EF_RISCV_RVE,
                 _ => bug!("unknown RISC-V ABI name"),
             }
 
@@ -348,7 +366,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Architecture::Avr => {
             // Resolve the ISA revision and set
             // the appropriate EF_AVR_ARCH flag.
-            ef_avr_arch(&sess.target.options.cpu)
+            if let Some(ref cpu) = sess.opts.cg.target_cpu {
+                ef_avr_arch(cpu)
+            } else {
+                bug!("AVR CPU not explicitly specified")
+            }
         }
         Architecture::Csky => {
             let e_flags = match sess.target.options.abi.as_ref() {
@@ -358,50 +380,57 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             e_flags
         }
         _ => 0,
-    };
-    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
-    let os_abi = match sess.target.options.os.as_ref() {
-        "hermit" => elf::ELFOSABI_STANDALONE,
-        "freebsd" => elf::ELFOSABI_FREEBSD,
-        "solaris" => elf::ELFOSABI_SOLARIS,
-        _ => elf::ELFOSABI_NONE,
-    };
-    let abi_version = 0;
-    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
-    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
-    Some(file)
+    }
 }
 
-/// Since Xcode 15 Apple's LD requires object files to contain information about what they were
-/// built for (LC_BUILD_VERSION): the platform (macOS/watchOS etc), minimum OS version, and SDK
-/// version. This returns a `MachOBuildVersion` for the target.
-fn macho_object_build_version_for_target(target: &Target) -> object::write::MachOBuildVersion {
+/// Mach-O files contain information about:
+/// - The platform/OS they were built for (macOS/watchOS/Mac Catalyst/iOS simulator etc).
+/// - The minimum OS version / deployment target.
+/// - The version of the SDK they were targetting.
+///
+/// In the past, this was accomplished using the LC_VERSION_MIN_MACOSX, LC_VERSION_MIN_IPHONEOS,
+/// LC_VERSION_MIN_TVOS or LC_VERSION_MIN_WATCHOS load commands, which each contain information
+/// about the deployment target and SDK version, and implicitly, by their presence, which OS they
+/// target. Simulator targets were determined if the architecture was x86_64, but there was e.g. a
+/// LC_VERSION_MIN_IPHONEOS present.
+///
+/// This is of course brittle and limited, so modern tooling emit the LC_BUILD_VERSION load
+/// command (which contains all three pieces of information in one) when the deployment target is
+/// high enough, or the target is something that wouldn't be encodable with the old load commands
+/// (such as Mac Catalyst, or Aarch64 iOS simulator).
+///
+/// Since Xcode 15, Apple's LD apparently requires object files to use this load command, so this
+/// returns the `MachOBuildVersion` for the target to do so.
+fn macho_object_build_version_for_target(sess: &Session) -> object::write::MachOBuildVersion {
     /// The `object` crate demands "X.Y.Z encoded in nibbles as xxxx.yy.zz"
     /// e.g. minOS 14.0 = 0x000E0000, or SDK 16.2 = 0x00100200
-    fn pack_version((major, minor): (u32, u32)) -> u32 {
-        (major << 16) | (minor << 8)
+    fn pack_version(apple::OSVersion { major, minor, patch }: apple::OSVersion) -> u32 {
+        let (major, minor, patch) = (major as u32, minor as u32, patch as u32);
+        (major << 16) | (minor << 8) | patch
     }
 
-    let platform =
-        rustc_target::spec::current_apple_platform(target).expect("unknown Apple target OS");
-    let min_os = rustc_target::spec::current_apple_deployment_target(target)
-        .expect("unknown Apple target OS");
-    let sdk =
-        rustc_target::spec::current_apple_sdk_version(platform).expect("unknown Apple target OS");
+    let platform = apple::macho_platform(&sess.target);
+    let min_os = sess.apple_deployment_target();
 
     let mut build_version = object::write::MachOBuildVersion::default();
     build_version.platform = platform;
     build_version.minos = pack_version(min_os);
-    build_version.sdk = pack_version(sdk);
+    // The version here does not _really_ matter, since it is only used at runtime, and we specify
+    // it when linking the final binary, so we will omit the version. This is also what LLVM does,
+    // and the tooling also allows this (and shows the SDK version as `n/a`). Finally, it is the
+    // semantically correct choice, as the SDK has not influenced the binary generated by rustc at
+    // this point in time.
+    build_version.sdk = 0;
+
     build_version
 }
 
 /// Is Apple's CPU subtype `arm64e`s
 fn macho_is_arm64e(target: &Target) -> bool {
-    return target.llvm_target.starts_with("arm64e");
+    target.llvm_target.starts_with("arm64e")
 }
 
-pub enum MetadataPosition {
+pub(crate) enum MetadataPosition {
     First,
     Last,
 }
@@ -437,7 +466,7 @@ pub enum MetadataPosition {
 /// * ELF - All other targets are similar to Windows in that there's a
 ///   `SHF_EXCLUDE` flag we can set on sections in an object file to get
 ///   automatically removed from the final output.
-pub fn create_wrapper_file(
+pub(crate) fn create_wrapper_file(
     sess: &Session,
     section_name: String,
     data: &[u8],
@@ -527,8 +556,8 @@ pub fn create_compressed_metadata_file(
     symbol_name: &str,
 ) -> Vec<u8> {
     let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
-    packed_metadata.write_all(&(metadata.raw_data().len() as u64).to_le_bytes()).unwrap();
-    packed_metadata.extend(metadata.raw_data());
+    packed_metadata.write_all(&(metadata.stub_or_full().len() as u64).to_le_bytes()).unwrap();
+    packed_metadata.extend(metadata.stub_or_full());
 
     let Some(mut file) = create_object_file(sess) else {
         if sess.target.is_like_wasm {

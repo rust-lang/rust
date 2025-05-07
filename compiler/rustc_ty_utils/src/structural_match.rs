@@ -1,7 +1,7 @@
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingMode};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 
 /// This method returns true if and only if `adt_ty` itself has been marked as
@@ -11,7 +11,7 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 /// Note that this does *not* recursively check if the substructure of `adt_ty`
 /// implements the trait.
 fn has_structural_eq_impl<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
-    let infcx = &tcx.infer_ctxt().build();
+    let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::dummy();
 
     let ocx = ObligationCtxt::new(infcx);

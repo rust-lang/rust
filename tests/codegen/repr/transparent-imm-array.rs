@@ -1,5 +1,6 @@
+//@ add-core-stubs
 //@ revisions: arm-linux arm-android armv7-linux armv7-android mips thumb sparc
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[arm-linux] compile-flags: --target arm-unknown-linux-gnueabi
 //@[arm-linux] needs-llvm-components: arm
@@ -18,7 +19,8 @@
 
 // See ./transparent.rs
 // Some platforms pass large aggregates using immediate arrays in LLVMIR
-// Other platforms pass large aggregates using struct pointer in LLVMIR
+// Other platforms pass large aggregates using by-value struct pointer in LLVMIR
+// Yet more platforms pass large aggregates using opaque pointer in LLVMIR
 // This covers the "immediate array" case.
 
 #![feature(no_core, lang_items, transparent_unions)]
@@ -26,14 +28,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for [u32; 16] {}
+extern crate minicore;
+use minicore::*;
 impl Copy for BigS {}
 impl Copy for BigU {}
 

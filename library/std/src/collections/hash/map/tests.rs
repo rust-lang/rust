@@ -5,7 +5,7 @@ use super::Entry::{Occupied, Vacant};
 use super::HashMap;
 use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
-use crate::hash::RandomState;
+use crate::hash::{BuildHasher, BuildHasherDefault, DefaultHasher, RandomState};
 use crate::test_helpers::test_rng;
 
 // https://github.com/rust-lang/rust/issues/62301
@@ -274,7 +274,7 @@ fn test_lots_of_insertions() {
     for _ in 0..loops {
         assert!(m.is_empty());
 
-        let count = if cfg!(miri) { 101 } else { 1001 };
+        let count = if cfg!(miri) { 66 } else { 1001 };
 
         for i in 1..count {
             assert!(m.insert(i, i).is_none());
@@ -852,102 +852,9 @@ fn test_try_reserve() {
     }
 }
 
-#[test]
-fn test_raw_entry() {
-    use super::RawEntryMut::{Occupied, Vacant};
-
-    let xs = [(1i32, 10i32), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
-
-    let mut map: HashMap<_, _> = xs.iter().cloned().collect();
-
-    let compute_hash = |map: &HashMap<i32, i32>, k: i32| -> u64 {
-        use core::hash::{BuildHasher, Hash, Hasher};
-
-        let mut hasher = map.hasher().build_hasher();
-        k.hash(&mut hasher);
-        hasher.finish()
-    };
-
-    // Existing key (insert)
-    match map.raw_entry_mut().from_key(&1) {
-        Vacant(_) => unreachable!(),
-        Occupied(mut view) => {
-            assert_eq!(view.get(), &10);
-            assert_eq!(view.insert(100), 10);
-        }
-    }
-    let hash1 = compute_hash(&map, 1);
-    assert_eq!(map.raw_entry().from_key(&1).unwrap(), (&1, &100));
-    assert_eq!(map.raw_entry().from_hash(hash1, |k| *k == 1).unwrap(), (&1, &100));
-    assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash1, &1).unwrap(), (&1, &100));
-    assert_eq!(map.len(), 6);
-
-    // Existing key (update)
-    match map.raw_entry_mut().from_key(&2) {
-        Vacant(_) => unreachable!(),
-        Occupied(mut view) => {
-            let v = view.get_mut();
-            let new_v = (*v) * 10;
-            *v = new_v;
-        }
-    }
-    let hash2 = compute_hash(&map, 2);
-    assert_eq!(map.raw_entry().from_key(&2).unwrap(), (&2, &200));
-    assert_eq!(map.raw_entry().from_hash(hash2, |k| *k == 2).unwrap(), (&2, &200));
-    assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash2, &2).unwrap(), (&2, &200));
-    assert_eq!(map.len(), 6);
-
-    // Existing key (take)
-    let hash3 = compute_hash(&map, 3);
-    match map.raw_entry_mut().from_key_hashed_nocheck(hash3, &3) {
-        Vacant(_) => unreachable!(),
-        Occupied(view) => {
-            assert_eq!(view.remove_entry(), (3, 30));
-        }
-    }
-    assert_eq!(map.raw_entry().from_key(&3), None);
-    assert_eq!(map.raw_entry().from_hash(hash3, |k| *k == 3), None);
-    assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash3, &3), None);
-    assert_eq!(map.len(), 5);
-
-    // Nonexistent key (insert)
-    match map.raw_entry_mut().from_key(&10) {
-        Occupied(_) => unreachable!(),
-        Vacant(view) => {
-            assert_eq!(view.insert(10, 1000), (&mut 10, &mut 1000));
-        }
-    }
-    assert_eq!(map.raw_entry().from_key(&10).unwrap(), (&10, &1000));
-    assert_eq!(map.len(), 6);
-
-    // Ensure all lookup methods produce equivalent results.
-    for k in 0..12 {
-        let hash = compute_hash(&map, k);
-        let v = map.get(&k).cloned();
-        let kv = v.as_ref().map(|v| (&k, v));
-
-        assert_eq!(map.raw_entry().from_key(&k), kv);
-        assert_eq!(map.raw_entry().from_hash(hash, |q| *q == k), kv);
-        assert_eq!(map.raw_entry().from_key_hashed_nocheck(hash, &k), kv);
-
-        match map.raw_entry_mut().from_key(&k) {
-            Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
-            Vacant(_) => assert_eq!(v, None),
-        }
-        match map.raw_entry_mut().from_key_hashed_nocheck(hash, &k) {
-            Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
-            Vacant(_) => assert_eq!(v, None),
-        }
-        match map.raw_entry_mut().from_hash(hash, |q| *q == k) {
-            Occupied(mut o) => assert_eq!(Some(o.get_key_value()), kv),
-            Vacant(_) => assert_eq!(v, None),
-        }
-    }
-}
-
 mod test_extract_if {
     use super::*;
-    use crate::panic::{catch_unwind, AssertUnwindSafe};
+    use crate::panic::{AssertUnwindSafe, catch_unwind};
     use crate::sync::atomic::{AtomicUsize, Ordering};
 
     trait EqSorted: Iterator {
@@ -1018,6 +925,7 @@ mod test_extract_if {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn drop_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1047,6 +955,7 @@ mod test_extract_if {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn pred_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1076,6 +985,7 @@ mod test_extract_if {
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn pred_panic_reuse() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1095,7 +1005,7 @@ mod test_extract_if {
                 _ => panic!(),
             });
             catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
-            // Iterator behaviour after a panic is explicitly unspecified,
+            // Iterator behavior after a panic is explicitly unspecified,
             // so this is just the current implementation:
             let result = catch_unwind(AssertUnwindSafe(|| it.next()));
             assert!(result.is_err());
@@ -1121,6 +1031,26 @@ fn from_array() {
 
 #[test]
 fn const_with_hasher() {
-    const X: HashMap<(), (), ()> = HashMap::with_hasher(());
-    assert_eq!(X.len(), 0);
+    const X: HashMap<(), (), BuildHasherDefault<DefaultHasher>> =
+        HashMap::with_hasher(BuildHasherDefault::new());
+    let mut x = X;
+    assert_eq!(x.len(), 0);
+    x.insert((), ());
+    assert_eq!(x.len(), 1);
+
+    // It *is* possible to do this without using the `BuildHasherDefault` type.
+    struct MyBuildDefaultHasher;
+    impl BuildHasher for MyBuildDefaultHasher {
+        type Hasher = DefaultHasher;
+
+        fn build_hasher(&self) -> Self::Hasher {
+            DefaultHasher::new()
+        }
+    }
+
+    const Y: HashMap<(), (), MyBuildDefaultHasher> = HashMap::with_hasher(MyBuildDefaultHasher);
+    let mut y = Y;
+    assert_eq!(y.len(), 0);
+    y.insert((), ());
+    assert_eq!(y.len(), 1);
 }

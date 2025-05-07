@@ -3,7 +3,6 @@
 // Test that the requirement (in `Bar`) that `T::Bar : 'static` does
 // not wind up propagating to `T`.
 
-//@ pretty-expanded FIXME #23616
 
 pub trait Foo {
     type Bar;

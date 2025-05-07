@@ -6,7 +6,7 @@ exclude = ["no-std-smoke"] # it wants to be panic="abort"
 name = "cargo-miri-test"
 version = "0.1.0"
 authors = ["Miri Team"]
-edition = "2018"
+edition = "2024"
 
 [dependencies]
 byteorder = "1.0"

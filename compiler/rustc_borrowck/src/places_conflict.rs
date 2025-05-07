@@ -3,7 +3,7 @@
 //! we can prove overlap one way or another. Essentially, we treat `Overlap` as
 //! a monoid and report a conflict if the product ends up not being `Disjoint`.
 //!
-//! At each step, if we didn't run out of borrow or place, we know that our elements
+//! On each step, if we didn't run out of borrow or place, we know that our elements
 //! have the same type, and that they only overlap if they are the identical.
 //!
 //! For example, if we are comparing these:
@@ -59,6 +59,7 @@ use rustc_middle::mir::{
     Body, BorrowKind, FakeBorrowKind, MutBorrowKind, Place, PlaceElem, PlaceRef, ProjectionElem,
 };
 use rustc_middle::ty::{self, TyCtxt};
+use tracing::{debug, instrument};
 
 use crate::{AccessDepth, ArtificialField, Deep, Overlap, Shallow};
 
@@ -201,7 +202,7 @@ fn place_components_conflict<'tcx>(
 
             let base_ty = base.ty(body, tcx).ty;
 
-            match (elem, &base_ty.kind(), access) {
+            match (elem, base_ty.kind(), access) {
                 (_, _, Shallow(Some(ArtificialField::ArrayLength)))
                 | (_, _, Shallow(Some(ArtificialField::FakeBorrow))) => {
                     // The array length is like additional fields on the
@@ -249,7 +250,8 @@ fn place_components_conflict<'tcx>(
                 | (ProjectionElem::Subslice { .. }, _, _)
                 | (ProjectionElem::OpaqueCast { .. }, _, _)
                 | (ProjectionElem::Subtype(_), _, _)
-                | (ProjectionElem::Downcast { .. }, _, _) => {
+                | (ProjectionElem::Downcast { .. }, _, _)
+                | (ProjectionElem::UnwrapUnsafeBinder(_), _, _) => {
                     // Recursive case. This can still be disjoint on a
                     // further iteration if this a shallow access and
                     // there's a deref later on, e.g., a borrow
@@ -518,5 +520,9 @@ fn place_projection_conflict<'tcx>(
             pi1_elem,
             pi2_elem
         ),
+
+        (ProjectionElem::UnwrapUnsafeBinder(_), _) => {
+            todo!()
+        }
     }
 }

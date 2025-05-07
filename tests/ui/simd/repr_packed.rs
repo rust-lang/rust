@@ -1,7 +1,9 @@
 //@ run-pass
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::simd_add;
 
 #[repr(simd, packed)]
 struct Simd<T, const N: usize>([T; N]);
@@ -20,10 +22,6 @@ fn check_ty<T>() {
     check_size_align::<T, 8>();
     check_size_align::<T, 9>();
     check_size_align::<T, 15>();
-}
-
-extern "rust-intrinsic" {
-    fn simd_add<T>(a: T, b: T) -> T;
 }
 
 fn main() {

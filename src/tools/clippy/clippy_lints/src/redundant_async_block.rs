@@ -1,16 +1,10 @@
-use std::ops::ControlFlow;
-
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::ty::implements_trait;
-use clippy_utils::visitors::for_each_expr_without_closures;
+use clippy_utils::{desugar_await, peel_blocks};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, MatchSource,
-};
+use rustc_hir::{Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
 use rustc_session::declare_lint_pass;
 
@@ -24,7 +18,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// let f = async {
-    ///    1 + 2
+    ///     1 + 2
     /// };
     /// let fut = async {
     ///     f.await
@@ -33,7 +27,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// let f = async {
-    ///    1 + 2
+    ///     1 + 2
     /// };
     /// let fut = f;
     /// ```
@@ -47,7 +41,7 @@ declare_lint_pass!(RedundantAsyncBlock => [REDUNDANT_ASYNC_BLOCK]);
 impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let span = expr.span;
-        if !in_external_macro(cx.tcx.sess, span) &&
+        if !span.in_external_macro(cx.tcx.sess.source_map()) &&
             let Some(body_expr) = desugar_async_block(cx, expr) &&
             let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
             // The await prefix must not come from a macro as its content could change in the future.
@@ -76,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
 /// any variable by ref.
 fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Closure(Closure { body, def_id, kind, .. }) = expr.kind
-        && let body = cx.tcx.hir().body(*body)
+        && let body = cx.tcx.hir_body(*body)
         && matches!(
             kind,
             ClosureKind::Coroutine(CoroutineKind::Desugared(
@@ -88,7 +82,7 @@ fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
         cx.typeck_results()
             .closure_min_captures
             .get(def_id)
-            .map_or(true, |m| {
+            .is_none_or(|m| {
                 m.values().all(|places| {
                     places
                         .iter()
@@ -96,23 +90,6 @@ fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
                 })
             })
             .then_some(body.value)
-    } else {
-        None
-    }
-}
-
-/// If `expr` is a desugared `.await`, return the original expression if it does not come from a
-/// macro expansion.
-fn desugar_await<'tcx>(expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Match(match_value, _, MatchSource::AwaitDesugar) = expr.kind
-        && let ExprKind::Call(_, [into_future_arg]) = match_value.kind
-        && let ctxt = expr.span.ctxt()
-        && for_each_expr_without_closures(into_future_arg, |e| {
-            walk_span_to_context(e.span, ctxt).map_or(ControlFlow::Break(()), |_| ControlFlow::Continue(()))
-        })
-        .is_none()
-    {
-        Some(into_future_arg)
     } else {
         None
     }

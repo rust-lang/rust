@@ -1,7 +1,7 @@
 <h2 id="layout" class="section-header"> {# #}
     Layout<a href="#layout" class="anchor">§</a> {# #}
 </h2> {# #}
-<div class="docblock"> {# #}
+<div class="docblock">
     {% match type_layout_size %}
     {% when Ok(type_layout_size) %}
     <div class="warning"> {# #}
@@ -10,32 +10,30 @@
                 unstable</strong> and may even differ between compilations. {#+ #}
             The only exception is types with certain <code>repr(...)</code> {#+ #}
             attributes. Please see the Rust Reference's {#+ #}
-            <a href="https://doc.rust-lang.org/reference/type-layout.html">“Type Layout”</a> {#+ #}
+            <a href="{{ crate::DOC_RUST_LANG_ORG_VERSION }}/reference/type-layout.html">“Type Layout”</a> {#+ #}
             chapter for details on type layout guarantees. {# #}
         </p> {# #}
     </div> {# #}
-    <p><strong>Size:</strong> {{+ type_layout_size|safe }}</p> {# #}
+    <p><strong>Size:</strong> {{+ type_layout_size|safe }}</p>
     {% if !variants.is_empty() %}
     <p> {# #}
         <strong>Size for each variant:</strong> {# #}
     </p> {# #}
-    <ul> {# #}
+    <ul>
         {% for (name, layout_size) in variants %}
         <li> {# #}
             <code>{{ name }}</code>: {#+ #}
             {{ layout_size|safe }}
-        </li> {# #}
+        </li>
         {% endfor %}
-    </ul> {# #}
+    </ul>
     {% endif %}
-    {# This kind of layout error can occur with valid code, e.g. if you try to
-    get the layout of a generic type such as `Vec<T>`. #}
+        {# This kind of layout error can occur with valid code, for example
+        if there are trivial bounds: `struct Foo(str, str) where str: Sized;`. #}
         {% when Err(LayoutError::Unknown(_)) %}
         <p> {# #}
-            <strong>Note:</strong> Unable to compute type layout, {#+ #}
-            possibly due to this type having generic parameters. {#+ #}
-            Layout can only be computed for concrete, fully-instantiated types. {# #}
-        </p> {# #}
+            <strong>Note:</strong> Unable to compute type layout. {# #}
+        </p>
         {# This kind of error probably can't happen with valid code, but we don't
         want to panic and prevent the docs from building, so we just let the
         user know that we couldn't compute the layout. #}
@@ -43,21 +41,29 @@
         <p> {# #}
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}
             the type was too big. {# #}
-        </p> {# #}
+        </p>
+        {# This kind of layout error can occur with valid code, e.g. if you try to
+        get the layout of a generic type such as `Vec<T>`. #}
+        {% when Err(LayoutError::TooGeneric(_)) %}
+        <p> {# #}
+            <strong>Note:</strong> Unable to compute type layout, {#+ #}
+            possibly due to this type having generic parameters. {#+ #}
+            Layout can only be computed for concrete, fully-instantiated types. {# #}
+        </p>
         {% when Err(LayoutError::ReferencesError(_)) %}
         <p> {# #}
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}
             the type references errors. {# #}
-        </p> {# #}
+        </p>
         {% when Err(LayoutError::NormalizationFailure(_, _)) %}
         <p> {# #}
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}
             the type failed to be normalized. {# #}
-        </p> {# #}
+        </p>
         {% when Err(LayoutError::Cycle(_)) %}
         <p> {# #}
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}
             the type's layout depended on the type's layout itself. {# #}
-        </p> {# #}
+        </p>
         {% endmatch %}
 </div> {# #}

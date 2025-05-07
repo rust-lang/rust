@@ -10,11 +10,11 @@ fn test_1_should_capture() {
     let variant = Some(2229);
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         match variant {
-        //~^ NOTE: Capturing variant[] -> ImmBorrow
-        //~| NOTE: Min Capture variant[] -> ImmBorrow
+        //~^ NOTE: Capturing variant[] -> Immutable
+        //~| NOTE: Min Capture variant[] -> Immutable
             Some(_) => {}
             _ => {}
         }
@@ -28,7 +28,7 @@ fn test_2_should_not_capture() {
     let variant = Some(2229);
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
+    //~^ ERROR First Pass analysis includes:
         match variant {
             _ => {}
         }
@@ -47,7 +47,7 @@ fn test_3_should_not_capture_single_variant() {
     let variant = SingleVariant::Points(1);
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
+    //~^ ERROR First Pass analysis includes:
         match variant {
             SingleVariant::Points(_) => {}
         }
@@ -61,12 +61,12 @@ fn test_6_should_capture_single_variant() {
     let variant = SingleVariant::Points(1);
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         match variant {
-            //~^ NOTE: Capturing variant[] -> ImmBorrow
-            //~| NOTE: Capturing variant[(0, 0)] -> ImmBorrow
-            //~| NOTE: Min Capture variant[] -> ImmBorrow
+            //~^ NOTE: Capturing variant[] -> Immutable
+            //~| NOTE: Capturing variant[(0, 0)] -> Immutable
+            //~| NOTE: Min Capture variant[] -> Immutable
             SingleVariant::Points(a) => {
                 println!("{:?}", a);
             }
@@ -81,7 +81,7 @@ fn test_4_should_not_capture_array() {
     let array: [i32; 3] = [0; 3];
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
+    //~^ ERROR First Pass analysis includes:
         match array {
             [_,_,_] => {}
         }
@@ -93,7 +93,7 @@ fn test_4_should_not_capture_array() {
     let array: &[i32; 3] = &[0; 3];
     let c = #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
+    //~^ ERROR First Pass analysis includes:
         match array {
             [_, _, _] => {}
         }
@@ -106,7 +106,7 @@ fn test_4_should_not_capture_array() {
     let f = &Foo(&[10; 3]);
     let c = #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
+    //~^ ERROR First Pass analysis includes:
         match f {
             Foo([_, _, _]) => ()
         }
@@ -128,11 +128,11 @@ fn test_5_should_capture_multi_variant() {
     let variant = MVariant::A;
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         match variant {
-        //~^ NOTE: Capturing variant[] -> ImmBorrow
-        //~| NOTE: Min Capture variant[] -> ImmBorrow
+        //~^ NOTE: Capturing variant[] -> Immutable
+        //~| NOTE: Min Capture variant[] -> Immutable
             MVariant::A => {}
             _ => {}
         }
@@ -146,11 +146,11 @@ fn test_7_should_capture_slice_len() {
     let slice: &[i32] = &[1, 2, 3];
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         match slice {
-            //~^ NOTE: Capturing slice[] -> ImmBorrow
-            //~| NOTE: Min Capture slice[] -> ImmBorrow
+            //~^ NOTE: Capturing slice[] -> Immutable
+            //~| NOTE: Min Capture slice[] -> Immutable
             [_,_,_] => {},
             _ => {}
         }
@@ -158,11 +158,11 @@ fn test_7_should_capture_slice_len() {
     c();
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         match slice {
-            //~^ NOTE: Capturing slice[] -> ImmBorrow
-            //~| NOTE: Min Capture slice[] -> ImmBorrow
+            //~^ NOTE: Capturing slice[] -> Immutable
+            //~| NOTE: Min Capture slice[] -> Immutable
             [] => {},
             _ => {}
         }
@@ -170,11 +170,11 @@ fn test_7_should_capture_slice_len() {
     c();
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         match slice {
-            //~^ NOTE: Capturing slice[] -> ImmBorrow
-            //~| NOTE: Min Capture slice[] -> ImmBorrow
+            //~^ NOTE: Capturing slice[] -> Immutable
+            //~| NOTE: Min Capture slice[] -> Immutable
             [_, .. ,_] => {},
             _ => {}
         }
@@ -187,7 +187,7 @@ fn test_8_capture_slice_wild() {
     let slice: &[i32] = &[1, 2, 3];
     let c =  #[rustc_capture_analysis]
     || {
-    //~^ First Pass analysis includes:
+    //~^ ERROR First Pass analysis includes:
         match slice {
             [..] => {},
             _ => {}

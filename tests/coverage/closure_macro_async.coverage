@@ -1,6 +1,8 @@
    LL|       |#![feature(coverage_attribute)]
-   LL|       |#![feature(noop_waker)]
    LL|       |//@ edition: 2018
+   LL|       |
+   LL|       |//@ aux-build: executor.rs
+   LL|       |extern crate executor;
    LL|       |
    LL|       |macro_rules! bail {
    LL|       |    ($msg:literal $(,)?) => {
@@ -16,7 +18,7 @@
    LL|       |macro_rules! on_error {
    LL|       |    ($value:expr, $error_message:expr) => {
    LL|      0|        $value.or_else(|e| {
-   LL|      0|            // This closure, which is declared in a macro, should be instrumented.
+   LL|       |            // This closure, which is declared in a macro, should be instrumented.
    LL|      0|            let message = format!($error_message, e);
    LL|      0|            if message.len() > 0 {
    LL|      0|                println!("{}", message);
@@ -45,23 +47,5 @@
    LL|       |#[coverage(off)]
    LL|       |fn main() {
    LL|       |    executor::block_on(test()).unwrap();
-   LL|       |}
-   LL|       |
-   LL|       |mod executor {
-   LL|       |    use core::future::Future;
-   LL|       |    use core::pin::pin;
-   LL|       |    use core::task::{Context, Poll, Waker};
-   LL|       |
-   LL|       |    #[coverage(off)]
-   LL|       |    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-   LL|       |        let mut future = pin!(future);
-   LL|       |        let mut context = Context::from_waker(Waker::noop());
-   LL|       |
-   LL|       |        loop {
-   LL|       |            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-   LL|       |                break val;
-   LL|       |            }
-   LL|       |        }
-   LL|       |    }
    LL|       |}
 

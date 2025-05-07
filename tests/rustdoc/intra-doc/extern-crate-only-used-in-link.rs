@@ -6,7 +6,8 @@
 //@ aux-build:empty2.rs
 //@ aux-crate:priv:empty2=empty2.rs
 //@ build-aux-docs
-//@ compile-flags:-Z unstable-options --edition 2018
+//@ compile-flags:-Z unstable-options
+//@ edition: 2018
 
 //@ has extern_crate_only_used_in_link/index.html
 //@ has - '//a[@href="../issue_66159_1/struct.Something.html"]' 'issue_66159_1::Something'

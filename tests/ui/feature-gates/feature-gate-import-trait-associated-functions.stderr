@@ -1,0 +1,63 @@
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/feature-gate-import-trait-associated-functions.rs:4:9
+   |
+LL | use A::{DEFAULT, new};
+   |         ^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/feature-gate-import-trait-associated-functions.rs:4:18
+   |
+LL | use A::{DEFAULT, new};
+   |                  ^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/feature-gate-import-trait-associated-functions.rs:7:5
+   |
+LL | use Default::default;
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/feature-gate-import-trait-associated-functions.rs:27:26
+   |
+LL |     use super::A::{self, DEFAULT, new};
+   |                          ^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/feature-gate-import-trait-associated-functions.rs:27:35
+   |
+LL |     use super::A::{self, DEFAULT, new};
+   |                                   ^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/feature-gate-import-trait-associated-functions.rs:64:5
+   |
+LL | use Glob::*;
+   |     ^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

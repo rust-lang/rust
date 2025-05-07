@@ -8,7 +8,7 @@
 use run_make_support::{run, rustc};
 
 fn main() {
-    rustc().stdin(b"fn main(){}").arg("-Zno-link").arg("-").run();
+    rustc().stdin_buf(b"fn main(){}").arg("-Zno-link").arg("-").run();
     rustc().arg("-Zlink-only").input("rust_out.rlink").run();
     run("rust_out");
 }

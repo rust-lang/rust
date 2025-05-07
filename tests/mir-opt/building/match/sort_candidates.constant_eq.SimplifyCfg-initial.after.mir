@@ -16,18 +16,18 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     bb0: {
         StorageLive(_3);
         StorageLive(_4);
-        _4 = _1;
+        _4 = copy _1;
         StorageLive(_5);
-        _5 = _2;
+        _5 = copy _2;
         _3 = (move _4, move _5);
         StorageDead(_5);
         StorageDead(_4);
         PlaceMention(_3);
-        _9 = <str as PartialEq>::eq((_3.0: &str), const "a") -> [return: bb9, unwind: bb19];
+        _9 = <str as PartialEq>::eq(copy (_3.0: &str), const "a") -> [return: bb9, unwind: bb19];
     }
 
     bb1: {
-        switchInt((_3.1: bool)) -> [0: bb10, otherwise: bb11];
+        switchInt(copy (_3.1: bool)) -> [0: bb10, otherwise: bb11];
     }
 
     bb2: {
@@ -35,7 +35,7 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb3: {
-        switchInt((_3.1: bool)) -> [0: bb1, otherwise: bb4];
+        switchInt(copy (_3.1: bool)) -> [0: bb1, otherwise: bb4];
     }
 
     bb4: {
@@ -43,11 +43,11 @@ fn constant_eq(_1: &str, _2: bool) -> u32 {
     }
 
     bb5: {
-        _8 = <str as PartialEq>::eq((_3.0: &str), const "b") -> [return: bb8, unwind: bb19];
+        _8 = <str as PartialEq>::eq(copy (_3.0: &str), const "b") -> [return: bb8, unwind: bb19];
     }
 
     bb6: {
-        switchInt((_3.1: bool)) -> [0: bb1, otherwise: bb7];
+        switchInt(copy (_3.1: bool)) -> [0: bb1, otherwise: bb7];
     }
 
     bb7: {

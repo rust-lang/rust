@@ -10,16 +10,13 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 
 [dependencies]
-# We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap.workspace = true
 hashbrown.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
-sptr = "0.3.2"
 
 [lints]
 workspace = true

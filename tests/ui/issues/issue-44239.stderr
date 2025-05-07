@@ -6,8 +6,9 @@ LL |         const N: usize = n;
    |
 help: consider using `const` instead of `let`
    |
-LL |     const n: usize = 0;
-   |     ~~~~~
+LL -     let n: usize = 0;
+LL +     const n: usize = 0;
+   |
 
 error: aborting due to 1 previous error
 

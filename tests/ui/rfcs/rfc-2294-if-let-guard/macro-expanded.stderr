@@ -1,5 +1,5 @@
 error: expected expression, found `let` statement
-  --> $DIR/macro-expanded.rs:7:20
+  --> $DIR/macro-expanded.rs:6:20
    |
 LL |     ($e:expr) => { let Some(x) = $e }
    |                    ^^^

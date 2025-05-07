@@ -4,13 +4,14 @@ type Foo = impl Sized;
 
 fn foo<const C: u32>() {}
 
-const C: Foo = 42;
+#[define_opaque(Foo)]
+const fn baz() -> Foo {
+    42
+}
 
-fn bar()
-where
-    Foo:,
-{
-    foo::<C>();
+#[define_opaque(Foo)]
+fn bar() {
+    foo::<{ baz() }>();
     //~^ ERROR: mismatched types
 }
 

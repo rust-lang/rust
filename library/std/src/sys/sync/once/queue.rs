@@ -23,7 +23,7 @@
 // You'll find a few more details in the implementation, but that's the gist of
 // it!
 //
-// Atomic orderings:
+// Futex orderings:
 // When running `Once` we deal with multiple atomics:
 // `Once.state_and_queue` and an unknown number of `Waiter.signaled`.
 // * `state_and_queue` is used (1) as a state flag, (2) for synchronizing the
@@ -57,15 +57,15 @@
 
 use crate::cell::Cell;
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Release};
-use crate::sync::atomic::{AtomicBool, AtomicPtr};
-use crate::sync::once::ExclusiveState;
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicPtr};
+use crate::sync::poison::once::ExclusiveState;
 use crate::thread::{self, Thread};
 use crate::{fmt, ptr, sync as public};
 
 type StateAndQueue = *mut ();
 
 pub struct Once {
-    state_and_queue: AtomicPtr<()>,
+    state_and_queue: Atomic<*mut ()>,
 }
 
 pub struct OnceState {
@@ -93,8 +93,8 @@ const QUEUE_MASK: usize = !STATE_MASK;
 // use interior mutability.
 #[repr(align(4))] // Ensure the two lower bits are free to use as state bits.
 struct Waiter {
-    thread: Cell<Option<Thread>>,
-    signaled: AtomicBool,
+    thread: Thread,
+    signaled: Atomic<bool>,
     next: Cell<*const Waiter>,
 }
 
@@ -102,7 +102,7 @@ struct Waiter {
 // Every node is a struct on the stack of a waiting thread.
 // Will wake up the waiters when it gets dropped, i.e. also on panic.
 struct WaiterQueue<'a> {
-    state_and_queue: &'a AtomicPtr<()>,
+    state_and_queue: &'a Atomic<*mut ()>,
     set_state_on_drop_to: StateAndQueue,
 }
 
@@ -116,7 +116,6 @@ fn to_state(current: StateAndQueue) -> usize {
 
 impl Once {
     #[inline]
-    #[rustc_const_stable(feature = "const_once_new", since = "1.32.0")]
     pub const fn new() -> Once {
         Once { state_and_queue: AtomicPtr::new(ptr::without_provenance_mut(INCOMPLETE)) }
     }
@@ -138,6 +137,15 @@ impl Once {
             COMPLETE => ExclusiveState::Complete,
             _ => unreachable!("invalid Once state"),
         }
+    }
+
+    #[inline]
+    pub(crate) fn set_state(&mut self, new_state: ExclusiveState) {
+        *self.state_and_queue.get_mut() = match new_state {
+            ExclusiveState::Incomplete => ptr::without_provenance_mut(INCOMPLETE),
+            ExclusiveState::Poisoned => ptr::without_provenance_mut(POISONED),
+            ExclusiveState::Complete => ptr::without_provenance_mut(COMPLETE),
+        };
     }
 
     #[cold]
@@ -224,12 +232,12 @@ impl Once {
 }
 
 fn wait(
-    state_and_queue: &AtomicPtr<()>,
+    state_and_queue: &Atomic<*mut ()>,
     mut current: StateAndQueue,
     return_on_poisoned: bool,
 ) -> StateAndQueue {
     let node = &Waiter {
-        thread: Cell::new(Some(thread::current())),
+        thread: thread::current_or_unnamed(),
         signaled: AtomicBool::new(false),
         next: Cell::new(ptr::null()),
     };
@@ -268,7 +276,8 @@ fn wait(
             // can park ourselves, the result could be this thread never gets
             // unparked. Luckily `park` comes with the guarantee that if it got
             // an `unpark` just before on an unparked thread it does not park.
-            thread::park();
+            // SAFETY: we retrieved this handle on the current thread above.
+            unsafe { node.thread.park() }
         }
 
         return state_and_queue.load(Acquire);
@@ -300,7 +309,7 @@ impl Drop for WaiterQueue<'_> {
             let mut queue = to_queue(current);
             while !queue.is_null() {
                 let next = (*queue).next.get();
-                let thread = (*queue).thread.take().unwrap();
+                let thread = (*queue).thread.clone();
                 (*queue).signaled.store(true, Release);
                 thread.unpark();
                 queue = next;

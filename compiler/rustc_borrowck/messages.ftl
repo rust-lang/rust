@@ -162,13 +162,6 @@ borrowck_opaque_type_lifetime_mismatch =
     .prev_lifetime_label = lifetime `{$prev}` previously used here
     .note = if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
 
-borrowck_opaque_type_non_generic_param =
-    expected generic {$kind} parameter, found `{$ty}`
-    .label = {STREQ($ty, "'static") ->
-        [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
-        *[other] this generic parameter must be used with a generic {$kind} parameter
-    }
-
 borrowck_partial_var_move_by_use_in_closure =
     variable {$is_partial ->
         [true] partially moved
@@ -207,11 +200,15 @@ borrowck_simd_intrinsic_arg_const =
         *[other] {$arg}th
     } argument of `{$intrinsic}` is required to be a `const` item
 
-borrowck_suggest_create_freash_reborrow =
+borrowck_suggest_create_fresh_reborrow =
     consider reborrowing the `Pin` instead of moving it
 
 borrowck_suggest_iterate_over_slice =
     consider iterating over a slice of the `{$ty}`'s content to avoid moving into the `for` loop
+
+borrowck_tail_expr_drop_order = relative drop order changing in Rust 2024
+    .label = this temporary value will be dropped at the end of the block
+    .note = consider using a `let` binding to ensure the value will live long enough
 
 borrowck_ty_no_impl_copy =
     {$is_partial_move ->

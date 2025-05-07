@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::haiku::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
@@ -12,7 +12,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-haiku".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit Haiku".into()),
             tier: Some(3),
             host_tools: Some(true),

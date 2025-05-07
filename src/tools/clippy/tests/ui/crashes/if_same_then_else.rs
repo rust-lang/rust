@@ -1,7 +1,8 @@
-#![allow(clippy::comparison_chain)]
+//@ check-pass
+
 #![deny(clippy::if_same_then_else)]
 
-/// Test for https://github.com/rust-lang/rust-clippy/issues/2426
+// Test for https://github.com/rust-lang/rust-clippy/issues/2426
 
 fn main() {}
 

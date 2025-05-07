@@ -10,7 +10,7 @@
       bb0: {
           StorageLive(_2);
 -         StorageLive(_3);
--         _3 = _1;
+-         _3 = copy _1;
 -         _2 = dummy(move _3) -> [return: bb1, unwind unreachable];
 +         nop;
 +         nop;

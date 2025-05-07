@@ -11,7 +11,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     pub(super) fn try_report_placeholder_relation(&self) -> Option<Diag<'tcx>> {
         match &self.error {
             Some(RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::RelateRegionParamBound(span),
+                SubregionOrigin::RelateRegionParamBound(span, _),
                 Region(Interned(
                     RePlaceholder(ty::Placeholder {
                         bound: ty::BoundRegion { kind: sub_name, .. },
@@ -29,16 +29,16 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             )) => {
                 let span = *span;
                 let (sub_span, sub_symbol) = match sub_name {
-                    ty::BrNamed(def_id, symbol) => {
+                    ty::BoundRegionKind::Named(def_id, symbol) => {
                         (Some(self.tcx().def_span(def_id)), Some(symbol))
                     }
-                    ty::BrAnon | ty::BrEnv => (None, None),
+                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => (None, None),
                 };
                 let (sup_span, sup_symbol) = match sup_name {
-                    ty::BrNamed(def_id, symbol) => {
+                    ty::BoundRegionKind::Named(def_id, symbol) => {
                         (Some(self.tcx().def_span(def_id)), Some(symbol))
                     }
-                    ty::BrAnon | ty::BrEnv => (None, None),
+                    ty::BoundRegionKind::Anon | ty::BoundRegionKind::ClosureEnv => (None, None),
                 };
                 let diag = match (sub_span, sup_span, sub_symbol, sup_symbol) {
                     (Some(sub_span), Some(sup_span), Some(&sub_symbol), Some(&sup_symbol)) => {

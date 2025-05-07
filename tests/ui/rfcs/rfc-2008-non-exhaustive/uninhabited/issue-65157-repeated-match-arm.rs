@@ -11,11 +11,11 @@ use uninhabited::PartiallyInhabitedVariants;
 
 pub fn foo(x: PartiallyInhabitedVariants) {
     match x {
-        PartiallyInhabitedVariants::Struct { .. } => {},
-        PartiallyInhabitedVariants::Struct { .. } => {},
+        PartiallyInhabitedVariants::Struct { .. } => {}
+        PartiallyInhabitedVariants::Struct { .. } => {}
         //~^ ERROR unreachable pattern
-        _ => {},
+        _ => {}
     }
 }
 
-fn main() { }
+fn main() {}

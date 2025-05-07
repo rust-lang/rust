@@ -31,19 +31,22 @@ pub(crate) struct UnstableCTargetFeature<'a> {
     pub feature: &'a str,
 }
 
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_forbidden_ctarget_feature)]
+#[note]
+#[note(codegen_llvm_forbidden_ctarget_feature_issue)]
+pub(crate) struct ForbiddenCTargetFeature<'a> {
+    pub feature: &'a str,
+    pub enabled: &'a str,
+    pub reason: &'a str,
+}
+
 #[derive(Subdiagnostic)]
 pub(crate) enum PossibleFeature<'a> {
     #[help(codegen_llvm_possible_feature)]
     Some { rust_feature: &'a str },
     #[help(codegen_llvm_consider_filing_feature_request)]
     None,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_error_creating_import_library)]
-pub(crate) struct ErrorCreatingImportLibrary<'a> {
-    pub lib_name: &'a str,
-    pub error: String,
 }
 
 #[derive(Diagnostic)]
@@ -87,29 +90,13 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
     }
 }
 
-pub(crate) struct TargetFeatureDisableOrEnable<'a> {
-    pub features: &'a [&'a str],
-    pub span: Option<Span>,
-    pub missing_features: Option<MissingFeatures>,
-}
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_without_lto)]
+pub(crate) struct AutoDiffWithoutLTO;
 
-#[derive(Subdiagnostic)]
-#[help(codegen_llvm_missing_features)]
-pub(crate) struct MissingFeatures;
-
-impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, fluent::codegen_llvm_target_feature_disable_or_enable);
-        if let Some(span) = self.span {
-            diag.span(span);
-        };
-        if let Some(missing_features) = self.missing_features {
-            diag.subdiagnostic(missing_features);
-        }
-        diag.arg("features", self.features.join(", "));
-        diag
-    }
-}
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_without_enable)]
+pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_disallowed)]
@@ -147,12 +134,12 @@ pub enum LlvmError<'a> {
     LoadBitcode { name: CString },
     #[diag(codegen_llvm_write_thinlto_key)]
     WriteThinLtoKey { err: std::io::Error },
-    #[diag(codegen_llvm_multiple_source_dicompileunit)]
-    MultipleSourceDiCompileUnit,
     #[diag(codegen_llvm_prepare_thin_lto_module)]
     PrepareThinLtoModule,
     #[diag(codegen_llvm_parse_bitcode)]
     ParseBitcode,
+    #[diag(codegen_llvm_prepare_autodiff)]
+    PrepareAutoDiff { src: String, target: String, error: String },
 }
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
@@ -169,11 +156,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
             PrepareThinLtoContext => fluent::codegen_llvm_prepare_thin_lto_context_with_llvm_err,
             LoadBitcode { .. } => fluent::codegen_llvm_load_bitcode_with_llvm_err,
             WriteThinLtoKey { .. } => fluent::codegen_llvm_write_thinlto_key_with_llvm_err,
-            MultipleSourceDiCompileUnit => {
-                fluent::codegen_llvm_multiple_source_dicompileunit_with_llvm_err
-            }
             PrepareThinLtoModule => fluent::codegen_llvm_prepare_thin_lto_module_with_llvm_err,
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
+            PrepareAutoDiff { .. } => fluent::codegen_llvm_prepare_autodiff_with_llvm_err,
         };
         self.0
             .into_diag(dcx, level)
@@ -214,13 +199,13 @@ pub(crate) struct CopyBitcode {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_unknown_debuginfo_compression)]
-pub struct UnknownCompression {
+pub(crate) struct UnknownCompression {
     pub algorithm: &'static str,
 }
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_mismatch_data_layout)]
-pub struct MismatchedDataLayout<'a> {
+pub(crate) struct MismatchedDataLayout<'a> {
     pub rustc_target: &'a str,
     pub rustc_layout: &'a str,
     pub llvm_target: &'a str,
@@ -228,13 +213,11 @@ pub struct MismatchedDataLayout<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_target_feature_prefix)]
-pub(crate) struct InvalidTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_llvm_fixed_x18_invalid_arch)]
 pub(crate) struct FixedX18InvalidArch<'a> {
     pub arch: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_sanitizer_kcfi_arity_requires_llvm_21_0_0)]
+pub(crate) struct SanitizerKcfiArityRequiresLLVM2100;

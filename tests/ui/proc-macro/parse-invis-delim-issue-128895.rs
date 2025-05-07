@@ -1,4 +1,4 @@
-//@ aux-build:parse-invis-delim-issue-128895.rs
+//@ proc-macro: parse-invis-delim-issue-128895.rs
 //@ check-pass
 
 #![no_std] // Don't load unnecessary hygiene information from std

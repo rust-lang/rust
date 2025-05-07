@@ -1,6 +1,6 @@
 //@ assembly-output: emit-asm
 // # zen3 previously exhibited odd vectorization
-//@ compile-flags: --crate-type=lib -Ctarget-cpu=znver3 -O
+//@ compile-flags: --crate-type=lib -Ctarget-cpu=znver3 -Copt-level=3
 //@ only-x86_64
 //@ ignore-sgx
 

@@ -2,8 +2,8 @@ use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir, span_lint_hir
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats, last_path_segment,
-    SpanlessEq,
+    SpanlessEq, fulfill_or_allowed, get_parent_expr, in_automatically_derived, is_lint_allowed, iter_input_pats,
+    last_path_segment,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -12,10 +12,9 @@ use rustc_hir::{
     BinOpKind, BindingMode, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
+use rustc_span::def_id::LocalDefId;
 
 use crate::ref_patterns::REF_PATTERNS;
 
@@ -82,6 +81,45 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for the use of item with a single leading
+    /// underscore.
+    ///
+    /// ### Why is this bad?
+    /// A single leading underscore is usually used to indicate
+    /// that a item will not be used. Using such a item breaks this
+    /// expectation.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn _foo() {}
+    ///
+    /// struct _FooStruct {}
+    ///
+    /// fn main() {
+    ///     _foo();
+    ///     let _ = _FooStruct{};
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// fn foo() {}
+    ///
+    /// struct FooStruct {}
+    ///
+    /// fn main() {
+    ///     foo();
+    ///     let _ = FooStruct{};
+    /// }
+    /// ```
+    #[clippy::version = "1.83.0"]
+    pub USED_UNDERSCORE_ITEMS,
+    pedantic,
+    "using a item which is prefixed with an underscore"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for the use of short circuit boolean conditions as
     /// a
     /// statement.
@@ -104,6 +142,7 @@ declare_clippy_lint! {
 declare_lint_pass!(LintPass => [
     TOPLEVEL_REF_ARG,
     USED_UNDERSCORE_BINDING,
+    USED_UNDERSCORE_ITEMS,
     SHORT_CIRCUIT_STATEMENT,
 ]);
 
@@ -121,14 +160,14 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             for arg in iter_input_pats(decl, body) {
                 if let PatKind::Binding(BindingMode(ByRef::Yes(_), _), ..) = arg.pat.kind
                     && is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id)
-                    && !in_external_macro(cx.tcx.sess, arg.span)
+                    && !arg.span.in_external_macro(cx.tcx.sess.source_map())
                 {
                     span_lint_hir(
                         cx,
                         TOPLEVEL_REF_ARG,
                         arg.hir_id,
                         arg.pat.span,
-                        "`ref` directly on a function argument is ignored. \
+                        "`ref` directly on a function parameter does not prevent taking ownership of the passed argument. \
                         Consider using a reference type instead",
                     );
                 }
@@ -142,7 +181,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
             && is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id)
-            && !in_external_macro(cx.tcx.sess, stmt.span)
+            && !stmt.span.in_external_macro(cx.tcx.sess.source_map())
         {
             let ctxt = local.span.ctxt();
             let mut app = Applicability::MachineApplicable;
@@ -173,11 +212,12 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                     );
                 },
             );
-        };
+        }
         if let StmtKind::Semi(expr) = stmt.kind
-            && let ExprKind::Binary(ref binop, a, b) = expr.kind
-            && (binop.node == BinOpKind::And || binop.node == BinOpKind::Or)
-            && let Some(sugg) = Sugg::hir_opt(cx, a)
+            && let ExprKind::Binary(binop, a, b) = &expr.kind
+            && matches!(binop.node, BinOpKind::And | BinOpKind::Or)
+            && !stmt.span.from_expansion()
+            && expr.span.eq_ctxt(stmt.span)
         {
             span_lint_hir_and_then(
                 cx,
@@ -186,70 +226,122 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                 stmt.span,
                 "boolean short circuit operator in statement may be clearer using an explicit test",
                 |diag| {
-                    let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
-                    diag.span_suggestion(
-                        stmt.span,
-                        "replace it with",
-                        format!("if {sugg} {{ {}; }}", &snippet(cx, b.span, ".."),),
-                        Applicability::MachineApplicable, // snippet
-                    );
+                    let mut app = Applicability::MachineApplicable;
+                    let test = Sugg::hir_with_context(cx, a, expr.span.ctxt(), "_", &mut app);
+                    let test = if binop.node == BinOpKind::Or { !test } else { test };
+                    let then = Sugg::hir_with_context(cx, b, expr.span.ctxt(), "_", &mut app);
+                    diag.span_suggestion(stmt.span, "replace it with", format!("if {test} {{ {then}; }}"), app);
                 },
             );
-        };
+        }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span)
+        if expr.span.in_external_macro(cx.sess().source_map())
             || expr.span.desugaring_kind().is_some()
             || in_automatically_derived(cx.tcx, expr.hir_id)
         {
             return;
         }
-        let (definition_hir_id, ident) = match expr.kind {
-            ExprKind::Path(ref qpath) => {
-                if let QPath::Resolved(None, path) = qpath
-                    && let Res::Local(id) = path.res
-                    && is_used(cx, expr)
-                {
-                    (id, last_path_segment(qpath).ident)
-                } else {
-                    return;
-                }
-            },
-            ExprKind::Field(recv, ident) => {
-                if let Some(adt_def) = cx.typeck_results().expr_ty_adjusted(recv).ty_adt_def()
-                    && let Some(field) = adt_def.all_fields().find(|field| field.name == ident.name)
-                    && let Some(local_did) = field.did.as_local()
-                    && !cx.tcx.type_of(field.did).skip_binder().is_phantom_data()
-                {
-                    (cx.tcx.local_def_id_to_hir_id(local_did), ident)
-                } else {
-                    return;
-                }
-            },
-            _ => return,
-        };
 
-        let name = ident.name.as_str();
-        if name.starts_with('_')
-            && !name.starts_with("__")
-            && let definition_span = cx.tcx.hir().span(definition_hir_id)
-            && !definition_span.from_expansion()
-            && !fulfill_or_allowed(cx, USED_UNDERSCORE_BINDING, [expr.hir_id, definition_hir_id])
-        {
-            span_lint_and_then(
-                cx,
-                USED_UNDERSCORE_BINDING,
-                expr.span,
-                format!(
-                    "used binding `{name}` which is prefixed with an underscore. A leading \
-                     underscore signals that a binding will not be used"
-                ),
-                |diag| {
-                    diag.span_note(definition_span, format!("`{name}` is defined here"));
-                },
-            );
-        }
+        used_underscore_binding(cx, expr);
+        used_underscore_items(cx, expr);
+    }
+}
+
+fn used_underscore_items<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    let (def_id, ident) = match expr.kind {
+        ExprKind::Call(func, ..) => {
+            if let ExprKind::Path(QPath::Resolved(.., path)) = func.kind
+                && let Some(last_segment) = path.segments.last()
+                && let Res::Def(_, def_id) = last_segment.res
+            {
+                (def_id, last_segment.ident)
+            } else {
+                return;
+            }
+        },
+        ExprKind::MethodCall(path, ..) => {
+            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+                (def_id, path.ident)
+            } else {
+                return;
+            }
+        },
+        ExprKind::Struct(QPath::Resolved(_, path), ..) => {
+            if let Some(last_segment) = path.segments.last()
+                && let Res::Def(_, def_id) = last_segment.res
+            {
+                (def_id, last_segment.ident)
+            } else {
+                return;
+            }
+        },
+        _ => return,
+    };
+
+    let name = ident.name.as_str();
+    let definition_span = cx.tcx.def_span(def_id);
+    if name.starts_with('_')
+        && !name.starts_with("__")
+        && !definition_span.from_expansion()
+        && def_id.is_local()
+        && !cx.tcx.is_foreign_item(def_id)
+    {
+        span_lint_and_then(
+            cx,
+            USED_UNDERSCORE_ITEMS,
+            expr.span,
+            "used underscore-prefixed item".to_string(),
+            |diag| {
+                diag.span_note(definition_span, "item is defined here".to_string());
+            },
+        );
+    }
+}
+
+fn used_underscore_binding<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+    let (definition_hir_id, ident) = match expr.kind {
+        ExprKind::Path(ref qpath) => {
+            if let QPath::Resolved(None, path) = qpath
+                && let Res::Local(id) = path.res
+                && is_used(cx, expr)
+            {
+                (id, last_path_segment(qpath).ident)
+            } else {
+                return;
+            }
+        },
+        ExprKind::Field(recv, ident) => {
+            if let Some(adt_def) = cx.typeck_results().expr_ty_adjusted(recv).ty_adt_def()
+                && let Some(field) = adt_def.all_fields().find(|field| field.name == ident.name)
+                && let Some(local_did) = field.did.as_local()
+                && !cx.tcx.type_of(field.did).skip_binder().is_phantom_data()
+            {
+                (cx.tcx.local_def_id_to_hir_id(local_did), ident)
+            } else {
+                return;
+            }
+        },
+        _ => return,
+    };
+
+    let name = ident.name.as_str();
+    if name.starts_with('_')
+        && !name.starts_with("__")
+        && let definition_span = cx.tcx.hir_span(definition_hir_id)
+        && !definition_span.from_expansion()
+        && !fulfill_or_allowed(cx, USED_UNDERSCORE_BINDING, [expr.hir_id, definition_hir_id])
+    {
+        span_lint_and_then(
+            cx,
+            USED_UNDERSCORE_BINDING,
+            expr.span,
+            "used underscore-prefixed binding".to_string(),
+            |diag| {
+                diag.span_note(definition_span, "binding is defined here".to_string());
+            },
+        );
     }
 }
 
@@ -257,7 +349,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
 /// `unused_variables`'s idea
 /// of what it means for an expression to be "used".
 fn is_used(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    get_parent_expr(cx, expr).map_or(true, |parent| match parent.kind {
+    get_parent_expr(cx, expr).is_none_or(|parent| match parent.kind {
         ExprKind::Assign(_, rhs, _) | ExprKind::AssignOp(_, _, rhs) => SpanlessEq::new(cx).eq_expr(rhs, expr),
         _ => is_used(cx, parent),
     })

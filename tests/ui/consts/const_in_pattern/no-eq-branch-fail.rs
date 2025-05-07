@@ -16,8 +16,7 @@ const BAR_BAZ: Foo = if 42 == 42 {
 
 fn main() {
     match Foo::Qux(NoEq) {
-        BAR_BAZ => panic!(),
-        //~^ ERROR must be annotated with `#[derive(PartialEq)]`
+        BAR_BAZ => panic!(), //~ ERROR constant of non-structural type `Foo` in a pattern
         _ => {}
     }
 }

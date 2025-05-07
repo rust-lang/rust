@@ -2,7 +2,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use unicode_security::general_security_profile::IdentifierType;
 
 use crate::lints::{
@@ -159,12 +159,13 @@ impl EarlyLintPass for NonAsciiIdents {
         use rustc_span::Span;
         use unicode_security::GeneralSecurityProfile;
 
-        let check_non_ascii_idents = cx.builder.lint_level(NON_ASCII_IDENTS).0 != Level::Allow;
+        let check_non_ascii_idents = cx.builder.lint_level(NON_ASCII_IDENTS).level != Level::Allow;
         let check_uncommon_codepoints =
-            cx.builder.lint_level(UNCOMMON_CODEPOINTS).0 != Level::Allow;
-        let check_confusable_idents = cx.builder.lint_level(CONFUSABLE_IDENTS).0 != Level::Allow;
+            cx.builder.lint_level(UNCOMMON_CODEPOINTS).level != Level::Allow;
+        let check_confusable_idents =
+            cx.builder.lint_level(CONFUSABLE_IDENTS).level != Level::Allow;
         let check_mixed_script_confusables =
-            cx.builder.lint_level(MIXED_SCRIPT_CONFUSABLES).0 != Level::Allow;
+            cx.builder.lint_level(MIXED_SCRIPT_CONFUSABLES).level != Level::Allow;
 
         if !check_non_ascii_idents
             && !check_uncommon_codepoints
@@ -183,7 +184,7 @@ impl EarlyLintPass for NonAsciiIdents {
         #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_by_key(|k| k.1);
-        for (symbol, &sp) in symbols.iter() {
+        for &(ref symbol, &sp) in symbols.iter() {
             let symbol_str = symbol.as_str();
             if symbol_str.is_ascii() {
                 continue;
@@ -205,7 +206,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     (IdentifierType::Not_NFKC, "Not_NFKC"),
                 ] {
                     let codepoints: Vec<_> =
-                        chars.extract_if(|(_, ty)| *ty == Some(id_ty)).collect();
+                        chars.extract_if(.., |(_, ty)| *ty == Some(id_ty)).collect();
                     if codepoints.is_empty() {
                         continue;
                     }
@@ -221,7 +222,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 }
 
                 let remaining = chars
-                    .extract_if(|(c, _)| !GeneralSecurityProfile::identifier_allowed(*c))
+                    .extract_if(.., |(c, _)| !GeneralSecurityProfile::identifier_allowed(*c))
                     .collect::<Vec<_>>();
                 if !remaining.is_empty() {
                     cx.emit_span_lint(
@@ -242,7 +243,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 UnordMap::with_capacity(symbols.len());
             let mut skeleton_buf = String::new();
 
-            for (&symbol, &sp) in symbols.iter() {
+            for &(&symbol, &sp) in symbols.iter() {
                 use unicode_security::confusable_detection::skeleton;
 
                 let symbol_str = symbol.as_str();
@@ -298,7 +299,7 @@ impl EarlyLintPass for NonAsciiIdents {
             script_states.insert(latin_augmented_script_set, ScriptSetUsage::Verified);
 
             let mut has_suspicious = false;
-            for (symbol, &sp) in symbols.iter() {
+            for &(ref symbol, &sp) in symbols.iter() {
                 let symbol_str = symbol.as_str();
                 for ch in symbol_str.chars() {
                     if ch.is_ascii() {

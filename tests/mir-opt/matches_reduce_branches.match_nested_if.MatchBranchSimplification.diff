@@ -46,7 +46,7 @@
 -     bb4: {
 +         StorageLive(_7);
 +         _7 = move _6;
-+         _5 = Ne(_7, const false);
++         _5 = Ne(copy _7, const false);
 +         StorageDead(_7);
 +         StorageLive(_8);
 +         _8 = move _5;
@@ -66,7 +66,7 @@
 -     }
 - 
 -     bb7: {
-+         _4 = Ne(_8, const false);
++         _4 = Ne(copy _8, const false);
 +         StorageDead(_8);
 +         StorageLive(_9);
 +         _9 = move _4;
@@ -86,7 +86,7 @@
 -     }
 - 
 -     bb10: {
-+         _3 = Ne(_9, const false);
++         _3 = Ne(copy _9, const false);
 +         StorageDead(_9);
 +         StorageLive(_10);
 +         _10 = move _3;
@@ -104,10 +104,10 @@
 -     }
 - 
 -     bb12: {
-+         _1 = Ne(_10, const false);
++         _1 = Ne(copy _10, const false);
 +         StorageDead(_10);
           StorageDead(_2);
-          _0 = _1;
+          _0 = copy _1;
           StorageDead(_1);
           return;
       }

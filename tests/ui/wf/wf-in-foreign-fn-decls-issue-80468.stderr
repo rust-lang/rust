@@ -9,19 +9,6 @@ help: indicate the anonymous lifetime
 LL | impl Trait for Ref<'_> {}
    |                   ++++
 
-error[E0277]: the trait bound `Ref<'_>: Trait` is not satisfied
-  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:16:21
-   |
-LL |     pub fn repro(_: Wrapper<Ref>);
-   |                     ^^^^^^^^^^^^ the trait `Trait` is not implemented for `Ref<'_>`
-   |
-note: required by a bound in `Wrapper`
-  --> $DIR/wf-in-foreign-fn-decls-issue-80468.rs:8:23
-   |
-LL | pub struct Wrapper<T: Trait>(T);
-   |                       ^^^^^ required by this bound in `Wrapper`
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0277, E0726.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0726`.

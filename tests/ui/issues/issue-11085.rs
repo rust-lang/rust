@@ -1,10 +1,9 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 
 struct Foo {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     bar: baz,
     foo: isize,
 }
@@ -16,18 +15,18 @@ struct Foo2 {
 
 enum Bar1 {
     Bar1_1,
-    #[cfg(FALSE)]
+    #[cfg(false)]
     Bar1_2(NotAType),
 }
 
 enum Bar2 {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     Bar2_1(NotAType),
 }
 
 enum Bar3 {
     Bar3_1 {
-        #[cfg(FALSE)]
+        #[cfg(false)]
         foo: isize,
         bar: isize,
     }

@@ -2,6 +2,7 @@
 // Make sure we find these even with many checks disabled.
 //@compile-flags: -Zmiri-disable-alignment-check -Zmiri-disable-stacked-borrows -Zmiri-disable-validation
 
+#![allow(unnecessary_transmutes)]
 fn main() {
     let c = 0xFFFFFFu32;
     assert!(std::char::from_u32(c).is_none());

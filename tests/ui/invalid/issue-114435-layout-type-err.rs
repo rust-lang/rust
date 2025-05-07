@@ -1,6 +1,5 @@
-//@ build-fail
+//@ check-fail
 //@ compile-flags: --crate-type lib -Cdebuginfo=2
-//@ error-pattern: the type has an unknown layout
 
 #![recursion_limit = "10"]
 macro_rules! link {
@@ -28,7 +27,6 @@ impl Bottom {
     }
 }
 
-
 link!(A, B);
 link!(B, C);
 link!(C, D);
@@ -41,4 +39,6 @@ link!(I, J);
 link!(J, K);
 link!(K, Bottom);
 
-fn main() { }
+fn main() {}
+
+//~? ERROR reached the recursion limit finding the struct tail for `Bottom`

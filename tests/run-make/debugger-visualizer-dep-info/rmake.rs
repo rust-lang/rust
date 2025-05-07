@@ -6,6 +6,6 @@ use run_make_support::{invalid_utf8_contains, rustc};
 
 fn main() {
     rustc().emit("dep-info").input("main.rs").run();
-    invalid_utf8_contains("main.d", "foo.py");
+    invalid_utf8_contains("main.d", "my_gdb_script.py");
     invalid_utf8_contains("main.d", "my_visualizers/bar.natvis");
 }

@@ -9,7 +9,6 @@ use std::io::prelude::*;
 fn test1() -> Result<(), Box<dyn std::error::Error>> {
     let mut _file = File::create("foo.txt")?;
     //~^ ERROR the `?` operator can only be used in a function
-
     Ok(())
 }
 
@@ -17,7 +16,6 @@ fn test2() -> Result<(), Box<dyn std::error::Error>> {
     let mut _file = File::create("foo.txt")?;
     //~^ ERROR the `?` operator can only be used in a function
     println!();
-
     Ok(())
 }
 
@@ -27,16 +25,31 @@ macro_rules! mac {
             let mut _file = File::create("foo.txt")?;
             //~^ ERROR the `?` operator can only be used in a function
             println!();
-        
-    Ok(())
-}
+            Ok(())
+        }
     };
+}
+
+struct A;
+
+impl A {
+    fn test4(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut _file = File::create("foo.txt")?;
+        //~^ ERROR the `?` operator can only be used in a method
+        Ok(())
+    }
+
+    fn test5(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut _file = File::create("foo.txt")?;
+        //~^ ERROR the `?` operator can only be used in a method
+        println!();
+        Ok(())
+    }
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut _file = File::create("foo.txt")?;
     //~^ ERROR the `?` operator can only be used in a function
     mac!();
-
     Ok(())
 }

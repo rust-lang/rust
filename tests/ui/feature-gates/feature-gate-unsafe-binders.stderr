@@ -1,0 +1,13 @@
+error[E0658]: unsafe binder types are experimental
+  --> $DIR/feature-gate-unsafe-binders.rs:3:12
+   |
+LL |     let x: unsafe<> ();
+   |            ^^^^^^^^^^^
+   |
+   = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
+   = help: add `#![feature(unsafe_binders)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

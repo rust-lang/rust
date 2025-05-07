@@ -6,6 +6,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{is_self, is_self_ty};
 use core::ops::ControlFlow;
+use rustc_abi::ExternAbi;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -18,8 +19,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, RegionKind, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span};
-use rustc_target::spec::abi::Abi;
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -110,7 +110,7 @@ pub struct PassByRefOrValue {
     avoid_breaking_exported_api: bool,
 }
 
-impl<'tcx> PassByRefOrValue {
+impl PassByRefOrValue {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         let ref_min_size = conf.trivial_copy_size_limit.unwrap_or_else(|| {
             let bit_width = u64::from(tcx.sess.target.pointer_width);
@@ -130,18 +130,18 @@ impl<'tcx> PassByRefOrValue {
         }
     }
 
-    fn check_poly_fn(&mut self, cx: &LateContext<'tcx>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
+    fn check_poly_fn(&mut self, cx: &LateContext<'_>, def_id: LocalDefId, decl: &FnDecl<'_>, span: Option<Span>) {
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
             return;
         }
 
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
-        let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
+        let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir_body(id));
 
         // Gather all the lifetimes found in the output type which may affect whether
         // `TRIVIALLY_COPY_PASS_BY_REF` should be linted.
         let mut output_regions = FxHashSet::default();
-        for_each_top_level_late_bound_region(fn_sig.skip_binder().output(), |region| -> ControlFlow<!> {
+        let _ = for_each_top_level_late_bound_region(fn_sig.skip_binder().output(), |region| -> ControlFlow<!> {
             output_regions.insert(region);
             ControlFlow::Continue(())
         });
@@ -178,21 +178,20 @@ impl<'tcx> PassByRefOrValue {
                         && size <= self.ref_min_size
                         && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
-                        if let Some(typeck) = cx.maybe_typeck_results() {
-                            // Don't lint if an unsafe pointer is created.
-                            // TODO: Limit the check only to unsafe pointers to the argument (or part of the argument)
+                        if let Some(typeck) = cx.maybe_typeck_results()
+                            // Don't lint if a raw pointer is created.
+                            // TODO: Limit the check only to raw pointers to the argument (or part of the argument)
                             //       which escape the current function.
-                            if typeck.node_types().items().any(|(_, &ty)| ty.is_unsafe_ptr())
+                            && (typeck.node_types().items().any(|(_, &ty)| ty.is_raw_ptr())
                                 || typeck
                                     .adjustments()
                                     .items()
                                     .flat_map(|(_, a)| a)
-                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer)))
-                            {
-                                continue;
-                            }
+                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCoercion::UnsafeFnPointer))))
+                        {
+                            continue;
                         }
-                        let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
+                        let value_type = if fn_body.and_then(|body| body.params.get(index)).is_some_and(is_self) {
                             "self".into()
                         } else {
                             snippet(cx, decl_ty.span, "_").into()
@@ -277,17 +276,16 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         match kind {
             FnKind::ItemFn(.., header) => {
-                if header.abi != Abi::Rust {
+                if header.abi != ExternAbi::Rust {
                     return;
                 }
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 for a in attrs {
-                    if let Some(meta_items) = a.meta_item_list() {
-                        if a.has_name(sym::proc_macro_derive)
-                            || (a.has_name(sym::inline) && attr::list_contains_name(&meta_items, sym::always))
-                        {
-                            return;
-                        }
+                    if let Some(meta_items) = a.meta_item_list()
+                        && (a.has_name(sym::proc_macro_derive)
+                            || (a.has_name(sym::inline) && attr::list_contains_name(&meta_items, sym::always)))
+                    {
+                        return;
                     }
                 }
             },
@@ -296,13 +294,13 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         }
 
         // Exclude non-inherent impls
-        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id) {
-            if matches!(
+        if let Node::Item(item) = cx.tcx.parent_hir_node(hir_id)
+            && matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
-            ) {
-                return;
-            }
+            )
+        {
+            return;
         }
 
         self.check_poly_fn(cx, def_id, decl, Some(span));

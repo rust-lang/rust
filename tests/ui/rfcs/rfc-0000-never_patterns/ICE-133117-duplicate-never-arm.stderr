@@ -1,0 +1,20 @@
+error: a never pattern is always unreachable
+  --> $DIR/ICE-133117-duplicate-never-arm.rs:9:26
+   |
+LL |         (!|!) if true => {}
+   |                          ^^
+   |                          |
+   |                          this will never be executed
+   |                          help: remove this expression
+
+error: a never pattern is always unreachable
+  --> $DIR/ICE-133117-duplicate-never-arm.rs:10:26
+   |
+LL |         (!|!) if true => {}
+   |                          ^^
+   |                          |
+   |                          this will never be executed
+   |                          help: remove this expression
+
+error: aborting due to 2 previous errors
+

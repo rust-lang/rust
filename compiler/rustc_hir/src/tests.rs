@@ -1,7 +1,9 @@
-use rustc_data_structures::stable_hasher::Hash64;
+#![allow(rustc::symbol_intern_string_literal)]
+
+use rustc_hashes::Hash64;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::edition::Edition;
-use rustc_span::{create_session_globals_then, Symbol};
+use rustc_span::{Symbol, create_session_globals_then};
 
 use crate::definitions::{DefKey, DefPathData, DisambiguatedDefPathData};
 
@@ -15,7 +17,7 @@ fn def_path_hash_depends_on_crate_id() {
     // the crate by changing the crate disambiguator (e.g. via bumping the
     // crate's version number).
 
-    create_session_globals_then(Edition::Edition2024, None, || {
+    create_session_globals_then(Edition::Edition2024, &[], None, || {
         let id0 = StableCrateId::new(Symbol::intern("foo"), false, vec!["1".to_string()], "");
         let id1 = StableCrateId::new(Symbol::intern("foo"), false, vec!["2".to_string()], "");
 

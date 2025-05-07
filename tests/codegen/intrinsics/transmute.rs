@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ only-64bit (so I don't need to worry about usize)
 
 #![crate_type = "lib"]
@@ -10,6 +10,7 @@
 use std::intrinsics::mir::*;
 use std::intrinsics::{transmute, transmute_unchecked};
 use std::mem::MaybeUninit;
+use std::num::NonZero;
 
 pub enum ZstNever {}
 
@@ -153,7 +154,7 @@ pub unsafe fn check_from_newtype(x: Scalar64) -> u64 {
 pub unsafe fn check_aggregate_to_bool(x: Aggregate8) -> bool {
     // CHECK: %x = alloca [1 x i8], align 1
     // CHECK: %[[BYTE:.+]] = load i8, ptr %x, align 1
-    // CHECK: %[[BOOL:.+]] = trunc i8 %[[BYTE]] to i1
+    // CHECK: %[[BOOL:.+]] = trunc nuw i8 %[[BYTE]] to i1
     // CHECK: ret i1 %[[BOOL]]
     transmute(x)
 }
@@ -171,7 +172,7 @@ pub unsafe fn check_aggregate_from_bool(x: bool) -> Aggregate8 {
 #[no_mangle]
 pub unsafe fn check_byte_to_bool(x: u8) -> bool {
     // CHECK-NOT: alloca
-    // CHECK: %[[R:.+]] = trunc i8 %x to i1
+    // CHECK: %[[R:.+]] = trunc nuw i8 %x to i1
     // CHECK: ret i1 %[[R]]
     transmute(x)
 }
@@ -284,7 +285,7 @@ pub unsafe fn check_long_array_more_aligned(x: [u8; 100]) -> [u32; 25] {
 #[no_mangle]
 pub unsafe fn check_pair_with_bool(x: (u8, bool)) -> (bool, i8) {
     // CHECK-NOT: alloca
-    // CHECK: trunc i8 %x.0 to i1
+    // CHECK: trunc nuw i8 %x.0 to i1
     // CHECK: zext i1 %x.1 to i8
     transmute(x)
 }
@@ -338,7 +339,7 @@ pub unsafe fn check_heterogeneous_integer_pair(x: (i32, bool)) -> (bool, u32) {
     // CHECK: store i8 %[[WIDER]]
 
     // CHECK: %[[BYTE:.+]] = load i8
-    // CHECK: trunc i8 %[[BYTE:.+]] to i1
+    // CHECK: trunc nuw i8 %[[BYTE:.+]] to i1
     // CHECK: load i32
     transmute(x)
 }
@@ -370,9 +371,11 @@ pub unsafe fn check_issue_110005(x: (usize, bool)) -> Option<Box<[u8]>> {
 #[no_mangle]
 pub unsafe fn check_pair_to_dst_ref<'a>(x: (usize, usize)) -> &'a [u8] {
     // CHECK: %_0.0 = getelementptr i8, ptr null, i64 %x.0
-    // CHECK: %0 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0
-    // CHECK: %1 = insertvalue { ptr, i64 } %0, i64 %x.1, 1
-    // CHECK: ret { ptr, i64 } %1
+    // CHECK: %0 = icmp ne ptr %_0.0, null
+    // CHECK: call void @llvm.assume(i1 %0)
+    // CHECK: %1 = insertvalue { ptr, i64 } poison, ptr %_0.0, 0
+    // CHECK: %2 = insertvalue { ptr, i64 } %1, i64 %x.1, 1
+    // CHECK: ret { ptr, i64 } %2
     transmute(x)
 }
 
@@ -464,4 +467,28 @@ pub unsafe fn check_from_overalign(x: HighAlignScalar) -> u64 {
     // CHECK: %[[VAL:.+]] = load i64, ptr %x, align 8
     // CHECK: ret i64 %[[VAL]]
     transmute(x)
+}
+
+#[repr(transparent)]
+struct Level1(std::num::NonZero<u32>);
+#[repr(transparent)]
+struct Level2(Level1);
+#[repr(transparent)]
+struct Level3(Level2);
+
+// CHECK-LABEL: @repeatedly_transparent_transmute
+// CHECK-SAME: (i32{{.+}}%[[ARG:[^)]+]])
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn repeatedly_transparent_transmute(x: NonZero<u32>) -> Level3 {
+    // CHECK: start
+    // CHECK-NEXT: ret i32 %[[ARG]]
+    mir! {
+        {
+            let A = CastTransmute::<NonZero<u32>, Level1>(x);
+            let B = CastTransmute::<Level1, Level2>(A);
+            RET = CastTransmute::<Level2, Level3>(B);
+            Return()
+        }
+    }
 }

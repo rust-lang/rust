@@ -1,4 +1,4 @@
-//@ aux-build:re-export.rs
+//@ proc-macro: re-export.rs
 //@ edition:2018
 
 extern crate re_export;

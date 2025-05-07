@@ -31,20 +31,21 @@
 //! }
 //! ```
 
-use hir::HasAttrs;
+use hir::{MacroCallId, Name, db::ExpandDatabase};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
-    documentation::HasDocs, path_transform::PathTransform,
-    syntax_helpers::insert_whitespace_into_node, traits::get_missing_assoc_items, SymbolKind,
+    SymbolKind, documentation::HasDocs, path_transform::PathTransform,
+    syntax_helpers::prettify_macro_expansion, traits::get_missing_assoc_items,
 };
 use syntax::{
-    ast::{self, edit_in_place::AttrsOwnerEdit, HasTypeBounds},
-    format_smolstr, AstNode, SmolStr, SyntaxElement, SyntaxKind, TextRange, ToSmolStr, T,
+    AstNode, SmolStr, SyntaxElement, SyntaxKind, T, TextRange, ToSmolStr,
+    ast::{self, HasGenericArgs, HasTypeBounds, edit_in_place::AttrsOwnerEdit, make},
+    format_smolstr, ted,
 };
-use text_edit::TextEdit;
 
 use crate::{
-    context::PathCompletionCtx, CompletionContext, CompletionItem, CompletionItemKind,
-    CompletionRelevance, Completions,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
+    context::PathCompletionCtx,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -85,7 +86,7 @@ fn complete_trait_impl_name(
     name: &Option<ast::Name>,
     kind: ImplCompletionKind,
 ) -> Option<()> {
-    let item = match name {
+    let macro_file_item = match name {
         Some(name) => name.syntax().parent(),
         None => {
             let token = &ctx.token;
@@ -96,12 +97,12 @@ fn complete_trait_impl_name(
             .parent()
         }
     }?;
-    let item = ctx.sema.original_syntax_node_rooted(&item)?;
+    let real_file_item = ctx.sema.original_syntax_node_rooted(&macro_file_item)?;
     // item -> ASSOC_ITEM_LIST -> IMPL
-    let impl_def = ast::Impl::cast(item.parent()?.parent()?)?;
+    let impl_def = ast::Impl::cast(macro_file_item.parent()?.parent()?)?;
     let replacement_range = {
         // ctx.sema.original_ast_node(item)?;
-        let first_child = item
+        let first_child = real_file_item
             .children_with_tokens()
             .find(|child| {
                 !matches!(
@@ -109,7 +110,7 @@ fn complete_trait_impl_name(
                     SyntaxKind::COMMENT | SyntaxKind::WHITESPACE | SyntaxKind::ATTR
                 )
             })
-            .unwrap_or_else(|| SyntaxElement::Node(item.clone()));
+            .unwrap_or_else(|| SyntaxElement::Node(real_file_item.clone()));
 
         TextRange::new(first_child.text_range().start(), ctx.source_range().end())
     };
@@ -133,8 +134,11 @@ pub(crate) fn complete_trait_impl_item_by_name(
             acc,
             ctx,
             ImplCompletionKind::All,
-            match name_ref {
-                Some(name) => name.syntax().text_range(),
+            match name_ref
+                .as_ref()
+                .and_then(|name| ctx.sema.original_syntax_node_rooted(name.syntax()))
+            {
+                Some(name) => name.text_range(),
                 None => ctx.source_range(),
             },
             impl_,
@@ -152,7 +156,7 @@ fn complete_trait_impl(
     if let Some(hir_impl) = ctx.sema.to_def(impl_def) {
         get_missing_assoc_items(&ctx.sema, impl_def)
             .into_iter()
-            .filter(|item| ctx.check_stability(Some(&item.attrs(ctx.db))))
+            .filter(|item| ctx.check_stability_and_hidden(*item))
             .for_each(|item| {
                 use self::ImplCompletionKind::*;
                 match (item, kind) {
@@ -178,13 +182,37 @@ fn add_function_impl(
     func: hir::Function,
     impl_def: hir::Impl,
 ) {
-    let fn_name = func.name(ctx.db);
+    let fn_name = &func.name(ctx.db);
+    let sugar: &[_] = if func.is_async(ctx.db) {
+        &[AsyncSugaring::Async, AsyncSugaring::Desugar]
+    } else if func.returns_impl_future(ctx.db) {
+        &[AsyncSugaring::Plain, AsyncSugaring::Resugar]
+    } else {
+        &[AsyncSugaring::Plain]
+    };
+    for &sugaring in sugar {
+        add_function_impl_(acc, ctx, replacement_range, func, impl_def, fn_name, sugaring);
+    }
+}
 
-    let is_async = func.is_async(ctx.db);
+fn add_function_impl_(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    replacement_range: TextRange,
+    func: hir::Function,
+    impl_def: hir::Impl,
+    fn_name: &Name,
+    async_sugaring: AsyncSugaring,
+) {
+    let async_ = if let AsyncSugaring::Async | AsyncSugaring::Resugar = async_sugaring {
+        "async "
+    } else {
+        ""
+    };
     let label = format_smolstr!(
         "{}fn {}({})",
-        if is_async { "async " } else { "" },
-        fn_name.display(ctx.db),
+        async_,
+        fn_name.display(ctx.db, ctx.edition),
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
     );
 
@@ -194,24 +222,17 @@ fn add_function_impl(
         SymbolKind::Function
     });
 
-    let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(format!(
-        "{}fn {}",
-        if is_async { "async " } else { "" },
-        fn_name.display(ctx.db)
-    ))
-    .set_documentation(func.docs(ctx.db))
-    .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+    let mut item = CompletionItem::new(completion_kind, replacement_range, label, ctx.edition);
+    item.lookup_by(format!("{}fn {}", async_, fn_name.display(ctx.db, ctx.edition)))
+        .set_documentation(func.docs(ctx.db))
+        .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
 
     if let Some(source) = ctx.sema.source(func) {
-        let assoc_item = ast::AssocItem::Fn(source.value);
-        if let Some(transformed_item) = get_transformed_assoc_item(ctx, assoc_item, impl_def) {
-            let transformed_fn = match transformed_item {
-                ast::AssocItem::Fn(func) => func,
-                _ => unreachable!(),
-            };
-
-            let function_decl = function_declaration(&transformed_fn, source.file_id.is_macro());
+        if let Some(transformed_fn) =
+            get_transformed_fn(ctx, source.value, impl_def, async_sugaring)
+        {
+            let function_decl =
+                function_declaration(ctx, &transformed_fn, source.file_id.macro_file());
             match ctx.config.snippet_cap {
                 Some(cap) => {
                     let snippet = format!("{function_decl} {{\n    $0\n}}");
@@ -225,6 +246,14 @@ fn add_function_impl(
             item.add_to(acc, ctx.db);
         }
     }
+}
+
+#[derive(Copy, Clone)]
+enum AsyncSugaring {
+    Desugar,
+    Resugar,
+    Async,
+    Plain,
 }
 
 /// Transform a relevant associated item to inline generics from the impl, remove attrs and docs, etc.
@@ -251,6 +280,82 @@ fn get_transformed_assoc_item(
     Some(assoc_item)
 }
 
+/// Transform a relevant associated item to inline generics from the impl, remove attrs and docs, etc.
+fn get_transformed_fn(
+    ctx: &CompletionContext<'_>,
+    fn_: ast::Fn,
+    impl_def: hir::Impl,
+    async_: AsyncSugaring,
+) -> Option<ast::Fn> {
+    let trait_ = impl_def.trait_(ctx.db)?;
+    let source_scope = &ctx.sema.scope(fn_.syntax())?;
+    let target_scope = &ctx.sema.scope(ctx.sema.source(impl_def)?.syntax().value)?;
+    let transform = PathTransform::trait_impl(
+        target_scope,
+        source_scope,
+        trait_,
+        ctx.sema.source(impl_def)?.value,
+    );
+
+    let fn_ = fn_.clone_for_update();
+    // FIXME: Paths in nested macros are not handled well. See
+    // `macro_generated_assoc_item2` test.
+    transform.apply(fn_.syntax());
+    fn_.remove_attrs_and_docs();
+    match async_ {
+        AsyncSugaring::Desugar => {
+            match fn_.ret_type() {
+                Some(ret_ty) => {
+                    let ty = ret_ty.ty()?;
+                    ted::replace(
+                        ty.syntax(),
+                        make::ty(&format!("impl Future<Output = {ty}>"))
+                            .syntax()
+                            .clone_for_update(),
+                    );
+                }
+                None => ted::append_child(
+                    fn_.param_list()?.syntax(),
+                    make::ret_type(make::ty("impl Future<Output = ()>"))
+                        .syntax()
+                        .clone_for_update(),
+                ),
+            }
+            fn_.async_token().unwrap().detach();
+        }
+        AsyncSugaring::Resugar => {
+            let ty = fn_.ret_type()?.ty()?;
+            match &ty {
+                // best effort guessing here
+                ast::Type::ImplTraitType(t) => {
+                    let output = t.type_bound_list()?.bounds().find_map(|b| match b.ty()? {
+                        ast::Type::PathType(p) => {
+                            let p = p.path()?.segment()?;
+                            if p.name_ref()?.text() != "Future" {
+                                return None;
+                            }
+                            match p.generic_arg_list()?.generic_args().next()? {
+                                ast::GenericArg::AssocTypeArg(a)
+                                    if a.name_ref()?.text() == "Output" =>
+                                {
+                                    a.ty()
+                                }
+                                _ => None,
+                            }
+                        }
+                        _ => None,
+                    })?;
+                    ted::replace(ty.syntax(), output.syntax());
+                }
+                _ => (),
+            }
+            ted::prepend_child(fn_.syntax(), make::token(T![async]));
+        }
+        AsyncSugaring::Async | AsyncSugaring::Plain => (),
+    }
+    Some(fn_)
+}
+
 fn add_type_alias_impl(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
@@ -258,14 +363,15 @@ fn add_type_alias_impl(
     type_alias: hir::TypeAlias,
     impl_def: hir::Impl,
 ) {
-    let alias_name = type_alias.name(ctx.db).unescaped().display(ctx.db).to_smolstr();
+    let alias_name = type_alias.name(ctx.db).as_str().to_smolstr();
 
     let label = format_smolstr!("type {alias_name} =");
 
-    let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
+    let mut item =
+        CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label, ctx.edition);
     item.lookup_by(format!("type {alias_name}"))
         .set_documentation(type_alias.docs(ctx.db))
-        .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+        .set_relevance(CompletionRelevance { exact_name_match: true, ..Default::default() });
 
     if let Some(source) = ctx.sema.source(type_alias) {
         let assoc_item = ast::AssocItem::TypeAlias(source.value);
@@ -320,7 +426,7 @@ fn add_const_impl(
     const_: hir::Const,
     impl_def: hir::Impl,
 ) {
-    let const_name = const_.name(ctx.db).map(|n| n.display_no_db().to_smolstr());
+    let const_name = const_.name(ctx.db).map(|n| n.display_no_db(ctx.edition).to_smolstr());
 
     if let Some(const_name) = const_name {
         if let Some(source) = ctx.sema.source(const_) {
@@ -331,14 +437,16 @@ fn add_const_impl(
                     _ => unreachable!(),
                 };
 
-                let label = make_const_compl_syntax(&transformed_const, source.file_id.is_macro());
+                let label =
+                    make_const_compl_syntax(ctx, &transformed_const, source.file_id.macro_file());
                 let replacement = format!("{label} ");
 
-                let mut item = CompletionItem::new(SymbolKind::Const, replacement_range, label);
+                let mut item =
+                    CompletionItem::new(SymbolKind::Const, replacement_range, label, ctx.edition);
                 item.lookup_by(format_smolstr!("const {const_name}"))
                     .set_documentation(const_.docs(ctx.db))
                     .set_relevance(CompletionRelevance {
-                        is_item_from_trait: true,
+                        exact_name_match: true,
                         ..Default::default()
                     });
                 match ctx.config.snippet_cap {
@@ -354,9 +462,14 @@ fn add_const_impl(
     }
 }
 
-fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> SmolStr {
-    let const_ = if needs_whitespace {
-        insert_whitespace_into_node::insert_ws_into(const_.syntax().clone())
+fn make_const_compl_syntax(
+    ctx: &CompletionContext<'_>,
+    const_: &ast::Const,
+    macro_file: Option<MacroCallId>,
+) -> SmolStr {
+    let const_ = if let Some(macro_file) = macro_file {
+        let span_map = ctx.db.expansion_span_map(macro_file);
+        prettify_macro_expansion(ctx.db, const_.syntax().clone(), &span_map, ctx.krate.into())
     } else {
         const_.syntax().clone()
     };
@@ -377,9 +490,14 @@ fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> SmolS
     format_smolstr!("{} =", syntax.trim_end())
 }
 
-fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
-    let node = if needs_whitespace {
-        insert_whitespace_into_node::insert_ws_into(node.syntax().clone())
+fn function_declaration(
+    ctx: &CompletionContext<'_>,
+    node: &ast::Fn,
+    macro_file: Option<MacroCallId>,
+) -> String {
+    let node = if let Some(macro_file) = macro_file {
+        let span_map = ctx.db.expansion_span_map(macro_file);
+        prettify_macro_expansion(ctx.db, node.syntax().clone(), &span_map, ctx.krate.into())
     } else {
         node.syntax().clone()
     };
@@ -400,18 +518,13 @@ fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list_no_kw};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list_no_kw(ra_fixture);
-        expect.assert_eq(&actual)
-    }
+    use crate::tests::{check, check_edit, check_no_kw};
 
     #[test]
     fn no_completion_inside_fn() {
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -423,14 +536,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -444,7 +557,7 @@ impl Test for T {
             expect![[""]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -459,7 +572,7 @@ impl Test for T {
         );
 
         // https://github.com/rust-lang/rust-analyzer/pull/5976#issuecomment-692332191
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(); fn test2(); }
 struct T;
@@ -473,7 +586,7 @@ impl Test for T {
             expect![[r#""#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(_: i32); fn test2(); }
 struct T;
@@ -492,7 +605,7 @@ impl Test for T {
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { fn test(_: fn()); fn test2(); }
 struct T;
@@ -510,7 +623,7 @@ impl Test for T {
 
     #[test]
     fn no_completion_inside_const() {
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: fn(); const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -522,7 +635,7 @@ impl Test for T {
             expect![[r#""#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -532,14 +645,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -549,14 +662,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -568,14 +681,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -589,7 +702,7 @@ impl Test for T {
             expect![[""]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { const TEST: u32; const TEST2: u32; type Test; fn test(); }
 struct T;
@@ -606,7 +719,7 @@ impl Test for T {
 
     #[test]
     fn no_completion_inside_type() {
-        check(
+        check_no_kw(
             r"
 trait Test { type Test; type Test2; fn test(); }
 struct T;
@@ -616,14 +729,14 @@ impl Test for T {
 }
 ",
             expect![[r#"
-                sp Self T
-                st T    T
+                sp Self  T
+                st T     T
                 tt Test
-                bt u32  u32
+                bt u32 u32
             "#]],
         );
 
-        check(
+        check_no_kw(
             r"
 trait Test { type Test; type Test2; fn test(); }
 struct T;
@@ -1149,7 +1262,7 @@ impl Foo<u32> for Bar {
 
     #[test]
     fn works_directly_in_impl() {
-        check(
+        check_no_kw(
             r#"
 trait Tr {
     fn required();
@@ -1163,7 +1276,7 @@ impl Tr for () {
             fn fn required()
         "#]],
         );
-        check(
+        check_no_kw(
             r#"
 trait Tr {
     fn provided() {}
@@ -1400,6 +1513,181 @@ impl Tr for () {
     type Item = $0;
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn impl_fut() {
+        check_edit(
+            "fn foo",
+            r#"
+//- minicore: future, send, sized
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    fn foo(&self) -> impl Future<Output = usize> + Send;
+}
+
+impl DesugaredAsyncTrait for () {
+    $0
+}
+"#,
+            r#"
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    fn foo(&self) -> impl Future<Output = usize> + Send;
+}
+
+impl DesugaredAsyncTrait for () {
+    fn foo(&self) -> impl Future<Output = usize> + Send {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn impl_fut_resugared() {
+        check_edit(
+            "async fn foo",
+            r#"
+//- minicore: future, send, sized
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    fn foo(&self) -> impl Future<Output = usize> + Send;
+}
+
+impl DesugaredAsyncTrait for () {
+    $0
+}
+"#,
+            r#"
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    fn foo(&self) -> impl Future<Output = usize> + Send;
+}
+
+impl DesugaredAsyncTrait for () {
+    async fn foo(&self) -> usize {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn async_desugared() {
+        check_edit(
+            "fn foo",
+            r#"
+//- minicore: future, send, sized
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    async fn foo(&self) -> usize;
+}
+
+impl DesugaredAsyncTrait for () {
+    $0
+}
+"#,
+            r#"
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    async fn foo(&self) -> usize;
+}
+
+impl DesugaredAsyncTrait for () {
+     fn foo(&self) -> impl Future<Output = usize> {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn async_() {
+        check_edit(
+            "async fn foo",
+            r#"
+//- minicore: future, send, sized
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    async fn foo(&self) -> usize;
+}
+
+impl DesugaredAsyncTrait for () {
+    $0
+}
+"#,
+            r#"
+use core::future::Future;
+
+trait DesugaredAsyncTrait {
+    async fn foo(&self) -> usize;
+}
+
+impl DesugaredAsyncTrait for () {
+    async fn foo(&self) -> usize {
+    $0
+}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn within_attr_macro() {
+        check(
+            r#"
+//- proc_macros: identity
+trait Trait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+#[proc_macros::identity]
+impl Trait for () {
+    f$0
+}
+                "#,
+            expect![[r#"
+                me fn bar(..)
+                me fn baz(..)
+                me fn foo(..)
+                md proc_macros
+                kw crate::
+                kw self::
+            "#]],
+        );
+        check(
+            r#"
+//- proc_macros: identity
+trait Trait {
+    fn foo(&self) {}
+    fn bar(&self) {}
+    fn baz(&self) {}
+}
+
+#[proc_macros::identity]
+impl Trait for () {
+    fn $0
+}
+        "#,
+            expect![[r#"
+                me fn bar(..)
+                me fn baz(..)
+                me fn foo(..)
+            "#]],
         );
     }
 }

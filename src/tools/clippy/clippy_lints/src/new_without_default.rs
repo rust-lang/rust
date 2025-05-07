@@ -6,7 +6,6 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirIdSet;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
@@ -68,14 +67,14 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
         {
             for assoc_item in *items {
                 if assoc_item.kind == (hir::AssocItemKind::Fn { has_self: false }) {
-                    let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
-                    if in_external_macro(cx.sess(), impl_item.span) {
+                    let impl_item = cx.tcx.hir_impl_item(assoc_item.id);
+                    if impl_item.span.in_external_macro(cx.sess().source_map()) {
                         return;
                     }
                     if let hir::ImplItemKind::Fn(ref sig, _) = impl_item.kind {
                         let name = impl_item.ident.name;
                         let id = impl_item.owner_id;
-                        if sig.header.safety == hir::Safety::Unsafe {
+                        if sig.header.is_unsafe() {
                             // can't be implemented for unsafe new
                             return;
                         }
@@ -91,21 +90,21 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                         if sig.decl.inputs.is_empty()
                             && name == sym::new
                             && cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id)
-                            && let self_def_id = cx.tcx.hir().get_parent_item(id.into())
+                            && let self_def_id = cx.tcx.hir_get_parent_item(id.into())
                             && let self_ty = cx.tcx.type_of(self_def_id).instantiate_identity()
                             && self_ty == return_ty(cx, id)
                             && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
                         {
                             if self.impling_types.is_none() {
                                 let mut impls = HirIdSet::default();
-                                cx.tcx.for_each_impl(default_trait_id, |d| {
+                                for &d in cx.tcx.local_trait_impls(default_trait_id) {
                                     let ty = cx.tcx.type_of(d).instantiate_identity();
-                                    if let Some(ty_def) = ty.ty_adt_def() {
-                                        if let Some(local_def_id) = ty_def.did().as_local() {
-                                            impls.insert(cx.tcx.local_def_id_to_hir_id(local_def_id));
-                                        }
+                                    if let Some(ty_def) = ty.ty_adt_def()
+                                        && let Some(local_def_id) = ty_def.did().as_local()
+                                    {
+                                        impls.insert(cx.tcx.local_def_id_to_hir_id(local_def_id));
                                     }
-                                });
+                                }
                                 self.impling_types = Some(impls);
                             }
 

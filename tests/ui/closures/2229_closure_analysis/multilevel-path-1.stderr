@@ -20,7 +20,7 @@ LL | |         println!("{}", wp.x);
 LL | |     };
    | |_____^
    |
-note: Capturing w[(0, 0)] -> ImmBorrow
+note: Capturing w[(0, 0)] -> Immutable
   --> $DIR/multilevel-path-1.rs:29:19
    |
 LL |         let wp = &w.p;
@@ -38,7 +38,7 @@ LL | |         println!("{}", wp.x);
 LL | |     };
    | |_____^
    |
-note: Min Capture w[(0, 0)] -> ImmBorrow
+note: Min Capture w[(0, 0)] -> Immutable
   --> $DIR/multilevel-path-1.rs:29:19
    |
 LL |         let wp = &w.p;

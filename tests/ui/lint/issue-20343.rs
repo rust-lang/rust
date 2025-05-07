@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 // Regression test for Issue #20343.
 
-//@ pretty-expanded FIXME #23616
 
 #![deny(dead_code)]
 

@@ -5,8 +5,9 @@ use std::ptr;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-#[cfg(parallel_compiler)]
-use {crate::outline, crate::sync::CacheAligned};
+
+use crate::outline;
+use crate::sync::CacheAligned;
 
 /// A pointer to the `RegistryData` which uniquely identifies a registry.
 /// This identifier can be reused if the registry gets freed.
@@ -19,9 +20,8 @@ impl RegistryId {
     /// index within the registry. This panics if the current thread is not associated with this
     /// registry.
     ///
-    /// Note that there's a race possible where the identifer in `THREAD_DATA` could be reused
+    /// Note that there's a race possible where the identifier in `THREAD_DATA` could be reused
     /// so this can succeed from a different registry.
-    #[cfg(parallel_compiler)]
     fn verify(self) -> usize {
         let (id, index) = THREAD_DATA.with(|data| (data.registry_id.get(), data.index.get()));
 
@@ -50,7 +50,7 @@ struct ThreadData {
 }
 
 thread_local! {
-    /// A thread local which contains the identifer of `REGISTRY` but allows for faster access.
+    /// A thread local which contains the identifier of `REGISTRY` but allows for faster access.
     /// It also holds the index of the current thread.
     static THREAD_DATA: ThreadData = const { ThreadData {
         registry_id: Cell::new(RegistryId(ptr::null())),
@@ -66,7 +66,7 @@ impl Registry {
 
     /// Gets the registry associated with the current thread. Panics if there's no such registry.
     pub fn current() -> Self {
-        REGISTRY.with(|registry| registry.get().cloned().expect("No assocated registry"))
+        REGISTRY.with(|registry| registry.get().cloned().expect("No associated registry"))
     }
 
     /// Registers the current thread with the registry so worker locals can be used on it.
@@ -92,7 +92,7 @@ impl Registry {
         }
     }
 
-    /// Gets the identifer of this registry.
+    /// Gets the identifier of this registry.
     fn id(&self) -> RegistryId {
         RegistryId(&*self.0)
     }
@@ -102,11 +102,7 @@ impl Registry {
 /// worker local value through the `Deref` impl on the registry associated with the thread it was
 /// created on. It will panic otherwise.
 pub struct WorkerLocal<T> {
-    #[cfg(not(parallel_compiler))]
-    local: T,
-    #[cfg(parallel_compiler)]
     locals: Box<[CacheAligned<T>]>,
-    #[cfg(parallel_compiler)]
     registry: Registry,
 }
 
@@ -114,7 +110,6 @@ pub struct WorkerLocal<T> {
 // or it will panic for threads without an associated local. So there isn't a need for `T` to do
 // it's own synchronization. The `verify` method on `RegistryId` has an issue where the id
 // can be reused, but `WorkerLocal` has a reference to `Registry` which will prevent any reuse.
-#[cfg(parallel_compiler)]
 unsafe impl<T: Send> Sync for WorkerLocal<T> {}
 
 impl<T> WorkerLocal<T> {
@@ -122,33 +117,17 @@ impl<T> WorkerLocal<T> {
     /// value this worker local should take for each thread in the registry.
     #[inline]
     pub fn new<F: FnMut(usize) -> T>(mut initial: F) -> WorkerLocal<T> {
-        #[cfg(parallel_compiler)]
-        {
-            let registry = Registry::current();
-            WorkerLocal {
-                locals: (0..registry.0.thread_limit.get())
-                    .map(|i| CacheAligned(initial(i)))
-                    .collect(),
-                registry,
-            }
-        }
-        #[cfg(not(parallel_compiler))]
-        {
-            WorkerLocal { local: initial(0) }
+        let registry = Registry::current();
+        WorkerLocal {
+            locals: (0..registry.0.thread_limit.get()).map(|i| CacheAligned(initial(i))).collect(),
+            registry,
         }
     }
 
     /// Returns the worker-local values for each thread
     #[inline]
     pub fn into_inner(self) -> impl Iterator<Item = T> {
-        #[cfg(parallel_compiler)]
-        {
-            self.locals.into_vec().into_iter().map(|local| local.0)
-        }
-        #[cfg(not(parallel_compiler))]
-        {
-            std::iter::once(self.local)
-        }
+        self.locals.into_vec().into_iter().map(|local| local.0)
     }
 }
 
@@ -156,13 +135,6 @@ impl<T> Deref for WorkerLocal<T> {
     type Target = T;
 
     #[inline(always)]
-    #[cfg(not(parallel_compiler))]
-    fn deref(&self) -> &T {
-        &self.local
-    }
-
-    #[inline(always)]
-    #[cfg(parallel_compiler)]
     fn deref(&self) -> &T {
         // This is safe because `verify` will only return values less than
         // `self.registry.thread_limit` which is the size of the `self.locals` array.

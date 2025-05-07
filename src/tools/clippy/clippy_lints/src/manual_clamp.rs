@@ -1,14 +1,14 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
 use clippy_utils::{
-    eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt, MaybePath,
+    MaybePath, eq_expr_value, is_diag_trait_item, is_in_const_context, is_trait_method, path_res, path_to_local_id,
+    peel_blocks, peel_blocks_with_stmt,
 };
 use itertools::Itertools;
 use rustc_errors::{Applicability, Diag};
@@ -17,8 +17,8 @@ use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegme
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 use std::cmp::Ordering;
 use std::ops::Deref;
 
@@ -99,9 +99,7 @@ pub struct ManualClamp {
 
 impl ManualClamp {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -144,30 +142,28 @@ struct InputMinMax<'tcx> {
 
 impl<'tcx> LateLintPass<'tcx> for ManualClamp {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !self.msrv.meets(msrvs::CLAMP) {
-            return;
-        }
         if !expr.span.from_expansion() && !is_in_const_context(cx) {
             let suggestion = is_if_elseif_else_pattern(cx, expr)
                 .or_else(|| is_max_min_pattern(cx, expr))
                 .or_else(|| is_call_max_min_pattern(cx, expr))
                 .or_else(|| is_match_pattern(cx, expr))
                 .or_else(|| is_if_elseif_pattern(cx, expr));
-            if let Some(suggestion) = suggestion {
+            if let Some(suggestion) = suggestion
+                && self.msrv.meets(cx, msrvs::CLAMP)
+            {
                 maybe_emit_suggestion(cx, &suggestion);
             }
         }
     }
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
-        if !self.msrv.meets(msrvs::CLAMP) || is_in_const_context(cx) {
+        if is_in_const_context(cx) || !self.msrv.meets(cx, msrvs::CLAMP) {
             return;
         }
         for suggestion in is_two_if_pattern(cx, block) {
             maybe_emit_suggestion(cx, &suggestion);
         }
     }
-    extract_msrv_attr!(LateContext);
 }
 
 fn maybe_emit_suggestion<'tcx>(cx: &LateContext<'tcx>, suggestion: &ClampSuggestion<'tcx>) {
@@ -185,7 +181,7 @@ fn maybe_emit_suggestion<'tcx>(cx: &LateContext<'tcx>, suggestion: &ClampSuggest
         make_assignment,
         hir_with_ignore_attr,
     } = suggestion;
-    let input = Sugg::hir(cx, input, "..").maybe_par();
+    let input = Sugg::hir(cx, input, "..").maybe_paren();
     let min = Sugg::hir(cx, min, "..");
     let max = Sugg::hir(cx, max, "..");
     let semicolon = if make_assignment.is_some() { ";" } else { "" };
@@ -226,7 +222,7 @@ impl TypeClampability {
         } else if cx
             .tcx
             .get_diagnostic_item(sym::Ord)
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            .is_some_and(|id| implements_trait(cx, ty, id, &[]))
         {
             Some(TypeClampability::Ord)
         } else {
@@ -741,7 +737,7 @@ enum MaybeBorrowedStmtKind<'a> {
     Owned(StmtKind<'a>),
 }
 
-impl<'a> Clone for MaybeBorrowedStmtKind<'a> {
+impl Clone for MaybeBorrowedStmtKind<'_> {
     fn clone(&self) -> Self {
         match self {
             Self::Borrowed(t) => Self::Borrowed(t),

@@ -1,4 +1,5 @@
-/// Test for https://github.com/rust-lang/rust-clippy/issues/1346
+//@ check-pass
+// Test for https://github.com/rust-lang/rust-clippy/issues/1346
 
 #[deny(warnings)]
 fn cfg_return() -> i32 {

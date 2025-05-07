@@ -21,13 +21,6 @@ help: consider introducing lifetime `'missing` here
 LL | impl<'missing> Lt<'missing> for () {
    |     ++++++++++
 
-error[E0277]: the trait bound `(): Lt<'_>` is not satisfied
-  --> $DIR/region-error-ice-109072.rs:13:13
-   |
-LL |     let _: <() as Lt<'_>>::T = &();
-   |             ^^ the trait `Lt<'_>` is not implemented for `()`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0261, E0277.
-For more information about an error, try `rustc --explain E0261`.
+For more information about this error, try `rustc --explain E0261`.

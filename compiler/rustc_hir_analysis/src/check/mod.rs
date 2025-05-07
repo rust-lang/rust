@@ -62,41 +62,38 @@ a type parameter).
 
 */
 
+pub mod always_applicable;
 mod check;
 mod compare_impl_item;
-pub mod dropck;
 mod entry;
-mod errs;
 pub mod intrinsic;
-pub mod intrinsicck;
 mod region;
 pub mod wfcheck;
 
 use std::num::NonZero;
 
-pub use check::check_abi;
+pub use check::{check_abi, check_abi_fn_ptr};
+use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{pluralize, struct_span_code_err, Diag, ErrorGuaranteed};
+use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::print::with_types_for_signature;
+use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
-use rustc_target::abi::VariantIdx;
-use rustc_target::spec::abi::Abi;
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
-use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
+use tracing::debug;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
@@ -109,18 +106,18 @@ pub fn provide(providers: &mut Providers) {
         adt_async_destructor,
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
-        compare_impl_const: compare_impl_item::compare_impl_const_raw,
+        compare_impl_item: compare_impl_item::compare_impl_item,
         check_coroutine_obligations: check::check_coroutine_obligations,
         ..*providers
     };
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
-    tcx.calculate_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_dtor(def_id, always_applicable::check_drop_impl)
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
-    tcx.calculate_async_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_async_dtor(def_id, always_applicable::check_drop_impl)
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -130,35 +127,25 @@ fn get_owner_return_paths(
     def_id: LocalDefId,
 ) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
+    let parent_id = tcx.hir_get_parent_item(hir_id).def_id;
     tcx.hir_node_by_def_id(parent_id).body_id().map(|body_id| {
-        let body = tcx.hir().body(body_id);
+        let body = tcx.hir_body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
         (parent_id, visitor)
     })
 }
 
-/// Forbid defining intrinsics in Rust code,
-/// as they must always be defined by the compiler.
-// FIXME: Move this to a more appropriate place.
-pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
-    if let Abi::RustIntrinsic = abi {
-        tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
-    }
-}
-
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
+pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
     }
 
     // If `#[link_section]` is missing, then nothing to verify
-    let attrs = tcx.codegen_fn_attrs(id);
-    if attrs.link_section.is_none() {
+    let Some(link_section) = tcx.codegen_fn_attrs(id).link_section else {
         return;
-    }
+    };
 
     // For the wasm32 target statics with `#[link_section]` other than `.init_array`
     // are placed into custom sections of the final output file, but this isn't like
@@ -184,24 +171,19 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     //  continue to work, but would no longer be necessary.
 
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
-        && alloc.inner().provenance().ptrs().len() != 0
+        && !alloc.inner().provenance().ptrs().is_empty()
+        && !link_section.as_str().starts_with(".init_array")
     {
-        if attrs
-            .link_section
-            .map(|link_section| !link_section.as_str().starts_with(".init_array"))
-            .unwrap()
-        {
-            let msg = "statics with a custom `#[link_section]` must be a \
+        let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-            tcx.dcx().span_err(tcx.def_span(id), msg);
-        }
+        tcx.dcx().span_err(tcx.def_span(id), msg);
     }
 }
 
 fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
     let span = tcx.def_span(impl_item);
-    let ident = tcx.item_name(impl_item);
+    let ident = tcx.item_ident(impl_item);
 
     let err = match tcx.span_of_impl(parent_impl) {
         Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
@@ -222,7 +204,7 @@ fn missing_items_err(
 
     let missing_items_msg = missing_items
         .clone()
-        .map(|trait_item| trait_item.name.to_string())
+        .map(|trait_item| trait_item.name().to_string())
         .collect::<Vec<_>>()
         .join("`, `");
 
@@ -245,15 +227,15 @@ fn missing_items_err(
         (Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
-        let snippet = suggestion_signature(
+        let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
-        );
+        ));
         let code = format!("{padding}{snippet}\n{padding}");
-        if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
+        if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
             missing_trait_item_label
-                .push(errors::MissingTraitItemLabel { span, item: trait_item.name });
+                .push(errors::MissingTraitItemLabel { span, item: trait_item.name() });
             missing_trait_item.push(errors::MissingTraitItemSuggestion {
                 span: sugg_sp,
                 code,
@@ -301,7 +283,7 @@ fn default_body_is_unstable(
     reason: Option<Symbol>,
     issue: Option<NonZero<u32>>,
 ) {
-    let missing_item_name = tcx.associated_item(item_did).name;
+    let missing_item_name = tcx.item_ident(item_did);
     let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
     match reason {
         Some(r) => {
@@ -349,9 +331,8 @@ fn bounds_from_generic_predicates<'tcx>(
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
-                if Some(def_id) != tcx.lang_items().sized_trait() {
-                    // Type params are `Sized` by default, do not add that restriction to the list
-                    // if it is a positive requirement.
+                if !tcx.is_default_trait(def_id) {
+                    // Do not add that restriction to the list if it is a positive requirement.
                     entry.push(trait_predicate.def_id());
                 }
             }
@@ -425,14 +406,14 @@ fn fn_sig_suggestion<'tcx>(
         .enumerate()
         .map(|(i, ty)| {
             Some(match ty.kind() {
-                ty::Param(_) if assoc.fn_has_self_parameter && i == 0 => "self".to_string(),
+                ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
                     let reg = format!("{reg} ");
                     let reg = match &reg[..] {
                         "'_ " | " " => "",
                         reg => reg,
                     };
-                    if assoc.fn_has_self_parameter {
+                    if assoc.is_method() {
                         match ref_ty.kind() {
                             ty::Param(param) if param.name == kw::SelfUpper => {
                                 format!("&{}{}self", reg, mutability.prefix_str())
@@ -445,7 +426,7 @@ fn fn_sig_suggestion<'tcx>(
                     }
                 }
                 _ => {
-                    if assoc.fn_has_self_parameter && i == 0 {
+                    if assoc.is_method() && i == 0 {
                         format!("self: {ty}")
                     } else {
                         format!("_: {ty}")
@@ -460,18 +441,14 @@ fn fn_sig_suggestion<'tcx>(
     let mut output = sig.output();
 
     let asyncness = if tcx.asyncness(assoc.def_id).is_async() {
-        output = if let ty::Alias(_, alias_ty) = *output.kind() {
-            tcx.explicit_item_super_predicates(alias_ty.def_id)
+        output = if let ty::Alias(_, alias_ty) = *output.kind()
+            && let Some(output) = tcx
+                .explicit_item_self_bounds(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
                 .find_map(|(bound, _)| {
                     bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
-                })
-                .unwrap_or_else(|| {
-                    span_bug!(
-                        ident.span,
-                        "expected async fn to have `impl Future` output, but it returns {output}"
-                    )
-                })
+                }) {
+            output
         } else {
             span_bug!(
                 ident.span,
@@ -511,7 +488,7 @@ fn suggestion_signature<'tcx>(
     );
 
     match assoc.kind {
-        ty::AssocKind::Fn => fn_sig_suggestion(
+        ty::AssocKind::Fn { .. } => fn_sig_suggestion(
             tcx,
             tcx.liberate_late_bound_regions(
                 assoc.def_id,
@@ -521,22 +498,22 @@ fn suggestion_signature<'tcx>(
             tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
             assoc,
         ),
-        ty::AssocKind::Type => {
+        ty::AssocKind::Type { .. } => {
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
                 tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
             );
-            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name)
+            format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
-        ty::AssocKind::Const => {
+        ty::AssocKind::Const { name } => {
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
             let val = tcx
                 .infer_ctxt()
-                .build()
+                .build(TypingMode::non_body_analysis())
                 .err_ctxt()
                 .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
                 .unwrap_or_else(|| "value".to_string());
-            format!("const {}: {} = {};", assoc.name, ty, val)
+            format!("const {}: {} = {};", name, ty, val)
         }
     }
 }
@@ -546,7 +523,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
     let variant_spans: Vec<_> = adt
         .variants()
         .iter()
-        .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
+        .map(|variant| tcx.hir_span_if_local(variant.def_id).unwrap())
         .collect();
     let (mut spans, mut many) = (Vec::new(), None);
     if let [start @ .., end] = &*variant_spans {
@@ -614,7 +591,7 @@ pub fn check_function_signature<'tcx>(
         match err {
             TypeError::ArgumentMutability(i)
             | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => args.nth(i).unwrap(),
-            _ => cause.span(),
+            _ => cause.span,
         }
     }
 
@@ -622,7 +599,7 @@ pub fn check_function_signature<'tcx>(
 
     let param_env = ty::ParamEnv::empty();
 
-    let infcx = &tcx.infer_ctxt().build();
+    let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
@@ -648,20 +625,19 @@ pub fn check_function_signature<'tcx>(
                 &mut diag,
                 &cause,
                 None,
-                Some(infer::ValuePairs::PolySigs(ExpectedFound {
+                Some(param_env.and(infer::ValuePairs::PolySigs(ExpectedFound {
                     expected: expected_sig,
                     found: actual_sig,
-                })),
+                }))),
                 err,
                 false,
-                false,
+                None,
             );
             return Err(diag.emit());
         }
     }
 
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, &outlives_env) {
+    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, param_env, []) {
         return Err(e);
     }
 

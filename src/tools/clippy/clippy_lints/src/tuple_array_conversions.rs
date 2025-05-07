@@ -1,13 +1,12 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{is_from_proc_macro, path_to_local};
 use itertools::Itertools;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
 use std::iter::once;
@@ -48,15 +47,13 @@ pub struct TupleArrayConversions {
 }
 impl TupleArrayConversions {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
 impl LateLintPass<'_> for TupleArrayConversions {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if in_external_macro(cx.sess(), expr.span) || !self.msrv.meets(msrvs::TUPLE_ARRAY_CONVERSIONS) {
+        if expr.span.in_external_macro(cx.sess().source_map()) || !self.msrv.meets(cx, msrvs::TUPLE_ARRAY_CONVERSIONS) {
             return;
         }
 
@@ -66,8 +63,6 @@ impl LateLintPass<'_> for TupleArrayConversions {
             _ => {},
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
@@ -119,7 +114,7 @@ fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &
                         && let LitKind::Int(val, _) = lit.node
                     {
                         return (val == i as u128).then_some(lhs);
-                    };
+                    }
 
                     None
                 })
@@ -190,7 +185,7 @@ fn all_bindings_are_for_conv<'tcx>(
                     tys.len() == elements.len() && tys.iter().chain(final_tys.iter().copied()).all_equal()
                 },
                 (ToType::Tuple, ty::Array(ty, len)) => {
-                    let Some(len) = len.try_eval_target_usize(cx.tcx, cx.param_env) else { return false };
+                    let Some(len) = len.try_to_target_usize(cx.tcx) else { return false };
                     len as usize == elements.len() && final_tys.iter().chain(once(ty)).all_equal()
                 },
                 _ => false,

@@ -180,7 +180,7 @@ SOURCE_FILE
                       PATH_SEGMENT
                         NAME_REF
                           IDENT "Fn"
-                        PARAM_LIST
+                        PARENTHESIZED_ARG_LIST
                           L_PAREN "("
                           R_PAREN ")"
                         WHITESPACE " "

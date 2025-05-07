@@ -712,14 +712,14 @@ use std::fmt;
 #[cfg(feature = "rustc")]
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_index::bit_set::BitSet;
-use smallvec::{smallvec, SmallVec};
+use rustc_index::bit_set::DenseBitSet;
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use self::PlaceValidity::*;
 use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatId, PatOrWild, WitnessPat};
-use crate::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
+use crate::{MatchArm, PatCx, PrivateUninhabitedField};
 #[cfg(not(feature = "rustc"))]
 pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
     f()
@@ -795,20 +795,21 @@ struct UsefulnessCtxt<'a, 'p, Cx: PatCx> {
     /// Track information about the usefulness of branch patterns (see definition of "branch
     /// pattern" at [`BranchPatUsefulness`]).
     branch_usefulness: FxHashMap<PatId, BranchPatUsefulness<'p, Cx>>,
-    complexity_limit: Option<usize>,
+    // Ideally this field would have type `Limit`, but this crate is used by
+    // rust-analyzer which cannot have a dependency on `Limit`, because `Limit`
+    // is from crate `rustc_session` which uses unstable Rust features.
+    complexity_limit: usize,
     complexity_level: usize,
 }
 
 impl<'a, 'p, Cx: PatCx> UsefulnessCtxt<'a, 'p, Cx> {
     fn increase_complexity_level(&mut self, complexity_add: usize) -> Result<(), Cx::Error> {
         self.complexity_level += complexity_add;
-        if self
-            .complexity_limit
-            .is_some_and(|complexity_limit| complexity_limit < self.complexity_level)
-        {
-            return self.tycx.complexity_exceeded();
+        if self.complexity_level <= self.complexity_limit {
+            Ok(())
+        } else {
+            self.tycx.complexity_exceeded()
         }
-        Ok(())
     }
 }
 
@@ -901,11 +902,11 @@ struct PlaceInfo<Cx: PatCx> {
 impl<Cx: PatCx> PlaceInfo<Cx> {
     /// Given a constructor for the current place, we return one `PlaceInfo` for each field of the
     /// constructor.
-    fn specialize<'a>(
-        &'a self,
-        cx: &'a Cx,
-        ctor: &'a Constructor<Cx>,
-    ) -> impl Iterator<Item = Self> + ExactSizeIterator + Captures<'a> {
+    fn specialize(
+        &self,
+        cx: &Cx,
+        ctor: &Constructor<Cx>,
+    ) -> impl Iterator<Item = Self> + ExactSizeIterator {
         let ctor_sub_tys = cx.ctor_sub_tys(ctor, &self.ty);
         let ctor_sub_validity = self.validity.specialize(ctor);
         ctor_sub_tys.map(move |(ty, PrivateUninhabitedField(private_uninhabited))| PlaceInfo {
@@ -951,7 +952,11 @@ impl<Cx: PatCx> PlaceInfo<Cx> {
             self.is_scrutinee && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
         // Whether empty patterns are counted as useful or not. We only warn an empty arm unreachable if
         // it is guaranteed unreachable by the opsem (i.e. if the place is `known_valid`).
-        let empty_arms_are_unreachable = self.validity.is_known_valid();
+        // We don't want to warn empty patterns as unreachable by default just yet. We will in a
+        // later version of rust or under a different lint name, see
+        // https://github.com/rust-lang/rust/pull/129103.
+        let empty_arms_are_unreachable = self.validity.is_known_valid()
+            && (is_toplevel_exception || cx.is_exhaustive_patterns_feature_on());
         // Whether empty patterns can be omitted for exhaustiveness. We ignore place validity in the
         // toplevel exception and `exhaustive_patterns` cases for backwards compatibility.
         let can_omit_empty_arms = self.validity.is_known_valid()
@@ -1041,13 +1046,13 @@ impl<'p, Cx: PatCx> PatStack<'p, Cx> {
         self.pats[0]
     }
 
-    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> {
         self.pats.iter().copied()
     }
 
     // Expand the first or-pattern into its subpatterns. Only useful if the pattern is an
     // or-pattern. Panics if `self` is empty.
-    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'_> {
+    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> {
         self.head().expand_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
@@ -1125,7 +1130,7 @@ struct MatrixRow<'p, Cx: PatCx> {
     /// ```
     /// Here the `(true, true)` case is irrelevant. Since we skip it, we will not detect that row 0
     /// intersects rows 1 and 2.
-    intersects_at_least: BitSet<usize>,
+    intersects_at_least: DenseBitSet<usize>,
     /// Whether the head pattern is a branch (see definition of "branch pattern" at
     /// [`BranchPatUsefulness`])
     head_is_branch: bool,
@@ -1138,7 +1143,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
             parent_row: arm_id,
             is_under_guard: arm.has_guard,
             useful: false,
-            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
             // This pattern is a branch because it comes from a match arm.
             head_is_branch: true,
         }
@@ -1152,22 +1157,19 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
         self.pats.head()
     }
 
-    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> {
         self.pats.iter()
     }
 
     // Expand the first or-pattern (if any) into its subpatterns. Panics if `self` is empty.
-    fn expand_or_pat(
-        &self,
-        parent_row: usize,
-    ) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'_> {
+    fn expand_or_pat(&self, parent_row: usize) -> impl Iterator<Item = MatrixRow<'p, Cx>> {
         let is_or_pat = self.pats.head().is_or_pat();
         self.pats.expand_or_pat().map(move |patstack| MatrixRow {
             pats: patstack,
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
-            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
             head_is_branch: is_or_pat,
         })
     }
@@ -1187,7 +1189,7 @@ impl<'p, Cx: PatCx> MatrixRow<'p, Cx> {
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
-            intersects_at_least: BitSet::new_empty(0), // Initialized in `Matrix::push`.
+            intersects_at_least: DenseBitSet::new_empty(0), // Initialized in `Matrix::push`.
             head_is_branch: false,
         })
     }
@@ -1226,7 +1228,7 @@ struct Matrix<'p, Cx: PatCx> {
 impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     /// Pushes a new row to the matrix. Internal method, prefer [`Matrix::new`].
     fn push(&mut self, mut row: MatrixRow<'p, Cx>) {
-        row.intersects_at_least = BitSet::new_empty(self.rows.len());
+        row.intersects_at_least = DenseBitSet::new_empty(self.rows.len());
         self.rows.push(row);
     }
 
@@ -1270,7 +1272,7 @@ impl<'p, Cx: PatCx> Matrix<'p, Cx> {
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone + Captures<'_> {
+    fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone {
         self.rows().map(|r| r.head())
     }
 
@@ -1820,7 +1822,7 @@ pub struct UsefulnessReport<'p, Cx: PatCx> {
     pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
     /// For each arm, a set of indices of arms above it that have non-empty intersection, i.e. there
     /// is a value matched by both arms. This may miss real intersections.
-    pub arm_intersections: Vec<BitSet<usize>>,
+    pub arm_intersections: Vec<DenseBitSet<usize>>,
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
@@ -1830,7 +1832,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: PlaceValidity,
-    complexity_limit: Option<usize>,
+    complexity_limit: usize,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     let mut cx = UsefulnessCtxt {
         tycx,

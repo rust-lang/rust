@@ -53,7 +53,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<
         [] => AdjustKind::None,
         &[
             Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                 ..
             },
         ] => AdjustKind::borrow(mutbl),
@@ -62,7 +62,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<
                 kind: Adjust::Deref(_), ..
             },
             Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                 target,
             },
         ] => {

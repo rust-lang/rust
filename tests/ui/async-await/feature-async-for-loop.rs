@@ -11,7 +11,7 @@ fn f() {
     };
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn g() {
     let _ = async {
         for await _i in core::async_iter::from_iter(0..3) {

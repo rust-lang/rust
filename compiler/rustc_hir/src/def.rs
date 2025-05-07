@@ -6,10 +6,9 @@ use rustc_ast::NodeId;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
-use rustc_span::symbol::kw;
-use rustc_span::Symbol;
 
 use crate::definitions::DefPathData;
 use crate::hir;
@@ -109,7 +108,16 @@ pub enum DefKind {
     Use,
     /// An `extern` block.
     ForeignMod,
-    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`
+    /// Anonymous constant, e.g. the `1 + 2` in `[u8; 1 + 2]`.
+    ///
+    /// Not all anon-consts are actually still relevant in the HIR. We lower
+    /// trivial const-arguments directly to `hir::ConstArgKind::Path`, at which
+    /// point the definition for the anon-const ends up unused and incomplete.
+    ///
+    /// We do not provide any a `Span` for the definition and pretty much all other
+    /// queries also ICE when using this `DefId`. Given that the `DefId` of such
+    /// constants should only be reachable by iterating all definitions of a
+    /// given crate, you should not have to worry about this.
     AnonConst,
     /// An inline constant, e.g. `const { 1 + 2 }`
     InlineConst,
@@ -133,6 +141,9 @@ pub enum DefKind {
     /// we treat them all the same, and code which needs to distinguish them can match
     /// or `hir::ClosureKind` or `type_of`.
     Closure,
+    /// The definition of a synthetic coroutine body created by the lowering of a
+    /// coroutine-closure, such as an async closure.
+    SyntheticCoroutineBody,
 }
 
 impl DefKind {
@@ -177,6 +188,7 @@ impl DefKind {
             DefKind::Closure => "closure",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
+            DefKind::SyntheticCoroutineBody => "synthetic mir body",
         }
     }
 
@@ -236,13 +248,15 @@ impl DefKind {
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::OpaqueTy => None,
+            | DefKind::OpaqueTy
+            | DefKind::SyntheticCoroutineBody => None,
         }
     }
 
-    pub fn def_path_data(self, name: Symbol) -> DefPathData {
+    // Some `DefKind`s require a name, some don't. Panics if one is needed but
+    // not provided. (`AssocTy` is an exception, see below.)
+    pub fn def_path_data(self, name: Option<Symbol>) -> DefPathData {
         match self {
-            DefKind::Struct | DefKind::Union if name == kw::Empty => DefPathData::AnonAdt,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union
@@ -252,21 +266,22 @@ impl DefKind {
             | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TraitAlias
-            | DefKind::AssocTy
             | DefKind::TyParam
-            | DefKind::ExternCrate => DefPathData::TypeNs(name),
-            // It's not exactly an anon const, but wrt DefPathData, there
-            // is no difference.
-            DefKind::Static { nested: true, .. } => DefPathData::AnonConst,
+            | DefKind::ExternCrate => DefPathData::TypeNs(name.unwrap()),
+
+            // An associated type name will be missing for an RPITIT (DefPathData::AnonAssocTy),
+            // but those provide their own DefPathData.
+            DefKind::AssocTy => DefPathData::TypeNs(name.unwrap()),
+
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::AssocFn
             | DefKind::AssocConst
-            | DefKind::Field => DefPathData::ValueNs(name),
-            DefKind::Macro(..) => DefPathData::MacroNs(name),
-            DefKind::LifetimeParam => DefPathData::LifetimeNs(name),
+            | DefKind::Field => DefPathData::ValueNs(name.unwrap()),
+            DefKind::Macro(..) => DefPathData::MacroNs(name.unwrap()),
+            DefKind::LifetimeParam => DefPathData::LifetimeNs(name.unwrap()),
             DefKind::Ctor(..) => DefPathData::Ctor,
             DefKind::Use => DefPathData::Use,
             DefKind::ForeignMod => DefPathData::ForeignMod,
@@ -276,12 +291,16 @@ impl DefKind {
             DefKind::GlobalAsm => DefPathData::GlobalAsm,
             DefKind::Impl { .. } => DefPathData::Impl,
             DefKind::Closure => DefPathData::Closure,
+            DefKind::SyntheticCoroutineBody => DefPathData::SyntheticCoroutineBody,
         }
     }
 
     #[inline]
     pub fn is_fn_like(self) -> bool {
-        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure)
+        matches!(
+            self,
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::SyntheticCoroutineBody
+        )
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.
@@ -291,7 +310,8 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure
-            | DefKind::Static { .. } => true,
+            | DefKind::Static { .. }
+            | DefKind::SyntheticCoroutineBody => true,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union
@@ -412,7 +432,7 @@ pub enum Res<Id = hir::HirId> {
         /// mention any generic parameters to allow the following with `min_const_generics`:
         /// ```
         /// # struct Foo;
-        /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+        /// impl Foo { fn test() -> [u8; size_of::<Self>()] { todo!() } }
         ///
         /// struct Bar([u8; baz::<Self>()]);
         /// const fn baz<T>() -> usize { 10 }
@@ -422,7 +442,7 @@ pub enum Res<Id = hir::HirId> {
         /// compat lint:
         /// ```
         /// fn foo<T>() {
-        ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
+        ///     let _bar = [1_u8; size_of::<*mut T>()];
         /// }
         /// ```
         // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
@@ -777,7 +797,7 @@ impl<Id> Res<Id> {
 
     /// Always returns `true` if `self` is `Res::Err`
     pub fn matches_ns(&self, ns: Namespace) -> bool {
-        self.ns().map_or(true, |actual_ns| actual_ns == ns)
+        self.ns().is_none_or(|actual_ns| actual_ns == ns)
     }
 
     /// Returns whether such a resolved path can occur in a tuple struct/variant pattern
@@ -821,8 +841,13 @@ pub enum LifetimeRes {
     /// This variant is used for anonymous lifetimes that we did not resolve during
     /// late resolution. Those lifetimes will be inferred by typechecking.
     Infer,
-    /// Explicit `'static` lifetime.
-    Static,
+    /// `'static` lifetime.
+    Static {
+        /// We do not want to emit `elided_named_lifetimes`
+        /// when we are inside of a const item or a static,
+        /// because it would get too annoying.
+        suppress_elision_warning: bool,
+    },
     /// Resolution failure.
     Error,
     /// HACK: This is used to recover the NodeId of an elided lifetime.

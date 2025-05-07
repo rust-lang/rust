@@ -13,7 +13,8 @@ pub fn main() {
     // This time y gets Frozen...
     let _val = *x;
     // ... and the next Write attempt fails.
-    *y += 1; // Failure //~ ERROR: /write access through .* is forbidden/
+    //~v ERROR: /write access through .* is forbidden/
+    *y += 1; // Failure
     let _val = *x;
     *y += 1; // Unreachable
 }

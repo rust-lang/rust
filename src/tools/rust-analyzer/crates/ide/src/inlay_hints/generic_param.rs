@@ -1,17 +1,21 @@
 //! Implementation of inlay hints for generic parameters.
-use ide_db::{active_parameter::generic_def_for_node, RootDatabase};
+use either::Either;
+use ide_db::{active_parameter::generic_def_for_node, famous_defs::FamousDefs};
 use syntax::{
-    ast::{self, AnyHasGenericArgs, HasGenericArgs, HasName},
     AstNode,
+    ast::{self, AnyHasGenericArgs, HasGenericArgs, HasName},
 };
 
-use crate::{inlay_hints::GenericParameterHints, InlayHint, InlayHintsConfig, InlayKind};
+use crate::{
+    InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
+    inlay_hints::{GenericParameterHints, param_name},
+};
 
-use super::param_name::{is_argument_similar_to_param_name, render_label};
+use super::param_name::is_argument_similar_to_param_name;
 
 pub(crate) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &hir::Semantics<'_, RootDatabase>,
+    FamousDefs(sema, krate): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     node: AnyHasGenericArgs,
 ) -> Option<()> {
@@ -45,12 +49,32 @@ pub(crate) fn hints(
             return None;
         }
 
-        let name = param.name(sema.db);
-        let param_name = name.as_str();
+        let allowed = match (param, &arg) {
+            (hir::GenericParam::TypeParam(_), ast::GenericArg::TypeArg(_)) => type_hints,
+            (hir::GenericParam::ConstParam(_), ast::GenericArg::ConstArg(_)) => const_hints,
+            (hir::GenericParam::LifetimeParam(_), ast::GenericArg::LifetimeArg(_)) => {
+                lifetime_hints
+            }
+            _ => false,
+        };
+        if !allowed {
+            return None;
+        }
+
+        let param_name = param.name(sema.db);
 
         let should_hide = {
-            let argument = get_string_representation(&arg)?;
-            is_argument_similar_to_param_name(&argument, param_name)
+            let param_name = param_name.as_str();
+            get_segment_representation(&arg).map_or(false, |seg| match seg {
+                Either::Left(Either::Left(argument)) => {
+                    is_argument_similar_to_param_name(&argument, param_name)
+                }
+                Either::Left(Either::Right(argument)) => argument
+                    .segment()
+                    .and_then(|it| it.name_ref())
+                    .is_some_and(|it| it.text().eq_ignore_ascii_case(param_name)),
+                Either::Right(lifetime) => lifetime.text().eq_ignore_ascii_case(param_name),
+            })
         };
 
         if should_hide {
@@ -59,30 +83,31 @@ pub(crate) fn hints(
 
         let range = sema.original_range_opt(arg.syntax())?.range;
 
-        let source_syntax = match param {
-            hir::GenericParam::TypeParam(it) => {
-                if !type_hints || !matches!(arg, ast::GenericArg::TypeArg(_)) {
-                    return None;
-                }
-                sema.source(it.merge())?.value.syntax().clone()
-            }
-            hir::GenericParam::ConstParam(it) => {
-                if !const_hints || !matches!(arg, ast::GenericArg::ConstArg(_)) {
-                    return None;
-                }
-                let syntax = sema.source(it.merge())?.value.syntax().clone();
-                let const_param = ast::ConstParam::cast(syntax)?;
-                const_param.name()?.syntax().clone()
-            }
-            hir::GenericParam::LifetimeParam(it) => {
-                if !lifetime_hints || !matches!(arg, ast::GenericArg::LifetimeArg(_)) {
-                    return None;
-                }
-                sema.source(it)?.value.syntax().clone()
-            }
-        };
-        let linked_location = sema.original_range_opt(&source_syntax);
-        let label = render_label(param_name, config, linked_location);
+        let colon = if config.render_colons { ":" } else { "" };
+        let label = InlayHintLabel::simple(
+            format!("{}{colon}", param_name.display(sema.db, krate.edition(sema.db))),
+            None,
+            config.lazy_location_opt(|| {
+                let source_syntax = match param {
+                    hir::GenericParam::TypeParam(it) => {
+                        sema.source(it.merge()).map(|it| it.value.syntax().clone())
+                    }
+                    hir::GenericParam::ConstParam(it) => {
+                        let syntax = sema.source(it.merge())?.value.syntax().clone();
+                        let const_param = ast::ConstParam::cast(syntax)?;
+                        const_param.name().map(|it| it.syntax().clone())
+                    }
+                    hir::GenericParam::LifetimeParam(it) => {
+                        sema.source(it).map(|it| it.value.syntax().clone())
+                    }
+                };
+                let linked_location = source_syntax.and_then(|it| sema.original_range_opt(&it));
+                linked_location.map(|frange| ide_db::FileRange {
+                    file_id: frange.file_id.file_id(sema.db),
+                    range: frange.range,
+                })
+            }),
+        );
 
         Some(InlayHint {
             range,
@@ -92,6 +117,7 @@ pub(crate) fn hints(
             kind: InlayKind::GenericParameter,
             label,
             text_edit: None,
+            resolve_parent: Some(node.syntax().text_range()),
         })
     });
 
@@ -99,32 +125,34 @@ pub(crate) fn hints(
     Some(())
 }
 
-fn get_string_representation(arg: &ast::GenericArg) -> Option<String> {
+fn get_segment_representation(
+    arg: &ast::GenericArg,
+) -> Option<Either<Either<Vec<ast::NameRef>, ast::Path>, ast::Lifetime>> {
     return match arg {
         ast::GenericArg::AssocTypeArg(_) => None,
-        ast::GenericArg::ConstArg(const_arg) => Some(const_arg.to_string()),
+        ast::GenericArg::ConstArg(const_arg) => {
+            param_name::get_segment_representation(&const_arg.expr()?).map(Either::Left)
+        }
         ast::GenericArg::LifetimeArg(lifetime_arg) => {
             let lifetime = lifetime_arg.lifetime()?;
-            Some(lifetime.to_string())
+            Some(Either::Right(lifetime))
         }
         ast::GenericArg::TypeArg(type_arg) => {
             let ty = type_arg.ty()?;
-            Some(
-                type_path_segment(&ty)
-                    .map_or_else(|| type_arg.to_string(), |segment| segment.to_string()),
-            )
+            type_path(&ty).map(Either::Right).map(Either::Left)
         }
     };
 
-    fn type_path_segment(ty: &ast::Type) -> Option<ast::PathSegment> {
+    fn type_path(ty: &ast::Type) -> Option<ast::Path> {
         match ty {
-            ast::Type::ArrayType(it) => type_path_segment(&it.ty()?),
-            ast::Type::ForType(it) => type_path_segment(&it.ty()?),
-            ast::Type::ParenType(it) => type_path_segment(&it.ty()?),
-            ast::Type::PathType(path_type) => path_type.path()?.segment(),
-            ast::Type::PtrType(it) => type_path_segment(&it.ty()?),
-            ast::Type::RefType(it) => type_path_segment(&it.ty()?),
-            ast::Type::SliceType(it) => type_path_segment(&it.ty()?),
+            ast::Type::ArrayType(it) => type_path(&it.ty()?),
+            ast::Type::ForType(it) => type_path(&it.ty()?),
+            ast::Type::ParenType(it) => type_path(&it.ty()?),
+            ast::Type::PathType(path_type) => path_type.path(),
+            ast::Type::PtrType(it) => type_path(&it.ty()?),
+            ast::Type::RefType(it) => type_path(&it.ty()?),
+            ast::Type::SliceType(it) => type_path(&it.ty()?),
+            ast::Type::MacroType(macro_type) => macro_type.macro_call()?.path(),
             _ => None,
         }
     }
@@ -133,15 +161,15 @@ fn get_string_representation(arg: &ast::GenericArg) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::{
-            tests::{check_with_config, DISABLED_CONFIG},
-            GenericParameterHints,
-        },
         InlayHintsConfig,
+        inlay_hints::{
+            GenericParameterHints,
+            tests::{DISABLED_CONFIG, check_with_config},
+        },
     };
 
     #[track_caller]
-    fn generic_param_name_hints_always(ra_fixture: &str) {
+    fn generic_param_name_hints_always(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
                 generic_parameter_hints: GenericParameterHints {
@@ -156,7 +184,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn generic_param_name_hints_const_only(ra_fixture: &str) {
+    fn generic_param_name_hints_const_only(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
                 generic_parameter_hints: GenericParameterHints {

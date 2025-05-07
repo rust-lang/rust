@@ -1,9 +1,8 @@
-//@only-target-windows: this directly tests windows-only functions
-
-use std::ffi::OsStr;
-use std::os::windows::ffi::OsStrExt;
+//@only-target: windows # this directly tests windows-only functions
 
 use core::ffi::c_void;
+use std::ffi::OsStr;
+use std::os::windows::ffi::OsStrExt;
 type HANDLE = *mut c_void;
 type PWSTR = *mut u16;
 type PCWSTR = *const u16;

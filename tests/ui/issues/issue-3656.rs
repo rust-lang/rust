@@ -5,7 +5,6 @@
 // Incorrect struct size computation in the FFI, because of not taking
 // the alignment of elements into account.
 
-//@ pretty-expanded FIXME #23616
 
 use std::ffi::{c_uint, c_void};
 

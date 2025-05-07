@@ -1,5 +1,5 @@
 error: Undefined Behavior: constructing invalid value: encountered 0, but expected something greater or equal to 1
-  --> $DIR/nonzero.rs:LL:CC
+  --> tests/fail/validity/nonzero.rs:LL:CC
    |
 LL |     let _x = Some(unsafe { NonZero(0) });
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0, but expected something greater or equal to 1
@@ -7,7 +7,7 @@ LL |     let _x = Some(unsafe { NonZero(0) });
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/nonzero.rs:LL:CC
+   = note: inside `main` at tests/fail/validity/nonzero.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

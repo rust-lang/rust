@@ -1,3 +1,5 @@
+//@ reference: attributes.diagnostic.on_unimplemented.repetition
+//@ reference: attributes.diagnostic.on_unimplemented.syntax
 #[diagnostic::on_unimplemented(
     if(Self = "()"),
     //~^WARN malformed `on_unimplemented` attribute
@@ -6,8 +8,8 @@
     note = "custom note"
 )]
 #[diagnostic::on_unimplemented(message = "fallback!!")]
-//~^ `message` is ignored due to previous definition of `message`
-//~| `message` is ignored due to previous definition of `message`
+//~^ WARN `message` is ignored due to previous definition of `message`
+//~| WARN `message` is ignored due to previous definition of `message`
 #[diagnostic::on_unimplemented(label = "fallback label")]
 #[diagnostic::on_unimplemented(note = "fallback note")]
 trait Foo {}

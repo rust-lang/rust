@@ -6,7 +6,7 @@
 
 # Parts of `bootstrap.py` use the `multiprocessing` module, so this entry point
 # must use the normal `if __name__ == '__main__':` convention to avoid problems.
-if __name__ == '__main__':
+if __name__ == "__main__":
     import os
     import sys
     import warnings
@@ -32,14 +32,16 @@ if __name__ == '__main__':
     # soft deprecation of old python versions
     skip_check = os.environ.get("RUST_IGNORE_OLD_PYTHON") == "1"
     if not skip_check and (major < 3 or (major == 3 and minor < 6)):
-        msg = cleandoc("""
+        msg = cleandoc(
+            """
             Using python {}.{} but >= 3.6 is recommended. Your python version
             should continue to work for the near future, but this will
             eventually change. If python >= 3.6 is not available on your system,
             please file an issue to help us understand timelines.
 
             This message can be suppressed by setting `RUST_IGNORE_OLD_PYTHON=1`
-        """.format(major, minor))
+        """.format(major, minor)
+        )
         warnings.warn(msg, stacklevel=1)
 
     rust_dir = os.path.dirname(os.path.abspath(__file__))
@@ -47,4 +49,5 @@ if __name__ == '__main__':
     sys.path.insert(0, os.path.join(rust_dir, "src", "bootstrap"))
 
     import bootstrap
+
     bootstrap.main()

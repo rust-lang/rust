@@ -4,7 +4,6 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -26,7 +25,7 @@ declare_clippy_lint! {
     /// # fn some_function() -> Result<(), ()> { Ok(()) }
     /// let _ = some_function();
     /// ```
-    #[clippy::version = "1.70.0"]
+    #[clippy::version = "1.82.0"]
     pub UNUSED_RESULT_OK,
     restriction,
     "Use of `.ok()` to silence `Result`'s `#[must_use]` is misleading. Use `let _ =` instead."
@@ -39,7 +38,7 @@ impl LateLintPass<'_> for UnusedResultOk {
             && let ExprKind::MethodCall(ok_path, recv, [], ..) = expr.kind //check is expr.ok() has type Result<T,E>.ok(, _)
             && ok_path.ident.as_str() == "ok"
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result)
-            && !in_external_macro(cx.sess(), stmt.span)
+            && !stmt.span.in_external_macro(cx.sess().source_map())
         {
             let ctxt = expr.span.ctxt();
             let mut applicability = Applicability::MaybeIncorrect;

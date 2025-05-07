@@ -1,4 +1,4 @@
-//@compile-flags: --edition 2024 -Zunstable-options
+//@ edition: 2024
 //@ run-pass
 //@ needs-unwind
 #![feature(gen_blocks)]

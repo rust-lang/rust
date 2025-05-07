@@ -1,16 +1,16 @@
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::codes::*;
-use rustc_errors::{struct_span_code_err, Applicability, Diag, ErrorGuaranteed, MultiSpan};
-use rustc_hir as hir;
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::GenericArg;
+use rustc_hir::{self as hir, GenericArg};
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::{kw, sym};
 use smallvec::SmallVec;
+use tracing::{debug, instrument};
 
 use super::{HirTyLowerer, IsMethodCall};
 use crate::errors::wrong_number_of_generic_args::{GenericArgsInfo, WrongNumberOfGenericArgs};
@@ -39,17 +39,6 @@ fn generic_arg_mismatch_err(
         arg.descr(),
         param.kind.descr(),
     );
-
-    if let GenericParamDefKind::Const { .. } = param.kind {
-        if matches!(arg, GenericArg::Type(hir::Ty { kind: hir::TyKind::Infer, .. })) {
-            err.help("const arguments cannot yet be inferred with `_`");
-            tcx.disabled_nightly_features(
-                &mut err,
-                param.def_id.as_local().map(|local| tcx.local_def_id_to_hir_id(local)),
-                [(String::new(), sym::generic_arg_infer)],
-            );
-        }
-    }
 
     let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut Diag<'_>| {
         let suggestions = vec![
@@ -81,7 +70,7 @@ fn generic_arg_mismatch_err(
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
-                    let param_name = tcx.hir().ty_param_name(param_local_id);
+                    let param_name = tcx.hir_ty_param_name(param_local_id);
                     let param_type = tcx.type_of(param.def_id).instantiate_identity();
                     if param_type.is_suggestable(tcx, false) {
                         err.span_suggestion(
@@ -103,7 +92,7 @@ fn generic_arg_mismatch_err(
             GenericArg::Type(hir::Ty { kind: hir::TyKind::Array(_, len), .. }),
             GenericParamDefKind::Const { .. },
         ) if tcx.type_of(param.def_id).skip_binder() == tcx.types.usize => {
-            let snippet = sess.source_map().span_to_snippet(tcx.hir().span(len.hir_id()));
+            let snippet = sess.source_map().span_to_snippet(tcx.hir_span(len.hir_id));
             if let Ok(snippet) = snippet {
                 err.span_suggestion(
                     arg.span(),
@@ -114,17 +103,22 @@ fn generic_arg_mismatch_err(
             }
         }
         (GenericArg::Const(cnst), GenericParamDefKind::Type { .. }) => {
-            // FIXME(min_generic_const_args): once ConstArgKind::Path is used for non-params too,
-            // this should match against that instead of ::Anon
-            if let hir::ConstArgKind::Anon(anon) = cnst.kind
-                && let body = tcx.hir().body(anon.body)
+            if let hir::ConstArgKind::Path(qpath) = cnst.kind
+                && let rustc_hir::QPath::Resolved(_, path) = qpath
+                && let Res::Def(DefKind::Fn { .. }, id) = path.res
+            {
+                err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                err.help("function item types cannot be named directly");
+            } else if let hir::ConstArgKind::Anon(anon) = cnst.kind
+                && let body = tcx.hir_body(anon.body)
                 && let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
                     body.value.kind
+                && let Res::Def(DefKind::Fn { .. }, id) = path.res
             {
-                if let Res::Def(DefKind::Fn { .. }, id) = path.res {
-                    err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
-                    err.help("function item types cannot be named directly");
-                }
+                // FIXME(mgca): this branch is dead once new const path lowering
+                // (for single-segment paths) is no longer gated
+                err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
+                err.help("function item types cannot be named directly");
             }
         }
         _ => {}
@@ -264,6 +258,21 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
                             GenericParamDefKind::Const { .. },
                             _,
                         ) => {
+                            if let GenericParamDefKind::Const { .. } = param.kind
+                                && let GenericArg::Infer(inf) = arg
+                                && !tcx.features().generic_arg_infer()
+                            {
+                                rustc_session::parse::feature_err(
+                                    tcx.sess,
+                                    sym::generic_arg_infer,
+                                    inf.span,
+                                    "const arguments cannot yet be inferred with `_`",
+                                )
+                                .emit();
+                            }
+
+                            // We lower to an infer even when the feature gate is not enabled
+                            // as it is useful for diagnostics to be able to see a `ConstKind::Infer`
                             args.push(ctx.provided_kind(&args, param, arg));
                             args_iter.next();
                             params.next();
@@ -533,8 +542,7 @@ pub(crate) fn check_generic_arg_count(
             // ```
             let parent_is_impl_block = cx
                 .tcx()
-                .hir()
-                .parent_owner_iter(seg.hir_id)
+                .hir_parent_owner_iter(seg.hir_id)
                 .next()
                 .is_some_and(|(_, owner_node)| owner_node.is_impl_block());
             if parent_is_impl_block {

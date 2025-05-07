@@ -1,0 +1,19 @@
+error[E0589]: alignment must not be greater than `isize::MAX` bytes
+  --> $DIR/repr_align_greater_usize.rs:22:8
+   |
+LL | #[repr(align(32768))]
+   |        ^^^^^^^^^^^^
+   |
+   = note: `isize::MAX` is 32767 for the current target
+
+error[E0589]: alignment must not be greater than `isize::MAX` bytes
+  --> $DIR/repr_align_greater_usize.rs:25:8
+   |
+LL | #[repr(align(65536))]
+   |        ^^^^^^^^^^^^
+   |
+   = note: `isize::MAX` is 32767 for the current target
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0589`.

@@ -88,7 +88,12 @@ struct Renderer<'a> {
     builder: &'a Builder<'a>,
     tests_count: Option<usize>,
     executed_tests: usize,
+    /// Number of tests that were skipped due to already being up-to-date
+    /// (i.e. no relevant changes occurred since they last ran).
+    up_to_date_tests: usize,
+    ignored_tests: usize,
     terse_tests_in_line: usize,
+    ci_latest_logged_percentage: f64,
 }
 
 impl<'a> Renderer<'a> {
@@ -100,7 +105,10 @@ impl<'a> Renderer<'a> {
             builder,
             tests_count: None,
             executed_tests: 0,
+            up_to_date_tests: 0,
+            ignored_tests: 0,
             terse_tests_in_line: 0,
+            ci_latest_logged_percentage: 0.0,
         }
     }
 
@@ -127,6 +135,12 @@ impl<'a> Renderer<'a> {
                 }
             }
         }
+
+        if self.up_to_date_tests > 0 {
+            let n = self.up_to_date_tests;
+            let s = if n > 1 { "s" } else { "" };
+            println!("help: ignored {n} up-to-date test{s}; use `--force-rerun` to prevent this\n");
+        }
     }
 
     /// Renders the stdout characters one by one
@@ -149,6 +163,14 @@ impl<'a> Renderer<'a> {
     fn render_test_outcome(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
         self.executed_tests += 1;
 
+        if let Outcome::Ignored { reason } = outcome {
+            self.ignored_tests += 1;
+            // Keep this in sync with the "up-to-date" ignore message inserted by compiletest.
+            if reason == Some("up-to-date") {
+                self.up_to_date_tests += 1;
+            }
+        }
+
         #[cfg(feature = "build-metrics")]
         self.builder.metrics.record_test(
             &test.name,
@@ -164,6 +186,8 @@ impl<'a> Renderer<'a> {
 
         if self.builder.config.verbose_tests {
             self.render_test_outcome_verbose(outcome, test);
+        } else if self.builder.config.is_running_on_ci {
+            self.render_test_outcome_ci(outcome, test);
         } else {
             self.render_test_outcome_terse(outcome, test);
         }
@@ -191,6 +215,31 @@ impl<'a> Renderer<'a> {
 
         self.terse_tests_in_line += 1;
         self.builder.colored_stdout(|stdout| outcome.write_short(stdout, &test.name)).unwrap();
+        let _ = std::io::stdout().flush();
+    }
+
+    fn render_test_outcome_ci(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
+        if let Some(total) = self.tests_count {
+            let percent = self.executed_tests as f64 / total as f64;
+
+            if self.ci_latest_logged_percentage + 0.10 < percent {
+                let total = total.to_string();
+                let executed = format!("{:>width$}", self.executed_tests, width = total.len());
+                let pretty_percent = format!("{:.0}%", percent * 100.0);
+                let passed_tests = self.executed_tests - (self.failures.len() + self.ignored_tests);
+                println!(
+                    "{:<4} -- {executed}/{total}, {:>total_indent$} passed, {} failed, {} ignored",
+                    pretty_percent,
+                    passed_tests,
+                    self.failures.len(),
+                    self.ignored_tests,
+                    total_indent = total.len()
+                );
+                self.ci_latest_logged_percentage += 0.10;
+            }
+        }
+
+        self.builder.colored_stdout(|stdout| outcome.write_ci(stdout, &test.name)).unwrap();
         let _ = std::io::stdout().flush();
     }
 
@@ -227,7 +276,7 @@ impl<'a> Renderer<'a> {
             for bench in &self.benches {
                 rows.push((
                     &bench.name,
-                    format!("{:.2?}/iter", bench.median),
+                    format!("{:.2?}ns/iter", bench.median),
                     format!("+/- {:.2?}", bench.deviation),
                 ));
             }
@@ -260,6 +309,9 @@ impl<'a> Renderer<'a> {
         match message {
             Message::Suite(SuiteMessage::Started { test_count }) => {
                 println!("\nrunning {test_count} tests");
+                self.benches = vec![];
+                self.failures = vec![];
+                self.ignored_tests = 0;
                 self.executed_tests = 0;
                 self.terse_tests_in_line = 0;
                 self.tests_count = Some(test_count);
@@ -359,6 +411,17 @@ impl Outcome<'_> {
                 if let Some(reason) = reason {
                     write!(writer, ", {reason}")?;
                 }
+            }
+        }
+        writer.reset()
+    }
+
+    fn write_ci(&self, writer: &mut dyn WriteColor, name: &str) -> Result<(), std::io::Error> {
+        match self {
+            Outcome::Ok | Outcome::BenchOk | Outcome::Ignored { .. } => {}
+            Outcome::Failed => {
+                writer.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+                writeln!(writer, "   {name} ... FAILED")?;
             }
         }
         writer.reset()

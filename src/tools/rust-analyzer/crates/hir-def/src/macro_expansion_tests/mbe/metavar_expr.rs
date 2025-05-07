@@ -311,3 +311,150 @@ fn test() {
 "#]],
     );
 }
+
+#[test]
+fn concat() {
+    // FIXME: Should this error? rustc currently accepts it.
+    check(
+        r#"
+macro_rules! m {
+    ( $a:ident, $b:literal ) => {
+        let ${concat($a, _, "123", _foo, $b, _, 123)};
+    };
+}
+
+fn test() {
+    m!( abc, 456 );
+    m!( def, "hello" );
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ( $a:ident, $b:literal ) => {
+        let ${concat($a, _, "123", _foo, $b, _, 123)};
+    };
+}
+
+fn test() {
+    let abc_123_foo456_123;;
+    let def_123_foohello_123;;
+}
+"#]],
+    );
+}
+
+#[test]
+fn concat_less_than_two_elements() {
+    // FIXME: Should this error? rustc currently accepts it.
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        let ${concat(abc)};
+    };
+}
+
+fn test() {
+    m!()
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    () => {
+        let ${concat(abc)};
+    };
+}
+
+fn test() {
+    /* error: macro definition has parse errors */
+}
+"#]],
+    );
+}
+
+#[test]
+fn concat_invalid_ident() {
+    // FIXME: Should this error? rustc currently accepts it.
+    check(
+        r#"
+macro_rules! m {
+    () => {
+        let ${concat(abc, '"')};
+    };
+}
+
+fn test() {
+    m!()
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    () => {
+        let ${concat(abc, '"')};
+    };
+}
+
+fn test() {
+    /* error: `${concat(..)}` is not generating a valid identifier */let __ra_concat_dummy;
+}
+"#]],
+    );
+}
+
+#[test]
+fn concat_invalid_fragment() {
+    // FIXME: Should this error? rustc currently accepts it.
+    check(
+        r#"
+macro_rules! m {
+    ( $e:expr ) => {
+        let ${concat(abc, $e)};
+    };
+}
+
+fn test() {
+    m!(())
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ( $e:expr ) => {
+        let ${concat(abc, $e)};
+    };
+}
+
+fn test() {
+    /* error: metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt` */let abc;
+}
+"#]],
+    );
+}
+
+#[test]
+fn concat_repetition() {
+    // FIXME: Should this error? rustc currently accepts it.
+    check(
+        r#"
+macro_rules! m {
+    ( $($i:ident)* ) => {
+        let ${concat(abc, $i)};
+    };
+}
+
+fn test() {
+    m!(a b c)
+}
+"#,
+        expect![[r#"
+macro_rules! m {
+    ( $($i:ident)* ) => {
+        let ${concat(abc, $i)};
+    };
+}
+
+fn test() {
+    /* error: expected simple binding, found nested binding `i` */let abc;
+}
+"#]],
+    );
+}

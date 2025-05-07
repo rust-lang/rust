@@ -1,0 +1,77 @@
+error: `extern` block uses type `A`, which is not FFI-safe
+  --> $DIR/repr-rust-is-undefined.rs:34:15
+   |
+LL |     fn foo(x: A);
+   |               ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/repr-rust-is-undefined.rs:8:1
+   |
+LL | struct A {
+   | ^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/repr-rust-is-undefined.rs:1:9
+   |
+LL | #![deny(improper_ctypes)]
+   |         ^^^^^^^^^^^^^^^
+
+error: `extern` block uses type `A`, which is not FFI-safe
+  --> $DIR/repr-rust-is-undefined.rs:35:15
+   |
+LL |     fn bar(x: B);
+   |               ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/repr-rust-is-undefined.rs:8:1
+   |
+LL | struct A {
+   | ^^^^^^^^
+
+error: `extern` block uses type `A`, which is not FFI-safe
+  --> $DIR/repr-rust-is-undefined.rs:37:15
+   |
+LL |     fn qux(x: A2);
+   |               ^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/repr-rust-is-undefined.rs:8:1
+   |
+LL | struct A {
+   | ^^^^^^^^
+
+error: `extern` block uses type `A`, which is not FFI-safe
+  --> $DIR/repr-rust-is-undefined.rs:38:16
+   |
+LL |     fn quux(x: B2);
+   |                ^^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/repr-rust-is-undefined.rs:8:1
+   |
+LL | struct A {
+   | ^^^^^^^^
+
+error: `extern` block uses type `A`, which is not FFI-safe
+  --> $DIR/repr-rust-is-undefined.rs:40:16
+   |
+LL |     fn fred(x: D);
+   |                ^ not FFI-safe
+   |
+   = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
+   = note: this struct has unspecified layout
+note: the type is defined here
+  --> $DIR/repr-rust-is-undefined.rs:8:1
+   |
+LL | struct A {
+   | ^^^^^^^^
+
+error: aborting due to 5 previous errors
+

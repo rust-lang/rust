@@ -1,46 +1,46 @@
 //! This module contains a branchless heapsort as fallback for unstable quicksort.
 
-use crate::{intrinsics, ptr};
+use crate::{cmp, intrinsics, ptr};
 
 /// Sorts `v` using heapsort, which guarantees *O*(*n* \* log(*n*)) worst-case.
 ///
 /// Never inline this, it sits the main hot-loop in `recurse` and is meant as unlikely algorithmic
 /// fallback.
-///
-/// SAFETY: The caller has to guarantee that `v.len()` >= 2.
 #[inline(never)]
-pub(crate) unsafe fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
+pub(crate) fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // SAFETY: See function safety.
-    unsafe {
-        intrinsics::assume(v.len() >= 2);
+    let len = v.len();
 
-        // Build the heap in linear time.
-        for i in (0..v.len() / 2).rev() {
-            sift_down(v, i, is_less);
-        }
-
-        // Pop maximal elements from the heap.
-        for i in (1..v.len()).rev() {
+    for i in (0..len + len / 2).rev() {
+        let sift_idx = if i >= len {
+            i - len
+        } else {
             v.swap(0, i);
-            sift_down(&mut v[..i], 0, is_less);
+            0
+        };
+
+        // SAFETY: The above calculation ensures that `sift_idx` is either 0 or
+        // `(len..(len + (len / 2))) - len`, which simplifies to `0..(len / 2)`.
+        // This guarantees the required `sift_idx <= len`.
+        unsafe {
+            sift_down(&mut v[..cmp::min(i, len)], sift_idx, is_less);
         }
     }
 }
 
 // This binary heap respects the invariant `parent >= child`.
 //
-// SAFETY: The caller has to guarantee that node < `v.len()`.
-#[inline(never)]
+// SAFETY: The caller has to guarantee that `node <= v.len()`.
+#[inline(always)]
 unsafe fn sift_down<T, F>(v: &mut [T], mut node: usize, is_less: &mut F)
 where
     F: FnMut(&T, &T) -> bool,
 {
     // SAFETY: See function safety.
     unsafe {
-        intrinsics::assume(node < v.len());
+        intrinsics::assume(node <= v.len());
     }
 
     let len = v.len();
@@ -69,9 +69,7 @@ where
                 break;
             }
 
-            // Swap `node` with the greater child, move one step down, and continue sifting. This
-            // could be ptr::swap_nonoverlapping but that adds a significant amount of binary-size.
-            ptr::swap(v_base.add(node), v_base.add(child));
+            ptr::swap_nonoverlapping(v_base.add(node), v_base.add(child), 1);
         }
 
         node = child;

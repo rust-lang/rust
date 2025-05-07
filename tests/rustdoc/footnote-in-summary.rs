@@ -4,8 +4,8 @@
 #![crate_name = "foo"]
 
 //@ has 'foo/index.html'
-//@ has - '//*[@class="desc docblock-short"]' 'hello bla'
-//@ !has - '//*[@class="desc docblock-short"]/sup' '1'
+//@ has - '//dd' 'hello bla'
+//@ !has - '//dd/sup' '1'
 
 //@ has 'foo/struct.S.html'
 //@ has - '//*[@class="docblock"]//sup' '1'

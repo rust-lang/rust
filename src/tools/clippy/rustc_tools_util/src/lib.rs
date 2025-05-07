@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+use std::process::Command;
 use std::str;
 
 /// This macro creates the version string during compilation from the
@@ -26,12 +28,12 @@ macro_rules! get_version_info {
     }};
 }
 
-/// This macro can be used in `build.rs` to automatically set the needed
-/// environment values, namely `GIT_HASH`, `COMMIT_DATE` and
-/// `RUSTC_RELEASE_CHANNEL`
+/// This macro can be used in `build.rs` to automatically set the needed environment values, namely
+/// `GIT_HASH`, `COMMIT_DATE`  and `RUSTC_RELEASE_CHANNEL`
 #[macro_export]
 macro_rules! setup_version_info {
     () => {{
+        let _ = $crate::rerun_if_git_changes();
         println!(
             "cargo:rustc-env=GIT_HASH={}",
             $crate::get_commit_hash().unwrap_or_default()
@@ -40,7 +42,11 @@ macro_rules! setup_version_info {
             "cargo:rustc-env=COMMIT_DATE={}",
             $crate::get_commit_date().unwrap_or_default()
         );
-        println!("cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}", $crate::get_channel());
+        let compiler_version = $crate::get_compiler_version();
+        println!(
+            "cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}",
+            $crate::get_channel(compiler_version)
+        );
     }};
 }
 
@@ -84,63 +90,93 @@ impl std::fmt::Debug for VersionInfo {
             "VersionInfo {{ crate_name: \"{}\", major: {}, minor: {}, patch: {}",
             self.crate_name, self.major, self.minor, self.patch,
         )?;
-        if self.commit_hash.is_some() {
-            write!(
-                f,
-                ", commit_hash: \"{}\", commit_date: \"{}\" }}",
-                self.commit_hash.clone().unwrap_or_default().trim(),
-                self.commit_date.clone().unwrap_or_default().trim()
-            )?;
-        } else {
-            write!(f, " }}")?;
+        if let Some(ref commit_hash) = self.commit_hash {
+            write!(f, ", commit_hash: \"{}\"", commit_hash.trim(),)?;
         }
+        if let Some(ref commit_date) = self.commit_date {
+            write!(f, ", commit_date: \"{}\"", commit_date.trim())?;
+        }
+        if let Some(ref host_compiler) = self.host_compiler {
+            write!(f, ", host_compiler: \"{}\"", host_compiler.trim())?;
+        }
+
+        write!(f, " }}")?;
 
         Ok(())
     }
 }
 
 #[must_use]
-pub fn get_commit_hash() -> Option<String> {
-    let output = std::process::Command::new("git")
-        .args(["rev-parse", "HEAD"])
-        .output()
-        .ok()?;
+fn get_output(cmd: &str, args: &[&str]) -> Option<String> {
+    let output = Command::new(cmd).args(args).output().ok()?;
     let mut stdout = output.status.success().then_some(output.stdout)?;
-    stdout.truncate(10);
+    // Remove trailing newlines.
+    while stdout.last().copied() == Some(b'\n') {
+        stdout.pop();
+    }
     String::from_utf8(stdout).ok()
+}
+
+#[must_use]
+pub fn rerun_if_git_changes() -> Option<()> {
+    // Make sure we get rerun when the git commit changes.
+    // We want to watch two files: HEAD, which tracks which branch we are on,
+    // and the file for that branch that tracks which commit is checked out.
+
+    // First, find the `HEAD` file. This should work even with worktrees.
+    let git_head_file = PathBuf::from(get_output("git", &["rev-parse", "--git-path", "HEAD"])?);
+    if git_head_file.exists() {
+        println!("cargo::rerun-if-changed={}", git_head_file.display());
+    }
+
+    // Determine the name of the current ref.
+    // This will quit if HEAD is detached.
+    let git_head_ref = get_output("git", &["symbolic-ref", "-q", "HEAD"])?;
+    // Ask git where this ref is stored.
+    let git_head_ref_file = PathBuf::from(get_output("git", &["rev-parse", "--git-path", &git_head_ref])?);
+    // If this ref is packed, the file does not exist. However, the checked-out branch is never (?)
+    // packed, so we should always be able to find this file.
+    if git_head_ref_file.exists() {
+        println!("cargo::rerun-if-changed={}", git_head_ref_file.display());
+    }
+
+    Some(())
+}
+
+#[must_use]
+pub fn get_commit_hash() -> Option<String> {
+    let mut stdout = get_output("git", &["rev-parse", "HEAD"])?;
+    stdout.truncate(10);
+    Some(stdout)
 }
 
 #[must_use]
 pub fn get_commit_date() -> Option<String> {
-    let output = std::process::Command::new("git")
-        .args(["log", "-1", "--date=short", "--pretty=format:%cd"])
-        .output()
-        .ok()?;
-    let stdout = output.status.success().then_some(output.stdout)?;
-    String::from_utf8(stdout).ok()
+    get_output("git", &["log", "-1", "--date=short", "--pretty=format:%cd"])
 }
 
 #[must_use]
-pub fn get_channel() -> String {
+pub fn get_compiler_version() -> Option<String> {
+    get_output("rustc", &["-V"])
+}
+
+#[must_use]
+pub fn get_channel(compiler_version: Option<String>) -> String {
     if let Ok(channel) = std::env::var("CFG_RELEASE_CHANNEL") {
         return channel;
     }
 
     // if that failed, try to ask rustc -V, do some parsing and find out
-    if let Ok(output) = std::process::Command::new("rustc").arg("-V").output() {
-        if output.status.success() {
-            if let Ok(rustc_output) = str::from_utf8(&output.stdout) {
-                if rustc_output.contains("beta") {
-                    return String::from("beta");
-                } else if rustc_output.contains("stable") {
-                    return String::from("stable");
-                }
-            }
+    if let Some(rustc_output) = compiler_version {
+        if rustc_output.contains("beta") {
+            return String::from("beta");
+        } else if rustc_output.contains("nightly") {
+            return String::from("nightly");
         }
     }
 
-    // default to nightly
-    String::from("nightly")
+    // default to stable
+    String::from("stable")
 }
 
 #[cfg(test)]
@@ -151,18 +187,20 @@ mod test {
     fn test_struct_local() {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
-        assert_eq!(vi.minor, 3);
-        assert_eq!(vi.patch, 0);
+        assert_eq!(vi.minor, 4);
+        assert_eq!(vi.patch, 2);
         assert_eq!(vi.crate_name, "rustc_tools_util");
         // hard to make positive tests for these since they will always change
         assert!(vi.commit_hash.is_none());
         assert!(vi.commit_date.is_none());
+
+        assert!(vi.host_compiler.is_none());
     }
 
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.3.0");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.4.2");
     }
 
     #[test]
@@ -171,7 +209,7 @@ mod test {
         let s = format!("{vi:?}");
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 3, patch: 0 }"
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 4, patch: 2 }"
         );
     }
 }

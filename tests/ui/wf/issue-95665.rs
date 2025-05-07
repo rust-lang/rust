@@ -12,7 +12,7 @@ pub struct Struct<T: Trait> {
 
 extern "C" {
     static VAR: Struct<u8>;
-                //~^ 14:17: 14:27: the trait bound `u8: Trait` is not satisfied [E0277]
+    //~^ ERROR the trait bound `u8: Trait` is not satisfied [E0277]
 }
 
 fn main() {}

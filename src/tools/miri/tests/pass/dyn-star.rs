@@ -1,7 +1,6 @@
 #![feature(dyn_star)]
 #![allow(incomplete_features)]
 #![feature(custom_inner_attributes)]
-#![feature(noop_waker)]
 // rustfmt destroys `dyn* Trait` syntax
 #![rustfmt::skip]
 

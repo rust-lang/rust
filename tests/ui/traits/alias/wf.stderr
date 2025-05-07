@@ -9,7 +9,7 @@ note: required by a bound in `A`
    |
 LL | trait A<T: Foo> {}
    |            ^^^ required by this bound in `A`
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Foo`
    |
 LL | trait B<T: Foo> = A<T>;
    |          +++++

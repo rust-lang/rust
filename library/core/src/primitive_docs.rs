@@ -100,7 +100,7 @@ mod prim_bool {}
 ///
 /// Both match arms must produce values of type [`u32`], but since `break` never produces a value
 /// at all we know it can never produce a value which isn't a [`u32`]. This illustrates another
-/// behaviour of the `!` type - expressions with type `!` will coerce into any other type.
+/// behavior of the `!` type - expressions with type `!` will coerce into any other type.
 ///
 /// [`u32`]: prim@u32
 /// [`exit`]: ../std/process/fn.exit.html
@@ -127,15 +127,13 @@ mod prim_bool {}
 /// [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```
-/// #![feature(exhaustive_patterns)]
 /// use std::str::FromStr;
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// Since the [`Err`] variant contains a `!`, it can never occur. If the `exhaustive_patterns`
-/// feature is present this means we can exhaustively match on [`Result<T, !>`] by just taking the
-/// [`Ok`] variant. This illustrates another behaviour of `!` - it can be used to "delete" certain
-/// enum variants from generic types like `Result`.
+/// Since the [`Err`] variant contains a `!`, it can never occur. This means we can exhaustively
+/// match on [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behavior
+/// of `!` - it can be used to "delete" certain enum variants from generic types like `Result`.
 ///
 /// ## Infinite loops
 ///
@@ -351,7 +349,7 @@ mod prim_never {}
 /// ```
 ///
 /// ```no_run
-/// // Undefined behaviour
+/// // Undefined behavior
 /// let _ = unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
 ///
@@ -398,12 +396,12 @@ mod prim_never {}
 /// let v = vec!['h', 'e', 'l', 'l', 'o'];
 ///
 /// // five elements times four bytes for each element
-/// assert_eq!(20, v.len() * std::mem::size_of::<char>());
+/// assert_eq!(20, v.len() * size_of::<char>());
 ///
 /// let s = String::from("hello");
 ///
 /// // five elements times one byte per element
-/// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
+/// assert_eq!(5, s.len() * size_of::<u8>());
 /// ```
 ///
 /// [`String`]: ../std/string/struct.String.html
@@ -443,8 +441,8 @@ mod prim_never {}
 /// let s = String::from("love: ❤️");
 /// let v: Vec<char> = s.chars().collect();
 ///
-/// assert_eq!(12, std::mem::size_of_val(&s[..]));
-/// assert_eq!(32, std::mem::size_of_val(&v[..]));
+/// assert_eq!(12, size_of_val(&s[..]));
+/// assert_eq!(32, size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char {}
@@ -505,9 +503,11 @@ impl () {}
 ///
 /// *[See also the `std::ptr` module](ptr).*
 ///
-/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns.
-/// Raw pointers can be unaligned or [`null`]. However, when a raw pointer is
-/// dereferenced (using the `*` operator), it must be non-null and aligned.
+/// Working with raw pointers in Rust is uncommon, typically limited to a few patterns. Raw pointers
+/// can be out-of-bounds, unaligned, or [`null`]. However, when loading from or storing to a raw
+/// pointer, it must be [valid] for the given access and aligned. When using a field expression,
+/// tuple index expression, or array/slice index expression on a raw pointer, it follows the rules
+/// of [in-bounds pointer arithmetic][`offset`].
 ///
 /// Storing through a raw pointer using `*ptr = data` calls `drop` on the old value, so
 /// [`write`] must be used if the type has drop glue and memory is not already
@@ -561,12 +561,12 @@ impl () {}
 /// Note that here the call to [`drop`] is for clarity - it indicates
 /// that we are done with the given value and it should be destroyed.
 ///
-/// ## 3. Create it using `ptr::addr_of!`
+/// ## 3. Create it using `&raw`
 ///
-/// Instead of coercing a reference to a raw pointer, you can use the macros
-/// [`ptr::addr_of!`] (for `*const T`) and [`ptr::addr_of_mut!`] (for `*mut T`).
-/// These macros allow you to create raw pointers to fields to which you cannot
-/// create a reference (without causing undefined behaviour), such as an
+/// Instead of coercing a reference to a raw pointer, you can use the raw borrow
+/// operators `&raw const` (for `*const T`) and `&raw mut` (for `*mut T`).
+/// These operators allow you to create raw pointers to fields to which you cannot
+/// create a reference (without causing undefined behavior), such as an
 /// unaligned field. This might be necessary if packed structs or uninitialized
 /// memory is involved.
 ///
@@ -578,7 +578,7 @@ impl () {}
 ///     unaligned: u32,
 /// }
 /// let s = S::default();
-/// let p = std::ptr::addr_of!(s.unaligned); // not allowed with coercion
+/// let p = &raw const s.unaligned; // not allowed with coercion
 /// ```
 ///
 /// ## 4. Get it from C.
@@ -592,10 +592,8 @@ impl () {}
 /// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
-/// use std::mem;
-///
 /// unsafe {
-///     let my_num: *mut i32 = libc::malloc(mem::size_of::<i32>()) as *mut i32;
+///     let my_num: *mut i32 = libc::malloc(size_of::<i32>()) as *mut i32;
 ///     if my_num.is_null() {
 ///         panic!("failed to allocate memory");
 ///     }
@@ -613,6 +611,7 @@ impl () {}
 /// [`offset`]: pointer::offset
 /// [`into_raw`]: ../std/boxed/struct.Box.html#method.into_raw
 /// [`write`]: ptr::write
+/// [valid]: ptr#safety
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_pointer {}
 
@@ -832,8 +831,9 @@ mod prim_array {}
 #[doc(alias = "[")]
 #[doc(alias = "]")]
 #[doc(alias = "[]")]
-/// A dynamically-sized view into a contiguous sequence, `[T]`. Contiguous here
-/// means that elements are laid out so that every element is the same
+/// A dynamically-sized view into a contiguous sequence, `[T]`.
+///
+/// Contiguous here means that elements are laid out so that every element is the same
 /// distance from its neighbors.
 ///
 /// *[See also the `std::slice` module](crate::slice).*
@@ -861,6 +861,27 @@ mod prim_array {}
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
 ///
+/// It is possible to slice empty subranges of slices by using empty ranges (including `slice.len()..slice.len()`):
+/// ```
+/// let x = [1, 2, 3];
+/// let empty = &x[0..0];   // subslice before the first element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[..0];    // same as &x[0..0]
+/// assert_eq!(empty, &[]);
+/// let empty = &x[1..1];   // empty subslice in the middle
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..3];   // subslice after the last element
+/// assert_eq!(empty, &[]);
+/// let empty = &x[3..];    // same as &x[3..3]
+/// assert_eq!(empty, &[]);
+/// ```
+///
+/// It is not allowed to use subranges that start with lower bound bigger than `slice.len()`:
+/// ```should_panic
+/// let x = vec![1, 2, 3];
+/// let _ = &x[4..4];
+/// ```
+///
 /// As slices store the length of the sequence they refer to, they have twice
 /// the size of pointers to [`Sized`](marker/trait.Sized.html) types.
 /// Also see the reference on
@@ -868,11 +889,11 @@ mod prim_array {}
 ///
 /// ```
 /// # use std::rc::Rc;
-/// let pointer_size = std::mem::size_of::<&u8>();
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<&[u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<*const [u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Box<[u8]>>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Rc<[u8]>>());
+/// let pointer_size = size_of::<&u8>();
+/// assert_eq!(2 * pointer_size, size_of::<&[u8]>());
+/// assert_eq!(2 * pointer_size, size_of::<*const [u8]>());
+/// assert_eq!(2 * pointer_size, size_of::<Box<[u8]>>());
+/// assert_eq!(2 * pointer_size, size_of::<Rc<[u8]>>());
 /// ```
 ///
 /// ## Trait Implementations
@@ -1127,17 +1148,17 @@ impl<T> (T,) {}
 
 #[rustc_doc_primitive = "f16"]
 #[doc(alias = "half")]
-/// A 16-bit floating point type (specifically, the "binary16" type defined in IEEE 754-2008).
+/// A 16-bit floating-point type (specifically, the "binary16" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] but has decreased precision because it uses half as many
-/// bits. Please see [the documentation for [`prim@f32`] or [Wikipedia on
-/// half-precision values][wikipedia] for more information.
+/// bits. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on half-precision
+/// values][wikipedia] for more information.
 ///
 /// Note that most common platforms will not support `f16` in hardware without enabling extra target
 /// features, with the notable exception of Apple Silicon (also known as M1, M2, etc.) processors.
-/// Hardware support on x86-64 requires the avx512fp16 feature, while RISC-V requires Zhf.
-/// Usually the fallback implementation will be to use `f32` hardware if it exists, and convert
-/// between `f16` and `f32` when performing math.
+/// Hardware support on x86/x86-64 requires the avx512fp16 or avx10.1 features, while RISC-V requires
+/// Zfh, and Arm/AArch64 requires FEAT_FP16.  Usually the fallback implementation will be to use `f32`
+/// hardware if it exists, and convert between `f16` and `f32` when performing math.
 ///
 /// *[See also the `std::f16::consts` module](crate::f16::consts).*
 ///
@@ -1147,11 +1168,11 @@ mod prim_f16 {}
 
 #[rustc_doc_primitive = "f32"]
 #[doc(alias = "single")]
-/// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
+/// A 32-bit floating-point type (specifically, the "binary32" type defined in IEEE 754-2008).
 ///
 /// This type can represent a wide range of decimal numbers, like `3.5`, `27`,
 /// `-113.75`, `0.0078125`, `34359738368`, `0`, `-1`. So unlike integer types
-/// (such as `i32`), floating point types can represent non-integer numbers,
+/// (such as `i32`), floating-point types can represent non-integer numbers,
 /// too.
 ///
 /// However, being able to represent this wide range of numbers comes at the
@@ -1165,8 +1186,8 @@ mod prim_f16 {}
 ///
 /// Additionally, `f32` can represent some special values:
 ///
-/// - −0.0: IEEE 754 floating point numbers have a bit that indicates their sign, so −0.0 is a
-///   possible value. For comparison −0.0 = +0.0, but floating point operations can carry
+/// - −0.0: IEEE 754 floating-point numbers have a bit that indicates their sign, so −0.0 is a
+///   possible value. For comparison −0.0 = +0.0, but floating-point operations can carry
 ///   the sign bit through arithmetic operations. This means −0.0 × +0.0 produces −0.0 and
 ///   a negative number rounded to a value smaller than a float can represent also produces −0.0.
 /// - [∞](#associatedconstant.INFINITY) and
@@ -1190,6 +1211,11 @@ mod prim_f16 {}
 ///     portable or even fully deterministic! This means that there may be some
 ///     surprising results upon inspecting the bit patterns,
 ///     as the same calculations might produce NaNs with different bit patterns.
+///     This also affects the sign of the NaN: checking `is_sign_positive` or `is_sign_negative` on
+///     a NaN is the most common way to run into these surprising results.
+///     (Checking `x >= 0.0` or `x <= 0.0` avoids those surprises, but also how negative/positive
+///     zero are treated.)
+///     See the section below for what exactly is guaranteed about the bit pattern of a NaN.
 ///
 /// When a primitive operation (addition, subtraction, multiplication, or
 /// division) is performed on this type, the result is rounded according to the
@@ -1206,43 +1232,165 @@ mod prim_f16 {}
 ///   both arguments were negative, then it is -0.0. Subtraction `a - b` is
 ///   regarded as a sum `a + (-b)`.
 ///
-/// For more information on floating point numbers, see [Wikipedia][wikipedia].
+/// For more information on floating-point numbers, see [Wikipedia][wikipedia].
 ///
 /// *[See also the `std::f32::consts` module](crate::f32::consts).*
 ///
 /// [wikipedia]: https://en.wikipedia.org/wiki/Single-precision_floating-point_format
+///
+/// # NaN bit patterns
+///
+/// This section defines the possible NaN bit patterns returned by floating-point operations.
+///
+/// The bit pattern of a floating-point NaN value is defined by:
+/// - a sign bit.
+/// - a quiet/signaling bit. Rust assumes that the quiet/signaling bit being set to `1` indicates a
+///   quiet NaN (QNaN), and a value of `0` indicates a signaling NaN (SNaN). In the following we
+///   will hence just call it the "quiet bit".
+/// - a payload, which makes up the rest of the significand (i.e., the mantissa) except for the
+///   quiet bit.
+///
+/// The rules for NaN values differ between *arithmetic* and *non-arithmetic* (or "bitwise")
+/// operations. The non-arithmetic operations are unary `-`, `abs`, `copysign`, `signum`,
+/// `{to,from}_bits`, `{to,from}_{be,le,ne}_bytes` and `is_sign_{positive,negative}`. These
+/// operations are guaranteed to exactly preserve the bit pattern of their input except for possibly
+/// changing the sign bit.
+///
+/// The following rules apply when a NaN value is returned from an arithmetic operation:
+/// - The result has a non-deterministic sign.
+/// - The quiet bit and payload are non-deterministically chosen from
+///   the following set of options:
+///
+///   - **Preferred NaN**: The quiet bit is set and the payload is all-zero.
+///   - **Quieting NaN propagation**: The quiet bit is set and the payload is copied from any input
+///     operand that is a NaN. If the inputs and outputs do not have the same payload size (i.e., for
+///     `as` casts), then
+///     - If the output is smaller than the input, low-order bits of the payload get dropped.
+///     - If the output is larger than the input, the payload gets filled up with 0s in the low-order
+///       bits.
+///   - **Unchanged NaN propagation**: The quiet bit and payload are copied from any input operand
+///     that is a NaN. If the inputs and outputs do not have the same size (i.e., for `as` casts), the
+///     same rules as for "quieting NaN propagation" apply, with one caveat: if the output is smaller
+///     than the input, dropping the low-order bits may result in a payload of 0; a payload of 0 is not
+///     possible with a signaling NaN (the all-0 significand encodes an infinity) so unchanged NaN
+///     propagation cannot occur with some inputs.
+///   - **Target-specific NaN**: The quiet bit is set and the payload is picked from a target-specific
+///     set of "extra" possible NaN payloads. The set can depend on the input operand values.
+///     See the table below for the concrete NaNs this set contains on various targets.
+///
+/// In particular, if all input NaNs are quiet (or if there are no input NaNs), then the output NaN
+/// is definitely quiet. Signaling NaN outputs can only occur if they are provided as an input
+/// value. Similarly, if all input NaNs are preferred (or if there are no input NaNs) and the target
+/// does not have any "extra" NaN payloads, then the output NaN is guaranteed to be preferred.
+///
+/// The non-deterministic choice happens when the operation is executed; i.e., the result of a
+/// NaN-producing floating-point operation is a stable bit pattern (looking at these bits multiple
+/// times will yield consistent results), but running the same operation twice with the same inputs
+/// can produce different results.
+///
+/// These guarantees are neither stronger nor weaker than those of IEEE 754: IEEE 754 guarantees
+/// that an operation never returns a signaling NaN, whereas it is possible for operations like
+/// `SNAN * 1.0` to return a signaling NaN in Rust. Conversely, IEEE 754 makes no statement at all
+/// about which quiet NaN is returned, whereas Rust restricts the set of possible results to the
+/// ones listed above.
+///
+/// Unless noted otherwise, the same rules also apply to NaNs returned by other library functions
+/// (e.g. `min`, `minimum`, `max`, `maximum`); other aspects of their semantics and which IEEE 754
+/// operation they correspond to are documented with the respective functions.
+///
+/// When an arithmetic floating-point operation is executed in `const` context, the same rules
+/// apply: no guarantee is made about which of the NaN bit patterns described above will be
+/// returned. The result does not have to match what happens when executing the same code at
+/// runtime, and the result can vary depending on factors such as compiler version and flags.
+///
+/// ### Target-specific "extra" NaN values
+// FIXME: Is there a better place to put this?
+///
+/// | `target_arch` | Extra payloads possible on this platform |
+/// |---------------|------------------------------------------|
+// Sorted alphabetically
+/// | `aarch64`, `arm`, `arm64ec`, `loongarch64`, `powerpc` (except when `target_abi = "spe"`), `powerpc64`, `riscv32`, `riscv64`, `s390x`, `x86`, `x86_64` | None |
+/// | `nvptx64` | All payloads |
+/// | `sparc`, `sparc64` | The all-one payload |
+/// | `wasm32`, `wasm64` | If all input NaNs are quiet with all-zero payload: None.<br> Otherwise: all payloads. |
+///
+/// For targets not in this table, all payloads are possible.
+///
+/// # Algebraic operators
+///
+/// Algebraic operators of the form `a.algebraic_*(b)` allow the compiler to optimize
+/// floating point operations using all the usual algebraic properties of real numbers --
+/// despite the fact that those properties do *not* hold on floating point numbers.
+/// This can give a great performance boost since it may unlock vectorization.
+///
+/// The exact set of optimizations is unspecified but typically allows combining operations,
+/// rearranging series of operations based on mathematical properties, converting between division
+/// and reciprocal multiplication, and disregarding the sign of zero. This means that the results of
+/// elementary operations may have undefined precision, and "non-mathematical" values
+/// such as NaN, +/-Inf, or -0.0 may behave in unexpected ways, but these operations
+/// will never cause undefined behavior.
+///
+/// Because of the unpredictable nature of compiler optimizations, the same inputs may produce
+/// different results even within a single program run. **Unsafe code must not rely on any property
+/// of the return value for soundness.** However, implementations will generally do their best to
+/// pick a reasonable tradeoff between performance and accuracy of the result.
+///
+/// For example:
+///
+/// ```
+/// # #![feature(float_algebraic)]
+/// # #![allow(unused_assignments)]
+/// # let mut x: f32 = 0.0;
+/// # let a: f32 = 1.0;
+/// # let b: f32 = 2.0;
+/// # let c: f32 = 3.0;
+/// # let d: f32 = 4.0;
+/// x = a.algebraic_add(b).algebraic_add(c).algebraic_add(d);
+/// ```
+///
+/// May be rewritten as:
+///
+/// ```
+/// # #![allow(unused_assignments)]
+/// # let mut x: f32 = 0.0;
+/// # let a: f32 = 1.0;
+/// # let b: f32 = 2.0;
+/// # let c: f32 = 3.0;
+/// # let d: f32 = 4.0;
+/// x = a + b + c + d; // As written
+/// x = (a + c) + (b + d); // Reordered to shorten critical path and enable vectorization
+/// ```
+
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f32 {}
 
 #[rustc_doc_primitive = "f64"]
 #[doc(alias = "double")]
-/// A 64-bit floating point type (specifically, the "binary64" type defined in IEEE 754-2008).
+/// A 64-bit floating-point type (specifically, the "binary64" type defined in IEEE 754-2008).
 ///
-/// This type is very similar to [`f32`], but has increased
-/// precision by using twice as many bits. Please see [the documentation for
-/// `f32`][`f32`] or [Wikipedia on double precision
+/// This type is very similar to [`prim@f32`], but has increased precision by using twice as many
+/// bits. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on double-precision
 /// values][wikipedia] for more information.
 ///
 /// *[See also the `std::f64::consts` module](crate::f64::consts).*
 ///
-/// [`f32`]: prim@f32
 /// [wikipedia]: https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_f64 {}
 
 #[rustc_doc_primitive = "f128"]
 #[doc(alias = "quad")]
-/// A 128-bit floating point type (specifically, the "binary128" type defined in IEEE 754-2008).
+/// A 128-bit floating-point type (specifically, the "binary128" type defined in IEEE 754-2008).
 ///
 /// This type is very similar to [`prim@f32`] and [`prim@f64`], but has increased precision by using twice
-/// as many bits as `f64`. Please see [the documentation for [`prim@f32`] or [Wikipedia on
+/// as many bits as `f64`. Please see [the documentation for `f32`](prim@f32) or [Wikipedia on
 /// quad-precision values][wikipedia] for more information.
 ///
 /// Note that no platforms have hardware support for `f128` without enabling target specific features,
-/// as for all instruction set architectures `f128` is considered an optional feature.
-/// Only Power ISA ("PowerPC") and RISCV specify it, and only certain microarchitectures
-/// actually implement it. For x86-64 and AArch64, ISA support is not even specified,
-/// so it will always be a software implementation significantly slower than `f64`.
+/// as for all instruction set architectures `f128` is considered an optional feature.  Only Power ISA
+/// ("PowerPC") and RISC-V (via the Q extension) specify it, and only certain microarchitectures
+/// actually implement it. For x86-64 and AArch64, ISA support is not even specified, so it will always
+/// be a software implementation significantly slower than `f64`.
 ///
 /// _Note: `f128` support is incomplete. Many platforms will not be able to link math functions. On
 /// x86 in particular, these functions do link but their results are always incorrect._
@@ -1348,7 +1496,7 @@ mod prim_usize {}
 /// <code>&[bool]</code> can only point to an allocation containing the integer values `1`
 /// ([`true`](../std/keyword.true.html)) or `0` ([`false`](../std/keyword.false.html)), but
 /// creating a <code>&[bool]</code> that points to an allocation containing
-/// the value `3` causes undefined behaviour.
+/// the value `3` causes undefined behavior.
 /// In fact, <code>[Option]\<&T></code> has the same memory representation as a
 /// nullable but aligned pointer, and can be passed across FFI boundaries as such.
 ///
@@ -1507,6 +1655,9 @@ mod prim_ref {}
 /// pointers, make your type [`Option<fn()>`](core::option#options-and-pointers-nullable-pointers)
 /// with your required signature.
 ///
+/// Note that FFI requires additional care to ensure that the ABI for both sides of the call match.
+/// The exact requirements are not currently documented.
+///
 /// ### Safety
 ///
 /// Plain function pointers are obtained by casting either plain functions, or closures that don't
@@ -1584,15 +1735,13 @@ mod prim_ref {}
 /// This zero-sized type *coerces* to a regular function pointer. For example:
 ///
 /// ```rust
-/// use std::mem;
-///
 /// fn bar(x: i32) {}
 ///
 /// let not_bar_ptr = bar; // `not_bar_ptr` is zero-sized, uniquely identifying `bar`
-/// assert_eq!(mem::size_of_val(&not_bar_ptr), 0);
+/// assert_eq!(size_of_val(&not_bar_ptr), 0);
 ///
 /// let bar_ptr: fn(i32) = not_bar_ptr; // force coercion to function pointer
-/// assert_eq!(mem::size_of_val(&bar_ptr), mem::size_of::<usize>());
+/// assert_eq!(size_of_val(&bar_ptr), size_of::<usize>());
 ///
 /// let footgun = &bar; // this is a shared reference to the zero-sized type identifying `bar`
 /// ```
@@ -1638,20 +1787,23 @@ mod prim_ref {}
 /// alignment, they might be passed in different registers and hence not be ABI-compatible.
 ///
 /// ABI compatibility as a concern only arises in code that alters the type of function pointers,
-/// code that imports functions via `extern` blocks, and in code that combines `#[target_feature]`
-/// with `extern fn`. Altering the type of function pointers is wildly unsafe (as in, a lot more
-/// unsafe than even [`transmute_copy`][mem::transmute_copy]), and should only occur in the most
-/// exceptional circumstances. Most Rust code just imports functions via `use`. `#[target_feature]`
-/// is also used rarely. So, most likely you do not have to worry about ABI compatibility.
+/// and code that imports functions via `extern` blocks. Altering the type of function pointers is
+/// wildly unsafe (as in, a lot more unsafe than even [`transmute_copy`][mem::transmute_copy]), and
+/// should only occur in the most exceptional circumstances. Most Rust code just imports functions
+/// via `use`. So, most likely you do not have to worry about ABI compatibility.
 ///
 /// But assuming such circumstances, what are the rules? For this section, we are only considering
-/// the ABI of direct Rust-to-Rust calls, not linking in general -- once functions are imported via
-/// `extern` blocks, there are more things to consider that we do not go into here.
+/// the ABI of direct Rust-to-Rust calls (with both definition and callsite visible to the
+/// Rust compiler), not linking in general -- once functions are imported via `extern` blocks, there
+/// are more things to consider that we do not go into here. Note that this also applies to
+/// passing/calling functions across language boundaries via function pointers.
+///
+/// **Nothing in this section should be taken as a guarantee for non-Rust-to-Rust calls, even with
+/// types from `core::ffi` or `libc`**.
 ///
 /// For two signatures to be considered *ABI-compatible*, they must use a compatible ABI string,
-/// must take the same number of arguments, the individual argument types and the return types must
-/// be ABI-compatible, and the target feature requirements must be met (see the subsection below for
-/// the last point). The ABI string is declared via `extern "ABI" fn(...) -> ...`; note that
+/// must take the same number of arguments, and the individual argument types and the return types
+/// must be ABI-compatible. The ABI string is declared via `extern "ABI" fn(...) -> ...`; note that
 /// `fn name(...) -> ...` implicitly uses the `"Rust"` ABI string and `extern fn name(...) -> ...`
 /// implicitly uses the `"C"` ABI string.
 ///
@@ -1679,7 +1831,11 @@ mod prim_ref {}
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
-///   optimization](option/index.html#representation), then `T` and `Option<T>` are ABI-compatible.
+///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
+///   requirements, then `T` and `E` are ABI-compatible. Such an enum `E` is called "option-like".
+///   - The enum `E` has exactly two variants.
+///   - One variant has exactly one field, of type `T`.
+///   - All fields of the other variant are zero-sized with 1-byte alignment.
 ///
 /// Furthermore, ABI compatibility satisfies the following general properties:
 ///
@@ -1716,24 +1872,6 @@ mod prim_ref {}
 /// `Option<NonZero<i32>>`, and the value used for the argument is `None`, then this call is Undefined
 /// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
-///
-/// #### Requirements concerning target features
-///
-/// Under some conditions, the signature used by the caller and the callee can be ABI-incompatible
-/// even if the exact same ABI string and types are being used. As an example, the
-/// `std::arch::x86_64::__m256` type has a different `extern "C"` ABI when the `avx` feature is
-/// enabled vs when it is not enabled.
-///
-/// Therefore, to ensure ABI compatibility when code using different target features is combined
-/// (such as via `#[target_feature]`), we further require that one of the following conditions is
-/// met:
-///
-/// - The function uses the `"Rust"` ABI string (which is the default without `extern`).
-/// - Caller and callee are using the exact same set of target features. For the callee we consider
-///   the features enabled (via `#[target_feature]` and `-C target-feature`/`-C target-cpu`) at the
-///   declaration site; for the caller we consider the features enabled at the call site.
-/// - Neither any argument nor the return value involves a SIMD type (`#[repr(simd)]`) that is not
-///   behind a pointer indirection (i.e., `*mut __m256` is fine, but `(i32, __m256)` is not).
 ///
 /// ### Trait implementations
 ///

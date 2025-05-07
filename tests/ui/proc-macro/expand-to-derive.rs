@@ -1,6 +1,6 @@
 //@ check-pass
 //@ compile-flags: -Z span-debug --error-format human
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #![feature(rustc_attrs)]
 
@@ -14,7 +14,7 @@ macro_rules! expand_to_derive {
     ($item:item) => {
         #[derive(Print)]
         struct Foo {
-            #[cfg(FALSE)] removed: bool,
+            #[cfg(false)] removed: bool,
             field: [bool; {
                 $item
                 0
@@ -26,7 +26,7 @@ macro_rules! expand_to_derive {
 expand_to_derive! {
     #[cfg_attr(not(FALSE), rustc_dummy)]
     struct Inner {
-        #[cfg(FALSE)] removed_inner_field: bool,
+        #[cfg(false)] removed_inner_field: bool,
         other_inner_field: u8,
     }
 }

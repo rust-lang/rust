@@ -26,7 +26,7 @@
       }
   
       bb1: {
--         switchInt(((_3 as Some).0: bool)) -> [0: bb3, otherwise: bb2];
+-         switchInt(copy ((_3 as Some).0: bool)) -> [0: bb3, otherwise: bb2];
 +         switchInt(const true) -> [0: bb3, otherwise: bb2];
       }
   

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{should_call_clone_as_function, walk_ptrs_ty_depth};
+use clippy_utils::ty::{implements_trait, should_call_clone_as_function, walk_ptrs_ty_depth};
 use clippy_utils::{
     get_parent_expr, is_diag_trait_item, match_def_path, path_to_local_id, peel_blocks, strip_pat_refs,
 };
@@ -9,7 +9,7 @@ use rustc_hir::{self as hir, LangItem};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use core::ops::ControlFlow;
 
@@ -55,12 +55,19 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
         let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
         let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
-            // allow the `as_ref` or `as_mut` if it is followed by another method call
-            if let Some(parent) = get_parent_expr(cx, expr)
-                && let hir::ExprKind::MethodCall(segment, ..) = parent.kind
-                && segment.ident.span != expr.span
-            {
-                return;
+            if let Some(parent) = get_parent_expr(cx, expr) {
+                // allow the `as_ref` or `as_mut` if it is followed by another method call
+                if let hir::ExprKind::MethodCall(segment, ..) = parent.kind
+                    && segment.ident.span != expr.span
+                {
+                    return;
+                }
+
+                // allow the `as_ref` or `as_mut` if they belong to a closure that changes
+                // the number of references
+                if matches!(parent.kind, hir::ExprKind::Closure(..)) && rcv_depth != res_depth {
+                    return;
+                }
             }
 
             let mut applicability = Applicability::MachineApplicable;
@@ -86,15 +93,17 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             // changing the type, then we can move forward.
             && rcv_ty.peel_refs() == res_ty.peel_refs()
             && let Some(parent) = get_parent_expr(cx, expr)
-            && let hir::ExprKind::MethodCall(segment, _, args, _) = parent.kind
+            // Check that it only has one argument.
+            && let hir::ExprKind::MethodCall(segment, _, [arg], _) = parent.kind
             && segment.ident.span != expr.span
             // We check that the called method name is `map`.
             && segment.ident.name == sym::map
-            // And that it only has one argument.
-            && let [arg] = args
             && is_calling_clone(cx, arg)
             // And that we are not recommending recv.clone() over Arc::clone() or similar
             && !should_call_clone_as_function(cx, rcv_ty)
+            // https://github.com/rust-lang/rust-clippy/issues/12357
+            && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
+            && implements_trait(cx, cx.typeck_results().expr_ty(recvr), clone_trait, &[])
         {
             lint_as_ref_clone(cx, expr.span.with_hi(parent.span.hi()), recvr, call_name);
         }
@@ -114,7 +123,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
     match arg.kind {
         hir::ExprKind::Closure(&hir::Closure { body, .. })
             // If it's a closure, we need to check what is called.
-            if let closure_body = cx.tcx.hir().body(body)
+            if let closure_body = cx.tcx.hir_body(body)
                 && let [param] = closure_body.params
                 && let hir::PatKind::Binding(_, local_id, ..) = strip_pat_refs(param.pat).kind =>
         {
@@ -125,7 +134,7 @@ fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
                         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
                         && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                         // We check it's the `Clone` trait.
-                        && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
+                        && cx.tcx.lang_items().clone_trait().is_some_and(|id| id == trait_id)
                         // no autoderefs
                         && !cx.typeck_results().expr_adjustments(obj).iter()
                             .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))

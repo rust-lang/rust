@@ -1,0 +1,24 @@
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/failed-to-reparse-issue-139445.rs:2:21
+   |
+LL |     assert_eq!(3, 'a,)
+   |                     ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/failed-to-reparse-issue-139445.rs:2:5
+   |
+LL |     assert_eq!(3, 'a,)
+   |     ^^^^^^^^^^^^^^^^^^ expected `while`, `for`, `loop` or `{` after a label
+   |
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found ``
+  --> $DIR/failed-to-reparse-issue-139445.rs:2:5
+   |
+LL |     assert_eq!(3, 'a,)
+   |     ^^^^^^^^^^^^^^^^^^ expected expression
+   |
+   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+

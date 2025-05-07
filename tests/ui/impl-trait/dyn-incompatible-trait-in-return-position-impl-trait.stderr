@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/dyn-incompatible-trait-in-return-position-impl-trait.rs:36:5
+   |
+LL | fn can() -> impl DynIncompatible {
+   |             -------------------- expected `A` because of return type
+...
+LL |     B
+   |     ^ expected `A`, found `B`
+
+error[E0308]: mismatched types
+  --> $DIR/dyn-incompatible-trait-in-return-position-impl-trait.rs:43:5
+   |
+LL | fn cat() -> impl DynCompatible {
+   |             ------------------ expected `A` because of return type
+...
+LL |     B
+   |     ^ expected `A`, found `B`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -3,11 +3,6 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
    |
 LL | impl X<'_, _> {}
    |            ^ not allowed in type signatures
-   |
-help: use type parameters instead
-   |
-LL | impl<T> X<'_, T> {}
-   |     +++       ~
 
 error: aborting due to 1 previous error
 

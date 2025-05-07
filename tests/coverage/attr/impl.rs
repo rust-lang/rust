@@ -1,5 +1,6 @@
 #![feature(coverage_attribute)]
 //@ edition: 2021
+//@ reference: attributes.coverage.nesting
 
 // Checks that `#[coverage(..)]` can be applied to impl and impl-trait blocks,
 // and is inherited by any enclosed functions.

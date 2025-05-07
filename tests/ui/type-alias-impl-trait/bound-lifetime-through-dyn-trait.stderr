@@ -1,0 +1,28 @@
+error[E0657]: `impl Trait` cannot capture higher-ranked lifetime from `dyn` type
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:6:71
+   |
+LL | fn dyn_hoops<T: Sized>() -> dyn for<'a> Iterator<Item = impl Captures<'a>> {
+   |                                                                       ^^
+   |
+note: lifetime declared here
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:6:37
+   |
+LL | fn dyn_hoops<T: Sized>() -> dyn for<'a> Iterator<Item = impl Captures<'a>> {
+   |                                     ^^
+
+error: item does not constrain `Opaque::{opaque#0}`
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:11:8
+   |
+LL | pub fn main() {
+   |        ^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/bound-lifetime-through-dyn-trait.rs:13:19
+   |
+LL |     type Opaque = impl Sized;
+   |                   ^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0657`.

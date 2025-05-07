@@ -21,21 +21,15 @@ use super::*;
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
-    visited: BitSet<BasicBlock>,
+    visited: DenseBitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
-    root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
-        Preorder {
-            body,
-            visited: BitSet::new_empty(body.basic_blocks.len()),
-            worklist,
-            root_is_start_block: root == START_BLOCK,
-        }
+        Preorder { body, visited: DenseBitSet::new_empty(body.basic_blocks.len()), worklist }
     }
 }
 
@@ -71,15 +65,11 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // All the blocks, minus the number of blocks we've visited.
-        let upper = self.body.basic_blocks.len() - self.visited.count();
+        // The worklist might be only things already visited.
+        let lower = 0;
 
-        let lower = if self.root_is_start_block {
-            // We will visit all remaining blocks exactly once.
-            upper
-        } else {
-            self.worklist.len()
-        };
+        // This is extremely loose, but it's not worth a popcnt loop to do better.
+        let upper = self.body.basic_blocks.len();
 
         (lower, Some(upper))
     }
@@ -106,32 +96,42 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx> {
     basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-    visited: BitSet<BasicBlock>,
+    visited: DenseBitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
-    root_is_start_block: bool,
+    /// A non-empty `extra` allows for a precise calculation of the successors.
+    extra: Option<(TyCtxt<'tcx>, Instance<'tcx>)>,
 }
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(
         basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         root: BasicBlock,
+        extra: Option<(TyCtxt<'tcx>, Instance<'tcx>)>,
     ) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             basic_blocks,
-            visited: BitSet::new_empty(basic_blocks.len()),
+            visited: DenseBitSet::new_empty(basic_blocks.len()),
             visit_stack: Vec::new(),
-            root_is_start_block: root == START_BLOCK,
+            extra,
         };
 
-        let data = &po.basic_blocks[root];
-
-        if let Some(ref term) = data.terminator {
-            po.visited.insert(root);
-            po.visit_stack.push((root, term.successors()));
-            po.traverse_successor();
-        }
+        po.visit(root);
+        po.traverse_successor();
 
         po
+    }
+
+    fn visit(&mut self, bb: BasicBlock) {
+        if !self.visited.insert(bb) {
+            return;
+        }
+        let data = &self.basic_blocks[bb];
+        let successors = if let Some(extra) = self.extra {
+            data.mono_successors(extra.0, extra.1)
+        } else {
+            data.terminator().successors()
+        };
+        self.visit_stack.push((bb, successors));
     }
 
     fn traverse_successor(&mut self) {
@@ -183,11 +183,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         // since we've already visited `E`, that child isn't added to the stack. The last
         // two iterations yield `B` and finally `A` for a final traversal of [E, D, C, B, A]
         while let Some(bb) = self.visit_stack.last_mut().and_then(|(_, iter)| iter.next_back()) {
-            if self.visited.insert(bb) {
-                if let Some(term) = &self.basic_blocks[bb].terminator {
-                    self.visit_stack.push((bb, term.successors()));
-                }
-            }
+            self.visit(bb);
         }
     }
 }
@@ -203,16 +199,13 @@ impl<'tcx> Iterator for Postorder<'_, 'tcx> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // All the blocks, minus the number of blocks we've visited.
-        let upper = self.basic_blocks.len() - self.visited.count();
+        // These bounds are not at all tight, but that's fine.
+        // It's not worth a popcnt loop in `DenseBitSet` to improve the upper,
+        // and in mono-reachable we can't be precise anyway.
+        // Leaning on amortized growth is fine.
 
-        let lower = if self.root_is_start_block {
-            // We will visit all remaining blocks exactly once.
-            upper
-        } else {
-            self.visit_stack.len()
-        };
-
+        let lower = self.visit_stack.len();
+        let upper = self.basic_blocks.len();
         (lower, Some(upper))
     }
 }
@@ -232,6 +225,20 @@ pub fn postorder<'a, 'tcx>(
     reverse_postorder(body).rev()
 }
 
+pub fn mono_reachable_reverse_postorder<'a, 'tcx>(
+    body: &'a Body<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> Vec<BasicBlock> {
+    let mut iter = Postorder::new(&body.basic_blocks, START_BLOCK, Some((tcx, instance)));
+    let mut items = Vec::with_capacity(body.basic_blocks.len());
+    while let Some(block) = iter.next() {
+        items.push(block);
+    }
+    items.reverse();
+    items
+}
+
 /// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular
 /// order.
 ///
@@ -242,8 +249,8 @@ pub fn reachable<'a, 'tcx>(
     preorder(body)
 }
 
-/// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
-pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
+/// Returns a `DenseBitSet` containing all basic blocks reachable from the `START_BLOCK`.
+pub fn reachable_as_bitset(body: &Body<'_>) -> DenseBitSet<BasicBlock> {
     let mut iter = preorder(body);
     while let Some(_) = iter.next() {}
     iter.visited
@@ -297,13 +304,13 @@ pub fn mono_reachable<'a, 'tcx>(
     MonoReachable::new(body, tcx, instance)
 }
 
-/// [`MonoReachable`] internally accumulates a [`BitSet`] of visited blocks. This is just a
+/// [`MonoReachable`] internally accumulates a [`DenseBitSet`] of visited blocks. This is just a
 /// convenience function to run that traversal then extract its set of reached blocks.
 pub fn mono_reachable_as_bitset<'a, 'tcx>(
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-) -> BitSet<BasicBlock> {
+) -> DenseBitSet<BasicBlock> {
     let mut iter = mono_reachable(body, tcx, instance);
     while let Some(_) = iter.next() {}
     iter.visited
@@ -313,11 +320,11 @@ pub struct MonoReachable<'a, 'tcx> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
-    visited: BitSet<BasicBlock>,
+    visited: DenseBitSet<BasicBlock>,
     // Other traversers track their worklist in a Vec. But we don't care about order, so we can
-    // store ours in a BitSet and thus save allocations because BitSet has a small size
+    // store ours in a DenseBitSet and thus save allocations because DenseBitSet has a small size
     // optimization.
-    worklist: BitSet<BasicBlock>,
+    worklist: DenseBitSet<BasicBlock>,
 }
 
 impl<'a, 'tcx> MonoReachable<'a, 'tcx> {
@@ -326,13 +333,13 @@ impl<'a, 'tcx> MonoReachable<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         instance: Instance<'tcx>,
     ) -> MonoReachable<'a, 'tcx> {
-        let mut worklist = BitSet::new_empty(body.basic_blocks.len());
+        let mut worklist = DenseBitSet::new_empty(body.basic_blocks.len());
         worklist.insert(START_BLOCK);
         MonoReachable {
             body,
             tcx,
             instance,
-            visited: BitSet::new_empty(body.basic_blocks.len()),
+            visited: DenseBitSet::new_empty(body.basic_blocks.len()),
             worklist,
         }
     }
@@ -358,14 +365,8 @@ impl<'a, 'tcx> Iterator for MonoReachable<'a, 'tcx> {
 
             let data = &self.body[idx];
 
-            if let Some((bits, targets)) =
-                Body::try_const_mono_switchint(self.tcx, self.instance, data)
-            {
-                let target = targets.target_for_value(bits);
-                self.add_work([target]);
-            } else {
-                self.add_work(data.terminator().successors());
-            }
+            let targets = data.mono_successors(self.tcx, self.instance);
+            self.add_work(targets);
 
             return Some((idx, data));
         }

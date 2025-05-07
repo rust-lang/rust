@@ -1,3 +1,5 @@
+#![allow(static_mut_refs)]
+
 struct Bar(u16); // ZSTs are tested separately
 
 static mut DROP_COUNT: usize = 0;

@@ -1,6 +1,6 @@
-use crate::spec::{base, SanitizerSet, TargetOptions, TlsModel};
+use crate::spec::{SanitizerSet, TargetOptions, TlsModel, base};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut base = base::linux::opts();
     base.os = "android".into();
     base.is_like_android = true;

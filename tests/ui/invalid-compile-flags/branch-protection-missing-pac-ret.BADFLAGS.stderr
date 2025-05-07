@@ -1,2 +1,2 @@
-error: incorrect value `leaf` for unstable option `branch-protection` - a `,` separated combination of `bti`, `b-key`, `pac-ret`, or `leaf` was expected
+error: incorrect value `leaf` for unstable option `branch-protection` - a `,` separated combination of `bti`, `pac-ret`, followed by a combination of `pc`, `b-key`, or `leaf` was expected
 

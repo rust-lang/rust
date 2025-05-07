@@ -1,15 +1,14 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/const-expr-lifetime-err.rs:22:30
+  --> $DIR/const-expr-lifetime-err.rs:20:30
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here
 LL |     let y = ();
    |         - binding `y` declared here
 LL |     equate(InvariantRef::new(&y), const { InvariantRef::<'a>::NEW });
-   |            ------------------^^-
-   |            |                 |
-   |            |                 borrowed value does not live long enough
-   |            argument requires that `y` is borrowed for `'a`
+   |                              ^^           ----------------------- using this value as a constant requires that `y` is borrowed for `'a`
+   |                              |
+   |                              borrowed value does not live long enough
 LL |
 LL | }
    | - `y` dropped here while still borrowed

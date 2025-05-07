@@ -136,11 +136,11 @@ LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
    |             |
    |             formatting specifier missing
 
-error: invalid format string: expected `'}'` but string was terminated
+error: invalid format string: expected `}` but string was terminated
   --> $DIR/ifmt-bad-arg.rs:51:15
    |
 LL |     format!("{");
-   |              -^ expected `'}'` in format string
+   |              -^ expected `}` in format string
    |              |
    |              because of this opening brace
    |
@@ -172,13 +172,13 @@ LL |     format!("foo %s baz", "bar");
    |
    = note: printf formatting is not supported; see the documentation for `std::fmt`
 
-error: invalid format string: expected `'}'`, found `'t'`
+error: invalid format string: expected `}`, found `t`
   --> $DIR/ifmt-bad-arg.rs:75:1
    |
 LL | ninth number: {
    |               - because of this opening brace
 LL | tenth number: {}",
-   | ^ expected `'}'` in format string
+   | ^ expected `}` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 

@@ -1,4 +1,6 @@
-#[warn(clippy::exit)]
+//@ check-pass
+
+#![warn(clippy::exit)]
 
 fn main() {
     if true {

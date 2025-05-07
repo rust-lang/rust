@@ -15,6 +15,7 @@
 #![allow(clippy::mixed_read_write_in_expression)]
 #![allow(clippy::manual_find_map)]
 #![allow(clippy::manual_filter_map)]
+#![allow(unpredictable_function_pointer_comparisons)]
 #![allow(clippy::useless_conversion)]
 #![allow(clippy::redundant_pattern_matching)]
 #![allow(clippy::match_result_ok)]
@@ -38,6 +39,8 @@
 #![allow(invalid_reference_casting)]
 #![allow(suspicious_double_ref_op)]
 #![allow(invalid_nan_comparisons)]
+#![allow(invalid_null_arguments)]
+#![allow(double_negations)]
 #![allow(drop_bounds)]
 #![allow(dropping_copy_types)]
 #![allow(dropping_references)]
@@ -54,7 +57,7 @@
 #![allow(enum_intrinsics_non_enums)]
 #![allow(non_fmt_panics)]
 #![allow(named_arguments_used_positionally)]
-#![allow(temporary_cstring_as_ptr)]
+#![allow(dangling_pointers_from_temporaries)]
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
@@ -74,6 +77,7 @@
 #![warn(clippy::mixed_read_write_in_expression)] //~ ERROR: lint `clippy::eval_order_dependence`
 #![warn(clippy::manual_find_map)] //~ ERROR: lint `clippy::find_map`
 #![warn(clippy::manual_filter_map)] //~ ERROR: lint `clippy::filter_map`
+#![warn(unpredictable_function_pointer_comparisons)] //~ ERROR: lint `clippy::fn_address_comparisons`
 #![warn(clippy::useless_conversion)] //~ ERROR: lint `clippy::identity_conversion`
 #![warn(clippy::redundant_pattern_matching)] //~ ERROR: lint `clippy::if_let_redundant_pattern_matching`
 #![warn(clippy::match_result_ok)] //~ ERROR: lint `clippy::if_let_some_result`
@@ -101,6 +105,8 @@
 #![warn(invalid_reference_casting)] //~ ERROR: lint `clippy::cast_ref_to_mut`
 #![warn(suspicious_double_ref_op)] //~ ERROR: lint `clippy::clone_double_ref`
 #![warn(invalid_nan_comparisons)] //~ ERROR: lint `clippy::cmp_nan`
+#![warn(invalid_null_arguments)] //~ ERROR: lint `clippy::invalid_null_ptr_usage`
+#![warn(double_negations)] //~ ERROR: lint `clippy::double_neg`
 #![warn(drop_bounds)] //~ ERROR: lint `clippy::drop_bounds`
 #![warn(dropping_copy_types)] //~ ERROR: lint `clippy::drop_copy`
 #![warn(dropping_references)] //~ ERROR: lint `clippy::drop_ref`
@@ -120,7 +126,7 @@
 #![warn(unexpected_cfgs)] //~ ERROR: lint `clippy::mismatched_target_os`
 #![warn(non_fmt_panics)] //~ ERROR: lint `clippy::panic_params`
 #![warn(named_arguments_used_positionally)] //~ ERROR: lint `clippy::positional_named_format_parameters`
-#![warn(temporary_cstring_as_ptr)] //~ ERROR: lint `clippy::temporary_cstring_as_ptr`
+#![warn(dangling_pointers_from_temporaries)] //~ ERROR: lint `clippy::temporary_cstring_as_ptr`
 #![warn(undropped_manually_drops)] //~ ERROR: lint `clippy::undropped_manually_drops`
 #![warn(unknown_lints)] //~ ERROR: lint `clippy::unknown_clippy_lints`
 #![warn(unused_labels)] //~ ERROR: lint `clippy::unused_label`

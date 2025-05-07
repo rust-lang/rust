@@ -79,15 +79,17 @@ struct MutatePairDelegate<'a, 'tcx> {
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
-        if bk == ty::BorrowKind::MutBorrow {
-            if let PlaceBase::Local(id) = cmt.place.base {
-                if Some(id) == self.hir_id_low && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                    self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
-                }
-                if Some(id) == self.hir_id_high && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                    self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
-                }
+        if bk == ty::BorrowKind::Mutable
+            && let PlaceBase::Local(id) = cmt.place.base
+        {
+            if Some(id) == self.hir_id_low && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
+                self.span_low = Some(self.cx.tcx.hir_span(diag_expr_id));
+            }
+            if Some(id) == self.hir_id_high && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
+                self.span_high = Some(self.cx.tcx.hir_span(diag_expr_id));
             }
         }
     }
@@ -95,10 +97,10 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         if let PlaceBase::Local(id) = cmt.place.base {
             if Some(id) == self.hir_id_low && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                self.span_low = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_low = Some(self.cx.tcx.hir_span(diag_expr_id));
             }
             if Some(id) == self.hir_id_high && !BreakAfterExprVisitor::is_found(self.cx, diag_expr_id) {
-                self.span_high = Some(self.cx.tcx.hir().span(diag_expr_id));
+                self.span_high = Some(self.cx.tcx.hir_span(diag_expr_id));
             }
         }
     }
@@ -126,8 +128,8 @@ impl BreakAfterExprVisitor {
             break_after_expr: false,
         };
 
-        get_enclosing_block(cx, hir_id).map_or(false, |block| {
-            visitor.visit_block(block);
+        get_enclosing_block(cx, hir_id).is_some_and(|block| {
+            let _ = visitor.visit_block(block);
             visitor.break_after_expr
         })
     }

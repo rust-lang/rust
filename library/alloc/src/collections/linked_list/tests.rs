@@ -1,4 +1,7 @@
-use std::panic::{catch_unwind, AssertUnwindSafe};
+// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+#![allow(static_mut_refs)]
+
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::thread;
 
 use rand::RngCore;
@@ -55,7 +58,7 @@ fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
     v.iter().cloned().collect()
 }
 
-pub fn check_links<T>(list: &LinkedList<T>) {
+fn check_links<T>(list: &LinkedList<T>) {
     unsafe {
         let mut len = 0;
         let mut last_ptr: Option<&Node<T>> = None;

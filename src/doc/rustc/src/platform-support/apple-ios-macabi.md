@@ -2,16 +2,16 @@
 
 Apple Mac Catalyst targets.
 
-**Tier: 3**
+**Tier: 2 (without Host Tools)**
 
 - `aarch64-apple-ios-macabi`: Mac Catalyst on ARM64.
 - `x86_64-apple-ios-macabi`: Mac Catalyst on 64-bit x86.
 
 ## Target maintainers
 
-- [@badboy](https://github.com/badboy)
-- [@BlackHoleFox](https://github.com/BlackHoleFox)
-- [@madsmtm](https://github.com/madsmtm)
+[@badboy](https://github.com/badboy)
+[@BlackHoleFox](https://github.com/BlackHoleFox)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
@@ -20,11 +20,12 @@ These targets are cross-compiled, and require the corresponding macOS SDK
 iOS-specific headers, as provided by Xcode 11 or higher.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk macosx --show-sdk-path`.
 
 ### OS version
 
-The minimum supported version is iOS 13.1.
+The minimum supported version is iOS 13.1 on x86 and 14.0 on Aarch64.
 
 This can be raised per-binary by changing the deployment target. `rustc`
 respects the common environment variables used by Xcode to do so, in this
@@ -32,15 +33,19 @@ case `IPHONEOS_DEPLOYMENT_TARGET`.
 
 ## Building the target
 
-The targets can be built by enabling them for a `rustc` build in
-`config.toml`, by adding, for example:
-
-```toml
-[build]
-target = ["aarch64-apple-ios-macabi", "x86_64-apple-ios-macabi"]
+The targets are distributed through `rustup`, and can be installed using one
+of:
+```console
+$ rustup target add aarch64-apple-ios-macabi
+$ rustup target add x86_64-apple-ios-macabi
 ```
 
-Using the unstable `-Zbuild-std` with a nightly Cargo may also work.
+### Sanitizers
+
+Due to CMake having poor support for Mac Catalyst, sanitizer runtimes are not
+currently available, see [#129069].
+
+[#129069]: https://github.com/rust-lang/rust/issues/129069
 
 ## Building Rust programs
 

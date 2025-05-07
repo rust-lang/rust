@@ -19,7 +19,7 @@ macro_rules! qpath {
 
     (ty, <$type:ty as $trait:ty>::$name:ident) => {
         <$type as $trait>::$name
-        //~^ ERROR expected identifier, found `!`
+        //~^ ERROR expected identifier, found metavariable
     };
 }
 

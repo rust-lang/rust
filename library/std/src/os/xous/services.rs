@@ -1,4 +1,4 @@
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{Atomic, AtomicU32, Ordering};
 
 use crate::os::xous::ffi::Connection;
 
@@ -19,7 +19,7 @@ pub(crate) use ticktimer::*;
 
 mod ns {
     const NAME_MAX_LENGTH: usize = 64;
-    use crate::os::xous::ffi::{lend_mut, Connection};
+    use crate::os::xous::ffi::{Connection, lend_mut};
     // By making this repr(C), the layout of this struct becomes well-defined
     // and no longer shifts around.
     // By marking it as `align(4096)` we define that it will be page-aligned,
@@ -106,7 +106,7 @@ pub fn try_connect(name: &str) -> Option<Connection> {
     ns::try_connect_with_name(name)
 }
 
-static NAME_SERVER_CONNECTION: AtomicU32 = AtomicU32::new(0);
+static NAME_SERVER_CONNECTION: Atomic<u32> = AtomicU32::new(0);
 
 /// Returns a `Connection` to the name server. If the name server has not been started,
 /// then this call will block until the name server has been started. The `Connection`

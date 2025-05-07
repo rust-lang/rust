@@ -3,7 +3,7 @@
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_target::asm::*;
 
-use crate::inline_asm::{codegen_inline_asm_inner, CInlineAsmOperand};
+use crate::inline_asm::{CInlineAsmOperand, codegen_inline_asm_inner};
 use crate::intrinsics::*;
 use crate::prelude::*;
 

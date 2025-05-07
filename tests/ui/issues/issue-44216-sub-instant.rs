@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:overflow
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 use std::time::{Instant, Duration};
 

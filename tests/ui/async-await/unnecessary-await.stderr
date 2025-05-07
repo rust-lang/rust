@@ -6,7 +6,7 @@ LL |     boo().await;
    |     |
    |     this call returns `()`
    |
-   = help: the trait `Future` is not implemented for `()`, which is required by `(): IntoFuture`
+   = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
 help: remove the `.await`
@@ -28,7 +28,7 @@ LL |     e!().await;
    |         |`()` is not a future
    |         help: remove the `.await`
    |
-   = help: the trait `Future` is not implemented for `()`, which is required by `(): IntoFuture`
+   = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
 
@@ -44,7 +44,7 @@ LL |         $expr.await
 LL |     f!(());
    |     ------ in this macro invocation
    |
-   = help: the trait `Future` is not implemented for `()`, which is required by `(): IntoFuture`
+   = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
    = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -58,7 +58,7 @@ LL |     for x in [] {}.await
    |                   |`()` is not a future
    |                   help: remove the `.await`
    |
-   = help: the trait `Future` is not implemented for `()`, which is required by `(): IntoFuture`
+   = help: the trait `Future` is not implemented for `()`
    = note: () must be a future or must implement `IntoFuture` to be awaited
    = note: required for `()` to implement `IntoFuture`
 

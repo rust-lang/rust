@@ -15,3 +15,5 @@ struct Foo { //~ ERROR has infinite size
 struct Bar<T>([T; 1]);
 
 fn main() {}
+
+//~? ERROR reached the recursion limit finding the struct tail for `Take`

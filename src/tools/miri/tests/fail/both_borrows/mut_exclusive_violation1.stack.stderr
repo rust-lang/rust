@@ -1,5 +1,5 @@
 error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
-  --> $DIR/mut_exclusive_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |         *LEAK = 7;
    |         ^^^^^^^^^
@@ -10,24 +10,24 @@ LL |         *LEAK = 7;
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
-  --> $DIR/mut_exclusive_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |         LEAK = x as *const _ as *mut _;
    |                ^
 help: <TAG> was later invalidated at offsets [0x0..0x4] by a write access
-  --> $DIR/mut_exclusive_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |     *our = 5;
    |     ^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `unknown_code_2` at $DIR/mut_exclusive_violation1.rs:LL:CC
+   = note: inside `unknown_code_2` at tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
 note: inside `demo_mut_advanced_unique`
-  --> $DIR/mut_exclusive_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |     unknown_code_2();
    |     ^^^^^^^^^^^^^^^^
 note: inside `main`
-  --> $DIR/mut_exclusive_violation1.rs:LL:CC
+  --> tests/fail/both_borrows/mut_exclusive_violation1.rs:LL:CC
    |
 LL |     demo_mut_advanced_unique(&mut 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

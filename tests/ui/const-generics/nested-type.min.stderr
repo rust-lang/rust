@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `Foo::{constant#0}::Foo::<17>::value` in constants
+error[E0015]: cannot call non-const associated function `Foo::{constant#0}::Foo::<17>::value` in constants
   --> $DIR/nested-type.rs:15:5
    |
 LL |     Foo::<17>::value()
@@ -25,11 +25,10 @@ LL | |     struct Foo<const N: usize>;
 LL | |
 LL | |     impl<const N: usize> Foo<N> {
 ...  |
-LL | |
 LL | | }]>;
    | |__^
    |
-   = note: the only supported types are integers, `bool` and `char`
+   = note: the only supported types are integers, `bool`, and `char`
 help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
    |
 LL + #![feature(adt_const_params)]

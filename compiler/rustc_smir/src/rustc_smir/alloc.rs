@@ -1,13 +1,15 @@
-use rustc_middle::mir::interpret::{alloc_range, AllocRange, Pointer};
+use rustc_abi::{Align, Size};
 use rustc_middle::mir::ConstValue;
+use rustc_middle::mir::interpret::{AllocInit, AllocRange, Pointer, alloc_range};
+use stable_mir::Error;
 use stable_mir::mir::Mutability;
 use stable_mir::ty::{Allocation, ProvenanceMap};
-use stable_mir::Error;
 
 use crate::rustc_smir::{Stable, Tables};
+use crate::stable_mir;
 
 /// Creates new empty `Allocation` from given `Align`.
-fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
+fn new_empty_allocation(align: Align) -> Allocation {
     Allocation {
         bytes: Vec::new(),
         provenance: ProvenanceMap { ptrs: Vec::new() },
@@ -20,59 +22,54 @@ fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
 // because we need to get `Ty` of the const we are trying to create, to do that
 // we need to have access to `ConstantKind` but we can't access that inside Stable impl.
 #[allow(rustc::usage_of_qualified_ty)]
-pub fn new_allocation<'tcx>(
+pub(crate) fn new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
 ) -> Allocation {
     try_new_allocation(ty, const_value, tables)
-        .expect(&format!("Failed to convert: {const_value:?} to {ty:?}"))
+        .unwrap_or_else(|_| panic!("Failed to convert: {const_value:?} to {ty:?}"))
 }
 
 #[allow(rustc::usage_of_qualified_ty)]
-pub fn try_new_allocation<'tcx>(
+pub(crate) fn try_new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
 ) -> Result<Allocation, Error> {
+    let layout = tables
+        .tcx
+        .layout_of(rustc_middle::ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+        .map_err(|e| e.stable(tables))?;
     Ok(match const_value {
         ConstValue::Scalar(scalar) => {
             let size = scalar.size();
-            let align = tables
-                .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
-                .map_err(|e| e.stable(tables))?
-                .align;
-            let mut allocation = rustc_middle::mir::interpret::Allocation::uninit(size, align.abi);
+            let mut allocation = rustc_middle::mir::interpret::Allocation::new(
+                size,
+                layout.align.abi,
+                AllocInit::Uninit,
+            );
             allocation
-                .write_scalar(&tables.tcx, alloc_range(rustc_target::abi::Size::ZERO, size), scalar)
+                .write_scalar(&tables.tcx, alloc_range(Size::ZERO, size), scalar)
                 .map_err(|e| e.stable(tables))?;
             allocation.stable(tables)
         }
-        ConstValue::ZeroSized => {
-            let align = tables
-                .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::empty().and(ty))
-                .map_err(|e| e.stable(tables))?
-                .align;
-            new_empty_allocation(align.abi)
-        }
+        ConstValue::ZeroSized => new_empty_allocation(layout.align.abi),
         ConstValue::Slice { data, meta } => {
             let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = Pointer::new(alloc_id.into(), rustc_target::abi::Size::ZERO);
+            let ptr = Pointer::new(alloc_id.into(), Size::ZERO);
             let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
             let scalar_meta =
                 rustc_middle::mir::interpret::Scalar::from_target_usize(meta, &tables.tcx);
-            let layout = tables
-                .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
-                .map_err(|e| e.stable(tables))?;
-            let mut allocation =
-                rustc_middle::mir::interpret::Allocation::uninit(layout.size, layout.align.abi);
+            let mut allocation = rustc_middle::mir::interpret::Allocation::new(
+                layout.size,
+                layout.align.abi,
+                AllocInit::Uninit,
+            );
             allocation
                 .write_scalar(
                     &tables.tcx,
-                    alloc_range(rustc_target::abi::Size::ZERO, tables.tcx.data_layout.pointer_size),
+                    alloc_range(Size::ZERO, tables.tcx.data_layout.pointer_size),
                     scalar_ptr,
                 )
                 .map_err(|e| e.stable(tables))?;
@@ -87,12 +84,7 @@ pub fn try_new_allocation<'tcx>(
         }
         ConstValue::Indirect { alloc_id, offset } => {
             let alloc = tables.tcx.global_alloc(alloc_id).unwrap_memory();
-            let ty_size = tables
-                .tcx
-                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
-                .map_err(|e| e.stable(tables))?
-                .size;
-            allocation_filter(&alloc.0, alloc_range(offset, ty_size), tables)
+            allocation_filter(&alloc.0, alloc_range(offset, layout.size), tables)
         }
     })
 }
@@ -112,10 +104,7 @@ pub(super) fn allocation_filter<'tcx>(
         .map(Some)
         .collect();
     for (i, b) in bytes.iter_mut().enumerate() {
-        if !alloc
-            .init_mask()
-            .get(rustc_target::abi::Size::from_bytes(i + alloc_range.start.bytes_usize()))
-        {
+        if !alloc.init_mask().get(Size::from_bytes(i + alloc_range.start.bytes_usize())) {
             *b = None;
         }
     }
@@ -132,7 +121,7 @@ pub(super) fn allocation_filter<'tcx>(
         ));
     }
     Allocation {
-        bytes: bytes,
+        bytes,
         provenance: ProvenanceMap { ptrs },
         align: alloc.align.bytes(),
         mutability: alloc.mutability.stable(tables),

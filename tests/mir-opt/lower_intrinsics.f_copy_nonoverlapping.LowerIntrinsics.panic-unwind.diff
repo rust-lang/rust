@@ -33,7 +33,7 @@
           StorageLive(_7);
           _7 = &_1;
           _6 = &raw const (*_7);
-          _5 = _6;
+          _5 = copy _6;
           _4 = move _5 as *const i32 (PtrToPtr);
           StorageDead(_5);
           StorageLive(_8);
@@ -42,7 +42,7 @@
           StorageLive(_11);
           _11 = &mut _2;
           _10 = &raw mut (*_11);
-          _9 = _10;
+          _9 = copy _10;
           _8 = move _9 as *mut i32 (PtrToPtr);
           StorageDead(_9);
 -         _3 = copy_nonoverlapping::<i32>(move _4, move _8, const 0_usize) -> [return: bb1, unwind unreachable];

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{find_assert_eq_args, root_macro_call_first_node};
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{BorrowKind, Expr, ExprKind, MatchSource, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -87,7 +87,7 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for MutArgVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
@@ -101,14 +101,13 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
                 return;
             },
             ExprKind::Path(_) => {
-                if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
-                    if adj
+                if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id)
+                    && adj
                         .iter()
                         .any(|a| matches!(a.target.kind(), ty::Ref(_, _, Mutability::Mut)))
-                    {
-                        self.found = true;
-                        return;
-                    }
+                {
+                    self.found = true;
+                    return;
                 }
             },
             // Don't check await desugars
@@ -119,7 +118,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
         walk_expr(self, expr);
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }

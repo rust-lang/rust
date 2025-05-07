@@ -8,7 +8,7 @@ use rustc_hir as hir;
 use rustc_hir::PatKind;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::UNNECESSARY_FOLD;
 
@@ -62,7 +62,7 @@ fn check_fold_with_op(
 ) {
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
         // Extract the body of the closure passed to fold
-        && let closure_body = cx.tcx.hir().body(body)
+        && let closure_body = cx.tcx.hir_body(body)
         && let closure_expr = peel_blocks(closure_body.value)
 
         // Check if the closure body is of the form `acc <op> some_expr(x)`
@@ -130,9 +130,9 @@ pub(super) fn check(
                     fold_span,
                     hir::BinOpKind::Or,
                     Replacement {
+                        method_name: "any",
                         has_args: true,
                         has_generic_return: false,
-                        method_name: "any",
                     },
                 );
             },
@@ -144,24 +144,26 @@ pub(super) fn check(
                     fold_span,
                     hir::BinOpKind::And,
                     Replacement {
+                        method_name: "all",
                         has_args: true,
                         has_generic_return: false,
-                        method_name: "all",
                     },
                 );
             },
-            ast::LitKind::Int(Pu128(0), _) => check_fold_with_op(
-                cx,
-                expr,
-                acc,
-                fold_span,
-                hir::BinOpKind::Add,
-                Replacement {
-                    has_args: false,
-                    has_generic_return: needs_turbofish(cx, expr),
-                    method_name: "sum",
-                },
-            ),
+            ast::LitKind::Int(Pu128(0), _) => {
+                check_fold_with_op(
+                    cx,
+                    expr,
+                    acc,
+                    fold_span,
+                    hir::BinOpKind::Add,
+                    Replacement {
+                        method_name: "sum",
+                        has_args: false,
+                        has_generic_return: needs_turbofish(cx, expr),
+                    },
+                );
+            },
             ast::LitKind::Int(Pu128(1), _) => {
                 check_fold_with_op(
                     cx,
@@ -170,9 +172,9 @@ pub(super) fn check(
                     fold_span,
                     hir::BinOpKind::Mul,
                     Replacement {
+                        method_name: "product",
                         has_args: false,
                         has_generic_return: needs_turbofish(cx, expr),
-                        method_name: "product",
                     },
                 );
             },

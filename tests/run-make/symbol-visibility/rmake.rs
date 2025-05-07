@@ -1,7 +1,7 @@
 // Dynamic libraries on Rust used to export a very high amount of symbols,
 // going as far as filling the output with mangled names and generic function
 // names. After the rework of #38117, this test checks that no mangled Rust symbols
-// are exported, and that generics are only shown if explicitely requested.
+// are exported, and that generics are only shown if explicitly requested.
 // See https://github.com/rust-lang/rust/issues/37530
 
 use run_make_support::object::read::Object;

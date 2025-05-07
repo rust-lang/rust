@@ -2,9 +2,9 @@ warning: unreachable pattern
   --> $DIR/packed_pattern2.rs:24:9
    |
 LL |         Bar { a: Foo { field: (5, 6) } } => {},
-   |         -------------------------------- matches all the values already
+   |         -------------------------------- matches all the relevant values
 LL |         FOO => unreachable!(),
-   |         ^^^ unreachable pattern
+   |         ^^^ no value can reach this
    |
    = note: `#[warn(unreachable_patterns)]` on by default
 

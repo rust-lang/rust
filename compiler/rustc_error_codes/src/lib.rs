@@ -23,6 +23,10 @@
 //
 // Both columns are necessary because it's not possible in Rust to create a new identifier such as
 // `E0123` from an integer literal such as `0123`, unfortunately.
+//
+// Do *not* remove entries from this list. Instead, just add a note th the corresponding markdown
+// file saying that this error is not emitted by the compiler any more (see E0001.md for an
+// example), and remove all code examples that do not build any more.
 #[macro_export]
 macro_rules! error_codes {
     ($macro:path) => (
@@ -393,7 +397,7 @@ E0618: 0618,
 E0619: 0619,
 E0620: 0620,
 E0621: 0621,
-E0622: 0622,
+E0622: 0622, // REMOVED: rustc-intrinsic ABI was removed
 E0623: 0623,
 E0624: 0624,
 E0625: 0625,
@@ -537,6 +541,12 @@ E0795: 0795,
 E0796: 0796,
 E0797: 0797,
 E0798: 0798,
+E0799: 0799,
+E0800: 0800,
+E0801: 0801,
+E0802: 0802,
+E0803: 0803,
+E0804: 0804,
         );
     )
 }
@@ -620,7 +630,7 @@ E0798: 0798,
 //  E0314, // closure outlives stack frame
 //  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
-//  E0372, // coherence not object safe
+//  E0372, // coherence not dyn-compatible
 //  E0385, // {} in an aliasable location
 //  E0402, // cannot use an outer type parameter in this context
 //  E0406, // merged into 420
@@ -678,3 +688,5 @@ E0798: 0798,
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
 //  E0744, // merged into E0728
+//  E0776, // Removed; cmse_nonsecure_entry is now `C-cmse-nonsecure-entry`
+//  E0796, // unused error code. We use `static_mut_refs` lint instead.

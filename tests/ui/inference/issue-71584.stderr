@@ -9,8 +9,9 @@ LL |     d = d % n.into();
    = note: cannot satisfy `<u64 as Rem<_>>::Output == u64`
 help: try using a fully qualified path to specify the expected types
    |
-LL |     d = d % <u32 as Into<T>>::into(n);
-   |             +++++++++++++++++++++++ ~
+LL -     d = d % n.into();
+LL +     d = d % <u32 as Into<T>>::into(n);
+   |
 
 error: aborting due to 1 previous error
 

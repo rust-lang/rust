@@ -1,10 +1,11 @@
-//@ normalize-stderr-test: "`: .*" -> "`: $$FILE_NOT_FOUND_MSG"
+//@ normalize-stderr: "`: .*" -> "`: $$FILE_NOT_FOUND_MSG"
 
 // test that errors in a (selection) of macros don't kill compilation
 // immediately, so that we get more errors listed at a time.
 
 #![feature(trace_macros, concat_idents)]
 #![feature(stmt_expr_attributes)]
+#![expect(deprecated)] // concat_idents is deprecated
 
 use std::arch::asm;
 
@@ -39,10 +40,16 @@ enum AttrOnInnerExpression {
     Baz,
 }
 
-#[derive(Default)] //~ ERROR no default declared
+#[derive(Default)] //~ ERROR `#[derive(Default)]` on enum with no `#[default]`
 enum NoDeclaredDefault {
     Foo,
     Bar,
+}
+
+#[derive(Default)] //~ ERROR `#[derive(Default)]` on enum with no `#[default]`
+enum NoDeclaredDefaultWithoutUnitVariant {
+    Foo(i32),
+    Bar(i32),
 }
 
 #[derive(Default)] //~ ERROR multiple declared defaults

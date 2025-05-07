@@ -16,7 +16,7 @@ const CONST_SET: EnumSet<Enum8> = EnumSet { __enumset_underlying: 3 };
 
 fn main() {
     match CONST_SET {
-        CONST_SET => { /* ok */ } //~ERROR: must implement `PartialEq`
+        CONST_SET => { /* ok */ } //~ ERROR constant of non-structural type `EnumSet<Enum8>` in a pattern
         _ => panic!("match fell through?"),
     }
 }

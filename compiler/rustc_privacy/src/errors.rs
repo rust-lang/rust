@@ -1,27 +1,31 @@
 use rustc_errors::codes::*;
-use rustc_errors::DiagArgFromDisplay;
+use rustc_errors::{DiagArgFromDisplay, MultiSpan};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
 #[diag(privacy_field_is_private, code = E0451)]
-pub struct FieldIsPrivate {
+pub(crate) struct FieldIsPrivate {
     #[primary_span]
-    pub span: Span,
-    pub field_name: Symbol,
+    pub span: MultiSpan,
+    #[label]
+    pub struct_span: Option<Span>,
+    pub field_names: String,
     pub variant_descr: &'static str,
     pub def_path_str: String,
     #[subdiagnostic]
-    pub label: FieldIsPrivateLabel,
+    pub labels: Vec<FieldIsPrivateLabel>,
+    pub len: usize,
 }
 
 #[derive(Subdiagnostic)]
-pub enum FieldIsPrivateLabel {
+pub(crate) enum FieldIsPrivateLabel {
     #[label(privacy_field_is_private_is_update_syntax_label)]
     IsUpdateSyntax {
         #[primary_span]
         span: Span,
-        field_name: Symbol,
+        rest_field_names: String,
+        rest_len: usize,
     },
     #[label(privacy_field_is_private_label)]
     Other {
@@ -32,7 +36,7 @@ pub enum FieldIsPrivateLabel {
 
 #[derive(Diagnostic)]
 #[diag(privacy_item_is_private)]
-pub struct ItemIsPrivate<'a> {
+pub(crate) struct ItemIsPrivate<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -42,7 +46,7 @@ pub struct ItemIsPrivate<'a> {
 
 #[derive(Diagnostic)]
 #[diag(privacy_unnamed_item_is_private)]
-pub struct UnnamedItemIsPrivate {
+pub(crate) struct UnnamedItemIsPrivate {
     #[primary_span]
     pub span: Span,
     pub kind: &'static str,
@@ -50,7 +54,7 @@ pub struct UnnamedItemIsPrivate {
 
 #[derive(Diagnostic)]
 #[diag(privacy_in_public_interface, code = E0446)]
-pub struct InPublicInterface<'a> {
+pub(crate) struct InPublicInterface<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
@@ -63,7 +67,7 @@ pub struct InPublicInterface<'a> {
 
 #[derive(Diagnostic)]
 #[diag(privacy_report_effective_visibility)]
-pub struct ReportEffectiveVisibility {
+pub(crate) struct ReportEffectiveVisibility {
     #[primary_span]
     pub span: Span,
     pub descr: String,
@@ -71,7 +75,7 @@ pub struct ReportEffectiveVisibility {
 
 #[derive(LintDiagnostic)]
 #[diag(privacy_from_private_dep_in_public_interface)]
-pub struct FromPrivateDependencyInPublicInterface<'a> {
+pub(crate) struct FromPrivateDependencyInPublicInterface<'a> {
     pub kind: &'a str,
     pub descr: DiagArgFromDisplay<'a>,
     pub krate: Symbol,
@@ -79,7 +83,7 @@ pub struct FromPrivateDependencyInPublicInterface<'a> {
 
 #[derive(LintDiagnostic)]
 #[diag(privacy_unnameable_types_lint)]
-pub struct UnnameableTypesLint<'a> {
+pub(crate) struct UnnameableTypesLint<'a> {
     #[label]
     pub span: Span,
     pub kind: &'a str,
@@ -93,7 +97,7 @@ pub struct UnnameableTypesLint<'a> {
 // See https://rust-lang.github.io/rfcs/2145-type-privacy.html for more details.
 #[derive(LintDiagnostic)]
 #[diag(privacy_private_interface_or_bounds_lint)]
-pub struct PrivateInterfacesOrBoundsLint<'a> {
+pub(crate) struct PrivateInterfacesOrBoundsLint<'a> {
     #[label(privacy_item_label)]
     pub item_span: Span,
     pub item_kind: &'a str,

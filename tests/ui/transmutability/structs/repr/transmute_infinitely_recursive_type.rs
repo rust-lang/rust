@@ -7,11 +7,11 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::{Assume, BikeshedIntrinsicFrom};
+    use std::mem::{Assume, TransmuteFrom};
 
     pub fn is_maybe_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src>,
+        Dst: TransmuteFrom<Src>,
     {
     }
 }
@@ -22,5 +22,4 @@ fn should_pad_explicitly_packed_field() {
     //~^ ERROR: recursive type
 
     assert::is_maybe_transmutable::<ExplicitlyPadded, ()>();
-    //~^ ERROR: cannot be safely transmuted
 }

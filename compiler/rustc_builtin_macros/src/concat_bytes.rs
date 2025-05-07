@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{token, ExprKind, LitIntType, LitKind, UintTy};
+use rustc_ast::{ExprKind, LitIntType, LitKind, UintTy, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{ErrorGuaranteed, Span};

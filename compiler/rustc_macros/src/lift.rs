@@ -1,10 +1,9 @@
 use quote::quote;
 use syn::parse_quote;
 
-pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(super) fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     s.add_bounds(synstructure::AddBounds::Generics);
     s.bind_with(|_| synstructure::BindStyle::Move);
-    s.underscore_const(true);
 
     let tcx: syn::Lifetime = parse_quote!('tcx);
     let newtcx: syn::GenericParam = parse_quote!('__lifted);
@@ -40,14 +39,11 @@ pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStre
     });
 
     s.add_impl_generic(newtcx);
-    s.bound_impl(
-        quote!(::rustc_middle::ty::Lift<::rustc_middle::ty::TyCtxt<'__lifted>>),
-        quote! {
-            type Lifted = #lifted;
+    s.bound_impl(quote!(::rustc_middle::ty::Lift<::rustc_middle::ty::TyCtxt<'__lifted>>), quote! {
+        type Lifted = #lifted;
 
-            fn lift_to_interner(self, __tcx: ::rustc_middle::ty::TyCtxt<'__lifted>) -> Option<#lifted> {
-                Some(match self { #body })
-            }
-        },
-    )
+        fn lift_to_interner(self, __tcx: ::rustc_middle::ty::TyCtxt<'__lifted>) -> Option<#lifted> {
+            Some(match self { #body })
+        }
+    })
 }

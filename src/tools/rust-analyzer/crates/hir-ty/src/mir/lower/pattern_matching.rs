@@ -1,19 +1,19 @@
 //! MIR lowering for patterns
 
-use hir_def::{hir::LiteralOrConst, resolver::HasResolver, AssocItemId};
+use hir_def::{AssocItemId, hir::ExprId, signatures::VariantFields};
 
 use crate::{
+    BindingMode,
     mir::{
+        LocalId, MutBorrowKind, Operand, OperandKind,
         lower::{
             BasicBlockId, BinOp, BindingId, BorrowKind, Either, Expr, FieldId, Idx, Interner,
-            MemoryMap, MirLowerCtx, MirLowerError, MirSpan, Mutability, Operand, Pat, PatId, Place,
+            MemoryMap, MirLowerCtx, MirLowerError, MirSpan, Mutability, Pat, PatId, Place,
             PlaceElem, ProjectionElem, RecordFieldPat, ResolveValueResult, Result, Rvalue,
             Substitution, SwitchTargets, TerminatorKind, TupleFieldId, TupleId, TyBuilder, TyKind,
-            ValueNs, VariantData, VariantId,
+            ValueNs, VariantId,
         },
-        LocalId, MutBorrowKind,
     },
-    BindingMode,
 };
 
 macro_rules! not_supported {
@@ -46,6 +46,8 @@ enum MatchingMode {
     Check,
     /// Assume that this pattern matches, fill bindings
     Bind,
+    /// Assume that this pattern matches, assign to existing variables.
+    Assign,
 }
 
 impl MirLowerCtx<'_> {
@@ -80,6 +82,17 @@ impl MirLowerCtx<'_> {
             MatchingMode::Bind,
         )?;
         Ok((current, current_else))
+    }
+
+    pub(super) fn pattern_match_assignment(
+        &mut self,
+        current: BasicBlockId,
+        value: Place,
+        pattern: PatId,
+    ) -> Result<BasicBlockId> {
+        let (current, _) =
+            self.pattern_match_inner(current, None, value, pattern, MatchingMode::Assign)?;
+        Ok(current)
     }
 
     pub(super) fn match_self_param(
@@ -126,7 +139,7 @@ impl MirLowerCtx<'_> {
                     _ => {
                         return Err(MirLowerError::TypeError(
                             "non tuple type matched with tuple pattern",
-                        ))
+                        ));
                     }
                 };
                 self.pattern_match_tuple_like(
@@ -155,14 +168,8 @@ impl MirLowerCtx<'_> {
                         *pat,
                         MatchingMode::Check,
                     )?;
-                    if mode == MatchingMode::Bind {
-                        (next, _) = self.pattern_match_inner(
-                            next,
-                            None,
-                            cond_place,
-                            *pat,
-                            MatchingMode::Bind,
-                        )?;
+                    if mode != MatchingMode::Check {
+                        (next, _) = self.pattern_match_inner(next, None, cond_place, *pat, mode)?;
                     }
                     self.set_goto(next, then_target, pattern.into());
                     match next_else {
@@ -176,11 +183,11 @@ impl MirLowerCtx<'_> {
                     }
                 }
                 if !finished {
-                    if mode == MatchingMode::Bind {
-                        self.set_terminator(current, TerminatorKind::Unreachable, pattern.into());
-                    } else {
+                    if mode == MatchingMode::Check {
                         let ce = *current_else.get_or_insert_with(|| self.new_basic_block());
                         self.set_goto(current, ce, pattern.into());
+                    } else {
+                        self.set_terminator(current, TerminatorKind::Unreachable, pattern.into());
                     }
                 }
                 (then_target, current_else)
@@ -200,7 +207,7 @@ impl MirLowerCtx<'_> {
                 )?
             }
             Pat::Range { start, end } => {
-                let mut add_check = |l: &LiteralOrConst, binop| -> Result<()> {
+                let mut add_check = |l: &ExprId, binop| -> Result<()> {
                     let lv =
                         self.lower_literal_or_const_to_operand(self.infer[pattern].clone(), l)?;
                     let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());
@@ -210,10 +217,14 @@ impl MirLowerCtx<'_> {
                     self.push_assignment(
                         current,
                         discr,
-                        Rvalue::CheckedBinaryOp(binop, lv, Operand::Copy(cond_place)),
+                        Rvalue::CheckedBinaryOp(
+                            binop,
+                            lv,
+                            Operand { kind: OperandKind::Copy(cond_place), span: None },
+                        ),
                         pattern.into(),
                     );
-                    let discr = Operand::Copy(discr);
+                    let discr = Operand { kind: OperandKind::Copy(discr), span: None };
                     self.set_terminator(
                         current,
                         TerminatorKind::SwitchInt {
@@ -255,7 +266,10 @@ impl MirLowerCtx<'_> {
                             self.set_terminator(
                                 current,
                                 TerminatorKind::SwitchInt {
-                                    discr: Operand::Copy(place_len),
+                                    discr: Operand {
+                                        kind: OperandKind::Copy(place_len),
+                                        span: None,
+                                    },
                                     targets: SwitchTargets::static_if(
                                         pattern_len as u128,
                                         next,
@@ -275,10 +289,14 @@ impl MirLowerCtx<'_> {
                             self.push_assignment(
                                 current,
                                 discr,
-                                Rvalue::CheckedBinaryOp(BinOp::Le, c, Operand::Copy(place_len)),
+                                Rvalue::CheckedBinaryOp(
+                                    BinOp::Le,
+                                    c,
+                                    Operand { kind: OperandKind::Copy(place_len), span: None },
+                                ),
                                 pattern.into(),
                             );
-                            let discr = Operand::Copy(discr);
+                            let discr = Operand { kind: OperandKind::Copy(discr), span: None };
                             self.set_terminator(
                                 current,
                                 TerminatorKind::SwitchInt {
@@ -300,7 +318,7 @@ impl MirLowerCtx<'_> {
                         self.pattern_match_inner(current, current_else, next_place, pat, mode)?;
                 }
                 if let &Some(slice) = slice {
-                    if mode == MatchingMode::Bind {
+                    if mode != MatchingMode::Check {
                         if let Pat::Bind { id, subpat: _ } = self.body[slice] {
                             let next_place = cond_place.project(
                                 ProjectionElem::Subslice {
@@ -342,16 +360,36 @@ impl MirLowerCtx<'_> {
                     mode,
                 )?,
                 None => {
-                    // The path is not a variant, so it is a const
+                    let unresolved_name = || {
+                        MirLowerError::unresolved_path(self.db, p, self.display_target(), self.body)
+                    };
+                    let hygiene = self.body.pat_path_hygiene(pattern);
+                    let pr = self
+                        .resolver
+                        .resolve_path_in_value_ns(self.db, p, hygiene)
+                        .ok_or_else(unresolved_name)?;
+
+                    if let (
+                        MatchingMode::Assign,
+                        ResolveValueResult::ValueNs(ValueNs::LocalBinding(binding), _),
+                    ) = (mode, &pr)
+                    {
+                        let local = self.binding_local(*binding)?;
+                        self.push_match_assignment(
+                            current,
+                            local,
+                            BindingMode::Move,
+                            cond_place,
+                            pattern.into(),
+                        );
+                        return Ok((current, current_else));
+                    }
+
+                    // The path is not a variant or a local, so it is a const
                     if mode != MatchingMode::Check {
                         // A const don't bind anything. Only needs check.
                         return Ok((current, current_else));
                     }
-                    let unresolved_name = || MirLowerError::unresolved_path(self.db, p);
-                    let resolver = self.owner.resolver(self.db.upcast());
-                    let pr = resolver
-                        .resolve_path_in_value_ns(self.db.upcast(), p)
-                        .ok_or_else(unresolved_name)?;
                     let (c, subst) = 'b: {
                         if let Some(x) = self.infer.assoc_resolutions_for_pat(pattern) {
                             if let AssocItemId::ConstId(c) = x.0 {
@@ -380,8 +418,8 @@ impl MirLowerCtx<'_> {
                         tmp2,
                         Rvalue::CheckedBinaryOp(
                             BinOp::Eq,
-                            Operand::Copy(tmp),
-                            Operand::Copy(cond_place),
+                            Operand { kind: OperandKind::Copy(tmp), span: None },
+                            Operand { kind: OperandKind::Copy(cond_place), span: None },
                         ),
                         span,
                     );
@@ -390,7 +428,7 @@ impl MirLowerCtx<'_> {
                     self.set_terminator(
                         current,
                         TerminatorKind::SwitchInt {
-                            discr: Operand::Copy(tmp2),
+                            discr: Operand { kind: OperandKind::Copy(tmp2), span: None },
                             targets: SwitchTargets::static_if(1, next, else_target),
                         },
                         span,
@@ -414,7 +452,7 @@ impl MirLowerCtx<'_> {
                     (current, current_else) =
                         self.pattern_match_inner(current, current_else, cond_place, *subpat, mode)?
                 }
-                if mode == MatchingMode::Bind {
+                if mode != MatchingMode::Check {
                     let mode = self.infer.binding_modes[pattern];
                     self.pattern_match_binding(
                         *id,
@@ -447,6 +485,23 @@ impl MirLowerCtx<'_> {
                     cond_place.project(ProjectionElem::Deref, &mut self.result.projection_store);
                 self.pattern_match_inner(current, current_else, cond_place, *pat, mode)?
             }
+            &Pat::Expr(expr) => {
+                stdx::always!(
+                    mode == MatchingMode::Assign,
+                    "Pat::Expr can only come in destructuring assignments"
+                );
+                let Some((lhs_place, current)) = self.lower_expr_as_place(current, expr, false)?
+                else {
+                    return Ok((current, current_else));
+                };
+                self.push_assignment(
+                    current,
+                    lhs_place,
+                    Operand { kind: OperandKind::Copy(cond_place), span: None }.into(),
+                    expr.into(),
+                );
+                (current, current_else)
+            }
             Pat::Box { .. } => not_supported!("box pattern"),
             Pat::ConstBlock(_) => not_supported!("const block pattern"),
         })
@@ -463,11 +518,25 @@ impl MirLowerCtx<'_> {
     ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
         let target_place = self.binding_local(id)?;
         self.push_storage_live(id, current)?;
+        self.push_match_assignment(current, target_place, mode, cond_place, span);
+        Ok((current, current_else))
+    }
+
+    fn push_match_assignment(
+        &mut self,
+        current: BasicBlockId,
+        target_place: LocalId,
+        mode: BindingMode,
+        cond_place: Place,
+        span: MirSpan,
+    ) {
         self.push_assignment(
             current,
             target_place.into(),
             match mode {
-                BindingMode::Move => Operand::Copy(cond_place).into(),
+                BindingMode::Move => {
+                    Operand { kind: OperandKind::Copy(cond_place), span: None }.into()
+                }
                 BindingMode::Ref(Mutability::Not) => Rvalue::Ref(BorrowKind::Shared, cond_place),
                 BindingMode::Ref(Mutability::Mut) => {
                     Rvalue::Ref(BorrowKind::Mut { kind: MutBorrowKind::Default }, cond_place)
@@ -475,7 +544,6 @@ impl MirLowerCtx<'_> {
             },
             span,
         );
-        Ok((current, current_else))
     }
 
     fn pattern_match_const(
@@ -492,10 +560,14 @@ impl MirLowerCtx<'_> {
         self.push_assignment(
             current,
             discr,
-            Rvalue::CheckedBinaryOp(BinOp::Eq, c, Operand::Copy(cond_place)),
+            Rvalue::CheckedBinaryOp(
+                BinOp::Eq,
+                c,
+                Operand { kind: OperandKind::Copy(cond_place), span: None },
+            ),
             pattern.into(),
         );
-        let discr = Operand::Copy(discr);
+        let discr = Operand { kind: OperandKind::Copy(discr), span: None };
         self.set_terminator(
             current,
             TerminatorKind::SwitchInt {
@@ -528,7 +600,7 @@ impl MirLowerCtx<'_> {
                     self.set_terminator(
                         current,
                         TerminatorKind::SwitchInt {
-                            discr: Operand::Copy(tmp),
+                            discr: Operand { kind: OperandKind::Copy(tmp), span: None },
                             targets: SwitchTargets::static_if(e, next, *else_target),
                         },
                         span,
@@ -537,7 +609,7 @@ impl MirLowerCtx<'_> {
                 }
                 self.pattern_matching_variant_fields(
                     shape,
-                    &self.db.enum_variant_data(v).variant_data,
+                    &self.db.variant_fields(v.into()),
                     variant,
                     current,
                     current_else,
@@ -547,7 +619,7 @@ impl MirLowerCtx<'_> {
             }
             VariantId::StructId(s) => self.pattern_matching_variant_fields(
                 shape,
-                &self.db.struct_data(s).variant_data,
+                &self.db.variant_fields(s.into()),
                 variant,
                 current,
                 current_else,
@@ -555,7 +627,7 @@ impl MirLowerCtx<'_> {
                 mode,
             )?,
             VariantId::UnionId(_) => {
-                return Err(MirLowerError::TypeError("pattern matching on union"))
+                return Err(MirLowerError::TypeError("pattern matching on union"));
             }
         })
     }
@@ -563,7 +635,7 @@ impl MirLowerCtx<'_> {
     fn pattern_matching_variant_fields(
         &mut self,
         shape: AdtPatternShape<'_>,
-        variant_data: &VariantData,
+        variant_data: &VariantFields,
         v: VariantId,
         current: BasicBlockId,
         current_else: Option<BasicBlockId>,

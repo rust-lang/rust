@@ -282,7 +282,7 @@ where
 #[cfg(test)]
 mod test {
     use super::DiffLine::*;
-    use super::{make_diff, Mismatch};
+    use super::{Mismatch, make_diff};
     use super::{ModifiedChunk, ModifiedLines};
 
     #[test]

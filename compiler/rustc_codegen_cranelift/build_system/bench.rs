@@ -1,11 +1,12 @@
 use std::env;
 use std::io::Write;
 use std::path::Path;
+use std::process::Command;
 
-use crate::path::{Dirs, RelPath};
+use crate::path::Dirs;
 use crate::prepare::GitRepo;
 use crate::rustc_info::get_file_name;
-use crate::utils::{hyperfine_command, spawn_and_wait, Compiler};
+use crate::utils::{Compiler, spawn_and_wait};
 
 static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
@@ -15,11 +16,7 @@ static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "<none>",
 );
 
-pub(crate) fn benchmark(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
-    benchmark_simple_raytracer(dirs, bootstrap_host_compiler);
-}
-
-fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
+pub(crate) fn benchmark(dirs: &Dirs, compiler: &Compiler) {
     if std::process::Command::new("hyperfine").output().is_err() {
         eprintln!("Hyperfine not installed");
         eprintln!("Hint: Try `cargo install hyperfine` to install hyperfine");
@@ -38,11 +35,11 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     };
 
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-    let cargo_clif = RelPath::DIST
-        .to_path(dirs)
-        .join(get_file_name(&bootstrap_host_compiler.rustc, "cargo_clif", "bin").replace('_', "-"));
+    let cargo_clif = &compiler.cargo;
+    let rustc_clif = &compiler.rustc;
+    let rustflags = &compiler.rustflags.join("\x1f");
     let manifest_path = SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).join("Cargo.toml");
-    let target_dir = RelPath::BUILD.join("simple_raytracer").to_path(dirs);
+    let target_dir = dirs.build_dir.join("simple_raytracer");
 
     let clean_cmd = format!(
         "RUSTC=rustc cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
@@ -55,22 +52,24 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         target_dir = target_dir.display(),
     );
     let clif_build_cmd = format!(
-        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} && (rm build/raytracer_cg_clif || true) && ln build/simple_raytracer/debug/main build/raytracer_cg_clif",
+        "RUSTC={rustc_clif} CARGO_ENCODED_RUSTFLAGS=\"{rustflags}\" {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} && (rm build/raytracer_cg_clif || true) && ln build/simple_raytracer/debug/main build/raytracer_cg_clif",
         cargo_clif = cargo_clif.display(),
+        rustc_clif = rustc_clif.display(),
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
     let clif_build_opt_cmd = format!(
-        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} --release && (rm build/raytracer_cg_clif_opt || true) && ln build/simple_raytracer/release/main build/raytracer_cg_clif_opt",
+        "RUSTC={rustc_clif} CARGO_ENCODED_RUSTFLAGS=\"{rustflags}\" {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} --release && (rm build/raytracer_cg_clif_opt || true) && ln build/simple_raytracer/release/main build/raytracer_cg_clif_opt",
         cargo_clif = cargo_clif.display(),
+        rustc_clif = rustc_clif.display(),
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
 
-    let bench_compile_markdown = RelPath::DIST.to_path(dirs).join("bench_compile.md");
+    let bench_compile_markdown = dirs.build_dir.join("bench_compile.md");
 
     let bench_compile = hyperfine_command(
-        1,
+        0,
         bench_runs,
         Some(&clean_cmd),
         &[
@@ -91,23 +90,14 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
 
     eprintln!("[BENCH RUN] ebobby/simple-raytracer");
 
-    let bench_run_markdown = RelPath::DIST.to_path(dirs).join("bench_run.md");
+    let bench_run_markdown = dirs.build_dir.join("bench_run.md");
 
-    let raytracer_cg_llvm = Path::new(".").join(get_file_name(
-        &bootstrap_host_compiler.rustc,
-        "raytracer_cg_llvm",
-        "bin",
-    ));
-    let raytracer_cg_clif = Path::new(".").join(get_file_name(
-        &bootstrap_host_compiler.rustc,
-        "raytracer_cg_clif",
-        "bin",
-    ));
-    let raytracer_cg_clif_opt = Path::new(".").join(get_file_name(
-        &bootstrap_host_compiler.rustc,
-        "raytracer_cg_clif_opt",
-        "bin",
-    ));
+    let raytracer_cg_llvm =
+        Path::new(".").join(get_file_name(&compiler.rustc, "raytracer_cg_llvm", "bin"));
+    let raytracer_cg_clif =
+        Path::new(".").join(get_file_name(&compiler.rustc, "raytracer_cg_clif", "bin"));
+    let raytracer_cg_clif_opt =
+        Path::new(".").join(get_file_name(&compiler.rustc, "raytracer_cg_clif_opt", "bin"));
     let mut bench_run = hyperfine_command(
         0,
         bench_runs,
@@ -119,7 +109,7 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         ],
         &bench_run_markdown,
     );
-    bench_run.current_dir(RelPath::BUILD.to_path(dirs));
+    bench_run.current_dir(&dirs.build_dir);
     spawn_and_wait(bench_run);
 
     if let Some(gha_step_summary) = gha_step_summary.as_mut() {
@@ -127,4 +117,38 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         gha_step_summary.write_all(&std::fs::read(bench_run_markdown).unwrap()).unwrap();
         gha_step_summary.write_all(b"\n").unwrap();
     }
+}
+
+#[must_use]
+fn hyperfine_command(
+    warmup: u64,
+    runs: u64,
+    prepare: Option<&str>,
+    cmds: &[(&str, &str)],
+    markdown_export: &Path,
+) -> Command {
+    let mut bench = Command::new("hyperfine");
+
+    bench.arg("--export-markdown").arg(markdown_export);
+
+    if warmup != 0 {
+        bench.arg("--warmup").arg(warmup.to_string());
+    }
+
+    if runs != 0 {
+        bench.arg("--runs").arg(runs.to_string());
+    }
+
+    if let Some(prepare) = prepare {
+        bench.arg("--prepare").arg(prepare);
+    }
+
+    for &(name, cmd) in cmds {
+        if name != "" {
+            bench.arg("-n").arg(name);
+        }
+        bench.arg(cmd);
+    }
+
+    bench
 }

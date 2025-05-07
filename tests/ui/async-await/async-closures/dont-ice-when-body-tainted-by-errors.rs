@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![feature(async_closure)]
-
 struct DropMe;
 
 trait Impossible {}

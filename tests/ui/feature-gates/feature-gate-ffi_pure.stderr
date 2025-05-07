@@ -1,8 +1,8 @@
 error[E0658]: the `#[ffi_pure]` attribute is an experimental feature
   --> $DIR/feature-gate-ffi_pure.rs:4:5
    |
-LL |     #[ffi_pure]
-   |     ^^^^^^^^^^^
+LL |     #[unsafe(ffi_pure)]
+   |     ^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #58329 <https://github.com/rust-lang/rust/issues/58329> for more information
    = help: add `#![feature(ffi_pure)]` to the crate attributes to enable

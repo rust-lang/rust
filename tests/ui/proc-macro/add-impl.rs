@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:add-impl.rs
+//@ proc-macro: add-impl.rs
 
 #[macro_use]
 extern crate add_impl;

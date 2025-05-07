@@ -8,7 +8,9 @@ struct Foo;
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        unsafe { HIT = true; }
+        unsafe {
+            HIT = true;
+        }
     }
 }
 
@@ -17,6 +19,8 @@ thread_local!(static FOO: Foo = Foo);
 fn main() {
     std::thread::spawn(|| {
         FOO.with(|_| {});
-    }).join().unwrap();
+    })
+    .join()
+    .unwrap();
     assert!(unsafe { HIT });
 }

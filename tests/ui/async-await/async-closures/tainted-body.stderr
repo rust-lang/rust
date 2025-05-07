@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `used_fn` in this scope
-  --> $DIR/tainted-body.rs:9:9
+  --> $DIR/tainted-body.rs:7:9
    |
 LL |         used_fn();
    |         ^^^^^^^ not found in this scope

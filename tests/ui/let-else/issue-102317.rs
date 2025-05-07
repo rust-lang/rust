@@ -1,6 +1,7 @@
 // issue #102317
 //@ build-pass
-//@ compile-flags: --edition 2021 -C opt-level=3 -Zvalidate-mir
+//@ compile-flags: -C opt-level=3 -Zvalidate-mir
+//@ edition: 2021
 
 struct SegmentJob;
 

@@ -17,9 +17,9 @@
           StorageLive(_4);
           _4 = &raw const (*_1);
           _3 = &_4;
-          _2 = _3;
+          _2 = copy _3;
           StorageDead(_3);
-          _0 = (*_2);
+          _0 = copy (*_2);
           StorageDead(_4);
           StorageDead(_2);
           return;

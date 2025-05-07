@@ -11,8 +11,9 @@ LL |         if (foo) => {}
    |            ^^^^^
 help: you might have meant to write a "greater than or equal to" comparison
    |
-LL |         if (foo) >= {}
-   |                  ~~
+LL -         if (foo) => {}
+LL +         if (foo) >= {}
+   |
 
 error: expected `{`, found `bar`
   --> $DIR/missing-block-hint.rs:7:13
@@ -25,7 +26,7 @@ note: the `if` expression is missing a block after this condition
    |
 LL |         if (foo)
    |            ^^^^^
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |             { bar; }
    |             +      +

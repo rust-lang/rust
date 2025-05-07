@@ -5,8 +5,8 @@ struct ShouldNotSpawn;
 
 impl ShouldSpawn {
     pub fn should_spawn() -> ShouldSpawn {
-        //~^ ERROR: constructor `should_spawn` has the same name as the type
-        //~| NOTE: `-D clippy::self-named-constructors` implied by `-D warnings`
+        //~^ self_named_constructors
+
         ShouldSpawn
     }
 

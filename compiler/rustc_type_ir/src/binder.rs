@@ -5,9 +5,7 @@ use std::ops::{ControlFlow, Deref};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
-#[cfg(feature = "nightly")]
-use rustc_serialize::Decodable;
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
@@ -59,7 +57,7 @@ where
 macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
-            impl<I: Interner, E: crate::TyEncoder<I = I>> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
+            impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
             where
                 $t: rustc_serialize::Encodable<E>,
                 I::BoundVarKinds: rustc_serialize::Encodable<E>,
@@ -69,14 +67,14 @@ macro_rules! impl_binder_encode_decode {
                     self.as_ref().skip_binder().encode(e);
                 }
             }
-            impl<I: Interner, D: crate::TyDecoder<I = I>> Decodable<D> for ty::Binder<I, $t>
+            impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
             where
                 $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
                 I::BoundVarKinds: rustc_serialize::Decodable<D>,
             {
                 fn decode(decoder: &mut D) -> Self {
-                    let bound_vars = Decodable::decode(decoder);
-                    ty::Binder::bind_with_vars(<$t>::decode(decoder), bound_vars)
+                    let bound_vars = rustc_serialize::Decodable::decode(decoder);
+                    ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
                 }
             }
         )*
@@ -91,6 +89,7 @@ impl_binder_encode_decode! {
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
     ty::ExistentialTraitRef<I>,
+    ty::HostEffectPredicate<I>,
 }
 
 impl<I: Interner, T> Binder<I, T>
@@ -113,7 +112,7 @@ where
     pub fn bind_with_vars(value: T, bound_vars: I::BoundVarKinds) -> Binder<I, T> {
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
+            let _ = value.visit_with(&mut validator);
         }
         Binder { value, bound_vars }
     }
@@ -122,6 +121,10 @@ where
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Binder<I, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_binder(self)
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        folder.fold_binder(self)
     }
 }
 
@@ -136,7 +139,11 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        self.try_map_bound(|ty| ty.try_fold_with(folder))
+        self.try_map_bound(|t| t.try_fold_with(folder))
+    }
+
+    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        self.map_bound(|t| t.fold_with(folder))
     }
 }
 
@@ -197,7 +204,7 @@ impl<I: Interner, T> Binder<I, T> {
         let value = f(value);
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
+            let _ = value.visit_with(&mut validator);
         }
         Binder { value, bound_vars }
     }
@@ -210,7 +217,7 @@ impl<I: Interner, T> Binder<I, T> {
         let value = f(value)?;
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
-            value.visit_with(&mut validator);
+            let _ = value.visit_with(&mut validator);
         }
         Ok(Binder { value, bound_vars })
     }
@@ -343,7 +350,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 #[derive_where(PartialOrd; I: Interner, T: Ord)]
 #[derive_where(Hash; I: Interner, T: Hash)]
 #[derive_where(Debug; I: Interner, T: Debug)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
     #[derive_where(skip(Debug))]
@@ -496,8 +506,8 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of values that deref to a `TypeFoldable`.
-    pub fn iter_identity_copied(self) -> impl Iterator<Item = <Iter::Item as Deref>::Target> {
-        self.value.into_iter().map(|v| *v)
+    pub fn iter_identity_copied(self) -> IterIdentityCopied<Iter> {
+        IterIdentityCopied { it: self.value.into_iter() }
     }
 }
 
@@ -546,6 +556,44 @@ where
 {
 }
 
+pub struct IterIdentityCopied<Iter: IntoIterator> {
+    it: Iter::IntoIter,
+}
+
+impl<Iter: IntoIterator> Iterator for IterIdentityCopied<Iter>
+where
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    type Item = <Iter::Item as Deref>::Target;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.it.next().map(|i| *i)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.it.size_hint()
+    }
+}
+
+impl<Iter: IntoIterator> DoubleEndedIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: DoubleEndedIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.it.next_back().map(|i| *i)
+    }
+}
+
+impl<Iter: IntoIterator> ExactSizeIterator for IterIdentityCopied<Iter>
+where
+    Iter::IntoIter: ExactSizeIterator,
+    Iter::Item: Deref,
+    <Iter::Item as Deref>::Target: Copy,
+{
+}
 pub struct EarlyBinderIter<I, T> {
     t: T,
     _tcx: PhantomData<I>,
@@ -767,7 +815,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     #[inline(never)]
     fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
         panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
+            "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
             r,
             ebr.index(),
@@ -776,7 +824,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during instantiation. This occurs
-    /// when we are instantating a type with escaping bound vars into a context where we have
+    /// when we are instantiating a type with escaping bound vars into a context where we have
     /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
     /// ```
@@ -822,7 +870,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
             val
         } else {
-            ty::fold::shift_vars(self.cx, val, self.binders_passed)
+            ty::shift_vars(self.cx, val, self.binders_passed)
         }
     }
 
@@ -830,7 +878,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             region
         } else {
-            ty::fold::shift_region(self.cx, region, self.binders_passed)
+            ty::shift_region(self.cx, region, self.binders_passed)
         }
     }
 }

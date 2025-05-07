@@ -1,6 +1,7 @@
 use rustc_ast::ast;
 use rustc_ast::visit::Visitor;
 use rustc_span::Symbol;
+use tracing::debug;
 
 use crate::attr::MetaVisitor;
 use crate::parse::macros::cfg_if::parse_cfg_if;

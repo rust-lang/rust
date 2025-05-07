@@ -45,6 +45,7 @@ fn main() {
     // issue #7094
     let x = 1;
     match x {
+        //~^ match_single_binding
         0 => 1,
         _ => 2,
     };

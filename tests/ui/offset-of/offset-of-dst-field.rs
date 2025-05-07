@@ -16,7 +16,7 @@ struct Beta {
     z: dyn Trait,
 }
 
-extern {
+extern "C" {
     type Extern;
 }
 

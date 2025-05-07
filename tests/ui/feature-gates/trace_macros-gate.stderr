@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature `trace_macros`: `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:4:5
    |
 LL |     trace_macros!();
@@ -14,7 +14,7 @@ error: trace_macros! accepts only `true` or `false`
 LL |     trace_macros!();
    |     ^^^^^^^^^^^^^^^
 
-error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature `trace_macros`: `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:6:5
    |
 LL |     trace_macros!(true);
@@ -24,7 +24,7 @@ LL |     trace_macros!(true);
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature `trace_macros`: `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:7:5
    |
 LL |     trace_macros!(false);
@@ -34,7 +34,7 @@ LL |     trace_macros!(false);
    = help: add `#![feature(trace_macros)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'trace_macros': `trace_macros` is not stable enough for use and is subject to change
+error[E0658]: use of unstable library feature `trace_macros`: `trace_macros` is not stable enough for use and is subject to change
   --> $DIR/trace_macros-gate.rs:10:26
    |
 LL |         ($x: ident) => { trace_macros!($x) }

@@ -25,7 +25,7 @@ impl Bar for usize {
 
 impl Bar for isize {
     type Item<'a> = &'a isize;
-    //~^ ERROR 27:14: 27:18: lifetime parameters or bounds on type `Item` do not match the trait declaration [E0195]
+    //~^ ERROR 27:14: 27:18: lifetime parameters or bounds on associated type `Item` do not match the trait declaration [E0195]
 
     fn poke(&mut self, item: Self::Item) {
         self += *item;

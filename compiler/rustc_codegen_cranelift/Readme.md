@@ -49,13 +49,13 @@ If you want to build the backend manually, you can download it from GitHub and b
 ```bash
 $ git clone https://github.com/rust-lang/rustc_codegen_cranelift
 $ cd rustc_codegen_cranelift
-$ ./y.sh prepare
 $ ./y.sh build
 ```
 
 To run the test suite replace the last command with:
 
 ```bash
+$ ./y.sh prepare # only needs to be run the first time
 $ ./test.sh
 ```
 
@@ -70,7 +70,7 @@ For more docs on how to build and test see [build_system/usage.txt](build_system
 |AIX|❌[^xcoff]|N/A|N/A|❌[^xcoff]|
 |Other unixes|❓|❓|❓|❓|
 |macOS|✅|✅|N/A|N/A|
-|Windows|✅[^no-rustup]|❌|N/A|N/A|
+|Windows|✅|❌|N/A|N/A|
 
 ✅: Fully supported and tested
 ❓: Maybe supported, not tested

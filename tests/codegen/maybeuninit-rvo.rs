@@ -1,6 +1,5 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ needs-unwind
-//@ min-llvm-version: 18
 #![feature(c_unwind)]
 #![crate_type = "lib"]
 

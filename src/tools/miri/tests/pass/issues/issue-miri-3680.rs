@@ -1,4 +1,4 @@
-//@ignore-target-windows: File handling is not implemented yet
+//@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::fs::remove_file;

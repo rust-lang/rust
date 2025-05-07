@@ -1,9 +1,9 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv5te-unknown-linux-gnueabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv5TE Linux (kernel 4.4, glibc 2.23)".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -14,11 +14,13 @@ pub fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+soft-float,+strict-align".into(),
             // Atomic operations provided by compiler-builtins
             max_atomic_width: Some(32),
             mcount: "\u{1}__gnu_mcount_nc".into(),
             has_thumb_interworking: true,
+            llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
             ..base::linux_gnu::opts()
         },
     }

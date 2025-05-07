@@ -1,13 +1,12 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
+use clippy_utils::higher::{VecInitKind, get_vec_init_kind};
 use clippy_utils::ty::{is_type_diagnostic_item, is_uninit_value_valid_for_ty};
-use clippy_utils::{is_integer_literal, is_lint_allowed, path_to_local_id, peel_hir_expr_while, SpanlessEq};
+use clippy_utils::{SpanlessEq, is_integer_literal, is_lint_allowed, path_to_local_id, peel_hir_expr_while, sym};
 use rustc_hir::{Block, Expr, ExprKind, HirId, PatKind, PathSegment, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 // TODO: add `ReadBuf` (RFC 2930) in "How to fix" once it is available in std
 declare_clippy_lint! {
@@ -64,7 +63,7 @@ declare_lint_pass!(UninitVec => [UNINIT_VEC]);
 // Threads: https://github.com/rust-lang/rust-clippy/pull/7682#discussion_r710998368
 impl<'tcx> LateLintPass<'tcx> for UninitVec {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
-        if !in_external_macro(cx.tcx.sess, block.span) {
+        if !block.span.in_external_macro(cx.tcx.sess.source_map()) {
             for w in block.stmts.windows(2) {
                 if let StmtKind::Expr(expr) | StmtKind::Semi(expr) = w[1].kind {
                     handle_uninit_vec_pair(cx, &w[0], expr);
@@ -188,7 +187,7 @@ fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt
 
 fn is_reserve(cx: &LateContext<'_>, path: &PathSegment<'_>, self_expr: &Expr<'_>) -> bool {
     is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr).peel_refs(), sym::Vec)
-        && path.ident.name.as_str() == "reserve"
+        && path.ident.name == sym::reserve
 }
 
 /// Returns self if the expression is `Vec::set_len()`
@@ -210,7 +209,7 @@ fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Opt
         ExprKind::MethodCall(path, self_expr, [arg], _) => {
             let self_type = cx.typeck_results().expr_ty(self_expr).peel_refs();
             if is_type_diagnostic_item(cx, self_type, sym::Vec)
-                && path.ident.name.as_str() == "set_len"
+                && path.ident.name == sym::set_len
                 && !is_integer_literal(arg, 0)
             {
                 Some((self_expr, expr.span))

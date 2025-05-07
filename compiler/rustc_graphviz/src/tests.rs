@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use NodeLabels::*;
 
 use super::LabelText::{self, EscStr, HtmlStr, LabelStr};
-use super::{render, Edges, GraphWalk, Id, Labeller, Nodes, Style};
+use super::{Edges, GraphWalk, Id, Labeller, Nodes, Style, render};
 
 /// each node is an index in a vector in the graph.
 type Node = usize;

@@ -14,7 +14,7 @@ fn main() {
         .input("foo.rs")
         .target("my-invalid-platform.json")
         .run_fail()
-        .assert_stderr_contains("Error loading target specification");
+        .assert_stderr_contains("error loading target specification");
     rustc()
         .input("foo.rs")
         .target("my-incomplete-platform.json")
@@ -54,11 +54,6 @@ fn main() {
         .run();
     rustc()
         .input("foo.rs")
-        .target("definitely-not-builtin-target")
-        .run_fail()
-        .assert_stderr_contains("may not set is_builtin");
-    rustc()
-        .input("foo.rs")
         .target("endianness-mismatch")
         .run_fail()
         .assert_stderr_contains(r#""data-layout" claims architecture is little-endian"#);
@@ -68,4 +63,17 @@ fn main() {
         .crate_type("lib")
         .run_fail()
         .assert_stderr_contains("data-layout for target");
+    rustc()
+        .input("foo.rs")
+        .target("require-explicit-cpu")
+        .crate_type("lib")
+        .run_fail()
+        .assert_stderr_contains("target requires explicitly specifying a cpu");
+    rustc()
+        .input("foo.rs")
+        .target("require-explicit-cpu")
+        .crate_type("lib")
+        .arg("-Ctarget-cpu=generic")
+        .run();
+    rustc().target("require-explicit-cpu").arg("--print=target-cpus").run();
 }

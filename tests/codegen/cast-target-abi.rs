@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
+//@ add-core-stubs
 //@ revisions:aarch64 loongarch64 powerpc64 sparc64 x86_64
-// FIXME: Add `-Cllvm-args=--lint-abort-on-error` after LLVM 19
-//@ compile-flags: -O -C no-prepopulate-passes -C passes=lint
+//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir
 
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: arm
@@ -21,12 +21,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // This struct will be passed as a single `i64` or `i32`.
 // This may be (if `i64)) larger than the Rust layout, which is just `{ i16, i16 }`.
@@ -392,7 +388,7 @@ pub fn call_fiveu16s() {
 }
 
 // CHECK-LABEL: @return_fiveu16s
-// CHECK-SAME: (ptr {{.+}} sret([10 x i8]) align [[RUST_ALIGN:2]] dereferenceable(10) [[RET_PTR:%.+]])
+// CHECK-SAME: (ptr {{.+}} sret([10 x i8]) align [[RUST_ALIGN:2]] {{.*}}dereferenceable(10) [[RET_PTR:%.+]])
 #[no_mangle]
 pub fn return_fiveu16s() -> FiveU16s {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.

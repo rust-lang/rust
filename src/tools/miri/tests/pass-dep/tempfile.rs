@@ -1,5 +1,5 @@
-//@ignore-target-windows: File handling is not implemented yet
-//@ignore-host-windows: Only supported for UNIX hosts
+//@ignore-target: windows # File handling is not implemented yet
+//@ignore-host: windows # Only supported for UNIX hosts
 //@compile-flags: -Zmiri-disable-isolation
 
 #[path = "../utils/mod.rs"]

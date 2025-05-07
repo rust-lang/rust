@@ -13,11 +13,12 @@ impl<'a, 'b> ProofForConversion<'a, 'b> for &'b &'a () {
 }
 
 type Converter<'a, 'b> = impl ProofForConversion<'a, 'b>;
-//~^ ERROR reference has a longer lifetime than the data it references
 
 // Even _defining_use with an explicit `'a: 'b` compiles fine, too.
+#[define_opaque(Converter)]
 fn _defining_use<'a, 'b>(x: &'b &'a ()) -> Converter<'a, 'b> {
     x
+    //~^ ERROR reference has a longer lifetime than the data it references
 }
 
 fn extend_lifetime<'a, 'b, T: ?Sized>(x: &'a T) -> &'b T {

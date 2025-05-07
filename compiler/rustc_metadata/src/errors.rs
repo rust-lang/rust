@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::{sym, Span, Symbol};
-use rustc_target::spec::{PanicStrategy, TargetTriple};
+use rustc_span::{Span, Symbol, sym};
+use rustc_target::spec::{PanicStrategy, TargetTuple};
 
 use crate::fluent_generated as fluent;
 use crate::locator::CrateFlavor;
@@ -333,15 +333,17 @@ pub struct CrateNotPanicRuntime {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_crate_not_compiler_builtins)]
+pub struct CrateNotCompilerBuiltins {
+    pub crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_no_panic_strategy)]
 pub struct NoPanicStrategy {
     pub crate_name: Symbol,
     pub strategy: PanicStrategy,
 }
-
-#[derive(Diagnostic)]
-#[diag(metadata_profiler_builtins_needs_core)]
-pub struct ProfilerBuiltinsNeedsCore;
 
 #[derive(Diagnostic)]
 #[diag(metadata_not_profiler_runtime)]
@@ -524,6 +526,15 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for MultipleCandidates {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_full_metadata_not_found)]
+pub(crate) struct FullMetadataNotFound {
+    #[primary_span]
+    pub span: Span,
+    pub flavor: CrateFlavor,
+    pub crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_symbol_conflicts_current, code = E0519)]
 pub struct SymbolConflictsCurrent {
     #[primary_span]
@@ -630,7 +641,7 @@ pub struct CannotFindCrate {
     pub current_crate: String,
     pub is_nightly_build: bool,
     pub profiler_runtime: Symbol,
-    pub locator_triple: TargetTriple,
+    pub locator_triple: TargetTuple,
     pub is_ui_testing: bool,
 }
 
@@ -641,7 +652,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for CannotFindCrate {
         diag.arg("crate_name", self.crate_name);
         diag.arg("current_crate", self.current_crate);
         diag.arg("add_info", self.add_info);
-        diag.arg("locator_triple", self.locator_triple.triple());
+        diag.arg("locator_triple", self.locator_triple.tuple());
         diag.code(E0463);
         diag.span(self.span);
         if self.crate_name == sym::std || self.crate_name == sym::core {
@@ -735,4 +746,68 @@ pub struct UnknownImportNameType<'a> {
 pub struct ImportNameTypeRaw {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_wasm_c_abi)]
+pub(crate) struct WasmCAbi {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_incompatible_target_modifiers)]
+#[help]
+#[note]
+#[help(metadata_incompatible_target_modifiers_help_fix)]
+#[help(metadata_incompatible_target_modifiers_help_allow)]
+pub struct IncompatibleTargetModifiers {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub flag_name: String,
+    pub flag_name_prefixed: String,
+    pub local_value: String,
+    pub extern_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_incompatible_target_modifiers_l_missed)]
+#[help]
+#[note]
+#[help(metadata_incompatible_target_modifiers_help_fix_l_missed)]
+#[help(metadata_incompatible_target_modifiers_help_allow)]
+pub struct IncompatibleTargetModifiersLMissed {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub flag_name: String,
+    pub flag_name_prefixed: String,
+    pub extern_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_incompatible_target_modifiers_r_missed)]
+#[help]
+#[note]
+#[help(metadata_incompatible_target_modifiers_help_fix_r_missed)]
+#[help(metadata_incompatible_target_modifiers_help_allow)]
+pub struct IncompatibleTargetModifiersRMissed {
+    #[primary_span]
+    pub span: Span,
+    pub extern_crate: Symbol,
+    pub local_crate: Symbol,
+    pub flag_name: String,
+    pub flag_name_prefixed: String,
+    pub local_value: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_unknown_target_modifier_unsafe_allowed)]
+pub struct UnknownTargetModifierUnsafeAllowed {
+    #[primary_span]
+    pub span: Span,
+    pub flag_name: String,
 }

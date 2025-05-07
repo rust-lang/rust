@@ -6,18 +6,17 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, is_in_const_context, std_or_core};
 use itertools::Itertools;
 
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::intravisit::{Visitor, walk_expr};
 
-use crate::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, SyntaxContext};
+use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -134,7 +133,7 @@ fn generate_swap_warning<'tcx>(
                             applicability: &mut applicability,
                         }
                         .snippet_index_bindings(&[idx1, idx2, rhs1, rhs2]),
-                        slice.maybe_par(),
+                        slice.maybe_paren(),
                         snippet_with_context(cx, idx1.span, ctxt, "..", &mut applicability).0,
                         snippet_with_context(cx, idx2.span, ctxt, "..", &mut applicability).0,
                     ),
@@ -212,7 +211,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if let Some((lhs0, rhs0)) = parse(first)
             && let Some((lhs1, rhs1)) = parse(second)
             && first.span.eq_ctxt(second.span)
-			&& !in_external_macro(cx.sess(), first.span)
+			&& !first.span.in_external_macro(cx.sess().source_map())
             && is_same(cx, lhs0, rhs1)
             && is_same(cx, lhs1, rhs0)
 			&& !is_same(cx, lhs1, rhs1) // Ignore a = b; a = a (#10421)
@@ -270,12 +269,11 @@ fn parse<'a, 'hir>(stmt: &'a Stmt<'hir>) -> Option<(ExprOrIdent<'hir>, &'a Expr<
         if let ExprKind::Assign(lhs, rhs, _) = expr.kind {
             return Some((ExprOrIdent::Expr(lhs), rhs));
         }
-    } else if let StmtKind::Let(expr) = stmt.kind {
-        if let Some(rhs) = expr.init {
-            if let PatKind::Binding(_, _, ident_l, _) = expr.pat.kind {
-                return Some((ExprOrIdent::Ident(ident_l), rhs));
-            }
-        }
+    } else if let StmtKind::Let(expr) = stmt.kind
+        && let Some(rhs) = expr.init
+        && let PatKind::Binding(_, _, ident_l, _) = expr.pat.kind
+    {
+        return Some((ExprOrIdent::Ident(ident_l), rhs));
     }
     None
 }
@@ -296,7 +294,7 @@ fn check_xor_swap<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         {
             let span = s1.span.to(s3.span);
             generate_swap_warning(block, cx, lhs0, rhs0, rhs1, rhs2, span, true);
-        };
+        }
     }
 }
 
@@ -308,7 +306,7 @@ fn extract_sides_of_xor_assign<'a, 'hir>(
     if let StmtKind::Semi(expr) = stmt.kind
         && let ExprKind::AssignOp(
             Spanned {
-                node: BinOpKind::BitXor,
+                node: AssignOpKind::BitXorAssign,
                 ..
             },
             lhs,
@@ -332,9 +330,9 @@ struct IndexBinding<'a, 'tcx> {
     applicability: &'a mut Applicability,
 }
 
-impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
+impl<'tcx> IndexBinding<'_, 'tcx> {
     fn snippet_index_bindings(&mut self, exprs: &[&'tcx Expr<'tcx>]) -> String {
-        let mut bindings = FxHashSet::default();
+        let mut bindings = FxIndexSet::default();
         for expr in exprs {
             bindings.insert(self.snippet_index_binding(expr));
         }
@@ -384,15 +382,15 @@ impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
 
     fn is_used_after_swap(&mut self, idx_ident: Ident) -> bool {
         let mut v = IndexBindingVisitor {
-            found_used: false,
-            suggest_span: self.suggest_span,
             idx: idx_ident,
+            suggest_span: self.suggest_span,
+            found_used: false,
         };
 
         for stmt in self.block.stmts {
             match stmt.kind {
                 StmtKind::Expr(expr) | StmtKind::Semi(expr) => v.visit_expr(expr),
-                StmtKind::Let(LetStmt { ref init, .. }) => {
+                StmtKind::Let(LetStmt { init, .. }) => {
                     if let Some(init) = init.as_ref() {
                         v.visit_expr(init);
                     }
@@ -412,9 +410,7 @@ impl<'a, 'tcx> IndexBinding<'a, 'tcx> {
                 }
                 Self::is_used_slice_indexed(lhs, idx_ident) || Self::is_used_slice_indexed(rhs, idx_ident)
             },
-            ExprKind::Path(QPath::Resolved(_, path)) => {
-                path.segments.first().map_or(false, |idx| idx.ident == idx_ident)
-            },
+            ExprKind::Path(QPath::Resolved(_, path)) => path.segments.first().is_some_and(|idx| idx.ident == idx_ident),
             _ => false,
         }
     }

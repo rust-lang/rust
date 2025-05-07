@@ -6,10 +6,18 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+mod variance;
+
+#[unstable(feature = "phantom_variance_markers", issue = "135806")]
+pub use self::variance::{
+    PhantomContravariant, PhantomContravariantLifetime, PhantomCovariant, PhantomCovariantLifetime,
+    PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
+};
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;
 use crate::hash::{Hash, Hasher};
+use crate::pin::UnsafePinned;
 
 /// Implements a given marker trait for multiple types at the same time.
 ///
@@ -75,7 +83,7 @@ macro marker_impls {
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
+#[rustc_diagnostic_item = "Send"]
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
@@ -141,7 +149,8 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 )]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 #[rustc_specialization_trait]
-#[rustc_deny_explicit_impl(implement_via_object = false)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 #[rustc_coinductive]
 pub trait Sized {
     // Empty.
@@ -158,7 +167,7 @@ pub trait Sized {
 /// - Arrays `[T; N]` implement `Unsize<[T]>`.
 /// - A type implements `Unsize<dyn Trait + 'a>` if all of these conditions are met:
 ///   - The type implements `Trait`.
-///   - `Trait` is object safe.
+///   - `Trait` is dyn-compatible[^1].
 ///   - The type is sized.
 ///   - The type outlives `'a`.
 /// - Structs `Foo<..., T1, ..., Tn, ...>` implement `Unsize<Foo<..., U1, ..., Un, ...>>`
@@ -178,33 +187,30 @@ pub trait Sized {
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 /// [nomicon-coerce]: ../../nomicon/coercions.html
+/// [^1]: Formerly known as *object safe*.
 #[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
-#[rustc_deny_explicit_impl(implement_via_object = false)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait Unsize<T: ?Sized> {
     // Empty.
 }
 
 /// Required trait for constants used in pattern matches.
 ///
-/// Any type that derives `PartialEq` automatically implements this trait,
-/// *regardless* of whether its type-parameters implement `PartialEq`.
+/// Constants are only allowed as patterns if (a) their type implements
+/// `PartialEq`, and (b) interpreting the value of the constant as a pattern
+/// is equialent to calling `PartialEq`. This ensures that constants used as
+/// patterns cannot expose implementation details in an unexpected way or
+/// cause semver hazards.
 ///
-/// If a `const` item contains some type that does not implement this trait,
-/// then that type either (1.) does not implement `PartialEq` (which means the
-/// constant will not provide that comparison method, which code generation
-/// assumes is available), or (2.) it implements *its own* version of
-/// `PartialEq` (which we assume does not conform to a structural-equality
-/// comparison).
+/// This trait ensures point (b).
+/// Any type that derives `PartialEq` automatically implements this trait.
 ///
-/// In either of the two scenarios above, we reject usage of such a constant in
-/// a pattern match.
-///
-/// See also the [structural match RFC][RFC1445], and [issue 63438] which
-/// motivated migrating from an attribute-based design to this trait.
-///
-/// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
-/// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
+/// Implementing this trait (which is unstable) is a way for type authors to explicitly allow
+/// comparing const values of this type; that operation will recursively compare all fields
+/// (including private fields), even if that behavior differs from `PartialEq`. This can make it
+/// semver-breaking to add further private fields to a type.
 #[unstable(feature = "structural_match", issue = "31434")]
 #[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
@@ -288,8 +294,19 @@ marker_impls! {
 /// }
 /// ```
 ///
-/// There is a small difference between the two: the `derive` strategy will also place a `Copy`
-/// bound on type parameters, which isn't always desired.
+/// There is a small difference between the two. The `derive` strategy will also place a `Copy`
+/// bound on type parameters:
+///
+/// ```
+/// #[derive(Clone)]
+/// struct MyStruct<T>(T);
+///
+/// impl<T: Copy> Copy for MyStruct<T> { }
+/// ```
+///
+/// This isn't always desired. For example, shared references (`&T`) can be copied regardless of
+/// whether `T` is `Copy`. Likewise, a generic struct containing markers such as [`PhantomData`]
+/// could potentially be duplicated with a bit-wise copy.
 ///
 /// ## What's the difference between `Copy` and `Clone`?
 ///
@@ -389,7 +406,7 @@ marker_impls! {
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`size_of::<T>`]: crate::mem::size_of
+/// [`size_of::<T>`]: size_of
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
@@ -436,6 +453,27 @@ impl Copy for ! {}
 /// Shared references can be copied, but mutable references *cannot*!
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Copy for &T {}
+
+/// Marker trait for the types that are allowed in union fields and unsafe
+/// binder types.
+///
+/// Implemented for:
+/// * `&T`, `&mut T` for all `T`,
+/// * `ManuallyDrop<T>` for all `T`,
+/// * tuples and arrays whose elements implement `BikeshedGuaranteedNoDrop`,
+/// * or otherwise, all types that are `Copy`.
+///
+/// Notably, this doesn't include all trivially-destructible types for semver
+/// reasons.
+///
+/// Bikeshed name for now. This trait does not do anything other than reflect the
+/// set of types that are allowed within unions for field validity.
+#[unstable(feature = "bikeshed_guaranteed_no_drop", issue = "none")]
+#[lang = "bikeshed_guaranteed_no_drop"]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
+#[doc(hidden)]
+pub trait BikeshedGuaranteedNoDrop {}
 
 /// Types for which it is safe to share references between threads.
 ///
@@ -508,7 +546,7 @@ impl<T: ?Sized> Copy for &T {}
 /// [transmute]: crate::mem::transmute
 /// [nomicon-send-and-sync]: ../../nomicon/send-and-sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Sync")]
+#[rustc_diagnostic_item = "Sync"]
 #[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
@@ -698,7 +736,6 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// # }
 /// # fn convert_params(_: ParamType) -> usize { 42 }
 /// use std::marker::PhantomData;
-/// use std::mem;
 ///
 /// struct ExternalResource<R> {
 ///    resource_handle: *mut (),
@@ -707,7 +744,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 ///
 /// impl<R: ResType> ExternalResource<R> {
 ///     fn new() -> Self {
-///         let size_of_res = mem::size_of::<R>();
+///         let size_of_res = size_of::<R>();
 ///         Self {
 ///             resource_handle: foreign_lib::new(size_of_res),
 ///             resource_type: PhantomData,
@@ -803,7 +840,8 @@ impl<T: ?Sized> StructuralPartialEq for PhantomData<T> {}
     reason = "this trait is unlikely to ever be stabilized, use `mem::discriminant` instead"
 )]
 #[lang = "discriminant_kind"]
-#[rustc_deny_explicit_impl(implement_via_object = false)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait DiscriminantKind {
     /// The type of the discriminant, which must satisfy the trait
     /// bounds required by `mem::Discriminant`.
@@ -840,6 +878,23 @@ marker_impls! {
         {T: ?Sized} &T,
         {T: ?Sized} &mut T,
 }
+
+/// Used to determine whether a type contains any `UnsafePinned` (or `PhantomPinned`) internally,
+/// but not through an indirection. This affects, for example, whether we emit `noalias` metadata
+/// for `&mut T` or not.
+///
+/// This is part of [RFC 3467](https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html), and is
+/// tracked by [#125735](https://github.com/rust-lang/rust/issues/125735).
+#[cfg_attr(not(bootstrap), lang = "unsafe_unpin")]
+#[cfg_attr(bootstrap, allow(dead_code))]
+pub(crate) unsafe auto trait UnsafeUnpin {}
+
+impl<T: ?Sized> !UnsafeUnpin for UnsafePinned<T> {}
+unsafe impl<T: ?Sized> UnsafeUnpin for PhantomData<T> {}
+unsafe impl<T: ?Sized> UnsafeUnpin for *const T {}
+unsafe impl<T: ?Sized> UnsafeUnpin for *mut T {}
+unsafe impl<T: ?Sized> UnsafeUnpin for &T {}
+unsafe impl<T: ?Sized> UnsafeUnpin for &mut T {}
 
 /// Types that do not require any pinning guarantees.
 ///
@@ -916,12 +971,23 @@ pub auto trait Unpin {}
 /// A marker type which does not implement `Unpin`.
 ///
 /// If a type contains a `PhantomPinned`, it will not implement `Unpin` by default.
+//
+// FIXME(unsafe_pinned): This is *not* a stable guarantee we want to make, at least not yet.
+// Note that for backwards compatibility with the new [`UnsafePinned`] wrapper type, placing this
+// marker in your struct acts as if you wrapped the entire struct in an `UnsafePinned`. This type
+// will likely eventually be deprecated, and all new code should be using `UnsafePinned` instead.
 #[stable(feature = "pin", since = "1.33.0")]
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct PhantomPinned;
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl !Unpin for PhantomPinned {}
+
+// This is a small hack to allow existing code which uses PhantomPinned to opt-out of noalias to
+// continue working. Ideally PhantomPinned could just wrap an `UnsafePinned<()>` to get the same
+// effect, but we can't add a new field to an already stable unit struct -- that would be a breaking
+// change.
+impl !UnsafeUnpin for PhantomPinned {}
 
 marker_impls! {
     #[stable(feature = "pin", since = "1.33.0")]
@@ -941,10 +1007,13 @@ marker_impls! {
 ///
 /// This should be used for `~const` bounds,
 /// as non-const bounds will always hold for every type.
-#[unstable(feature = "const_trait_impl", issue = "67792")]
+#[unstable(feature = "const_destruct", issue = "133214")]
+#[rustc_const_unstable(feature = "const_destruct", issue = "133214")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
-#[rustc_deny_explicit_impl(implement_via_object = false)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
+#[const_trait]
 pub trait Destruct {}
 
 /// A marker for tuple types.
@@ -954,20 +1023,40 @@ pub trait Destruct {}
 #[unstable(feature = "tuple_trait", issue = "none")]
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
-#[rustc_deny_explicit_impl(implement_via_object = false)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait Tuple {}
 
 /// A marker for pointer-like types.
 ///
-/// All types that have the same size and alignment as a `usize` or
-/// `*const ()` automatically implement this trait.
+/// This trait can only be implemented for types that are certain to have
+/// the same size and alignment as a [`usize`] or [`*const ()`](pointer).
+/// To ensure this, there are special requirements on implementations
+/// of `PointerLike` (other than the already-provided implementations
+/// for built-in types):
+///
+/// * The type must have `#[repr(transparent)]`.
+/// * The type’s sole non-zero-sized field must itself implement `PointerLike`.
 #[unstable(feature = "pointer_like_trait", issue = "none")]
 #[lang = "pointer_like"]
 #[diagnostic::on_unimplemented(
     message = "`{Self}` needs to have the same ABI as a pointer",
     label = "`{Self}` needs to be a pointer-like type"
 )]
+#[rustc_do_not_implement_via_object]
 pub trait PointerLike {}
+
+marker_impls! {
+    #[unstable(feature = "pointer_like_trait", issue = "none")]
+    PointerLike for
+        isize,
+        usize,
+        {T} &T,
+        {T} &mut T,
+        {T} *const T,
+        {T} *mut T,
+        {T: PointerLike} crate::pin::Pin<T>,
+}
 
 /// A marker for types which can be used as types of `const` generic parameters.
 ///
@@ -992,7 +1081,7 @@ pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }
 
-#[cfg_attr(not(bootstrap), lang = "unsized_const_param_ty")]
+#[lang = "unsized_const_param_ty"]
 #[unstable(feature = "unsized_const_params", issue = "95174")]
 #[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 /// A marker for types which can be used as types of `const` generic parameters.
@@ -1002,10 +1091,9 @@ pub macro ConstParamTy($item:item) {
 pub trait UnsizedConstParamTy: StructuralPartialEq + Eq {}
 
 /// Derive macro generating an impl of the trait `ConstParamTy`.
-#[cfg(not(bootstrap))]
-#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
-#[cfg_attr(not(bootstrap), allow_internal_unstable(unsized_const_params))]
-#[cfg_attr(not(bootstrap), unstable(feature = "unsized_const_params", issue = "95174"))]
+#[rustc_builtin_macro]
+#[allow_internal_unstable(unsized_const_params)]
+#[unstable(feature = "unsized_const_params", issue = "95174")]
 pub macro UnsizedConstParamTy($item:item) {
     /* compiler built-in */
 }
@@ -1020,14 +1108,6 @@ marker_impls! {
         char,
         (),
         {T: ConstParamTy_, const N: usize} [T; N],
-}
-#[cfg(bootstrap)]
-marker_impls! {
-    #[unstable(feature = "adt_const_params", issue = "95174")]
-    ConstParamTy_ for
-        str,
-        {T: ConstParamTy_} [T],
-        {T: ConstParamTy_ + ?Sized} &T,
 }
 
 marker_impls! {
@@ -1046,68 +1126,229 @@ marker_impls! {
 }
 
 /// A common trait implemented by all function pointers.
+//
+// Note that while the trait is internal and unstable it is nevertheless
+// exposed as a public bound of the stable `core::ptr::fn_addr_eq` function.
 #[unstable(
     feature = "fn_ptr_trait",
     issue = "none",
     reason = "internal trait for implementing various traits for all function pointers"
 )]
 #[lang = "fn_ptr_trait"]
-#[rustc_deny_explicit_impl(implement_via_object = false)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 pub trait FnPtr: Copy + Clone {
     /// Returns the address of the function pointer.
     #[lang = "fn_ptr_addr"]
     fn addr(self) -> *const ();
 }
 
-/// Derive macro generating impls of traits related to smart pointers.
-#[rustc_builtin_macro(SmartPointer, attributes(pointee))]
-#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
-#[unstable(feature = "derive_smart_pointer", issue = "123430")]
-pub macro SmartPointer($item:item) {
+/// Derive macro that makes a smart pointer usable with trait objects.
+///
+/// # What this macro does
+///
+/// This macro is intended to be used with user-defined pointer types, and makes it possible to
+/// perform coercions on the pointee of the user-defined pointer. There are two aspects to this:
+///
+/// ## Unsizing coercions of the pointee
+///
+/// By using the macro, the following example will compile:
+/// ```
+/// #![feature(derive_coerce_pointee)]
+/// use std::marker::CoercePointee;
+/// use std::ops::Deref;
+///
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// struct MySmartPointer<T: ?Sized>(Box<T>);
+///
+/// impl<T: ?Sized> Deref for MySmartPointer<T> {
+///     type Target = T;
+///     fn deref(&self) -> &T {
+///         &self.0
+///     }
+/// }
+///
+/// trait MyTrait {}
+///
+/// impl MyTrait for i32 {}
+///
+/// fn main() {
+///     let ptr: MySmartPointer<i32> = MySmartPointer(Box::new(4));
+///
+///     // This coercion would be an error without the derive.
+///     let ptr: MySmartPointer<dyn MyTrait> = ptr;
+/// }
+/// ```
+/// Without the `#[derive(CoercePointee)]` macro, this example would fail with the following error:
+/// ```text
+/// error[E0308]: mismatched types
+///   --> src/main.rs:11:44
+///    |
+/// 11 |     let ptr: MySmartPointer<dyn MyTrait> = ptr;
+///    |              ---------------------------   ^^^ expected `MySmartPointer<dyn MyTrait>`, found `MySmartPointer<i32>`
+///    |              |
+///    |              expected due to this
+///    |
+///    = note: expected struct `MySmartPointer<dyn MyTrait>`
+///               found struct `MySmartPointer<i32>`
+///    = help: `i32` implements `MyTrait` so you could box the found value and coerce it to the trait object `Box<dyn MyTrait>`, you will have to change the expected type as well
+/// ```
+///
+/// ## Dyn compatibility
+///
+/// This macro allows you to dispatch on the user-defined pointer type. That is, traits using the
+/// type as a receiver are dyn-compatible. For example, this compiles:
+///
+/// ```
+/// #![feature(arbitrary_self_types, derive_coerce_pointee)]
+/// use std::marker::CoercePointee;
+/// use std::ops::Deref;
+///
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// struct MySmartPointer<T: ?Sized>(Box<T>);
+///
+/// impl<T: ?Sized> Deref for MySmartPointer<T> {
+///     type Target = T;
+///     fn deref(&self) -> &T {
+///         &self.0
+///     }
+/// }
+///
+/// // You can always define this trait. (as long as you have #![feature(arbitrary_self_types)])
+/// trait MyTrait {
+///     fn func(self: MySmartPointer<Self>);
+/// }
+///
+/// // But using `dyn MyTrait` requires #[derive(CoercePointee)].
+/// fn call_func(value: MySmartPointer<dyn MyTrait>) {
+///     value.func();
+/// }
+/// ```
+/// If you remove the `#[derive(CoercePointee)]` annotation from the struct, then the above example
+/// will fail with this error message:
+/// ```text
+/// error[E0038]: the trait `MyTrait` is not dyn compatible
+///   --> src/lib.rs:21:36
+///    |
+/// 17 |     fn func(self: MySmartPointer<Self>);
+///    |                   -------------------- help: consider changing method `func`'s `self` parameter to be `&self`: `&Self`
+/// ...
+/// 21 | fn call_func(value: MySmartPointer<dyn MyTrait>) {
+///    |                                    ^^^^^^^^^^^ `MyTrait` is not dyn compatible
+///    |
+/// note: for a trait to be dyn compatible it needs to allow building a vtable
+///       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+///   --> src/lib.rs:17:19
+///    |
+/// 16 | trait MyTrait {
+///    |       ------- this trait is not dyn compatible...
+/// 17 |     fn func(self: MySmartPointer<Self>);
+///    |                   ^^^^^^^^^^^^^^^^^^^^ ...because method `func`'s `self` parameter cannot be dispatched on
+/// ```
+///
+/// # Requirements for using the macro
+///
+/// This macro can only be used if:
+/// * The type is a `#[repr(transparent)]` struct.
+/// * The type of its non-zero-sized field must either be a standard library pointer type
+///   (reference, raw pointer, `NonNull`, `Box`, `Rc`, `Arc`, etc.) or another user-defined type
+///   also using the `#[derive(CoercePointee)]` macro.
+/// * Zero-sized fields must not mention any generic parameters unless the zero-sized field has
+///   type [`PhantomData`].
+///
+/// ## Multiple type parameters
+///
+/// If the type has multiple type parameters, then you must explicitly specify which one should be
+/// used for dynamic dispatch. For example:
+/// ```
+/// # #![feature(derive_coerce_pointee)]
+/// # use std::marker::{CoercePointee, PhantomData};
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// struct MySmartPointer<#[pointee] T: ?Sized, U> {
+///     ptr: Box<T>,
+///     _phantom: PhantomData<U>,
+/// }
+/// ```
+/// Specifying `#[pointee]` when the struct has only one type parameter is allowed, but not required.
+///
+/// # Examples
+///
+/// A custom implementation of the `Rc` type:
+/// ```
+/// #![feature(derive_coerce_pointee)]
+/// use std::marker::CoercePointee;
+/// use std::ops::Deref;
+/// use std::ptr::NonNull;
+///
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// pub struct Rc<T: ?Sized> {
+///     inner: NonNull<RcInner<T>>,
+/// }
+///
+/// struct RcInner<T: ?Sized> {
+///     refcount: usize,
+///     value: T,
+/// }
+///
+/// impl<T: ?Sized> Deref for Rc<T> {
+///     type Target = T;
+///     fn deref(&self) -> &T {
+///         let ptr = self.inner.as_ptr();
+///         unsafe { &(*ptr).value }
+///     }
+/// }
+///
+/// impl<T> Rc<T> {
+///     pub fn new(value: T) -> Self {
+///         let inner = Box::new(RcInner {
+///             refcount: 1,
+///             value,
+///         });
+///         Self {
+///             inner: NonNull::from(Box::leak(inner)),
+///         }
+///     }
+/// }
+///
+/// impl<T: ?Sized> Clone for Rc<T> {
+///     fn clone(&self) -> Self {
+///         // A real implementation would handle overflow here.
+///         unsafe { (*self.inner.as_ptr()).refcount += 1 };
+///         Self { inner: self.inner }
+///     }
+/// }
+///
+/// impl<T: ?Sized> Drop for Rc<T> {
+///     fn drop(&mut self) {
+///         let ptr = self.inner.as_ptr();
+///         unsafe { (*ptr).refcount -= 1 };
+///         if unsafe { (*ptr).refcount } == 0 {
+///             drop(unsafe { Box::from_raw(ptr) });
+///         }
+///     }
+/// }
+/// ```
+#[rustc_builtin_macro(CoercePointee, attributes(pointee))]
+#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
+#[rustc_diagnostic_item = "CoercePointee"]
+#[unstable(feature = "derive_coerce_pointee", issue = "123430")]
+pub macro CoercePointee($item:item) {
     /* compiler built-in */
 }
 
-// Support traits and types for the desugaring of const traits and
-// `~const` bounds. Not supposed to be used by anything other than
-// the compiler.
+/// A trait that is implemented for ADTs with `derive(CoercePointee)` so that
+/// the compiler can enforce the derive impls are valid post-expansion, since
+/// the derive has stricter requirements than if the impls were written by hand.
+///
+/// This trait is not intended to be implemented by users or used other than
+/// validation, so it should never be stabilized.
+#[lang = "coerce_pointee_validated"]
+#[unstable(feature = "coerce_pointee_validated", issue = "none")]
 #[doc(hidden)]
-#[unstable(
-    feature = "effect_types",
-    issue = "none",
-    reason = "internal module for implementing effects"
-)]
-#[allow(missing_debug_implementations)] // these unit structs don't need `Debug` impls.
-pub mod effects {
-    #[lang = "EffectsNoRuntime"]
-    pub struct NoRuntime;
-    #[lang = "EffectsMaybe"]
-    pub struct Maybe;
-    #[lang = "EffectsRuntime"]
-    pub struct Runtime;
-
-    #[lang = "EffectsCompat"]
-    pub trait Compat<#[rustc_runtime] const RUNTIME: bool> {}
-
-    impl Compat<false> for NoRuntime {}
-    impl Compat<true> for Runtime {}
-    impl<#[rustc_runtime] const RUNTIME: bool> Compat<RUNTIME> for Maybe {}
-
-    #[lang = "EffectsTyCompat"]
-    #[marker]
-    pub trait TyCompat<T: ?Sized> {}
-
-    impl<T: ?Sized> TyCompat<T> for T {}
-    impl<T: ?Sized> TyCompat<T> for Maybe {}
-    impl<T: ?Sized> TyCompat<Maybe> for T {}
-
-    #[lang = "EffectsIntersection"]
-    pub trait Intersection {
-        #[lang = "EffectsIntersectionOutput"]
-        type Output: ?Sized;
-    }
-
-    // FIXME(effects): remove this after next trait solver lands
-    impl Intersection for () {
-        type Output = Maybe;
-    }
+pub trait CoercePointeeValidated {
+    /* compiler built-in */
 }

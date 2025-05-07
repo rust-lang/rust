@@ -1,16 +1,29 @@
+error[E0275]: overflow evaluating the requirement `MultipleNested: Trait`
+  --> $DIR/inductive-cycle-but-err.rs:43:16
+   |
+LL | impl Trait for MultipleNested
+   |                ^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `MultipleCandidates: Trait`
+  --> $DIR/inductive-cycle-but-err.rs:46:25
+   |
+LL |     MultipleCandidates: Trait,
+   |                         ^^^^^
+
 error[E0277]: the trait bound `MultipleCandidates: Trait` is not satisfied
-  --> $DIR/inductive-cycle-but-err.rs:46:19
+  --> $DIR/inductive-cycle-but-err.rs:54:19
    |
 LL |     impls_trait::<MultipleCandidates>();
    |                   ^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `MultipleCandidates`
    |
    = help: the trait `Trait` is implemented for `MultipleCandidates`
 note: required by a bound in `impls_trait`
-  --> $DIR/inductive-cycle-but-err.rs:43:19
+  --> $DIR/inductive-cycle-but-err.rs:51:19
    |
 LL | fn impls_trait<T: Trait>() {}
    |                   ^^^^^ required by this bound in `impls_trait`
 
-error: aborting due to 1 previous error
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0275, E0277.
+For more information about an error, try `rustc --explain E0275`.

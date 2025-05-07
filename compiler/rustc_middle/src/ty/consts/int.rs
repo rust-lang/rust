@@ -1,11 +1,11 @@
 use std::fmt;
 use std::num::NonZero;
 
-use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_abi::Size;
 use rustc_apfloat::Float;
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_target::abi::Size;
 
 use crate::ty::TyCtxt;
 
@@ -118,7 +118,7 @@ impl std::fmt::Debug for ConstInt {
 impl IntoDiagArg for ConstInt {
     // FIXME this simply uses the Debug impl, but we could probably do better by converting both
     // to an inherent method that returns `Cow`.
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(format!("{self:?}").into())
     }
 }
@@ -408,7 +408,7 @@ macro_rules! from_x_for_scalar_int {
                 fn from(u: $ty) -> Self {
                     Self {
                         data: u128::from(u),
-                        size: NonZero::new(std::mem::size_of::<$ty>() as u8).unwrap(),
+                        size: NonZero::new(size_of::<$ty>() as u8).unwrap(),
                     }
                 }
             }
@@ -424,7 +424,7 @@ macro_rules! from_scalar_int_for_x {
                 fn from(int: ScalarInt) -> Self {
                     // The `unwrap` cannot fail because to_bits (if it succeeds)
                     // is guaranteed to return a value that fits into the size.
-                    int.to_bits(Size::from_bytes(std::mem::size_of::<$ty>()))
+                    int.to_bits(Size::from_bytes(size_of::<$ty>()))
                        .try_into().unwrap()
                 }
             }

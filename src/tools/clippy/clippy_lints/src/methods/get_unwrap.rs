@@ -74,7 +74,7 @@ pub(super) fn check<'tcx>(
                 "&"
             };
 
-            diag.span_suggestion_with_style(
+            diag.span_suggestion_verbose(
                 span,
                 "using `[]` is clearer and more concise",
                 format!(
@@ -82,7 +82,6 @@ pub(super) fn check<'tcx>(
                     snippet_with_applicability(cx, recv.span, "..", &mut applicability)
                 ),
                 applicability,
-                rustc_errors::SuggestionStyle::ShowAlways,
             );
         },
     );

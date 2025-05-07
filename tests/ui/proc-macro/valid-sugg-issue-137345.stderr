@@ -1,0 +1,13 @@
+error[E0599]: no method named `map` found for opaque type `impl IntoIterator<Item = i32>` in the current scope
+  --> $DIR/valid-sugg-issue-137345.rs:11:5
+   |
+LL | /     quote::quote! {
+LL | |         #(#decl_macro)*
+LL | |     }
+   | |_____^ `impl IntoIterator<Item = i32>` is not an iterator
+   |
+   = note: this error originates in the macro `quote::quote` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

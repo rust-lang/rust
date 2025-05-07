@@ -1,4 +1,4 @@
-//@ aux-build:builtin-attrs.rs
+//@ proc-macro: builtin-attrs.rs
 //@ compile-flags:--test
 
 #![feature(decl_macro, test)]

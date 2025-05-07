@@ -6,12 +6,10 @@ LL |       let _ = match true {
 LL | |         true => {
 LL | |             async_dummy();
    | |             -------------- this is found to be of type `()`
-LL | |
-LL | |         }
+...  |
 LL | |         false => async_dummy(),
    | |                  ^^^^^^^^^^^^^ expected `()`, found future
 ...  |
-LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
@@ -38,12 +36,10 @@ LL |       let _ = match true {
 LL | |         true => {
 LL | |             async_dummy();
    | |             -------------- this is found to be of type `()`
-LL | |
-LL | |         }
+...  |
 LL | |         false => async_dummy2(),
    | |                  ^^^^^^^^^^^^^^ expected `()`, found future
 ...  |
-LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
@@ -74,8 +70,7 @@ LL | |         true => async_dummy(),
 LL | |
 LL | |         false => async_dummy2(),
    | |                  ^^^^^^^^^^^^^^ expected future, found a different future
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
@@ -98,8 +93,7 @@ LL | |             dummy();
    | |             |      |
    | |             |      help: consider removing this semicolon
    | |             this is found to be of type `()`
-LL | |
-LL | |         }
+...  |
 LL | |         false => dummy(),
    | |                  ^^^^^^^ expected `()`, found `i32`
 LL | |

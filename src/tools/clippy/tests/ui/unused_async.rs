@@ -10,7 +10,8 @@ mod issue10800 {
     use std::future::ready;
 
     async fn async_block_await() {
-        //~^ ERROR: unused `async` for function with no await statements
+        //~^ unused_async
+
         async {
             ready(()).await;
         };
@@ -43,7 +44,7 @@ mod issue9695 {
     async fn f() {}
     async fn f2() {}
     async fn f3() {}
-    //~^ ERROR: unused `async` for function with no await statements
+    //~^ unused_async
 
     fn needs_async_fn<F: Future<Output = ()>>(_: fn() -> F) {}
 
@@ -55,8 +56,25 @@ mod issue9695 {
     }
 }
 
+mod issue13466 {
+    use std::future::Future;
+
+    struct Wrap<F>(F);
+    impl<F> From<F> for Wrap<F> {
+        fn from(f: F) -> Self {
+            Self(f)
+        }
+    }
+    fn takes_fut<F: Fn() -> Fut, Fut: Future>(_: Wrap<F>) {}
+    async fn unused_async() {}
+    fn fp() {
+        takes_fut(unused_async.into());
+    }
+}
+
 async fn foo() -> i32 {
-    //~^ ERROR: unused `async` for function with no await statements
+    //~^ unused_async
+
     4
 }
 
@@ -68,7 +86,8 @@ struct S;
 
 impl S {
     async fn unused(&self) -> i32 {
-        //~^ ERROR: unused `async` for function with no await statements
+        //~^ unused_async
+
         1
     }
 

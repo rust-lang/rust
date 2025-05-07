@@ -5,7 +5,7 @@ use rustc_serialize::int_overflow::DebugStrictAdd;
 
 use crate::def_id::{DefIndex, LocalDefId};
 use crate::hygiene::SyntaxContext;
-use crate::{BytePos, SpanData, SPAN_TRACK};
+use crate::{BytePos, SPAN_TRACK, SpanData};
 
 /// A compressed span.
 ///
@@ -303,6 +303,26 @@ impl Span {
         }
     }
 
+    /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
+    #[inline]
+    pub fn from_expansion(self) -> bool {
+        let ctxt = match_span_kind! {
+            self,
+            // All branches here, except `InlineParent`, actually return `span.ctxt_or_parent_or_marker`.
+            // Since `Interned` is selected if the field contains `CTXT_INTERNED_MARKER` returning that value
+            // as the context allows the compiler to optimize out the branch that selects between either
+            // `Interned` and `PartiallyInterned`.
+            //
+            // Interned contexts can never be the root context and `CTXT_INTERNED_MARKER` has a different value
+            // than the root context so this works for checking is this is an expansion.
+            InlineCtxt(span) => SyntaxContext::from_u16(span.ctxt),
+            InlineParent(_span) => SyntaxContext::root(),
+            PartiallyInterned(span) => SyntaxContext::from_u16(span.ctxt),
+            Interned(_span) => SyntaxContext::from_u16(CTXT_INTERNED_MARKER),
+        };
+        !ctxt.is_root()
+    }
+
     /// Returns `true` if this is a dummy span with any hygienic context.
     #[inline]
     pub fn is_dummy(self) -> bool {
@@ -370,9 +390,10 @@ impl Span {
     pub fn eq_ctxt(self, other: Span) -> bool {
         match (self.inline_ctxt(), other.inline_ctxt()) {
             (Ok(ctxt1), Ok(ctxt2)) => ctxt1 == ctxt2,
-            (Ok(ctxt), Err(index)) | (Err(index), Ok(ctxt)) => {
-                with_span_interner(|interner| ctxt == interner.spans[index].ctxt)
-            }
+            // If `inline_ctxt` returns `Ok` the context is <= MAX_CTXT.
+            // If it returns `Err` the span is fully interned and the context is > MAX_CTXT.
+            // As these do not overlap an `Ok` and `Err` result cannot have an equal context.
+            (Ok(_), Err(_)) | (Err(_), Ok(_)) => false,
             (Err(index1), Err(index2)) => with_span_interner(|interner| {
                 interner.spans[index1].ctxt == interner.spans[index2].ctxt
             }),
@@ -424,7 +445,7 @@ impl Span {
 }
 
 #[derive(Default)]
-pub struct SpanInterner {
+pub(crate) struct SpanInterner {
     spans: FxIndexSet<SpanData>,
 }
 

@@ -2,31 +2,28 @@
 //@ ignore-emscripten
 
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
+
+use std::intrinsics::simd::{simd_saturating_add, simd_saturating_sub};
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-struct u32x4(pub u32, pub u32, pub u32, pub u32);
+struct u32x4(pub [u32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct I32<const N: usize>([i32; N]);
-
-extern "rust-intrinsic" {
-    fn simd_saturating_add<T>(x: T, y: T) -> T;
-    fn simd_saturating_sub<T>(x: T, y: T) -> T;
-}
 
 fn main() {
     // unsigned
     {
         const M: u32 = u32::MAX;
 
-        let a = u32x4(1, 2, 3, 4);
-        let b = u32x4(2, 4, 6, 8);
-        let m = u32x4(M, M, M, M);
-        let m1 = u32x4(M - 1, M - 1, M - 1, M - 1);
-        let z = u32x4(0, 0, 0, 0);
+        let a = u32x4([1, 2, 3, 4]);
+        let b = u32x4([2, 4, 6, 8]);
+        let m = u32x4([M, M, M, M]);
+        let m1 = u32x4([M - 1, M - 1, M - 1, M - 1]);
+        let z = u32x4([0, 0, 0, 0]);
 
         unsafe {
             assert_eq!(simd_saturating_add(z, z), z);

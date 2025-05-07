@@ -1,4 +1,4 @@
-//@ignore-target-windows: File handling is not implemented yet
+//@ignore-target: windows # File handling is not implemented yet
 //@error-in-other-file: `open` not available when isolation is enabled
 
 fn main() {

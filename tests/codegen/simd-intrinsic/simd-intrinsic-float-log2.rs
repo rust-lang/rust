@@ -1,33 +1,26 @@
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
 
-#[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x2(pub f32, pub f32);
+use std::intrinsics::simd::simd_flog2;
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
+pub struct f32x2(pub [f32; 2]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x8(pub f32, pub f32, pub f32, pub f32,
-                 pub f32, pub f32, pub f32, pub f32);
+pub struct f32x4(pub [f32; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f32x16(pub f32, pub f32, pub f32, pub f32,
-                  pub f32, pub f32, pub f32, pub f32,
-                  pub f32, pub f32, pub f32, pub f32,
-                  pub f32, pub f32, pub f32, pub f32);
+pub struct f32x8(pub [f32; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_flog2<T>(x: T) -> T;
-}
+#[repr(simd)]
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct f32x16(pub [f32; 16]);
 
 // CHECK-LABEL: @log2_32x2
 #[no_mangle]
@@ -59,16 +52,15 @@ pub unsafe fn log2_32x16(a: f32x16) -> f32x16 {
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x2(pub f64, pub f64);
+pub struct f64x2(pub [f64; 2]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x4(pub f64, pub f64, pub f64, pub f64);
+pub struct f64x4(pub [f64; 4]);
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct f64x8(pub f64, pub f64, pub f64, pub f64,
-                 pub f64, pub f64, pub f64, pub f64);
+pub struct f64x8(pub [f64; 8]);
 
 // CHECK-LABEL: @log2_64x4
 #[no_mangle]

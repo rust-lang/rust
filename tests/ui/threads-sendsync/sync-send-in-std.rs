@@ -6,8 +6,16 @@
 
 use std::net::ToSocketAddrs;
 
-fn is_sync<T>(_: T) where T: Sync {}
-fn is_send<T>(_: T) where T: Send {}
+fn is_sync<T>(_: T)
+where
+    T: Sync,
+{
+}
+fn is_send<T>(_: T)
+where
+    T: Send,
+{
+}
 
 macro_rules! all_sync_send {
     ($ctor:expr, $($iter:ident),+) => ({

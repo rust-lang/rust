@@ -1,7 +1,7 @@
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
 
-use std::ffi::{c_char, c_double, c_int, c_long, c_longlong, CStr, CString, VaList};
+use std::ffi::{CStr, CString, VaList, c_char, c_double, c_int, c_long, c_longlong};
 
 macro_rules! continue_if {
     ($cond:expr) => {

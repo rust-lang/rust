@@ -1,7 +1,8 @@
 error: methods called `new` usually return `Self`
-  --> tests/ui/methods.rs:103:5
+  --> tests/ui/methods.rs:102:5
    |
 LL | /     fn new() -> i32 {
+LL | |
 LL | |         0
 LL | |     }
    | |_____^
@@ -14,6 +15,7 @@ error: called `filter(..).next()` on an `Iterator`. This is more succinctly expr
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^
+LL | |
 LL | |                                 *x < 0
 LL | |                             }
 LL | |                    ).next();

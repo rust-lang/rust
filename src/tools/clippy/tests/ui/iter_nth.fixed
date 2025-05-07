@@ -32,24 +32,32 @@ fn iter_nth() {
     {
         // Make sure we lint `.iter()` for relevant types.
         let bad_vec = some_vec.get(3);
+        //~^ iter_nth
         let bad_slice = &some_vec[..].get(3);
+        //~^ iter_nth
         let bad_boxed_slice = boxed_slice.get(3);
+        //~^ iter_nth
         let bad_vec_deque = some_vec_deque.get(3);
+        //~^ iter_nth
     }
 
     {
         // Make sure we lint `.iter_mut()` for relevant types.
         let bad_vec = some_vec.get_mut(3);
+        //~^ iter_nth
     }
     {
         let bad_slice = &some_vec[..].get_mut(3);
+        //~^ iter_nth
     }
     {
         let bad_vec_deque = some_vec_deque.get_mut(3);
+        //~^ iter_nth
     }
 
     let vec_ref = &Vec::<String>::new();
     vec_ref.get(3);
+    //~^ iter_nth
 
     // Make sure we don't lint for non-relevant types.
     let false_positive = HasIter;

@@ -12,19 +12,21 @@
 use std::iter;
 
 use rustc_index::IndexVec;
-use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
-use tracing::{instrument, trace};
+use rustc_type_ir::relate::solver_relating::RelateExt;
+use rustc_type_ir::{
+    self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable,
+};
+use tracing::{debug, instrument, trace};
 
-use crate::canonicalizer::{CanonicalizeMode, Canonicalizer};
+use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
-use crate::solve::eval_ctxt::NestedGoals;
+use crate::solve::eval_ctxt::CurrentGoalKind;
 use crate::solve::{
-    inspect, response_no_constraints_raw, CanonicalInput, CanonicalResponse, Certainty, EvalCtxt,
-    ExternalConstraintsData, Goal, MaybeCause, NestedNormalizationGoals, NoSolution,
-    PredefinedOpaquesData, QueryInput, QueryResult, Response,
+    CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
+    MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
+    QueryResult, Response, inspect, response_no_constraints_raw,
 };
 
 trait ResponseT<I: Interner> {
@@ -59,9 +61,8 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical_goal = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize_input(
             self.delegate,
-            CanonicalizeMode::Input,
             &mut orig_values,
             QueryInput {
                 goal,
@@ -70,7 +71,8 @@ where
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
-        (orig_values, canonical_goal)
+        let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
+        (orig_values, query_input)
     }
 
     /// To return the constraints of a canonical query to the caller, we canonicalize:
@@ -79,12 +81,19 @@ where
     ///   the values inferred while solving the instantiated goal.
     /// - `external_constraints`: additional constraints which aren't expressible
     ///   using simple unification of inference variables.
+    ///
+    /// This takes the `shallow_certainty` which represents whether we're confident
+    /// that the final result of the current goal only depends on the nested goals.
+    ///
+    /// In case this is `Certainy::Maybe`, there may still be additional nested goals
+    /// or inference constraints required for this candidate to be hold. The candidate
+    /// always requires all already added constraints and nested goals.
     #[instrument(level = "trace", skip(self), ret)]
     pub(in crate::solve) fn evaluate_added_goals_and_make_canonical_response(
         &mut self,
-        certainty: Certainty,
+        shallow_certainty: Certainty,
     ) -> QueryResult<I> {
-        self.inspect.make_canonical_response(certainty);
+        self.inspect.make_canonical_response(shallow_certainty);
 
         let goals_certainty = self.try_evaluate_added_goals()?;
         assert_eq!(
@@ -101,26 +110,44 @@ where
             NoSolution
         })?;
 
-        // When normalizing, we've replaced the expected term with an unconstrained
-        // inference variable. This means that we dropped information which could
-        // have been important. We handle this by instead returning the nested goals
-        // to the caller, where they are then handled.
-        //
-        // As we return all ambiguous nested goals, we can ignore the certainty returned
-        // by `try_evaluate_added_goals()`.
-        let (certainty, normalization_nested_goals) = if self.is_normalizes_to_goal {
-            let NestedGoals { normalizes_to_goals, goals } = std::mem::take(&mut self.nested_goals);
-            if cfg!(debug_assertions) {
-                assert!(normalizes_to_goals.is_empty());
-                if goals.is_empty() {
-                    assert!(matches!(goals_certainty, Certainty::Yes));
+        let (certainty, normalization_nested_goals) =
+            match (self.current_goal_kind, shallow_certainty) {
+                // When normalizing, we've replaced the expected term with an unconstrained
+                // inference variable. This means that we dropped information which could
+                // have been important. We handle this by instead returning the nested goals
+                // to the caller, where they are then handled. We only do so if we do not
+                // need to recompute the `NormalizesTo` goal afterwards to avoid repeatedly
+                // uplifting its nested goals. This is the case if the `shallow_certainty` is
+                // `Certainty::Yes`.
+                (CurrentGoalKind::NormalizesTo, Certainty::Yes) => {
+                    let goals = std::mem::take(&mut self.nested_goals);
+                    // As we return all ambiguous nested goals, we can ignore the certainty
+                    // returned by `self.try_evaluate_added_goals()`.
+                    if goals.is_empty() {
+                        assert!(matches!(goals_certainty, Certainty::Yes));
+                    }
+                    (Certainty::Yes, NestedNormalizationGoals(goals))
                 }
-            }
-            (certainty, NestedNormalizationGoals(goals))
-        } else {
-            let certainty = certainty.unify_with(goals_certainty);
-            (certainty, NestedNormalizationGoals::empty())
-        };
+                _ => {
+                    let certainty = shallow_certainty.unify_with(goals_certainty);
+                    (certainty, NestedNormalizationGoals::empty())
+                }
+            };
+
+        if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
+            // If we have overflow, it's probable that we're substituting a type
+            // into itself infinitely and any partial substitutions in the query
+            // response are probably not useful anyways, so just return an empty
+            // query response.
+            //
+            // This may prevent us from potentially useful inference, e.g.
+            // 2 candidates, one ambiguous and one overflow, which both
+            // have the same inference constraints.
+            //
+            // Changing this to retain some constraints in the future
+            // won't be a breaking change, so this is good enough for now.
+            return Ok(self.make_ambiguous_response_no_constraints(cause));
+        }
 
         let external_constraints =
             self.compute_external_query_constraints(certainty, normalization_nested_goals);
@@ -129,11 +156,11 @@ where
         // Remove any trivial region constraints once we've resolved regions
         external_constraints
             .region_constraints
-            .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
+            .retain(|outlives| outlives.0.as_region().is_none_or(|re| re != outlives.1));
 
-        let canonical = Canonicalizer::canonicalize(
+        let canonical = Canonicalizer::canonicalize_response(
             self.delegate,
-            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
+            self.max_input_universe,
             &mut Default::default(),
             Response {
                 var_values,
@@ -141,6 +168,32 @@ where
                 external_constraints: self.cx().mk_external_constraints(external_constraints),
             },
         );
+
+        // HACK: We bail with overflow if the response would have too many non-region
+        // inference variables. This tends to only happen if we encounter a lot of
+        // ambiguous alias types which get replaced with fresh inference variables
+        // during generalization. This prevents hangs caused by an exponential blowup,
+        // see tests/ui/traits/next-solver/coherence-alias-hang.rs.
+        match self.current_goal_kind {
+            // We don't do so for `NormalizesTo` goals as we erased the expected term and
+            // bailing with overflow here would prevent us from detecting a type-mismatch,
+            // causing a coherence error in diesel, see #131969. We still bail with overflow
+            // when later returning from the parent AliasRelate goal.
+            CurrentGoalKind::NormalizesTo => {}
+            CurrentGoalKind::Misc | CurrentGoalKind::CoinductiveTrait => {
+                let num_non_region_vars = canonical
+                    .variables
+                    .iter()
+                    .filter(|c| !c.is_region() && c.is_existential())
+                    .count();
+                if num_non_region_vars > self.cx().recursion_limit() {
+                    debug!(?num_non_region_vars, "too many inference variables -> overflow");
+                    return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
+                        suggest_increasing_limit: true,
+                    }));
+                }
+            }
+        }
 
         Ok(canonical)
     }
@@ -221,30 +274,40 @@ where
             self.delegate,
             &original_values,
             &response,
+            self.origin_span,
         );
 
         let Response { var_values, external_constraints, certainty } =
             self.delegate.instantiate_canonical(response, instantiation);
 
-        Self::unify_query_var_values(self.delegate, param_env, &original_values, var_values);
+        Self::unify_query_var_values(
+            self.delegate,
+            param_env,
+            &original_values,
+            var_values,
+            self.origin_span,
+        );
 
         let ExternalConstraintsData {
             region_constraints,
             opaque_types,
             normalization_nested_goals,
         } = &*external_constraints;
+
         self.register_region_constraints(region_constraints);
         self.register_new_opaque_types(opaque_types);
+
         (normalization_nested_goals.clone(), certainty)
     }
 
-    /// This returns the canoncial variable values to instantiate the bound variables of
+    /// This returns the canonical variable values to instantiate the bound variables of
     /// the canonical response. This depends on the `original_values` for the
     /// bound variables.
     fn compute_query_response_instantiation_values<T: ResponseT<I>>(
         delegate: &D,
         original_values: &[I::GenericArg],
         response: &Canonical<I, T>,
+        span: I::Span,
     ) -> CanonicalVarValues<I> {
         // FIXME: Longterm canonical queries should deal with all placeholders
         // created inside of the query directly instead of returning them to the
@@ -297,8 +360,8 @@ where
                     // A variable from inside a binder of the query. While ideally these shouldn't
                     // exist at all (see the FIXME at the start of this method), we have to deal with
                     // them for now.
-                    delegate.instantiate_canonical_var_with_infer(info, |idx| {
-                        ty::UniverseIndex::from(prev_universe.index() + idx.index())
+                    delegate.instantiate_canonical_var_with_infer(info, span, |idx| {
+                        prev_universe + idx.index()
                     })
                 } else if info.is_existential() {
                     // As an optimization we sometimes avoid creating a new inference variable here.
@@ -311,7 +374,7 @@ where
                     if let Some(v) = opt_values[ty::BoundVar::from_usize(index)] {
                         v
                     } else {
-                        delegate.instantiate_canonical_var_with_infer(info, |_| prev_universe)
+                        delegate.instantiate_canonical_var_with_infer(info, span, |_| prev_universe)
                     }
                 } else {
                     // For placeholders which were already part of the input, we simply map this
@@ -342,12 +405,13 @@ where
         param_env: I::ParamEnv,
         original_values: &[I::GenericArg],
         var_values: CanonicalVarValues<I>,
+        span: I::Span,
     ) {
         assert_eq!(original_values.len(), var_values.len());
 
         for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
             let goals =
-                delegate.eq_structurally_relating_aliases(param_env, orig, response).unwrap();
+                delegate.eq_structurally_relating_aliases(param_env, orig, response, span).unwrap();
             assert!(goals.is_empty());
         }
     }
@@ -367,7 +431,8 @@ where
 
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
-            self.delegate.inject_new_hidden_type_unchecked(key, ty);
+            let prev = self.delegate.register_hidden_type_in_storage(key, ty, self.origin_span);
+            assert_eq!(prev, None);
         }
     }
 }
@@ -390,19 +455,14 @@ where
     let var_values = CanonicalVarValues { var_values: delegate.cx().mk_args(var_values) };
     let state = inspect::State { var_values, data };
     let state = state.fold_with(&mut EagerResolver::new(delegate));
-    Canonicalizer::canonicalize(
-        delegate,
-        CanonicalizeMode::Response { max_input_universe },
-        &mut vec![],
-        state,
-    )
+    Canonicalizer::canonicalize_response(delegate, max_input_universe, &mut vec![], state)
 }
 
 // FIXME: needs to be pub to be accessed by downstream
 // `rustc_trait_selection::solve::inspect::analyse`.
 pub fn instantiate_canonical_state<D, I, T: TypeFoldable<I>>(
     delegate: &D,
-    span: D::Span,
+    span: I::Span,
     param_env: I::ParamEnv,
     orig_values: &mut Vec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
@@ -413,20 +473,17 @@ where
 {
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
-    assert!(orig_values.len() <= state.value.var_values.len());
-    for &arg in &state.value.var_values.var_values.as_slice()
-        [orig_values.len()..state.value.var_values.len()]
-    {
-        // FIXME: This is so ugly.
-        let unconstrained = delegate.fresh_var_for_kind_with_span(arg, span);
-        orig_values.push(unconstrained);
-    }
+    orig_values.extend(
+        state.value.var_values.var_values.as_slice()[orig_values.len()..]
+            .iter()
+            .map(|&arg| delegate.fresh_var_for_kind_with_span(arg, span)),
+    );
 
     let instantiation =
-        EvalCtxt::compute_query_response_instantiation_values(delegate, orig_values, &state);
+        EvalCtxt::compute_query_response_instantiation_values(delegate, orig_values, &state, span);
 
     let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
 
-    EvalCtxt::unify_query_var_values(delegate, param_env, orig_values, var_values);
+    EvalCtxt::unify_query_var_values(delegate, param_env, orig_values, var_values, span);
     data
 }

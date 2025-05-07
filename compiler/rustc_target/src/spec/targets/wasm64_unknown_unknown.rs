@@ -7,9 +7,9 @@
 //! the standard library is available, most of it returns an error immediately
 //! (e.g. trying to create a TCP stream or something like that).
 
-use crate::spec::{base, Cc, LinkerFlavor, Target};
+use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
     options.os = "unknown".into();
 
@@ -39,14 +39,14 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "wasm64-unknown-unknown".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("WebAssembly".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: None, // ?
         },
         pointer_width: 64,
-        data_layout: "e-m:e-p:64:64-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
+        data_layout: "e-m:e-p:64:64-p10:8:8-p20:8:8-i64:64-i128:128-n32:64-S128-ni:1:10:20".into(),
         arch: "wasm64".into(),
         options,
     }

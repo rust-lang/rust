@@ -4,7 +4,8 @@ error[E0277]: the trait bound `Params: Plugin<i32>` is not satisfied
 LL |     req.get_ref::<Params>();
    |         ^^^^^^^ the trait `Plugin<i32>` is not implemented for `Params`
    |
-   = help: the trait `Plugin<Foo>` is implemented for `Params`
+   = help: the trait `Plugin<i32>` is not implemented for `Params`
+           but trait `Plugin<Foo>` is implemented for it
    = help: for that trait implementation, expected `Foo`, found `i32`
 
 error: aborting due to 1 previous error

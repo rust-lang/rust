@@ -1,14 +1,10 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 //@compile-flags: -Zmiri-strict-provenance
-#![feature(new_uninit)]
-#![feature(slice_as_chunks)]
 #![feature(slice_partition_dedup)]
 #![feature(layout_for_ptr)]
-#![feature(strict_provenance)]
 
-use std::ptr;
-use std::slice;
+use std::{ptr, slice};
 
 fn slice_of_zst() {
     fn foo<T>(v: &[T]) -> Option<&[T]> {
@@ -230,7 +226,7 @@ fn test_for_invalidated_pointers() {
 
     buffer.reverse();
 
-    // Calls `fn as_chunks_unchecked_mut` internally (requires unstable `#![feature(slice_as_chunks)]`):
+    // Calls `fn as_chunks_unchecked_mut` internally:
     assert_eq!(2, buffer.as_chunks_mut::<32>().0.len());
     for chunk in buffer.as_chunks_mut::<32>().0 {
         for elem in chunk {

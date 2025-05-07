@@ -13,45 +13,48 @@ use std::collections::HashMap;
 fn main() {
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(Option::is_some);
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
+
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|a| a.is_some());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
+
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|o| { o.is_some() });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 
     {
         let _ = vec![Some(1), None, Some(3)]
             .into_iter()
             .filter(std::option::Option::is_some);
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
 
         let _ = vec![Some(1), None, Some(3)]
             .into_iter()
             .filter(|a| std::option::Option::is_some(a));
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
+
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|a| { std::option::Option::is_some(a) });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|&a| a.is_some());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
 
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|&o| { o.is_some() });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|ref a| a.is_some());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
 
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|ref o| { o.is_some() });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 }
 

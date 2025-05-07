@@ -1,10 +1,11 @@
 use std::time::Instant;
 
-use expect_test::{expect_file, ExpectFile};
+use expect_test::{ExpectFile, expect_file};
 use ide_db::SymbolKind;
-use test_utils::{bench, bench_fixture, skip_slow_tests, AssertLinear};
+use span::Edition;
+use test_utils::{AssertLinear, bench, bench_fixture, skip_slow_tests};
 
-use crate::{fixture, FileRange, HighlightConfig, HlTag, TextRange};
+use crate::{FileRange, HighlightConfig, HlTag, TextRange, fixture};
 
 const HL_CONFIG: HighlightConfig = HighlightConfig {
     strings: true,
@@ -135,21 +136,10 @@ use self::foo as bar;
 fn test_highlighting() {
     check_highlighting(
         r#"
-//- minicore: derive, copy
+//- minicore: derive, copy, fn
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
-
-pub mod ops {
-    #[lang = "fn_once"]
-    pub trait FnOnce<Args> {}
-
-    #[lang = "fn_mut"]
-    pub trait FnMut<Args>: FnOnce<Args> {}
-
-    #[lang = "fn"]
-    pub trait Fn<Args>: FnMut<Args> {}
-}
 
 struct Foo {
     x: u32,
@@ -217,7 +207,7 @@ fn const_param<const FOO: usize>() -> usize {
     FOO
 }
 
-use ops::Fn;
+use core::ops::Fn;
 fn baz<F: Fn() -> ()>(f: F) {
     f()
 }
@@ -383,8 +373,10 @@ where
 
 #[test]
 fn test_keyword_highlighting() {
-    check_highlighting(
-        r#"
+    for edition in Edition::iter() {
+        check_highlighting(
+            &(format!("//- /main.rs crate:main edition:{edition}")
+                + r#"
 extern crate self;
 
 use crate;
@@ -394,13 +386,52 @@ mod __ {
 }
 
 macro_rules! void {
-    ($($tt:tt)*) => {}
+    ($($tt:tt)*) => {discard!($($tt:tt)*)}
 }
-void!(Self);
+
 struct __ where Self:;
 fn __(_: Self) {}
+void!(Self);
+
+// edition dependent
+void!(try async await gen);
+// edition and context dependent
+void!(dyn);
+// builtin custom syntax
+void!(builtin offset_of format_args asm);
+// contextual
+void!(macro_rules, union, default, raw, auto, yeet);
+// reserved
+void!(abstract become box do final macro override priv typeof unsized virtual yield);
+void!('static 'self 'unsafe)
+"#),
+            expect_file![format!("./test_data/highlight_keywords_{edition}.html")],
+            false,
+        );
+    }
+}
+
+#[test]
+fn test_keyword_macro_edition_highlighting() {
+    check_highlighting(
+        r#"
+//- /main.rs crate:main edition:2018 deps:lib2015,lib2024
+lib2015::void_2015!(try async await gen);
+lib2024::void_2024!(try async await gen);
+//- /lib2015.rs crate:lib2015 edition:2015
+#[macro_export]
+macro_rules! void_2015 {
+    ($($tt:tt)*) => {discard!($($tt:tt)*)}
+}
+
+//- /lib2024.rs crate:lib2024 edition:2024
+#[macro_export]
+macro_rules! void_2024 {
+    ($($tt:tt)*) => {discard!($($tt:tt)*)}
+}
+
 "#,
-        expect_file!["./test_data/highlight_keywords.html"],
+        expect_file![format!("./test_data/highlight_keywords_macros.html")],
         false,
     );
 }
@@ -448,6 +479,10 @@ macro_rules! toho {
 macro_rules! reuse_twice {
     ($literal:literal) => {{stringify!($literal); format_args!($literal)}};
 }
+
+use foo::bar as baz;
+trait Bar = Baz;
+trait Foo = Bar;
 
 fn main() {
     let a = '\n';
@@ -532,7 +567,7 @@ fn main() {
     toho!("{}fmt", 0);
     let i: u64 = 3;
     let o: u64;
-    asm!(
+    core::arch::asm!(
         "mov {0}, {1}",
         "add {0}, 5",
         out(reg) o,
@@ -554,6 +589,7 @@ fn main() {
 fn test_unsafe_highlighting() {
     check_highlighting(
         r#"
+//- minicore: sized, asm
 macro_rules! id {
     ($($tt:tt)*) => {
         $($tt)*
@@ -564,76 +600,79 @@ macro_rules! unsafe_deref {
         *(&() as *const ())
     };
 }
-static mut MUT_GLOBAL: Struct = Struct { field: 0 };
-static GLOBAL: Struct = Struct { field: 0 };
-unsafe fn unsafe_fn() {}
 
 union Union {
-    a: u32,
-    b: f32,
+    field: u32,
 }
 
 struct Struct { field: i32 }
+
+static mut MUT_GLOBAL: Struct = Struct { field: 0 };
+unsafe fn unsafe_fn() {}
+
 impl Struct {
     unsafe fn unsafe_method(&self) {}
 }
 
-#[repr(packed)]
-struct Packed {
-    a: u16,
-}
-
 unsafe trait UnsafeTrait {}
-unsafe impl UnsafeTrait for Packed {}
+unsafe impl UnsafeTrait for Union {}
 impl !UnsafeTrait for () {}
 
 fn unsafe_trait_bound<T: UnsafeTrait>(_: T) {}
 
-trait DoTheAutoref {
-    fn calls_autoref(&self);
-}
-
-impl DoTheAutoref for u16 {
-    fn calls_autoref(&self) {}
+extern {
+    static EXTERN_STATIC: ();
 }
 
 fn main() {
-    let x = &5 as *const _ as *const usize;
-    let u = Union { b: 0 };
+    let x: *const usize;
+    let u: Union;
 
+    // id should be safe here, but unsafe_deref should not
     id! {
         unsafe { unsafe_deref!() }
     };
 
     unsafe {
+        // unsafe macro calls
         unsafe_deref!();
         id! { unsafe_deref!() };
 
         // unsafe fn and method calls
         unsafe_fn();
-        let b = u.b;
-        match u {
-            Union { b: 0 } => (),
-            Union { a } => (),
-        }
+        self::unsafe_fn();
+        (unsafe_fn as unsafe fn())();
         Struct { field: 0 }.unsafe_method();
 
+        u.field;
+        &u.field;
+        &raw const u.field;
+        // this should be safe!
+        let Union { field: _ };
+        // but not these
+        let Union { field };
+        let Union { field: field };
+        let Union { field: ref field };
+        let Union { field: (_ | ref field) };
+
         // unsafe deref
-        *x;
+        *&raw const*&*x;
 
         // unsafe access to a static mut
         MUT_GLOBAL.field;
-        GLOBAL.field;
+        &MUT_GLOBAL.field;
+        &raw const MUT_GLOBAL.field;
+        MUT_GLOBAL;
+        &MUT_GLOBAL;
+        &raw const MUT_GLOBAL;
+        EXTERN_STATIC;
+        &EXTERN_STATIC;
+        &raw const EXTERN_STATIC;
 
-        // unsafe ref of packed fields
-        let packed = Packed { a: 0 };
-        let a = &packed.a;
-        let ref a = packed.a;
-        let Packed { ref a } = packed;
-        let Packed { a: ref _a } = packed;
-
-        // unsafe auto ref of packed field
-        packed.a.calls_autoref();
+        core::arch::asm!(
+            "push {base}",
+            base = const 0
+        );
     }
 }
 "#,
@@ -700,6 +739,14 @@ fn test_highlight_doc_comment() {
 //! fn test() {}
 //! ```
 
+//! Syntactic name ref highlighting testing
+//! ```rust
+//! extern crate self;
+//! extern crate other as otter;
+//! extern crate core;
+//! trait T { type Assoc; }
+//! fn f<Arg>() -> use<Arg> where (): T<Assoc = ()> {}
+//! ```
 mod outline_module;
 
 /// ```
@@ -856,14 +903,23 @@ pub fn block_comments2() {}
 fn test_extern_crate() {
     check_highlighting(
         r#"
-//- /main.rs crate:main deps:std,alloc
+//- /main.rs crate:main deps:std,alloc,test,proc_macro extern-prelude:std,alloc
+extern crate self as this;
 extern crate std;
 extern crate alloc as abc;
 extern crate unresolved as definitely_unresolved;
+extern crate unresolved as _;
+extern crate test as opt_in_crate;
+extern crate test as _;
+extern crate proc_macro;
 //- /std/lib.rs crate:std
 pub struct S;
 //- /alloc/lib.rs crate:alloc
-pub struct A
+pub struct A;
+//- /test/lib.rs crate:test
+pub struct T;
+//- /proc_macro/lib.rs crate:proc_macro
+pub struct ProcMacro;
 "#,
         expect_file!["./test_data/highlight_extern_crate.html"],
         false,
@@ -963,7 +1019,7 @@ impl t for foo {
 fn test_injection() {
     check_highlighting(
         r##"
-fn fixture(ra_fixture: &str) {}
+fn fixture(#[rust_analyzer::rust_fixture] ra_fixture: &str) {}
 
 fn main() {
     fixture(r#"
@@ -1053,6 +1109,9 @@ pub struct Struct;
     );
 }
 
+// Rainbow highlighting uses a deterministic hash (fxhash) but the hashing does differ
+// depending on the pointer width so only runs this on 64-bit targets.
+#[cfg(target_pointer_width = "64")]
 #[test]
 fn test_rainbow_highlighting() {
     check_highlighting(
@@ -1161,7 +1220,11 @@ fn foo(x: &fn(&dyn Trait)) {}
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
-fn check_highlighting(ra_fixture: &str, expect: ExpectFile, rainbow: bool) {
+fn check_highlighting(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: ExpectFile,
+    rainbow: bool,
+) {
     let (analysis, file_id) = fixture::file(ra_fixture.trim());
     let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
     expect.assert_eq(actual_html)
@@ -1238,7 +1301,7 @@ fn benchmark_syntax_highlighting_parser() {
             })
             .count()
     };
-    assert_eq!(hash, 1167);
+    assert_eq!(hash, 1606);
 }
 
 #[test]
@@ -1256,4 +1319,119 @@ fn f<'de, T: Deserialize<'de>>() {
         .trim(),
     );
     let _ = analysis.highlight(HL_CONFIG, file_id).unwrap();
+}
+
+#[test]
+fn test_asm_highlighting() {
+    check_highlighting(
+        r#"
+//- minicore: asm, concat
+fn main() {
+    unsafe {
+        let foo = 1;
+        let mut o = 0;
+        core::arch::asm!(
+            "%input = OpLoad _ {0}",
+            concat!("%result = ", "bar", " _ %input"),
+            "OpStore {1} %result",
+            in(reg) &foo,
+            in(reg) &mut o,
+        );
+
+        let thread_id: usize;
+        core::arch::asm!("
+            mov {0}, gs:[0x30]
+            mov {0}, [{0}+0x48]
+        ", out(reg) thread_id, options(pure, readonly, nostack));
+
+        static UNMAP_BASE: usize;
+        const MEM_RELEASE: usize;
+        static VirtualFree: usize;
+        const OffPtr: usize;
+        const OffFn: usize;
+        core::arch::asm!("
+            push {free_type}
+            push {free_size}
+            push {base}
+
+            mov eax, fs:[30h]
+            mov eax, [eax+8h]
+            add eax, {off_fn}
+            mov [eax-{off_fn}+{off_ptr}], eax
+
+            push eax
+
+            jmp {virtual_free}
+            ",
+            off_ptr = const OffPtr,
+            off_fn  = const OffFn,
+
+            free_size = const 0,
+            free_type = const MEM_RELEASE,
+
+            virtual_free = sym VirtualFree,
+
+            base = sym UNMAP_BASE,
+            options(noreturn),
+        );
+    }
+}
+// taken from https://github.com/rust-embedded/cortex-m/blob/47921b51f8b960344fcfa1255a50a0d19efcde6d/cortex-m/src/asm.rs#L254-L274
+#[inline]
+pub unsafe fn bootstrap(msp: *const u32, rv: *const u32) -> ! {
+    // Ensure thumb mode is set.
+    let rv = (rv as u32) | 1;
+    let msp = msp as u32;
+    core::arch::asm!(
+        "mrs {tmp}, CONTROL",
+        "bics {tmp}, {spsel}",
+        "msr CONTROL, {tmp}",
+        "isb",
+        "msr MSP, {msp}",
+        "bx {rv}",
+        // `out(reg) _` is not permitted in a `noreturn` asm! call,
+        // so instead use `in(reg) 0` and don't restore it afterwards.
+        tmp = in(reg) 0,
+        spsel = in(reg) 2,
+        msp = in(reg) msp,
+        rv = in(reg) rv,
+        options(noreturn, nomem, nostack),
+    );
+}
+"#,
+        expect_file!["./test_data/highlight_asm.html"],
+        false,
+    );
+}
+
+#[test]
+fn issue_18089() {
+    check_highlighting(
+        r#"
+//- proc_macros: issue_18089
+fn main() {
+    template!(template);
+}
+
+#[proc_macros::issue_18089]
+fn template() {}
+"#,
+        expect_file!["./test_data/highlight_issue_18089.html"],
+        false,
+    );
+}
+
+#[test]
+fn issue_19357() {
+    check_highlighting(
+        r#"
+//- /foo.rs
+fn main() {
+    let x = &raw mut 5;
+}
+//- /main.rs
+"#,
+        expect_file!["./test_data/highlight_issue_19357.html"],
+        false,
+    );
 }

@@ -27,3 +27,10 @@ fn main() {
     foo();
     bar();
 }
+
+//~? WARN lint `private_no_mangle_fns` has been removed
+//~? WARN lint `private_no_mangle_statics` has been removed
+//~? WARN lint `private_no_mangle_fns` has been removed
+//~? WARN lint `private_no_mangle_statics` has been removed
+//~? WARN lint `private_no_mangle_fns` has been removed
+//~? WARN lint `private_no_mangle_statics` has been removed

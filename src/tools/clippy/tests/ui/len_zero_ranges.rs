@@ -5,10 +5,12 @@
 mod issue_3807 {
     fn suggestion_is_fine_range() {
         let _ = (0..42).len() == 0;
+        //~^ len_zero
     }
 
     fn suggestion_is_fine_range_inclusive() {
         let _ = (0_u8..=42).len() == 0;
+        //~^ len_zero
     }
 }
 

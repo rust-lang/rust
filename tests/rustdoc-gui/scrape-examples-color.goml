@@ -10,10 +10,10 @@ define-function: (
     block {
         call-function: ("switch-theme", {"theme": |theme|})
         wait-for: ".more-examples-toggle"
-        assert-css: (".scraped-example .example-wrap .rust span.highlight:not(.focus)", {
+        assert-css: (".scraped-example .rust span.highlight:not(.focus)", {
             "background-color": |highlight|,
         }, ALL)
-        assert-css: (".scraped-example .example-wrap .rust span.highlight.focus", {
+        assert-css: (".scraped-example .rust span.highlight.focus", {
             "background-color": |highlight_focus|,
         }, ALL)
 
@@ -67,11 +67,11 @@ define-function: (
     [theme, background_color_start, background_color_end],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        assert-css: (".scraped-example:not(.expanded) .code-wrapper::before", {
+        assert-css: (".scraped-example:not(.expanded) .example-wrap::before", {
             "background-image": "linear-gradient(" + |background_color_start| + ", " +
                 |background_color_end| + ")",
         })
-        assert-css: (".scraped-example:not(.expanded) .code-wrapper::after", {
+        assert-css: (".scraped-example:not(.expanded) .example-wrap::after", {
             "background-image": "linear-gradient(to top, " + |background_color_start| + ", " +
                 |background_color_end| + ")",
         })

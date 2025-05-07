@@ -14,12 +14,9 @@ LL |   async fn foo() {
 LL | |     // Adding an .await here avoids the ICE
 LL | |     test()?;
    | |           ^ cannot use the `?` operator in an async function that returns `()`
-LL | |
-LL | |
+...  |
 LL | | }
    | |_- this function should return `Result` or `Option` to accept `?`
-   |
-   = help: the trait `FromResidual<_>` is not implemented for `()`
 
 error: aborting due to 2 previous errors
 

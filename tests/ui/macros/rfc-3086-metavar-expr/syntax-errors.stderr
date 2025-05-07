@@ -196,13 +196,13 @@ error: expected identifier or string literal
 LL |     ( $( $i:ident ),* ) => { ${ {} } };
    |                                 ^^
 
-error: `count` can not be placed inside the inner-most repetition
+error: `count` can not be placed inside the innermost repetition
   --> $DIR/syntax-errors.rs:12:24
    |
 LL |     ( $i:ident ) => { ${ count($i) } };
    |                        ^^^^^^^^^^^^^
 
-error: `count` can not be placed inside the inner-most repetition
+error: `count` can not be placed inside the innermost repetition
   --> $DIR/syntax-errors.rs:17:24
    |
 LL |     ( $i:ident ) => { ${ count($i) } };
@@ -338,6 +338,9 @@ LL |     no_curly__no_rhs_dollar__no_round!(a);
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/syntax-errors.rs:152:37
    |
+LL |     ( $i:ident ) => { count($i) };
+   |                             -- due to this macro variable
+...
 LL |     no_curly__rhs_dollar__no_round!(a);
    |                                     ^ not found in this scope
 

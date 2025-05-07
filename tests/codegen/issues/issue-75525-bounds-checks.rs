@@ -1,6 +1,6 @@
 // Regression test for #75525, verifies that no bounds checks are generated.
 
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
 

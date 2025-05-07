@@ -32,15 +32,15 @@ error: `if _ { .. } else { .. }` is an expression
    |
 LL | /     let quz;
 LL | |
+LL | |
 LL | |     if f() {
-LL | |         quz = 42;
-LL | |     } else {
+...  |
 LL | |         quz = 0;
 LL | |     }
    | |_____^ help: it is more idiomatic to write: `let quz = if f() { 42 } else { 0 };`
 
 error: `if _ { .. } else { .. }` is an expression
-  --> tests/ui/let_if_seq.rs:124:5
+  --> tests/ui/let_if_seq.rs:125:5
    |
 LL | /     let mut baz = 0;
 LL | |

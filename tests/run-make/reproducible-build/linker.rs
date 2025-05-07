@@ -17,6 +17,8 @@ fn main() {
     for arg in env::args().skip(1) {
         let path = Path::new(&arg);
         if !path.is_file() {
+            // This directory is produced during linking in a temporary directory (ELF only).
+            let arg = if arg.ends_with("/raw-dylibs") { "/raw-dylibs" } else { &*arg };
             out.push_str(&arg);
             out.push_str("\n");
             continue;

@@ -36,7 +36,7 @@ LL |     test(ms);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `MySync<NoSync>`, the trait `Sync` is not implemented for `UnsafeCell<NoSync>`, which is required by `MySync<NoSync>: Sync`
+   = help: within `MySync<NoSync>`, the trait `Sync` is not implemented for `UnsafeCell<NoSync>`
 note: required because it appears within the type `MySync<NoSync>`
   --> $DIR/typeck-unsafe-always-share.rs:8:8
    |

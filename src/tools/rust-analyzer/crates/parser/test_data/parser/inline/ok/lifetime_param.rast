@@ -11,8 +11,10 @@ SOURCE_FILE
           LIFETIME_IDENT "'a"
         COLON ":"
         WHITESPACE " "
-        LIFETIME
-          LIFETIME_IDENT "'b"
+        TYPE_BOUND_LIST
+          TYPE_BOUND
+            LIFETIME
+              LIFETIME_IDENT "'b"
       R_ANGLE ">"
     PARAM_LIST
       L_PAREN "("

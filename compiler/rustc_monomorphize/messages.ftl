@@ -1,3 +1,41 @@
+monomorphize_abi_error_disabled_vector_type =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses SIMD vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+    [true] {" "}in the caller
+    *[false] {""}
+  }
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+  .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
+
+monomorphize_abi_error_unsupported_vector_type =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses SIMD vector type `{$ty}` which is not currently supported with the chosen ABI
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+
+monomorphize_abi_required_target_feature =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses ABI "{$abi}" which requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+    [true] {" "}in the caller
+    *[false] {""}
+  }
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+  .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
+
 monomorphize_couldnt_dump_mono_stats =
     unexpected error occurred while dumping monomorphization stats: {$error}
 
@@ -10,7 +48,7 @@ monomorphize_large_assignments =
     .note = The current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
 monomorphize_no_optimized_mir =
-    missing optimized MIR for an item in the crate `{$crate_name}`
+    missing optimized MIR for `{$instance}` in the crate `{$crate_name}`
     .note = missing optimized MIR for this item (was the crate `{$crate_name}` compiled with `--emit=metadata`?)
 
 monomorphize_recursion_limit =
@@ -25,6 +63,11 @@ monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
 monomorphize_unknown_cgu_collection_mode =
     unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
 
-monomorphize_unused_generic_params = item has unused generic parameters
+monomorphize_wasm_c_abi_transition =
+    this function {$is_call ->
+      [true] call
+      *[false] definition
+    } involves an argument of type `{$ty}` which is affected by the wasm ABI transition
+    .help = the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
 
 monomorphize_written_to_path = the full type name has been written to '{$path}'

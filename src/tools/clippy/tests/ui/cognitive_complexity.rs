@@ -1,10 +1,16 @@
-#![allow(clippy::all)]
 #![warn(clippy::cognitive_complexity)]
-#![allow(unused, unused_crate_dependencies)]
+#![allow(
+    clippy::eq_op,
+    clippy::needless_borrows_for_generic_args,
+    clippy::needless_return,
+    clippy::nonminimal_bool,
+    clippy::uninlined_format_args
+)]
 
 #[rustfmt::skip]
 fn main() {
-//~^ ERROR: the function has a cognitive complexity of (28/25)
+//~^ cognitive_complexity
+
     if true {
         println!("a");
     }
@@ -90,7 +96,8 @@ fn main() {
 
 #[clippy::cognitive_complexity = "1"]
 fn kaboom() {
-    //~^ ERROR: the function has a cognitive complexity of (7/1)
+    //~^ cognitive_complexity
+
     let n = 0;
     'a: for i in 0..20 {
         'b: for j in i..20 {
@@ -149,9 +156,10 @@ fn lots_of_short_circuits2() -> bool {
 
 #[clippy::cognitive_complexity = "1"]
 fn baa() {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     let x = || match 99 {
-        //~^ ERROR: the function has a cognitive complexity of (2/1)
+        //~^ cognitive_complexity
         0 => 0,
         1 => 1,
         2 => 2,
@@ -169,7 +177,8 @@ fn baa() {
 
 #[clippy::cognitive_complexity = "1"]
 fn bar() {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         _ => println!("bye"),
@@ -181,7 +190,8 @@ fn bar() {
 /// Tests are usually complex but simple at the same time. `clippy::cognitive_complexity` used to
 /// give lots of false-positives in tests.
 fn dont_warn_on_tests() {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         _ => println!("bye"),
@@ -190,7 +200,8 @@ fn dont_warn_on_tests() {
 
 #[clippy::cognitive_complexity = "1"]
 fn barr() {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -201,7 +212,8 @@ fn barr() {
 
 #[clippy::cognitive_complexity = "1"]
 fn barr2() {
-    //~^ ERROR: the function has a cognitive complexity of (3/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -218,7 +230,8 @@ fn barr2() {
 
 #[clippy::cognitive_complexity = "1"]
 fn barrr() {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         1 => panic!("bla"),
@@ -229,7 +242,8 @@ fn barrr() {
 
 #[clippy::cognitive_complexity = "1"]
 fn barrr2() {
-    //~^ ERROR: the function has a cognitive complexity of (3/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         1 => panic!("bla"),
@@ -246,7 +260,8 @@ fn barrr2() {
 
 #[clippy::cognitive_complexity = "1"]
 fn barrrr() {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -257,7 +272,8 @@ fn barrrr() {
 
 #[clippy::cognitive_complexity = "1"]
 fn barrrr2() {
-    //~^ ERROR: the function has a cognitive complexity of (3/1)
+    //~^ cognitive_complexity
+
     match 99 {
         0 => println!("hi"),
         1 => println!("bla"),
@@ -274,7 +290,8 @@ fn barrrr2() {
 
 #[clippy::cognitive_complexity = "1"]
 fn cake() {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     if 4 == 5 {
         println!("yea");
     } else {
@@ -285,7 +302,8 @@ fn cake() {
 
 #[clippy::cognitive_complexity = "1"]
 pub fn read_file(input_path: &str) -> String {
-    //~^ ERROR: the function has a cognitive complexity of (4/1)
+    //~^ cognitive_complexity
+
     use std::fs::File;
     use std::io::{Read, Write};
     use std::path::Path;
@@ -317,7 +335,8 @@ enum Void {}
 
 #[clippy::cognitive_complexity = "1"]
 fn void(void: Void) {
-    //~^ ERROR: the function has a cognitive complexity of (2/1)
+    //~^ cognitive_complexity
+
     if true {
         match void {}
     }
@@ -369,7 +388,8 @@ fn early() -> Result<i32, &'static str> {
 #[rustfmt::skip]
 #[clippy::cognitive_complexity = "1"]
 fn early_ret() -> i32 {
-//~^ ERROR: the function has a cognitive complexity of (8/1)
+//~^ cognitive_complexity
+
     let a = if true { 42 } else { return 0; };
     let a = if a < 99 { 42 } else { return 0; };
     let a = if a < 99 { 42 } else { return 0; };
@@ -391,7 +411,8 @@ fn early_ret() -> i32 {
 #[clippy::cognitive_complexity = "1"]
 fn closures() {
     let x = |a: i32, b: i32| -> i32 {
-        //~^ ERROR: the function has a cognitive complexity of (2/1)
+        //~^ cognitive_complexity
+
         if true {
             println!("moo");
         }
@@ -405,7 +426,8 @@ struct Moo;
 #[clippy::cognitive_complexity = "1"]
 impl Moo {
     fn moo(&self) {
-        //~^ ERROR: the function has a cognitive complexity of (2/1)
+        //~^ cognitive_complexity
+
         if true {
             println!("moo");
         }
@@ -415,7 +437,8 @@ impl Moo {
 #[clippy::cognitive_complexity = "1"]
 mod issue9300 {
     async fn a() {
-        //~^ ERROR: the function has a cognitive complexity of (2/1)
+        //~^ cognitive_complexity
+
         let a = 0;
         if a == 0 {}
     }
@@ -423,9 +446,29 @@ mod issue9300 {
     pub struct S;
     impl S {
         pub async fn async_method() {
-            //~^ ERROR: the function has a cognitive complexity of (2/1)
+            //~^ cognitive_complexity
+
             let a = 0;
             if a == 0 {}
         }
+    }
+}
+
+#[clippy::cognitive_complexity = "1"]
+mod issue14422 {
+    fn foo() {
+        //~^ cognitive_complexity
+        for _ in 0..10 {
+            println!("hello there");
+        }
+    }
+
+    fn bar() {
+        //~^ cognitive_complexity
+        for _ in 0..10 {
+            println!("hello there");
+        }
+        return;
+        return;
     }
 }

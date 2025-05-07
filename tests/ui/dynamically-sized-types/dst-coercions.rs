@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 // Test coercions involving DST and/or raw pointers
 
-//@ pretty-expanded FIXME #23616
 
 struct S;
 trait T { fn dummy(&self) { } } //~ WARN method `dummy` is never used

@@ -27,7 +27,7 @@
 use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::Ordering::{AcqRel, Acquire, Relaxed, Release};
-use crate::sync::atomic::{AtomicPtr, AtomicU32};
+use crate::sync::atomic::{Atomic, AtomicPtr, AtomicU32};
 use crate::sys::c;
 use crate::sys::thread_local::guard;
 
@@ -38,9 +38,9 @@ pub struct LazyKey {
     /// The key value shifted up by one. Since TLS_OUT_OF_INDEXES == u32::MAX
     /// is not a valid key value, this allows us to use zero as sentinel value
     /// without risking overflow.
-    key: AtomicU32,
+    key: Atomic<Key>,
     dtor: Option<Dtor>,
-    next: AtomicPtr<LazyKey>,
+    next: Atomic<*mut LazyKey>,
     /// Currently, destructors cannot be unregistered, so we cannot use racy
     /// initialization for keys. Instead, we need synchronize initialization.
     /// Use the Windows-provided `Once` since it does not require TLS.
@@ -142,7 +142,7 @@ pub unsafe fn get(key: Key) -> *mut u8 {
     unsafe { c::TlsGetValue(key).cast() }
 }
 
-static DTORS: AtomicPtr<LazyKey> = AtomicPtr::new(ptr::null_mut());
+static DTORS: Atomic<*mut LazyKey> = AtomicPtr::new(ptr::null_mut());
 
 /// Should only be called once per key, otherwise loops or breaks may occur in
 /// the linked list.

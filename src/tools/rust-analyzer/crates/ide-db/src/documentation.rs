@@ -1,15 +1,16 @@
 //! Documentation attribute related utilities.
 use either::Either;
 use hir::{
+    AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
     db::{DefDatabase, HirDatabase},
-    resolve_doc_path_on, sym, AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
+    resolve_doc_path_on, sym,
 };
 use itertools::Itertools;
+use span::{TextRange, TextSize};
 use syntax::{
-    ast::{self, IsString},
     AstToken,
+    ast::{self, IsString},
 };
-use text_edit::{TextRange, TextSize};
 
 /// Holds documentation
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -92,7 +93,7 @@ pub fn docs_with_rangemap(
     attrs: &AttrsWithOwner,
 ) -> Option<(Documentation, DocsRangeMap)> {
     let docs = attrs
-        .by_key(&sym::doc)
+        .by_key(sym::doc)
         .attrs()
         .filter_map(|attr| attr.string_value_unescape().map(|s| (s, attr.id)));
     let indent = doc_indent(attrs);
@@ -134,7 +135,7 @@ pub fn docs_with_rangemap(
 }
 
 pub fn docs_from_attrs(attrs: &hir::Attrs) -> Option<String> {
-    let docs = attrs.by_key(&sym::doc).attrs().filter_map(|attr| attr.string_value_unescape());
+    let docs = attrs.by_key(sym::doc).attrs().filter_map(|attr| attr.string_value_unescape());
     let indent = doc_indent(attrs);
     let mut buf = String::new();
     for doc in docs {
@@ -151,11 +152,7 @@ pub fn docs_from_attrs(attrs: &hir::Attrs) -> Option<String> {
         buf.push('\n');
     }
     buf.pop();
-    if buf.is_empty() {
-        None
-    } else {
-        Some(buf)
-    }
+    if buf.is_empty() { None } else { Some(buf) }
 }
 
 macro_rules! impl_has_docs {
@@ -178,7 +175,7 @@ macro_rules! impl_has_docs {
 
 impl_has_docs![
     Variant, Field, Static, Const, Trait, TraitAlias, TypeAlias, Macro, Function, Adt, Module,
-    Impl,
+    Impl, Crate,
 ];
 
 macro_rules! impl_has_docs_enum {
@@ -226,9 +223,8 @@ impl HasDocs for hir::AssocItem {
 
 impl HasDocs for hir::ExternCrateDecl {
     fn docs(self, db: &dyn HirDatabase) -> Option<Documentation> {
-        let crate_docs =
-            docs_from_attrs(&self.resolved_crate(db)?.root_module().attrs(db)).map(String::from);
-        let decl_docs = docs_from_attrs(&self.attrs(db)).map(String::from);
+        let crate_docs = docs_from_attrs(&self.resolved_crate(db)?.root_module().attrs(db));
+        let decl_docs = docs_from_attrs(&self.attrs(db));
         match (decl_docs, crate_docs) {
             (None, None) => None,
             (Some(decl_docs), None) => Some(decl_docs),
@@ -270,7 +266,7 @@ fn get_doc_string_in_attr(it: &ast::Attr) -> Option<ast::String> {
 
 fn doc_indent(attrs: &hir::Attrs) -> usize {
     let mut min = !0;
-    for val in attrs.by_key(&sym::doc).attrs().filter_map(|attr| attr.string_value_unescape()) {
+    for val in attrs.by_key(sym::doc).attrs().filter_map(|attr| attr.string_value_unescape()) {
         if let Some(m) =
             val.lines().filter_map(|line| line.chars().position(|c| !c.is_whitespace())).min()
         {

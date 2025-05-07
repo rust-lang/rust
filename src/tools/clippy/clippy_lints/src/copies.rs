@@ -1,23 +1,23 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_note, span_lint_and_then};
-use clippy_utils::source::{first_line_of_span, indent_of, reindent_multiline, snippet, IntoSpan, SpanRangeExt};
-use clippy_utils::ty::{needs_ordered_drop, InteriorMut};
+use clippy_utils::source::{IntoSpan, SpanRangeExt, first_line_of_span, indent_of, reindent_multiline, snippet};
+use clippy_utils::ty::{InteriorMut, needs_ordered_drop};
 use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{
-    capture_local_usage, eq_expr_value, find_binding_init, get_enclosing_block, hash_expr, hash_stmt, if_sequence,
-    is_else_clause, is_lint_allowed, path_to_local, search_same, ContainsName, HirEqInterExpr, SpanlessEq,
+    ContainsName, HirEqInterExpr, SpanlessEq, capture_local_usage, eq_expr_value, find_binding_init,
+    get_enclosing_block, hash_expr, hash_stmt, if_sequence, is_else_clause, is_lint_allowed, path_to_local,
+    search_same,
 };
 use core::iter;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
-use rustc_hir::{intravisit, BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, HirIdSet, Stmt, StmtKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::hygiene::walk_chain;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, Symbol};
-use std::borrow::Cow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -129,11 +129,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Duplicate code is less maintainable.
     ///
-    /// ### Known problems
-    /// * The lint doesn't check if the moved expressions modify values that are being used in
-    ///   the if condition. The suggestion can in that case modify the behavior of the program.
-    ///   See [rust-clippy#7452](https://github.com/rust-lang/rust-clippy/issues/7452)
-    ///
     /// ### Example
     /// ```ignore
     /// let foo = if … {
@@ -211,7 +206,7 @@ fn lint_if_same_then_else(cx: &LateContext<'_>, conds: &[&Expr<'_>], blocks: &[&
         .array_windows::<2>()
         .enumerate()
         .fold(true, |all_eq, (i, &[lhs, rhs])| {
-            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).map_or(true, |e| !contains_let(e)) {
+            if eq.eq_block(lhs, rhs) && !contains_let(conds[i]) && conds.get(i + 1).is_none_or(|e| !contains_let(e)) {
                 span_lint_and_note(
                     cx,
                     IF_SAME_THEN_ELSE,
@@ -247,21 +242,21 @@ fn lint_branches_sharing_code<'tcx>(
         let first_line_span = first_line_of_span(cx, expr.span);
         let replace_span = first_line_span.with_hi(span.hi());
         let cond_span = first_line_span.until(first_block.span);
-        let cond_snippet = reindent_multiline(snippet(cx, cond_span, "_"), false, None);
+        let cond_snippet = reindent_multiline(&snippet(cx, cond_span, "_"), false, None);
         let cond_indent = indent_of(cx, cond_span);
-        let moved_snippet = reindent_multiline(snippet(cx, span, "_"), true, None);
+        let moved_snippet = reindent_multiline(&snippet(cx, span, "_"), true, None);
         let suggestion = moved_snippet.to_string() + "\n" + &cond_snippet + "{";
-        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, cond_indent);
+        let suggestion = reindent_multiline(&suggestion, true, cond_indent);
         (replace_span, suggestion.to_string())
     });
     let end_suggestion = res.end_span(last_block, sm).map(|span| {
-        let moved_snipped = reindent_multiline(snippet(cx, span, "_"), true, None);
+        let moved_snipped = reindent_multiline(&snippet(cx, span, "_"), true, None);
         let indent = indent_of(cx, expr.span.shrink_to_hi());
         let suggestion = "}\n".to_string() + &moved_snipped;
-        let suggestion = reindent_multiline(Cow::Borrowed(&suggestion), true, indent);
+        let suggestion = reindent_multiline(&suggestion, true, indent);
 
         let span = span.with_hi(last_block.span.hi());
-        // Improve formatting if the inner block has indention (i.e. normal Rust formatting)
+        // Improve formatting if the inner block has indentation (i.e. normal Rust formatting)
         let span = span
             .map_range(cx, |src, range| {
                 (range.start > 4 && src.get(range.start - 4..range.start)? == "    ")
@@ -344,7 +339,7 @@ fn eq_binding_names(s: &Stmt<'_>, names: &[(HirId, Symbol)]) -> bool {
         let mut i = 0usize;
         let mut res = true;
         l.pat.each_binding_or_first(&mut |_, _, _, name| {
-            if names.get(i).map_or(false, |&(_, n)| n == name.name) {
+            if names.get(i).is_some_and(|&(_, n)| n == name.name) {
                 i += 1;
             } else {
                 res = false;
@@ -388,12 +383,10 @@ fn eq_stmts(
         let new_bindings = &moved_bindings[old_count..];
         blocks
             .iter()
-            .all(|b| get_stmt(b).map_or(false, |s| eq_binding_names(s, new_bindings)))
+            .all(|b| get_stmt(b).is_some_and(|s| eq_binding_names(s, new_bindings)))
     } else {
         true
-    }) && blocks
-        .iter()
-        .all(|b| get_stmt(b).map_or(false, |s| eq.eq_stmt(s, stmt)))
+    }) && blocks.iter().all(|b| get_stmt(b).is_some_and(|s| eq.eq_stmt(s, stmt)))
 }
 
 #[expect(clippy::too_many_lines)]
@@ -450,9 +443,7 @@ fn scan_block_for_eq<'tcx>(
     //     x + 50
     let expr_hash_eq = if let Some(e) = block.expr {
         let hash = hash_expr(cx, e);
-        blocks
-            .iter()
-            .all(|b| b.expr.map_or(false, |e| hash_expr(cx, e) == hash))
+        blocks.iter().all(|b| b.expr.is_some_and(|e| hash_expr(cx, e) == hash))
     } else {
         blocks.iter().all(|b| b.expr.is_none())
     };
@@ -473,7 +464,7 @@ fn scan_block_for_eq<'tcx>(
                 b.stmts
                     // the bounds check will catch the underflow
                     .get(b.stmts.len().wrapping_sub(offset + 1))
-                    .map_or(true, |s| hash != hash_stmt(cx, s))
+                    .is_none_or(|s| hash != hash_stmt(cx, s))
             })
         })
         .map_or(block.stmts.len() - start_end_eq, |(i, _)| i);
@@ -513,7 +504,7 @@ fn scan_block_for_eq<'tcx>(
         });
     if let Some(e) = block.expr {
         for block in blocks {
-            if block.expr.map_or(false, |expr| !eq.eq_expr(expr, e)) {
+            if block.expr.is_some_and(|expr| !eq.eq_expr(expr, e)) {
                 moved_locals.truncate(moved_locals_at_start);
                 return BlockEq {
                     start_end_eq,
@@ -532,31 +523,29 @@ fn scan_block_for_eq<'tcx>(
 }
 
 fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbol)], if_expr: &Expr<'_>) -> bool {
-    get_enclosing_block(cx, if_expr.hir_id).map_or(false, |block| {
+    get_enclosing_block(cx, if_expr.hir_id).is_some_and(|block| {
         let ignore_span = block.span.shrink_to_lo().to(if_expr.span);
 
         symbols
             .iter()
             .filter(|&&(_, name)| !name.as_str().starts_with('_'))
             .any(|&(_, name)| {
-                let mut walker = ContainsName {
-                    name,
-                    result: false,
-                    cx,
-                };
+                let mut walker = ContainsName { name, cx };
 
                 // Scan block
-                block
+                let mut res = block
                     .stmts
                     .iter()
                     .filter(|stmt| !ignore_span.overlaps(stmt.span))
-                    .for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
+                    .try_for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
 
-                if let Some(expr) = block.expr {
-                    intravisit::walk_expr(&mut walker, expr);
+                if let Some(expr) = block.expr
+                    && res.is_continue()
+                {
+                    res = intravisit::walk_expr(&mut walker, expr);
                 }
 
-                walker.result
+                res.is_break()
             })
     })
 }

@@ -5,15 +5,15 @@
 #![allow(dead_code, incomplete_features, non_camel_case_types)]
 
 mod assert {
-    use std::mem::BikeshedIntrinsicFrom;
+    use std::mem::TransmuteFrom;
 
     pub fn is_transmutable<Src, Dst>()
     where
-        Dst: BikeshedIntrinsicFrom<Src>
+        Dst: TransmuteFrom<Src>
     {}
 }
 
 fn should_gracefully_handle_unknown_dst() {
     struct Src;
-    assert::is_transmutable::<Src, Dst>(); //~ cannot find type
+    assert::is_transmutable::<Src, Dst>(); //~ ERROR cannot find type
 }

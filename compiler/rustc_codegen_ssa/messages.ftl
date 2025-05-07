@@ -2,11 +2,15 @@ codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not imp
 
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
-codegen_ssa_apple_sdk_error_sdk_path = failed to get {$sdk_name} SDK path: {$error}
+codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to AIX which is not guaranteed to work
 
 codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$error}
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
+
+codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
+
+codegen_ssa_bare_instruction_set = `#[instruction_set]` requires an argument
 
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
 
@@ -22,6 +26,8 @@ codegen_ssa_copy_path = could not copy {$from} to {$to}: {$error}
 
 codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$error}
 
+codegen_ssa_cpu_required = target requires explicitly specifying a cpu with `-C target-cpu`
+
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
 codegen_ssa_dlltool_fail_import_library =
@@ -32,10 +38,17 @@ codegen_ssa_dlltool_fail_import_library =
 codegen_ssa_error_calling_dlltool =
     Error calling dlltool '{$dlltool_path}': {$error}
 
+codegen_ssa_error_creating_import_library =
+    Error creating import library for {$lib_name}: {$error}
+
 codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$error}
 
 codegen_ssa_error_writing_def_file =
     Error writing .DEF file: {$error}
+
+codegen_ssa_expected_name_value_pair = expected name value pair
+
+codegen_ssa_expected_one_argument = expected one argument
 
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
@@ -55,6 +68,9 @@ codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
+codegen_ssa_forbidden_target_feature_attr =
+    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
+
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
@@ -70,8 +86,16 @@ codegen_ssa_incorrect_cgu_reuse_type =
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
+codegen_ssa_invalid_argument = invalid argument
+    .help = valid inline arguments are `always` and `never`
+
+codegen_ssa_invalid_instruction_set = invalid instruction set specified
+
 codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`
     .note = the attribute requires exactly one argument
+
+codegen_ssa_invalid_literal_value = invalid literal value
+    .label = value must be an integer between `0` and `255`
 
 codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
 
@@ -79,7 +103,7 @@ codegen_ssa_invalid_monomorphization_basic_integer_type = invalid monomorphizati
 
 codegen_ssa_invalid_monomorphization_cannot_return = invalid monomorphization of `{$name}` intrinsic: cannot return `{$ret_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
-codegen_ssa_invalid_monomorphization_cast_fat_pointer = invalid monomorphization of `{$name}` intrinsic: cannot cast fat pointer `{$ty}`
+codegen_ssa_invalid_monomorphization_cast_wide_pointer = invalid monomorphization of `{$name}` intrinsic: cannot cast wide pointer `{$ty}`
 
 codegen_ssa_invalid_monomorphization_expected_element_type = invalid monomorphization of `{$name}` intrinsic: expected element type `{$expected_element}` of second argument `{$second_arg}` to be a pointer to the element type `{$in_elem}` of the first argument `{$in_ty}`, found `{$expected_element}` != `{$mutability} {$in_elem}`
 
@@ -101,7 +125,7 @@ codegen_ssa_invalid_monomorphization_inserted_type = invalid monomorphization of
 
 codegen_ssa_invalid_monomorphization_invalid_bitmask = invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{$mask_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
-codegen_ssa_invalid_monomorphization_mask_type = invalid monomorphization of `{$name}` intrinsic: mask element type is `{$ty}`, expected `i_`
+codegen_ssa_invalid_monomorphization_mask_wrong_element_type = invalid monomorphization of `{$name}` intrinsic: expected mask element type to be an integer, found `{$ty}`
 
 codegen_ssa_invalid_monomorphization_mismatched_lengths = invalid monomorphization of `{$name}` intrinsic: mismatched lengths: mask length `{$m_len}` != other vector length `{$v_len}`
 
@@ -129,11 +153,9 @@ codegen_ssa_invalid_monomorphization_simd_return = invalid monomorphization of `
 
 codegen_ssa_invalid_monomorphization_simd_second = invalid monomorphization of `{$name}` intrinsic: expected SIMD second type, found non-SIMD `{$ty}`
 
-codegen_ssa_invalid_monomorphization_simd_shuffle = invalid monomorphization of `{$name}` intrinsic: simd_shuffle index must be an array of `u32`, got `{$ty}`
+codegen_ssa_invalid_monomorphization_simd_shuffle = invalid monomorphization of `{$name}` intrinsic: simd_shuffle index must be a SIMD vector of `u32`, got `{$ty}`
 
 codegen_ssa_invalid_monomorphization_simd_third = invalid monomorphization of `{$name}` intrinsic: expected SIMD third type, found non-SIMD `{$ty}`
-
-codegen_ssa_invalid_monomorphization_third_arg_element_type = invalid monomorphization of `{$name}` intrinsic: expected element type `{$expected_element}` of third argument `{$third_arg}` to be a signed integer type
 
 codegen_ssa_invalid_monomorphization_third_argument_length = invalid monomorphization of `{$name}` intrinsic: expected third argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}
 
@@ -146,8 +168,6 @@ codegen_ssa_invalid_monomorphization_unsupported_operation = invalid monomorphiz
 codegen_ssa_invalid_monomorphization_unsupported_symbol = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` to `{$ret_ty}`
 
 codegen_ssa_invalid_monomorphization_unsupported_symbol_of_size = invalid monomorphization of `{$name}` intrinsic: unsupported {$symbol} from `{$in_ty}` with element `{$in_elem}` of size `{$size}` to `{$ret_ty}`
-
-codegen_ssa_invalid_monomorphization_vector_argument = invalid monomorphization of `{$name}` intrinsic: vector argument `{$in_ty}`'s element type `{$in_elem}`, expected integer element type
 
 codegen_ssa_invalid_no_sanitize = invalid argument for `no_sanitize`
     .note = expected one of: `address`, `cfi`, `hwaddress`, `kcfi`, `memory`, `memtag`, `shadow-call-stack`, or `thread`
@@ -169,6 +189,8 @@ codegen_ssa_linker_file_stem = couldn't extract file stem from specified linker
 codegen_ssa_linker_not_found = linker `{$linker_path}` not found
     .note = {$error}
 
+codegen_ssa_linker_output = {$inner}
+
 codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for current linker
 
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}
@@ -180,17 +202,26 @@ codegen_ssa_metadata_object_file_write = error writing metadata object file: {$e
 
 codegen_ssa_missing_cpp_build_tool_component = or a necessary component may be missing from the "C++ build tools" workload
 
+codegen_ssa_missing_features = add the missing features in a `target_feature` attribute
+
 codegen_ssa_missing_memory_ordering = Atomic intrinsic missing memory ordering
 
 codegen_ssa_missing_query_depgraph =
     found CGU-reuse attribute but `-Zquery-dep-graph` was not specified
 
+codegen_ssa_mixed_export_name_and_no_mangle = `{$no_mangle_attr}` attribute may not be used in combination with `#[export_name]`
+    .label = `{$no_mangle_attr}` is ignored
+    .note = `#[export_name]` takes precedence
+    .suggestion = remove the `{$no_mangle_attr}` attribute
+
 codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but `link.exe` was not found
 
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
 
+codegen_ssa_multiple_instruction_set = cannot specify more than one instruction set
+
 codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
-    .help = did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
+    .help = did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
 
 codegen_ssa_no_field = no field `{$name}`
 
@@ -201,12 +232,19 @@ codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
 
+codegen_ssa_null_on_export = `export_name` may not contain null characters
+
+codegen_ssa_out_of_range_integer = integer value out of range
+    .label = value must be between `0` and `255`
+
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}
 
 codegen_ssa_read_file = failed to read file: {$message}
 
 codegen_ssa_repair_vs_build_tools = the Visual Studio build tools may need to be repaired using the Visual Studio installer
+
+codegen_ssa_requires_rust_abi = `#[track_caller]` requires Rust ABI
 
 codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib at `{$path}`: {$error}
 
@@ -234,6 +272,9 @@ codegen_ssa_stripping_debug_info_failed = stripping debug info with `{$util}` fa
     .note = {$output}
 
 codegen_ssa_symbol_file_write_failure = failed to write symbols file: {$error}
+
+codegen_ssa_target_feature_disable_or_enable =
+    the target features {$features} must all be either enabled or disabled together
 
 codegen_ssa_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
     .label = cannot be applied to safe trait method
@@ -325,6 +366,9 @@ codegen_ssa_unable_to_run_dsymutil = unable to run `dsymutil`: {$error}
 
 codegen_ssa_unable_to_write_debugger_visualizer = Unable to write debugger visualizer file `{$path}`: {$error}
 
+codegen_ssa_unexpected_parameter_name = unexpected parameter name
+    .label = expected `{$prefix_nops}` or `{$entry_nops}`
+
 codegen_ssa_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
 
@@ -334,7 +378,7 @@ codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
 
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 
-codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
+codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
 
@@ -343,3 +387,20 @@ codegen_ssa_use_cargo_directive = use the `cargo:rustc-link-lib` directive to sp
 codegen_ssa_version_script_write_failure = failed to write version script: {$error}
 
 codegen_ssa_visual_studio_not_installed = you may need to install Visual Studio build tools with the "C++ build tools" workload
+
+codegen_ssa_xcrun_command_line_tools_insufficient =
+    when compiling for iOS, tvOS, visionOS or watchOS, you need a full installation of Xcode
+
+codegen_ssa_xcrun_failed_invoking = invoking `{$command_formatted}` to find {$sdk_name}.sdk failed: {$error}
+
+codegen_ssa_xcrun_found_developer_dir = found active developer directory at "{$developer_dir}"
+
+# `xcrun` already outputs a message about missing Xcode installation, so we only augment it with details about env vars.
+codegen_ssa_xcrun_no_developer_dir =
+    pass the path of an Xcode installation via the DEVELOPER_DIR environment variable, or an SDK with the SDKROOT environment variable
+
+codegen_ssa_xcrun_sdk_path_warning = output of `xcrun` while finding {$sdk_name}.sdk
+    .note = {$stderr}
+
+codegen_ssa_xcrun_unsuccessful = failed running `{$command_formatted}` to find {$sdk_name}.sdk
+    .note = {$stdout}{$stderr}

@@ -1,7 +1,7 @@
 // We want to control preemption here. Stacked borrows interferes by having its own accesses.
-//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
-// Avoid accidental synchronization via address reuse inside `thread::spawn`.
-//@compile-flags: -Zmiri-address-reuse-cross-thread-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency -Zmiri-disable-stacked-borrows
+
+#![feature(rustc_attrs)]
 
 use std::thread::spawn;
 
@@ -12,6 +12,7 @@ unsafe impl<T> Send for EvilSend<T> {}
 unsafe impl<T> Sync for EvilSend<T> {}
 
 extern "Rust" {
+    #[rustc_std_internal_symbol]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
 }
 

@@ -1,7 +1,6 @@
 use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind};
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::Span;
+use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
 
 use crate::deriving::generic::ty::*;
@@ -22,7 +21,7 @@ pub(crate) fn expand_deriving_partial_ord(
 
     // Order in which to perform matching
     let discr_then_data = if let Annotatable::Item(item) = item
-        && let ItemKind::Enum(def, _) = &item.kind
+        && let ItemKind::Enum(_, def, _) = &item.kind
     {
         let dataful: Vec<bool> = def.variants.iter().map(|v| !v.data.fields().is_empty()).collect();
         match dataful.iter().filter(|&&b| b).count() {

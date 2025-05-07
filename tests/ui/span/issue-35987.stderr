@@ -17,10 +17,12 @@ LL |     fn add(self, rhs: Self) -> Self::Output {
    |
 help: use fully-qualified syntax
    |
-LL |     fn add(self, rhs: Self) -> <Foo<T> as BitOr>::Output {
-   |                                ~~~~~~~~~~~~~~~~~~~~~~~~~
-LL |     fn add(self, rhs: Self) -> <Foo<T> as IntoFuture>::Output {
-   |                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn add(self, rhs: Self) -> Self::Output {
+LL +     fn add(self, rhs: Self) -> <Foo<T> as BitOr>::Output {
+   |
+LL -     fn add(self, rhs: Self) -> Self::Output {
+LL +     fn add(self, rhs: Self) -> <Foo<T> as IntoFuture>::Output {
+   |
 
 error: aborting due to 2 previous errors
 

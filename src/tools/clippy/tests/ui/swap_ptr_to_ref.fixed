@@ -9,9 +9,13 @@ fn main() {
 
     unsafe {
         core::ptr::swap(y, z);
+        //~^ swap_ptr_to_ref
         core::ptr::swap(y, &mut x);
+        //~^ swap_ptr_to_ref
         core::ptr::swap(&mut x, y);
+        //~^ swap_ptr_to_ref
         core::ptr::swap(addr_of_mut!(x), addr_of_mut!(x));
+        //~^ swap_ptr_to_ref
     }
 
     let y = &mut x;

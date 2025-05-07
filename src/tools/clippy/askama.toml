@@ -1,0 +1,3 @@
+[general]
+dirs = ["util/gh-pages/"]
+whitespace = "suppress"

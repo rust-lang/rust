@@ -46,7 +46,7 @@ LL |     35 * (7 - 4 * 2) % (-500 * -600);
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `-1 % 2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:27:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:26:5
    |
 LL |     -1i8 % 2i8;
    |     ^^^^^^^^^^
@@ -55,7 +55,7 @@ LL |     -1i8 % 2i8;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:30:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:29:5
    |
 LL |     1i8 % -2i8;
    |     ^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     1i8 % -2i8;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `-1 % 2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:33:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:32:5
    |
 LL |     -1i16 % 2i16;
    |     ^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     -1i16 % 2i16;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:36:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:35:5
    |
 LL |     1i16 % -2i16;
    |     ^^^^^^^^^^^^
@@ -82,7 +82,7 @@ LL |     1i16 % -2i16;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `-1 % 2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:39:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:38:5
    |
 LL |     -1i32 % 2i32;
    |     ^^^^^^^^^^^^
@@ -91,7 +91,7 @@ LL |     -1i32 % 2i32;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:42:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:41:5
    |
 LL |     1i32 % -2i32;
    |     ^^^^^^^^^^^^
@@ -100,7 +100,7 @@ LL |     1i32 % -2i32;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `-1 % 2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:45:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:44:5
    |
 LL |     -1i64 % 2i64;
    |     ^^^^^^^^^^^^
@@ -109,7 +109,7 @@ LL |     -1i64 % 2i64;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:48:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:47:5
    |
 LL |     1i64 % -2i64;
    |     ^^^^^^^^^^^^
@@ -118,7 +118,7 @@ LL |     1i64 % -2i64;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `-1 % 2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:51:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:50:5
    |
 LL |     -1i128 % 2i128;
    |     ^^^^^^^^^^^^^^
@@ -127,7 +127,7 @@ LL |     -1i128 % 2i128;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:54:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:53:5
    |
 LL |     1i128 % -2i128;
    |     ^^^^^^^^^^^^^^
@@ -136,7 +136,7 @@ LL |     1i128 % -2i128;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `-1 % 2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:57:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:56:5
    |
 LL |     -1isize % 2isize;
    |     ^^^^^^^^^^^^^^^^
@@ -145,7 +145,7 @@ LL |     -1isize % 2isize;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on constants with different signs: `1 % -2`
-  --> tests/ui/modulo_arithmetic_integral_const.rs:60:5
+  --> tests/ui/modulo_arithmetic_integral_const.rs:59:5
    |
 LL |     1isize % -2isize;
    |     ^^^^^^^^^^^^^^^^

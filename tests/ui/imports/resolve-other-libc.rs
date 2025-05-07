@@ -6,7 +6,7 @@
 // indicates that `libc` was wrongly resolved to `libc` shipped with the
 // compiler:
 //
-//   error[E0658]: use of unstable library feature 'rustc_private': \
+//   error[E0658]: use of unstable library feature `rustc_private`: \
 //           this crate is being loaded from the sysroot
 //
 extern crate libc; //~ ERROR: extern location for libc does not exist: test.rlib

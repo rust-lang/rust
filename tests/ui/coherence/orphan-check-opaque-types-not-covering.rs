@@ -1,8 +1,5 @@
 // Opaque types never cover type parameters.
 
-//@ revisions: classic next
-//@[next] compile-flags: -Znext-solver
-
 //@ aux-crate:foreign=parametrized-trait.rs
 //@ edition:2021
 
@@ -10,6 +7,7 @@
 
 type Identity<T> = impl Sized;
 
+#[define_opaque(Identity)]
 fn define_identity<T>(x: T) -> Identity<T> {
     x
 }
@@ -19,6 +17,7 @@ impl<T> foreign::Trait0<Local, T, ()> for Identity<T> {}
 
 type Opaque<T> = impl Sized;
 
+#[define_opaque(Opaque)]
 fn define_local<T>() -> Opaque<T> {
     Local
 }

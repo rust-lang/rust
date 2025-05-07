@@ -1,6 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
-#![feature(unsafe_attributes)]
 
 #[unsafe(cfg(any()))] //~ ERROR: is not an unsafe attribute
 fn a() {}
@@ -28,4 +26,8 @@ mod inner {
 #[unsafe(used)] //~ ERROR: is not an unsafe attribute
 static FOO: usize = 0;
 
-fn main() {}
+fn main() {
+    let _a = cfg!(unsafe(foo));
+    //~^ ERROR: expected identifier, found keyword `unsafe`
+    //~^^ ERROR: invalid predicate `r#unsafe`
+}

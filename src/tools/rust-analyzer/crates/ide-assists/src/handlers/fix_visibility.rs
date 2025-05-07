@@ -1,13 +1,11 @@
-use hir::{
-    db::HirDatabase, HasSource, HasVisibility, HirFileIdExt, ModuleDef, PathResolution, ScopeDef,
-};
+use hir::{HasSource, HasVisibility, ModuleDef, PathResolution, ScopeDef, db::HirDatabase};
 use ide_db::FileId;
 use syntax::{
-    ast::{self, edit_in_place::HasVisibilityEdit, make, HasVisibility as _},
-    AstNode, TextRange, ToSmolStr,
+    AstNode, TextRange,
+    ast::{self, HasVisibility as _, edit_in_place::HasVisibilityEdit, make},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // FIXME: this really should be a fix for diagnostic, rather than an assist.
 
@@ -48,7 +46,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let (_, def) = module
         .scope(ctx.db(), None)
         .into_iter()
-        .find(|(name, _)| name.display_no_db().to_smolstr() == name_ref.text().as_str())?;
+        .find(|(name, _)| name.as_str() == name_ref.text().trim_start_matches("r#"))?;
     let ScopeDef::ModuleDef(def) = def else {
         return None;
     };
@@ -71,11 +69,14 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let assist_label = match target_name {
         None => format!("Change visibility to {missing_visibility}"),
         Some(name) => {
-            format!("Change visibility of {} to {missing_visibility}", name.display(ctx.db()))
+            format!(
+                "Change visibility of {} to {missing_visibility}",
+                name.display(ctx.db(), current_module.krate().edition(ctx.db()))
+            )
         }
     };
 
-    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
+    acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |edit| {
         edit.edit_file(target_file);
 
         let vis_owner = edit.make_mut(vis_owner);
@@ -92,6 +93,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     let (record_field_def, _, _) = ctx.sema.resolve_record_field(&record_field)?;
 
     let current_module = ctx.sema.scope(record_field.syntax())?.module();
+    let current_edition = current_module.krate().edition(ctx.db());
     let visibility = record_field_def.visibility(ctx.db());
     if visibility.is_visible_from(ctx.db(), current_module.into()) {
         return None;
@@ -123,12 +125,12 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
     let target_name = record_field_def.name(ctx.db());
     let assist_label = format!(
         "Change visibility of {}.{} to {missing_visibility}",
-        parent_name.display(ctx.db()),
-        target_name.display(ctx.db())
+        parent_name.display(ctx.db(), current_edition),
+        target_name.display(ctx.db(), current_edition)
     );
 
-    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
-        edit.edit_file(target_file.file_id());
+    acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |edit| {
+        edit.edit_file(target_file.file_id(ctx.db()));
 
         let vis_owner = edit.make_mut(vis_owner);
         vis_owner.set_visibility(Some(missing_visibility.clone_for_update()));
@@ -158,7 +160,7 @@ fn target_data_for_def(
         Some((
             ast::AnyHasVisibility::new(source.value),
             range,
-            file_id.original_file(db.upcast()).file_id(),
+            file_id.original_file(db).file_id(db),
         ))
     }
 
@@ -199,9 +201,9 @@ fn target_data_for_def(
         hir::ModuleDef::Module(m) => {
             target_name = m.name(db);
             let in_file_source = m.declaration_source(db)?;
-            let file_id = in_file_source.file_id.original_file(db.upcast());
+            let file_id = in_file_source.file_id.original_file(db);
             let range = in_file_source.value.syntax().text_range();
-            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id.file_id())
+            (ast::AnyHasVisibility::new(in_file_source.value), range, file_id.file_id(db))
         }
         // FIXME
         hir::ModuleDef::Macro(_) => return None,

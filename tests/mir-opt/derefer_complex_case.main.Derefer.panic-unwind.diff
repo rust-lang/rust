@@ -64,11 +64,11 @@
   
       bb5: {
           StorageLive(_12);
--         _12 = (*((_7 as Some).0: &i32));
+-         _12 = copy (*((_7 as Some).0: &i32));
 +         _15 = deref_copy ((_7 as Some).0: &i32);
-+         _12 = (*_15);
++         _12 = copy (*_15);
           StorageLive(_13);
-          _13 = _12;
+          _13 = copy _12;
           _6 = std::mem::drop::<i32>(move _13) -> [return: bb7, unwind continue];
       }
   

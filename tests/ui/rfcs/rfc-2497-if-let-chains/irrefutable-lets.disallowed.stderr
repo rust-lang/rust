@@ -111,5 +111,23 @@ LL |     while let Some(ref first) = opt && let second = first && let _third = s
    = note: these patterns will always match
    = help: consider moving them into the body
 
-error: aborting due to 12 previous errors
+error: trailing irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:87:12
+   |
+LL |         && let x = &opt
+   |            ^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it into the body
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:93:12
+   |
+LL |         if let x = opt.clone().map(|_| 1)
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: aborting due to 14 previous errors
 

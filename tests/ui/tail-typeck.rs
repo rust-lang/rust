@@ -1,6 +1,4 @@
-//@ error-pattern: mismatched types
-
-fn f() -> isize { return g(); }
+fn f() -> isize { return g(); } //~ ERROR mismatched types
 
 fn g() -> usize { return 0; }
 

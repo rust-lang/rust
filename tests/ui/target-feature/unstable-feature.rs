@@ -4,3 +4,5 @@
 
 #![feature(no_core)]
 #![no_core]
+
+//~? WARN unstable feature specified for `-Ctarget-feature`: `vaes`

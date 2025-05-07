@@ -1,0 +1,19 @@
+error[E0038]: the trait `X` is not dyn compatible
+  --> $DIR/issue-67510-pass.rs:7:23
+   |
+LL | fn _func1<'a>(_x: Box<dyn X<Y<'a>=&'a ()>>) {}
+   |                       ^^^^^^^^^^^^^^^^^^^ `X` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/issue-67510-pass.rs:4:10
+   |
+LL | trait X {
+   |       - this trait is not dyn compatible...
+LL |     type Y<'a>;
+   |          ^ ...because it contains the generic associated type `Y`
+   = help: consider moving `Y` to another trait
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

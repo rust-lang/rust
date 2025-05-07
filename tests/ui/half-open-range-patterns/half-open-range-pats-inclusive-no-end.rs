@@ -3,7 +3,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 fn foo() {
     if let 0... = 1 {} //~ ERROR inclusive range with no end
     if let 0..= = 1 {} //~ ERROR inclusive range with no end

@@ -10,9 +10,11 @@ impl<A, B> Trait for (A, B, u8) where A: Deref, B: Deref<Target = A::Target>, {}
 impl<A, B> Trait for (A, B, i8) {}
 
 type TaitSized = impl Sized;
+#[define_opaque(TaitSized)]
 fn def_tait1() -> TaitSized {}
 
 type TaitCopy = impl Copy;
+#[define_opaque(TaitCopy)]
 fn def_tait2() -> TaitCopy {}
 
 fn impl_trait<T: Trait> () {}

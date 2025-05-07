@@ -52,13 +52,14 @@ impl<I: Iterator, A: Allocator> ExactSizeIterator for Splice<'_, I, A> {}
 
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<I: Iterator, A: Allocator> Drop for Splice<'_, I, A> {
+    #[track_caller]
     fn drop(&mut self) {
         self.drain.by_ref().for_each(drop);
         // At this point draining is done and the only remaining tasks are splicing
         // and moving things into the final place.
         // Which means we can replace the slice::Iter with pointers that won't point to deallocated
         // memory, so that Drain::drop is still allowed to call iter.len(), otherwise it would break
-        // the ptr.sub_ptr contract.
+        // the ptr.offset_from_unsigned contract.
         self.drain.iter = (&[]).iter();
 
         unsafe {
@@ -123,6 +124,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     }
 
     /// Makes room for inserting more elements before the tail.
+    #[track_caller]
     unsafe fn move_tail(&mut self, additional: usize) {
         let vec = unsafe { self.vec.as_mut() };
         let len = self.tail_start + self.tail_len;

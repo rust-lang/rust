@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
-use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use std::collections::BTreeMap;
 
 declare_clippy_lint! {
@@ -22,7 +21,21 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// #[macro_use]
-    /// use some_macro;
+    /// extern crate some_crate;
+    ///
+    /// fn main() {
+    ///     some_macro!();
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```rust,ignore
+    /// use some_crate::some_macro;
+    ///
+    /// fn main() {
+    ///     some_macro!();
+    /// }
     /// ```
     #[clippy::version = "1.44.0"]
     pub MACRO_USE_IMPORTS,
@@ -43,7 +56,6 @@ impl MacroRefData {
 }
 
 #[derive(Default)]
-#[expect(clippy::module_name_repetitions)]
 pub struct MacroUseImports {
     /// the actual import path used and the span of the attribute above it. The value is
     /// the location, where the lint should be emitted.
@@ -81,12 +93,12 @@ impl MacroUseImports {
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
+impl LateLintPass<'_> for MacroUseImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if cx.sess().opts.edition >= Edition::Edition2018
             && let hir::ItemKind::Use(path, _kind) = &item.kind
             && let hir_id = item.hir_id()
-            && let attrs = cx.tcx.hir().attrs(hir_id)
+            && let attrs = cx.tcx.hir_attrs(hir_id)
             && let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use))
             && let Some(id) = path.res.iter().find_map(|res| match res {
                 Res::Def(DefKind::Mod, id) => Some(id),
@@ -96,18 +108,13 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         {
             for kid in cx.tcx.module_children(id) {
                 if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
-                    let span = mac_attr.span;
+                    let span = mac_attr.span();
                     let def_path = cx.tcx.def_path_str(mac_id);
                     self.imports.push((def_path, span, hir_id));
                 }
             }
         } else if item.span.from_expansion() {
             self.push_unique_macro_pat_ty(cx, item.span);
-        }
-    }
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
-        if attr.span.from_expansion() {
-            self.push_unique_macro(cx, attr.span);
         }
     }
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
@@ -125,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
             self.push_unique_macro_pat_ty(cx, pat.span);
         }
     }
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_, AmbigArg>) {
         if ty.span.from_expansion() {
             self.push_unique_macro_pat_ty(cx, ty.span);
         }
@@ -146,9 +153,15 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                     [] | [_] => return,
                     [root, item] => {
                         if !check_dup.contains(&(*item).to_string()) {
-                            used.entry(((*root).to_string(), span, hir_id))
-                                .or_insert_with(Vec::new)
-                                .push((*item).to_string());
+                            used.entry((
+                                (*root).to_string(),
+                                span,
+                                hir_id.local_id,
+                                cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
+                            ))
+                            .or_insert_with(|| (vec![], hir_id))
+                            .0
+                            .push((*item).to_string());
                             check_dup.push((*item).to_string());
                         }
                     },
@@ -164,15 +177,27 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                                     }
                                 })
                                 .collect::<Vec<_>>();
-                            used.entry(((*root).to_string(), span, hir_id))
-                                .or_insert_with(Vec::new)
-                                .push(filtered.join("::"));
+                            used.entry((
+                                (*root).to_string(),
+                                span,
+                                hir_id.local_id,
+                                cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
+                            ))
+                            .or_insert_with(|| (vec![], hir_id))
+                            .0
+                            .push(filtered.join("::"));
                             check_dup.extend(filtered);
                         } else {
                             let rest = rest.to_vec();
-                            used.entry(((*root).to_string(), span, hir_id))
-                                .or_insert_with(Vec::new)
-                                .push(rest.join("::"));
+                            used.entry((
+                                (*root).to_string(),
+                                span,
+                                hir_id.local_id,
+                                cx.tcx.def_path_hash(hir_id.owner.def_id.into()),
+                            ))
+                            .or_insert_with(|| (vec![], hir_id))
+                            .0
+                            .push(rest.join("::"));
                             check_dup.extend(rest.iter().map(ToString::to_string));
                         }
                     },
@@ -183,7 +208,7 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
         // If mac_refs is not empty we have encountered an import we could not handle
         // such as `std::prelude::v1::foo` or some other macro that expands to an import.
         if self.mac_refs.is_empty() {
-            for ((root, span, hir_id), path) in used {
+            for ((root, span, ..), (path, hir_id)) in used {
                 let import = if let [single] = &path[..] {
                     format!("{root}::{single}")
                 } else {

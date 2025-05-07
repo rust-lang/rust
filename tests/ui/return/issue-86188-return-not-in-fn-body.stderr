@@ -15,8 +15,7 @@ LL | /     fn bar() {
 LL | |
 LL | |         [(); return];
    | |              ^^^^^^ the return is part of this body...
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____- ...not the enclosing function body
 
@@ -27,8 +26,7 @@ LL | /     fn foo() {
 LL | |
 LL | |         [(); return];
    | |              ^^^^^^ the return is part of this body...
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____- ...not the enclosing function body
 

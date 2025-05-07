@@ -1,0 +1,9 @@
+error[E0412]: cannot find type `Missing` in this scope
+  --> $DIR/type-resolve-error-two-structs-deep.rs:5:14
+   |
+LL |     missing: Missing<'a>,
+   |              ^^^^^^^ not found in this scope
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0412`.

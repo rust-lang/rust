@@ -24,9 +24,7 @@
 pub use instantiate::CanonicalExt;
 use rustc_index::IndexVec;
 pub use rustc_middle::infer::canonical::*;
-use rustc_middle::infer::unify_key::EffectVarValue;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, GenericArg, List, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, List, Ty, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 
 use crate::infer::{InferCtxt, RegionVariableOrigin};
@@ -144,15 +142,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
             CanonicalVarKind::Const(ui) => {
                 self.next_const_var_in_universe(span, universe_map(ui)).into()
-            }
-            CanonicalVarKind::Effect => {
-                let vid = self
-                    .inner
-                    .borrow_mut()
-                    .effect_unification_table()
-                    .new_key(EffectVarValue::Unknown)
-                    .vid;
-                ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(vid)).into()
             }
             CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, bound }) => {
                 let universe_mapped = universe_map(universe);

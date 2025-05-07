@@ -4,7 +4,7 @@ error: cannot find macro `bang_proc_macrp` in this scope
 LL |     bang_proc_macrp!();
    |     ^^^^^^^^^^^^^^^ help: a macro with a similar name exists: `bang_proc_macro`
    |
-  ::: $DIR/auxiliary/test-macros.rs:15:1
+  ::: $DIR/auxiliary/test-macros.rs:10:1
    |
 LL | pub fn empty(_: TokenStream) -> TokenStream {
    | ------------------------------------------- similarly named macro `bang_proc_macro` defined here
@@ -53,7 +53,7 @@ error: cannot find derive macro `Dlona` in this scope
 LL | #[derive(Dlona)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clona`
    |
-  ::: $DIR/auxiliary/derive-clona.rs:11:1
+  ::: $DIR/auxiliary/derive-clona.rs:6:1
    |
 LL | pub fn derive_clonea(input: TokenStream) -> TokenStream {
    | ------------------------------------------------------- similarly named derive macro `Clona` defined here
@@ -64,7 +64,7 @@ error: cannot find derive macro `Dlona` in this scope
 LL | #[derive(Dlona)]
    |          ^^^^^ help: a derive macro with a similar name exists: `Clona`
    |
-  ::: $DIR/auxiliary/derive-clona.rs:11:1
+  ::: $DIR/auxiliary/derive-clona.rs:6:1
    |
 LL | pub fn derive_clonea(input: TokenStream) -> TokenStream {
    | ------------------------------------------------------- similarly named derive macro `Clona` defined here
@@ -103,7 +103,7 @@ error: cannot find attribute `attr_proc_macra` in this scope
 LL | #[attr_proc_macra]
    |   ^^^^^^^^^^^^^^^ help: an attribute macro with a similar name exists: `attr_proc_macro`
    |
-  ::: $DIR/auxiliary/test-macros.rs:20:1
+  ::: $DIR/auxiliary/test-macros.rs:15:1
    |
 LL | pub fn empty_attr(_: TokenStream, _: TokenStream) -> TokenStream {
    | ---------------------------------------------------------------- similarly named attribute macro `attr_proc_macro` defined here
@@ -114,7 +114,7 @@ error: cannot find derive macro `FooWithLongNan` in this scope
 LL | #[derive(FooWithLongNan)]
    |          ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
    |
-  ::: $DIR/auxiliary/derive-foo.rs:11:1
+  ::: $DIR/auxiliary/derive-foo.rs:6:1
    |
 LL | pub fn derive_foo(input: TokenStream) -> TokenStream {
    | ---------------------------------------------------- similarly named derive macro `FooWithLongName` defined here
@@ -125,7 +125,7 @@ error: cannot find derive macro `FooWithLongNan` in this scope
 LL | #[derive(FooWithLongNan)]
    |          ^^^^^^^^^^^^^^ help: a derive macro with a similar name exists: `FooWithLongName`
    |
-  ::: $DIR/auxiliary/derive-foo.rs:11:1
+  ::: $DIR/auxiliary/derive-foo.rs:6:1
    |
 LL | pub fn derive_foo(input: TokenStream) -> TokenStream {
    | ---------------------------------------------------- similarly named derive macro `FooWithLongName` defined here

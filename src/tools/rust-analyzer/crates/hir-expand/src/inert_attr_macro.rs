@@ -464,6 +464,9 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // Used by the `rustc::potential_query_instability` lint to warn methods which
     // might not be stable during incremental compilation.
     rustc_attr!(rustc_lint_query_instability, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
+    // Used by the `rustc::untracked_query_information` lint to warn methods which
+    // might break incremental compilation.
+    rustc_attr!(rustc_lint_untracked_query_information, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
     // Used by the `rustc::untranslatable_diagnostic` and `rustc::diagnostic_outside_of_impl` lints
     // to assist in changes to diagnostic APIs.
     rustc_attr!(rustc_lint_diagnostics, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE),
@@ -559,7 +562,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     BuiltinAttribute {
-        // name: sym::rustc_diagnostic_item.clone(),
+        // name: sym::rustc_diagnostic_item,
         name: "rustc_diagnostic_item",
         // FIXME: This can be `true` once we always use `tcx.is_diagnostic_item`.
         // only_local: false,
@@ -568,7 +571,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         // duplicates: ErrorFollowing,
         // gate: Gated(
             // Stability::Unstable,
-            // sym::rustc_attrs.clone(),
+            // sym::rustc_attrs,
             // "diagnostic items compiler internal support for linting",
             // cfg_fn!(rustc_attrs),
         // ),
@@ -630,6 +633,19 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
     ),
     rustc_attr!(
+        rustc_intrinsic, Normal, template!(Word), ErrorFollowing,
+        "the `#[rustc_intrinsic]` attribute is used to declare intrinsics with function bodies",
+    ),
+    rustc_attr!(
+        rustc_no_mir_inline, Normal, template!(Word), WarnFollowing,
+        "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
+    ),
+    rustc_attr!(
+        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing,
+        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
+    ),
+
+    rustc_attr!(
         rustc_deprecated_safe_2024, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_safe_intrinsic]` marks functions as unsafe in Rust 2024",
     ),
@@ -649,10 +665,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(
-        TEST, rustc_error, Normal,
-        template!(Word, List: "delayed_bug_from_inside_query"), WarnFollowingWordOnly
-    ),
     rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
@@ -679,7 +691,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: r#"cfg = "...", module = "...", kind = "...""#), DuplicatesOk,
     ),
     rustc_attr!(TEST, rustc_symbol_name, Normal, template!(Word), WarnFollowing),
-    rustc_attr!(TEST, rustc_polymorphize_error, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_def_path, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_mir, Normal, template!(List: "arg1, arg2, ..."), DuplicatesOk),
     gated!(

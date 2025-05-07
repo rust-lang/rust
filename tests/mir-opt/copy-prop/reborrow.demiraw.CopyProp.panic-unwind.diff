@@ -30,12 +30,12 @@
           _3 = &mut (*_4);
           StorageDead(_4);
 -         StorageLive(_5);
--         _5 = _2;
+-         _5 = copy _2;
           StorageLive(_6);
 -         StorageLive(_7);
--         _7 = _5;
+-         _7 = copy _5;
 -         _6 = opaque::<*mut u8>(move _7) -> [return: bb1, unwind continue];
-+         _6 = opaque::<*mut u8>(_2) -> [return: bb1, unwind continue];
++         _6 = opaque::<*mut u8>(copy _2) -> [return: bb1, unwind continue];
       }
   
       bb1: {

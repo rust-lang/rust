@@ -2,7 +2,7 @@
 // should be generated.
 // See https://github.com/rust-lang/rust/pull/48346
 
-//@ needs-profiler-support
+//@ needs-profiler-runtime
 // Reason: this exercises LTO profiling
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed

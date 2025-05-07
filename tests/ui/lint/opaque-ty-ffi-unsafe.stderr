@@ -1,5 +1,5 @@
 error: `extern` block uses type `A`, which is not FFI-safe
-  --> $DIR/opaque-ty-ffi-unsafe.rs:11:24
+  --> $DIR/opaque-ty-ffi-unsafe.rs:12:24
    |
 LL |     pub(crate) fn a(_: A);
    |                        ^ not FFI-safe

@@ -4,7 +4,7 @@
 
 fn main() {}
 
-#[cfg(FALSE)]
+#[cfg(false)]
 mod free_items {
     default extern crate foo; //~ ERROR an extern crate cannot be `default`
     default use foo; //~ ERROR a `use` import cannot be `default`
@@ -28,7 +28,7 @@ mod free_items {
     default macro_rules! foo {} //~ ERROR a macro definition cannot be `default`
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 extern "C" {
     default extern crate foo; //~ ERROR an extern crate cannot be `default`
     //~^ ERROR extern crate is not supported in `extern` blocks
@@ -65,7 +65,7 @@ extern "C" {
     //~^ ERROR macro definition is not supported in `extern` blocks
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 impl S {
     default extern crate foo; //~ ERROR an extern crate cannot be `default`
     //~^ ERROR extern crate is not supported in `trait`s or `impl`s
@@ -102,7 +102,7 @@ impl S {
     //~^ ERROR macro definition is not supported in `trait`s or `impl`s
 }
 
-#[cfg(FALSE)]
+#[cfg(false)]
 trait T {
     default extern crate foo; //~ ERROR an extern crate cannot be `default`
     //~^ ERROR extern crate is not supported in `trait`s or `impl`s

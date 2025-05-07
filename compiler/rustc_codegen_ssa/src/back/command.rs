@@ -8,11 +8,12 @@ use std::{fmt, io, mem};
 use rustc_target::spec::LldFlavor;
 
 #[derive(Clone)]
-pub struct Command {
+pub(crate) struct Command {
     program: Program,
     args: Vec<OsString>,
     env: Vec<(OsString, OsString)>,
     env_remove: Vec<OsString>,
+    env_clear: bool,
 }
 
 #[derive(Clone)]
@@ -23,28 +24,34 @@ enum Program {
 }
 
 impl Command {
-    pub fn new<P: AsRef<OsStr>>(program: P) -> Command {
+    pub(crate) fn new<P: AsRef<OsStr>>(program: P) -> Command {
         Command::_new(Program::Normal(program.as_ref().to_owned()))
     }
 
-    pub fn bat_script<P: AsRef<OsStr>>(program: P) -> Command {
+    pub(crate) fn bat_script<P: AsRef<OsStr>>(program: P) -> Command {
         Command::_new(Program::CmdBatScript(program.as_ref().to_owned()))
     }
 
-    pub fn lld<P: AsRef<OsStr>>(program: P, flavor: LldFlavor) -> Command {
+    pub(crate) fn lld<P: AsRef<OsStr>>(program: P, flavor: LldFlavor) -> Command {
         Command::_new(Program::Lld(program.as_ref().to_owned(), flavor))
     }
 
     fn _new(program: Program) -> Command {
-        Command { program, args: Vec::new(), env: Vec::new(), env_remove: Vec::new() }
+        Command {
+            program,
+            args: Vec::new(),
+            env: Vec::new(),
+            env_remove: Vec::new(),
+            env_clear: false,
+        }
     }
 
-    pub fn arg<P: AsRef<OsStr>>(&mut self, arg: P) -> &mut Command {
+    pub(crate) fn arg<P: AsRef<OsStr>>(&mut self, arg: P) -> &mut Command {
         self._arg(arg.as_ref());
         self
     }
 
-    pub fn args<I>(&mut self, args: I) -> &mut Command
+    pub(crate) fn args<I>(&mut self, args: I) -> &mut Command
     where
         I: IntoIterator<Item: AsRef<OsStr>>,
     {
@@ -58,7 +65,7 @@ impl Command {
         self.args.push(arg.to_owned());
     }
 
-    pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Command
+    pub(crate) fn env<K, V>(&mut self, key: K, value: V) -> &mut Command
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
@@ -71,7 +78,7 @@ impl Command {
         self.env.push((key.to_owned(), value.to_owned()));
     }
 
-    pub fn env_remove<K>(&mut self, key: K) -> &mut Command
+    pub(crate) fn env_remove<K>(&mut self, key: K) -> &mut Command
     where
         K: AsRef<OsStr>,
     {
@@ -79,15 +86,20 @@ impl Command {
         self
     }
 
+    pub(crate) fn env_clear(&mut self) -> &mut Command {
+        self.env_clear = true;
+        self
+    }
+
     fn _env_remove(&mut self, key: &OsStr) {
         self.env_remove.push(key.to_owned());
     }
 
-    pub fn output(&mut self) -> io::Result<Output> {
+    pub(crate) fn output(&mut self) -> io::Result<Output> {
         self.command().output()
     }
 
-    pub fn command(&self) -> process::Command {
+    pub(crate) fn command(&self) -> process::Command {
         let mut ret = match self.program {
             Program::Normal(ref p) => process::Command::new(p),
             Program::CmdBatScript(ref p) => {
@@ -106,33 +118,59 @@ impl Command {
         for k in &self.env_remove {
             ret.env_remove(k);
         }
+        if self.env_clear {
+            ret.env_clear();
+        }
         ret
     }
 
     // extensions
 
-    pub fn get_args(&self) -> &[OsString] {
+    pub(crate) fn get_args(&self) -> &[OsString] {
         &self.args
     }
 
-    pub fn take_args(&mut self) -> Vec<OsString> {
+    pub(crate) fn take_args(&mut self) -> Vec<OsString> {
         mem::take(&mut self.args)
     }
 
     /// Returns a `true` if we're pretty sure that this'll blow OS spawn limits,
     /// or `false` if we should attempt to spawn and see what the OS says.
-    pub fn very_likely_to_exceed_some_spawn_limit(&self) -> bool {
-        // We mostly only care about Windows in this method, on Unix the limits
-        // can be gargantuan anyway so we're pretty unlikely to hit them
-        if cfg!(unix) {
+    pub(crate) fn very_likely_to_exceed_some_spawn_limit(&self) -> bool {
+        #[cfg(not(any(windows, unix)))]
+        {
             return false;
         }
 
-        // Right now LLD doesn't support the `@` syntax of passing an argument
-        // through files, so regardless of the platform we try to go to the OS
-        // on this one.
-        if let Program::Lld(..) = self.program {
-            return false;
+        // On Unix the limits can be gargantuan anyway so we're pretty
+        // unlikely to hit them, but might still exceed it.
+        // We consult ARG_MAX here to get an estimate.
+        #[cfg(unix)]
+        {
+            let ptr_size = mem::size_of::<usize>();
+            // arg + \0 + pointer
+            let args_size = self.args.iter().fold(0usize, |acc, a| {
+                let arg = a.as_encoded_bytes().len();
+                let nul = 1;
+                acc.saturating_add(arg).saturating_add(nul).saturating_add(ptr_size)
+            });
+            // key + `=` + value + \0 + pointer
+            let envs_size = self.env.iter().fold(0usize, |acc, (k, v)| {
+                let k = k.as_encoded_bytes().len();
+                let eq = 1;
+                let v = v.as_encoded_bytes().len();
+                let nul = 1;
+                acc.saturating_add(k)
+                    .saturating_add(eq)
+                    .saturating_add(v)
+                    .saturating_add(nul)
+                    .saturating_add(ptr_size)
+            });
+            let arg_max = match unsafe { libc::sysconf(libc::_SC_ARG_MAX) } {
+                -1 => return false, // Go to OS anyway.
+                max => max as usize,
+            };
+            return args_size.saturating_add(envs_size) > arg_max;
         }
 
         // Ok so on Windows to spawn a process is 32,768 characters in its
@@ -157,9 +195,14 @@ impl Command {
         //
         // [1]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa
         // [2]: https://devblogs.microsoft.com/oldnewthing/?p=41553
-
-        let estimated_command_line_len = self.args.iter().map(|a| a.len()).sum::<usize>();
-        estimated_command_line_len > 1024 * 6
+        #[cfg(windows)]
+        {
+            let estimated_command_line_len = self
+                .args
+                .iter()
+                .fold(0usize, |acc, a| acc.saturating_add(a.as_encoded_bytes().len()));
+            return estimated_command_line_len > 1024 * 6;
+        }
     }
 }
 

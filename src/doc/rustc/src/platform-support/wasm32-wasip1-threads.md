@@ -18,10 +18,10 @@ with native multi threading capabilities.
 
 ## Target maintainers
 
-- Georgii Rylov, https://github.com/g0djan
-- Alex Crichton, https://github.com/alexcrichton
-- Andrew Brown, https://github.com/abrown
-- Marcin Kolny, https://github.com/loganek
+[@g0djan](https://github.com/g0djan)
+[@alexcrichton](https://github.com/alexcrichton)
+[@abrown](https://github.com/abrown)
+[@loganek](https://github.com/loganek)
 
 ## Requirements
 
@@ -100,14 +100,14 @@ This target is not a stable target. This means that there are a few engines
 which implement the `wasi-threads` feature and if they do they're likely behind a
 flag, for example:
 
-* Wasmtime - `--wasm-features=threads --wasi-modules=experimental-wasi-threads`
+* Wasmtime - `--wasi threads`
 * [WAMR](https://github.com/bytecodealliance/wasm-micro-runtime) - needs to be built with WAMR_BUILD_LIB_WASI_THREADS=1
 
 ## Building the target
 
 Users need to install or built wasi-sdk since release 20.0
 https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-20
-and specify path to *wasi-root* `config.toml`
+and specify path to *wasi-root* `bootstrap.toml`
 
 ```toml
 [target.wasm32-wasip1-threads]
@@ -115,7 +115,7 @@ wasi-root = ".../wasi-libc/sysroot"
 ```
 
 After that users can build this by adding it to the `target` list in
-`config.toml`, or with `-Zbuild-std`.
+`bootstrap.toml`, or with `-Zbuild-std`.
 
 ## Building Rust programs
 
@@ -162,3 +162,17 @@ It's recommended to conditionally compile code for this target with:
 Prior to Rust 1.80 the `target_env = "p1"` key was not set. Currently the
 `target_feature = "atomics"` is Nightly-only. Note that the precise `#[cfg]`
 necessary to detect this target may change as the target becomes more stable.
+
+## Enabled WebAssembly features
+
+The default set of WebAssembly features enabled for compilation includes two
+more features in addition to that which
+[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md) enables:
+
+* `bulk-memory`
+* `atomics`
+
+For more information about features see the documentation for
+[`wasm32-unknown-unknown`](./wasm32-unknown-unknown.md), but note that the
+`mvp` CPU in LLVM does not support this target as it's required that
+`bulk-memory`, `atomics`, and `mutable-globals` are all enabled.

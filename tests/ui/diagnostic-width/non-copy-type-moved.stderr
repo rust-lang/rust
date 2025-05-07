@@ -1,0 +1,20 @@
+error[E0382]: use of moved value: `x`
+  --> $DIR/non-copy-type-moved.rs:14:14
+   |
+LL | fn foo(x: D) {
+   |        - move occurs because `x` has type `(..., ..., ..., ...)`, which does not implement the `Copy` trait
+LL |     let _a = x;
+   |              - value moved here
+LL |     let _b = x;
+   |              ^ value used here after move
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/non-copy-type-moved.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     let _a = x.clone();
+   |               ++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.

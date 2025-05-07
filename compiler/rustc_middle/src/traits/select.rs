@@ -11,20 +11,10 @@ use self::EvaluationResult::*;
 use super::{SelectionError, SelectionResult};
 use crate::ty;
 
-pub type SelectionCache<'tcx> = Cache<
-    // This cache does not use `ParamEnvAnd` in its keys because `ParamEnv::and` can replace
-    // caller bounds with an empty list if the `TraitPredicate` looks global, which may happen
-    // after erasing lifetimes from the predicate.
-    (ty::ParamEnv<'tcx>, ty::TraitPredicate<'tcx>),
-    SelectionResult<'tcx, SelectionCandidate<'tcx>>,
->;
+pub type SelectionCache<'tcx, ENV> =
+    Cache<(ENV, ty::TraitPredicate<'tcx>), SelectionResult<'tcx, SelectionCandidate<'tcx>>>;
 
-pub type EvaluationCache<'tcx> = Cache<
-    // See above: this cache does not use `ParamEnvAnd` in its keys due to sometimes incorrectly
-    // caching with the wrong `ParamEnv`.
-    (ty::ParamEnv<'tcx>, ty::PolyTraitPredicate<'tcx>),
-    EvaluationResult,
->;
+pub type EvaluationCache<'tcx, ENV> = Cache<(ENV, ty::PolyTraitPredicate<'tcx>), EvaluationResult>;
 
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation. Sometimes
@@ -105,10 +95,16 @@ pub type EvaluationCache<'tcx> = Cache<
 /// parameter environment.
 #[derive(PartialEq, Eq, Debug, Clone, TypeVisitable)]
 pub enum SelectionCandidate<'tcx> {
+    /// A built-in implementation for the `Sized` trait. This is preferred
+    /// over all other candidates.
+    SizedCandidate {
+        has_nested: bool,
+    },
+
     /// A builtin implementation for some specific traits, used in cases
     /// where we cannot rely an ordinary library implementations.
     ///
-    /// The most notable examples are `sized`, `Copy` and `Clone`. This is also
+    /// The most notable examples are `Copy` and `Clone`. This is also
     /// used for the `DiscriminantKind` and `Pointee` trait, both of which have
     /// an associated type.
     BuiltinCandidate {
@@ -161,9 +157,7 @@ pub enum SelectionCandidate<'tcx> {
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
-    FnPointerCandidate {
-        fn_host_effect: ty::Const<'tcx>,
-    },
+    FnPointerCandidate,
 
     TraitAliasCandidate,
 
@@ -181,8 +175,7 @@ pub enum SelectionCandidate<'tcx> {
 
     BuiltinUnsizeCandidate,
 
-    /// Implementation of `const Destruct`, optionally from a custom `impl const Drop`.
-    ConstDestructCandidate(Option<DefId>),
+    BikeshedGuaranteedNoDropCandidate,
 }
 
 /// The result of trait evaluation. The order is important
@@ -274,8 +267,6 @@ impl From<ErrorGuaranteed> for OverflowError {
         OverflowError::Error(e)
     }
 }
-
-TrivialTypeTraversalImpls! { OverflowError }
 
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(overflow_error: OverflowError) -> SelectionError<'tcx> {

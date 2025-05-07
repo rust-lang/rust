@@ -1,8 +1,8 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_with_applicability, SpanRangeExt};
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, higher, is_in_const_context, is_integer_const, path_to_local};
 use rustc_ast::ast::RangeLimits;
@@ -11,8 +11,8 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::Spanned;
 use rustc_span::Span;
+use rustc_span::source_map::Spanned;
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -166,9 +166,7 @@ pub struct Ranges {
 
 impl Ranges {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -181,17 +179,16 @@ impl_lint_pass!(Ranges => [
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, l, r) = expr.kind {
-            if self.msrv.meets(msrvs::RANGE_CONTAINS) {
-                check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
-            }
+        if let ExprKind::Binary(ref op, l, r) = expr.kind
+            && self.msrv.meets(cx, msrvs::RANGE_CONTAINS)
+        {
+            check_possible_range_contains(cx, op.node, l, r, expr, expr.span);
         }
 
         check_exclusive_range_plus_one(cx, expr);
         check_inclusive_range_minus_one(cx, expr);
         check_reversed_empty_range(cx, expr);
     }
-    extract_msrv_attr!(LateContext);
 }
 
 fn check_possible_range_contains(
@@ -330,18 +327,18 @@ fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> 
                     inc: inclusive,
                 });
             }
-        } else if let Some(id) = path_to_local(r) {
-            if let Some(c) = ConstEvalCtxt::new(cx).eval(l) {
-                return Some(RangeBounds {
-                    val: c,
-                    expr: l,
-                    id,
-                    name_span: r.span,
-                    val_span: l.span,
-                    ord: ordering.reverse(),
-                    inc: inclusive,
-                });
-            }
+        } else if let Some(id) = path_to_local(r)
+            && let Some(c) = ConstEvalCtxt::new(cx).eval(l)
+        {
+            return Some(RangeBounds {
+                val: c,
+                expr: l,
+                id,
+                name_span: r.span,
+                val_span: l.span,
+                ord: ordering.reverse(),
+                inc: inclusive,
+            });
         }
     }
     None
@@ -364,8 +361,8 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span,
             "an inclusive range would be more readable",
             |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_par();
+                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
+                let end = Sugg::hir(cx, y, "y").maybe_paren();
                 match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
                     Some(true) => {
                         diag.span_suggestion(span, "use", format!("({start}..={end})"), Applicability::MaybeIncorrect);
@@ -401,8 +398,8 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.span,
             "an exclusive range would be more readable",
             |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_par();
+                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
+                let end = Sugg::hir(cx, y, "y").maybe_paren();
                 diag.span_suggestion(
                     expr.span,
                     "use",

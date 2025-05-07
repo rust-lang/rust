@@ -2,27 +2,28 @@ use std::ops::Not;
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::{convert_param_list_to_arg_list, suggest_name},
+    utils::convert_param_list_to_arg_list,
 };
 use either::Either;
-use hir::{db::HirDatabase, HasVisibility};
+use hir::{HasVisibility, db::HirDatabase};
 use ide_db::{
+    FxHashMap, FxHashSet,
     assists::{AssistId, GroupLabel},
     path_transform::PathTransform,
-    FxHashMap, FxHashSet,
+    syntax_helpers::suggest_name,
 };
 use itertools::Itertools;
 use syntax::{
+    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
     ast::{
-        self,
-        edit::{self, AstNodeEdit},
-        edit_in_place::AttrsOwnerEdit,
-        make, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
+        self, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
         HasGenericParams, HasName, HasTypeBounds, HasVisibility as astHasVisibility, Path,
         WherePred,
+        edit::{self, AstNodeEdit},
+        edit_in_place::AttrsOwnerEdit,
+        make,
     },
     ted::{self, Position},
-    AstNode, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
 };
 
 // Assist: generate_delegate_trait
@@ -87,6 +88,10 @@ use syntax::{
 // }
 // ```
 pub(crate) fn generate_delegate_trait(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    if !ctx.config.code_action_grouping {
+        return None;
+    }
+
     let strukt = Struct::new(ctx.find_node_at_offset::<ast::Struct>()?)?;
 
     let field: Field = match ctx.find_node_at_offset::<ast::RecordField>() {
@@ -109,6 +114,7 @@ struct Field {
     ty: ast::Type,
     range: syntax::TextRange,
     impls: Vec<Delegee>,
+    edition: Edition,
 }
 
 impl Field {
@@ -118,7 +124,8 @@ impl Field {
     ) -> Option<Field> {
         let db = ctx.sema.db;
 
-        let module = ctx.sema.file_to_module_def(ctx.file_id())?;
+        let module = ctx.sema.file_to_module_def(ctx.vfs_file_id())?;
+        let edition = module.krate().edition(ctx.db());
 
         let (name, range, ty) = match f {
             Either::Left(f) => {
@@ -147,7 +154,7 @@ impl Field {
             }
         }
 
-        Some(Field { name, ty, range, impls })
+        Some(Field { name, ty, range, impls, edition })
     }
 }
 
@@ -163,18 +170,18 @@ enum Delegee {
 }
 
 impl Delegee {
-    fn signature(&self, db: &dyn HirDatabase) -> String {
+    fn signature(&self, db: &dyn HirDatabase, edition: Edition) -> String {
         let mut s = String::new();
 
         let (Delegee::Bound(it) | Delegee::Impls(it, _)) = self;
 
         for m in it.module(db).path_to_root(db).iter().rev() {
             if let Some(name) = m.name(db) {
-                s.push_str(&format!("{}::", name.display_no_db().to_smolstr()));
+                s.push_str(&format!("{}::", name.display_no_db(edition).to_smolstr()));
             }
         }
 
-        s.push_str(&it.name(db).display_no_db().to_smolstr());
+        s.push_str(&it.name(db).display_no_db(edition).to_smolstr());
         s
     }
 }
@@ -194,7 +201,7 @@ impl Struct {
     pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
         let db = ctx.db();
 
-        for delegee in &field.impls {
+        for (index, delegee) in field.impls.iter().enumerate() {
             let trait_ = match delegee {
                 Delegee::Bound(b) => b,
                 Delegee::Impls(i, _) => i,
@@ -212,15 +219,21 @@ impl Struct {
             // if self.hir_ty.impls_trait(db, trait_, &[]) {
             //     continue;
             // }
-            let signature = delegee.signature(db);
+            let signature = delegee.signature(db, field.edition);
 
-            let Some(delegate) = generate_impl(ctx, self, &field.ty, &field.name, delegee) else {
+            let Some(delegate) =
+                generate_impl(ctx, self, &field.ty, &field.name, delegee, field.edition)
+            else {
                 continue;
             };
 
             acc.add_group(
                 &GroupLabel(format!("Generate delegate trait impls for field `{}`", field.name)),
-                AssistId("generate_delegate_trait", ide_db::assists::AssistKind::Generate),
+                AssistId(
+                    "generate_delegate_trait",
+                    ide_db::assists::AssistKind::Generate,
+                    Some(index),
+                ),
                 format!("Generate delegate trait impl `{}` for `{}`", signature, field.name),
                 field.range,
                 |builder| {
@@ -240,6 +253,7 @@ fn generate_impl(
     field_ty: &ast::Type,
     field_name: &str,
     delegee: &Delegee,
+    edition: Edition,
 ) -> Option<ast::Impl> {
     let delegate: ast::Impl;
     let db = ctx.db();
@@ -259,7 +273,7 @@ fn generate_impl(
                 strukt_params.clone(),
                 strukt_params.map(|params| params.to_generic_args()),
                 delegee.is_auto(db),
-                make::ty(&delegee.name(db).display_no_db().to_smolstr()),
+                make::ty(&delegee.name(db).display_no_db(edition).to_smolstr()),
                 strukt_ty,
                 bound_def.where_clause(),
                 ast_strukt.where_clause(),
@@ -276,8 +290,11 @@ fn generate_impl(
                 ai.assoc_items()
                     .filter(|item| matches!(item, AssocItem::MacroCall(_)).not())
                     .for_each(|item| {
-                        let assoc =
-                            process_assoc_item(item, qualified_path_type.clone(), field_name);
+                        let assoc = process_assoc_item(
+                            item.clone_for_update(),
+                            qualified_path_type.clone(),
+                            field_name,
+                        );
                         if let Some(assoc) = assoc {
                             delegate_assoc_items.add_item(assoc);
                         }
@@ -350,7 +367,7 @@ fn generate_impl(
             let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
 
             let path_type =
-                make::ty(&trait_.name(db).display_no_db().to_smolstr()).clone_for_update();
+                make::ty(&trait_.name(db).display_no_db(edition).to_smolstr()).clone_for_update();
             transform_impl(ctx, ast_strukt, &old_impl, &transform_args, path_type.syntax())?;
 
             // 3) Generate delegate trait impl
@@ -578,7 +595,7 @@ fn resolve_name_conflicts(
 
             for old_strukt_param in old_strukt_params.generic_params() {
                 // Get old name from `strukt`
-                let mut name = SmolStr::from(match &old_strukt_param {
+                let name = SmolStr::from(match &old_strukt_param {
                     ast::GenericParam::ConstParam(c) => c.name()?.to_string(),
                     ast::GenericParam::LifetimeParam(l) => {
                         l.lifetime()?.lifetime_ident_token()?.to_string()
@@ -587,8 +604,19 @@ fn resolve_name_conflicts(
                 });
 
                 // The new name cannot be conflicted with generics in trait, and the renamed names.
-                name = suggest_name::for_unique_generic_name(&name, old_impl_params);
-                name = suggest_name::for_unique_generic_name(&name, &params);
+                let param_list_to_names = |param_list: &GenericParamList| {
+                    param_list.generic_params().flat_map(|param| match param {
+                        ast::GenericParam::TypeParam(t) => t.name().map(|name| name.to_string()),
+                        p => Some(p.to_string()),
+                    })
+                };
+                let existing_names = param_list_to_names(old_impl_params)
+                    .chain(param_list_to_names(&params))
+                    .collect_vec();
+                let mut name_generator = suggest_name::NameGenerator::new_with_names(
+                    existing_names.iter().map(|s| s.as_str()),
+                );
+                let name = name_generator.suggest_name(&name);
                 match old_strukt_param {
                     ast::GenericParam::ConstParam(c) => {
                         if let Some(const_ty) = c.ty() {
@@ -723,7 +751,7 @@ fn func_assoc_item(
     }
     .clone_for_update();
 
-    let body = make::block_expr(vec![], Some(call)).clone_for_update();
+    let body = make::block_expr(vec![], Some(call.into())).clone_for_update();
     let func = make::fn_(
         item.visibility(),
         item.name()?,
@@ -735,6 +763,7 @@ fn func_assoc_item(
         item.async_token().is_some(),
         item.const_token().is_some(),
         item.unsafe_token().is_some(),
+        item.gen_token().is_some(),
     )
     .clone_for_update();
 
@@ -767,7 +796,9 @@ fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Pat
 mod test {
 
     use super::*;
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_not_applicable_no_grouping,
+    };
 
     #[test]
     fn test_tuple_struct_basic() {
@@ -1206,9 +1237,9 @@ struct S<T> {
     b : B<T>,
 }
 
-impl<T0> Trait<T0> for S<T0> {
-    fn f(&self, a: T0) -> T0 {
-        <B<T0> as Trait<T0>>::f(&self.b, a)
+impl<T1> Trait<T1> for S<T1> {
+    fn f(&self, a: T1) -> T1 {
+        <B<T1> as Trait<T1>>::f(&self.b, a)
     }
 }
 "#,
@@ -1520,12 +1551,12 @@ where
     b : B<T, T1>,
 }
 
-impl<T, T2, T10> Trait<T> for S<T2, T10>
+impl<T, T2, T3> Trait<T> for S<T2, T3>
 where
-    T10: AnotherTrait
+    T3: AnotherTrait
 {
     fn f(&self, a: T) -> T {
-        <B<T2, T10> as Trait<T>>::f(&self.b, a)
+        <B<T2, T3> as Trait<T>>::f(&self.b, a)
     }
 }"#,
         );
@@ -1582,12 +1613,12 @@ where
     b : B<T>,
 }
 
-impl<T, T0> Trait<T> for S<T0>
+impl<T, T2> Trait<T> for S<T2>
 where
-    T0: AnotherTrait
+    T2: AnotherTrait
 {
     fn f(&self, a: T) -> T {
-        <B<T0> as Trait<T>>::f(&self.b, a)
+        <B<T2> as Trait<T>>::f(&self.b, a)
     }
 }"#,
         );
@@ -1775,6 +1806,71 @@ impl T for B {
     fn f(&self, a: bool) {
         <A as T>::f(&self.a, a)
     }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn assoc_items_attributes_mutably_cloned() {
+        check_assist(
+            generate_delegate_trait,
+            r#"
+pub struct A;
+pub trait C<D> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D;
+}
+
+pub struct B<T: C<A>> {
+    has_dr$0ain: T,
+}
+"#,
+            r#"
+pub struct A;
+pub trait C<D> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D;
+}
+
+pub struct B<T: C<A>> {
+    has_drain: T,
+}
+
+impl<D, T: C<A>> C<D> for B<T> {
+    #[allow(clippy::dead_code)]
+    fn a_funk(&self) -> &D {
+        <T as C<D>>::a_funk(&self.has_drain)
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn delegate_trait_skipped_when_no_grouping() {
+        check_assist_not_applicable_no_grouping(
+            generate_delegate_trait,
+            r#"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a$0 : A,
 }
 "#,
         );

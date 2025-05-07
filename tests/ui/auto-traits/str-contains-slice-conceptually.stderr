@@ -2,7 +2,7 @@ error[E0277]: the trait bound `[u8]: AutoTrait` is not satisfied in `str`
   --> $DIR/str-contains-slice-conceptually.rs:11:22
    |
 LL |   needs_auto_trait::<str>();
-   |                      ^^^ within `str`, the trait `AutoTrait` is not implemented for `[u8]`, which is required by `str: AutoTrait`
+   |                      ^^^ within `str`, the trait `AutoTrait` is not implemented for `[u8]`
    |
    = note: `str` is considered to contain a `[u8]` slice for auto trait purposes
 note: required by a bound in `needs_auto_trait`

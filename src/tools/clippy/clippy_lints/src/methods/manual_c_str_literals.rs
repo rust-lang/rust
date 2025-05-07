@@ -1,12 +1,13 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node, QPath, TyKind};
 use rustc_lint::LateContext;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::edition::Edition::Edition2021;
+use rustc_span::{Span, Symbol, sym};
 
 use super::MANUAL_C_STR_LITERALS;
 
@@ -21,16 +22,17 @@ pub(super) fn check_as_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     receiver: &'tcx Expr<'tcx>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let ExprKind::Lit(lit) = receiver.kind
         && let LitKind::ByteStr(_, StrStyle::Cooked) | LitKind::Str(_, StrStyle::Cooked) = lit.node
+        && cx.tcx.sess.edition() >= Edition2021
         && let casts_removed = peel_ptr_cast_ancestors(cx, expr)
         && !get_parent_expr(cx, casts_removed).is_some_and(
             |parent| matches!(parent.kind, ExprKind::Call(func, _) if is_c_str_function(cx, func).is_some()),
         )
         && let Some(sugg) = rewrite_as_cstr(cx, lit.span)
-        && msrv.meets(msrvs::C_STR_LITERALS)
+        && msrv.meets(cx, msrvs::C_STR_LITERALS)
     {
         span_lint_and_sugg(
             cx,
@@ -63,10 +65,11 @@ fn is_c_str_function(cx: &LateContext<'_>, func: &Expr<'_>) -> Option<Symbol> {
 /// - `CStr::from_bytes_with_nul(..)`
 /// - `CStr::from_bytes_with_nul_unchecked(..)`
 /// - `CStr::from_ptr(..)`
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args: &[Expr<'_>], msrv: &Msrv) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args: &[Expr<'_>], msrv: Msrv) {
     if let Some(fn_name) = is_c_str_function(cx, func)
         && let [arg] = args
-        && msrv.meets(msrvs::C_STR_LITERALS)
+        && cx.tcx.sess.edition() >= Edition2021
+        && msrv.meets(cx, msrvs::C_STR_LITERALS)
     {
         match fn_name.as_str() {
             name @ ("from_bytes_with_nul" | "from_bytes_with_nul_unchecked")
@@ -84,7 +87,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args
 
 /// Checks `CStr::from_ptr(b"foo\0".as_ptr().cast())`
 fn check_from_ptr(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) {
-    if let ExprKind::MethodCall(method, lit, ..) = peel_ptr_cast(arg).kind
+    if let ExprKind::MethodCall(method, lit, [], _) = peel_ptr_cast(arg).kind
         && method.ident.name == sym::as_ptr
         && !lit.span.from_expansion()
         && let ExprKind::Lit(lit) = lit.kind
@@ -184,7 +187,7 @@ fn peel_ptr_cast<'tcx>(e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
 ///      ^ given this `x` expression, returns the `foo(...)` expression
 fn peel_ptr_cast_ancestors<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     let mut prev = e;
-    for (_, node) in cx.tcx.hir().parent_iter(e.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(e.hir_id) {
         if let Node::Expr(e) = node
             && get_cast_target(e).is_some()
         {

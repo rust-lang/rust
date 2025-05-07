@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `fake_crate`
-  --> $DIR/use-meta-mismatch.rs:3:1
+  --> $DIR/use-meta-mismatch.rs:1:1
    |
 LL | extern crate fake_crate as extra;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't find crate

@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![deny(clippy::if_not_else)]
 
 fn show_permissions(flags: u32) {

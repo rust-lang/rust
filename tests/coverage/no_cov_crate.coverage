@@ -1,5 +1,7 @@
-   LL|       |// Enables `coverage(off)` on the entire crate
    LL|       |#![feature(coverage_attribute)]
+   LL|       |// Enables `coverage(off)` on the entire crate
+   LL|       |//@ reference: attributes.coverage.intro
+   LL|       |//@ reference: attributes.coverage.nesting
    LL|       |
    LL|       |#[coverage(off)]
    LL|       |fn do_not_add_coverage_1() {
@@ -76,12 +78,12 @@
    LL|       |
    LL|      1|fn main() {
    LL|      1|    let is_true = std::env::args().len() == 1;
-   LL|      1|
+   LL|       |
    LL|      1|    do_not_add_coverage_1();
    LL|      1|    do_not_add_coverage_2();
    LL|      1|    add_coverage_1();
    LL|      1|    add_coverage_2();
-   LL|      1|
+   LL|       |
    LL|      1|    nested_fns::outer_not_covered(is_true);
    LL|      1|    nested_fns::outer(is_true);
    LL|      1|    nested_fns::outer_both_covered(is_true);

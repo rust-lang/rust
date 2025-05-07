@@ -1,7 +1,6 @@
 //@ check-pass
 #![allow(dead_code)]
 #![allow(non_snake_case)]
-//@ pretty-expanded FIXME #23616
 
 fn Matrix4<T>(m11: T, m12: T, m13: T, m14: T,
               m21: T, m22: T, m23: T, m24: T,

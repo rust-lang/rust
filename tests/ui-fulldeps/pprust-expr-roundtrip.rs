@@ -1,5 +1,7 @@
 //@ run-pass
 //@ ignore-cross-compile
+//@ aux-crate: parser=parser.rs
+//@ edition: 2021
 
 // The general idea of this test is to enumerate all "interesting" expressions and check that
 // `parse(print(e)) == e` for all `e`. Here's what's interesting, for the purposes of this test:
@@ -21,7 +23,6 @@
 
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
-extern crate rustc_data_structures;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
@@ -32,27 +33,16 @@ extern crate thin_vec;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 
+use parser::parse_expr;
 use rustc_ast::mut_visit::{visit_clobber, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
-use rustc_parse::{new_parser_from_source_str, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::{FileName, DUMMY_SP};
+use rustc_span::DUMMY_SP;
 use thin_vec::{thin_vec, ThinVec};
-
-fn parse_expr(psess: &ParseSess, src: &str) -> Option<P<Expr>> {
-    let src_as_string = src.to_string();
-
-    let mut p = unwrap_or_emit_fatal(new_parser_from_source_str(
-        psess,
-        FileName::Custom(src_as_string.clone()),
-        src_as_string,
-    ));
-    p.parse_expr().map_err(|e| e.cancel()).ok()
-}
 
 // Helper functions for building exprs
 fn expr(kind: ExprKind) -> P<Expr> {
@@ -124,7 +114,6 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                     rules: BlockCheckMode::Default,
                     span: DUMMY_SP,
                     tokens: None,
-                    could_be_bare_literal: false,
                 });
                 iter_exprs(depth - 1, &mut |e| g(ExprKind::If(e, block.clone(), None)));
             }

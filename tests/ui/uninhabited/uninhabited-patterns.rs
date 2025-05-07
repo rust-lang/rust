@@ -1,3 +1,4 @@
+#![feature(exhaustive_patterns)]
 #![feature(box_patterns)]
 #![feature(never_type)]
 #![deny(unreachable_patterns)]

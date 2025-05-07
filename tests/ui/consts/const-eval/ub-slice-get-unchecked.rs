@@ -1,7 +1,5 @@
 //@ known-bug: #110395
 
-#![feature(const_slice_index)]
-
 const A: [(); 5] = [(), (), (), (), ()];
 
 // Since the indexing is on a ZST, the addresses are all fine,

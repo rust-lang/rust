@@ -26,15 +26,15 @@ fn foo(_1: T, _2: i32) -> i32 {
         _4 = &_3;
         StorageLive(_5);
         StorageLive(_6);
-        _6 = _2;
+        _6 = copy _2;
         StorageLive(_7);
-        _7 = _2;
+        _7 = copy _2;
         _5 = (move _6, move _7);
         StorageLive(_8);
         _8 = move (_5.0: i32);
         StorageLive(_9);
         _9 = move (_5.1: i32);
-        _0 = _8;
+        _0 = copy _8;
         StorageDead(_9);
         StorageDead(_8);
         StorageDead(_7);

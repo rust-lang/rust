@@ -1,4 +1,4 @@
-//@ ignore-test: this is not a test
+//@ ignore-auxiliary (used by `./main.rs`)
 
 #[inline]
 pub fn some_aux_mod_function() -> i32 {

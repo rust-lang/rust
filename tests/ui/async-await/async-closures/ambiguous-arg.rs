@@ -3,8 +3,6 @@
 // Regression test for #123901. We previously ICE'd as we silently
 // swallowed an in the `ExprUseVisitor`.
 
-#![feature(async_closure)]
-
 pub fn test(test: &u64, temp: &u64) {
     async |check, a, b| {
         //~^ ERROR type annotations needed

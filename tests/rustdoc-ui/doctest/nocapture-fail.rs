@@ -1,8 +1,8 @@
 //@ check-pass
 //@ compile-flags:--test -Zunstable-options --nocapture
-//@ normalize-stderr-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stderr: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 /// ```compile_fail
 /// fn foo() {

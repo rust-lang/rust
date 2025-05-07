@@ -61,6 +61,22 @@ fn debug() {
     println!("{:?}", array);
 }
 
+fn huge_zst() {
+    fn id<T>(x: T) -> T {
+        x
+    }
+
+    // A "huge" zero-sized array. Make sure we don't loop over it in any part of Miri.
+    let val = [(); usize::MAX];
+    id(val); // make a copy
+
+    let val = [val; 2];
+    id(val);
+
+    // Also wrap it in a union (which, in particular, hits the logic for computing union padding).
+    let _copy = std::mem::MaybeUninit::new(val);
+}
+
 fn main() {
     assert_eq!(empty_array(), []);
     assert_eq!(index_unsafe(), 20);
@@ -73,4 +89,5 @@ fn main() {
     from();
     eq();
     debug();
+    huge_zst();
 }

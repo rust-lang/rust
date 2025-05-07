@@ -11,7 +11,7 @@ struct Bar<'lt>(Foo<'lt>);
 
 #[cfg(not_static)]
 impl<'any> Copy for Bar<'any> {}
-//[not_static]~^ the trait `Copy` cannot be implemented for this type
+//[not_static]~^ ERROR the trait `Copy` cannot be implemented for this type
 
 #[cfg(yes_static)]
 impl<'any> Copy for Bar<'static> {}

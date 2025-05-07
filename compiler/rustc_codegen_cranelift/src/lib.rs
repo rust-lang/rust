@@ -12,10 +12,9 @@
 #![warn(unused_lifetimes)]
 // tidy-alphabetical-end
 
-extern crate ar_archive_writer;
-extern crate jobserver;
 #[macro_use]
 extern crate rustc_middle;
+extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
@@ -27,27 +26,28 @@ extern crate rustc_index;
 extern crate rustc_metadata;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
 extern crate rustc_target;
+#[macro_use]
+extern crate tracing;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 
 use std::any::Any;
-use std::cell::{Cell, RefCell};
+use std::env;
 use std::sync::Arc;
 
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::CodegenResults;
-use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_errors::ErrorGuaranteed;
+use rustc_codegen_ssa::{CodegenResults, TargetConfig};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
-use rustc_span::{sym, Symbol};
+use rustc_session::config::OutputFilenames;
+use rustc_span::{Symbol, sym};
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -55,7 +55,6 @@ use crate::prelude::*;
 mod abi;
 mod allocator;
 mod analyze;
-mod archive;
 mod base;
 mod cast;
 mod codegen_i128;
@@ -84,24 +83,24 @@ mod value_and_place;
 mod vtable;
 
 mod prelude {
+    pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::{
-        types, AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc,
-        StackSlot, StackSlotData, StackSlotKind, TrapCode, Type, Value,
+        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
+        StackSlotData, StackSlotKind, TrapCode, Type, Value, types,
     };
-    pub(crate) use cranelift_codegen::Context;
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};
+    pub(crate) use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Scalar, Size, VariantIdx};
     pub(crate) use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
     pub(crate) use rustc_hir::def_id::{DefId, LOCAL_CRATE};
     pub(crate) use rustc_index::Idx;
     pub(crate) use rustc_middle::mir::{self, *};
     pub(crate) use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
     pub(crate) use rustc_middle::ty::{
-        self, FloatTy, Instance, InstanceKind, IntTy, ParamEnv, Ty, TyCtxt, UintTy,
+        self, FloatTy, Instance, InstanceKind, IntTy, Ty, TyCtxt, UintTy,
     };
     pub(crate) use rustc_span::Span;
-    pub(crate) use rustc_target::abi::{Abi, FieldIdx, Scalar, Size, VariantIdx, FIRST_VARIANT};
 
     pub(crate) use crate::abi::*;
     pub(crate) use crate::base::{codegen_operand, codegen_place};
@@ -124,11 +123,11 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 /// The codegen context holds any information shared between the codegen of individual functions
 /// inside a single codegen unit with the exception of the Cranelift [`Module`](cranelift_module::Module).
 struct CodegenCx {
-    profiler: SelfProfilerRef,
     output_filenames: Arc<OutputFilenames>,
+    invocation_temp: Option<String>,
     should_write_ir: bool,
     global_asm: String,
-    inline_asm_index: Cell<usize>,
+    inline_asm_index: usize,
     debug_context: Option<DebugContext>,
     cgu_name: Symbol,
 }
@@ -143,11 +142,11 @@ impl CodegenCx {
             None
         };
         CodegenCx {
-            profiler: tcx.prof.clone(),
             output_filenames: tcx.output_filenames(()).clone(),
+            invocation_temp: tcx.sess.invocation_temp.clone(),
             should_write_ir: crate::pretty_clif::should_write_ir(tcx),
             global_asm: String::new(),
-            inline_asm_index: Cell::new(0),
+            inline_asm_index: 0,
             debug_context,
             cgu_name,
         }
@@ -155,7 +154,7 @@ impl CodegenCx {
 }
 
 pub struct CraneliftCodegenBackend {
-    pub config: RefCell<Option<BackendConfig>>,
+    pub config: Option<BackendConfig>,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -177,36 +176,36 @@ impl CodegenBackend for CraneliftCodegenBackend {
             sess.dcx()
                 .fatal("`-Cinstrument-coverage` is LLVM specific and not supported by Cranelift");
         }
-
-        let mut config = self.config.borrow_mut();
-        if config.is_none() {
-            let new_config = BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.dcx().fatal(err));
-            *config = Some(new_config);
-        }
     }
 
-    fn target_features(&self, sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
+    fn target_config(&self, sess: &Session) -> TargetConfig {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
-        if sess.target.arch == "x86_64" && sess.target.os != "none" {
-            // x86_64 mandates SSE2 support
-            vec![Symbol::intern("fxsr"), sym::sse, Symbol::intern("sse2")]
+        let target_features = if sess.target.arch == "x86_64" && sess.target.os != "none" {
+            // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
+            vec![sym::fsxr, sym::sse, sym::sse2, Symbol::intern("x87")]
         } else if sess.target.arch == "aarch64" {
             match &*sess.target.os {
                 "none" => vec![],
                 // On macOS the aes, sha2 and sha3 features are enabled by default and ring
                 // fails to compile on macOS when they are not present.
-                "macos" => vec![
-                    sym::neon,
-                    Symbol::intern("aes"),
-                    Symbol::intern("sha2"),
-                    Symbol::intern("sha3"),
-                ],
+                "macos" => vec![sym::neon, sym::aes, sym::sha2, sym::sha3],
                 // AArch64 mandates Neon support
                 _ => vec![sym::neon],
             }
         } else {
             vec![]
+        };
+        // FIXME do `unstable_target_features` properly
+        let unstable_target_features = target_features.clone();
+
+        TargetConfig {
+            target_features,
+            unstable_target_features,
+            // Cranelift does not yet support f16 or f128
+            has_reliable_f16: false,
+            has_reliable_f16_math: false,
+            has_reliable_f128: false,
+            has_reliable_f128_math: false,
         }
     }
 
@@ -220,17 +219,19 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        tcx.dcx().abort_if_errors();
-        let config = self.config.borrow().clone().unwrap();
-        match config.codegen_mode {
-            CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
-            CodegenMode::Jit | CodegenMode::JitLazy => {
-                #[cfg(feature = "jit")]
-                driver::jit::run_jit(tcx, config);
+        info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
+        let config = self.config.clone().unwrap_or_else(|| {
+            BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
+                .unwrap_or_else(|err| tcx.sess.dcx().fatal(err))
+        });
+        if config.jit_mode {
+            #[cfg(feature = "jit")]
+            driver::jit::run_jit(tcx, config.jit_args);
 
-                #[cfg(not(feature = "jit"))]
-                tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
-            }
+            #[cfg(not(feature = "jit"))]
+            tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+        } else {
+            driver::aot::run_aot(tcx, metadata, need_metadata_module)
         }
     }
 
@@ -240,23 +241,18 @@ impl CodegenBackend for CraneliftCodegenBackend {
         sess: &Session,
         outputs: &OutputFilenames,
     ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
-        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(
-            sess,
-            outputs,
-            self.config.borrow().as_ref().unwrap(),
-        )
+        ongoing_codegen.downcast::<driver::aot::OngoingCodegen>().unwrap().join(sess, outputs)
     }
+}
 
-    fn link(
-        &self,
-        sess: &Session,
-        codegen_results: CodegenResults,
-        outputs: &OutputFilenames,
-    ) -> Result<(), ErrorGuaranteed> {
-        use rustc_codegen_ssa::back::link::link_binary;
-
-        link_binary(sess, &crate::archive::ArArchiveBuilderBuilder, &codegen_results, outputs)
-    }
+/// Determine if the Cranelift ir verifier should run.
+///
+/// Returns true when `-Zverify-llvm-ir` is passed, the `CG_CLIF_ENABLE_VERIFIER` env var is set to
+/// 1 or when cg_clif is compiled with debug assertions enabled or false otherwise.
+fn enable_verifier(sess: &Session) -> bool {
+    sess.verify_llvm_ir()
+        || cfg!(debug_assertions)
+        || env::var("CG_CLIF_ENABLE_VERIFIER").as_deref() == Ok("1")
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
@@ -266,14 +262,14 @@ fn target_triple(sess: &Session) -> target_lexicon::Triple {
     }
 }
 
-fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIsa + 'static> {
+fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     use target_lexicon::BinaryFormat;
 
     let target_triple = crate::target_triple(sess);
 
     let mut flags_builder = settings::builder();
-    flags_builder.enable("is_pic").unwrap();
-    let enable_verifier = if backend_config.enable_verifier { "true" } else { "false" };
+    flags_builder.set("is_pic", if jit { "false" } else { "true" }).unwrap();
+    let enable_verifier = if enable_verifier(sess) { "true" } else { "false" };
     flags_builder.set("enable_verifier", enable_verifier).unwrap();
     flags_builder.set("regalloc_checker", enable_verifier).unwrap();
 
@@ -299,10 +295,23 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
         OptLevel::No => {
             flags_builder.set("opt_level", "none").unwrap();
         }
-        OptLevel::Less | OptLevel::Default => {}
-        OptLevel::Size | OptLevel::SizeMin | OptLevel::Aggressive => {
+        OptLevel::Less
+        | OptLevel::More
+        | OptLevel::Size
+        | OptLevel::SizeMin
+        | OptLevel::Aggressive => {
             flags_builder.set("opt_level", "speed_and_size").unwrap();
         }
+    }
+
+    if let target_lexicon::OperatingSystem::Windows = target_triple.operating_system {
+        // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
+        flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
+    }
+
+    if let target_lexicon::Architecture::S390x = target_triple.architecture {
+        // FIXME remove dependency on this from the Rust ABI. cc bytecodealliance/wasmtime#9510
+        flags_builder.enable("enable_multi_ret_implicit_sret").unwrap();
     }
 
     if let target_lexicon::Architecture::Aarch64(_)
@@ -357,5 +366,5 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn TargetIs
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
-    Box::new(CraneliftCodegenBackend { config: RefCell::new(None) })
+    Box::new(CraneliftCodegenBackend { config: None })
 }

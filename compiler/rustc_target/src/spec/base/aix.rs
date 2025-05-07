@@ -1,10 +1,13 @@
-use crate::abi::Endian;
-use crate::spec::{crt_objects, cvs, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions};
+use rustc_abi::Endian;
 
-pub fn opts() -> TargetOptions {
+use crate::spec::{
+    BinaryFormat, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, crt_objects, cvs,
+};
+
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         abi: "vec-extabi".into(),
-        code_model: Some(CodeModel::Small),
+        code_model: Some(CodeModel::Large),
         cpu: "pwr7".into(),
         os: "aix".into(),
         vendor: "ibm".into(),
@@ -20,6 +23,7 @@ pub fn opts() -> TargetOptions {
         linker: Some("ld".into()),
         eh_frame_header: false,
         is_like_aix: true,
+        binary_format: BinaryFormat::Xcoff,
         default_dwarf_version: 3,
         function_sections: true,
         pre_link_objects: crt_objects::new(&[

@@ -1,6 +1,6 @@
 //! We test that if we requested to read 4 bytes, but actually read 3 bytes,
 //! then 3 bytes (not 4) will be initialized.
-//@ignore-target-windows: no file system support on Windows
+//@ignore-target: windows # no file system support on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
 use std::ffi::CString;

@@ -9,7 +9,6 @@
 // winnowing stage of method resolution failed to handle an associated
 // type projection.
 
-//@ pretty-expanded FIXME #23616
 
 #![feature(associated_types)]
 

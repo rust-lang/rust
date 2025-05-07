@@ -1,10 +1,10 @@
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use clap::Parser;
 use fs_err as fs;
-use rustdoc_json_types::{Crate, Id, FORMAT_VERSION};
+use rustdoc_json_types::{Crate, FORMAT_VERSION, Id};
 use serde::Serialize;
 use serde_json::Value;
 

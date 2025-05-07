@@ -1,0 +1,22 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/feature-gate-min-generic-const-args.rs:8:29
+   |
+LL | fn foo<T: Trait>() -> [u8; <T as Trait>::ASSOC] {
+   |                             ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error[E0658]: the `#[type_const]` attribute is an experimental feature
+  --> $DIR/feature-gate-min-generic-const-args.rs:2:5
+   |
+LL |     #[type_const]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,46 +1,53 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
 
-use std::{hash::Hash, iter};
+use std::iter;
 
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::{
-    fold::{FallibleTypeFolder, Shift},
     DebruijnIndex,
+    fold::{FallibleTypeFolder, Shift},
 };
 use hir_def::{
+    EnumId, EnumVariantId, FunctionId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId,
     db::DefDatabase,
-    generics::{WherePredicate, WherePredicateTypeTarget},
+    hir::generics::WherePredicate,
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    EnumId, EnumVariantId, FunctionId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId,
-    TypeOrConstParamId,
 };
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
+use span::Edition;
 use stdx::never;
 
 use crate::{
+    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TargetFeatures, TraitRef,
+    TraitRefExt, Ty, WhereClause,
     consteval::unknown_const,
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     mir::pad16,
-    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TraitRef, TraitRefExt,
-    Ty, WhereClause,
 };
 
-pub(crate) fn fn_traits(
-    db: &dyn DefDatabase,
-    krate: CrateId,
-) -> impl Iterator<Item = TraitId> + '_ {
+pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: Crate) -> impl Iterator<Item = TraitId> + '_ {
     [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce]
         .into_iter()
-        .filter_map(move |lang| db.lang_item(krate, lang))
-        .flat_map(|it| it.as_trait())
+        .filter_map(move |lang| lang.resolve_trait(db, krate))
+}
+
+/// Returns an iterator over the direct super traits (including the trait itself).
+pub fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[TraitId; 4]> {
+    let mut result = smallvec![trait_];
+    direct_super_traits_cb(db, trait_, |tt| {
+        if !result.contains(&tt) {
+            result.push(tt);
+        }
+    });
+    result
 }
 
 /// Returns an iterator over the whole super trait hierarchy (including the
@@ -54,7 +61,7 @@ pub fn all_super_traits(db: &dyn DefDatabase, trait_: TraitId) -> SmallVec<[Trai
     while let Some(&t) = result.get(i) {
         // yeah this is quadratic, but trait hierarchies should be flat
         // enough that this doesn't matter
-        direct_super_traits(db, t, |tt| {
+        direct_super_traits_cb(db, t, |tt| {
             if !result.contains(&tt) {
                 result.push(tt);
             }
@@ -123,7 +130,7 @@ pub(super) struct ClauseElaborator<'a> {
     seen: FxHashSet<WhereClause>,
 }
 
-impl<'a> ClauseElaborator<'a> {
+impl ClauseElaborator<'_> {
     fn extend_deduped(&mut self, clauses: impl IntoIterator<Item = WhereClause>) {
         self.stack.extend(clauses.into_iter().filter(|c| self.seen.insert(c.clone())))
     }
@@ -153,26 +160,22 @@ impl Iterator for ClauseElaborator<'_> {
     }
 }
 
-fn direct_super_traits(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
+fn direct_super_traits_cb(db: &dyn DefDatabase, trait_: TraitId, cb: impl FnMut(TraitId)) {
     let resolver = trait_.resolver(db);
-    let generic_params = db.generic_params(trait_.into());
+    let (generic_params, store) = db.generic_params_and_store(trait_.into());
     let trait_self = generic_params.trait_self_param();
     generic_params
         .where_predicates()
         .filter_map(|pred| match pred {
             WherePredicate::ForLifetime { target, bound, .. }
             | WherePredicate::TypeBound { target, bound } => {
-                let is_trait = match target {
-                    WherePredicateTypeTarget::TypeRef(type_ref) => match &**type_ref {
-                        TypeRef::Path(p) => p.is_self_type(),
-                        _ => false,
-                    },
-                    WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
-                        Some(*local_id) == trait_self
-                    }
+                let is_trait = match &store[*target] {
+                    TypeRef::Path(p) => p.is_self_type(),
+                    TypeRef::TypeParam(p) => Some(p.local_id()) == trait_self,
+                    _ => false,
                 };
                 match is_trait {
-                    true => bound.as_path(),
+                    true => bound.as_path(&store),
                     false => None,
                 }
             }
@@ -215,14 +218,14 @@ pub(super) fn associated_type_by_name_including_super_traits(
     name: &Name,
 ) -> Option<(TraitRef, TypeAliasId)> {
     all_super_trait_refs(db, trait_ref, |t| {
-        let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
+        let assoc_type = db.trait_items(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
 }
 
 /// It is a bit different from the rustc equivalent. Currently it stores:
-/// - 0: the function signature, encoded as a function pointer type
-/// - 1..n: generics of the parent
+/// - 0..n-1: generics of the parent
+/// - n: the function signature, encoded as a function pointer type
 ///
 /// and it doesn't store the closure types and fields.
 ///
@@ -233,7 +236,7 @@ pub(crate) struct ClosureSubst<'a>(pub(crate) &'a Substitution);
 impl<'a> ClosureSubst<'a> {
     pub(crate) fn parent_subst(&self) -> &'a [GenericArg] {
         match self.0.as_slice(Interner) {
-            [_, x @ ..] => x,
+            [x @ .., _] => x,
             _ => {
                 never!("Closure missing parameter");
                 &[]
@@ -243,7 +246,7 @@ impl<'a> ClosureSubst<'a> {
 
     pub(crate) fn sig_ty(&self) -> &'a Ty {
         match self.0.as_slice(Interner) {
-            [x, ..] => x.assert_ty_ref(Interner),
+            [.., x] => x.assert_ty_ref(Interner),
             _ => {
                 unreachable!("Closure missing sig_ty parameter");
             }
@@ -251,30 +254,63 @@ impl<'a> ClosureSubst<'a> {
     }
 }
 
-pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
-    let data = db.function_data(func);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Unsafety {
+    Safe,
+    Unsafe,
+    /// A lint.
+    DeprecatedSafe2024,
+}
+
+pub fn is_fn_unsafe_to_call(
+    db: &dyn HirDatabase,
+    func: FunctionId,
+    caller_target_features: &TargetFeatures,
+    call_edition: Edition,
+) -> Unsafety {
+    let data = db.function_signature(func);
     if data.is_unsafe() {
-        return true;
+        return Unsafety::Unsafe;
     }
 
-    match func.lookup(db.upcast()).container {
+    if data.has_target_feature() {
+        // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
+        let callee_target_features =
+            TargetFeatures::from_attrs_no_implications(&db.attrs(func.into()));
+        if !caller_target_features.enabled.is_superset(&callee_target_features.enabled) {
+            return Unsafety::Unsafe;
+        }
+    }
+
+    if data.is_deprecated_safe_2024() {
+        if call_edition.at_least_2024() {
+            return Unsafety::Unsafe;
+        } else {
+            return Unsafety::DeprecatedSafe2024;
+        }
+    }
+
+    let loc = func.lookup(db);
+    match loc.container {
         hir_def::ItemContainerId::ExternBlockId(block) => {
-            // Function in an `extern` block are always unsafe to call, except when it has
-            // `"rust-intrinsic"` ABI there are a few exceptions.
-            let id = block.lookup(db.upcast()).id;
-
-            let is_intrinsic =
-                id.item_tree(db.upcast())[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
-
-            if is_intrinsic {
-                // Intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                !data.attrs.by_key(&sym::rustc_safe_intrinsic).exists()
+            let id = block.lookup(db).id;
+            let is_intrinsic_block =
+                id.item_tree(db)[id.value].abi.as_ref() == Some(&sym::rust_dash_intrinsic);
+            if is_intrinsic_block {
+                // legacy intrinsics
+                // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
+                if db.attrs(func.into()).by_key(sym::rustc_safe_intrinsic).exists() {
+                    Unsafety::Safe
+                } else {
+                    Unsafety::Unsafe
+                }
             } else {
-                // Extern items are always unsafe
-                true
+                // Function in an `extern` block are always unsafe to call, except when
+                // it is marked as `safe`.
+                if data.is_safe() { Unsafety::Safe } else { Unsafety::Unsafe }
             }
         }
-        _ => false,
+        _ => Unsafety::Safe,
     }
 }
 
@@ -319,8 +355,9 @@ pub(crate) fn detect_variant_from_bytes<'a>(
     e: EnumId,
 ) -> Option<(EnumVariantId, &'a Layout)> {
     let (var_id, var_layout) = match &layout.variants {
+        hir_def::layout::Variants::Empty => unreachable!(),
         hir_def::layout::Variants::Single { index } => {
-            (db.enum_data(e).variants[index.0].0, layout)
+            (db.enum_variants(e).variants[index.0].0, layout)
         }
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
             let size = tag.size(target_data_layout).bytes_usize();
@@ -330,7 +367,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
                 TagEncoding::Direct => {
                     let (var_idx, layout) =
                         variants.iter_enumerated().find_map(|(var_idx, v)| {
-                            let def = db.enum_data(e).variants[var_idx.0].0;
+                            let def = db.enum_variants(e).variants[var_idx.0].0;
                             (db.const_eval_discriminant(def) == Ok(tag)).then_some((def, v))
                         })?;
                     (var_idx, layout)
@@ -343,35 +380,10 @@ pub(crate) fn detect_variant_from_bytes<'a>(
                         .filter(|x| x != untagged_variant)
                         .nth(candidate_tag)
                         .unwrap_or(*untagged_variant);
-                    (db.enum_data(e).variants[variant.0].0, &variants[variant])
+                    (db.enum_variants(e).variants[variant.0].0, &variants[variant])
                 }
             }
         }
     };
     Some((var_id, var_layout))
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct InTypeConstIdMetadata(pub(crate) Ty);
-
-impl OpaqueInternableThing for InTypeConstIdMetadata {
-    fn dyn_hash(&self, mut state: &mut dyn std::hash::Hasher) {
-        self.hash(&mut state);
-    }
-
-    fn dyn_eq(&self, other: &dyn OpaqueInternableThing) -> bool {
-        other.as_any().downcast_ref::<Self>().map_or(false, |x| self == x)
-    }
-
-    fn dyn_clone(&self) -> Box<dyn OpaqueInternableThing> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn box_any(&self) -> Box<dyn std::any::Any> {
-        Box::new(self.clone())
-    }
 }

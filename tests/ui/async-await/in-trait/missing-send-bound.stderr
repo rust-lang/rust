@@ -4,7 +4,7 @@ error: future cannot be sent between threads safely
 LL |     assert_is_send(test::<T>());
    |                    ^^^^^^^^^^^ future returned by `test` is not `Send`
    |
-   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `impl Future<Output = ()>`, which is required by `impl Future<Output = ()>: Send`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `impl Future<Output = ()>`
 note: future is not `Send` as it awaits another future which is not `Send`
   --> $DIR/missing-send-bound.rs:9:5
    |

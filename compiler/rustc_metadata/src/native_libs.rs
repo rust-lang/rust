@@ -1,10 +1,13 @@
-use std::path::PathBuf;
+use std::ops::ControlFlow;
+use std::path::{Path, PathBuf};
 
-use rustc_ast::{NestedMetaItem, CRATE_NODE_ID};
-use rustc_attr as attr;
+use rustc_abi::ExternAbi;
+use rustc_ast::CRATE_NODE_ID;
+use rustc_attr_parsing as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::{List, ParamEnv, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, List, Ty, TyCtxt};
+use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{
     DllCallingConvention, DllImport, ForeignModule, NativeLib, PeImportNameType,
@@ -12,34 +15,145 @@ use rustc_session::cstore::{
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
-use rustc_session::Session;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_target::spec::abi::Abi;
+use rustc_span::{Symbol, sym};
+use rustc_target::spec::{BinaryFormat, LinkSelfContainedComponents};
 
 use crate::{errors, fluent_generated};
 
-pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
-    let formats = if verbatim {
-        vec![("".into(), "".into())]
-    } else {
-        let os = (sess.target.staticlib_prefix.clone(), sess.target.staticlib_suffix.clone());
-        // On Windows, static libraries sometimes show up as libfoo.a and other
-        // times show up as foo.lib
-        let unix = ("lib".into(), ".a".into());
-        if os == unix { vec![os] } else { vec![os, unix] }
-    };
+/// The fallback directories are passed to linker, but not used when rustc does the search,
+/// because in the latter case the set of fallback directories cannot always be determined
+/// consistently at the moment.
+pub struct NativeLibSearchFallback<'a> {
+    pub self_contained_components: LinkSelfContainedComponents,
+    pub apple_sdk_root: Option<&'a Path>,
+}
 
-    for path in sess.target_filesearch(PathKind::Native).search_paths() {
-        for (prefix, suffix) in &formats {
-            let test = path.dir.join(format!("{prefix}{name}{suffix}"));
-            if test.exists() {
-                return test;
-            }
+pub fn walk_native_lib_search_dirs<R>(
+    sess: &Session,
+    fallback: Option<NativeLibSearchFallback<'_>>,
+    mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
+) -> ControlFlow<R> {
+    // Library search paths explicitly supplied by user (`-L` on the command line).
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Native) {
+        f(&search_path.dir, false)?;
+    }
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Framework) {
+        // Frameworks are looked up strictly in framework-specific paths.
+        if search_path.kind != PathKind::All {
+            f(&search_path.dir, true)?;
         }
     }
 
-    sess.dcx().emit_fatal(errors::MissingNativeLibrary::new(name, verbatim));
+    let Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root }) = fallback
+    else {
+        return ControlFlow::Continue(());
+    };
+
+    // The toolchain ships some native library components and self-contained linking was enabled.
+    // Add the self-contained library directory to search paths.
+    if self_contained_components.intersects(
+        LinkSelfContainedComponents::LIBC
+            | LinkSelfContainedComponents::UNWIND
+            | LinkSelfContainedComponents::MINGW,
+    ) {
+        f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
+    }
+
+    // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
+    // library directory instead of the self-contained directories.
+    // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
+    // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
+    // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
+    // and sanitizers to self-contained directory, and stop adding this search path.
+    // FIXME: On AIX this also has the side-effect of making the list of library search paths
+    // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
+    // defined, as the search path instead of appending the default search paths.
+    if sess.target.vendor == "fortanix"
+        || sess.target.os == "linux"
+        || sess.target.os == "fuchsia"
+        || sess.target.is_like_aix
+        || sess.target.is_like_darwin && !sess.opts.unstable_opts.sanitizer.is_empty()
+    {
+        f(&sess.target_tlib_path.dir, false)?;
+    }
+
+    // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
+    // we must have the support library stubs in the library search path (#121430).
+    if let Some(sdk_root) = apple_sdk_root
+        && sess.target.llvm_target.contains("macabi")
+    {
+        f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
+        f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
+    }
+
+    ControlFlow::Continue(())
+}
+
+pub fn try_find_native_static_library(
+    sess: &Session,
+    name: &str,
+    verbatim: bool,
+) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
+    let formats = if verbatim {
+        vec![default]
+    } else {
+        // On Windows, static libraries sometimes show up as libfoo.a and other
+        // times show up as foo.lib
+        let unix = ("lib", ".a");
+        if default == unix { vec![default] } else { vec![default, unix] }
+    };
+
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    })
+    .break_value()
+}
+
+pub fn try_find_native_dynamic_library(
+    sess: &Session,
+    name: &str,
+    verbatim: bool,
+) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
+    let formats = if verbatim {
+        vec![default]
+    } else {
+        // While the official naming convention for MSVC import libraries
+        // is foo.lib, Meson follows the libfoo.dll.a convention to
+        // disambiguate .a for static libraries
+        let meson = ("lib", ".dll.a");
+        // and MinGW uses .a altogether
+        let mingw = ("lib", ".a");
+        vec![default, meson, mingw]
+    };
+
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    })
+    .break_value()
+}
+
+pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
+    try_find_native_static_library(sess, name, verbatim)
+        .unwrap_or_else(|| sess.dcx().emit_fatal(errors::MissingNativeLibrary::new(name, verbatim)))
 }
 
 fn find_bundled_library(
@@ -93,7 +207,7 @@ impl<'tcx> Collector<'tcx> {
 
         let sess = self.tcx.sess;
 
-        if matches!(abi, Abi::Rust | Abi::RustIntrinsic) {
+        if matches!(abi, ExternAbi::Rust) {
             return;
         }
 
@@ -112,8 +226,8 @@ impl<'tcx> Collector<'tcx> {
             let mut wasm_import_module = None;
             let mut import_name_type = None;
             for item in items.iter() {
-                match item.name_or_empty() {
-                    sym::name => {
+                match item.name() {
+                    Some(sym::name) => {
                         if name.is_some() {
                             sess.dcx().emit_err(errors::MultipleNamesInLink { span: item.span() });
                             continue;
@@ -128,7 +242,7 @@ impl<'tcx> Collector<'tcx> {
                         }
                         name = Some((link_name, span));
                     }
-                    sym::kind => {
+                    Some(sym::kind) => {
                         if kind.is_some() {
                             sess.dcx().emit_err(errors::MultipleKindsInLink { span: item.span() });
                             continue;
@@ -143,19 +257,36 @@ impl<'tcx> Collector<'tcx> {
                             "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
                             "dylib" => NativeLibKind::Dylib { as_needed: None },
                             "framework" => {
-                                if !sess.target.is_like_osx {
+                                if !sess.target.is_like_darwin {
                                     sess.dcx().emit_err(errors::LinkFrameworkApple { span });
                                 }
                                 NativeLibKind::Framework { as_needed: None }
                             }
                             "raw-dylib" => {
-                                if !sess.target.is_like_windows {
+                                if sess.target.is_like_windows {
+                                    // raw-dylib is stable and working on Windows
+                                } else if sess.target.binary_format == BinaryFormat::Elf
+                                    && features.raw_dylib_elf()
+                                {
+                                    // raw-dylib is unstable on ELF, but the user opted in
+                                } else if sess.target.binary_format == BinaryFormat::Elf
+                                    && sess.is_nightly_build()
+                                {
+                                    feature_err(
+                                        sess,
+                                        sym::raw_dylib_elf,
+                                        span,
+                                        fluent_generated::metadata_raw_dylib_elf_unstable,
+                                    )
+                                    .emit();
+                                } else {
                                     sess.dcx().emit_err(errors::RawDylibOnlyWindows { span });
                                 }
+
                                 NativeLibKind::RawDylib
                             }
                             "link-arg" => {
-                                if !features.link_arg_attribute {
+                                if !features.link_arg_attribute() {
                                     feature_err(
                                         sess,
                                         sym::link_arg_attribute,
@@ -173,7 +304,7 @@ impl<'tcx> Collector<'tcx> {
                         };
                         kind = Some(link_kind);
                     }
-                    sym::modifiers => {
+                    Some(sym::modifiers) => {
                         if modifiers.is_some() {
                             sess.dcx()
                                 .emit_err(errors::MultipleLinkModifiers { span: item.span() });
@@ -185,7 +316,7 @@ impl<'tcx> Collector<'tcx> {
                         };
                         modifiers = Some((link_modifiers, item.name_value_literal_span().unwrap()));
                     }
-                    sym::cfg => {
+                    Some(sym::cfg) => {
                         if cfg.is_some() {
                             sess.dcx().emit_err(errors::MultipleCfgs { span: item.span() });
                             continue;
@@ -194,12 +325,17 @@ impl<'tcx> Collector<'tcx> {
                             sess.dcx().emit_err(errors::LinkCfgForm { span: item.span() });
                             continue;
                         };
-                        let [NestedMetaItem::MetaItem(link_cfg)] = link_cfg else {
+                        let [link_cfg] = link_cfg else {
                             sess.dcx()
                                 .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
                             continue;
                         };
-                        if !features.link_cfg {
+                        let Some(link_cfg) = link_cfg.meta_item_or_bool() else {
+                            sess.dcx()
+                                .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
+                            continue;
+                        };
+                        if !features.link_cfg() {
                             feature_err(
                                 sess,
                                 sym::link_cfg,
@@ -210,7 +346,7 @@ impl<'tcx> Collector<'tcx> {
                         }
                         cfg = Some(link_cfg.clone());
                     }
-                    sym::wasm_import_module => {
+                    Some(sym::wasm_import_module) => {
                         if wasm_import_module.is_some() {
                             sess.dcx().emit_err(errors::MultipleWasmImport { span: item.span() });
                             continue;
@@ -221,7 +357,7 @@ impl<'tcx> Collector<'tcx> {
                         };
                         wasm_import_module = Some((link_wasm_import_module, item.span()));
                     }
-                    sym::import_name_type => {
+                    Some(sym::import_name_type) => {
                         if import_name_type.is_some() {
                             sess.dcx()
                                 .emit_err(errors::MultipleImportNameType { span: item.span() });
@@ -269,7 +405,7 @@ impl<'tcx> Collector<'tcx> {
                     };
 
                     macro report_unstable_modifier($feature: ident) {
-                        if !features.$feature {
+                        if !features.$feature() {
                             // FIXME: make this translatable
                             #[expect(rustc::untranslatable_diagnostic)]
                             feature_err(
@@ -331,7 +467,7 @@ impl<'tcx> Collector<'tcx> {
                 (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
             }
             let Some((name, name_span)) = name else {
-                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span });
+                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span() });
                 continue;
             };
 
@@ -366,7 +502,7 @@ impl<'tcx> Collector<'tcx> {
                             let link_ordinal_attr =
                                 self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
                             sess.dcx().emit_err(errors::LinkOrdinalRawDylib {
-                                span: link_ordinal_attr.span,
+                                span: link_ordinal_attr.span(),
                             });
                         }
                     }
@@ -395,7 +531,7 @@ impl<'tcx> Collector<'tcx> {
         let mut renames = FxHashSet::default();
         for lib in &self.tcx.sess.opts.libs {
             if let NativeLibKind::Framework { .. } = lib.kind
-                && !self.tcx.sess.target.is_like_osx
+                && !self.tcx.sess.target.is_like_darwin
             {
                 // Cannot check this when parsing options because the target is not yet available.
                 self.tcx.dcx().emit_err(errors::LibFrameworkApple);
@@ -425,7 +561,7 @@ impl<'tcx> Collector<'tcx> {
             // can move them to the end of the list below.
             let mut existing = self
                 .libs
-                .extract_if(|lib| {
+                .extract_if(.., |lib| {
                     if lib.name.as_str() == passed_lib.name {
                         // FIXME: This whole logic is questionable, whether modifiers are
                         // involved or not, library reordering and kind overriding without
@@ -498,7 +634,7 @@ impl<'tcx> Collector<'tcx> {
             .map(|ty| {
                 let layout = self
                     .tcx
-                    .layout_of(ParamEnvAnd { param_env: ParamEnv::empty(), value: ty })
+                    .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
                     .expect("layout")
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the
@@ -510,7 +646,7 @@ impl<'tcx> Collector<'tcx> {
 
     fn build_dll_import(
         &self,
-        abi: Abi,
+        abi: ExternAbi,
         import_name_type: Option<PeImportNameType>,
         item: DefId,
     ) -> DllImport {
@@ -519,12 +655,14 @@ impl<'tcx> Collector<'tcx> {
         // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but errors on unsupported inputs
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
-                Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
-                Abi::Stdcall { .. } => DllCallingConvention::Stdcall(self.i686_arg_list_size(item)),
+                ExternAbi::C { .. } | ExternAbi::Cdecl { .. } => DllCallingConvention::C,
+                ExternAbi::Stdcall { .. } => {
+                    DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
+                }
                 // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
                 // `__stdcall` only applies on x86 and on non-variadic functions:
                 // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-                Abi::System { .. } => {
+                ExternAbi::System { .. } => {
                     let c_variadic =
                         self.tcx.type_of(item).instantiate_identity().fn_sig(self.tcx).c_variadic();
 
@@ -534,10 +672,10 @@ impl<'tcx> Collector<'tcx> {
                         DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
                     }
                 }
-                Abi::Fastcall { .. } => {
+                ExternAbi::Fastcall { .. } => {
                     DllCallingConvention::Fastcall(self.i686_arg_list_size(item))
                 }
-                Abi::Vectorcall { .. } => {
+                ExternAbi::Vectorcall { .. } => {
                     DllCallingConvention::Vectorcall(self.i686_arg_list_size(item))
                 }
                 _ => {
@@ -546,7 +684,9 @@ impl<'tcx> Collector<'tcx> {
             }
         } else {
             match abi {
-                Abi::C { .. } | Abi::Win64 { .. } | Abi::System { .. } => DllCallingConvention::C,
+                ExternAbi::C { .. } | ExternAbi::Win64 { .. } | ExternAbi::System { .. } => {
+                    DllCallingConvention::C
+                }
                 _ => {
                     self.tcx.dcx().emit_fatal(errors::UnsupportedAbi { span });
                 }

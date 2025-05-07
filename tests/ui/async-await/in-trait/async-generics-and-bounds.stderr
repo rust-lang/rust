@@ -1,5 +1,5 @@
 error[E0311]: the parameter type `T` may not live long enough
-  --> $DIR/async-generics-and-bounds.rs:9:5
+  --> $DIR/async-generics-and-bounds.rs:8:5
    |
 LL |     async fn foo(&self) -> &(T, U) where T: Debug + Sized, U: Hash;
    |     ^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL |     async fn foo<'a>(&'a self) -> &'a (T, U) where T: Debug + Sized, U: Has
    |                 ++++  ++           ++                                       +++++++
 
 error[E0311]: the parameter type `U` may not live long enough
-  --> $DIR/async-generics-and-bounds.rs:9:5
+  --> $DIR/async-generics-and-bounds.rs:8:5
    |
 LL |     async fn foo(&self) -> &(T, U) where T: Debug + Sized, U: Hash;
    |     ^^^^^^^^^^^^^-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

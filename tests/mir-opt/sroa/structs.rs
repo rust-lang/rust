@@ -31,8 +31,8 @@ pub fn enums(a: usize) -> usize {
 
     // CHECK: bb0: {
     // CHECK: [[enum]] = Option::<usize>::Some
-    // CHECK: _5 = (([[enum]] as Some).0: usize)
-    // CHECK: _0 = _5
+    // CHECK: _5 = copy (([[enum]] as Some).0: usize)
+    // CHECK: _0 = copy _5
     if let Some(a) = Some(a) { a } else { 0 }
 }
 
@@ -51,13 +51,13 @@ pub fn structs(a: f32) -> f32 {
 
     // CHECK: bb0: {
     // CHECK-NOT: [[struct]]
-    // CHECK: [[a_tmp]] = _1;
+    // CHECK: [[a_tmp]] = copy _1;
     // CHECK-NOT: [[struct]]
     // CHECK: [[foo]] = const 0_usize;
     // CHECK-NOT: [[struct]]
     // CHECK: [[a_ret]] = move [[a_tmp]];
     // CHECK-NOT: [[struct]]
-    // CHECK: _0 = [[a_ret]];
+    // CHECK: _0 = copy [[a_ret]];
     // CHECK-NOT: [[struct]]
     U { _foo: 0, a }.a
 }
@@ -73,7 +73,7 @@ pub fn unions(a: f32) -> u32 {
 
     // CHECK: bb0: {
     // CHECK: [[union]] = Repr {
-    // CHECK: _0 = ([[union]].1: u32)
+    // CHECK: _0 = copy ([[union]].1: u32)
     unsafe { Repr { f: a }.u }
 }
 
@@ -156,10 +156,10 @@ fn copies(x: Foo) {
     // CHECK: [[opt_isize:_[0-9]+]]: std::option::Option<isize>;
 
     // CHECK: bb0: {
-    // CHECK: [[byte]] = ([[external]].0
-    // CHECK: [[unit]] = ([[external]].1
-    // CHECK: [[str]] = ([[external]].2
-    // CHECK: [[opt_isize]] = ([[external]].3
+    // CHECK: [[byte]] = copy ([[external]].0
+    // CHECK: [[unit]] = copy ([[external]].1
+    // CHECK: [[str]] = copy ([[external]].2
+    // CHECK: [[opt_isize]] = copy ([[external]].3
 
     let y = x;
     let t = y.a;
@@ -181,10 +181,10 @@ fn ref_copies(x: &Foo) {
     // CHECK: [[opt_isize:_[0-9]+]]: std::option::Option<isize>;
 
     // CHECK: bb0: {
-    // CHECK: [[byte]] = ((*[[external]]).0
-    // CHECK: [[unit]] = ((*[[external]]).1
-    // CHECK: [[str]] = ((*[[external]]).2
-    // CHECK: [[opt_isize]] = ((*[[external]]).3
+    // CHECK: [[byte]] = copy ((*[[external]]).0
+    // CHECK: [[unit]] = copy ((*[[external]]).1
+    // CHECK: [[str]] = copy ((*[[external]]).2
+    // CHECK: [[opt_isize]] = copy ((*[[external]]).3
 
     let y = *x;
     let t = y.a;

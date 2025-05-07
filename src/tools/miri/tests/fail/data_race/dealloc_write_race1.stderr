@@ -1,5 +1,5 @@
 error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) deallocation on thread `unnamed-ID` at ALLOC. (2) just happened here
-  --> $DIR/dealloc_write_race1.rs:LL:CC
+  --> tests/fail/data_race/dealloc_write_race1.rs:LL:CC
    |
 LL | /             __rust_dealloc(
 LL | |
@@ -10,14 +10,14 @@ LL | |             );
    | |_____________^ Data race detected between (1) non-atomic write on thread `unnamed-ID` and (2) deallocation on thread `unnamed-ID` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
-  --> $DIR/dealloc_write_race1.rs:LL:CC
+  --> tests/fail/data_race/dealloc_write_race1.rs:LL:CC
    |
 LL |             *ptr.0 = 2;
    |             ^^^^^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE (of the first span) on thread `unnamed-ID`:
-   = note: inside closure at $DIR/dealloc_write_race1.rs:LL:CC
+   = note: inside closure at tests/fail/data_race/dealloc_write_race1.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

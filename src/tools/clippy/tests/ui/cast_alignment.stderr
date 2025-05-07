@@ -20,7 +20,7 @@ LL |     (&1u8 as *const u8).cast::<u16>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting from `*mut u8` to a more-strictly-aligned pointer (`*mut u16`) (1 < 2 bytes)
-  --> tests/ui/cast_alignment.rs:28:5
+  --> tests/ui/cast_alignment.rs:29:5
    |
 LL |     (&mut 1u8 as *mut u8).cast::<u16>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

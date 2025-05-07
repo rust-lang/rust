@@ -1,5 +1,6 @@
-//@ compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
-//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//@ revisions: ascii unicode
+//@[ascii] compile-flags: --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
+//@[unicode] compile-flags: -Zunstable-options --json=diagnostic-unicode --diagnostic-width=60 -Zwrite-long-types-to-disk=yes
 
 mod a {
     // Force the "short path for unique types" machinery to trip up

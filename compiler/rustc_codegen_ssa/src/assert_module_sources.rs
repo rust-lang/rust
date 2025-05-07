@@ -26,15 +26,14 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use rustc_ast as ast;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{DiagArgValue, IntoDiagArg};
+use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -47,8 +46,12 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
             return;
         }
 
-        let available_cgus =
-            tcx.collect_and_partition_mono_items(()).1.iter().map(|cgu| cgu.name()).collect();
+        let available_cgus = tcx
+            .collect_and_partition_mono_items(())
+            .codegen_units
+            .iter()
+            .map(|cgu| cgu.name())
+            .collect();
 
         let mut ams = AssertModuleSource {
             tcx,
@@ -60,7 +63,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
             },
         };
 
-        for attr in tcx.hir().attrs(rustc_hir::CRATE_HIR_ID) {
+        for attr in tcx.hir_attrs(rustc_hir::CRATE_HIR_ID) {
             ams.check_attr(attr);
         }
 
@@ -77,7 +80,7 @@ struct AssertModuleSource<'tcx> {
 }
 
 impl<'tcx> AssertModuleSource<'tcx> {
-    fn check_attr(&mut self, attr: &ast::Attribute) {
+    fn check_attr(&mut self, attr: &hir::Attribute) {
         let (expected_reuse, comp_kind) = if attr.has_name(sym::rustc_partition_reused) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
         } else if attr.has_name(sym::rustc_partition_codegened) {
@@ -91,7 +94,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
                 other => {
                     self.tcx
                         .dcx()
-                        .emit_fatal(errors::UnknownReuseKind { span: attr.span, kind: other });
+                        .emit_fatal(errors::UnknownReuseKind { span: attr.span(), kind: other });
                 }
             }
         } else {
@@ -99,7 +102,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
         };
 
         if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
-            self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span: attr.span });
+            self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span: attr.span() });
         }
 
         if !self.check_config(attr) {
@@ -112,7 +115,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
 
         if !user_path.starts_with(&crate_name) {
             self.tcx.dcx().emit_fatal(errors::MalformedCguName {
-                span: attr.span,
+                span: attr.span(),
                 user_path,
                 crate_name,
             });
@@ -142,7 +145,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
             let cgu_names: Vec<&str> =
                 self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
             self.tcx.dcx().emit_err(errors::NoModuleNamed {
-                span: attr.span,
+                span: attr.span(),
                 user_path,
                 cgu_name,
                 cgu_names: cgu_names.join(", "),
@@ -152,13 +155,13 @@ impl<'tcx> AssertModuleSource<'tcx> {
         self.cgu_reuse_tracker.set_expectation(
             cgu_name,
             user_path,
-            attr.span,
+            attr.span(),
             expected_reuse,
             comp_kind,
         );
     }
 
-    fn field(&self, attr: &ast::Attribute, name: Symbol) -> Symbol {
+    fn field(&self, attr: &hir::Attribute, name: Symbol) -> Symbol {
         for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
             if item.has_name(name) {
                 if let Some(value) = item.value_str() {
@@ -172,12 +175,12 @@ impl<'tcx> AssertModuleSource<'tcx> {
             }
         }
 
-        self.tcx.dcx().emit_fatal(errors::NoField { span: attr.span, name });
+        self.tcx.dcx().emit_fatal(errors::NoField { span: attr.span(), name });
     }
 
     /// Scan for a `cfg="foo"` attribute and check whether we have a
     /// cfg flag called `foo`.
-    fn check_config(&self, attr: &ast::Attribute) -> bool {
+    fn check_config(&self, attr: &hir::Attribute) -> bool {
         let config = &self.tcx.sess.psess.config;
         let value = self.field(attr, sym::cfg);
         debug!("check_config(config={:?}, value={:?})", config, value);
@@ -208,7 +211,7 @@ impl fmt::Display for CguReuse {
 }
 
 impl IntoDiagArg for CguReuse {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string()))
     }
 }

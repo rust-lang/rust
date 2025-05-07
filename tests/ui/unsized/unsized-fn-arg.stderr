@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `T` cannot be known at compilation time
-  --> $DIR/unsized-fn-arg.rs:5:17
+  --> $DIR/unsized-fn-arg.rs:5:20
    |
 LL | fn f<T: ?Sized>(t: T) {}
-   |      -          ^ doesn't have a size known at compile-time
+   |      -             ^ doesn't have a size known at compile-time
    |      |
    |      this type parameter needs to be `Sized`
    |

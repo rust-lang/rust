@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/signature-mismatch.rs:4:54
+   |
+LL |     let _ = [std::ops::Add::add, std::ops::Mul::mul, std::ops::Mul::mul as fn(_, &_)];
+   |                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(_, _) -> _`
+              found fn pointer `for<'a> fn(_, &'a _) -> ()`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

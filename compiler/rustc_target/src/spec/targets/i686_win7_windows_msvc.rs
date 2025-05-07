@@ -1,10 +1,18 @@
-use crate::spec::{base, LinkerFlavor, Lld, Target};
+use crate::spec::{LinkerFlavor, Lld, RustcAbi, SanitizerSet, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
+    base.vendor = "win7".into();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
-    base.vendor = "win7".into();
+    base.supported_sanitizers = SanitizerSet::ADDRESS;
+    // On Windows 7 32-bit, the alignment characteristic of the TLS Directory
+    // don't appear to be respected by the PE Loader, leading to crashes. As
+    // a result, let's disable has_thread_local to make sure TLS goes through
+    // the emulation layer.
+    // See https://github.com/rust-lang/rust/issues/138903
+    base.has_thread_local = false;
 
     base.add_pre_link_args(
         LinkerFlavor::Msvc(Lld::No),
@@ -21,8 +29,8 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
-            description: Some("32-bit Windows 7 support".into()),
+        metadata: TargetMetadata {
+            description: Some("32-bit MSVC (Windows 7+)".into()),
             tier: Some(3),
             host_tools: Some(false),
             std: Some(true),

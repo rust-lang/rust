@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::common::{CompareMode, Config, Debugger, Mode};
+use crate::common::{CompareMode, Config, Debugger};
 use crate::header::IgnoreDecision;
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
@@ -40,8 +40,8 @@ pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
 }
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
-/// or `normalize-stderr-32bit`.
-pub(super) fn parse_cfg_name_directive<'a>(
+/// or `only-windows`.
+fn parse_cfg_name_directive<'a>(
     config: &Config,
     line: &'a str,
     prefix: &str,
@@ -99,6 +99,10 @@ pub(super) fn parse_cfg_name_directive<'a>(
     condition! {
         name: "test",
         message: "always"
+    }
+    condition! {
+        name: "auxiliary",
+        message: "used by another main test file"
     }
     condition! {
         name: &config.target,
@@ -166,6 +170,22 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when the target vendor is Apple"
     }
 
+    condition! {
+        name: "elf",
+        condition: !config.target.contains("windows")
+            && !config.target.contains("wasm")
+            && !config.target.contains("apple")
+            && !config.target.contains("aix")
+            && !config.target.contains("uefi"),
+        message: "when the target binary format is ELF"
+    }
+
+    condition! {
+        name: "enzyme",
+        condition: config.has_enzyme,
+        message: "when rustc is built with LLVM Enzyme"
+    }
+
     // Technically the locally built compiler uses the "dev" channel rather than the "nightly"
     // channel, even though most people don't know or won't care about it. To avoid confusion, we
     // treat the "dev" channel as the "nightly" channel when processing the directive.
@@ -186,7 +206,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "on big-endian targets",
     }
     condition! {
-        name: config.stage_id.split('-').next().unwrap(),
+        name: format!("stage{}", config.stage).as_str(),
         allowed_names: &["stage0", "stage1", "stage2"],
         message: "when the bootstrapping stage is {name}",
     }
@@ -196,9 +216,14 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when running tests remotely",
     }
     condition! {
-        name: "debug",
-        condition: config.with_debug_assertions,
-        message: "when running tests with `ignore-debug` header",
+        name: "rustc-debug-assertions",
+        condition: config.with_rustc_debug_assertions,
+        message: "when rustc is built with debug assertions",
+    }
+    condition! {
+        name: "std-debug-assertions",
+        condition: config.with_std_debug_assertions,
+        message: "when std is built with debug assertions",
     }
     condition! {
         name: config.debugger.as_ref().map(|d| d.to_str()),
@@ -217,14 +242,25 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     // Coverage tests run the same test file in multiple modes.
     // If a particular test should not be run in one of the modes, ignore it
-    // with "ignore-mode-coverage-map" or "ignore-mode-coverage-run".
+    // with "ignore-coverage-map" or "ignore-coverage-run".
     condition! {
-        name: format!("mode-{}", config.mode.to_str()),
-        allowed_names: ContainsPrefixed {
-            prefix: "mode-",
-            inner: Mode::STR_VARIANTS,
-        },
+        name: config.mode.to_str(),
+        allowed_names: ["coverage-map", "coverage-run"],
         message: "when the test mode is {name}",
+    }
+    condition! {
+        name: target_cfg.rustc_abi.as_ref().map(|abi| format!("rustc_abi-{abi}")).unwrap_or_default(),
+        allowed_names: ContainsPrefixed {
+            prefix: "rustc_abi-",
+            inner: target_cfgs.all_rustc_abis.clone(),
+        },
+        message: "when the target `rustc_abi` is {name}",
+    }
+
+    condition! {
+        name: "dist",
+        condition: std::env::var("COMPILETEST_ENABLE_DIST_TESTS") == Ok("1".to_string()),
+        message: "when performing tests on dist toolchain"
     }
 
     if prefix == "ignore" && outcome == MatchOutcome::Invalid {

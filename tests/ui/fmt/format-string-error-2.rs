@@ -72,7 +72,7 @@ raw  { \n
 
     // note: `\x7B` is `{`
     println!("\x7B}\u{8} {", 1);
-    //~^ ERROR invalid format string: expected `'}'` but string was terminated
+    //~^ ERROR invalid format string: expected `}` but string was terminated
 
     println!("\x7B}\u8 {", 1);
     //~^ ERROR incorrect unicode escape sequence

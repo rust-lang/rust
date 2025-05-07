@@ -6,7 +6,7 @@ LL |     c"str";
    |
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
@@ -17,7 +17,7 @@ LL |     cr"str";
    |
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `#`
@@ -28,7 +28,7 @@ LL |     cr##"str"##;
    |
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `"str"`
@@ -59,7 +59,7 @@ LL |     contain!();
    |
    = note: you may be trying to write a c-string literal
    = note: c-string literals require Rust 2021 or later
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
    = note: this error originates in the macro `contain` (in Nightly builds, run with -Z macro-backtrace for more info)
 

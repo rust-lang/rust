@@ -28,6 +28,9 @@ use shared_helpers::{
 #[path = "../utils/shared_helpers.rs"]
 mod shared_helpers;
 
+#[path = "../utils/proc_macro_deps.rs"]
+mod proc_macro_deps;
+
 fn main() {
     let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
     let mut args = orig_args.clone();
@@ -95,7 +98,6 @@ fn main() {
     // When statically linking `std` into `rustc_driver`, remove `-C prefer-dynamic`
     if env::var("RUSTC_LINK_STD_INTO_RUSTC_DRIVER").unwrap() == "1"
         && crate_name == Some("rustc_driver")
-        && stage != "0"
     {
         if let Some(pos) = args.iter().enumerate().position(|(i, a)| {
             a == "-C" && args.get(i + 1).map(|a| a == "prefer-dynamic").unwrap_or(false)
@@ -137,6 +139,12 @@ fn main() {
         cmd.args(lint_flags.split_whitespace());
     }
 
+    // Conditionally pass `-Zon-broken-pipe=kill` to underlying rustc. Not all binaries want
+    // `-Zon-broken-pipe=kill`, which includes cargo itself.
+    if env::var_os("FORCE_ON_BROKEN_PIPE_KILL").is_some() {
+        cmd.arg("-Z").arg("on-broken-pipe=kill");
+    }
+
     if target.is_some() {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
@@ -162,7 +170,7 @@ fn main() {
         // issue https://github.com/rust-lang/rust/issues/100530
         if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()
             && crate_type != Some("proc-macro")
-            && !matches!(crate_name, Some("proc_macro2" | "quote" | "syn" | "synstructure"))
+            && proc_macro_deps::CRATES.binary_search(&crate_name.unwrap_or_default()).is_err()
         {
             cmd.arg("-Ztls-model=initial-exec");
         }
@@ -170,9 +178,7 @@ fn main() {
         // Find any host flags that were passed by bootstrap.
         // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
         if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
-            for flag in flags.split(' ') {
-                cmd.arg(flag);
-            }
+            cmd.args(flags.split(' '));
         }
     }
 
@@ -343,7 +349,7 @@ fn format_rusage_data(child: Child) -> Option<String> {
     let mut kernel_filetime = Default::default();
     let mut kernel_time = Default::default();
     let mut memory_counters = PROCESS_MEMORY_COUNTERS::default();
-    let memory_counters_size = std::mem::size_of_val(&memory_counters);
+    let memory_counters_size = size_of_val(&memory_counters);
 
     unsafe {
         GetProcessTimes(

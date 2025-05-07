@@ -1,0 +1,122 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:45:27
+   |
+LL |     assert_eq!(Wrapper(A).f(), 1);
+   |                           ^ multiple `f` found
+   |
+note: candidate #1 is defined in an impl for the type `A`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:9:5
+   |
+LL |     pub fn f(self: Wrapper<Self>) -> i32 { 1 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<T>`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:38:5
+   |
+LL |     pub fn f(self) -> i32 { 5 }
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:47:27
+   |
+LL |     assert_eq!(Wrapper(A).g(), 2);
+   |                           ^ multiple `g` found
+   |
+note: candidate #1 is defined in an impl for the type `A`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:10:5
+   |
+LL |     pub fn g(self: &Wrapper<Self>) -> i32 { 2 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<T>`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:39:5
+   |
+LL |     pub fn g(&self) -> i32 { 6 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:49:27
+   |
+LL |     assert_eq!(Wrapper(A).h(), 3);
+   |                           ^ multiple `h` found
+   |
+note: candidate #1 is defined in an impl for the type `A`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:11:5
+   |
+LL |     pub fn h(self: &mut Wrapper<Self>) -> i32 { 3 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<T>`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:40:5
+   |
+LL |     pub fn h(&mut self) -> i32 { 7 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:53:22
+   |
+LL |     assert_eq!(a_ptr.i(), 4);
+   |                      ^ multiple `i` found
+   |
+note: candidate #1 is defined in an impl for the type `A`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:12:5
+   |
+LL |     pub fn i(self: *const Wrapper<Self>) -> i32 { 4 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<T>`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:41:5
+   |
+LL |     pub fn i(self: *const Self) -> i32 { 8 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:55:27
+   |
+LL |     assert_eq!(Wrapper(B).f(), 9);
+   |                           ^ multiple `f` found
+   |
+note: candidate #1 is defined in an impl for the type `B`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:19:5
+   |
+LL |     pub fn f(self: &Wrapper<Self>) -> i32 { 9 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<T>`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:38:5
+   |
+LL |     pub fn f(self) -> i32 { 5 }
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:57:27
+   |
+LL |     assert_eq!(Wrapper(C).f(), 10);
+   |                           ^ multiple `f` found
+   |
+note: candidate #1 is defined in an impl for the type `C`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:27:5
+   |
+LL |     pub fn f(self: &mut Wrapper<Self>) -> i32 { 10 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<T>`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:38:5
+   |
+LL |     pub fn f(self) -> i32 { 5 }
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0034]: multiple applicable items in scope
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:59:27
+   |
+LL |     assert_eq!(Wrapper(C).g(), 11);
+   |                           ^ multiple `g` found
+   |
+note: candidate #1 is defined in an impl for the type `C`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:28:5
+   |
+LL |     pub fn g(self: &mut Wrapper<Self>) -> i32 { 11 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `Wrapper<T>`
+  --> $DIR/arbitrary_self_types_unshadowing_ptrs.rs:39:5
+   |
+LL |     pub fn g(&self) -> i32 { 6 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0034`.

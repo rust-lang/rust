@@ -11,12 +11,12 @@ LL |     type Bar<T> = impl Sized;
    |                   ^^^^^^^^^^
 
 error[E0792]: expected generic type parameter, found `u32`
-  --> $DIR/non-defining-method.rs:16:32
+  --> $DIR/non-defining-method.rs:16:17
    |
 LL |     type Bar<T> = impl Sized;
    |              - this generic parameter must be used with a generic type parameter
 LL |     fn foo() -> Self::Bar<u32> {}
-   |                                ^^
+   |                 ^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

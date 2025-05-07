@@ -1,9 +1,18 @@
 //
 //@ compile-flags: -C no-prepopulate-passes
+// LLVM IR isn't very portable and the one tested here depends on the ABI
+// which is different between x86 (where we use SSE registers) and others.
+// `x86-64` and `x86-32-sse2` are identical, but compiletest does not support
+// taking the union of multiple `only` annotations.
+//@ revisions: x86-64 x86-32-sse2 other
+//@[x86-64] only-x86_64
+//@[x86-32-sse2] only-rustc_abi-x86-sse2
+//@[other] ignore-rustc_abi-x86-sse2
+//@[other] ignore-x86_64
 
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -12,10 +21,6 @@ pub struct S<const N: usize>([f32; N]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct T([f32; 4]);
-
-#[repr(simd)]
-#[derive(Copy, Clone)]
-pub struct U(f32, f32, f32, f32);
 
 // CHECK-LABEL: @array_align(
 #[no_mangle]
@@ -28,7 +33,7 @@ pub fn array_align() -> usize {
 #[no_mangle]
 pub fn vector_align() -> usize {
     // CHECK: ret [[USIZE]] [[VECTOR_ALIGN:[0-9]+]]
-    const { std::mem::align_of::<U>() }
+    const { std::mem::align_of::<T>() }
 }
 
 // CHECK-LABEL: @build_array_s
@@ -42,7 +47,9 @@ pub fn build_array_s(x: [f32; 4]) -> S<4> {
 #[no_mangle]
 pub fn build_array_transmute_s(x: [f32; 4]) -> S<4> {
     // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
+    // x86-32: ret <4 x float> %[[VAL:.+]]
+    // x86-64: ret <4 x float> %[[VAL:.+]]
+    // other: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
     unsafe { std::mem::transmute(x) }
 }
 
@@ -57,25 +64,8 @@ pub fn build_array_t(x: [f32; 4]) -> T {
 #[no_mangle]
 pub fn build_array_transmute_t(x: [f32; 4]) -> T {
     // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
-    unsafe { std::mem::transmute(x) }
-}
-
-// CHECK-LABEL: @build_array_u
-#[no_mangle]
-pub fn build_array_u(x: [f32; 4]) -> U {
-    // CHECK: store float %a, {{.+}}, align [[VECTOR_ALIGN]]
-    // CHECK: store float %b, {{.+}}, align [[ARRAY_ALIGN]]
-    // CHECK: store float %c, {{.+}}, align
-    // CHECK: store float %d, {{.+}}, align [[ARRAY_ALIGN]]
-    let [a, b, c, d] = x;
-    U(a, b, c, d)
-}
-
-// CHECK-LABEL: @build_array_transmute_u
-#[no_mangle]
-pub fn build_array_transmute_u(x: [f32; 4]) -> U {
-    // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
+    // x86-32: ret <4 x float> %[[VAL:.+]]
+    // x86-64: ret <4 x float> %[[VAL:.+]]
+    // other: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
     unsafe { std::mem::transmute(x) }
 }

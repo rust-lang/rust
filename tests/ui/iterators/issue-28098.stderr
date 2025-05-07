@@ -14,7 +14,7 @@ error[E0277]: `bool` is not an iterator
 LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `bool`, which is required by `bool: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `bool`
    = note: required for `bool` to implement `IntoIterator`
 
 error[E0277]: `()` is not an iterator
@@ -61,7 +61,7 @@ error[E0277]: `bool` is not an iterator
 LL |     for _ in false {}
    |              ^^^^^ `bool` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `bool`, which is required by `bool: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `bool`
    = note: required for `bool` to implement `IntoIterator`
 
 error[E0277]: `()` is not an iterator

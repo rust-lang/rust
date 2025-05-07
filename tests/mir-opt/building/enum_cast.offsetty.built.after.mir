@@ -14,9 +14,9 @@ fn offsetty(_1: NotStartingAtZero) -> u32 {
         StorageLive(_2);
         _2 = move _1;
         _3 = discriminant(_2);
-        _4 = _3 as u8 (IntToInt);
-        _5 = Ge(_4, const 4_u8);
-        _6 = Le(_4, const 8_u8);
+        _4 = copy _3 as u8 (IntToInt);
+        _5 = Ge(copy _4, const 4_u8);
+        _6 = Le(copy _4, const 8_u8);
         _7 = BitAnd(move _5, move _6);
         assume(move _7);
         _0 = move _3 as u32 (IntToInt);

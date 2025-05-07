@@ -1,0 +1,36 @@
+error: free constant item without body
+  --> $DIR/const_arg_trivial_macro_expansion-2.rs:12:1
+   |
+LL | / const _: A<
+...  |
+LL | |     },
+LL | | >;
+   | |  ^ help: provide a definition for the constant: `= <expr>;`
+   | |__|
+   |
+
+error[E0412]: cannot find type `A` in this scope
+  --> $DIR/const_arg_trivial_macro_expansion-2.rs:12:10
+   |
+LL | const _: A<
+   |          ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/const_arg_trivial_macro_expansion-2.rs:7:9
+   |
+LL |         x
+   |         ^ not found in this scope
+...
+LL |         y! { test.tou8 }
+   |         ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: you might be missing a const parameter
+   |
+LL | const _<const x: /* Type */>: A<
+   |        +++++++++++++++++++++
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0412, E0425.
+For more information about an error, try `rustc --explain E0412`.

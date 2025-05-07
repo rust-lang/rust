@@ -15,8 +15,9 @@ fn main() {
         .link_args("b c")
         .link_args("d e")
         .link_arg("f")
+        .arg("--print=link-args")
         .run_fail()
-        .assert_stderr_contains(r#""a" "b" "c" "d" "e" "f""#);
+        .assert_stdout_contains(r#""a" "b" "c" "d" "e" "f""#);
     rustc()
         .input("empty.rs")
         .linker_flavor(linker)
@@ -24,6 +25,7 @@ fn main() {
         .arg("-Zpre-link-args=b c")
         .arg("-Zpre-link-args=d e")
         .arg("-Zpre-link-arg=f")
+        .arg("--print=link-args")
         .run_fail()
-        .assert_stderr_contains(r#""a" "b" "c" "d" "e" "f""#);
+        .assert_stdout_contains(r#""a" "b" "c" "d" "e" "f""#);
 }

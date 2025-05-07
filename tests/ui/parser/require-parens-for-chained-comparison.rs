@@ -27,7 +27,7 @@ fn main() {
     //~| ERROR invalid label name
 
     f<'_>();
-    //~^ comparison operators cannot be chained
+    //~^ ERROR comparison operators cannot be chained
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
     //~| ERROR expected
     //~| HELP add `'` to close the char literal

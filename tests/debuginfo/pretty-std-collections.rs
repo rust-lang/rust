@@ -1,13 +1,6 @@
-//@ ignore-windows failing on win32 bot
-//@ ignore-freebsd: gdb package too new
 //@ ignore-android: FIXME(#10381)
+//@ ignore-windows-gnu: #128981
 //@ compile-flags:-g
-
-// The pretty printers being tested here require the patch from
-// https://sourceware.org/bugzilla/show_bug.cgi?id=21763
-//@ min-gdb-version: 8.1
-
-//@ min-lldb-version: 310
 
 // === GDB TESTS ===================================================================================
 
@@ -59,20 +52,16 @@
 // lldb-command:run
 
 // lldb-command:v vec_deque
-// lldbg-check:[...] size=3 { [0] = 5 [1] = 3 [2] = 7 }
-// lldbr-check:(alloc::collections::vec_deque::VecDeque<i32>) vec_deque = size=3 = { [0] = 5 [1] = 3 [2] = 7 }
+// lldb-check:[...] size=3 { [0] = 5 [1] = 3 [2] = 7 }
 
 // lldb-command:v vec_deque2
-// lldbg-check:[...] size=7 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 [4] = 6 [5] = 7 [6] = 8 }
-// lldbr-check:(alloc::collections::vec_deque::VecDeque<i32>) vec_deque2 = size=7 = { [0] = 2 [1] = 3 [2] = 4 [3] = 5 [4] = 6 [5] = 7 [6] = 8 }
+// lldb-check:[...] size=7 { [0] = 2 [1] = 3 [2] = 4 [3] = 5 [4] = 6 [5] = 7 [6] = 8 }
 
 // lldb-command:v hash_map
-// lldbg-check:[...] size=4 { [0] = { 0 = 1 1 = 10 } [1] = { 0 = 2 1 = 20 } [2] = { 0 = 3 1 = 30 } [3] = { 0 = 4 1 = 40 } }
-// lldbr-check:(std::collections::hash::map::HashMap<u64, u64, [...]>) hash_map = size=4 size=4 { [0] = { 0 = 1 1 = 10 } [1] = { 0 = 2 1 = 20 } [2] = { 0 = 3 1 = 30 } [3] = { 0 = 4 1 = 40 } }
+// lldb-check:[...] size=4 { [0] = { 0 = 1 1 = 10 } [1] = { 0 = 2 1 = 20 } [2] = { 0 = 3 1 = 30 } [3] = { 0 = 4 1 = 40 } }
 
 // lldb-command:v hash_set
-// lldbg-check:[...] size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
-// lldbr-check:(std::collections::hash::set::HashSet<u64, [...]>) hash_set = size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
+// lldb-check:[...] size=4 { [0] = 1 [1] = 2 [2] = 3 [3] = 4 }
 
 #![allow(unused_variables)]
 use std::collections::BTreeMap;

@@ -1,7 +1,6 @@
 //@ run-pass
 //@ ignore-android
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 
 #![feature(rustc_private)]
 

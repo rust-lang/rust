@@ -1,18 +1,20 @@
 use std::mem;
 
-use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Token, TokenKind,
+};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::ExprKind;
+use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, Diag, DiagCtxtHandle, PResult};
+use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::{ParseSess, SymbolGallery};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
-use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{with_metavar_spans, Span, Symbol, SyntaxContext};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::{
+    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+};
+use smallvec::{SmallVec, smallvec};
 
 use crate::errors::{
     CountRepetitionMisplaced, MetaVarExprUnrecognizedVar, MetaVarsDifSeqMatchers, MustRepeatOnce,
@@ -26,10 +28,8 @@ use crate::mbe::{self, KleeneOp, MetaVarExpr};
 // A Marker adds the given mark to the syntax context.
 struct Marker(LocalExpnId, Transparency, FxHashMap<SyntaxContext, SyntaxContext>);
 
-impl MutVisitor for Marker {
-    const VISIT_TOKENS: bool = true;
-
-    fn visit_span(&mut self, span: &mut Span) {
+impl Marker {
+    fn mark_span(&mut self, span: &mut Span) {
         // `apply_mark` is a relatively expensive operation, both due to taking hygiene lock, and
         // by itself. All tokens in a macro body typically have the same syntactic context, unless
         // it's some advanced case with macro-generated macros. So if we cache the marked version
@@ -161,7 +161,7 @@ pub(super) fn transcribe<'a>(
                 if repeat_idx < repeat_len {
                     frame.idx = 0;
                     if let Some(sep) = sep {
-                        result.push(TokenTree::Token(sep.clone(), Spacing::Alone));
+                        result.push(TokenTree::Token(*sep, Spacing::Alone));
                     }
                     continue;
                 }
@@ -253,7 +253,7 @@ pub(super) fn transcribe<'a>(
             }
 
             // Replace the meta-var with the matched token tree from the invocation.
-            mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
+            &mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
                 //
@@ -272,28 +272,121 @@ pub(super) fn transcribe<'a>(
                 // some of the unnecessary whitespace.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
+                    // We wrap the tokens in invisible delimiters, unless they are already wrapped
+                    // in invisible delimiters with the same `MetaVarKind`. Because some proc
+                    // macros can't handle multiple layers of invisible delimiters of the same
+                    // `MetaVarKind`. This loses some span info, though it hopefully won't matter.
+                    let mut mk_delimited = |mk_span, mv_kind, mut stream: TokenStream| {
+                        if stream.len() == 1 {
+                            let tree = stream.iter().next().unwrap();
+                            if let TokenTree::Delimited(_, _, delim, inner) = tree
+                                && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mvk)) = delim
+                                && mv_kind == *mvk
+                            {
+                                stream = inner.clone();
+                            }
+                        }
+
+                        // Emit as a token stream within `Delimiter::Invisible` to maintain
+                        // parsing priorities.
+                        marker.mark_span(&mut sp);
+                        with_metavar_spans(|mspans| mspans.insert(mk_span, sp));
+                        // Both the open delim and close delim get the same span, which covers the
+                        // `$foo` in the decl macro RHS.
+                        TokenTree::Delimited(
+                            DelimSpan::from_single(sp),
+                            DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+                            Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)),
+                            stream,
+                        )
+                    };
                     let tt = match cur_matched {
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
-                            // without wrapping them into groups.
+                            // without wrapping them into groups. Other variables are emitted into
+                            // the output stream as groups with `Delimiter::Invisible` to maintain
+                            // parsing priorities.
                             maybe_use_metavar_location(psess, &stack, sp, tt, &mut marker)
                         }
                         MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
-                            marker.visit_span(&mut sp);
+                            marker.mark_span(&mut sp);
+                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtIdent(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
-                        MatchedSingle(ParseNtResult::Lifetime(ident)) => {
-                            marker.visit_span(&mut sp);
-                            let kind = token::NtLifetime(*ident);
+                        MatchedSingle(ParseNtResult::Lifetime(ident, is_raw)) => {
+                            marker.mark_span(&mut sp);
+                            with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
+                            let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
-                        MatchedSingle(ParseNtResult::Nt(nt)) => {
-                            // Other variables are emitted into the output stream as groups with
-                            // `Delimiter::Invisible` to maintain parsing priorities.
-                            // `Interpolated` is currently used for such groups in rustc parser.
-                            marker.visit_span(&mut sp);
-                            TokenTree::token_alone(token::Interpolated(nt.clone()), sp)
+                        MatchedSingle(ParseNtResult::Item(item)) => {
+                            mk_delimited(item.span, MetaVarKind::Item, TokenStream::from_ast(item))
+                        }
+                        MatchedSingle(ParseNtResult::Block(block)) => mk_delimited(
+                            block.span,
+                            MetaVarKind::Block,
+                            TokenStream::from_ast(block),
+                        ),
+                        MatchedSingle(ParseNtResult::Stmt(stmt)) => {
+                            let stream = if let StmtKind::Empty = stmt.kind {
+                                // FIXME: Properly collect tokens for empty statements.
+                                TokenStream::token_alone(token::Semi, stmt.span)
+                            } else {
+                                TokenStream::from_ast(stmt)
+                            };
+                            mk_delimited(stmt.span, MetaVarKind::Stmt, stream)
+                        }
+                        MatchedSingle(ParseNtResult::Pat(pat, pat_kind)) => mk_delimited(
+                            pat.span,
+                            MetaVarKind::Pat(*pat_kind),
+                            TokenStream::from_ast(pat),
+                        ),
+                        MatchedSingle(ParseNtResult::Expr(expr, kind)) => {
+                            let (can_begin_literal_maybe_minus, can_begin_string_literal) =
+                                match &expr.kind {
+                                    ExprKind::Lit(_) => (true, true),
+                                    ExprKind::Unary(UnOp::Neg, e)
+                                        if matches!(&e.kind, ExprKind::Lit(_)) =>
+                                    {
+                                        (true, false)
+                                    }
+                                    _ => (false, false),
+                                };
+                            mk_delimited(
+                                expr.span,
+                                MetaVarKind::Expr {
+                                    kind: *kind,
+                                    can_begin_literal_maybe_minus,
+                                    can_begin_string_literal,
+                                },
+                                TokenStream::from_ast(expr),
+                            )
+                        }
+                        MatchedSingle(ParseNtResult::Literal(lit)) => {
+                            mk_delimited(lit.span, MetaVarKind::Literal, TokenStream::from_ast(lit))
+                        }
+                        MatchedSingle(ParseNtResult::Ty(ty)) => {
+                            let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
+                            mk_delimited(
+                                ty.span,
+                                MetaVarKind::Ty { is_path },
+                                TokenStream::from_ast(ty),
+                            )
+                        }
+                        MatchedSingle(ParseNtResult::Meta(attr_item)) => {
+                            let has_meta_form = attr_item.meta_kind().is_some();
+                            mk_delimited(
+                                attr_item.span(),
+                                MetaVarKind::Meta { has_meta_form },
+                                TokenStream::from_ast(attr_item),
+                            )
+                        }
+                        MatchedSingle(ParseNtResult::Path(path)) => {
+                            mk_delimited(path.span, MetaVarKind::Path, TokenStream::from_ast(path))
+                        }
+                        MatchedSingle(ParseNtResult::Vis(vis)) => {
+                            mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
@@ -304,8 +397,8 @@ pub(super) fn transcribe<'a>(
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
-                    marker.visit_span(&mut sp);
-                    marker.visit_ident(&mut original_ident);
+                    marker.mark_span(&mut sp);
+                    marker.mark_span(&mut original_ident.span);
                     result.push(TokenTree::token_joint_hidden(token::Dollar, sp));
                     result.push(TokenTree::Token(
                         Token::from_ast_ident(original_ident),
@@ -333,17 +426,20 @@ pub(super) fn transcribe<'a>(
             // We will produce all of the results of the inside of the `Delimited` and then we will
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
-            mbe::TokenTree::Delimited(mut span, spacing, delimited) => {
-                mut_visit::visit_delim_span(&mut marker, &mut span);
+            &mbe::TokenTree::Delimited(mut span, ref spacing, ref delimited) => {
+                marker.mark_span(&mut span.open);
+                marker.mark_span(&mut span.close);
                 stack.push(Frame::new_delimited(delimited, span, *spacing));
                 result_stack.push(mem::take(&mut result));
             }
 
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
-            mbe::TokenTree::Token(token) => {
-                let mut token = token.clone();
-                mut_visit::visit_token(&mut marker, &mut token);
+            &mbe::TokenTree::Token(mut token) => {
+                marker.mark_span(&mut token.span);
+                if let token::NtIdent(ident, _) | token::NtLifetime(ident, _) = &mut token.kind {
+                    marker.mark_span(&mut ident.span);
+                }
                 let tt = TokenTree::Token(token, Spacing::Alone);
                 result.push(tt);
             }
@@ -408,19 +504,15 @@ fn maybe_use_metavar_location(
         return orig_tt.clone();
     }
 
-    let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
-        Ok(_) => true,
-        Err(err) => *err.entry.get() == ms, // Tried to insert the same span, still success
-    };
-    marker.visit_span(&mut metavar_span);
+    marker.mark_span(&mut metavar_span);
     let no_collision = match orig_tt {
         TokenTree::Token(token, ..) => {
-            with_metavar_spans(|mspans| insert(mspans, token.span, metavar_span))
+            with_metavar_spans(|mspans| mspans.insert(token.span, metavar_span))
         }
         TokenTree::Delimited(dspan, ..) => with_metavar_spans(|mspans| {
-            insert(mspans, dspan.open, metavar_span)
-                && insert(mspans, dspan.close, metavar_span)
-                && insert(mspans, dspan.entire(), metavar_span)
+            mspans.insert(dspan.open, metavar_span)
+                && mspans.insert(dspan.close, metavar_span)
+                && mspans.insert(dspan.entire(), metavar_span)
         }),
     };
     if no_collision || psess.source_map().is_imported(metavar_span) {
@@ -432,14 +524,14 @@ fn maybe_use_metavar_location(
     match orig_tt {
         TokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
-            with_metavar_spans(|mspans| insert(mspans, span, metavar_span));
+            with_metavar_spans(|mspans| mspans.insert(span, metavar_span));
             TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
             let open = metavar_span.with_ctxt(dspan.open.ctxt());
             let close = metavar_span.with_ctxt(dspan.close.ctxt());
             with_metavar_spans(|mspans| {
-                insert(mspans, open, metavar_span) && insert(mspans, close, metavar_span)
+                mspans.insert(open, metavar_span) && mspans.insert(close, metavar_span)
             });
             let dspan = DelimSpan::from_pair(open, close);
             TokenTree::Delimited(dspan, *dspacing, *delimiter, tts.clone())
@@ -570,7 +662,7 @@ fn lockstep_iter_size(
     }
 }
 
-/// Used solely by the `count` meta-variable expression, counts the outer-most repetitions at a
+/// Used solely by the `count` meta-variable expression, counts the outermost repetitions at a
 /// given optional nested depth.
 ///
 /// For example, a macro parameter of `$( { $( $foo:ident ),* } )*` called with `{ a, b } { c }`:
@@ -682,7 +774,7 @@ fn transcribe_metavar_expr<'a>(
 ) -> PResult<'a, ()> {
     let mut visited_span = || {
         let mut span = sp.entire();
-        marker.visit_span(&mut span);
+        marker.mark_span(&mut span);
         span
     };
     match *expr {
@@ -695,8 +787,10 @@ fn transcribe_metavar_expr<'a>(
                     MetaVarExprConcatElem::Var(ident) => {
                         match matched_from_ident(dcx, *ident, interp)? {
                             NamedMatch::MatchedSeq(named_matches) => {
-                                let curr_idx = repeats.last().unwrap().0;
-                                match &named_matches[curr_idx] {
+                                let Some((curr_idx, _)) = repeats.last() else {
+                                    return Err(dcx.struct_span_err(sp.entire(), "invalid syntax"));
+                                };
+                                match &named_matches[*curr_idx] {
                                     // FIXME(c410-f3r) Nested repetitions are unimplemented
                                     MatchedSeq(_) => unimplemented!(),
                                     MatchedSingle(pnr) => {
@@ -773,18 +867,20 @@ fn extract_symbol_from_pnr<'a>(
     match pnr {
         ParseNtResult::Ident(nt_ident, is_raw) => {
             if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
+                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+            } else {
+                Ok(nt_ident.name)
             }
-            return Ok(nt_ident.name);
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token { kind: TokenKind::Ident(symbol, is_raw), .. },
             _,
         )) => {
             if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR));
+                Err(dcx.struct_span_err(span_err, RAW_IDENT_ERR))
+            } else {
+                Ok(*symbol)
             }
-            return Ok(*symbol);
         }
         ParseNtResult::Tt(TokenTree::Token(
             Token {
@@ -792,15 +888,11 @@ fn extract_symbol_from_pnr<'a>(
                 ..
             },
             _,
-        )) => {
-            return Ok(*symbol);
-        }
-        ParseNtResult::Nt(nt)
-            if let Nonterminal::NtLiteral(expr) = &**nt
-                && let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) =
-                    &expr.kind =>
+        )) => Ok(*symbol),
+        ParseNtResult::Literal(expr)
+            if let ExprKind::Lit(Lit { kind: LitKind::Str, symbol, suffix: None }) = &expr.kind =>
         {
-            return Ok(*symbol);
+            Ok(*symbol)
         }
         _ => Err(dcx
             .struct_err(

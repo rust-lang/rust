@@ -39,7 +39,7 @@ fn check_op<'tcx>(
     other: &Expr<'tcx>,
     parent: &Expr<'tcx>,
 ) {
-    if ConstEvalCtxt::with_env(cx.tcx, cx.param_env, tck).eval_simple(op) == Some(Constant::Int(0)) {
+    if ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), tck).eval_simple(op) == Some(Constant::Int(0)) {
         if different_types(tck, other, parent) {
             return;
         }

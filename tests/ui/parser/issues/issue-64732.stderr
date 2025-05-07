@@ -6,8 +6,9 @@ LL |     let _foo = b'hello\0';
    |
 help: if you meant to write a byte string literal, use double quotes
    |
-LL |     let _foo = b"hello\0";
-   |                ~~       ~
+LL -     let _foo = b'hello\0';
+LL +     let _foo = b"hello\0";
+   |
 
 error: character literal may only contain one codepoint
   --> $DIR/issue-64732.rs:6:16
@@ -17,8 +18,9 @@ LL |     let _bar = 'hello';
    |
 help: if you meant to write a string literal, use double quotes
    |
-LL |     let _bar = "hello";
-   |                ~     ~
+LL -     let _bar = 'hello';
+LL +     let _bar = "hello";
+   |
 
 error: aborting due to 2 previous errors
 

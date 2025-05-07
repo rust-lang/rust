@@ -4,7 +4,7 @@
 //@ failure-status: 101
 //@ compile-flags:--test -Z unstable-options --remap-path-prefix={{src-base}}=remapped_path --test-args --test-threads=1
 //@ rustc-env:RUST_BACKTRACE=0
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 // doctest fails to compile
 /// ```

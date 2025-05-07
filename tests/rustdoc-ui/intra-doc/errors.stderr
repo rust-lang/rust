@@ -104,7 +104,7 @@ error: unresolved link to `S`
   --> $DIR/errors.rs:68:6
    |
 LL | /// [S!]
-   |      ^^ this link resolves to the struct `S`, which is not in the macro namespace
+   |      ^^ this link resolves to the struct `S`, which is not a macro
    |
 help: to link to the struct, prefix with `struct@`
    |
@@ -158,7 +158,7 @@ error: unresolved link to `m`
   --> $DIR/errors.rs:98:6
    |
 LL | /// [m()]
-   |      ^^^ this link resolves to the macro `m`, which is not in the value namespace
+   |      ^^^ this link resolves to the macro `m`, which is not a function
    |
 help: to link to the macro, add an exclamation mark
    |

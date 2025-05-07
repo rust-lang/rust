@@ -10,3 +10,6 @@
 #![feature(no_core)]
 #![no_core]
 #![no_main]
+
+//~? ERROR cfi sanitizer is not supported for this target
+//~? ERROR `-Zsanitizer=cfi` is incompatible with `-Zsanitizer=kcfi`

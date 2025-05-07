@@ -1,3 +1,4 @@
+use intravisit::InferKind;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
@@ -6,7 +7,7 @@ use rustc_hir::*;
 use rustc_index::IndexVec;
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
@@ -82,10 +83,9 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             if hir_id.owner != self.owner {
                 span_bug!(
                     span,
-                    "inconsistent HirId at `{:?}` for `{:?}`: \
+                    "inconsistent HirId at `{:?}` for `{node:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.tcx.sess.source_map().span_to_diagnostic_string(span),
-                    node,
                     self.tcx
                         .definitions_untracked()
                         .def_path(self.owner.def_id)
@@ -97,6 +97,12 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                         .to_string_no_crate_verbose(),
                     hir_id.owner,
                 )
+            }
+            if self.tcx.sess.opts.incremental.is_some()
+                && span.parent().is_none()
+                && !span.is_dummy()
+            {
+                span_bug!(span, "span without a parent: {:#?}, {node:?}", span.data())
             }
         }
 
@@ -158,7 +164,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
         debug_assert_eq!(i.owner_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
-            if let ItemKind::Struct(struct_def, _) = &i.kind {
+            if let ItemKind::Struct(_, struct_def, _) = &i.kind {
                 // If this is a tuple or unit-like struct, register the constructor.
                 if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
                     this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
@@ -211,6 +217,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_pat_expr(&mut self, expr: &'hir PatExpr<'hir>) {
+        self.insert(expr.span, expr.hir_id, Node::PatExpr(expr));
+
+        self.with_parent(expr.hir_id, |this| {
+            intravisit::walk_pat_expr(this, expr);
+        });
+    }
+
     fn visit_pat_field(&mut self, field: &'hir PatField<'hir>) {
         self.insert(field.span, field.hir_id, Node::PatField(field));
         self.with_parent(field.hir_id, |this| {
@@ -228,9 +242,16 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_opaque_ty(&mut self, opaq: &'hir OpaqueTy<'hir>) {
+        self.insert(opaq.span, opaq.hir_id, Node::OpaqueTy(opaq));
+
+        self.with_parent(opaq.hir_id, |this| {
+            intravisit::walk_opaque_ty(this, opaq);
+        });
+    }
+
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
-        // FIXME: use real span?
-        self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
+        self.insert(constant.span, constant.hir_id, Node::AnonConst(constant));
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_anon_const(this, constant);
@@ -242,15 +263,6 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
 
         self.with_parent(constant.hir_id, |this| {
             intravisit::walk_inline_const(this, constant);
-        });
-    }
-
-    fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir>) {
-        // FIXME: use real span?
-        self.insert(DUMMY_SP, const_arg.hir_id, Node::ConstArg(const_arg));
-
-        self.with_parent(const_arg.hir_id, |this| {
-            intravisit::walk_const_arg(this, const_arg);
         });
     }
 
@@ -283,20 +295,39 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         intravisit::walk_path_segment(self, path_segment);
     }
 
-    fn visit_ty(&mut self, ty: &'hir Ty<'hir>) {
-        self.insert(ty.span, ty.hir_id, Node::Ty(ty));
+    fn visit_ty(&mut self, ty: &'hir Ty<'hir, AmbigArg>) {
+        self.insert(ty.span, ty.hir_id, Node::Ty(ty.as_unambig_ty()));
 
         self.with_parent(ty.hir_id, |this| {
             intravisit::walk_ty(this, ty);
         });
     }
 
-    fn visit_infer(&mut self, inf: &'hir InferArg) {
-        self.insert(inf.span, inf.hir_id, Node::Infer(inf));
+    fn visit_const_arg(&mut self, const_arg: &'hir ConstArg<'hir, AmbigArg>) {
+        self.insert(
+            const_arg.as_unambig_ct().span(),
+            const_arg.hir_id,
+            Node::ConstArg(const_arg.as_unambig_ct()),
+        );
 
-        self.with_parent(inf.hir_id, |this| {
-            intravisit::walk_inf(this, inf);
+        self.with_parent(const_arg.hir_id, |this| {
+            intravisit::walk_ambig_const_arg(this, const_arg);
         });
+    }
+
+    fn visit_infer(
+        &mut self,
+        inf_id: HirId,
+        inf_span: Span,
+        kind: InferKind<'hir>,
+    ) -> Self::Result {
+        match kind {
+            InferKind::Ty(ty) => self.insert(inf_span, inf_id, Node::Ty(ty)),
+            InferKind::Const(ct) => self.insert(inf_span, inf_id, Node::ConstArg(ct)),
+            InferKind::Ambig(inf) => self.insert(inf_span, inf_id, Node::Infer(inf)),
+        }
+
+        self.visit_id(inf_id);
     }
 
     fn visit_trait_ref(&mut self, tr: &'hir TraitRef<'hir>) {
@@ -375,26 +406,18 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_where_predicate(&mut self, predicate: &'hir WherePredicate<'hir>) {
-        match predicate {
-            WherePredicate::BoundPredicate(pred) => {
-                self.insert(pred.span, pred.hir_id, Node::WhereBoundPredicate(pred));
-                self.with_parent(pred.hir_id, |this| {
-                    intravisit::walk_where_predicate(this, predicate)
-                })
-            }
-            _ => intravisit::walk_where_predicate(self, predicate),
-        }
+        self.insert(predicate.span, predicate.hir_id, Node::WherePredicate(predicate));
+        self.with_parent(predicate.hir_id, |this| {
+            intravisit::walk_where_predicate(this, predicate)
+        });
     }
 
-    fn visit_array_length(&mut self, len: &'hir ArrayLen<'hir>) {
-        match len {
-            ArrayLen::Infer(inf) => self.insert(inf.span, inf.hir_id, Node::ArrayLenInfer(inf)),
-            ArrayLen::Body(..) => intravisit::walk_array_len(self, len),
-        }
-    }
+    fn visit_pattern_type_pattern(&mut self, pat: &'hir hir::TyPat<'hir>) {
+        self.insert(pat.span, pat.hir_id, Node::TyPat(pat));
 
-    fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {
-        self.visit_pat(p)
+        self.with_parent(pat.hir_id, |this| {
+            intravisit::walk_ty_pat(this, pat);
+        });
     }
 
     fn visit_precise_capturing_arg(

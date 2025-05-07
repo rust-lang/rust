@@ -1,7 +1,6 @@
 //@ check-fail
 
 #![feature(core_intrinsics)]
-#![feature(const_intrinsic_compare_bytes)]
 use std::intrinsics::compare_bytes;
 use std::mem::MaybeUninit;
 

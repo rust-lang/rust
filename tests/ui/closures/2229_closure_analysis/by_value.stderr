@@ -16,7 +16,6 @@ LL | |
 LL | |
 LL | |         let p = t.0.0;
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -25,7 +24,7 @@ note: Capturing t[(0, 0),Deref,(0, 0)] -> ByValue
    |
 LL |         let p = t.0.0;
    |                 ^^^^^
-note: Capturing t[(1, 0)] -> ImmBorrow
+note: Capturing t[(1, 0)] -> Immutable
   --> $DIR/by_value.rs:28:29
    |
 LL |         println!("{} {:?}", t.1, p);
@@ -39,7 +38,6 @@ LL | |
 LL | |
 LL | |         let p = t.0.0;
 ...  |
-LL | |
 LL | |     };
    | |_____^
    |
@@ -48,7 +46,7 @@ note: Min Capture t[(0, 0)] -> ByValue
    |
 LL |         let p = t.0.0;
    |                 ^^^^^
-note: Min Capture t[(1, 0)] -> ImmBorrow
+note: Min Capture t[(1, 0)] -> Immutable
   --> $DIR/by_value.rs:28:29
    |
 LL |         println!("{} {:?}", t.1, p);

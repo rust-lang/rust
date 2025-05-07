@@ -3,7 +3,6 @@
 // unified with the type *T, and so the type variable
 // in that type gets resolved.
 
-//@ pretty-expanded FIXME #23616
 
 use std::mem;
 

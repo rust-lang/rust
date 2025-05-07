@@ -3,7 +3,7 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 
-use super::{utils, CAST_POSSIBLE_WRAP};
+use super::{CAST_POSSIBLE_WRAP, utils};
 
 // this should be kept in sync with the allowed bit widths of `usize` and `isize`
 const ALLOWED_POINTER_SIZES: [u64; 3] = [16, 32, 64];
@@ -84,6 +84,6 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
             diag
                 .note("`usize` and `isize` may be as small as 16 bits on some platforms")
                 .note("for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types");
-        };
+        }
     });
 }

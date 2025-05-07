@@ -4,7 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::ObligationCtxt;
 
 use crate::lints::{
@@ -133,7 +133,7 @@ fn extract_iterator_next_call<'tcx>(
     {
         Some(recv)
     } else {
-        return None;
+        None
     }
 }
 
@@ -155,7 +155,7 @@ fn suggest_question_mark<'tcx>(
     // Check that the function/closure/constant we are in has a `Result` type.
     // Otherwise suggesting using `?` may not be a good idea.
     {
-        let ty = cx.typeck_results().expr_ty(cx.tcx.hir().body(body_id).value);
+        let ty = cx.typeck_results().expr_ty(cx.tcx.hir_body(body_id).value);
         let ty::Adt(ret_adt, ..) = ty.kind() else { return false };
         if !cx.tcx.is_diagnostic_item(sym::Result, ret_adt.did()) {
             return false;
@@ -163,16 +163,16 @@ fn suggest_question_mark<'tcx>(
     }
 
     let ty = args.type_at(0);
-    let infcx = cx.tcx.infer_ctxt().build();
+    let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
     let ocx = ObligationCtxt::new(&infcx);
 
-    let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
+    let body_def_id = cx.tcx.hir_body_owner_def_id(body_id);
     let cause =
         ObligationCause::new(span, body_def_id, rustc_infer::traits::ObligationCauseCode::Misc);
 
     ocx.register_bound(
         cause,
-        cx.param_env,
+        param_env,
         // Erase any region vids from the type, which may not be resolved
         infcx.tcx.erase_regions(ty),
         into_iterator_did,

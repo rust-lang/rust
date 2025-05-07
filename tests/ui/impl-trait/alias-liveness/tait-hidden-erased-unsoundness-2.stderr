@@ -1,14 +1,14 @@
 error[E0700]: hidden type for `Step2<'a>` captures lifetime that does not appear in bounds
-  --> $DIR/tait-hidden-erased-unsoundness-2.rs:28:9
+  --> $DIR/tait-hidden-erased-unsoundness-2.rs:27:5
    |
-LL |     pub type Step2<'a> = impl Send + 'a;
-   |                          -------------- opaque type defined here
+LL | pub type Step2<'a> = impl Send + 'a;
+   |                      -------------- opaque type defined here
 ...
-LL |     pub fn step2<'a, 'b: 'a>() -> Step2<'a>
-   |                      -- hidden type `Step1<'a, 'b>` captures the lifetime `'b` as defined here
+LL | pub fn step2<'a, 'b: 'a>() -> Step2<'a>
+   |                  -- hidden type `Step1<'a, 'b>` captures the lifetime `'b` as defined here
 ...
-LL |         crate::step1::step1::<'a, 'b>()
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     step1::<'a, 'b>()
+   |     ^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

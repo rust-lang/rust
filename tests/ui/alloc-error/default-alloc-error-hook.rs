@@ -1,6 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 
 use std::alloc::{Layout, handle_alloc_error};
 use std::env;

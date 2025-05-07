@@ -1,11 +1,11 @@
 //! Unwind info generation (`.eh_frame`)
 
 use cranelift_codegen::ir::Endianness;
-use cranelift_codegen::isa::unwind::UnwindInfo;
 use cranelift_codegen::isa::TargetIsa;
+use cranelift_codegen::isa::unwind::UnwindInfo;
 use cranelift_object::ObjectProduct;
-use gimli::write::{CieId, EhFrame, FrameTable, Section};
 use gimli::RunTimeEndian;
+use gimli::write::{CieId, EhFrame, FrameTable, Section};
 
 use super::emit::address_for_func;
 use super::object::WriteDebugInfo;
@@ -60,8 +60,8 @@ impl UnwindContext {
                 self.frame_table
                     .add_fde(self.cie_id.unwrap(), unwind_info.to_fde(address_for_func(func_id)));
             }
-            UnwindInfo::WindowsX64(_) => {
-                // FIXME implement this
+            UnwindInfo::WindowsX64(_) | UnwindInfo::WindowsArm64(_) => {
+                // Windows does not have debug info for its unwind info.
             }
             unwind_info => unimplemented!("{:?}", unwind_info),
         }

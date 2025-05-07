@@ -16,32 +16,25 @@ mod case_conv;
 use std::fmt;
 
 use hir_def::{
-    data::adt::VariantData, db::DefDatabase, hir::Pat, src::HasSource, AdtId, AttrDefId, ConstId,
-    EnumId, EnumVariantId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId, StaticId,
-    StructId, TraitId, TypeAliasId,
+    AdtId, ConstId, EnumId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup,
+    ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId, db::DefDatabase, hir::Pat,
+    item_tree::FieldsShape, signatures::StaticFlags, src::HasSource,
 };
 use hir_expand::{
+    HirFileId,
     name::{AsName, Name},
-    HirFileId, MacroFileIdExt,
 };
 use intern::sym;
 use stdx::{always, never};
 use syntax::{
-    ast::{self, HasName},
     AstNode, AstPtr, ToSmolStr,
+    ast::{self, HasName},
+    utils::is_raw_identifier,
 };
 
 use crate::db::HirDatabase;
 
 use self::case_conv::{to_camel_case, to_lower_snake_case, to_upper_snake_case};
-
-mod allow {
-    pub(super) const BAD_STYLE: &str = "bad_style";
-    pub(super) const NONSTANDARD_STYLE: &str = "nonstandard_style";
-    pub(super) const NON_SNAKE_CASE: &str = "non_snake_case";
-    pub(super) const NON_UPPER_CASE_GLOBAL: &str = "non_upper_case_globals";
-    pub(super) const NON_CAMEL_CASE_TYPES: &str = "non_camel_case_types";
-}
 
 pub fn incorrect_case(db: &dyn HirDatabase, owner: ModuleDefId) -> Vec<IncorrectCase> {
     let _p = tracing::info_span!("incorrect_case").entered();
@@ -65,7 +58,7 @@ impl fmt::Display for CaseType {
         let repr = match self {
             CaseType::LowerSnakeCase => "snake_case",
             CaseType::UpperSnakeCase => "UPPER_SNAKE_CASE",
-            CaseType::UpperCamelCase => "CamelCase",
+            CaseType::UpperCamelCase => "UpperCamelCase",
         };
 
         repr.fmt(f)
@@ -159,94 +152,9 @@ impl<'a> DeclValidator<'a> {
         }
     }
 
-    /// Checks whether not following the convention is allowed for this item.
-    fn allowed(&self, id: AttrDefId, allow_name: &str, recursing: bool) -> bool {
-        let is_allowed = |def_id| {
-            let attrs = self.db.attrs(def_id);
-            // don't bug the user about directly no_mangle annotated stuff, they can't do anything about it
-            (!recursing && attrs.by_key(&sym::no_mangle).exists())
-                || attrs.by_key(&sym::allow).tt_values().any(|tt| {
-                    let allows = tt.to_string();
-                    allows.contains(allow_name)
-                        || allows.contains(allow::BAD_STYLE)
-                        || allows.contains(allow::NONSTANDARD_STYLE)
-                })
-        };
-        let db = self.db.upcast();
-        let file_id_is_derive = || {
-            match id {
-                AttrDefId::ModuleId(m) => {
-                    m.def_map(db)[m.local_id].origin.file_id().map(Into::into)
-                }
-                AttrDefId::FunctionId(f) => Some(f.lookup(db).id.file_id()),
-                AttrDefId::StaticId(sid) => Some(sid.lookup(db).id.file_id()),
-                AttrDefId::ConstId(cid) => Some(cid.lookup(db).id.file_id()),
-                AttrDefId::TraitId(tid) => Some(tid.lookup(db).id.file_id()),
-                AttrDefId::TraitAliasId(taid) => Some(taid.lookup(db).id.file_id()),
-                AttrDefId::ImplId(iid) => Some(iid.lookup(db).id.file_id()),
-                AttrDefId::ExternBlockId(id) => Some(id.lookup(db).id.file_id()),
-                AttrDefId::ExternCrateId(id) => Some(id.lookup(db).id.file_id()),
-                AttrDefId::UseId(id) => Some(id.lookup(db).id.file_id()),
-                // These warnings should not explore macro definitions at all
-                AttrDefId::MacroId(_) => None,
-                AttrDefId::AdtId(aid) => match aid {
-                    AdtId::StructId(sid) => Some(sid.lookup(db).id.file_id()),
-                    AdtId::EnumId(eid) => Some(eid.lookup(db).id.file_id()),
-                    // Unions aren't yet supported
-                    AdtId::UnionId(_) => None,
-                },
-                AttrDefId::FieldId(_) => None,
-                AttrDefId::EnumVariantId(_) => None,
-                AttrDefId::TypeAliasId(_) => None,
-                AttrDefId::GenericParamId(_) => None,
-            }
-            .map_or(false, |file_id| {
-                matches!(file_id.macro_file(), Some(file_id) if file_id.is_custom_derive(db.upcast()) || file_id.is_builtin_derive(db.upcast()))
-            })
-        };
-
-        let parent = || {
-            match id {
-                AttrDefId::ModuleId(m) => m.containing_module(db).map(|v| v.into()),
-                AttrDefId::FunctionId(f) => Some(f.lookup(db).container.into()),
-                AttrDefId::StaticId(sid) => Some(sid.lookup(db).container.into()),
-                AttrDefId::ConstId(cid) => Some(cid.lookup(db).container.into()),
-                AttrDefId::TraitId(tid) => Some(tid.lookup(db).container.into()),
-                AttrDefId::TraitAliasId(taid) => Some(taid.lookup(db).container.into()),
-                AttrDefId::ImplId(iid) => Some(iid.lookup(db).container.into()),
-                AttrDefId::ExternBlockId(id) => Some(id.lookup(db).container.into()),
-                AttrDefId::ExternCrateId(id) => Some(id.lookup(db).container.into()),
-                AttrDefId::UseId(id) => Some(id.lookup(db).container.into()),
-                // These warnings should not explore macro definitions at all
-                AttrDefId::MacroId(_) => None,
-                AttrDefId::AdtId(aid) => match aid {
-                    AdtId::StructId(sid) => Some(sid.lookup(db).container.into()),
-                    AdtId::EnumId(eid) => Some(eid.lookup(db).container.into()),
-                    // Unions aren't yet supported
-                    AdtId::UnionId(_) => None,
-                },
-                AttrDefId::FieldId(_) => None,
-                AttrDefId::EnumVariantId(_) => None,
-                AttrDefId::TypeAliasId(_) => None,
-                AttrDefId::GenericParamId(_) => None,
-            }
-            .is_some_and(|mid| self.allowed(mid, allow_name, true))
-        };
-        is_allowed(id)
-            // FIXME: this is a hack to avoid false positives in derive macros currently
-            || file_id_is_derive()
-            // go upwards one step or give up
-            || parent()
-    }
-
     fn validate_module(&mut self, module_id: ModuleId) {
-        // Check whether non-snake case identifiers are allowed for this module.
-        if self.allowed(module_id.into(), allow::NON_SNAKE_CASE, false) {
-            return;
-        }
-
         // Check the module name.
-        let Some(module_name) = module_id.name(self.db.upcast()) else { return };
+        let Some(module_name) = module_id.name(self.db) else { return };
         let Some(module_name_replacement) =
             to_lower_snake_case(module_name.as_str()).map(|new_name| Replacement {
                 current_name: module_name,
@@ -256,8 +164,8 @@ impl<'a> DeclValidator<'a> {
         else {
             return;
         };
-        let module_data = &module_id.def_map(self.db.upcast())[module_id.local_id];
-        let Some(module_src) = module_data.declaration_source(self.db.upcast()) else {
+        let module_data = &module_id.def_map(self.db)[module_id.local_id];
+        let Some(module_src) = module_data.declaration_source(self.db) else {
             return;
         };
         self.create_incorrect_case_diagnostic_for_ast_node(
@@ -269,13 +177,8 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_trait(&mut self, trait_id: TraitId) {
-        // Check whether non-snake case identifiers are allowed for this trait.
-        if self.allowed(trait_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
-            return;
-        }
-
         // Check the trait name.
-        let data = self.db.trait_data(trait_id);
+        let data = self.db.trait_signature(trait_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             trait_id,
             &data.name,
@@ -285,27 +188,30 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_func(&mut self, func: FunctionId) {
-        let container = func.lookup(self.db.upcast()).container;
+        let container = func.lookup(self.db).container;
         if matches!(container, ItemContainerId::ExternBlockId(_)) {
             cov_mark::hit!(extern_func_incorrect_case_ignored);
-            return;
-        }
-
-        // Check whether non-snake case identifiers are allowed for this function.
-        if self.allowed(func.into(), allow::NON_SNAKE_CASE, false) {
             return;
         }
 
         // Check the function name.
         // Skipped if function is an associated item of a trait implementation.
         if !self.is_trait_impl_container(container) {
-            let data = self.db.function_data(func);
-            self.create_incorrect_case_diagnostic_for_item_name(
-                func,
-                &data.name,
-                CaseType::LowerSnakeCase,
-                IdentType::Function,
-            );
+            let data = self.db.function_signature(func);
+
+            // Don't run the lint on extern "[not Rust]" fn items with the
+            // #[no_mangle] attribute.
+            let no_mangle = self.db.attrs(func.into()).by_key(sym::no_mangle).exists();
+            if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
+                cov_mark::hit!(extern_func_no_mangle_ignored);
+            } else {
+                self.create_incorrect_case_diagnostic_for_item_name(
+                    func,
+                    &data.name,
+                    CaseType::LowerSnakeCase,
+                    IdentType::Function,
+                );
+            }
         } else {
             cov_mark::hit!(trait_impl_assoc_func_name_incorrect_case_ignored);
         }
@@ -318,17 +224,20 @@ impl<'a> DeclValidator<'a> {
     /// This includes function parameters except for trait implementation associated functions.
     fn validate_func_body(&mut self, func: FunctionId) {
         let body = self.db.body(func.into());
+        let edition = self.edition(func);
         let mut pats_replacements = body
             .pats
             .iter()
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
                     let bind_name = &body.bindings[*id].name;
+                    let mut suggested_text = to_lower_snake_case(bind_name.as_str())?;
+                    if is_raw_identifier(&suggested_text, edition) {
+                        suggested_text.insert_str(0, "r#");
+                    }
                     let replacement = Replacement {
                         current_name: bind_name.clone(),
-                        suggested_text: to_lower_snake_case(
-                            &bind_name.display_no_db().to_smolstr(),
-                        )?,
+                        suggested_text,
                         expected_case: CaseType::LowerSnakeCase,
                     };
                     Some((pat_id, replacement))
@@ -342,7 +251,7 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let (_, source_map) = self.db.body_with_source_map(func.into());
+        let source_map = self.db.body_with_source_map(func.into()).1;
         for (id, replacement) in pats_replacements {
             let Ok(source_ptr) = source_map.pat_syntax(id) else {
                 continue;
@@ -350,7 +259,7 @@ impl<'a> DeclValidator<'a> {
             let Some(ptr) = source_ptr.value.cast::<ast::IdentPat>() else {
                 continue;
             };
-            let root = source_ptr.file_syntax(self.db.upcast());
+            let root = source_ptr.file_syntax(self.db);
             let ident_pat = ptr.to_node(&root);
             let Some(parent) = ident_pat.syntax().parent() else {
                 continue;
@@ -377,19 +286,20 @@ impl<'a> DeclValidator<'a> {
         }
     }
 
+    fn edition(&self, id: impl HasModule) -> span::Edition {
+        let krate = id.krate(self.db);
+        krate.data(self.db).edition
+    }
+
     fn validate_struct(&mut self, struct_id: StructId) {
         // Check the structure name.
-        let non_camel_case_allowed =
-            self.allowed(struct_id.into(), allow::NON_CAMEL_CASE_TYPES, false);
-        if !non_camel_case_allowed {
-            let data = self.db.struct_data(struct_id);
-            self.create_incorrect_case_diagnostic_for_item_name(
-                struct_id,
-                &data.name,
-                CaseType::UpperCamelCase,
-                IdentType::Structure,
-            );
-        }
+        let data = self.db.struct_signature(struct_id);
+        self.create_incorrect_case_diagnostic_for_item_name(
+            struct_id,
+            &data.name,
+            CaseType::UpperCamelCase,
+            IdentType::Structure,
+        );
 
         // Check the field names.
         self.validate_struct_fields(struct_id);
@@ -397,24 +307,22 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for struct fields.
     fn validate_struct_fields(&mut self, struct_id: StructId) {
-        if self.allowed(struct_id.into(), allow::NON_SNAKE_CASE, false) {
-            return;
-        }
-
-        let data = self.db.struct_data(struct_id);
-        let VariantData::Record(fields) = data.variant_data.as_ref() else {
+        let data = self.db.variant_fields(struct_id.into());
+        if data.shape != FieldsShape::Record {
             return;
         };
-        let mut struct_fields_replacements = fields
+        let edition = self.edition(struct_id);
+        let mut struct_fields_replacements = data
+            .fields()
             .iter()
             .filter_map(|(_, field)| {
-                to_lower_snake_case(&field.name.display_no_db().to_smolstr()).map(|new_name| {
-                    Replacement {
+                to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
+                    |new_name| Replacement {
                         current_name: field.name.clone(),
                         suggested_text: new_name,
                         expected_case: CaseType::LowerSnakeCase,
-                    }
-                })
+                    },
+                )
             })
             .peekable();
 
@@ -423,8 +331,8 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let struct_loc = struct_id.lookup(self.db.upcast());
-        let struct_src = struct_loc.source(self.db.upcast());
+        let struct_loc = struct_id.lookup(self.db);
+        let struct_src = struct_loc.source(self.db);
 
         let Some(ast::FieldList::RecordFieldList(struct_fields_list)) =
             struct_src.value.field_list()
@@ -471,12 +379,7 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_enum(&mut self, enum_id: EnumId) {
-        let data = self.db.enum_data(enum_id);
-
-        // Check whether non-camel case names are allowed for this enum.
-        if self.allowed(enum_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
-            return;
-        }
+        let data = self.db.enum_signature(enum_id);
 
         // Check the enum name.
         self.create_incorrect_case_diagnostic_for_item_name(
@@ -492,20 +395,23 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for enum variants.
     fn validate_enum_variants(&mut self, enum_id: EnumId) {
-        let data = self.db.enum_data(enum_id);
+        let data = self.db.enum_variants(enum_id);
 
         for (variant_id, _) in data.variants.iter() {
             self.validate_enum_variant_fields(*variant_id);
         }
 
+        let edition = self.edition(enum_id);
         let mut enum_variants_replacements = data
             .variants
             .iter()
             .filter_map(|(_, name)| {
-                to_camel_case(&name.display_no_db().to_smolstr()).map(|new_name| Replacement {
-                    current_name: name.clone(),
-                    suggested_text: new_name,
-                    expected_case: CaseType::UpperCamelCase,
+                to_camel_case(&name.display_no_db(edition).to_smolstr()).map(|new_name| {
+                    Replacement {
+                        current_name: name.clone(),
+                        suggested_text: new_name,
+                        expected_case: CaseType::UpperCamelCase,
+                    }
                 })
             })
             .peekable();
@@ -515,8 +421,8 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let enum_loc = enum_id.lookup(self.db.upcast());
-        let enum_src = enum_loc.source(self.db.upcast());
+        let enum_loc = enum_id.lookup(self.db);
+        let enum_src = enum_loc.source(self.db);
 
         let Some(enum_variants_list) = enum_src.value.variant_list() else {
             always!(
@@ -562,20 +468,22 @@ impl<'a> DeclValidator<'a> {
 
     /// Check incorrect names for fields of enum variant.
     fn validate_enum_variant_fields(&mut self, variant_id: EnumVariantId) {
-        let variant_data = self.db.enum_variant_data(variant_id);
-        let VariantData::Record(fields) = variant_data.variant_data.as_ref() else {
+        let variant_data = self.db.variant_fields(variant_id.into());
+        if variant_data.shape != FieldsShape::Record {
             return;
         };
-        let mut variant_field_replacements = fields
+        let edition = self.edition(variant_id);
+        let mut variant_field_replacements = variant_data
+            .fields()
             .iter()
             .filter_map(|(_, field)| {
-                to_lower_snake_case(&field.name.display_no_db().to_smolstr()).map(|new_name| {
-                    Replacement {
+                to_lower_snake_case(&field.name.display_no_db(edition).to_smolstr()).map(
+                    |new_name| Replacement {
                         current_name: field.name.clone(),
                         suggested_text: new_name,
                         expected_case: CaseType::LowerSnakeCase,
-                    }
-                })
+                    },
+                )
             })
             .peekable();
 
@@ -584,8 +492,8 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        let variant_loc = variant_id.lookup(self.db.upcast());
-        let variant_src = variant_loc.source(self.db.upcast());
+        let variant_loc = variant_id.lookup(self.db);
+        let variant_src = variant_loc.source(self.db);
 
         let Some(ast::FieldList::RecordFieldList(variant_fields_list)) =
             variant_src.value.field_list()
@@ -632,17 +540,13 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_const(&mut self, const_id: ConstId) {
-        let container = const_id.lookup(self.db.upcast()).container;
+        let container = const_id.lookup(self.db).container;
         if self.is_trait_impl_container(container) {
             cov_mark::hit!(trait_impl_assoc_const_incorrect_case_ignored);
             return;
         }
 
-        if self.allowed(const_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
-            return;
-        }
-
-        let data = self.db.const_data(const_id);
+        let data = self.db.const_signature(const_id);
         let Some(name) = &data.name else {
             return;
         };
@@ -655,13 +559,9 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_static(&mut self, static_id: StaticId) {
-        let data = self.db.static_data(static_id);
-        if data.is_extern {
+        let data = self.db.static_signature(static_id);
+        if data.flags.contains(StaticFlags::EXTERN) {
             cov_mark::hit!(extern_static_incorrect_case_ignored);
-            return;
-        }
-
-        if self.allowed(static_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
             return;
         }
 
@@ -674,19 +574,14 @@ impl<'a> DeclValidator<'a> {
     }
 
     fn validate_type_alias(&mut self, type_alias_id: TypeAliasId) {
-        let container = type_alias_id.lookup(self.db.upcast()).container;
+        let container = type_alias_id.lookup(self.db).container;
         if self.is_trait_impl_container(container) {
             cov_mark::hit!(trait_impl_assoc_type_incorrect_case_ignored);
             return;
         }
 
-        // Check whether non-snake case identifiers are allowed for this type alias.
-        if self.allowed(type_alias_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
-            return;
-        }
-
         // Check the type alias name.
-        let data = self.db.type_alias_data(type_alias_id);
+        let data = self.db.type_alias_signature(type_alias_id);
         self.create_incorrect_case_diagnostic_for_item_name(
             type_alias_id,
             &data.name,
@@ -704,23 +599,24 @@ impl<'a> DeclValidator<'a> {
     ) where
         N: AstNode + HasName + fmt::Debug,
         S: HasSource<Value = N>,
-        L: Lookup<Data = S, Database<'a> = dyn DefDatabase + 'a>,
+        L: Lookup<Data = S, Database = dyn DefDatabase> + HasModule + Copy,
     {
         let to_expected_case_type = match expected_case {
             CaseType::LowerSnakeCase => to_lower_snake_case,
             CaseType::UpperSnakeCase => to_upper_snake_case,
             CaseType::UpperCamelCase => to_camel_case,
         };
+        let edition = self.edition(item_id);
         let Some(replacement) =
-            to_expected_case_type(&name.display(self.db.upcast()).to_smolstr()).map(|new_name| {
+            to_expected_case_type(&name.display(self.db, edition).to_smolstr()).map(|new_name| {
                 Replacement { current_name: name.clone(), suggested_text: new_name, expected_case }
             })
         else {
             return;
         };
 
-        let item_loc = item_id.lookup(self.db.upcast());
-        let item_src = item_loc.source(self.db.upcast());
+        let item_loc = item_id.lookup(self.db);
+        let item_src = item_loc.source(self.db);
         self.create_incorrect_case_diagnostic_for_ast_node(
             replacement,
             item_src.file_id,
@@ -748,12 +644,13 @@ impl<'a> DeclValidator<'a> {
             return;
         };
 
+        let edition = file_id.original_file(self.db).edition(self.db);
         let diagnostic = IncorrectCase {
             file: file_id,
             ident_type,
             ident: AstPtr::new(&name_ast),
             expected_case: replacement.expected_case,
-            ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
+            ident_text: replacement.current_name.display(self.db, edition).to_string(),
             suggested_text: replacement.suggested_text,
         };
 

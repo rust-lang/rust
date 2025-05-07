@@ -2,7 +2,7 @@ use std::ops::{Bound, Range};
 
 use ast::token::IdentIsRaw;
 use pm::bridge::{
-    server, DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree,
+    DelimSpan, Diagnostic, ExpnGlobals, Group, Ident, LitKind, Literal, Punct, TokenTree, server,
 };
 use pm::{Delimiter, Level};
 use rustc_ast as ast;
@@ -11,16 +11,14 @@ use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diag, ErrorGuaranteed, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::parser::Parser;
-use rustc_parse::{new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
+use rustc_parse::{exp, new_parser_from_source_str, source_str_to_stream, unwrap_or_emit_fatal};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
-use rustc_span::symbol::{self, sym, Symbol};
-use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
-use smallvec::{smallvec, SmallVec};
+use rustc_span::{BytePos, FileName, Pos, Span, Symbol, sym};
+use smallvec::{SmallVec, smallvec};
 
 use crate::base::ExtCtxt;
 
@@ -38,7 +36,7 @@ impl FromInternal<token::Delimiter> for Delimiter {
             token::Delimiter::Parenthesis => Delimiter::Parenthesis,
             token::Delimiter::Brace => Delimiter::Brace,
             token::Delimiter::Bracket => Delimiter::Bracket,
-            token::Delimiter::Invisible => Delimiter::None,
+            token::Delimiter::Invisible(_) => Delimiter::None,
         }
     }
 }
@@ -49,7 +47,7 @@ impl ToInternal<token::Delimiter> for Delimiter {
             Delimiter::Parenthesis => token::Delimiter::Parenthesis,
             Delimiter::Brace => token::Delimiter::Brace,
             Delimiter::Bracket => token::Delimiter::Bracket,
-            Delimiter::None => token::Delimiter::Invisible,
+            Delimiter::None => token::Delimiter::Invisible(token::InvisibleOrigin::ProcMacro),
         }
     }
 }
@@ -112,15 +110,47 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
         // Estimate the capacity as `stream.len()` rounded up to the next power
         // of two to limit the number of required reallocations.
         let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
-        let mut cursor = stream.trees();
+        let mut iter = stream.iter();
 
-        while let Some(tree) = cursor.next() {
+        while let Some(tree) = iter.next() {
             let (Token { kind, span }, joint) = match tree.clone() {
-                tokenstream::TokenTree::Delimited(span, _, delim, tts) => {
-                    let delimiter = pm::Delimiter::from_internal(delim);
+                tokenstream::TokenTree::Delimited(span, _, mut delim, mut stream) => {
+                    // We used to have an alternative behaviour for crates that
+                    // needed it: a hack used to pass AST fragments to
+                    // attribute and derive macros as a single nonterminal
+                    // token instead of a token stream. Such token needs to be
+                    // "unwrapped" and not represented as a delimited group. We
+                    // had a lint for a long time, but now we just emit a hard
+                    // error. Eventually we might remove the special case hard
+                    // error check altogether. See #73345.
+                    if let Delimiter::Invisible(InvisibleOrigin::MetaVar(kind)) = delim {
+                        crate::base::stream_pretty_printing_compatibility_hack(
+                            kind,
+                            &stream,
+                            rustc.psess(),
+                        );
+                    }
+
+                    // In `mk_delimited` we avoid nesting invisible delimited
+                    // of the same `MetaVarKind`. Here we do the same but
+                    // ignore the `MetaVarKind` because it is discarded when we
+                    // convert it to a `Group`.
+                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim {
+                        if stream.len() == 1
+                            && let tree = stream.iter().next().unwrap()
+                            && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
+                            && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
+                        {
+                            delim = *delim2;
+                            stream = stream2.clone();
+                        } else {
+                            break;
+                        }
+                    }
+
                     trees.push(TokenTree::Group(Group {
-                        delimiter,
-                        stream: Some(tts),
+                        delimiter: pm::Delimiter::from_internal(delim),
+                        stream: Some(stream),
                         span: DelimSpan {
                             open: span.open,
                             close: span.close,
@@ -181,28 +211,28 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Gt => op(">"),
                 AndAnd => op("&&"),
                 OrOr => op("||"),
-                Not => op("!"),
+                Bang => op("!"),
                 Tilde => op("~"),
-                BinOp(Plus) => op("+"),
-                BinOp(Minus) => op("-"),
-                BinOp(Star) => op("*"),
-                BinOp(Slash) => op("/"),
-                BinOp(Percent) => op("%"),
-                BinOp(Caret) => op("^"),
-                BinOp(And) => op("&"),
-                BinOp(Or) => op("|"),
-                BinOp(Shl) => op("<<"),
-                BinOp(Shr) => op(">>"),
-                BinOpEq(Plus) => op("+="),
-                BinOpEq(Minus) => op("-="),
-                BinOpEq(Star) => op("*="),
-                BinOpEq(Slash) => op("/="),
-                BinOpEq(Percent) => op("%="),
-                BinOpEq(Caret) => op("^="),
-                BinOpEq(And) => op("&="),
-                BinOpEq(Or) => op("|="),
-                BinOpEq(Shl) => op("<<="),
-                BinOpEq(Shr) => op(">>="),
+                Plus => op("+"),
+                Minus => op("-"),
+                Star => op("*"),
+                Slash => op("/"),
+                Percent => op("%"),
+                Caret => op("^"),
+                And => op("&"),
+                Or => op("|"),
+                Shl => op("<<"),
+                Shr => op(">>"),
+                PlusEq => op("+="),
+                MinusEq => op("-="),
+                StarEq => op("*="),
+                SlashEq => op("/="),
+                PercentEq => op("%="),
+                CaretEq => op("^="),
+                AndEq => op("&="),
+                OrEq => op("|="),
+                ShlEq => op("<<="),
+                ShrEq => op(">>="),
                 At => op("@"),
                 Dot => op("."),
                 DotDot => op(".."),
@@ -229,15 +259,16 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     span: ident.span,
                 })),
 
-                Lifetime(name) => {
-                    let ident = symbol::Ident::new(name, span).without_first_quote();
+                Lifetime(name, is_raw) => {
+                    let ident = rustc_span::Ident::new(name, span).without_first_quote();
                     trees.extend([
                         TokenTree::Punct(Punct { ch: b'\'', joint: true, span }),
-                        TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
+                        TokenTree::Ident(Ident { sym: ident.name, is_raw: is_raw.into(), span }),
                     ]);
                 }
-                NtLifetime(ident) => {
-                    let stream = TokenStream::token_alone(token::Lifetime(ident.name), ident.span);
+                NtLifetime(ident, is_raw) => {
+                    let stream =
+                        TokenStream::token_alone(token::Lifetime(ident.name, is_raw), ident.span);
                     trees.push(TokenTree::Group(Group {
                         delimiter: pm::Delimiter::None,
                         stream: Some(stream),
@@ -277,26 +308,8 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(nt) => {
-                    let stream = TokenStream::from_nonterminal_ast(&nt);
-                    // We used to have an alternative behaviour for crates that
-                    // needed it: a hack used to pass AST fragments to
-                    // attribute and derive macros as a single nonterminal
-                    // token instead of a token stream. Such token needs to be
-                    // "unwrapped" and not represented as a delimited group. We
-                    // had a lint for a long time, but now we just emit a hard
-                    // error. Eventually we might remove the special case hard
-                    // error check altogether. See #73345.
-                    crate::base::nt_pretty_printing_compatibility_hack(&nt, rustc.ecx.sess);
-                    trees.push(TokenTree::Group(Group {
-                        delimiter: pm::Delimiter::None,
-                        stream: Some(stream),
-                        span: DelimSpan::from_single(span),
-                    }))
-                }
-
-                OpenDelim(..) | CloseDelim(..) => unreachable!(),
-                Eof => unreachable!(),
+                OpenParen | CloseParen | OpenBrace | CloseBrace | OpenBracket | CloseBracket
+                | OpenInvisible(_) | CloseInvisible(_) | Eof => unreachable!(),
             }
         }
         trees
@@ -322,16 +335,16 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                     b'=' => Eq,
                     b'<' => Lt,
                     b'>' => Gt,
-                    b'!' => Not,
+                    b'!' => Bang,
                     b'~' => Tilde,
-                    b'+' => BinOp(Plus),
-                    b'-' => BinOp(Minus),
-                    b'*' => BinOp(Star),
-                    b'/' => BinOp(Slash),
-                    b'%' => BinOp(Percent),
-                    b'^' => BinOp(Caret),
-                    b'&' => BinOp(And),
-                    b'|' => BinOp(Or),
+                    b'+' => Plus,
+                    b'-' => Minus,
+                    b'*' => Star,
+                    b'/' => Slash,
+                    b'%' => Percent,
+                    b'^' => Caret,
+                    b'&' => And,
+                    b'|' => Or,
                     b'@' => At,
                     b'.' => Dot,
                     b',' => Comma,
@@ -371,11 +384,10 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 symbol,
                 suffix,
                 span,
-            }) if symbol.as_str().starts_with('-') => {
-                let minus = BinOp(BinOpToken::Minus);
-                let symbol = Symbol::intern(&symbol.as_str()[1..]);
+            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                let symbol = Symbol::intern(symbol);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(minus, span);
+                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(integer, span);
                 smallvec![a, b]
             }
@@ -384,11 +396,10 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 symbol,
                 suffix,
                 span,
-            }) if symbol.as_str().starts_with('-') => {
-                let minus = BinOp(BinOpToken::Minus);
-                let symbol = Symbol::intern(&symbol.as_str()[1..]);
+            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                let symbol = Symbol::intern(symbol);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(minus, span);
+                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(float, span);
                 smallvec![a, b]
             }
@@ -414,7 +425,7 @@ impl ToInternal<rustc_errors::Level> for Level {
     }
 }
 
-pub struct FreeFunctions;
+pub(crate) struct FreeFunctions;
 
 pub(crate) struct Rustc<'a, 'b> {
     ecx: &'a mut ExtCtxt<'b>,
@@ -426,7 +437,7 @@ pub(crate) struct Rustc<'a, 'b> {
 }
 
 impl<'a, 'b> Rustc<'a, 'b> {
-    pub fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
+    pub(crate) fn new(ecx: &'a mut ExtCtxt<'b>) -> Self {
         let expn_data = ecx.current_expansion.id.expn_data();
         Rustc {
             def_site: ecx.with_def_site_ctxt(expn_data.def_site),
@@ -446,7 +457,6 @@ impl<'a, 'b> Rustc<'a, 'b> {
 impl server::Types for Rustc<'_, '_> {
     type FreeFunctions = FreeFunctions;
     type TokenStream = TokenStream;
-    type SourceFile = Lrc<SourceFile>;
     type Span = Span;
     type Symbol = Symbol;
 }
@@ -473,7 +483,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             unwrap_or_emit_fatal(new_parser_from_source_str(self.psess(), name, s.to_owned()));
 
         let first_span = parser.token.span.data();
-        let minus_present = parser.eat(&token::BinOp(token::Minus));
+        let minus_present = parser.eat(exp!(Minus));
 
         let lit_span = parser.token.span.data();
         let token::Literal(mut lit) = parser.token.kind else {
@@ -599,10 +609,7 @@ impl server::TokenStream for Rustc<'_, '_> {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
-                            tokenstream::TokenTree::token_joint_hidden(
-                                token::BinOp(token::Minus),
-                                e.span,
-                            ),
+                            tokenstream::TokenTree::token_joint_hidden(token::Minus, e.span),
                             tokenstream::TokenTree::token_alone(token::Literal(*token_lit), e.span),
                         ]))
                     }
@@ -626,8 +633,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         base: Option<Self::TokenStream>,
         trees: Vec<TokenTree<Self::TokenStream, Self::Span, Self::Symbol>>,
     ) -> Self::TokenStream {
-        let mut stream =
-            if let Some(base) = base { base } else { tokenstream::TokenStream::default() };
+        let mut stream = base.unwrap_or_default();
         for tree in trees {
             for tt in (tree, &mut *self).to_internal() {
                 stream.push_tree(tt);
@@ -641,8 +647,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         base: Option<Self::TokenStream>,
         streams: Vec<Self::TokenStream>,
     ) -> Self::TokenStream {
-        let mut stream =
-            if let Some(base) = base { base } else { tokenstream::TokenStream::default() };
+        let mut stream = base.unwrap_or_default();
         for s in streams {
             stream.push_stream(s);
         }
@@ -657,28 +662,6 @@ impl server::TokenStream for Rustc<'_, '_> {
     }
 }
 
-impl server::SourceFile for Rustc<'_, '_> {
-    fn eq(&mut self, file1: &Self::SourceFile, file2: &Self::SourceFile) -> bool {
-        Lrc::ptr_eq(file1, file2)
-    }
-
-    fn path(&mut self, file: &Self::SourceFile) -> String {
-        match &file.name {
-            FileName::Real(name) => name
-                .local_path()
-                .expect("attempting to get a file path in an imported file in `proc_macro::SourceFile::path`")
-                .to_str()
-                .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
-                .to_string(),
-            _ => file.name.prefer_local().to_string(),
-        }
-    }
-
-    fn is_real(&mut self, file: &Self::SourceFile) -> bool {
-        file.is_real_file()
-    }
-}
-
 impl server::Span for Rustc<'_, '_> {
     fn debug(&mut self, span: Self::Span) -> String {
         if self.ecx.ecfg.span_debug {
@@ -688,8 +671,29 @@ impl server::Span for Rustc<'_, '_> {
         }
     }
 
-    fn source_file(&mut self, span: Self::Span) -> Self::SourceFile {
-        self.psess().source_map().lookup_char_pos(span.lo()).file
+    fn file(&mut self, span: Self::Span) -> String {
+        self.psess()
+            .source_map()
+            .lookup_char_pos(span.lo())
+            .file
+            .name
+            .prefer_remapped_unconditionaly()
+            .to_string()
+    }
+
+    fn local_file(&mut self, span: Self::Span) -> Option<String> {
+        self.psess()
+            .source_map()
+            .lookup_char_pos(span.lo())
+            .file
+            .name
+            .clone()
+            .into_local_path()
+            .map(|p| {
+                p.to_str()
+                    .expect("non-UTF8 file path in `proc_macro::SourceFile::path`")
+                    .to_string()
+            })
     }
 
     fn parent(&mut self, span: Self::Span) -> Option<Self::Span> {

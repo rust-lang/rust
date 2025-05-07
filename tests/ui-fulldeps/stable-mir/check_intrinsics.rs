@@ -8,11 +8,11 @@
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
-//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
+extern crate rustc_middle;
 extern crate rustc_hir;
 #[macro_use]
 extern crate rustc_smir;
@@ -20,7 +20,6 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::mir::mono::{Instance, InstanceKind};
 use stable_mir::mir::visit::{Location, MirVisitor};
 use stable_mir::mir::{LocalDecl, Terminator, TerminatorKind};
@@ -51,20 +50,18 @@ fn test_intrinsics() -> ControlFlow<()> {
 
 /// This check is unfortunately tight to the implementation of intrinsics.
 ///
-/// We want to ensure that StableMIR can handle intrinsics with and without fallback body.
+/// We want to ensure that StableMIR can handle intrinsics with and without fallback body:
+/// for intrinsics without a body, obviously we cannot expose anything.
 ///
 /// If by any chance this test breaks because you changed how an intrinsic is implemented, please
 /// update the test to invoke a different intrinsic.
-///
-/// In StableMIR, we only expose intrinsic body if they are not marked with
-/// `rustc_intrinsic_must_be_overridden`.
 fn check_instance(instance: &Instance) {
     assert_eq!(instance.kind, InstanceKind::Intrinsic);
     let name = instance.intrinsic_name().unwrap();
     if instance.has_body() {
         let Some(body) = instance.body() else { unreachable!("Expected a body") };
         assert!(!body.blocks.is_empty());
-        assert_eq!(&name, "likely");
+        assert_eq!(&name, "select_unpredictable");
     } else {
         assert!(instance.body().is_none());
         assert_matches!(name.as_str(), "size_of_val" | "vtable_size");
@@ -78,7 +75,7 @@ fn check_def(fn_def: FnDef) {
 
     let name = intrinsic.fn_name();
     match name.as_str() {
-        "likely" => {
+        "select_unpredictable" => {
             assert!(!intrinsic.must_be_overridden());
             assert!(fn_def.has_body());
         }
@@ -118,7 +115,7 @@ impl<'a> MirVisitor for CallsVisitor<'a> {
 fn main() {
     let path = "binop_input.rs";
     generate_input(&path).unwrap();
-    let args = vec!["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
+    let args = &["rustc".to_string(), "--crate-type=lib".to_string(), path.to_string()];
     run!(args, test_intrinsics).unwrap();
 }
 
@@ -132,7 +129,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         pub fn use_intrinsics(init: bool) -> bool {{
             let vtable_sz = unsafe {{ vtable_size(0 as *const ()) }};
             let sz = unsafe {{ size_of_val("hi") }};
-            likely(init && sz == 2)
+            select_unpredictable(init && sz == 2, false, true)
         }}
         "#
     )?;

@@ -6,6 +6,7 @@
 // We want to control use declaration ordering and spacing (and preserve use group comments), so
 // skip rustfmt on this file.
 #![cfg_attr(rustfmt, rustfmt::skip)]
+#![warn(unreachable_pub)]
 
 mod command;
 mod macros;
@@ -16,6 +17,7 @@ pub mod assertion_helpers;
 pub mod diff;
 pub mod env;
 pub mod external_deps;
+pub mod linker;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
@@ -34,28 +36,39 @@ pub mod rfs {
 }
 
 // Re-exports of third-party library crates.
+// tidy-alphabetical-start
 pub use bstr;
 pub use gimli;
+pub use libc;
 pub use object;
 pub use regex;
+pub use serde_json;
+pub use similar;
 pub use wasmparser;
+// tidy-alphabetical-end
 
 // Re-exports of external dependencies.
-pub use external_deps::{c_build, cc, clang, htmldocck, llvm, python, rustc, rustdoc};
+pub use external_deps::{
+    cargo, c_build, c_cxx_compiler, clang, htmldocck, llvm, python, rustc, rustdoc
+};
 
 // These rely on external dependencies.
-pub use cc::{cc, cxx, extra_c_flags, extra_cxx_flags, Cc};
-pub use c_build::{build_native_dynamic_lib, build_native_static_lib, build_native_static_lib_optimized, build_native_static_lib_cxx};
+pub use c_cxx_compiler::{Cc, Gcc, cc, cxx, extra_c_flags, extra_cxx_flags, gcc};
+pub use c_build::{
+    build_native_dynamic_lib, build_native_static_lib, build_native_static_lib_cxx,
+    build_native_static_lib_optimized,
+};
+pub use cargo::cargo;
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
 pub use llvm::{
-    llvm_ar, llvm_bcanalyzer, llvm_dwarfdump, llvm_filecheck, llvm_nm, llvm_objdump, llvm_profdata,
-    llvm_readobj, LlvmAr, LlvmBcanalyzer, LlvmDwarfdump, LlvmFilecheck, LlvmNm, LlvmObjdump,
-    LlvmProfdata, LlvmReadobj,
+    llvm_ar, llvm_bcanalyzer, llvm_dis, llvm_dwarfdump, llvm_filecheck, llvm_nm, llvm_objcopy,
+    llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmBcanalyzer, LlvmDis, LlvmDwarfdump,
+    LlvmFilecheck, LlvmNm, LlvmObjcopy, LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
 pub use python::python_command;
-pub use rustc::{aux_build, bare_rustc, rustc, Rustc};
-pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
+pub use rustc::{bare_rustc, rustc, rustc_path, Rustc};
+pub use rustdoc::{rustdoc, Rustdoc};
 
 /// [`diff`][mod@diff] is implemented in terms of the [similar] library.
 ///
@@ -63,13 +76,16 @@ pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
 pub use diff::{diff, Diff};
 
 /// Panic-on-fail [`std::env::var`] and [`std::env::var_os`] wrappers.
-pub use env::{env_var, env_var_os};
+pub use env::{env_var, env_var_os, set_current_dir};
 
 /// Convenience helpers for running binaries and other commands.
 pub use run::{cmd, run, run_fail, run_with_args};
 
 /// Helpers for checking target information.
-pub use targets::{is_darwin, is_msvc, is_windows, llvm_components_contain, target, uname};
+pub use targets::{
+    apple_os, is_aix, is_darwin, is_msvc, is_windows, is_windows_gnu, is_win7, llvm_components_contain,
+    target, uname,
+};
 
 /// Helpers for building names of output artifacts that are potentially target-specific.
 pub use artifact_names::{
@@ -79,8 +95,8 @@ pub use artifact_names::{
 
 /// Path-related helpers.
 pub use path_helpers::{
-    cwd, filename_contains, filename_not_in_denylist, has_extension, has_prefix, has_suffix,
-    not_contains, path, shallow_find_files, source_root,
+    build_root, cwd, filename_contains, filename_not_in_denylist, has_extension, has_prefix,
+    has_suffix, not_contains, path, shallow_find_directories, shallow_find_files, source_root,
 };
 
 /// Helpers for scoped test execution where certain properties are attempted to be maintained.

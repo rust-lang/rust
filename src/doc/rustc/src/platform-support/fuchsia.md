@@ -7,17 +7,11 @@ updatable, and performant.
 
 ## Target maintainers
 
-The [Fuchsia team]:
+[@erickt](https://github.com/erickt)
+[@Nashenas88](https://github.com/Nashenas88)
 
-- Tyler Mandry ([@tmandry](https://github.com/tmandry))
-- David Koloski ([@djkoloski](https://github.com/djkoloski))
-- Julia Ryan ([@P1n3appl3](https://github.com/P1n3appl3))
-- Erick Tryzelaar ([@erickt](https://github.com/erickt))
-
-As the team evolves over time, the specific members listed here may differ from
-the members reported by the API. The API should be considered to be
-authoritative if this occurs. Instead of pinging individual members, use
-`@rustbot ping fuchsia` to contact the team on GitHub.
+The up-to-date list can be also found via the
+[fuchsia marker team](https://github.com/rust-lang/team/blob/master/teams/fuchsia.toml).
 
 ## Table of contents
 
@@ -188,7 +182,7 @@ Fuchsia as well. A recent version (14+) of clang should be sufficient to compile
 Rust for Fuchsia.
 
 x86-64 and AArch64 Fuchsia targets can be enabled using the following
-configuration in `config.toml`:
+configuration in `bootstrap.toml`:
 
 ```toml
 [build]
@@ -220,7 +214,7 @@ cxx = "clang++"
 
 By default, the Rust compiler installs itself to `/usr/local` on most UNIX
 systems. You may want to install it to another location (e.g. a local `install`
-directory) by setting a custom prefix in `config.toml`:
+directory) by setting a custom prefix in `bootstrap.toml`:
 
 ```toml
 [install]
@@ -525,14 +519,6 @@ ${SDK_PATH}/tools/${ARCH}/ffx repository publish \
     pkg/repo
 ```
 
-Then we can add the repository to `ffx`'s package server as `hello-fuchsia` using:
-
-```sh
-${SDK_PATH}/tools/${ARCH}/ffx repository add-from-pm \
-    --repository hello-fuchsia \
-    pkg/repo
-```
-
 ## Running a Fuchsia component on an emulator
 
 At this point, we are ready to run our Fuchsia
@@ -590,7 +576,8 @@ Now, start a package repository server to serve our
 package to the emulator:
 
 ```sh
-${SDK_PATH}/tools/${ARCH}/ffx repository server start
+${SDK_PATH}/tools/${ARCH}/ffx repository server start \
+    --background --repository hello-fuchsia --repo-path pkg-repo
 ```
 
 Once the repository server is up and running, register it with the target Fuchsia system running in the emulator:
@@ -710,7 +697,7 @@ We can then use the script to start our test environment with:
 )
 ```
 
-Where `${RUST_SRC_PATH}/build` is the `build-dir` set in `config.toml`.
+Where `${RUST_SRC_PATH}/build` is the `build-dir` set in `bootstrap.toml`.
 
 Once our environment is started, we can run our tests using `x.py` as usual. The
 test runner script will run the compiled tests on an emulated Fuchsia device. To
@@ -720,7 +707,7 @@ run the full `tests/ui` test suite:
 ( \
     source config-env.sh &&                                                   \
     ./x.py                                                                    \
-    --config config.toml                                                      \
+    --config bootstrap.toml                                                      \
     --stage=2                                                                 \
     test tests/ui                                                             \
     --target x86_64-unknown-fuchsia                                           \
@@ -908,7 +895,7 @@ through our `x.py` invocation. The full invocation is:
 ( \
     source config-env.sh &&                                                   \
     ./x.py                                                                    \
-    --config config.toml                                                      \
+    --config bootstrap.toml                                                      \
     --stage=2                                                                 \
     test tests/${TEST}                                                        \
     --target x86_64-unknown-fuchsia                                           \

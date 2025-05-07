@@ -1,32 +1,3 @@
-warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/safe-extern-statics-mut.rs:12:14
-   |
-LL |     let rb = &B;
-   |              ^^ shared reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
-   = note: `#[warn(static_mut_refs)]` on by default
-help: use `addr_of!` instead to create a raw pointer
-   |
-LL |     let rb = addr_of!(B);
-   |              ~~~~~~~~~ +
-
-warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/safe-extern-statics-mut.rs:15:15
-   |
-LL |     let xrb = &XB;
-   |               ^^^ shared reference to mutable static
-   |
-   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
-   = note: this will be a hard error in the 2024 edition
-   = note: this shared reference has lifetime `'static`, but if the static ever gets mutated, or a mutable reference is created, then any further use of this shared reference is Undefined Behavior
-help: use `addr_of!` instead to create a raw pointer
-   |
-LL |     let xrb = addr_of!(XB);
-   |               ~~~~~~~~~  +
-
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
   --> $DIR/safe-extern-statics-mut.rs:11:13
    |
@@ -44,7 +15,7 @@ LL |     let rb = &B;
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/safe-extern-statics-mut.rs:14:14
+  --> $DIR/safe-extern-statics-mut.rs:13:14
    |
 LL |     let xb = XB;
    |              ^^ use of mutable static
@@ -52,13 +23,13 @@ LL |     let xb = XB;
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/safe-extern-statics-mut.rs:15:16
+  --> $DIR/safe-extern-statics-mut.rs:14:16
    |
 LL |     let xrb = &XB;
    |                ^^ use of mutable static
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
-error: aborting due to 4 previous errors; 2 warnings emitted
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0133`.

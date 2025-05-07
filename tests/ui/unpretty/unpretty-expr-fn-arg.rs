@@ -6,6 +6,7 @@
 
 //@ check-pass
 //@ compile-flags: -Zunpretty=hir,typed
+//@ edition: 2015
 #![allow(dead_code)]
 
 fn main() {}

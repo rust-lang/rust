@@ -5,11 +5,11 @@ from rust_types import RustType, classify_struct, classify_union
 
 
 # BACKCOMPAT: rust 1.35
-def is_hashbrown_hashmap(hash_map):
+def is_hashbrown_hashmap(hash_map: lldb.SBValue) -> bool:
     return len(hash_map.type.fields) == 1
 
 
-def classify_rust_type(type):
+def classify_rust_type(type: lldb.SBType) -> str:
     type_class = type.GetTypeClass()
     if type_class == lldb.eTypeClassStruct:
         return classify_struct(type.name, type.fields)
@@ -19,106 +19,104 @@ def classify_rust_type(type):
     return RustType.OTHER
 
 
-def summary_lookup(valobj, dict):
-    # type: (SBValue, dict) -> str
+def summary_lookup(valobj: lldb.SBValue, _dict: LLDBOpaque) -> str:
     """Returns the summary provider for the given value"""
     rust_type = classify_rust_type(valobj.GetType())
 
     if rust_type == RustType.STD_STRING:
-        return StdStringSummaryProvider(valobj, dict)
+        return StdStringSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_OS_STRING:
-        return StdOsStringSummaryProvider(valobj, dict)
+        return StdOsStringSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_STR:
-        return StdStrSummaryProvider(valobj, dict)
+        return StdStrSummaryProvider(valobj, _dict)
 
     if rust_type == RustType.STD_VEC:
-        return SizeSummaryProvider(valobj, dict)
+        return SizeSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_VEC_DEQUE:
-        return SizeSummaryProvider(valobj, dict)
+        return SizeSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_SLICE:
-        return SizeSummaryProvider(valobj, dict)
+        return SizeSummaryProvider(valobj, _dict)
 
     if rust_type == RustType.STD_HASH_MAP:
-        return SizeSummaryProvider(valobj, dict)
+        return SizeSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_HASH_SET:
-        return SizeSummaryProvider(valobj, dict)
+        return SizeSummaryProvider(valobj, _dict)
 
     if rust_type == RustType.STD_RC:
-        return StdRcSummaryProvider(valobj, dict)
+        return StdRcSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_ARC:
-        return StdRcSummaryProvider(valobj, dict)
+        return StdRcSummaryProvider(valobj, _dict)
 
     if rust_type == RustType.STD_REF:
-        return StdRefSummaryProvider(valobj, dict)
+        return StdRefSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_REF_MUT:
-        return StdRefSummaryProvider(valobj, dict)
+        return StdRefSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_REF_CELL:
-        return StdRefSummaryProvider(valobj, dict)
+        return StdRefSummaryProvider(valobj, _dict)
 
     if rust_type == RustType.STD_NONZERO_NUMBER:
-        return StdNonZeroNumberSummaryProvider(valobj, dict)
+        return StdNonZeroNumberSummaryProvider(valobj, _dict)
 
     if rust_type == RustType.STD_PATHBUF:
-        return StdPathBufSummaryProvider(valobj, dict)
+        return StdPathBufSummaryProvider(valobj, _dict)
     if rust_type == RustType.STD_PATH:
-        return StdPathSummaryProvider(valobj, dict)
+        return StdPathSummaryProvider(valobj, _dict)
 
     return ""
 
 
-def synthetic_lookup(valobj, dict):
-    # type: (SBValue, dict) -> object
+def synthetic_lookup(valobj: lldb.SBValue, _dict: LLDBOpaque) -> object:
     """Returns the synthetic provider for the given value"""
     rust_type = classify_rust_type(valobj.GetType())
 
     if rust_type == RustType.STRUCT:
-        return StructSyntheticProvider(valobj, dict)
+        return StructSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STRUCT_VARIANT:
-        return StructSyntheticProvider(valobj, dict, is_variant=True)
+        return StructSyntheticProvider(valobj, _dict, is_variant=True)
     if rust_type == RustType.TUPLE:
-        return TupleSyntheticProvider(valobj, dict)
+        return TupleSyntheticProvider(valobj, _dict)
     if rust_type == RustType.TUPLE_VARIANT:
-        return TupleSyntheticProvider(valobj, dict, is_variant=True)
+        return TupleSyntheticProvider(valobj, _dict, is_variant=True)
     if rust_type == RustType.EMPTY:
-        return EmptySyntheticProvider(valobj, dict)
+        return EmptySyntheticProvider(valobj, _dict)
     if rust_type == RustType.REGULAR_ENUM:
         discriminant = valobj.GetChildAtIndex(0).GetChildAtIndex(0).GetValueAsUnsigned()
-        return synthetic_lookup(valobj.GetChildAtIndex(discriminant), dict)
+        return synthetic_lookup(valobj.GetChildAtIndex(discriminant), _dict)
     if rust_type == RustType.SINGLETON_ENUM:
-        return synthetic_lookup(valobj.GetChildAtIndex(0), dict)
+        return synthetic_lookup(valobj.GetChildAtIndex(0), _dict)
     if rust_type == RustType.ENUM:
-        return ClangEncodedEnumProvider(valobj, dict)
+        return ClangEncodedEnumProvider(valobj, _dict)
     if rust_type == RustType.STD_VEC:
-        return StdVecSyntheticProvider(valobj, dict)
+        return StdVecSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_VEC_DEQUE:
-        return StdVecDequeSyntheticProvider(valobj, dict)
+        return StdVecDequeSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_SLICE or rust_type == RustType.STD_STR:
-        return StdSliceSyntheticProvider(valobj, dict)
+        return StdSliceSyntheticProvider(valobj, _dict)
 
     if rust_type == RustType.STD_HASH_MAP:
         if is_hashbrown_hashmap(valobj):
-            return StdHashMapSyntheticProvider(valobj, dict)
+            return StdHashMapSyntheticProvider(valobj, _dict)
         else:
-            return StdOldHashMapSyntheticProvider(valobj, dict)
+            return StdOldHashMapSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_HASH_SET:
         hash_map = valobj.GetChildAtIndex(0)
         if is_hashbrown_hashmap(hash_map):
-            return StdHashMapSyntheticProvider(valobj, dict, show_values=False)
+            return StdHashMapSyntheticProvider(valobj, _dict, show_values=False)
         else:
-            return StdOldHashMapSyntheticProvider(hash_map, dict, show_values=False)
+            return StdOldHashMapSyntheticProvider(hash_map, _dict, show_values=False)
 
     if rust_type == RustType.STD_RC:
-        return StdRcSyntheticProvider(valobj, dict)
+        return StdRcSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_ARC:
-        return StdRcSyntheticProvider(valobj, dict, is_atomic=True)
+        return StdRcSyntheticProvider(valobj, _dict, is_atomic=True)
 
     if rust_type == RustType.STD_CELL:
-        return StdCellSyntheticProvider(valobj, dict)
+        return StdCellSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_REF:
-        return StdRefSyntheticProvider(valobj, dict)
+        return StdRefSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_REF_MUT:
-        return StdRefSyntheticProvider(valobj, dict)
+        return StdRefSyntheticProvider(valobj, _dict)
     if rust_type == RustType.STD_REF_CELL:
-        return StdRefSyntheticProvider(valobj, dict, is_cell=True)
+        return StdRefSyntheticProvider(valobj, _dict, is_cell=True)
 
-    return DefaultSyntheticProvider(valobj, dict)
+    return DefaultSyntheticProvider(valobj, _dict)

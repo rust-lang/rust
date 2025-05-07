@@ -62,12 +62,12 @@ impl Instant {
 
 /// A monotone clock used for `Instant` simulation.
 #[derive(Debug)]
-pub struct Clock {
-    kind: ClockKind,
+pub struct MonotonicClock {
+    kind: MonotonicClockKind,
 }
 
 #[derive(Debug)]
-enum ClockKind {
+enum MonotonicClockKind {
     Host {
         /// The "epoch" for this machine's monotone clock:
         /// the moment we consider to be time = 0.
@@ -79,13 +79,13 @@ enum ClockKind {
     },
 }
 
-impl Clock {
+impl MonotonicClock {
     /// Create a new clock based on the availability of communication with the host.
     pub fn new(communicate: bool) -> Self {
         let kind = if communicate {
-            ClockKind::Host { epoch: StdInstant::now() }
+            MonotonicClockKind::Host { epoch: StdInstant::now() }
         } else {
-            ClockKind::Virtual { nanoseconds: 0.into() }
+            MonotonicClockKind::Virtual { nanoseconds: 0.into() }
         };
 
         Self { kind }
@@ -94,10 +94,10 @@ impl Clock {
     /// Let the time pass for a small interval.
     pub fn tick(&self) {
         match &self.kind {
-            ClockKind::Host { .. } => {
+            MonotonicClockKind::Host { .. } => {
                 // Time will pass without us doing anything.
             }
-            ClockKind::Virtual { nanoseconds } => {
+            MonotonicClockKind::Virtual { nanoseconds } => {
                 nanoseconds.update(|x| x + NANOSECONDS_PER_BASIC_BLOCK);
             }
         }
@@ -106,8 +106,8 @@ impl Clock {
     /// Sleep for the desired duration.
     pub fn sleep(&self, duration: Duration) {
         match &self.kind {
-            ClockKind::Host { .. } => std::thread::sleep(duration),
-            ClockKind::Virtual { nanoseconds } => {
+            MonotonicClockKind::Host { .. } => std::thread::sleep(duration),
+            MonotonicClockKind::Virtual { nanoseconds } => {
                 // Just pretend that we have slept for some time.
                 let nanos: u128 = duration.as_nanos();
                 nanoseconds.update(|x| {
@@ -121,15 +121,17 @@ impl Clock {
     /// Return the `epoch` instant (time = 0), to convert between monotone instants and absolute durations.
     pub fn epoch(&self) -> Instant {
         match &self.kind {
-            ClockKind::Host { epoch } => Instant { kind: InstantKind::Host(*epoch) },
-            ClockKind::Virtual { .. } => Instant { kind: InstantKind::Virtual { nanoseconds: 0 } },
+            MonotonicClockKind::Host { epoch } => Instant { kind: InstantKind::Host(*epoch) },
+            MonotonicClockKind::Virtual { .. } =>
+                Instant { kind: InstantKind::Virtual { nanoseconds: 0 } },
         }
     }
 
     pub fn now(&self) -> Instant {
         match &self.kind {
-            ClockKind::Host { .. } => Instant { kind: InstantKind::Host(StdInstant::now()) },
-            ClockKind::Virtual { nanoseconds } =>
+            MonotonicClockKind::Host { .. } =>
+                Instant { kind: InstantKind::Host(StdInstant::now()) },
+            MonotonicClockKind::Virtual { nanoseconds } =>
                 Instant { kind: InstantKind::Virtual { nanoseconds: nanoseconds.get() } },
         }
     }

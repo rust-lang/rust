@@ -5,12 +5,28 @@ use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
+#[diag(interface_crate_name_does_not_match)]
+pub(crate) struct CrateNameDoesNotMatch {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) crate_name: Symbol,
+    pub(crate) attr_crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(interface_crate_name_invalid)]
+pub(crate) struct CrateNameInvalid<'a> {
+    pub(crate) crate_name: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(interface_ferris_identifier)]
 pub struct FerrisIdentifier {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[suggestion(code = "ferris", applicability = "maybe-incorrect")]
+    #[suggestion(code = "{ferris_fix}", applicability = "maybe-incorrect")]
     pub first_span: Span,
+    pub ferris_fix: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -58,26 +74,6 @@ pub struct TempsDirError;
 pub struct OutDirError;
 
 #[derive(Diagnostic)]
-#[diag(interface_cant_emit_mir)]
-pub struct CantEmitMIR {
-    pub error: io::Error,
-}
-
-#[derive(Diagnostic)]
-#[diag(interface_rustc_error_fatal)]
-pub struct RustcErrorFatal {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(interface_rustc_error_unexpected_annotation)]
-pub struct RustcErrorUnexpectedAnnotation {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(interface_failed_writing_file)]
 pub struct FailedWritingFile<'a> {
     pub path: &'a Path,
@@ -103,3 +99,22 @@ pub struct IgnoringOutDir;
 #[derive(Diagnostic)]
 #[diag(interface_multiple_output_types_to_stdout)]
 pub struct MultipleOutputTypesToStdout;
+
+#[derive(Diagnostic)]
+#[diag(interface_abi_required_feature)]
+#[note]
+#[note(interface_abi_required_feature_issue)]
+pub(crate) struct AbiRequiredTargetFeature<'a> {
+    pub feature: &'a str,
+    pub enabled: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(interface_limit_invalid)]
+pub(crate) struct LimitInvalid<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub value_span: Span,
+    pub error_str: &'a str,
+}

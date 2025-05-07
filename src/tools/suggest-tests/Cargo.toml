@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 glob = "0.3.0"
-build_helper = { version = "0.1.0", path = "../build_helper" }
+build_helper = { version = "0.1.0", path = "../../build_helper" }

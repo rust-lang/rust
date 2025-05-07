@@ -47,3 +47,22 @@ impl T for () {}
 pub fn foo() {
     ().trait_method();
 }
+
+// CHECK-LABEL: align_specified_twice_1
+// CHECK-SAME: align 64
+#[no_mangle]
+#[repr(align(32), align(64))]
+pub fn align_specified_twice_1() {}
+
+// CHECK-LABEL: align_specified_twice_2
+// CHECK-SAME: align 128
+#[no_mangle]
+#[repr(align(128), align(32))]
+pub fn align_specified_twice_2() {}
+
+// CHECK-LABEL: align_specified_twice_3
+// CHECK-SAME: align 256
+#[no_mangle]
+#[repr(align(32))]
+#[repr(align(256))]
+pub fn align_specified_twice_3() {}

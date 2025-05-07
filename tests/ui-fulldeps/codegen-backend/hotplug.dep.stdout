@@ -1,3 +1,3 @@
-$TEST_BUILD_DIR/codegen-backend/hotplug.dep/libhotplug.rlib: $DIR/hotplug.rs
+$TEST_BUILD_DIR/libhotplug.rlib: $DIR/hotplug.rs
 
 $DIR/hotplug.rs:

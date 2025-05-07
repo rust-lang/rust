@@ -1,13 +1,13 @@
 use crate::assist_context::{AssistContext, Assists};
 use ide_db::assists::AssistId;
 use syntax::{
+    AstNode, SyntaxKind, T,
     ast::{
-        self,
+        self, HasGenericParams, HasName,
         edit_in_place::{HasVisibilityEdit, Indent},
-        make, HasGenericParams, HasName,
+        make,
     },
     ted::{self, Position},
-    AstNode, SyntaxKind, T,
 };
 
 // NOTES :
@@ -95,7 +95,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
     let impl_name = impl_ast.self_ty()?;
 
     acc.add(
-        AssistId("generate_trait_from_impl", ide_db::assists::AssistKind::Generate),
+        AssistId::generate("generate_trait_from_impl"),
         "Generate trait from impl",
         impl_ast.syntax().text_range(),
         |builder| {

@@ -1,19 +1,19 @@
 use std::cmp;
 
+use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_data_structures::packed::Pu128;
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{self, AssertKind, BasicBlock, SwitchTargets, UnwindTerminateReason};
+use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span};
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
-use rustc_target::abi::{self, HasDataLayout, WrappingRange};
-use rustc_target::spec::abi::Abi;
+use rustc_span::{Span, sym};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
@@ -24,7 +24,7 @@ use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphizat
 use crate::common::{self, IntPredicate};
 use crate::errors::CompilerBuiltinsCannotCall;
 use crate::traits::*;
-use crate::{meth, MemFlags};
+use crate::{MemFlags, meth};
 
 // Indicates if we are in the middle of merging a BB's successor into it. This
 // can happen when BB jumps directly to its successor and the successor has no
@@ -163,21 +163,25 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         mergeable_succ: bool,
     ) -> MergingSucc {
         let tcx = bx.tcx();
-        if let Some(instance) = instance {
-            if is_call_from_compiler_builtins_to_upstream_monomorphization(tcx, instance) {
-                if destination.is_some() {
-                    let caller = with_no_trimmed_paths!(tcx.def_path_str(fx.instance.def_id()));
-                    let callee = with_no_trimmed_paths!(tcx.def_path_str(instance.def_id()));
-                    tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
-                } else {
-                    info!(
-                        "compiler_builtins call to diverging function {:?} replaced with abort",
-                        instance.def_id()
-                    );
-                    bx.abort();
-                    bx.unreachable();
-                    return MergingSucc::False;
-                }
+        if let Some(instance) = instance
+            && is_call_from_compiler_builtins_to_upstream_monomorphization(tcx, instance)
+        {
+            if destination.is_some() {
+                let caller_def = fx.instance.def_id();
+                let e = CompilerBuiltinsCannotCall {
+                    span: tcx.def_span(caller_def),
+                    caller: with_no_trimmed_paths!(tcx.def_path_str(caller_def)),
+                    callee: with_no_trimmed_paths!(tcx.def_path_str(instance.def_id())),
+                };
+                tcx.dcx().emit_err(e);
+            } else {
+                info!(
+                    "compiler_builtins call to diverging function {:?} replaced with abort",
+                    instance.def_id()
+                );
+                bx.abort();
+                bx.unreachable();
+                return MergingSucc::False;
             }
         }
 
@@ -376,21 +380,66 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             // If there are two targets (one conditional, one fallback), emit `br` instead of
             // `switch`.
             let (test_value, target) = target_iter.next().unwrap();
-            let lltrue = helper.llbb_with_cleanup(self, target);
-            let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
+            let otherwise = targets.otherwise();
+            let lltarget = helper.llbb_with_cleanup(self, target);
+            let llotherwise = helper.llbb_with_cleanup(self, otherwise);
+            let target_cold = self.cold_blocks[target];
+            let otherwise_cold = self.cold_blocks[otherwise];
+            // If `target_cold == otherwise_cold`, the branches have the same weight
+            // so there is no expectation. If they differ, the `target` branch is expected
+            // when the `otherwise` branch is cold.
+            let expect = if target_cold == otherwise_cold { None } else { Some(otherwise_cold) };
             if switch_ty == bx.tcx().types.bool {
                 // Don't generate trivial icmps when switching on bool.
                 match test_value {
-                    0 => bx.cond_br(discr_value, llfalse, lltrue),
-                    1 => bx.cond_br(discr_value, lltrue, llfalse),
+                    0 => {
+                        let expect = expect.map(|e| !e);
+                        bx.cond_br_with_expect(discr_value, llotherwise, lltarget, expect);
+                    }
+                    1 => {
+                        bx.cond_br_with_expect(discr_value, lltarget, llotherwise, expect);
+                    }
                     _ => bug!(),
                 }
             } else {
                 let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
                 let llval = bx.const_uint_big(switch_llty, test_value);
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
-                bx.cond_br(cmp, lltrue, llfalse);
+                bx.cond_br_with_expect(cmp, lltarget, llotherwise, expect);
             }
+        } else if target_iter.len() == 2
+            && self.mir[targets.otherwise()].is_empty_unreachable()
+            && targets.all_values().contains(&Pu128(0))
+            && targets.all_values().contains(&Pu128(1))
+        {
+            // This is the really common case for `bool`, `Option`, etc.
+            // By using `trunc nuw` we communicate that other values are
+            // impossible without needing `switch` or `assume`s.
+            let true_bb = targets.target_for_value(1);
+            let false_bb = targets.target_for_value(0);
+            let true_ll = helper.llbb_with_cleanup(self, true_bb);
+            let false_ll = helper.llbb_with_cleanup(self, false_bb);
+
+            let expected_cond_value = if self.cx.sess().opts.optimize == OptLevel::No {
+                None
+            } else {
+                match (self.cold_blocks[true_bb], self.cold_blocks[false_bb]) {
+                    // Same coldness, no expectation
+                    (true, true) | (false, false) => None,
+                    // Different coldness, expect the non-cold one
+                    (true, false) => Some(false),
+                    (false, true) => Some(true),
+                }
+            };
+
+            let bool_ty = bx.tcx().types.bool;
+            let cond = if switch_ty == bool_ty {
+                discr_value
+            } else {
+                let bool_llty = bx.immediate_backend_type(bx.layout_of(bool_ty));
+                bx.unchecked_utrunc(discr_value, bool_llty)
+            };
+            bx.cond_br_with_expect(cond, true_ll, false_ll, expected_cond_value);
         } else if self.cx.sess().opts.optimize == OptLevel::No
             && target_iter.len() == 2
             && self.mir[targets.otherwise()].is_empty_unreachable()
@@ -416,11 +465,34 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
             bx.cond_br(cmp, ll1, ll2);
         } else {
-            bx.switch(
-                discr_value,
-                helper.llbb_with_cleanup(self, targets.otherwise()),
-                target_iter.map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
-            );
+            let otherwise = targets.otherwise();
+            let otherwise_cold = self.cold_blocks[otherwise];
+            let otherwise_unreachable = self.mir[otherwise].is_empty_unreachable();
+            let cold_count = targets.iter().filter(|(_, target)| self.cold_blocks[*target]).count();
+            let none_cold = cold_count == 0;
+            let all_cold = cold_count == targets.iter().len();
+            if (none_cold && (!otherwise_cold || otherwise_unreachable))
+                || (all_cold && (otherwise_cold || otherwise_unreachable))
+            {
+                // All targets have the same weight,
+                // or `otherwise` is unreachable and it's the only target with a different weight.
+                bx.switch(
+                    discr_value,
+                    helper.llbb_with_cleanup(self, targets.otherwise()),
+                    target_iter
+                        .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
+                );
+            } else {
+                // Targets have different weights
+                bx.switch_with_weights(
+                    discr_value,
+                    helper.llbb_with_cleanup(self, targets.otherwise()),
+                    otherwise_cold,
+                    target_iter.map(|(value, target)| {
+                        (value, helper.llbb_with_cleanup(self, target), self.cold_blocks[target])
+                    }),
+                );
+            }
         }
     }
 
@@ -436,7 +508,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => bug!("C-variadic function must have a `VaList` place"),
             }
         }
-        if self.fn_abi.ret.layout.abi.is_uninhabited() {
+        if self.fn_abi.ret.layout.is_uninhabited() {
             // Functions with uninhabited return values are marked `noreturn`,
             // so we should make sure that we never actually do.
             // We play it safe by using a well-defined `abort`, but we could go for immediate UB
@@ -686,19 +758,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            AssertKind::BoundsCheck { ref len, ref index } => {
+            AssertKind::BoundsCheck { len, index } => {
                 let len = self.codegen_operand(bx, len).immediate();
                 let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
             }
-            AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+            AssertKind::MisalignedPointerDereference { required, found } => {
                 let required = self.codegen_operand(bx, required).immediate();
                 let found = self.codegen_operand(bx, found).immediate();
                 // It's `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicMisalignedPointerDereference, vec![required, found, location])
+            }
+            AssertKind::NullPointerDereference => {
+                // It's `fn panic_null_pointer_dereference()`,
+                // `#[track_caller]` adds an implicit argument.
+                (LangItem::PanicNullPointerDereference, vec![location])
             }
             _ => {
                 // It's `pub fn panic_...()` and `#[track_caller]` adds an implicit argument.
@@ -764,7 +841,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             let do_panic = !bx
                 .tcx()
-                .check_validity_requirement((requirement, bx.param_env().and(ty)))
+                .check_validity_requirement((requirement, bx.typing_env().as_query_input(ty)))
                 .expect("expect to have layout during codegen");
 
             let layout = bx.layout_of(ty);
@@ -772,7 +849,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(if do_panic {
                 let msg_str = with_no_visible_paths!({
                     with_no_trimmed_paths!({
-                        if layout.abi.is_uninhabited() {
+                        if layout.is_uninhabited() {
                             // Use this error even for the other intrinsics as it is more precise.
                             format!("attempted to instantiate uninhabited type `{ty}`")
                         } else if requirement == ValidityRequirement::Zero {
@@ -834,16 +911,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
-                Some(
-                    ty::Instance::expect_resolve(
-                        bx.tcx(),
-                        ty::ParamEnv::reveal_all(),
-                        def_id,
-                        args,
-                        fn_span,
-                    )
-                    .polymorphize(bx.tcx()),
-                ),
+                Some(ty::Instance::expect_resolve(
+                    bx.tcx(),
+                    bx.typing_env(),
+                    def_id,
+                    args,
+                    fn_span,
+                )),
                 None,
             ),
             ty::FnPtr(..) => (None, Some(callee.immediate())),
@@ -852,10 +926,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let def = instance.map(|i| i.def);
 
-        if let Some(
-            ty::InstanceKind::DropGlue(_, None) | ty::InstanceKind::AsyncDropGlueCtorShim(_, None),
-        ) = def
-        {
+        // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
+        // it is `func returning noop future`
+        if let Some(ty::InstanceKind::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let target = target.unwrap();
             return helper.funclet_br(self, bx, target, mergeable_succ);
@@ -904,7 +977,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &fn_abi.ret,
                     &mut llargs,
                     Some(intrinsic),
-                    target,
                 );
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
@@ -915,32 +987,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 };
 
-                let args: Vec<_> = args
-                    .iter()
-                    .enumerate()
-                    .map(|(i, arg)| {
-                        // The indices passed to simd_shuffle in the
-                        // third argument must be constant. This is
-                        // checked by the type-checker.
-                        if i == 2 && intrinsic.name == sym::simd_shuffle {
-                            // FIXME: the simd_shuffle argument is actually an array,
-                            // not a vector, so we need this special hack to make sure
-                            // it is passed as an immediate. We should pass the
-                            // shuffle indices as a vector instead to avoid this hack.
-                            if let mir::Operand::Constant(constant) = &arg.node {
-                                let (llval, ty) = self.immediate_const_vector(bx, constant);
-                                return OperandRef {
-                                    val: Immediate(llval),
-                                    layout: bx.layout_of(ty),
-                                };
-                            } else {
-                                span_bug!(span, "shuffle indices must be constant");
-                            }
-                        }
-
-                        self.codegen_operand(bx, &arg.node)
-                    })
-                    .collect();
+                let args: Vec<_> =
+                    args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
                 if matches!(intrinsic, ty::IntrinsicDef { name: sym::caller_location, .. }) {
                     let location = self
@@ -984,23 +1032,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         let mut llargs = Vec::with_capacity(arg_count);
-        let destination = target.as_ref().map(|&target| {
-            (
-                self.make_return_dest(
-                    bx,
-                    destination,
-                    &fn_abi.ret,
-                    &mut llargs,
-                    None,
-                    Some(target),
-                ),
-                target,
-            )
-        });
+
+        // We still need to call `make_return_dest` even if there's no `target`, since
+        // `fn_abi.ret` could be `PassMode::Indirect`, even if it is uninhabited,
+        // and `make_return_dest` adds the return-place indirect pointer to `llargs`.
+        let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, None);
+        let destination = target.map(|target| (return_dest, target));
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {
-            let (tup, args) = args.split_last().unwrap();
+        let (first_args, untuple) = if abi == ExternAbi::RustCall
+            && let Some((tup, args)) = args.split_last()
+        {
             (args, Some(tup))
         } else {
             (args, None)
@@ -1014,23 +1056,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match op.val {
                     Pair(data_ptr, meta) => {
                         // In the case of Rc<Self>, we need to explicitly pass a
-                        // *mut RcBox<Self> with a Scalar (not ScalarPair) ABI. This is a hack
+                        // *mut RcInner<Self> with a Scalar (not ScalarPair) ABI. This is a hack
                         // that is understood elsewhere in the compiler as a method on
                         // `dyn Trait`.
-                        // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
+                        // To get a `*mut RcInner<Self>`, we just keep unwrapping newtypes until
                         // we get a value of a built-in pointer type.
                         //
-                        // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
-                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                        // This is also relevant for `Pin<&mut Self>`, where we need to peel the
+                        // `Pin`.
+                        while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
-                            op = op.extract_field(bx, idx);
+                            op = op.extract_field(self, bx, idx);
                         }
 
-                        // now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
+                        // Now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
                         // data pointer and vtable. Look up the method in the vtable, and pass
-                        // the data pointer as the first argument
+                        // the data pointer as the first argument.
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
                             bx,
                             meta,
@@ -1053,11 +1096,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     Immediate(_) => {
                         // See comment above explaining why we peel these newtypes
-                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                        while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
-                            op = op.extract_field(bx, idx);
+                            op = op.extract_field(self, bx, idx);
                         }
 
                         // Make sure that we've actually unwrapped the rcvr down
@@ -1156,6 +1199,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
+        asm_macro: InlineAsmMacro,
         terminator: &mir::Terminator<'tcx>,
         template: &[ast::InlineAsmTemplatePiece],
         operands: &[mir::InlineAsmOperand<'tcx>],
@@ -1200,7 +1244,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if let ty::FnDef(def_id, args) = *const_.ty().kind() {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             bx.tcx(),
-                            ty::ParamEnv::reveal_all(),
+                            bx.typing_env(),
                             def_id,
                             args,
                         )
@@ -1226,20 +1270,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             &operands,
             options,
             line_spans,
-            if options.contains(InlineAsmOptions::NORETURN) {
-                None
-            } else {
-                targets.get(0).copied()
-            },
+            if asm_macro.diverges(options) { None } else { targets.get(0).copied() },
             unwind,
             instance,
             mergeable_succ,
         )
     }
-}
 
-impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
+    pub(crate) fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
         let llbb = match self.try_llbb(bb) {
             Some(llbb) => llbb,
             None => return,
@@ -1279,7 +1317,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    pub fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {
+    pub(crate) fn codegen_block_as_unreachable(&mut self, bb: mir::BasicBlock) {
         let llbb = match self.try_llbb(bb) {
             Some(llbb) => llbb,
             None => return,
@@ -1347,8 +1385,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 MergingSucc::False
             }
 
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => self
-                .codegen_drop_terminator(
+            mir::TerminatorKind::Drop { place, target, unwind, replace: _, drop, async_fut } => {
+                assert!(
+                    async_fut.is_none() && drop.is_none(),
+                    "Async Drop must be expanded or reset to sync before codegen"
+                );
+                self.codegen_drop_terminator(
                     helper,
                     bx,
                     &terminator.source_info,
@@ -1356,7 +1398,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     target,
                     unwind,
                     mergeable_succ(),
-                ),
+                )
+            }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, unwind } => self
                 .codegen_assert_terminator(
@@ -1406,6 +1449,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::InlineAsm {
+                asm_macro,
                 template,
                 ref operands,
                 options,
@@ -1415,6 +1459,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } => self.codegen_asm_terminator(
                 helper,
                 bx,
+                asm_macro,
                 terminator,
                 template,
                 operands,
@@ -1464,8 +1509,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
-                    // Indirect argument may have higher alignment requirements than the type's alignment.
-                    // This can happen, e.g. when passing types with <4 byte alignment on the stack on x86.
+                    // Indirect argument may have higher alignment requirements than the type's
+                    // alignment. This can happen, e.g. when passing types with <4 byte alignment
+                    // on the stack on x86.
                     let required_align = match attrs.pointee_align {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
@@ -1555,13 +1601,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // the load would just produce `OperandValue::Ref` instead
                 // of the `OperandValue::Immediate` we need for the call.
                 llval = bx.load(bx.backend_type(arg.layout), llval, align);
-                if let abi::Abi::Scalar(scalar) = arg.layout.abi {
+                if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
+                    // We store bools as `i8` so we need to truncate to `i1`.
+                    llval = bx.to_immediate_scalar(llval, scalar);
                 }
-                // We store bools as `i8` so we need to truncate to `i1`.
-                llval = bx.to_immediate(llval, arg.layout);
             }
         }
 
@@ -1591,7 +1637,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
-                let op = tuple.extract_field(bx, i);
+                let op = tuple.extract_field(self, bx, i);
                 self.codegen_argument(bx, op, llargs, &args[i]);
             }
         }
@@ -1718,15 +1764,32 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let mut cs_bx = Bx::build(self.cx, llbb);
             let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
 
-            // The "null" here is actually a RTTI type descriptor for the
-            // C++ personality function, but `catch (...)` has no type so
-            // it's null. The 64 here is actually a bitfield which
-            // represents that this is a catch-all block.
             bx = Bx::build(self.cx, cp_llbb);
             let null =
                 bx.const_null(bx.type_ptr_ext(bx.cx().data_layout().instruction_address_space));
-            let sixty_four = bx.const_i32(64);
-            funclet = Some(bx.catch_pad(cs, &[null, sixty_four, null]));
+
+            // The `null` in first argument here is actually a RTTI type
+            // descriptor for the C++ personality function, but `catch (...)`
+            // has no type so it's null.
+            let args = if base::wants_msvc_seh(self.cx.sess()) {
+                // This bitmask is a single `HT_IsStdDotDot` flag, which
+                // represents that this is a C++-style `catch (...)` block that
+                // only captures programmatic exceptions, not all SEH
+                // exceptions. The second `null` points to a non-existent
+                // `alloca` instruction, which an LLVM pass would inline into
+                // the initial SEH frame allocation.
+                let adjectives = bx.const_i32(0x40);
+                &[null, adjectives, null] as &[_]
+            } else {
+                // Specifying more arguments than necessary usually doesn't
+                // hurt, but the `WasmEHPrepare` LLVM pass does not recognize
+                // anything other than a single `null` as a `catch (...)` block,
+                // leading to problems down the line during instruction
+                // selection.
+                &[null] as &[_]
+            };
+
+            funclet = Some(bx.catch_pad(cs, args));
         } else {
             llbb = Bx::append_block(self.cx, self.llfn, "terminate");
             bx = Bx::build(self.cx, llbb);
@@ -1764,7 +1827,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 
     /// Like `llbb`, but may fail if the basic block should be skipped.
-    pub fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
+    pub(crate) fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
         match self.cached_llbbs[bb] {
             CachedLlbb::None => {
                 let llbb = Bx::append_block(self.cx, self.llfn, &format!("{bb:?}"));
@@ -1783,11 +1846,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
         intrinsic: Option<ty::IntrinsicDef>,
-        target: Option<BasicBlock>,
     ) -> ReturnDest<'tcx, Bx::Value> {
-        if target.is_none() {
-            return ReturnDest::Nothing;
-        }
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;

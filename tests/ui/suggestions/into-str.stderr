@@ -2,7 +2,7 @@ error[E0277]: the trait bound `&str: From<String>` is not satisfied
   --> $DIR/into-str.rs:4:9
    |
 LL |     foo(String::new());
-   |     --- ^^^^^^^^^^^^^ the trait `From<String>` is not implemented for `&str`, which is required by `String: Into<&str>`
+   |     --- ^^^^^^^^^^^^^ the trait `From<String>` is not implemented for `&str`
    |     |
    |     required by a bound introduced by this call
    |
@@ -12,7 +12,7 @@ LL |     foo(String::new());
              `String` implements `From<&mut str>`
              `String` implements `From<&str>`
              `String` implements `From<Box<str>>`
-             `String` implements `From<Cow<'a, str>>`
+             `String` implements `From<Cow<'_, str>>`
              `String` implements `From<char>`
    = note: required for `String` to implement `Into<&str>`
 note: required by a bound in `foo`

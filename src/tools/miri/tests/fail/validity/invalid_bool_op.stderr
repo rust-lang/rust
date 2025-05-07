@@ -1,5 +1,5 @@
 error: Undefined Behavior: interpreting an invalid 8-bit value as a bool: 0x02
-  --> $DIR/invalid_bool_op.rs:LL:CC
+  --> tests/fail/validity/invalid_bool_op.rs:LL:CC
    |
 LL |     let _x = b == std::hint::black_box(true);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ interpreting an invalid 8-bit value as a bool: 0x02
@@ -7,7 +7,7 @@ LL |     let _x = b == std::hint::black_box(true);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/invalid_bool_op.rs:LL:CC
+   = note: inside `main` at tests/fail/validity/invalid_bool_op.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

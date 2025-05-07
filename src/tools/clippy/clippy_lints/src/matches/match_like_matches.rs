@@ -2,9 +2,9 @@ use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
-use rustc_ast::{Attribute, LitKind};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
+use rustc_hir::{Arm, Attribute, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
 use rustc_span::source_map::Spanned;
@@ -42,7 +42,7 @@ pub(super) fn check_match<'tcx>(
         cx,
         scrutinee,
         arms.iter()
-            .map(|arm| (cx.tcx.hir().attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
+            .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
         e,
         false,
     )
@@ -74,19 +74,20 @@ where
         && b0 != b1
         && (first_guard.is_none() || iter.len() == 0)
         && first_attrs.is_empty()
-        && iter.all(|arm| find_bool_lit(&arm.2.kind).map_or(false, |b| b == b0) && arm.3.is_none() && arm.0.is_empty())
+        && iter.all(|arm| find_bool_lit(&arm.2.kind).is_some_and(|b| b == b0) && arm.3.is_none() && arm.0.is_empty())
     {
-        if let Some(last_pat) = last_pat_opt {
-            if !is_wild(last_pat) {
-                return false;
-            }
+        if let Some(last_pat) = last_pat_opt
+            && !is_wild(last_pat)
+        {
+            return false;
         }
 
         for arm in iter_without_last.clone() {
-            if let Some(pat) = arm.1 {
-                if !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id) && is_some(pat.kind) {
-                    return false;
-                }
+            if let Some(pat) = arm.1
+                && !is_lint_allowed(cx, REDUNDANT_PATTERN_MATCHING, pat.hir_id)
+                && is_some(pat.kind)
+            {
+                return false;
             }
         }
 
@@ -113,11 +114,11 @@ where
 
         // strip potential borrows (#6503), but only if the type is a reference
         let mut ex_new = ex;
-        if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind {
-            if let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind() {
-                ex_new = ex_inner;
-            }
-        };
+        if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = ex.kind
+            && let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind()
+        {
+            ex_new = ex_inner;
+        }
         span_lint_and_sugg(
             cx,
             MATCH_LIKE_MATCHES_MACRO,
@@ -148,7 +149,7 @@ fn find_bool_lit(ex: &ExprKind<'_>) -> Option<bool> {
         }) => Some(*b),
         ExprKind::Block(
             rustc_hir::Block {
-                stmts: &[],
+                stmts: [],
                 expr: Some(exp),
                 ..
             },

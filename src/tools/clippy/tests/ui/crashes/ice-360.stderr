@@ -2,11 +2,7 @@ error: this loop never actually loops
   --> tests/ui/crashes/ice-360.rs:5:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |
 LL | |     }
    | |_____^
    |
@@ -16,11 +12,7 @@ error: this loop could be written as a `while let` loop
   --> tests/ui/crashes/ice-360.rs:5:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |
 ...  |
-LL | |
 LL | |     }
    | |_____^ help: try: `while let Some(ele) = iter.next() { .. }`
    |

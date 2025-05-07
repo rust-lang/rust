@@ -70,7 +70,7 @@ fn array_casts() -> () {
         StorageLive(_5);
         StorageLive(_6);
         StorageLive(_7);
-        _7 = _2;
+        _7 = copy _2;
         _6 = std::ptr::mut_ptr::<impl *mut usize>::add(move _7, const 1_usize) -> [return: bb1, unwind unreachable];
     }
 
@@ -96,13 +96,13 @@ fn array_casts() -> () {
         StorageLive(_15);
         StorageLive(_16);
         StorageLive(_17);
-        _17 = _9;
+        _17 = copy _9;
         _16 = std::ptr::const_ptr::<impl *const usize>::add(move _17, const 1_usize) -> [return: bb2, unwind unreachable];
     }
 
     bb2: {
         StorageDead(_17);
-        _15 = (*_16);
+        _15 = copy (*_16);
         _14 = &_15;
         StorageLive(_18);
         _34 = const array_casts::promoted[0];
@@ -113,16 +113,16 @@ fn array_casts() -> () {
         StorageDead(_18);
         StorageDead(_14);
         StorageLive(_20);
-        _20 = (_13.0: &usize);
+        _20 = copy (_13.0: &usize);
         Retag(_20);
         StorageLive(_21);
-        _21 = (_13.1: &usize);
+        _21 = copy (_13.1: &usize);
         Retag(_21);
         StorageLive(_22);
         StorageLive(_23);
-        _23 = (*_20);
+        _23 = copy (*_20);
         StorageLive(_24);
-        _24 = (*_21);
+        _24 = copy (*_21);
         _22 = Eq(move _23, move _24);
         switchInt(move _22) -> [0: bb4, otherwise: bb3];
     }

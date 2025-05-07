@@ -9,8 +9,9 @@ LL | pub struct Foo;
    |
 help: to annotate the struct, change the doc comment from inner to outer style
    |
-LL | /// Inner doc comment
-   |   ~
+LL - //! Inner doc comment
+LL + /// Inner doc comment
+   |
 
 error: aborting due to 1 previous error
 

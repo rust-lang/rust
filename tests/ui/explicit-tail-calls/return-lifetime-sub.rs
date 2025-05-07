@@ -1,5 +1,5 @@
 //@ check-pass
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 #![feature(explicit_tail_calls)]
 
 fn _f<'a>() -> &'a [u8] {

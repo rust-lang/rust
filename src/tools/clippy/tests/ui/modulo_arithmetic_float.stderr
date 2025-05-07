@@ -33,7 +33,7 @@ LL |     (1.1 + 2.3) % (1.1 - 2.3);
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:24:5
+  --> tests/ui/modulo_arithmetic_float.rs:23:5
    |
 LL |     a_f16 % b_f16;
    |     ^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     a_f16 % b_f16;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:27:5
+  --> tests/ui/modulo_arithmetic_float.rs:26:5
    |
 LL |     b_f16 % a_f16;
    |     ^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |     b_f16 % a_f16;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:30:5
+  --> tests/ui/modulo_arithmetic_float.rs:29:5
    |
 LL |     b_f16 %= a_f16;
    |     ^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ LL |     b_f16 %= a_f16;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:37:5
+  --> tests/ui/modulo_arithmetic_float.rs:35:5
    |
 LL |     a_f32 % b_f32;
    |     ^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |     a_f32 % b_f32;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:40:5
+  --> tests/ui/modulo_arithmetic_float.rs:38:5
    |
 LL |     b_f32 % a_f32;
    |     ^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     b_f32 % a_f32;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:43:5
+  --> tests/ui/modulo_arithmetic_float.rs:41:5
    |
 LL |     b_f32 %= a_f32;
    |     ^^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL |     b_f32 %= a_f32;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:49:5
+  --> tests/ui/modulo_arithmetic_float.rs:46:5
    |
 LL |     a_f64 % b_f64;
    |     ^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |     a_f64 % b_f64;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:52:5
+  --> tests/ui/modulo_arithmetic_float.rs:49:5
    |
 LL |     b_f64 % a_f64;
    |     ^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL |     b_f64 % a_f64;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:55:5
+  --> tests/ui/modulo_arithmetic_float.rs:52:5
    |
 LL |     b_f64 %= a_f64;
    |     ^^^^^^^^^^^^^^
@@ -105,7 +105,7 @@ LL |     b_f64 %= a_f64;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:61:5
+  --> tests/ui/modulo_arithmetic_float.rs:57:5
    |
 LL |     a_f128 % b_f128;
    |     ^^^^^^^^^^^^^^^
@@ -113,7 +113,7 @@ LL |     a_f128 % b_f128;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:64:5
+  --> tests/ui/modulo_arithmetic_float.rs:60:5
    |
 LL |     b_f128 % a_f128;
    |     ^^^^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL |     b_f128 % a_f128;
    = note: double check for expected result especially when interoperating with different languages
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui/modulo_arithmetic_float.rs:67:5
+  --> tests/ui/modulo_arithmetic_float.rs:63:5
    |
 LL |     b_f128 %= a_f128;
    |     ^^^^^^^^^^^^^^^^

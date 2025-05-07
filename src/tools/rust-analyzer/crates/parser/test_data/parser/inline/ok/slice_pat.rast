@@ -43,11 +43,12 @@ SOURCE_FILE
           WHITESPACE " "
           SLICE_PAT
             L_BRACK "["
-            PIPE "|"
-            WHITESPACE " "
-            IDENT_PAT
-              NAME
-                IDENT "a"
+            OR_PAT
+              PIPE "|"
+              WHITESPACE " "
+              IDENT_PAT
+                NAME
+                  IDENT "a"
             COMMA ","
             WHITESPACE " "
             REST_PAT

@@ -15,12 +15,12 @@ fn main() {
             //~^ ERROR `!` patterns are experimental
         }
         // Check that the gate operates even behind `cfg`.
-        #[cfg(FALSE)]
+        #[cfg(false)]
         match *ptr {
             !
             //~^ ERROR `!` patterns are experimental
         }
-        #[cfg(FALSE)]
+        #[cfg(false)]
         match *ptr {
             ! => {}
             //~^ ERROR `!` patterns are experimental
@@ -60,13 +60,13 @@ fn main() {
     // Check that the gate operates even behind `cfg`.
     match Some(0) {
         None => {}
-        #[cfg(FALSE)]
+        #[cfg(false)]
         Some(_)
         //~^ ERROR `match` arm with no body
     }
     match Some(0) {
         _ => {}
-        #[cfg(FALSE)]
+        #[cfg(false)]
         Some(_) if false
         //~^ ERROR `match` arm with no body
     }

@@ -1,0 +1,16 @@
+// Checks the impl block docs have the correct indent.
+go-to: "file://" + |DOC_PATH| + "/test_docs/impls_indent/struct.Context.html"
+
+// First we ensure that the impl items are indent (more on the right of the screen) than the
+// impl itself.
+store-position: ("#impl-Context", {"x": impl_x})
+store-position: ("#impl-Context > .item-info", {"x": impl_item_x})
+assert: |impl_x| < |impl_item_x|
+
+// And we ensure that all impl items have the same indent.
+assert-position: ("#impl-Context > .docblock", {"x": |impl_item_x|})
+assert-position: ("#impl-Context + .docblock", {"x": |impl_item_x|})
+
+// Same with the collapsible impl block.
+assert-position: ("#impl-Context-1 > .docblock", {"x": |impl_item_x|})
+assert-position: (".implementors-toggle > summary + .docblock", {"x": |impl_item_x|})

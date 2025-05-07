@@ -1,18 +1,17 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::ty::same_type_and_consts;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::ty::{same_type_and_consts, ty_from_hir_ty};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{walk_inf, walk_ty, Visitor};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
-    self as hir, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind, HirId, Impl,
-    ImplItemKind, Item, ItemKind, Pat, PatKind, Path, QPath, Ty, TyKind,
+    self as hir, AmbigArg, Expr, ExprKind, FnRetTy, FnSig, GenericArgsParentheses, GenericParam, GenericParamKind,
+    HirId, Impl, ImplItemKind, Item, ItemKind, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, Ty, TyKind,
 };
-use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty as MiddleTy;
 use rustc_session::impl_lint_pass;
@@ -63,7 +62,7 @@ pub struct UseSelf {
 impl UseSelf {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             stack: Vec::new(),
         }
     }
@@ -73,7 +72,6 @@ impl UseSelf {
 enum StackItem {
     Check {
         impl_id: LocalDefId,
-        in_body: u32,
         types_to_skip: FxHashSet<HirId>,
     },
     NoCheck,
@@ -85,10 +83,6 @@ const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 
 impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &Item<'tcx>) {
-        if matches!(item.kind, ItemKind::OpaqueTy(_)) {
-            // skip over `ItemKind::OpaqueTy` in order to lint `foo() -> impl <..>`
-            return;
-        }
         // We push the self types of `impl`s on a stack here. Only the top type on the stack is
         // relevant for linting, since this is the self type of the `impl` we're currently in. To
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
@@ -98,10 +92,10 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args
             && parameters
                 .as_ref()
-                .map_or(true, |params| params.parenthesized == GenericArgsParentheses::No)
+                .is_none_or(|params| params.parenthesized == GenericArgsParentheses::No)
             && !item.span.from_expansion()
+            // expensive, should be last check
             && !is_from_proc_macro(cx, item)
-        // expensive, should be last check
         {
             // Self cannot be used inside const generic parameters
             let types_to_skip = generics
@@ -121,7 +115,6 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 .collect();
             StackItem::Check {
                 impl_id: item.owner_id.def_id,
-                in_body: 0,
                 types_to_skip,
             }
         } else {
@@ -130,13 +123,16 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         self.stack.push(stack_item);
     }
 
-    fn check_item_post(&mut self, _: &LateContext<'_>, item: &Item<'_>) {
-        if !matches!(item.kind, ItemKind::OpaqueTy(_)) {
-            self.stack.pop();
-        }
+    fn check_item_post(&mut self, _: &LateContext<'_>, _: &Item<'_>) {
+        self.stack.pop();
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
+        // Checking items of `impl Self` blocks in which macro expands into.
+        if impl_item.span.from_expansion() {
+            self.stack.push(StackItem::NoCheck);
+            return;
+        }
         // We want to skip types in trait `impl`s that aren't declared as `Self` in the trait
         // declaration. The collection of those types is all this method implementation does.
         if let ImplItemKind::Fn(FnSig { decl, .. }, ..) = impl_item.kind
@@ -185,34 +181,25 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             for (impl_hir_ty, trait_sem_ty) in impl_inputs_outputs.zip(trait_method_sig.inputs_and_output) {
                 if trait_sem_ty.walk().any(|inner| inner == self_ty.into()) {
                     let mut visitor = SkipTyCollector::default();
-                    visitor.visit_ty(impl_hir_ty);
+                    visitor.visit_ty_unambig(impl_hir_ty);
                     types_to_skip.extend(visitor.types_to_skip);
                 }
             }
         }
     }
 
-    fn check_body(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
-        // `lower_ty` cannot be called in `Body`s or it will panic (sometimes). But in bodies
-        // we can use `cx.typeck_results.node_type(..)` to get the `ty::Ty` from a `hir::Ty`.
-        // However the `node_type()` method can *only* be called in bodies.
-        if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {
-            *in_body = in_body.saturating_add(1);
+    fn check_impl_item_post(&mut self, _: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
+        if impl_item.span.from_expansion()
+            && let Some(StackItem::NoCheck) = self.stack.last()
+        {
+            self.stack.pop();
         }
     }
 
-    fn check_body_post(&mut self, _: &LateContext<'_>, _: &hir::Body<'_>) {
-        if let Some(&mut StackItem::Check { ref mut in_body, .. }) = self.stack.last_mut() {
-            *in_body = in_body.saturating_sub(1);
-        }
-    }
-
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, hir_ty: &Ty<'tcx, AmbigArg>) {
         if !hir_ty.span.from_expansion()
-            && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check {
                 impl_id,
-                in_body,
                 ref types_to_skip,
             }) = self.stack.last()
             && let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind
@@ -221,17 +208,14 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Def(DefKind::TyParam, _)
             )
             && !types_to_skip.contains(&hir_ty.hir_id)
-            && let ty = if in_body > 0 {
-                cx.typeck_results().node_type(hir_ty.hir_id)
-            } else {
-                lower_ty(cx.tcx, hir_ty)
-            }
+            && let ty = ty_from_hir_ty(cx, hir_ty.as_unambig_ty())
             && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
             && same_type_and_consts(ty, impl_ty)
             // Ensure the type we encounter and the one from the impl have the same lifetime parameters. It may be that
-            // the lifetime parameters of `ty` are ellided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
+            // the lifetime parameters of `ty` are elided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`, in
             // which case we must still trigger the lint.
             && (has_no_lifetime(ty) || same_lifetimes(ty, impl_ty))
+            && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
             span_lint(cx, hir_ty.span);
         }
@@ -239,9 +223,9 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
 
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if !expr.span.from_expansion()
-            && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check { impl_id, .. }) = self.stack.last()
             && cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity()
+            && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
         } else {
             return;
@@ -260,19 +244,17 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
 
     fn check_pat(&mut self, cx: &LateContext<'_>, pat: &Pat<'_>) {
         if !pat.span.from_expansion()
-            && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check { impl_id, .. }) = self.stack.last()
             // get the path from the pattern
-            && let PatKind::Path(QPath::Resolved(_, path))
+            && let PatKind::Expr(&PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. })
                  | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind
             && cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity()
+            && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
             check_path(cx, path);
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 #[derive(Default)]
@@ -280,13 +262,15 @@ struct SkipTyCollector {
     types_to_skip: Vec<HirId>,
 }
 
-impl<'tcx> Visitor<'tcx> for SkipTyCollector {
-    fn visit_infer(&mut self, inf: &hir::InferArg) {
-        self.types_to_skip.push(inf.hir_id);
-
-        walk_inf(self, inf);
+impl Visitor<'_> for SkipTyCollector {
+    fn visit_infer(&mut self, inf_id: HirId, _inf_span: Span, kind: InferKind<'_>) -> Self::Result {
+        // Conservatively assume ambiguously kinded inferred arguments are type arguments
+        if let InferKind::Ambig(_) | InferKind::Ty(_) = kind {
+            self.types_to_skip.push(inf_id);
+        }
+        self.visit_id(inf_id);
     }
-    fn visit_ty(&mut self, hir_ty: &Ty<'_>) {
+    fn visit_ty(&mut self, hir_ty: &Ty<'_, AmbigArg>) {
         self.types_to_skip.push(hir_ty.hir_id);
 
         walk_ty(self, hir_ty);

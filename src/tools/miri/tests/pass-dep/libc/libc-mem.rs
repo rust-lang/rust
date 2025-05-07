@@ -1,4 +1,4 @@
-#![feature(strict_provenance, pointer_is_aligned_to)]
+#![feature(pointer_is_aligned_to)]
 use std::{mem, ptr, slice};
 
 fn test_memcpy() {
@@ -55,12 +55,12 @@ fn test_memcpy() {
 }
 
 fn test_strcpy() {
-    use std::ffi::{CStr, CString};
+    use std::ffi::CStr;
 
     // case: src_size equals dest_size
     unsafe {
-        let src = CString::new("rust").unwrap();
-        let size = src.as_bytes_with_nul().len();
+        let src = c"rust";
+        let size = src.to_bytes_with_nul().len();
         let dest = libc::malloc(size);
         libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
         assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
@@ -69,8 +69,8 @@ fn test_strcpy() {
 
     // case: src_size is less than dest_size
     unsafe {
-        let src = CString::new("rust").unwrap();
-        let size = src.as_bytes_with_nul().len();
+        let src = c"rust";
+        let size = src.to_bytes_with_nul().len();
         let dest = libc::malloc(size + 1);
         libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
         assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
@@ -101,6 +101,10 @@ fn test_malloc() {
         let slice = slice::from_raw_parts(p3 as *const u8, 20);
         assert_eq!(&slice, &[0_u8; 20]);
 
+        // new size way too big (so this doesn't actually realloc).
+        let p_too_big = libc::realloc(p3, usize::MAX);
+        assert!(p_too_big.is_null());
+
         // old size > new size
         let p4 = libc::realloc(p3, 10);
         let slice = slice::from_raw_parts(p4 as *const u8, 10);
@@ -119,8 +123,12 @@ fn test_malloc() {
     unsafe {
         let p1 = libc::realloc(ptr::null_mut(), 20);
         assert!(!p1.is_null());
-
         libc::free(p1);
+    }
+
+    unsafe {
+        let p_too_big = libc::malloc(usize::MAX);
+        assert!(p_too_big.is_null());
     }
 }
 
@@ -143,6 +151,9 @@ fn test_calloc() {
         let slice = slice::from_raw_parts(p4 as *const u8, 4 * 8);
         assert_eq!(&slice, &[0_u8; 4 * 8]);
         libc::free(p4);
+
+        let p_too_big = libc::calloc(usize::MAX / 4, 4);
+        assert!(p_too_big.is_null());
     }
 }
 

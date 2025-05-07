@@ -8,6 +8,5 @@ impl Add for i32 {
 
 fn main() {
     let x = &10 as &dyn Add;
-    //~^ ERROR E0393
-    //~| ERROR E0191
+    //~^ ERROR E0191
 }

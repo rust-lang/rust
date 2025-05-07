@@ -6,10 +6,10 @@ use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
-use rustc_span::{sym, SyntaxContext};
+use rustc_span::{SyntaxContext, sym};
 
-use super::manual_utils::{check_with, SomeExpr};
 use super::MANUAL_FILTER;
+use super::manual_utils::{SomeExpr, check_with};
 
 // Function called on the <expr> of `[&+]Some((ref | ref mut) x) => <expr>`
 // Need to check if it's of the form `<expr>=if <cond> {<then_expr>} else {<else_expr>}`
@@ -34,18 +34,18 @@ fn get_cond_expr<'tcx>(
             needs_negated: is_none_expr(cx, then_expr), /* if the `then_expr` resolves to `None`, need to negate the
                                                          * cond */
         });
-    };
+    }
     None
 }
 
 fn peels_blocks_incl_unsafe_opt<'a>(expr: &'a Expr<'a>) -> Option<&'a Expr<'a>> {
     // we don't want to use `peel_blocks` here because we don't care if the block is unsafe, it's
     // checked by `contains_unsafe_block`
-    if let ExprKind::Block(block, None) = expr.kind {
-        if block.stmts.is_empty() {
-            return block.expr;
-        }
-    };
+    if let ExprKind::Block(block, None) = expr.kind
+        && block.stmts.is_empty()
+    {
+        return block.expr;
+    }
     None
 }
 
@@ -61,21 +61,21 @@ fn peels_blocks_incl_unsafe<'a>(expr: &'a Expr<'a>) -> &'a Expr<'a> {
 // }
 // Returns true if <expr> resolves to `Some(x)`, `false` otherwise
 fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: &Expr<'_>) -> bool {
-    if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
+    if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr)
         // there can be not statements in the block as they would be removed when switching to `.filter`
-        if let ExprKind::Call(callee, [arg]) = inner_expr.kind {
-            return ctxt == expr.span.ctxt()
-                && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome)
-                && path_to_local_id(arg, target);
-        }
-    };
+        && let ExprKind::Call(callee, [arg]) = inner_expr.kind
+    {
+        return ctxt == expr.span.ctxt()
+            && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome)
+            && path_to_local_id(arg, target);
+    }
     false
 }
 
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
         return is_res_lang_ctor(cx, path_res(cx, inner_expr), OptionNone);
-    };
+    }
     false
 }
 

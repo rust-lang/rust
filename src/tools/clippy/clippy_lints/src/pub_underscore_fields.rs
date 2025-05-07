@@ -1,5 +1,5 @@
-use clippy_config::types::PubUnderscoreFieldsBehaviour;
 use clippy_config::Conf;
+use clippy_config::types::PubUnderscoreFieldsBehaviour;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_path_lang_item;
@@ -58,7 +58,7 @@ impl PubUnderscoreFields {
 impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         // This lint only pertains to structs.
-        let ItemKind::Struct(variant_data, _) = &item.kind else {
+        let ItemKind::Struct(_, variant_data, _) = &item.kind else {
             return;
         };
 
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for PubUnderscoreFields {
             // Only pertains to fields that start with an underscore, and are public.
             if field.ident.as_str().starts_with('_') && is_visible(field)
                 // We ignore fields that have `#[doc(hidden)]`.
-                && !is_doc_hidden(cx.tcx.hir().attrs(field.hir_id))
+                && !is_doc_hidden(cx.tcx.hir_attrs(field.hir_id))
                 // We ignore fields that are `PhantomData`.
                 && !is_path_lang_item(cx, field.ty, LangItem::PhantomData)
             {

@@ -10,6 +10,8 @@ use crate::int_overflow::DebugStrictAdd;
 use crate::leb128;
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 
+pub mod mem_encoder;
+
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
@@ -19,7 +21,7 @@ pub type FileEncodeResult = Result<usize, (PathBuf, io::Error)>;
 pub const MAGIC_END_BYTES: &[u8] = b"rust-end-file";
 
 /// The size of the buffer in `FileEncoder`.
-const BUF_SIZE: usize = 8192;
+const BUF_SIZE: usize = 64 * 1024;
 
 /// `FileEncoder` encodes data to file via fixed-size buffer.
 ///
@@ -159,7 +161,7 @@ impl FileEncoder {
         // We produce a post-mono error if N > BUF_SIZE.
         let buf = unsafe { self.buffer_empty().first_chunk_mut::<N>().unwrap_unchecked() };
         let written = visitor(buf);
-        // We have to ensure that an errant visitor cannot cause self.buffered to exeed BUF_SIZE.
+        // We have to ensure that an errant visitor cannot cause self.buffered to exceed BUF_SIZE.
         if written > N {
             Self::panic_invalid_write::<N>(written);
         }
@@ -280,13 +282,13 @@ impl<'a> MemDecoder<'a> {
     #[inline]
     pub fn len(&self) -> usize {
         // SAFETY: This recovers the length of the original slice, only using members we never modify.
-        unsafe { self.end.sub_ptr(self.start) }
+        unsafe { self.end.offset_from_unsigned(self.start) }
     }
 
     #[inline]
     pub fn remaining(&self) -> usize {
         // SAFETY: This type guarantees current <= end.
-        unsafe { self.end.sub_ptr(self.current) }
+        unsafe { self.end.offset_from_unsigned(self.current) }
     }
 
     #[cold]
@@ -400,7 +402,7 @@ impl<'a> Decoder for MemDecoder<'a> {
     #[inline]
     fn position(&self) -> usize {
         // SAFETY: This type guarantees start <= current
-        unsafe { self.current.sub_ptr(self.start) }
+        unsafe { self.current.offset_from_unsigned(self.start) }
     }
 }
 
@@ -437,10 +439,10 @@ impl IntEncodedWithFixedSize {
 impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
     #[inline]
     fn encode(&self, e: &mut FileEncoder) {
-        let _start_pos = e.position();
+        let start_pos = e.position();
         e.write_array(self.0.to_le_bytes());
-        let _end_pos = e.position();
-        debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
+        let end_pos = e.position();
+        debug_assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
     }
 }
 
@@ -451,3 +453,6 @@ impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
         IntEncodedWithFixedSize(u64::from_le_bytes(bytes))
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -7,7 +7,7 @@ fn main() {
     // `'static` is a lifetime argument, `'static +` is a type argument
     let _: S<'static, u8>;
     let _: S<'static, dyn 'static +>;
-    //~^ at least one trait is required for an object type
+    //~^ ERROR at least one trait is required for an object type
     let _: S<'static, 'static>;
     //~^ ERROR struct takes 1 lifetime argument but 2 lifetime arguments were supplied
     //~| ERROR struct takes 1 generic argument but 0 generic arguments were supplied

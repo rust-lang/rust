@@ -1,9 +1,8 @@
 use rustc_ast::{self as ast, Generics, ItemKind, MetaItem, VariantData};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Span;
-use thin_vec::{thin_vec, ThinVec};
+use rustc_span::{Ident, Span, kw, sym};
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
@@ -35,8 +34,8 @@ pub(crate) fn expand_deriving_clone(
     let is_simple;
     match item {
         Annotatable::Item(annitem) => match &annitem.kind {
-            ItemKind::Struct(_, Generics { params, .. })
-            | ItemKind::Enum(_, Generics { params, .. }) => {
+            ItemKind::Struct(_, _, Generics { params, .. })
+            | ItemKind::Enum(_, _, Generics { params, .. }) => {
                 let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
                 let has_derive_copy = cx.resolver.has_derive_copy(container_id);
                 if has_derive_copy
@@ -113,7 +112,7 @@ fn cs_clone_simple(
                 // Already produced an assertion for this type.
                 // Anonymous structs or unions must be eliminated as they cannot be
                 // type parameters.
-            } else if !field.ty.kind.is_anon_adt() {
+            } else {
                 // let _: AssertParamIsClone<FieldTy>;
                 super::assert_ty_bounds(
                     cx,

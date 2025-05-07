@@ -1,0 +1,148 @@
+#![warn(clippy::significant_drop_tightening)]
+
+use std::sync::Mutex;
+
+pub fn complex_return_triggers_the_lint() -> i32 {
+    fn foo() -> i32 {
+        1
+    }
+    let mutex = Mutex::new(1);
+    let lock = mutex.lock().unwrap();
+    //~^ significant_drop_tightening
+    let _ = *lock;
+    let _ = *lock;
+    drop(lock);
+    foo()
+}
+
+pub fn issue_10413() {
+    let mutex = Mutex::new(Some(1));
+    let opt = Some(1);
+    if opt.is_some() {
+        let lock = mutex.lock().unwrap();
+        let _ = *lock;
+        if opt.is_some() {
+            let _ = *lock;
+        }
+    }
+}
+
+pub fn issue_11128() {
+    use std::mem::drop as unlock;
+
+    struct Foo {
+        droppable: Option<Vec<i32>>,
+        mutex: Mutex<Vec<i32>>,
+    }
+
+    impl Drop for Foo {
+        fn drop(&mut self) {
+            if let Some(droppable) = self.droppable.take() {
+                let lock = self.mutex.lock().unwrap();
+                let idx_opt = lock.iter().copied().find(|el| Some(el) == droppable.first());
+                if let Some(idx) = idx_opt {
+                    let local_droppable = vec![lock.first().copied().unwrap_or_default()];
+                    unlock(lock);
+                    drop(local_droppable);
+                }
+            }
+        }
+    }
+}
+
+pub fn issue_11160() -> bool {
+    let mutex = Mutex::new(1i32);
+    let lock = mutex.lock().unwrap();
+    let _ = lock.abs();
+    true
+}
+
+pub fn issue_11189() {
+    struct Number {
+        pub value: u32,
+    }
+
+    fn do_something() -> Result<(), ()> {
+        let number = Mutex::new(Number { value: 1 });
+        let number2 = Mutex::new(Number { value: 2 });
+        let number3 = Mutex::new(Number { value: 3 });
+        let mut lock = number.lock().unwrap();
+        let mut lock2 = number2.lock().unwrap();
+        let mut lock3 = number3.lock().unwrap();
+        lock.value += 1;
+        lock2.value += 1;
+        lock3.value += 1;
+        drop((lock, lock2, lock3));
+        Ok(())
+    }
+}
+
+pub fn path_return_can_be_ignored() -> i32 {
+    let mutex = Mutex::new(1);
+    let lock = mutex.lock().unwrap();
+    let rslt = *lock;
+    let _ = *lock;
+    rslt
+}
+
+pub fn post_bindings_can_be_ignored() {
+    let mutex = Mutex::new(1);
+    let lock = mutex.lock().unwrap();
+    let rslt = *lock;
+    let another = rslt;
+    let _ = another;
+}
+
+pub fn unnecessary_contention_with_multiple_owned_results() {
+    {
+        let mutex = Mutex::new(1i32);
+        let lock = mutex.lock().unwrap();
+        let _ = lock.abs();
+        let _ = lock.is_positive();
+    }
+
+    {
+        let mutex = Mutex::new(1i32);
+        let lock = mutex.lock().unwrap();
+        //~^ significant_drop_tightening
+        let rslt0 = lock.abs();
+        let rslt1 = lock.is_positive();
+        drop(lock);
+        do_heavy_computation_that_takes_time((rslt0, rslt1));
+    }
+}
+
+pub fn unnecessary_contention_with_single_owned_results() {
+    {
+        let mutex = Mutex::new(1i32);
+        let lock = mutex.lock().unwrap();
+        let _ = lock.abs();
+    }
+    {
+        let mutex = Mutex::new(vec![1i32]);
+        let mut lock = mutex.lock().unwrap();
+        lock.clear();
+    }
+
+    {
+        let mutex = Mutex::new(1i32);
+        
+        let rslt0 = mutex.lock().unwrap().abs();
+        //~^ significant_drop_tightening
+        
+        do_heavy_computation_that_takes_time(rslt0);
+    }
+    {
+        let mutex = Mutex::new(vec![1i32]);
+        
+        mutex.lock().unwrap().clear();
+        //~^ significant_drop_tightening
+        
+        do_heavy_computation_that_takes_time(());
+    }
+}
+
+// Marker used for illustration purposes.
+pub fn do_heavy_computation_that_takes_time<T>(_: T) {}
+
+fn main() {}

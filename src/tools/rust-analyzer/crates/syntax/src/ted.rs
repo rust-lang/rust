@@ -7,8 +7,8 @@ use std::{mem, ops::RangeInclusive};
 use parser::T;
 
 use crate::{
-    ast::{self, edit::IndentLevel, make, AstNode},
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, edit::IndentLevel, make},
 };
 
 /// Utility trait to allow calling `ted` functions with references or owned
@@ -145,6 +145,11 @@ pub fn append_child(node: &(impl Into<SyntaxNode> + Clone), child: impl Element)
 pub fn append_child_raw(node: &(impl Into<SyntaxNode> + Clone), child: impl Element) {
     let position = Position::last_child_of(node);
     insert_raw(position, child);
+}
+
+pub fn prepend_child(node: &(impl Into<SyntaxNode> + Clone), child: impl Element) {
+    let position = Position::first_child_of(node);
+    insert(position, child);
 }
 
 fn ws_before(position: &Position, new: &SyntaxElement) -> Option<SyntaxToken> {

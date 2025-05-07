@@ -41,7 +41,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.78.0"]
+    #[clippy::version = "1.81.0"]
     pub FIELD_SCOPED_VISIBILITY_MODIFIERS,
     restriction,
     "checks for usage of a scoped visibility modifier, like `pub(crate)`, on fields"
@@ -51,7 +51,7 @@ declare_lint_pass!(FieldScopedVisibilityModifiers => [FIELD_SCOPED_VISIBILITY_MO
 
 impl EarlyLintPass for FieldScopedVisibilityModifiers {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        let ItemKind::Struct(ref st, _) = item.kind else {
+        let ItemKind::Struct(_, ref st, _) = item.kind else {
             return;
         };
         for field in st.fields() {

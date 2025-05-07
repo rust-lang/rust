@@ -2,7 +2,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 
-use clippy_utils::comparisons::{normalize_comparison, Rel};
+use clippy_utils::comparisons::{Rel, normalize_comparison};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;

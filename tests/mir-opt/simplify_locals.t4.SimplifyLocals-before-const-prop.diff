@@ -10,7 +10,7 @@
           StorageLive(_1);
           StorageLive(_2);
           _2 = &/*tls*/ mut X;
-          _1 = (*_2);
+          _1 = copy (*_2);
           _0 = Add(move _1, const 1_u32);
           StorageDead(_1);
           StorageDead(_2);

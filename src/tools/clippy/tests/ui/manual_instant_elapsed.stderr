@@ -8,7 +8,7 @@ LL |     let duration = Instant::now() - prev_instant;
    = help: to override `-D warnings` add `#[allow(clippy::manual_instant_elapsed)]`
 
 error: manual implementation of `Instant::elapsed`
-  --> tests/ui/manual_instant_elapsed.rs:26:5
+  --> tests/ui/manual_instant_elapsed.rs:27:5
    |
 LL |     Instant::now() - *ref_to_instant; // to ensure parens are added correctly
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*ref_to_instant).elapsed()`

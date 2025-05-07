@@ -8,8 +8,8 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
 use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 
 use super::SEARCH_IS_SOME;
 
@@ -37,7 +37,7 @@ pub(super) fn check<'tcx>(
             let mut applicability = Applicability::MachineApplicable;
             let any_search_snippet = if search_method == "find"
                 && let ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind
-                && let closure_body = cx.tcx.hir().body(body)
+                && let closure_body = cx.tcx.hir_body(body)
                 && let Some(closure_arg) = closure_body.params.first()
             {
                 if let PatKind::Ref(..) = closure_arg.pat.kind {

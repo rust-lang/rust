@@ -3,7 +3,8 @@
 
 // See also: repr-c-dead-variants.rs
 
-//@ normalize-stderr-test: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 
 // A simple uninhabited type.
 enum Void {}

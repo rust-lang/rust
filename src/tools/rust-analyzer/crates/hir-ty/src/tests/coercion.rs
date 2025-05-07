@@ -22,9 +22,9 @@ struct S<T> { a: T }
 fn f<T>(_: &[T]) -> T { loop {} }
 fn g<T>(_: S<&[T]>) -> T { loop {} }
 
-fn gen<T>() -> *mut [T; 2] { loop {} }
+fn generate<T>() -> *mut [T; 2] { loop {} }
 fn test1<U>() -> *mut [U] {
-    gen()
+    generate()
 }
 
 fn test2() {
@@ -49,7 +49,7 @@ fn let_stmt_coerce() {
 //- minicore: coerce_unsized
 fn test() {
     let x: &[isize] = &[1];
-                   // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
+                   // ^^^^ adjustments: Deref(None), Borrow(Ref('?2, Not)), Pointer(Unsize)
     let x: *const [isize] = &[1];
                          // ^^^^ adjustments: Deref(None), Borrow(RawPtr(Not)), Pointer(Unsize)
 }
@@ -96,7 +96,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test() {
     let x = if true {
         foo(&[1])
-         // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
+         // ^^^^ adjustments: Deref(None), Borrow(Ref('?8, Not)), Pointer(Unsize)
     } else {
         &[1]
     };
@@ -148,7 +148,7 @@ fn foo<T>(x: &[T]) -> &[T] { x }
 fn test(i: i32) {
     let x = match i {
         2 => foo(&[2]),
-              // ^^^^ adjustments: Deref(None), Borrow(Ref(Not)), Pointer(Unsize)
+              // ^^^^ adjustments: Deref(None), Borrow(Ref('?8, Not)), Pointer(Unsize)
         1 => &[1],
         _ => &[3],
     };
@@ -185,11 +185,10 @@ fn test() {
     let t = &mut 1;
     let x = match 1 {
         1 => t as *mut i32,
+           //^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
         2 => t as &i32,
            //^^^^^^^^^ expected *mut i32, got &'? i32
         _ => t as *const i32,
-          // ^^^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
-
     };
     x;
   //^ type: *const i32
@@ -267,7 +266,7 @@ fn takes_ref_str(x: &str) {}
 fn returns_string() -> String { loop {} }
 fn test() {
     takes_ref_str(&{ returns_string() });
-               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
+               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref('{error}, Not))
 }
 "#,
     );
@@ -562,7 +561,7 @@ trait Foo {}
 fn test(f: impl Foo, g: &(impl Foo + ?Sized)) {
     let _: &dyn Foo = &f;
     let _: &dyn Foo = g;
-                    //^ expected &'? dyn Foo, got &'? impl Foo + ?Sized
+                    //^ expected &'? (dyn Foo + 'static), got &'? impl Foo + ?Sized
 }
         "#,
     );
@@ -828,11 +827,11 @@ struct V<T> { t: T }
 fn main() {
     let a: V<&dyn Tr>;
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? dyn Tr>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 
     let mut a: V<&dyn Tr> = V { t: &S };
     (a,) = V { t: &S };
-  //^^^^expected V<&'? S>, got (V<&'? dyn Tr>,)
+  //^^^^expected V<&'? S>, got (V<&'? (dyn Tr + '?)>,)
 }
         "#,
     );
@@ -849,8 +848,8 @@ impl core::cmp::PartialEq for Struct {
 }
 fn test() {
     Struct == Struct;
- // ^^^^^^ adjustments: Borrow(Ref(Not))
-           // ^^^^^^ adjustments: Borrow(Ref(Not))
+ // ^^^^^^ adjustments: Borrow(Ref('{error}, Not))
+           // ^^^^^^ adjustments: Borrow(Ref('{error}, Not))
 }",
     );
 }
@@ -866,7 +865,7 @@ impl core::ops::AddAssign for Struct {
 }
 fn test() {
     Struct += Struct;
- // ^^^^^^ adjustments: Borrow(Ref(Mut))
+ // ^^^^^^ adjustments: Borrow(Ref('{error}, Mut))
            // ^^^^^^ adjustments:
 }",
     );
@@ -880,7 +879,7 @@ fn adjust_index() {
 fn test() {
     let x = [1, 2, 3];
     x[2] = 6;
- // ^ adjustments: Borrow(Ref(Mut))
+ // ^ adjustments: Borrow(Ref('?8, Mut))
 }
     ",
     );
@@ -905,11 +904,11 @@ impl core::ops::IndexMut for StructMut {
 }
 fn test() {
     Struct[0];
- // ^^^^^^ adjustments: Borrow(Ref(Not))
+ // ^^^^^^ adjustments: Borrow(Ref('?2, Not))
     StructMut[0];
- // ^^^^^^^^^ adjustments: Borrow(Ref(Not))
+ // ^^^^^^^^^ adjustments: Borrow(Ref('?5, Not))
     &mut StructMut[0];
-      // ^^^^^^^^^ adjustments: Borrow(Ref(Mut))
+      // ^^^^^^^^^ adjustments: Borrow(Ref('?8, Mut))
 }",
     );
 }
@@ -941,4 +940,20 @@ fn main() {
 }
 "#,
     )
+}
+
+#[test]
+fn regression_18626() {
+    check_no_mismatches(
+        r#"
+fn f() {
+    trait T {
+        fn f() {}
+    }
+    impl T for i32 {}
+    impl T for u32 {}
+    &[i32::f, u32::f] as &[fn()];
+}
+    "#,
+    );
 }

@@ -1,4 +1,4 @@
-//! Object safe interface for file watching and reading.
+//! Dynamically compatible interface for file watching and reading.
 use std::fmt;
 
 use paths::{AbsPath, AbsPathBuf};
@@ -232,6 +232,6 @@ impl fmt::Debug for Message {
 }
 
 #[test]
-fn handle_is_object_safe() {
+fn handle_is_dyn_compatible() {
     fn _assert(_: &dyn Handle) {}
 }

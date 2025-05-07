@@ -1,14 +1,14 @@
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_trait_method;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::has_iter_method;
+use clippy_utils::{is_trait_method, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,14 +64,14 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
                 iter_recv.kind,
                 ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Path(..)
             )
-            && method_name.ident.name.as_str() == "for_each"
+            && method_name.ident.name == sym::for_each
             && is_trait_method(cx, expr, sym::Iterator)
             // Checks the type of the `iter` method receiver is NOT a user defined type.
             && has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some()
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
             && let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind
-            && let body = cx.tcx.hir().body(body)
+            && let body = cx.tcx.hir_body(body)
             // Skip the lint if the body is not safe, so as not to suggest `for … in … unsafe {}`
             // and suggesting `for … in … { unsafe { } }` is a little ugly.
             && let ExprKind::Block(Block { rules: BlockCheckMode::DefaultBlock, .. }, ..) = body.value.kind
@@ -133,7 +133,7 @@ struct RetCollector {
     loop_depth: u16,
 }
 
-impl<'tcx> Visitor<'tcx> for RetCollector {
+impl Visitor<'_> for RetCollector {
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         match expr.kind {
             ExprKind::Ret(..) => {

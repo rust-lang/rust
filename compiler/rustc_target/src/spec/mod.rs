@@ -1,21 +1,21 @@
 //! [Flexible target specification.](https://github.com/rust-lang/rfcs/pull/131)
 //!
 //! Rust targets a wide variety of usecases, and in the interest of flexibility,
-//! allows new target triples to be defined in configuration files. Most users
+//! allows new target tuples to be defined in configuration files. Most users
 //! will not need to care about these, but this is invaluable when porting Rust
 //! to a new platform, and allows for an unprecedented level of control over how
 //! the compiler works.
 //!
 //! # Using custom targets
 //!
-//! A target triple, as passed via `rustc --target=TRIPLE`, will first be
+//! A target tuple, as passed via `rustc --target=TUPLE`, will first be
 //! compared against the list of built-in targets. This is to ease distributing
 //! rustc (no need for configuration files) and also to hold these built-in
-//! targets as immutable and sacred. If `TRIPLE` is not one of the built-in
-//! targets, rustc will check if a file named `TRIPLE` exists. If it does, it
+//! targets as immutable and sacred. If `TUPLE` is not one of the built-in
+//! targets, rustc will check if a file named `TUPLE` exists. If it does, it
 //! will be loaded as the target configuration. If the file does not exist,
 //! rustc will search each directory in the environment variable
-//! `RUST_TARGET_PATH` for a file named `TRIPLE.json`. The first one found will
+//! `RUST_TARGET_PATH` for a file named `TUPLE.json`. The first one found will
 //! be loaded. If no file is found in any of those directories, a fatal error
 //! will be given.
 //!
@@ -42,28 +42,28 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
 
+use rustc_abi::{
+    Align, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
+};
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
 use tracing::debug;
 
-use crate::abi::call::Conv;
-use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
+use crate::callconv::Conv;
 use crate::json::{Json, ToJson};
-use crate::spec::abi::Abi;
 use crate::spec::crt_objects::CrtObjects;
 
-pub mod abi;
 pub mod crt_objects;
 
 mod base;
-pub use base::apple::{
-    deployment_target as current_apple_deployment_target, platform as current_apple_platform,
-    sdk_version as current_apple_sdk_version,
-};
-pub use base::avr_gnu::ef_avr_arch;
+mod json;
+
+pub use base::apple;
+pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -84,7 +84,7 @@ pub enum Lld {
 /// of classes that we call "linker flavors".
 ///
 /// Technically, it's not even necessary, we can nearly always infer the flavor from linker name
-/// and target properties like `is_like_windows`/`is_like_osx`/etc. However, the PRs originally
+/// and target properties like `is_like_windows`/`is_like_darwin`/etc. However, the PRs originally
 /// introducing `-Clinker-flavor` (#40018 and friends) were aiming to reduce this kind of inference
 /// and provide something certain and explicitly specified instead, and that design goal is still
 /// relevant now.
@@ -306,15 +306,16 @@ impl LinkerFlavor {
         }
     }
 
-    fn infer_linker_hints(linker_stem: &str) -> (Option<Cc>, Option<Lld>) {
+    fn infer_linker_hints(linker_stem: &str) -> Result<Self, (Option<Cc>, Option<Lld>)> {
         // Remove any version postfix.
         let stem = linker_stem
             .rsplit_once('-')
             .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
             .unwrap_or(linker_stem);
 
-        // GCC/Clang can have an optional target prefix.
-        if stem == "emcc"
+        if stem == "llvm-bitcode-linker" {
+            Ok(Self::Llbc)
+        } else if stem == "emcc" // GCC/Clang can have an optional target prefix.
             || stem == "gcc"
             || stem.ends_with("-gcc")
             || stem == "g++"
@@ -324,7 +325,7 @@ impl LinkerFlavor {
             || stem == "clang++"
             || stem.ends_with("-clang++")
         {
-            (Some(Cc::Yes), Some(Lld::No))
+            Err((Some(Cc::Yes), Some(Lld::No)))
         } else if stem == "wasm-ld"
             || stem.ends_with("-wasm-ld")
             || stem == "ld.lld"
@@ -332,11 +333,11 @@ impl LinkerFlavor {
             || stem == "rust-lld"
             || stem == "lld-link"
         {
-            (Some(Cc::No), Some(Lld::Yes))
+            Err((Some(Cc::No), Some(Lld::Yes)))
         } else if stem == "ld" || stem.ends_with("-ld") || stem == "link" {
-            (Some(Cc::No), Some(Lld::No))
+            Err((Some(Cc::No), Some(Lld::No)))
         } else {
-            (None, None)
+            Err((None, None))
         }
     }
 
@@ -360,7 +361,10 @@ impl LinkerFlavor {
     }
 
     pub fn with_linker_hints(self, linker_stem: &str) -> LinkerFlavor {
-        self.with_hints(LinkerFlavor::infer_linker_hints(linker_stem))
+        match LinkerFlavor::infer_linker_hints(linker_stem) {
+            Ok(linker_flavor) => linker_flavor,
+            Err(hints) => self.with_hints(hints),
+        }
     }
 
     pub fn check_compatibility(self, cli: LinkerFlavorCli) -> Option<String> {
@@ -830,6 +834,46 @@ impl RelroLevel {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
+pub enum SymbolVisibility {
+    Hidden,
+    Protected,
+    Interposable,
+}
+
+impl SymbolVisibility {
+    pub fn desc(&self) -> &str {
+        match *self {
+            SymbolVisibility::Hidden => "hidden",
+            SymbolVisibility::Protected => "protected",
+            SymbolVisibility::Interposable => "interposable",
+        }
+    }
+}
+
+impl FromStr for SymbolVisibility {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<SymbolVisibility, ()> {
+        match s {
+            "hidden" => Ok(SymbolVisibility::Hidden),
+            "protected" => Ok(SymbolVisibility::Protected),
+            "interposable" => Ok(SymbolVisibility::Interposable),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for SymbolVisibility {
+    fn to_json(&self) -> Json {
+        match *self {
+            SymbolVisibility::Hidden => "hidden".to_json(),
+            SymbolVisibility::Protected => "protected".to_json(),
+            SymbolVisibility::Interposable => "interposable".to_json(),
+        }
+    }
+}
+
 impl FromStr for RelroLevel {
     type Err = ();
 
@@ -851,6 +895,43 @@ impl ToJson for RelroLevel {
             RelroLevel::Partial => "partial".to_json(),
             RelroLevel::Off => "off".to_json(),
             RelroLevel::None => "None".to_json(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Hash)]
+pub enum SmallDataThresholdSupport {
+    None,
+    DefaultForArch,
+    LlvmModuleFlag(StaticCow<str>),
+    LlvmArg(StaticCow<str>),
+}
+
+impl FromStr for SmallDataThresholdSupport {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "none" {
+            Ok(Self::None)
+        } else if s == "default-for-arch" {
+            Ok(Self::DefaultForArch)
+        } else if let Some(flag) = s.strip_prefix("llvm-module-flag=") {
+            Ok(Self::LlvmModuleFlag(flag.to_string().into()))
+        } else if let Some(arg) = s.strip_prefix("llvm-arg=") {
+            Ok(Self::LlvmArg(arg.to_string().into()))
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl ToJson for SmallDataThresholdSupport {
+    fn to_json(&self) -> Value {
+        match self {
+            Self::None => "none".to_json(),
+            Self::DefaultForArch => "default-for-arch".to_json(),
+            Self::LlvmModuleFlag(flag) => format!("llvm-module-flag={flag}").to_json(),
+            Self::LlvmArg(arg) => format!("llvm-arg={arg}").to_json(),
         }
     }
 }
@@ -998,6 +1079,66 @@ impl ToJson for CodeModel {
             CodeModel::Kernel => "kernel",
             CodeModel::Medium => "medium",
             CodeModel::Large => "large",
+        }
+        .to_json()
+    }
+}
+
+/// The float ABI setting to be configured in the LLVM target machine.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum FloatAbi {
+    Soft,
+    Hard,
+}
+
+impl FromStr for FloatAbi {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<FloatAbi, ()> {
+        Ok(match s {
+            "soft" => FloatAbi::Soft,
+            "hard" => FloatAbi::Hard,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for FloatAbi {
+    fn to_json(&self) -> Json {
+        match *self {
+            FloatAbi::Soft => "soft",
+            FloatAbi::Hard => "hard",
+        }
+        .to_json()
+    }
+}
+
+/// The Rustc-specific variant of the ABI used for this target.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum RustcAbi {
+    /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
+    X86Sse2,
+    /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
+    X86Softfloat,
+}
+
+impl FromStr for RustcAbi {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<RustcAbi, ()> {
+        Ok(match s {
+            "x86-sse2" => RustcAbi::X86Sse2,
+            "x86-softfloat" => RustcAbi::X86Softfloat,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for RustcAbi {
+    fn to_json(&self) -> Json {
+        match *self {
+            RustcAbi::X86Sse2 => "x86-sse2",
+            RustcAbi::X86Softfloat => "x86-softfloat",
         }
         .to_json()
     }
@@ -1506,34 +1647,88 @@ impl fmt::Display for StackProtector {
     }
 }
 
+#[derive(PartialEq, Clone, Debug)]
+pub enum BinaryFormat {
+    Coff,
+    Elf,
+    MachO,
+    Wasm,
+    Xcoff,
+}
+
+impl BinaryFormat {
+    /// Returns [`object::BinaryFormat`] for given `BinaryFormat`
+    pub fn to_object(&self) -> object::BinaryFormat {
+        match self {
+            Self::Coff => object::BinaryFormat::Coff,
+            Self::Elf => object::BinaryFormat::Elf,
+            Self::MachO => object::BinaryFormat::MachO,
+            Self::Wasm => object::BinaryFormat::Wasm,
+            Self::Xcoff => object::BinaryFormat::Xcoff,
+        }
+    }
+}
+
+impl FromStr for BinaryFormat {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "coff" => Ok(Self::Coff),
+            "elf" => Ok(Self::Elf),
+            "mach-o" => Ok(Self::MachO),
+            "wasm" => Ok(Self::Wasm),
+            "xcoff" => Ok(Self::Xcoff),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for BinaryFormat {
+    fn to_json(&self) -> Json {
+        match self {
+            Self::Coff => "coff",
+            Self::Elf => "elf",
+            Self::MachO => "mach-o",
+            Self::Wasm => "wasm",
+            Self::Xcoff => "xcoff",
+        }
+        .to_json()
+    }
+}
+
 macro_rules! supported_targets {
-    ( $(($triple:literal, $module:ident),)+ ) => {
+    ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
             $(pub(crate) mod $module;)+
         }
 
         /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($triple),+];
+        pub static TARGETS: &[&str] = &[$($tuple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
-            let mut t = match target {
-                $( $triple => targets::$module::target(), )+
+            let t = match target {
+                $( $tuple => targets::$module::target(), )+
                 _ => return None,
             };
-            t.is_builtin = true;
             debug!("got builtin target: {:?}", t);
             Some(t)
         }
 
+        fn load_all_builtins() -> impl Iterator<Item = Target> {
+            [
+                $( targets::$module::target, )+
+            ]
+            .into_iter()
+            .map(|f| f())
+        }
+
         #[cfg(test)]
         mod tests {
-            mod tests_impl;
-
             // Cannot put this into a separate file without duplication, make an exception.
             $(
                 #[test] // `#[test]`
                 fn $module() {
-                    tests_impl::test_target(crate::spec::targets::$module::target());
+                    crate::spec::targets::$module::target().test_target()
                 }
             )+
         }
@@ -1548,6 +1743,7 @@ supported_targets! {
     ("loongarch64-unknown-linux-gnu", loongarch64_unknown_linux_gnu),
     ("loongarch64-unknown-linux-musl", loongarch64_unknown_linux_musl),
     ("m68k-unknown-linux-gnu", m68k_unknown_linux_gnu),
+    ("m68k-unknown-none-elf", m68k_unknown_none_elf),
     ("csky-unknown-linux-gnuabiv2", csky_unknown_linux_gnuabiv2),
     ("csky-unknown-linux-gnuabiv2hf", csky_unknown_linux_gnuabiv2hf),
     ("mips-unknown-linux-gnu", mips_unknown_linux_gnu),
@@ -1647,6 +1843,7 @@ supported_targets! {
     ("x86_64-unknown-haiku", x86_64_unknown_haiku),
 
     ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
+    ("x86_64-unknown-hurd-gnu", x86_64_unknown_hurd_gnu),
 
     ("aarch64-apple-darwin", aarch64_apple_darwin),
     ("arm64e-apple-darwin", arm64e_apple_darwin),
@@ -1654,20 +1851,16 @@ supported_targets! {
     ("x86_64h-apple-darwin", x86_64h_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
-    // FIXME(#106649): Remove aarch64-fuchsia in favor of aarch64-unknown-fuchsia
-    ("aarch64-fuchsia", aarch64_fuchsia),
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
     ("riscv64gc-unknown-fuchsia", riscv64gc_unknown_fuchsia),
-    // FIXME(#106649): Remove x86_64-fuchsia in favor of x86_64-unknown-fuchsia
-    ("x86_64-fuchsia", x86_64_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
-    ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
+    ("avr-none", avr_none),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("aarch64-unknown-redox", aarch64_unknown_redox),
-    ("i686-unknown-redox", i686_unknown_redox),
+    ("i586-unknown-redox", i586_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
     ("i386-apple-ios", i386_apple_ios),
@@ -1678,8 +1871,10 @@ supported_targets! {
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
     ("aarch64-apple-ios-sim", aarch64_apple_ios_sim),
+
     ("aarch64-apple-tvos", aarch64_apple_tvos),
     ("aarch64-apple-tvos-sim", aarch64_apple_tvos_sim),
+    ("arm64e-apple-tvos", arm64e_apple_tvos),
     ("x86_64-apple-tvos", x86_64_apple_tvos),
 
     ("armv7k-apple-watchos", armv7k_apple_watchos),
@@ -1697,6 +1892,8 @@ supported_targets! {
     ("armv7r-none-eabihf", armv7r_none_eabihf),
     ("armv8r-none-eabihf", armv8r_none_eabihf),
 
+    ("armv7-rtems-eabihf", armv7_rtems_eabihf),
+
     ("x86_64-pc-solaris", x86_64_pc_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
@@ -1704,9 +1901,11 @@ supported_targets! {
     ("aarch64-unknown-illumos", aarch64_unknown_illumos),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
+    ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
+    ("x86_64-win7-windows-gnu", x86_64_win7_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
     ("i686-uwp-windows-gnu", i686_uwp_windows_gnu),
-    ("x86_64-uwp-windows-gnu", x86_64_uwp_windows_gnu),
+    ("i686-win7-windows-gnu", i686_win7_windows_gnu),
 
     ("aarch64-pc-windows-gnullvm", aarch64_pc_windows_gnullvm),
     ("i686-pc-windows-gnullvm", i686_pc_windows_gnullvm),
@@ -1721,16 +1920,16 @@ supported_targets! {
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
     ("i686-win7-windows-msvc", i686_win7_windows_msvc),
-    ("i586-pc-windows-msvc", i586_pc_windows_msvc),
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
-    ("wasm32-wasi", wasm32_wasi),
+    ("wasm32v1-none", wasm32v1_none),
     ("wasm32-wasip1", wasm32_wasip1),
     ("wasm32-wasip2", wasm32_wasip2),
     ("wasm32-wasip1-threads", wasm32_wasip1_threads),
+    ("wasm32-wali-linux-musl", wasm32_wali_linux_musl),
     ("wasm64-unknown-unknown", wasm64_unknown_unknown),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
@@ -1743,6 +1942,8 @@ supported_targets! {
 
     ("armv7a-none-eabi", armv7a_none_eabi),
     ("armv7a-none-eabihf", armv7a_none_eabihf),
+    ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
+    ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -1752,6 +1953,10 @@ supported_targets! {
 
     ("x86_64-unikraft-linux-musl", x86_64_unikraft_linux_musl),
 
+    ("armv7-unknown-trusty", armv7_unknown_trusty),
+    ("aarch64-unknown-trusty", aarch64_unknown_trusty),
+    ("x86_64-unknown-trusty", x86_64_unknown_trusty),
+
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-risc0-zkvm-elf", riscv32im_risc0_zkvm_elf),
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),
@@ -1760,6 +1965,10 @@ supported_targets! {
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
     ("riscv32imafc-esp-espidf", riscv32imafc_esp_espidf),
+
+    ("riscv32e-unknown-none-elf", riscv32e_unknown_none_elf),
+    ("riscv32em-unknown-none-elf", riscv32em_unknown_none_elf),
+    ("riscv32emc-unknown-none-elf", riscv32emc_unknown_none_elf),
 
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv32imafc-unknown-none-elf", riscv32imafc_unknown_none_elf),
@@ -1778,6 +1987,7 @@ supported_targets! {
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
+    ("aarch64-unknown-nuttx", aarch64_unknown_nuttx),
 
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
 
@@ -1786,6 +1996,8 @@ supported_targets! {
     ("aarch64-unknown-uefi", aarch64_unknown_uefi),
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
+
+    ("amdgcn-amd-amdhsa", amdgcn_amd_amdhsa),
 
     ("xtensa-esp32-none-elf", xtensa_esp32_none_elf),
     ("xtensa-esp32-espidf", xtensa_esp32_espidf),
@@ -1801,6 +2013,8 @@ supported_targets! {
     ("powerpc-wrs-vxworks", powerpc_wrs_vxworks),
     ("powerpc-wrs-vxworks-spe", powerpc_wrs_vxworks_spe),
     ("powerpc64-wrs-vxworks", powerpc64_wrs_vxworks),
+    ("riscv32-wrs-vxworks", riscv32_wrs_vxworks),
+    ("riscv64-wrs-vxworks", riscv64_wrs_vxworks),
 
     ("aarch64-kmc-solid_asp3", aarch64_kmc_solid_asp3),
     ("armv7a-kmc-solid_asp3-eabi", armv7a_kmc_solid_asp3_eabi),
@@ -1809,6 +2023,8 @@ supported_targets! {
     ("mipsel-sony-psp", mipsel_sony_psp),
     ("mipsel-sony-psx", mipsel_sony_psx),
     ("mipsel-unknown-none", mipsel_unknown_none),
+    ("mips-mti-none-elf", mips_mti_none_elf),
+    ("mipsel-mti-none-elf", mipsel_mti_none_elf),
     ("thumbv4t-none-eabi", thumbv4t_none_eabi),
     ("armv4t-none-eabi", armv4t_none_eabi),
     ("thumbv5te-none-eabi", thumbv5te_none_eabi),
@@ -1836,17 +2052,25 @@ supported_targets! {
 
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 
+    ("aarch64-unknown-nto-qnx700", aarch64_unknown_nto_qnx700),
     ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx710),
+    ("aarch64-unknown-nto-qnx710_iosock", aarch64_unknown_nto_qnx710_iosock),
+    ("aarch64-unknown-nto-qnx800", aarch64_unknown_nto_qnx800),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
-    ("i586-pc-nto-qnx700", i586_pc_nto_qnx700),
+    ("x86_64-pc-nto-qnx710_iosock", x86_64_pc_nto_qnx710_iosock),
+    ("x86_64-pc-nto-qnx800", x86_64_pc_nto_qnx800),
+    ("i686-pc-nto-qnx700", i686_pc_nto_qnx700),
 
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
     ("armv7-unknown-linux-ohos", armv7_unknown_linux_ohos),
+    ("loongarch64-unknown-linux-ohos", loongarch64_unknown_linux_ohos),
     ("x86_64-unknown-linux-ohos", x86_64_unknown_linux_ohos),
 
     ("x86_64-unknown-linux-none", x86_64_unknown_linux_none),
 
     ("thumbv6m-nuttx-eabi", thumbv6m_nuttx_eabi),
+    ("thumbv7a-nuttx-eabi", thumbv7a_nuttx_eabi),
+    ("thumbv7a-nuttx-eabihf", thumbv7a_nuttx_eabihf),
     ("thumbv7m-nuttx-eabi", thumbv7m_nuttx_eabi),
     ("thumbv7em-nuttx-eabi", thumbv7em_nuttx_eabi),
     ("thumbv7em-nuttx-eabihf", thumbv7em_nuttx_eabihf),
@@ -1858,7 +2082,9 @@ supported_targets! {
     ("riscv32imafc-unknown-nuttx-elf", riscv32imafc_unknown_nuttx_elf),
     ("riscv64imac-unknown-nuttx-elf", riscv64imac_unknown_nuttx_elf),
     ("riscv64gc-unknown-nuttx-elf", riscv64gc_unknown_nuttx_elf),
+    ("x86_64-lynx-lynxos178", x86_64_lynx_lynxos178),
 
+    ("x86_64-pc-cygwin", x86_64_pc_cygwin),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -1909,12 +2135,25 @@ impl TargetWarnings {
     }
 }
 
+/// For the [`Target::check_consistency`] function, determines whether the given target is a builtin or a JSON
+/// target.
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum TargetKind {
+    Json,
+    Builtin,
+}
+
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
-    /// Target triple to pass to LLVM.
+    /// Unversioned target tuple to pass to LLVM.
+    ///
+    /// Target tuples can optionally contain an OS version (notably Apple targets), which rustc
+    /// cannot know without querying the environment.
+    ///
+    /// Use `rustc_codegen_ssa::back::versioned_llvm_target` if you need the full LLVM target.
     pub llvm_target: StaticCow<str>,
     /// Metadata about a target, for example the description or tier.
     /// Used for generating target documentation.
@@ -2001,11 +2240,28 @@ pub enum WasmCAbi {
     /// Spec-compliant C ABI.
     Spec,
     /// Legacy ABI. Which is non-spec-compliant.
-    Legacy,
+    Legacy {
+        /// Indicates whether the `wasm_c_abi` lint should be emitted.
+        with_lint: bool,
+    },
 }
 
 pub trait HasWasmCAbiOpt {
     fn wasm_c_abi_opt(&self) -> WasmCAbi;
+}
+
+/// x86 (32-bit) abi options.
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct X86Abi {
+    /// On x86-32 targets, the regparm N causes the compiler to pass arguments
+    /// in registers EAX, EDX, and ECX instead of on the stack.
+    pub regparm: Option<u32>,
+    /// Override the default ABI to return small structs in registers
+    pub reg_struct_return: bool,
+}
+
+pub trait HasX86AbiOpt {
+    fn x86_abi_opt(&self) -> X86Abi;
 }
 
 type StaticCow<T> = Cow<'static, T>;
@@ -2020,9 +2276,6 @@ type StaticCow<T> = Cow<'static, T>;
 /// through `Deref` impls.
 #[derive(PartialEq, Clone, Debug)]
 pub struct TargetOptions {
-    /// Whether the target is built-in or loaded from a custom target specification.
-    pub is_builtin: bool,
-
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
@@ -2036,6 +2289,8 @@ pub struct TargetOptions {
     pub env: StaticCow<str>,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
     /// or `"eabihf"`. Defaults to "".
+    /// This field is *not* forwarded directly to LLVM; its primary purpose is `cfg(target_abi)`.
+    /// However, parts of the backend do check this field for specific values to enable special behavior.
     pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
     pub vendor: StaticCow<str>,
@@ -2095,9 +2350,17 @@ pub struct TargetOptions {
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "generic".
     pub cpu: StaticCow<str>,
-    /// Default target features to pass to LLVM. These features will *always* be
-    /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
-    /// -mattr=$features`.
+    /// Whether a cpu needs to be explicitly set.
+    /// Set to true if there is no default cpu. Defaults to false.
+    pub need_explicit_cpu: bool,
+    /// Default target features to pass to LLVM. These features overwrite
+    /// `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
+    /// Corresponds to `llc -mattr=$features`.
+    /// Note that these are LLVM feature names, not Rust feature names!
+    ///
+    /// Generally it is a bad idea to use negative target features because they often interact very
+    /// poorly with how `-Ctarget-cpu` works. Instead, try to use a lower "base CPU" and enable the
+    /// features you want to use.
     pub features: StaticCow<str>,
     /// Direct or use GOT indirect to reference external data symbols
     pub direct_access_external_data: Option<bool>,
@@ -2147,9 +2410,9 @@ pub struct TargetOptions {
     pub is_like_aix: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
     /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
-    /// Also indiates whether to use Apple-specific ABI changes, such as extending function
+    /// Also indicates whether to use Apple-specific ABI changes, such as extending function
     /// parameters to 32-bits.
-    pub is_like_osx: bool,
+    pub is_like_darwin: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,
     /// as they have a different set of linker flags. Defaults to false.
@@ -2176,6 +2439,8 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
+    /// Target's binary file format. Defaults to BinaryFormat::Elf
+    pub binary_format: BinaryFormat,
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
@@ -2223,8 +2488,6 @@ pub struct TargetOptions {
     /// If we give emcc .o files that are actually .bc files it
     /// will 'just work'.
     pub obj_is_bitcode: bool,
-    /// Whether the target requires that emitted object code includes bitcode.
-    pub forces_embed_bitcode: bool,
     /// Content of the LLVM cmdline section associated with embedded bitcode.
     pub bitcode_llvm_cmdline: StaticCow<str>,
 
@@ -2282,13 +2545,12 @@ pub struct TargetOptions {
     /// for this target unconditionally.
     pub no_builtins: bool,
 
-    /// The default visibility for symbols in this target should be "hidden"
-    /// rather than "default".
+    /// The default visibility for symbols in this target.
     ///
-    /// This value typically shouldn't be accessed directly, but through
-    /// the `rustc_session::Session::default_hidden_visibility` method, which
-    /// allows `rustc` users to override this setting using cmdline flags.
-    pub default_hidden_visibility: bool,
+    /// This value typically shouldn't be accessed directly, but through the
+    /// `rustc_session::Session::default_visibility` method, which allows `rustc` users to override
+    /// this setting using cmdline flags.
+    pub default_visibility: Option<SymbolVisibility>,
 
     /// Whether a .debug_gdb_scripts section will be added to the output object file
     pub emit_debug_gdb_scripts: bool,
@@ -2330,7 +2592,22 @@ pub struct TargetOptions {
     pub llvm_mcount_intrinsic: Option<StaticCow<str>>,
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
+    /// and the `-target-abi` flag in llc. In the LLVM API this is `MCOptions.ABIName`.
     pub llvm_abiname: StaticCow<str>,
+
+    /// Control the float ABI to use, for architectures that support it. The only architecture we
+    /// currently use this for is ARM. Corresponds to the `-float-abi` flag in llc. In the LLVM API
+    /// this is `FloatABIType`. (clang's `-mfloat-abi` is similar but more complicated since it
+    /// can also affect the `soft-float` target feature.)
+    ///
+    /// If not provided, LLVM will infer the float ABI from the target triple (`llvm_target`).
+    pub llvm_floatabi: Option<FloatAbi>,
+
+    /// Picks a specific ABI for this target. This is *not* just for "Rust" ABI functions,
+    /// it can also affect "C" ABI functions; the point is that this flag is interpreted by
+    /// rustc and not forwarded to LLVM.
+    /// So far, this is only used on x86.
+    pub rustc_abi: Option<RustcAbi>,
 
     /// Whether or not RelaxElfRelocation flag will be passed to the linker
     pub relax_elf_relocations: bool,
@@ -2386,6 +2663,9 @@ pub struct TargetOptions {
 
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
+
+    /// Whether the targets supports -Z small-data-threshold
+    small_data_threshold_support: SmallDataThresholdSupport,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -2421,6 +2701,13 @@ fn add_link_args_iter(
 
 fn add_link_args(link_args: &mut LinkArgs, flavor: LinkerFlavor, args: &[&'static str]) {
     add_link_args_iter(link_args, flavor, args.iter().copied().map(Cow::Borrowed))
+}
+
+impl TargetOptions {
+    pub fn supports_comdat(&self) -> bool {
+        // XCOFF and MachO don't support COMDAT.
+        !self.is_like_aix && !self.is_like_darwin
+    }
 }
 
 impl TargetOptions {
@@ -2488,7 +2775,6 @@ impl Default for TargetOptions {
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
-            is_builtin: false,
             endian: Endian::Little,
             c_int_width: "32".into(),
             os: "none".into(),
@@ -2503,6 +2789,7 @@ impl Default for TargetOptions {
             link_script: None,
             asm_args: cvs![],
             cpu: "generic".into(),
+            need_explicit_cpu: false,
             features: "".into(),
             direct_access_external_data: None,
             dynamic_linking: false,
@@ -2523,12 +2810,13 @@ impl Default for TargetOptions {
             families: cvs![],
             abi_return_struct_as_int: false,
             is_like_aix: false,
-            is_like_osx: false,
+            is_like_darwin: false,
             is_like_solaris: false,
             is_like_windows: false,
             is_like_msvc: false,
             is_like_wasm: false,
             is_like_android: false,
+            binary_format: BinaryFormat::Elf,
             default_dwarf_version: 4,
             allows_weak_linkage: true,
             has_rpath: false,
@@ -2559,7 +2847,6 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_thread_local: false,
             obj_is_bitcode: false,
-            forces_embed_bitcode: false,
             bitcode_llvm_cmdline: "".into(),
             min_atomic_width: None,
             max_atomic_width: None,
@@ -2576,7 +2863,7 @@ impl Default for TargetOptions {
             requires_lto: false,
             singlethread: false,
             no_builtins: false,
-            default_hidden_visibility: false,
+            default_visibility: None,
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
             default_uwtable: false,
@@ -2587,6 +2874,8 @@ impl Default for TargetOptions {
             mcount: "mcount".into(),
             llvm_mcount_intrinsic: None,
             llvm_abiname: "".into(),
+            llvm_floatabi: None,
+            rustc_abi: None,
             relax_elf_relocations: false,
             llvm_args: cvs![],
             use_ctors_section: false,
@@ -2603,6 +2892,7 @@ impl Default for TargetOptions {
             entry_name: "main".into(),
             entry_abi: Conv::C,
             supports_xray: false,
+            small_data_threshold_support: SmallDataThresholdSupport::DefaultForArch,
         }
     }
 }
@@ -2627,57 +2917,71 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
+    pub fn adjust_abi(&self, abi: ExternAbi, c_variadic: bool) -> ExternAbi {
+        use ExternAbi::*;
         match abi {
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
             // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
-                Abi::Stdcall { unwind }
+            System { unwind } => {
+                if self.is_like_windows && self.arch == "x86" && !c_variadic {
+                    Stdcall { unwind }
+                } else {
+                    C { unwind }
+                }
             }
-            Abi::System { unwind } => Abi::C { unwind },
-            Abi::EfiApi if self.arch == "arm" => Abi::Aapcs { unwind: false },
-            Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
-            Abi::EfiApi => Abi::C { unwind: false },
+
+            EfiApi => {
+                if self.arch == "arm" {
+                    Aapcs { unwind: false }
+                } else if self.arch == "x86_64" {
+                    Win64 { unwind: false }
+                } else {
+                    C { unwind: false }
+                }
+            }
 
             // See commentary in `is_abi_supported`.
-            Abi::Stdcall { .. } | Abi::Thiscall { .. } if self.arch == "x86" => abi,
-            Abi::Stdcall { unwind } | Abi::Thiscall { unwind } => Abi::C { unwind },
-            Abi::Fastcall { .. } if self.arch == "x86" => abi,
-            Abi::Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
-            Abi::Fastcall { unwind } | Abi::Vectorcall { unwind } => Abi::C { unwind },
+            Stdcall { unwind } | Thiscall { unwind } | Fastcall { unwind } => {
+                if self.arch == "x86" { abi } else { C { unwind } }
+            }
+            Vectorcall { unwind } => {
+                if ["x86", "x86_64"].contains(&&*self.arch) {
+                    abi
+                } else {
+                    C { unwind }
+                }
+            }
 
             // The Windows x64 calling convention we use for `extern "Rust"`
             // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
             // expects the callee to save `xmm6` through `xmm15`, but `PreserveMost`
             // (that we use by default for `extern "rust-cold"`) doesn't save any of those.
             // So to avoid bloating callers, just use the Rust convention here.
-            Abi::RustCold if self.is_like_windows && self.arch == "x86_64" => Abi::Rust,
+            RustCold if self.is_like_windows && self.arch == "x86_64" => Rust,
 
             abi => abi,
         }
     }
 
-    /// Returns a None if the UNSUPPORTED_CALLING_CONVENTIONS lint should be emitted
-    pub fn is_abi_supported(&self, abi: Abi) -> Option<bool> {
-        use Abi::*;
-        Some(match abi {
-            Rust
-            | C { .. }
-            | System { .. }
-            | RustIntrinsic
-            | RustCall
-            | Unadjusted
-            | Cdecl { .. }
-            | RustCold => true,
+    pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
+        use ExternAbi::*;
+        match abi {
+            Rust | C { .. } | System { .. } | RustCall | Unadjusted | Cdecl { .. } | RustCold => {
+                true
+            }
             EfiApi => {
                 ["arm", "aarch64", "riscv32", "riscv64", "x86", "x86_64"].contains(&&self.arch[..])
             }
             X86Interrupt => ["x86", "x86_64"].contains(&&self.arch[..]),
             Aapcs { .. } => "arm" == self.arch,
-            CCmseNonSecureCall => ["arm", "aarch64"].contains(&&self.arch[..]),
+            CCmseNonSecureCall | CCmseNonSecureEntry => {
+                ["thumbv8m.main-none-eabi", "thumbv8m.main-none-eabihf", "thumbv8m.base-none-eabi"]
+                    .contains(&&self.llvm_target[..])
+            }
             Win64 { .. } | SysV64 { .. } => self.arch == "x86_64",
             PtxKernel => self.arch == "nvptx64",
+            GpuKernel => ["amdgpu", "nvptx64"].contains(&&self.arch[..]),
             Msp430Interrupt => self.arch == "msp430",
             RiscvInterruptM | RiscvInterruptS => ["riscv32", "riscv64"].contains(&&self.arch[..]),
             AvrInterrupt | AvrNonBlockingInterrupt => self.arch == "avr",
@@ -2717,9 +3021,9 @@ impl Target {
             // architectures for which these calling conventions are actually well defined.
             Stdcall { .. } | Fastcall { .. } if self.arch == "x86" => true,
             Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => true,
-            // Return a `None` for other cases so that we know to emit a future compat lint.
-            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => return None,
-        })
+            // Reject these calling conventions everywhere else.
+            Stdcall { .. } | Fastcall { .. } | Vectorcall { .. } => false,
+        }
     }
 
     /// Minimum integer size in bits that this target can perform atomic
@@ -2734,628 +3038,433 @@ impl Target {
         self.max_atomic_width.unwrap_or_else(|| self.pointer_width.into())
     }
 
-    /// Loads a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> Result<(Target, TargetWarnings), String> {
-        // While ugly, this code must remain this way to retain
-        // compatibility with existing JSON fields and the internal
-        // expected naming of the Target and TargetOptions structs.
-        // To ensure compatibility is retained, the built-in targets
-        // are round-tripped through this code to catch cases where
-        // the JSON parser is not updated to match the structs.
-
-        let mut obj = match obj {
-            Value::Object(obj) => obj,
-            _ => return Err("Expected JSON object for target")?,
-        };
-
-        let mut get_req_field = |name: &str| {
-            obj.remove(name)
-                .and_then(|j| j.as_str().map(str::to_string))
-                .ok_or_else(|| format!("Field {name} in target specification is required"))
-        };
-
-        let mut base = Target {
-            llvm_target: get_req_field("llvm-target")?.into(),
-            metadata: Default::default(),
-            pointer_width: get_req_field("target-pointer-width")?
-                .parse::<u32>()
-                .map_err(|_| "target-pointer-width must be an integer".to_string())?,
-            data_layout: get_req_field("data-layout")?.into(),
-            arch: get_req_field("arch")?.into(),
-            options: Default::default(),
-        };
-
-        // FIXME: This doesn't properly validate anything and just ignores the data if it's invalid.
-        // That's okay for now, the only use of this is when generating docs, which we don't do for
-        // custom targets.
-        if let Some(Json::Object(mut metadata)) = obj.remove("metadata") {
-            base.metadata.description = metadata
-                .remove("description")
-                .and_then(|desc| desc.as_str().map(|desc| desc.to_owned().into()));
-            base.metadata.tier = metadata
-                .remove("tier")
-                .and_then(|tier| tier.as_u64())
-                .filter(|tier| (1..=3).contains(tier));
-            base.metadata.host_tools =
-                metadata.remove("host_tools").and_then(|host| host.as_bool());
-            base.metadata.std = metadata.remove("std").and_then(|host| host.as_bool());
+    /// Check some basic consistency of the current target. For JSON targets we are less strict;
+    /// some of these checks are more guidelines than strict rules.
+    fn check_consistency(&self, kind: TargetKind) -> Result<(), String> {
+        macro_rules! check {
+            ($b:expr, $($msg:tt)*) => {
+                if !$b {
+                    return Err(format!($($msg)*));
+                }
+            }
+        }
+        macro_rules! check_eq {
+            ($left:expr, $right:expr, $($msg:tt)*) => {
+                if ($left) != ($right) {
+                    return Err(format!($($msg)*));
+                }
+            }
+        }
+        macro_rules! check_ne {
+            ($left:expr, $right:expr, $($msg:tt)*) => {
+                if ($left) == ($right) {
+                    return Err(format!($($msg)*));
+                }
+            }
+        }
+        macro_rules! check_matches {
+            ($left:expr, $right:pat, $($msg:tt)*) => {
+                if !matches!($left, $right) {
+                    return Err(format!($($msg)*));
+                }
+            }
         }
 
-        let mut incorrect_type = vec![];
+        check_eq!(
+            self.is_like_darwin,
+            self.vendor == "apple",
+            "`is_like_darwin` must be set if and only if `vendor` is `apple`"
+        );
+        check_eq!(
+            self.is_like_solaris,
+            self.os == "solaris" || self.os == "illumos",
+            "`is_like_solaris` must be set if and only if `os` is `solaris` or `illumos`"
+        );
+        check_eq!(
+            self.is_like_windows,
+            self.os == "windows" || self.os == "uefi" || self.os == "cygwin",
+            "`is_like_windows` must be set if and only if `os` is `windows`, `uefi` or `cygwin`"
+        );
+        check_eq!(
+            self.is_like_wasm,
+            self.arch == "wasm32" || self.arch == "wasm64",
+            "`is_like_wasm` must be set if and only if `arch` is `wasm32` or `wasm64`"
+        );
+        if self.is_like_msvc {
+            check!(self.is_like_windows, "if `is_like_msvc` is set, `is_like_windows` must be set");
+        }
+        if self.os == "emscripten" {
+            check!(self.is_like_wasm, "the `emcscripten` os only makes sense on wasm-like targets");
+        }
 
-        macro_rules! key {
-            ($key_name:ident) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|s| s.as_str().map(str::to_string).map(Cow::from)) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident = $json_name:expr) => ( {
-                let name = $json_name;
-                if let Some(s) = obj.remove(name).and_then(|s| s.as_str().map(str::to_string).map(Cow::from)) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident, bool) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident = $json_name:expr, bool) => ( {
-                let name = $json_name;
-                if let Some(s) = obj.remove(name).and_then(|b| b.as_bool()) {
-                    base.$key_name = s;
-                }
-            } );
-            ($key_name:ident, u32) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_u64()) {
-                    if s < 1 || s > 5 {
-                        return Err("Not a valid DWARF version number".into());
-                    }
-                    base.$key_name = s as u32;
-                }
-            } );
-            ($key_name:ident, Option<bool>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_bool()) {
-                    base.$key_name = Some(s);
-                }
-            } );
-            ($key_name:ident, Option<u64>) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove(&name).and_then(|b| b.as_u64()) {
-                    base.$key_name = Some(s);
-                }
-            } );
-            ($key_name:ident, MergeFunctions) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<MergeFunctions>() {
-                        Ok(mergefunc) => base.$key_name = mergefunc,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      merge-functions. Use 'disabled', \
-                                                      'trampolines', or 'aliases'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, RelocModel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<RelocModel>() {
-                        Ok(relocation_model) => base.$key_name = relocation_model,
-                        _ => return Some(Err(format!("'{}' is not a valid relocation model. \
-                                                      Run `rustc --print relocation-models` to \
-                                                      see the list of supported values.", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, CodeModel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<CodeModel>() {
-                        Ok(code_model) => base.$key_name = Some(code_model),
-                        _ => return Some(Err(format!("'{}' is not a valid code model. \
-                                                      Run `rustc --print code-models` to \
-                                                      see the list of supported values.", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, TlsModel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<TlsModel>() {
-                        Ok(tls_model) => base.$key_name = tls_model,
-                        _ => return Some(Err(format!("'{}' is not a valid TLS model. \
-                                                      Run `rustc --print tls-models` to \
-                                                      see the list of supported values.", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, PanicStrategy) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s {
-                        "unwind" => base.$key_name = PanicStrategy::Unwind,
-                        "abort" => base.$key_name = PanicStrategy::Abort,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      panic-strategy. Use 'unwind' or 'abort'.",
-                                                     s))),
-                }
-                Some(Ok(()))
-            })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, RelroLevel) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<RelroLevel>() {
-                        Ok(level) => base.$key_name = level,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      relro-level. Use 'full', 'partial, or 'off'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, DebuginfoKind) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<DebuginfoKind>() {
-                        Ok(level) => base.$key_name = level,
-                        _ => return Some(Err(
-                            format!("'{s}' is not a valid value for debuginfo-kind. Use 'dwarf', \
-                                  'dwarf-dsym' or 'pdb'.")
-                        )),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, SplitDebuginfo) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<SplitDebuginfo>() {
-                        Ok(level) => base.$key_name = level,
-                        _ => return Some(Err(format!("'{}' is not a valid value for \
-                                                      split-debuginfo. Use 'off' or 'dsymutil'.",
-                                                      s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, list) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(j) = obj.remove(&name) {
-                    if let Some(v) = j.as_array() {
-                        base.$key_name = v.iter()
-                            .map(|a| a.as_str().unwrap().to_string().into())
-                            .collect();
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-            } );
-            ($key_name:ident, opt_list) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(j) = obj.remove(&name) {
-                    if let Some(v) = j.as_array() {
-                        base.$key_name = Some(v.iter()
-                            .map(|a| a.as_str().unwrap().to_string().into())
-                            .collect());
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-            } );
-            ($key_name:ident, fallible_list) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|j| {
-                    if let Some(v) = j.as_array() {
-                        match v.iter().map(|a| FromStr::from_str(a.as_str().unwrap())).collect() {
-                            Ok(l) => { base.$key_name = l },
-                            // FIXME: `fallible_list` can't re-use the `key!` macro for list
-                            // elements and the error messages from that macro, so it has a bad
-                            // generic message instead
-                            Err(_) => return Some(Err(
-                                format!("`{:?}` is not a valid value for `{}`", j, name)
-                            )),
-                        }
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                    Some(Ok(()))
-                }).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, optional) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    base.$key_name = o
-                        .as_str()
-                        .map(|s| s.to_string().into());
-                }
-            } );
-            ($key_name:ident = $json_name:expr, LldFlavor) => ( {
-                let name = $json_name;
-                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
-                    if let Some(flavor) = LldFlavor::from_str(&s) {
-                        base.$key_name = flavor;
-                    } else {
-                        return Some(Err(format!(
-                            "'{}' is not a valid value for lld-flavor. \
-                             Use 'darwin', 'gnu', 'link' or 'wasm'.",
-                            s)))
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident = $json_name:expr, LinkerFlavor) => ( {
-                let name = $json_name;
-                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
-                    match LinkerFlavorCli::from_str(s) {
-                        Some(linker_flavor) => base.$key_name = linker_flavor,
-                        _ => return Some(Err(format!("'{}' is not a valid value for linker-flavor. \
-                                                      Use {}", s, LinkerFlavorCli::one_of()))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, StackProbeType) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| match StackProbeType::from_json(&o) {
-                    Ok(v) => {
-                        base.$key_name = v;
-                        Some(Ok(()))
-                    },
-                    Err(s) => Some(Err(
-                        format!("`{:?}` is not a valid value for `{}`: {}", o, name, s)
-                    )),
-                }).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident, SanitizerSet) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(a) = o.as_array() {
-                        for s in a {
-                            base.$key_name |= match s.as_str() {
-                                Some("address") => SanitizerSet::ADDRESS,
-                                Some("cfi") => SanitizerSet::CFI,
-                                Some("dataflow") => SanitizerSet::DATAFLOW,
-                                Some("kcfi") => SanitizerSet::KCFI,
-                                Some("kernel-address") => SanitizerSet::KERNELADDRESS,
-                                Some("leak") => SanitizerSet::LEAK,
-                                Some("memory") => SanitizerSet::MEMORY,
-                                Some("memtag") => SanitizerSet::MEMTAG,
-                                Some("safestack") => SanitizerSet::SAFESTACK,
-                                Some("shadow-call-stack") => SanitizerSet::SHADOWCALLSTACK,
-                                Some("thread") => SanitizerSet::THREAD,
-                                Some("hwaddress") => SanitizerSet::HWADDRESS,
-                                Some(s) => return Err(format!("unknown sanitizer {}", s)),
-                                _ => return Err(format!("not a string: {:?}", s)),
-                            };
-                        }
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-                Ok::<(), String>(())
-            } );
-            ($key_name:ident, link_self_contained_components) => ( {
-                // Skeleton of what needs to be parsed:
-                //
-                // ```
-                // $name: {
-                //     "components": [
-                //         <array of strings>
-                //     ]
-                // }
-                // ```
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(o) = o.as_object() {
-                        let component_array = o.get("components")
-                            .ok_or_else(|| format!("{name}: expected a \
-                                JSON object with a `components` field."))?;
-                        let component_array = component_array.as_array()
-                            .ok_or_else(|| format!("{name}.components: expected a JSON array"))?;
-                        let mut components = LinkSelfContainedComponents::empty();
-                        for s in component_array {
-                            components |= match s.as_str() {
-                                Some(s) => {
-                                    LinkSelfContainedComponents::from_str(s)
-                                        .ok_or_else(|| format!("unknown \
-                                        `-Clink-self-contained` component: {s}"))?
-                                },
-                                _ => return Err(format!("not a string: {:?}", s)),
-                            };
-                        }
-                        base.$key_name = LinkSelfContainedDefault::WithComponents(components);
-                    } else {
-                        incorrect_type.push(name)
-                    }
-                }
-                Ok::<(), String>(())
-            } );
-            ($key_name:ident = $json_name:expr, link_self_contained_backwards_compatible) => ( {
-                let name = $json_name;
-                obj.remove(name).and_then(|o| o.as_str().and_then(|s| {
-                    match s.parse::<LinkSelfContainedDefault>() {
-                        Ok(lsc_default) => base.$key_name = lsc_default,
-                        _ => return Some(Err(format!("'{}' is not a valid `-Clink-self-contained` default. \
-                                                      Use 'false', 'true', 'musl' or 'mingw'", s))),
-                    }
-                    Some(Ok(()))
-                })).unwrap_or(Ok(()))
-            } );
-            ($key_name:ident = $json_name:expr, link_objects) => ( {
-                let name = $json_name;
-                if let Some(val) = obj.remove(name) {
-                    let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
-                        JSON object with fields per CRT object kind.", name))?;
-                    let mut args = CrtObjects::new();
-                    for (k, v) in obj {
-                        let kind = LinkOutputKind::from_str(&k).ok_or_else(|| {
-                            format!("{}: '{}' is not a valid value for CRT object kind. \
-                                     Use '(dynamic,static)-(nopic,pic)-exe' or \
-                                     '(dynamic,static)-dylib' or 'wasi-reactor-exe'", name, k)
-                        })?;
+        // Check that default linker flavor is compatible with some other key properties.
+        check_eq!(
+            self.is_like_darwin,
+            matches!(self.linker_flavor, LinkerFlavor::Darwin(..)),
+            "`linker_flavor` must be `darwin` if and only if `is_like_darwin` is set"
+        );
+        check_eq!(
+            self.is_like_msvc,
+            matches!(self.linker_flavor, LinkerFlavor::Msvc(..)),
+            "`linker_flavor` must be `msvc` if and only if `is_like_msvc` is set"
+        );
+        check_eq!(
+            self.is_like_wasm && self.os != "emscripten",
+            matches!(self.linker_flavor, LinkerFlavor::WasmLld(..)),
+            "`linker_flavor` must be `wasm-lld` if and only if `is_like_wasm` is set and the `os` is not `emscripten`",
+        );
+        check_eq!(
+            self.os == "emscripten",
+            matches!(self.linker_flavor, LinkerFlavor::EmCc),
+            "`linker_flavor` must be `em-cc` if and only if `os` is `emscripten`"
+        );
+        check_eq!(
+            self.arch == "bpf",
+            matches!(self.linker_flavor, LinkerFlavor::Bpf),
+            "`linker_flavor` must be `bpf` if and only if `arch` is `bpf`"
+        );
+        check_eq!(
+            self.arch == "nvptx64",
+            matches!(self.linker_flavor, LinkerFlavor::Ptx),
+            "`linker_flavor` must be `ptc` if and only if `arch` is `nvptx64`"
+        );
 
-                        let v = v.as_array().ok_or_else(||
-                            format!("{}.{}: expected a JSON array", name, k)
-                        )?.iter().enumerate()
-                            .map(|(i,s)| {
-                                let s = s.as_str().ok_or_else(||
-                                    format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.to_string().into())
-                            })
-                            .collect::<Result<Vec<_>, String>>()?;
-
-                        args.insert(kind, v);
+        for args in [
+            &self.pre_link_args,
+            &self.late_link_args,
+            &self.late_link_args_dynamic,
+            &self.late_link_args_static,
+            &self.post_link_args,
+        ] {
+            for (&flavor, flavor_args) in args {
+                check!(
+                    !flavor_args.is_empty() || self.arch == "avr",
+                    "linker flavor args must not be empty"
+                );
+                // Check that flavors mentioned in link args are compatible with the default flavor.
+                match self.linker_flavor {
+                    LinkerFlavor::Gnu(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Gnu(..),
+                            "mixing GNU and non-GNU linker flavors"
+                        );
                     }
-                    base.$key_name = args;
-                }
-            } );
-            ($key_name:ident = $json_name:expr, link_args) => ( {
-                let name = $json_name;
-                if let Some(val) = obj.remove(name) {
-                    let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
-                        JSON object with fields per linker-flavor.", name))?;
-                    let mut args = LinkArgsCli::new();
-                    for (k, v) in obj {
-                        let flavor = LinkerFlavorCli::from_str(&k).ok_or_else(|| {
-                            format!("{}: '{}' is not a valid value for linker-flavor. \
-                                     Use 'em', 'gcc', 'ld' or 'msvc'", name, k)
-                        })?;
-
-                        let v = v.as_array().ok_or_else(||
-                            format!("{}.{}: expected a JSON array", name, k)
-                        )?.iter().enumerate()
-                            .map(|(i,s)| {
-                                let s = s.as_str().ok_or_else(||
-                                    format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.to_string().into())
-                            })
-                            .collect::<Result<Vec<_>, String>>()?;
-
-                        args.insert(flavor, v);
+                    LinkerFlavor::Darwin(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Darwin(..),
+                            "mixing Darwin and non-Darwin linker flavors"
+                        )
                     }
-                    base.$key_name = args;
+                    LinkerFlavor::WasmLld(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::WasmLld(..),
+                            "mixing wasm and non-wasm linker flavors"
+                        )
+                    }
+                    LinkerFlavor::Unix(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Unix(..),
+                            "mixing unix and non-unix linker flavors"
+                        );
+                    }
+                    LinkerFlavor::Msvc(..) => {
+                        check_matches!(
+                            flavor,
+                            LinkerFlavor::Msvc(..),
+                            "mixing MSVC and non-MSVC linker flavors"
+                        );
+                    }
+                    LinkerFlavor::EmCc
+                    | LinkerFlavor::Bpf
+                    | LinkerFlavor::Ptx
+                    | LinkerFlavor::Llbc => {
+                        check_eq!(flavor, self.linker_flavor, "mixing different linker flavors")
+                    }
                 }
-            } );
-            ($key_name:ident, env) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.remove(&name) {
-                    if let Some(a) = o.as_array() {
-                        for o in a {
-                            if let Some(s) = o.as_str() {
-                                if let [k, v] = *s.split('=').collect::<Vec<_>>() {
-                                    base.$key_name
-                                        .to_mut()
-                                        .push((k.to_string().into(), v.to_string().into()))
-                                }
+
+                // Check that link args for cc and non-cc versions of flavors are consistent.
+                let check_noncc = |noncc_flavor| -> Result<(), String> {
+                    if let Some(noncc_args) = args.get(&noncc_flavor) {
+                        for arg in flavor_args {
+                            if let Some(suffix) = arg.strip_prefix("-Wl,") {
+                                check!(
+                                    noncc_args.iter().any(|a| a == suffix),
+                                    " link args for cc and non-cc versions of flavors are not consistent"
+                                );
                             }
                         }
-                    } else {
-                        incorrect_type.push(name)
                     }
+                    Ok(())
+                };
+
+                match self.linker_flavor {
+                    LinkerFlavor::Gnu(Cc::Yes, lld) => check_noncc(LinkerFlavor::Gnu(Cc::No, lld))?,
+                    LinkerFlavor::WasmLld(Cc::Yes) => check_noncc(LinkerFlavor::WasmLld(Cc::No))?,
+                    LinkerFlavor::Unix(Cc::Yes) => check_noncc(LinkerFlavor::Unix(Cc::No))?,
+                    _ => {}
                 }
-            } );
-            ($key_name:ident, TargetFamilies) => ( {
-                if let Some(value) = obj.remove("target-family") {
-                    if let Some(v) = value.as_array() {
-                        base.$key_name = v.iter()
-                            .map(|a| a.as_str().unwrap().to_string().into())
-                            .collect();
-                    } else if let Some(v) = value.as_str() {
-                        base.$key_name = vec![v.to_string().into()].into();
-                    }
-                }
-            } );
-            ($key_name:ident, Conv) => ( {
-                let name = (stringify!($key_name)).replace("_", "-");
-                obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
-                    match Conv::from_str(s) {
-                        Ok(c) => {
-                            base.$key_name = c;
-                            Some(Ok(()))
-                        }
-                        Err(e) => Some(Err(e))
-                    }
-                })).unwrap_or(Ok(()))
-            } );
+            }
+
+            // Check that link args for lld and non-lld versions of flavors are consistent.
+            for cc in [Cc::No, Cc::Yes] {
+                check_eq!(
+                    args.get(&LinkerFlavor::Gnu(cc, Lld::No)),
+                    args.get(&LinkerFlavor::Gnu(cc, Lld::Yes)),
+                    "link args for lld and non-lld versions of flavors are not consistent",
+                );
+                check_eq!(
+                    args.get(&LinkerFlavor::Darwin(cc, Lld::No)),
+                    args.get(&LinkerFlavor::Darwin(cc, Lld::Yes)),
+                    "link args for lld and non-lld versions of flavors are not consistent",
+                );
+            }
+            check_eq!(
+                args.get(&LinkerFlavor::Msvc(Lld::No)),
+                args.get(&LinkerFlavor::Msvc(Lld::Yes)),
+                "link args for lld and non-lld versions of flavors are not consistent",
+            );
         }
 
-        if let Some(j) = obj.remove("target-endian") {
-            if let Some(s) = j.as_str() {
-                base.endian = s.parse()?;
-            } else {
-                incorrect_type.push("target-endian".into())
+        if self.link_self_contained.is_disabled() {
+            check!(
+                self.pre_link_objects_self_contained.is_empty()
+                    && self.post_link_objects_self_contained.is_empty(),
+                "if `link_self_contained` is disabled, then `pre_link_objects_self_contained` and `post_link_objects_self_contained` must be empty",
+            );
+        }
+
+        // If your target really needs to deviate from the rules below,
+        // except it and document the reasons.
+        // Keep the default "unknown" vendor instead.
+        check_ne!(self.vendor, "", "`vendor` cannot be empty");
+        check_ne!(self.os, "", "`os` cannot be empty");
+        if !self.can_use_os_unknown() {
+            // Keep the default "none" for bare metal targets instead.
+            check_ne!(
+                self.os,
+                "unknown",
+                "`unknown` os can only be used on particular targets; use `none` for bare-metal targets"
+            );
+        }
+
+        // Check dynamic linking stuff.
+        // We skip this for JSON targets since otherwise, our default values would fail this test.
+        // These checks are not critical for correctness, but more like default guidelines.
+        // FIXME (https://github.com/rust-lang/rust/issues/133459): do we want to change the JSON
+        // target defaults so that they pass these checks?
+        if kind == TargetKind::Builtin {
+            // BPF: when targeting user space vms (like rbpf), those can load dynamic libraries.
+            // hexagon: when targeting QuRT, that OS can load dynamic libraries.
+            // wasm{32,64}: dynamic linking is inherent in the definition of the VM.
+            if self.os == "none"
+                && (self.arch != "bpf"
+                    && self.arch != "hexagon"
+                    && self.arch != "wasm32"
+                    && self.arch != "wasm64")
+            {
+                check!(
+                    !self.dynamic_linking,
+                    "dynamic linking is not supported on this OS/architecture"
+                );
+            }
+            if self.only_cdylib
+                || self.crt_static_allows_dylibs
+                || !self.late_link_args_dynamic.is_empty()
+            {
+                check!(
+                    self.dynamic_linking,
+                    "dynamic linking must be allowed when `only_cdylib` or `crt_static_allows_dylibs` or `late_link_args_dynamic` are set"
+                );
+            }
+            // Apparently PIC was slow on wasm at some point, see comments in wasm_base.rs
+            if self.dynamic_linking && !self.is_like_wasm {
+                check_eq!(
+                    self.relocation_model,
+                    RelocModel::Pic,
+                    "targets that support dynamic linking must use the `pic` relocation model"
+                );
+            }
+            if self.position_independent_executables {
+                check_eq!(
+                    self.relocation_model,
+                    RelocModel::Pic,
+                    "targets that support position-independent executables must use the `pic` relocation model"
+                );
+            }
+            // The UEFI targets do not support dynamic linking but still require PIC (#101377).
+            if self.relocation_model == RelocModel::Pic && (self.os != "uefi") {
+                check!(
+                    self.dynamic_linking || self.position_independent_executables,
+                    "when the relocation model is `pic`, the target must support dynamic linking or use position-independent executables. \
+                Set the relocation model to `static` to avoid this requirement"
+                );
+            }
+            if self.static_position_independent_executables {
+                check!(
+                    self.position_independent_executables,
+                    "if `static_position_independent_executables` is set, then `position_independent_executables` must be set"
+                );
+            }
+            if self.position_independent_executables {
+                check!(
+                    self.executables,
+                    "if `position_independent_executables` is set then `executables` must be set"
+                );
             }
         }
 
-        if let Some(fp) = obj.remove("frame-pointer") {
-            if let Some(s) = fp.as_str() {
-                base.frame_pointer = s
-                    .parse()
-                    .map_err(|()| format!("'{s}' is not a valid value for frame-pointer"))?;
-            } else {
-                incorrect_type.push("frame-pointer".into())
+        // Check crt static stuff
+        if self.crt_static_default || self.crt_static_allows_dylibs {
+            check!(
+                self.crt_static_respected,
+                "static CRT can be enabled but `crt_static_respected` is not set"
+            );
+        }
+
+        // Check that RISC-V targets always specify which ABI they use,
+        // and that ARM targets specify their float ABI.
+        match &*self.arch {
+            "riscv32" => {
+                check_matches!(
+                    &*self.llvm_abiname,
+                    "ilp32" | "ilp32f" | "ilp32d" | "ilp32e",
+                    "invalid RISC-V ABI name: {}",
+                    self.llvm_abiname,
+                );
+            }
+            "riscv64" => {
+                // Note that the `lp64e` is still unstable as it's not (yet) part of the ELF psABI.
+                check_matches!(
+                    &*self.llvm_abiname,
+                    "lp64" | "lp64f" | "lp64d" | "lp64e",
+                    "invalid RISC-V ABI name: {}",
+                    self.llvm_abiname,
+                );
+            }
+            "arm" => {
+                check!(
+                    self.llvm_floatabi.is_some(),
+                    "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
+                )
+            }
+            _ => {}
+        }
+
+        // Check consistency of Rust ABI declaration.
+        if let Some(rust_abi) = self.rustc_abi {
+            match rust_abi {
+                RustcAbi::X86Sse2 => check_matches!(
+                    &*self.arch,
+                    "x86",
+                    "`x86-sse2` ABI is only valid for x86-32 targets"
+                ),
+                RustcAbi::X86Softfloat => check_matches!(
+                    &*self.arch,
+                    "x86" | "x86_64",
+                    "`x86-softfloat` ABI is only valid for x86 targets"
+                ),
             }
         }
 
-        key!(is_builtin, bool);
-        key!(c_int_width = "target-c-int-width");
-        key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
-        key!(os);
-        key!(env);
-        key!(abi);
-        key!(vendor);
-        key!(linker, optional);
-        key!(linker_flavor_json = "linker-flavor", LinkerFlavor)?;
-        key!(lld_flavor_json = "lld-flavor", LldFlavor)?;
-        key!(linker_is_gnu_json = "linker-is-gnu", bool);
-        key!(pre_link_objects = "pre-link-objects", link_objects);
-        key!(post_link_objects = "post-link-objects", link_objects);
-        key!(pre_link_objects_self_contained = "pre-link-objects-fallback", link_objects);
-        key!(post_link_objects_self_contained = "post-link-objects-fallback", link_objects);
-        // Deserializes the backwards-compatible variants of `-Clink-self-contained`
-        key!(
-            link_self_contained = "crt-objects-fallback",
-            link_self_contained_backwards_compatible
-        )?;
-        // Deserializes the components variant of `-Clink-self-contained`
-        key!(link_self_contained, link_self_contained_components)?;
-        key!(pre_link_args_json = "pre-link-args", link_args);
-        key!(late_link_args_json = "late-link-args", link_args);
-        key!(late_link_args_dynamic_json = "late-link-args-dynamic", link_args);
-        key!(late_link_args_static_json = "late-link-args-static", link_args);
-        key!(post_link_args_json = "post-link-args", link_args);
-        key!(link_script, optional);
-        key!(link_env, env);
-        key!(link_env_remove, list);
-        key!(asm_args, list);
-        key!(cpu);
-        key!(features);
-        key!(dynamic_linking, bool);
-        key!(direct_access_external_data, Option<bool>);
-        key!(dll_tls_export, bool);
-        key!(only_cdylib, bool);
-        key!(executables, bool);
-        key!(relocation_model, RelocModel)?;
-        key!(code_model, CodeModel)?;
-        key!(tls_model, TlsModel)?;
-        key!(disable_redzone, bool);
-        key!(function_sections, bool);
-        key!(dll_prefix);
-        key!(dll_suffix);
-        key!(exe_suffix);
-        key!(staticlib_prefix);
-        key!(staticlib_suffix);
-        key!(families, TargetFamilies);
-        key!(abi_return_struct_as_int, bool);
-        key!(is_like_aix, bool);
-        key!(is_like_osx, bool);
-        key!(is_like_solaris, bool);
-        key!(is_like_windows, bool);
-        key!(is_like_msvc, bool);
-        key!(is_like_wasm, bool);
-        key!(is_like_android, bool);
-        key!(default_dwarf_version, u32);
-        key!(allows_weak_linkage, bool);
-        key!(has_rpath, bool);
-        key!(no_default_libraries, bool);
-        key!(position_independent_executables, bool);
-        key!(static_position_independent_executables, bool);
-        key!(plt_by_default, bool);
-        key!(relro_level, RelroLevel)?;
-        key!(archive_format);
-        key!(allow_asm, bool);
-        key!(main_needs_argc_argv, bool);
-        key!(has_thread_local, bool);
-        key!(obj_is_bitcode, bool);
-        key!(forces_embed_bitcode, bool);
-        key!(bitcode_llvm_cmdline);
-        key!(max_atomic_width, Option<u64>);
-        key!(min_atomic_width, Option<u64>);
-        key!(atomic_cas, bool);
-        key!(panic_strategy, PanicStrategy)?;
-        key!(crt_static_allows_dylibs, bool);
-        key!(crt_static_default, bool);
-        key!(crt_static_respected, bool);
-        key!(stack_probes, StackProbeType)?;
-        key!(min_global_align, Option<u64>);
-        key!(default_codegen_units, Option<u64>);
-        key!(trap_unreachable, bool);
-        key!(requires_lto, bool);
-        key!(singlethread, bool);
-        key!(no_builtins, bool);
-        key!(default_hidden_visibility, bool);
-        key!(emit_debug_gdb_scripts, bool);
-        key!(requires_uwtable, bool);
-        key!(default_uwtable, bool);
-        key!(simd_types_indirect, bool);
-        key!(limit_rdylib_exports, bool);
-        key!(override_export_symbols, opt_list);
-        key!(merge_functions, MergeFunctions)?;
-        key!(mcount = "target-mcount");
-        key!(llvm_mcount_intrinsic, optional);
-        key!(llvm_abiname);
-        key!(relax_elf_relocations, bool);
-        key!(llvm_args, list);
-        key!(use_ctors_section, bool);
-        key!(eh_frame_header, bool);
-        key!(has_thumb_interworking, bool);
-        key!(debuginfo_kind, DebuginfoKind)?;
-        key!(split_debuginfo, SplitDebuginfo)?;
-        key!(supported_split_debuginfo, fallible_list)?;
-        key!(supported_sanitizers, SanitizerSet)?;
-        key!(generate_arange_section, bool);
-        key!(supports_stack_protector, bool);
-        key!(entry_name);
-        key!(entry_abi, Conv)?;
-        key!(supports_xray, bool);
-
-        if base.is_builtin {
-            // This can cause unfortunate ICEs later down the line.
-            return Err("may not set is_builtin for targets not built-in".into());
+        // Check that the given target-features string makes some basic sense.
+        if !self.features.is_empty() {
+            let mut features_enabled = FxHashSet::default();
+            let mut features_disabled = FxHashSet::default();
+            for feat in self.features.split(',') {
+                if let Some(feat) = feat.strip_prefix("+") {
+                    features_enabled.insert(feat);
+                    if features_disabled.contains(feat) {
+                        return Err(format!(
+                            "target feature `{feat}` is both enabled and disabled"
+                        ));
+                    }
+                } else if let Some(feat) = feat.strip_prefix("-") {
+                    features_disabled.insert(feat);
+                    if features_enabled.contains(feat) {
+                        return Err(format!(
+                            "target feature `{feat}` is both enabled and disabled"
+                        ));
+                    }
+                } else {
+                    return Err(format!(
+                        "target feature `{feat}` is invalid, must start with `+` or `-`"
+                    ));
+                }
+            }
+            // Check that we don't mis-set any of the ABI-relevant features.
+            let abi_feature_constraints = self.abi_required_features();
+            for feat in abi_feature_constraints.required {
+                // The feature might be enabled by default so we can't *require* it to show up.
+                // But it must not be *disabled*.
+                if features_disabled.contains(feat) {
+                    return Err(format!(
+                        "target feature `{feat}` is required by the ABI but gets disabled in target spec"
+                    ));
+                }
+            }
+            for feat in abi_feature_constraints.incompatible {
+                // The feature might be disabled by default so we can't *require* it to show up.
+                // But it must not be *enabled*.
+                if features_enabled.contains(feat) {
+                    return Err(format!(
+                        "target feature `{feat}` is incompatible with the ABI but gets enabled in target spec"
+                    ));
+                }
+            }
         }
-        base.update_from_cli();
 
-        // Each field should have been read using `Json::remove` so any keys remaining are unused.
-        let remaining_keys = obj.keys();
-        Ok((
-            base,
-            TargetWarnings { unused_fields: remaining_keys.cloned().collect(), incorrect_type },
-        ))
+        Ok(())
+    }
+
+    /// Test target self-consistency and JSON encoding/decoding roundtrip.
+    #[cfg(test)]
+    fn test_target(mut self) {
+        let recycled_target = Target::from_json(self.to_json()).map(|(j, _)| j);
+        self.update_to_cli();
+        self.check_consistency(TargetKind::Builtin).unwrap();
+        assert_eq!(recycled_target, Ok(self));
+    }
+
+    // Add your target to the whitelist if it has `std` library
+    // and you certainly want "unknown" for the OS name.
+    fn can_use_os_unknown(&self) -> bool {
+        self.llvm_target == "wasm32-unknown-unknown"
+            || self.llvm_target == "wasm64-unknown-unknown"
+            || (self.env == "sgx" && self.vendor == "fortanix")
     }
 
     /// Load a built-in target
-    pub fn expect_builtin(target_triple: &TargetTriple) -> Target {
-        match *target_triple {
-            TargetTriple::TargetTriple(ref target_triple) => {
-                load_builtin(target_triple).expect("built-in target")
+    pub fn expect_builtin(target_tuple: &TargetTuple) -> Target {
+        match *target_tuple {
+            TargetTuple::TargetTuple(ref target_tuple) => {
+                load_builtin(target_tuple).expect("built-in target")
             }
-            TargetTriple::TargetJson { .. } => {
+            TargetTuple::TargetJson { .. } => {
                 panic!("built-in targets doesn't support target-paths")
             }
         }
     }
 
-    /// Search for a JSON file specifying the given target triple.
+    /// Load all built-in targets
+    pub fn builtins() -> impl Iterator<Item = Target> {
+        load_all_builtins()
+    }
+
+    /// Search for a JSON file specifying the given target tuple.
     ///
     /// If none is found in `$RUST_TARGET_PATH`, look for a file called `target.json` inside the
-    /// sysroot under the target-triple's `rustlib` directory. Note that it could also just be a
+    /// sysroot under the target-tuple's `rustlib` directory. Note that it could also just be a
     /// bare filename already, so also check for that. If one of the hardcoded targets we know
     /// about, just return it directly.
     ///
     /// The error string could come from any of the APIs called, including filesystem access and
     /// JSON decoding.
     pub fn search(
-        target_triple: &TargetTriple,
+        target_tuple: &TargetTuple,
         sysroot: &Path,
     ) -> Result<(Target, TargetWarnings), String> {
         use std::{env, fs};
@@ -3366,16 +3475,16 @@ impl Target {
             Target::from_json(obj)
         }
 
-        match *target_triple {
-            TargetTriple::TargetTriple(ref target_triple) => {
-                // check if triple is in list of built-in targets
-                if let Some(t) = load_builtin(target_triple) {
+        match *target_tuple {
+            TargetTuple::TargetTuple(ref target_tuple) => {
+                // check if tuple is in list of built-in targets
+                if let Some(t) = load_builtin(target_tuple) {
                     return Ok((t, TargetWarnings::empty()));
                 }
 
-                // search for a file named `target_triple`.json in RUST_TARGET_PATH
+                // search for a file named `target_tuple`.json in RUST_TARGET_PATH
                 let path = {
-                    let mut target = target_triple.to_string();
+                    let mut target = target_tuple.to_string();
                     target.push_str(".json");
                     PathBuf::from(target)
                 };
@@ -3389,9 +3498,9 @@ impl Target {
                     }
                 }
 
-                // Additionally look in the sysroot under `lib/rustlib/<triple>/target.json`
+                // Additionally look in the sysroot under `lib/rustlib/<tuple>/target.json`
                 // as a fallback.
-                let rustlib_path = crate::relative_target_rustlib_path(sysroot, target_triple);
+                let rustlib_path = crate::relative_target_rustlib_path(sysroot, target_tuple);
                 let p = PathBuf::from_iter([
                     Path::new(sysroot),
                     Path::new(&rustlib_path),
@@ -3401,226 +3510,170 @@ impl Target {
                     return load_file(&p);
                 }
 
-                Err(format!("Could not find specification for target {target_triple:?}"))
+                // Leave in a specialized error message for the removed target.
+                // FIXME: If you see this and it's been a few months after this has been released,
+                // you can probably remove it.
+                if target_tuple == "i586-pc-windows-msvc" {
+                    Err("the `i586-pc-windows-msvc` target has been removed. Use the `i686-pc-windows-msvc` target instead.\n\
+                        Windows 10 (the minimum required OS version) requires a CPU baseline of at least i686 so you can safely switch".into())
+                } else {
+                    Err(format!("could not find specification for target {target_tuple:?}"))
+                }
             }
-            TargetTriple::TargetJson { ref contents, .. } => {
+            TargetTuple::TargetJson { ref contents, .. } => {
                 let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
                 Target::from_json(obj)
             }
         }
     }
-}
 
-impl ToJson for Target {
-    fn to_json(&self) -> Json {
-        let mut d = serde_json::Map::new();
-        let default: TargetOptions = Default::default();
-        let mut target = self.clone();
-        target.update_to_cli();
-
-        macro_rules! target_val {
-            ($attr:ident) => {{
-                let name = (stringify!($attr)).replace("_", "-");
-                d.insert(name, target.$attr.to_json());
-            }};
+    /// Return the target's small data threshold support, converting
+    /// `DefaultForArch` into a concrete value.
+    pub fn small_data_threshold_support(&self) -> SmallDataThresholdSupport {
+        match &self.options.small_data_threshold_support {
+            // Avoid having to duplicate the small data support in every
+            // target file by supporting a default value for each
+            // architecture.
+            SmallDataThresholdSupport::DefaultForArch => match self.arch.as_ref() {
+                "mips" | "mips64" | "mips32r6" => {
+                    SmallDataThresholdSupport::LlvmArg("mips-ssection-threshold".into())
+                }
+                "hexagon" => {
+                    SmallDataThresholdSupport::LlvmArg("hexagon-small-data-threshold".into())
+                }
+                "m68k" => SmallDataThresholdSupport::LlvmArg("m68k-ssection-threshold".into()),
+                "riscv32" | "riscv64" => {
+                    SmallDataThresholdSupport::LlvmModuleFlag("SmallDataLimit".into())
+                }
+                _ => SmallDataThresholdSupport::None,
+            },
+            s => s.clone(),
         }
+    }
 
-        macro_rules! target_option_val {
-            ($attr:ident) => {{
-                let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != target.$attr {
-                    d.insert(name, target.$attr.to_json());
+    pub fn object_architecture(
+        &self,
+        unstable_target_features: &FxIndexSet<Symbol>,
+    ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
+        use object::Architecture;
+        Some(match self.arch.as_ref() {
+            "arm" => (Architecture::Arm, None),
+            "aarch64" => (
+                if self.pointer_width == 32 {
+                    Architecture::Aarch64_Ilp32
+                } else {
+                    Architecture::Aarch64
+                },
+                None,
+            ),
+            "x86" => (Architecture::I386, None),
+            "s390x" => (Architecture::S390x, None),
+            "mips" | "mips32r6" => (Architecture::Mips, None),
+            "mips64" | "mips64r6" => (
+                // While there are currently no builtin targets
+                // using the N32 ABI, it is possible to specify
+                // it using a custom target specification. N32
+                // is an ILP32 ABI like the Aarch64_Ilp32
+                // and X86_64_X32 cases above and below this one.
+                if self.options.llvm_abiname.as_ref() == "n32" {
+                    Architecture::Mips64_N32
+                } else {
+                    Architecture::Mips64
+                },
+                None,
+            ),
+            "x86_64" => (
+                if self.pointer_width == 32 {
+                    Architecture::X86_64_X32
+                } else {
+                    Architecture::X86_64
+                },
+                None,
+            ),
+            "powerpc" => (Architecture::PowerPc, None),
+            "powerpc64" => (Architecture::PowerPc64, None),
+            "riscv32" => (Architecture::Riscv32, None),
+            "riscv64" => (Architecture::Riscv64, None),
+            "sparc" => {
+                if unstable_target_features.contains(&sym::v8plus) {
+                    // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
+                    (Architecture::Sparc32Plus, None)
+                } else {
+                    // Target uses V7 or V8, aka EM_SPARC
+                    (Architecture::Sparc, None)
                 }
-            }};
-            ($attr:ident, $json_name:expr) => {{
-                let name = $json_name;
-                if default.$attr != target.$attr {
-                    d.insert(name.into(), target.$attr.to_json());
-                }
-            }};
-            (link_args - $attr:ident, $json_name:expr) => {{
-                let name = $json_name;
-                if default.$attr != target.$attr {
-                    let obj = target
-                        .$attr
-                        .iter()
-                        .map(|(k, v)| (k.desc().to_string(), v.clone()))
-                        .collect::<BTreeMap<_, _>>();
-                    d.insert(name.to_string(), obj.to_json());
-                }
-            }};
-            (env - $attr:ident) => {{
-                let name = (stringify!($attr)).replace("_", "-");
-                if default.$attr != target.$attr {
-                    let obj = target
-                        .$attr
-                        .iter()
-                        .map(|&(ref k, ref v)| format!("{k}={v}"))
-                        .collect::<Vec<_>>();
-                    d.insert(name, obj.to_json());
-                }
-            }};
+            }
+            "sparc64" => (Architecture::Sparc64, None),
+            "avr" => (Architecture::Avr, None),
+            "msp430" => (Architecture::Msp430, None),
+            "hexagon" => (Architecture::Hexagon, None),
+            "bpf" => (Architecture::Bpf, None),
+            "loongarch64" => (Architecture::LoongArch64, None),
+            "csky" => (Architecture::Csky, None),
+            "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
+            // Unsupported architecture.
+            _ => return None,
+        })
+    }
+
+    /// Returns whether this target is known to have unreliable alignment:
+    /// native C code for the target fails to align some data to the degree
+    /// required by the C standard. We can't *really* do anything about that
+    /// since unsafe Rust code may assume alignment any time, but we can at least
+    /// inhibit some optimizations, and we suppress the alignment checks that
+    /// would detect this unsoundness.
+    ///
+    /// Every target that returns less than `Align::MAX` here is still has a soundness bug.
+    pub fn max_reliable_alignment(&self) -> Align {
+        // FIXME(#112480) MSVC on x86-32 is unsound and fails to properly align many types with
+        // more-than-4-byte-alignment on the stack. This makes alignments larger than 4 generally
+        // unreliable on 32bit Windows.
+        if self.is_like_windows && self.arch == "x86" {
+            Align::from_bytes(4).unwrap()
+        } else {
+            Align::MAX
         }
-
-        target_val!(llvm_target);
-        target_val!(metadata);
-        d.insert("target-pointer-width".to_string(), self.pointer_width.to_string().to_json());
-        target_val!(arch);
-        target_val!(data_layout);
-
-        target_option_val!(is_builtin);
-        target_option_val!(endian, "target-endian");
-        target_option_val!(c_int_width, "target-c-int-width");
-        target_option_val!(os);
-        target_option_val!(env);
-        target_option_val!(abi);
-        target_option_val!(vendor);
-        target_option_val!(linker);
-        target_option_val!(linker_flavor_json, "linker-flavor");
-        target_option_val!(lld_flavor_json, "lld-flavor");
-        target_option_val!(linker_is_gnu_json, "linker-is-gnu");
-        target_option_val!(pre_link_objects);
-        target_option_val!(post_link_objects);
-        target_option_val!(pre_link_objects_self_contained, "pre-link-objects-fallback");
-        target_option_val!(post_link_objects_self_contained, "post-link-objects-fallback");
-        target_option_val!(link_args - pre_link_args_json, "pre-link-args");
-        target_option_val!(link_args - late_link_args_json, "late-link-args");
-        target_option_val!(link_args - late_link_args_dynamic_json, "late-link-args-dynamic");
-        target_option_val!(link_args - late_link_args_static_json, "late-link-args-static");
-        target_option_val!(link_args - post_link_args_json, "post-link-args");
-        target_option_val!(link_script);
-        target_option_val!(env - link_env);
-        target_option_val!(link_env_remove);
-        target_option_val!(asm_args);
-        target_option_val!(cpu);
-        target_option_val!(features);
-        target_option_val!(dynamic_linking);
-        target_option_val!(direct_access_external_data);
-        target_option_val!(dll_tls_export);
-        target_option_val!(only_cdylib);
-        target_option_val!(executables);
-        target_option_val!(relocation_model);
-        target_option_val!(code_model);
-        target_option_val!(tls_model);
-        target_option_val!(disable_redzone);
-        target_option_val!(frame_pointer);
-        target_option_val!(function_sections);
-        target_option_val!(dll_prefix);
-        target_option_val!(dll_suffix);
-        target_option_val!(exe_suffix);
-        target_option_val!(staticlib_prefix);
-        target_option_val!(staticlib_suffix);
-        target_option_val!(families, "target-family");
-        target_option_val!(abi_return_struct_as_int);
-        target_option_val!(is_like_aix);
-        target_option_val!(is_like_osx);
-        target_option_val!(is_like_solaris);
-        target_option_val!(is_like_windows);
-        target_option_val!(is_like_msvc);
-        target_option_val!(is_like_wasm);
-        target_option_val!(is_like_android);
-        target_option_val!(default_dwarf_version);
-        target_option_val!(allows_weak_linkage);
-        target_option_val!(has_rpath);
-        target_option_val!(no_default_libraries);
-        target_option_val!(position_independent_executables);
-        target_option_val!(static_position_independent_executables);
-        target_option_val!(plt_by_default);
-        target_option_val!(relro_level);
-        target_option_val!(archive_format);
-        target_option_val!(allow_asm);
-        target_option_val!(main_needs_argc_argv);
-        target_option_val!(has_thread_local);
-        target_option_val!(obj_is_bitcode);
-        target_option_val!(forces_embed_bitcode);
-        target_option_val!(bitcode_llvm_cmdline);
-        target_option_val!(min_atomic_width);
-        target_option_val!(max_atomic_width);
-        target_option_val!(atomic_cas);
-        target_option_val!(panic_strategy);
-        target_option_val!(crt_static_allows_dylibs);
-        target_option_val!(crt_static_default);
-        target_option_val!(crt_static_respected);
-        target_option_val!(stack_probes);
-        target_option_val!(min_global_align);
-        target_option_val!(default_codegen_units);
-        target_option_val!(trap_unreachable);
-        target_option_val!(requires_lto);
-        target_option_val!(singlethread);
-        target_option_val!(no_builtins);
-        target_option_val!(default_hidden_visibility);
-        target_option_val!(emit_debug_gdb_scripts);
-        target_option_val!(requires_uwtable);
-        target_option_val!(default_uwtable);
-        target_option_val!(simd_types_indirect);
-        target_option_val!(limit_rdylib_exports);
-        target_option_val!(override_export_symbols);
-        target_option_val!(merge_functions);
-        target_option_val!(mcount, "target-mcount");
-        target_option_val!(llvm_mcount_intrinsic);
-        target_option_val!(llvm_abiname);
-        target_option_val!(relax_elf_relocations);
-        target_option_val!(llvm_args);
-        target_option_val!(use_ctors_section);
-        target_option_val!(eh_frame_header);
-        target_option_val!(has_thumb_interworking);
-        target_option_val!(debuginfo_kind);
-        target_option_val!(split_debuginfo);
-        target_option_val!(supported_split_debuginfo);
-        target_option_val!(supported_sanitizers);
-        target_option_val!(c_enum_min_bits);
-        target_option_val!(generate_arange_section);
-        target_option_val!(supports_stack_protector);
-        target_option_val!(entry_name);
-        target_option_val!(entry_abi);
-        target_option_val!(supports_xray);
-
-        // Serializing `-Clink-self-contained` needs a dynamic key to support the
-        // backwards-compatible variants.
-        d.insert(self.link_self_contained.json_key().into(), self.link_self_contained.to_json());
-
-        Json::Object(d)
     }
 }
 
-/// Either a target triple string or a path to a JSON file.
+/// Either a target tuple string or a path to a JSON file.
 #[derive(Clone, Debug)]
-pub enum TargetTriple {
-    TargetTriple(String),
+pub enum TargetTuple {
+    TargetTuple(String),
     TargetJson {
         /// Warning: This field may only be used by rustdoc. Using it anywhere else will lead to
         /// inconsistencies as it is discarded during serialization.
         path_for_rustdoc: PathBuf,
-        triple: String,
+        tuple: String,
         contents: String,
     },
 }
 
 // Use a manual implementation to ignore the path field
-impl PartialEq for TargetTriple {
+impl PartialEq for TargetTuple {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::TargetTriple(l0), Self::TargetTriple(r0)) => l0 == r0,
+            (Self::TargetTuple(l0), Self::TargetTuple(r0)) => l0 == r0,
             (
-                Self::TargetJson { path_for_rustdoc: _, triple: l_triple, contents: l_contents },
-                Self::TargetJson { path_for_rustdoc: _, triple: r_triple, contents: r_contents },
-            ) => l_triple == r_triple && l_contents == r_contents,
+                Self::TargetJson { path_for_rustdoc: _, tuple: l_tuple, contents: l_contents },
+                Self::TargetJson { path_for_rustdoc: _, tuple: r_tuple, contents: r_contents },
+            ) => l_tuple == r_tuple && l_contents == r_contents,
             _ => false,
         }
     }
 }
 
 // Use a manual implementation to ignore the path field
-impl Hash for TargetTriple {
+impl Hash for TargetTuple {
     fn hash<H: Hasher>(&self, state: &mut H) -> () {
         match self {
-            TargetTriple::TargetTriple(triple) => {
+            TargetTuple::TargetTuple(tuple) => {
                 0u8.hash(state);
-                triple.hash(state)
+                tuple.hash(state)
             }
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents } => {
                 1u8.hash(state);
-                triple.hash(state);
+                tuple.hash(state);
                 contents.hash(state)
             }
         }
@@ -3628,45 +3681,45 @@ impl Hash for TargetTriple {
 }
 
 // Use a manual implementation to prevent encoding the target json file path in the crate metadata
-impl<S: Encoder> Encodable<S> for TargetTriple {
+impl<S: Encoder> Encodable<S> for TargetTuple {
     fn encode(&self, s: &mut S) {
         match self {
-            TargetTriple::TargetTriple(triple) => {
+            TargetTuple::TargetTuple(tuple) => {
                 s.emit_u8(0);
-                s.emit_str(triple);
+                s.emit_str(tuple);
             }
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents } => {
                 s.emit_u8(1);
-                s.emit_str(triple);
+                s.emit_str(tuple);
                 s.emit_str(contents);
             }
         }
     }
 }
 
-impl<D: Decoder> Decodable<D> for TargetTriple {
+impl<D: Decoder> Decodable<D> for TargetTuple {
     fn decode(d: &mut D) -> Self {
         match d.read_u8() {
-            0 => TargetTriple::TargetTriple(d.read_str().to_owned()),
-            1 => TargetTriple::TargetJson {
+            0 => TargetTuple::TargetTuple(d.read_str().to_owned()),
+            1 => TargetTuple::TargetJson {
                 path_for_rustdoc: PathBuf::new(),
-                triple: d.read_str().to_owned(),
+                tuple: d.read_str().to_owned(),
                 contents: d.read_str().to_owned(),
             },
             _ => {
-                panic!("invalid enum variant tag while decoding `TargetTriple`, expected 0..2");
+                panic!("invalid enum variant tag while decoding `TargetTuple`, expected 0..2");
             }
         }
     }
 }
 
-impl TargetTriple {
-    /// Creates a target triple from the passed target triple string.
-    pub fn from_triple(triple: &str) -> Self {
-        TargetTriple::TargetTriple(triple.into())
+impl TargetTuple {
+    /// Creates a target tuple from the passed target tuple string.
+    pub fn from_tuple(tuple: &str) -> Self {
+        TargetTuple::TargetTuple(tuple.into())
     }
 
-    /// Creates a target triple from the passed target path.
+    /// Creates a target tuple from the passed target path.
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
         let canonicalized_path = try_canonicalize(path)?;
         let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
@@ -3675,46 +3728,47 @@ impl TargetTriple {
                 format!("target path {canonicalized_path:?} is not a valid file: {err}"),
             )
         })?;
-        let triple = canonicalized_path
+        let tuple = canonicalized_path
             .file_stem()
             .expect("target path must not be empty")
             .to_str()
             .expect("target path must be valid unicode")
             .to_owned();
-        Ok(TargetTriple::TargetJson { path_for_rustdoc: canonicalized_path, triple, contents })
+        Ok(TargetTuple::TargetJson { path_for_rustdoc: canonicalized_path, tuple, contents })
     }
 
-    /// Returns a string triple for this target.
+    /// Returns a string tuple for this target.
     ///
     /// If this target is a path, the file name (without extension) is returned.
-    pub fn triple(&self) -> &str {
+    pub fn tuple(&self) -> &str {
         match *self {
-            TargetTriple::TargetTriple(ref triple)
-            | TargetTriple::TargetJson { ref triple, .. } => triple,
+            TargetTuple::TargetTuple(ref tuple) | TargetTuple::TargetJson { ref tuple, .. } => {
+                tuple
+            }
         }
     }
 
-    /// Returns an extended string triple for this target.
+    /// Returns an extended string tuple for this target.
     ///
-    /// If this target is a path, a hash of the path is appended to the triple returned
-    /// by `triple()`.
-    pub fn debug_triple(&self) -> String {
+    /// If this target is a path, a hash of the path is appended to the tuple returned
+    /// by `tuple()`.
+    pub fn debug_tuple(&self) -> String {
         use std::hash::DefaultHasher;
 
         match self {
-            TargetTriple::TargetTriple(triple) => triple.to_owned(),
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents: content } => {
+            TargetTuple::TargetTuple(tuple) => tuple.to_owned(),
+            TargetTuple::TargetJson { path_for_rustdoc: _, tuple, contents: content } => {
                 let mut hasher = DefaultHasher::new();
                 content.hash(&mut hasher);
                 let hash = hasher.finish();
-                format!("{triple}-{hash}")
+                format!("{tuple}-{hash}")
             }
         }
     }
 }
 
-impl fmt::Display for TargetTriple {
+impl fmt::Display for TargetTuple {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.debug_triple())
+        write!(f, "{}", self.debug_tuple())
     }
 }

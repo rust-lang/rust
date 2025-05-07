@@ -1,5 +1,5 @@
 warning: taking a mutable reference to a `const` item
-  --> $DIR/E0017.rs:10:30
+  --> $DIR/E0017.rs:8:30
    |
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^
@@ -7,26 +7,26 @@ LL | const CR: &'static mut i32 = &mut C;
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/E0017.rs:7:1
+  --> $DIR/E0017.rs:5:1
    |
 LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
    = note: `#[warn(const_item_mutation)]` on by default
 
 error[E0764]: mutable references are not allowed in the final value of constants
-  --> $DIR/E0017.rs:10:30
+  --> $DIR/E0017.rs:8:30
    |
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^
 
 error[E0596]: cannot borrow immutable static item `X` as mutable
-  --> $DIR/E0017.rs:13:39
+  --> $DIR/E0017.rs:11:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^ cannot borrow as mutable
 
 warning: taking a mutable reference to a `const` item
-  --> $DIR/E0017.rs:15:38
+  --> $DIR/E0017.rs:13:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^
@@ -34,13 +34,13 @@ LL | static CONST_REF: &'static mut i32 = &mut C;
    = note: each usage of a `const` item creates a new temporary
    = note: the mutable reference will refer to this temporary, not the original `const` item
 note: `const` item defined here
-  --> $DIR/E0017.rs:7:1
+  --> $DIR/E0017.rs:5:1
    |
 LL | const C: i32 = 2;
    | ^^^^^^^^^^^^
 
 error[E0764]: mutable references are not allowed in the final value of statics
-  --> $DIR/E0017.rs:15:38
+  --> $DIR/E0017.rs:13:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^

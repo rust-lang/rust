@@ -7,7 +7,7 @@
 //@ only-windows-msvc
 // Reason: pdb files are unique to this architecture
 
-use run_make_support::{assert_contains, bstr, env_var, rfs, rustc};
+use run_make_support::{llvm, rustc};
 
 fn main() {
     rustc()
@@ -17,23 +17,9 @@ fn main() {
         .crate_type("bin")
         .metadata("dc9ef878b0a48666")
         .run();
-    let tests = [
-        &env_var("RUSTC"),
-        r#""main.rs""#,
-        r#""-g""#,
-        r#""--crate-name""#,
-        r#""my_crate_name""#,
-        r#""--crate-type""#,
-        r#""bin""#,
-        r#""-Cmetadata=dc9ef878b0a48666""#,
-    ];
-    for test in tests {
-        assert_pdb_contains(test);
-    }
-}
 
-fn assert_pdb_contains(needle: &str) {
-    let needle = needle.as_bytes();
-    use bstr::ByteSlice;
-    assert!(&rfs::read("my_crate_name.pdb").find(needle).is_some());
+    let pdbutil_result =
+        llvm::llvm_pdbutil().arg("dump").arg("-ids").input("my_crate_name.pdb").run();
+
+    llvm::llvm_filecheck().patterns("filecheck.txt").stdin_buf(pdbutil_result.stdout_utf8()).run();
 }

@@ -6,7 +6,7 @@ macro_rules! enum_number {
 
         fn foo(value: i32) -> Option<$name> {
             match value {
-                $( $value => Some($name::$variant), )* // PatKind::Lit
+                $( $value => Some($name::$variant), )* // PatKind::Expr
                 $( $value ..= 42 => Some($name::$variant), )* // PatKind::Range
                 _ => None
             }

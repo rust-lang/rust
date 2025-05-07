@@ -3,7 +3,7 @@
 
 //@ revisions: unset set
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ [set] compile-flags: -Zno-jump-tables
 //@ only-x86_64
 //@ ignore-sgx

@@ -113,7 +113,7 @@ pub enum IntErrorKind {
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
     #[must_use]
-    #[rustc_const_stable(feature = "const_int_from_str", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_int_from_str", since = "1.82.0")]
     #[stable(feature = "int_error_matching", since = "1.55.0")]
     pub const fn kind(&self) -> &IntErrorKind {
         &self.kind

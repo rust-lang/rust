@@ -1,7 +1,6 @@
 //@ run-rustfix
 
 #![deny(unused_parens)]
-#![feature(raw_ref_op)]
 #![allow(while_true)] // for rustfix
 
 #[derive(Eq, PartialEq)]

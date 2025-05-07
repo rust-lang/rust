@@ -27,7 +27,7 @@
           _3 = &raw mut (_1.0: u8);
           StorageLive(_4);
           StorageLive(_5);
-          _5 = _3;
+          _5 = copy _3;
           _4 = std::ptr::mut_ptr::<impl *mut u8>::add(move _5, const 1_usize) -> [return: bb1, unwind unreachable];
       }
   
@@ -39,7 +39,7 @@
           StorageDead(_3);
           StorageDead(_2);
           StorageLive(_6);
-          _6 = (_1.1: u8);
+          _6 = copy (_1.1: u8);
           _0 = const ();
           StorageDead(_6);
           StorageDead(_1);

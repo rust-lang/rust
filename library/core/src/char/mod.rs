@@ -18,7 +18,7 @@
 //! functions that convert various types to `char`.
 
 #![allow(non_snake_case)]
-#![stable(feature = "core_char", since = "1.2.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 mod convert;
 mod decode;
@@ -38,7 +38,7 @@ pub use self::decode::{DecodeUtf16, DecodeUtf16Error};
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::methods::encode_utf16_raw; // perma-unstable
 #[unstable(feature = "char_internals", reason = "exposed only for libstd", issue = "none")]
-pub use self::methods::encode_utf8_raw; // perma-unstable
+pub use self::methods::{encode_utf8_raw, encode_utf8_raw_unchecked}; // perma-unstable
 
 #[rustfmt::skip]
 use crate::ascii;
@@ -95,6 +95,16 @@ const MAX_THREE_B: u32 = 0x10000;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: char = char::MAX;
 
+/// The maximum number of bytes required to [encode](char::encode_utf8) a `char` to
+/// UTF-8 encoding.
+#[unstable(feature = "char_max_len", issue = "121714")]
+pub const MAX_LEN_UTF8: usize = char::MAX_LEN_UTF8;
+
+/// The maximum number of two-byte units required to [encode](char::encode_utf16) a `char`
+/// to UTF-16 encoding.
+#[unstable(feature = "char_max_len", issue = "121714")]
+pub const MAX_LEN_UTF16: usize = char::MAX_LEN_UTF16;
+
 /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
 /// decoding error. Use [`char::REPLACEMENT_CHARACTER`] instead.
 #[stable(feature = "decode_utf16", since = "1.9.0")]
@@ -122,7 +132,7 @@ pub const fn from_u32(i: u32) -> Option<char> {
     self::convert::from_u32(i)
 }
 
-/// Converts a `u32` to a `char`, ignoring validity. Use [`char::from_u32_unchecked`].
+/// Converts a `u32` to a `char`, ignoring validity. Use [`char::from_u32_unchecked`]
 /// instead.
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
 #[rustc_const_stable(feature = "const_char_from_u32_unchecked", since = "1.81.0")]

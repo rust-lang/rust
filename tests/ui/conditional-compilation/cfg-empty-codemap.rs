@@ -1,8 +1,8 @@
 // Tests that empty source_maps don't ICE (#23301)
 
-//@ compile-flags: --error-format=human --cfg ""
-
-//@ error-pattern: invalid `--cfg` argument: `""` (expected `key` or `key="value"`)
+//@ compile-flags: --cfg ""
 
 pub fn main() {
 }
+
+//~? ERROR invalid `--cfg` argument: `""` (expected `key` or `key="value"`)

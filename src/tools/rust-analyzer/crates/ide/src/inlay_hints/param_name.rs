@@ -3,23 +3,21 @@
 //! fn max(x: i32, y: i32) -> i32 { x + y }
 //! _ = max(/*x*/4, /*y*/4);
 //! ```
-use std::fmt::Display;
+
+use std::iter::zip;
 
 use either::Either;
-use hir::{Callable, Semantics};
-use ide_db::RootDatabase;
+use hir::Semantics;
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use stdx::to_lower_snake_case;
-use syntax::{
-    ast::{self, AstNode, HasArgList, HasName, UnaryOp},
-    ToSmolStr,
-};
+use syntax::ast::{self, AstNode, HasArgList, HasName, UnaryOp};
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    FamousDefs(sema, krate): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     expr: ast::Expr,
 ) -> Option<()> {
@@ -28,6 +26,12 @@ pub(super) fn hints(
     }
 
     let (callable, arg_list) = get_callable(sema, &expr)?;
+    let unary_function = callable.n_params() == 1;
+    let function_name = match callable.kind() {
+        hir::CallableKind::Function(function) => Some(function.name(sema.db)),
+        _ => None,
+    };
+    let function_name = function_name.as_ref().map(|it| it.as_str());
     let hints = callable
         .params()
         .into_iter()
@@ -35,23 +39,38 @@ pub(super) fn hints(
         .filter_map(|(p, arg)| {
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
-            let source = sema.source(p)?;
-            let (param_name, name_syntax) = match source.value.as_ref() {
-                Either::Left(pat) => (pat.name()?, pat.name()),
-                Either::Right(param) => match param.pat()? {
-                    ast::Pat::IdentPat(it) => (it.name()?, it.name()),
-                    _ => return None,
-                },
-            };
-            Some((name_syntax, param_name, arg, range))
+            let param_name = p.name(sema.db)?;
+            Some((p, param_name, arg, range))
         })
         .filter(|(_, param_name, arg, _)| {
-            !should_hide_param_name_hint(sema, &callable, &param_name.text(), arg)
+            !should_hide_param_name_hint(
+                sema,
+                unary_function,
+                function_name,
+                param_name.as_str(),
+                arg,
+            )
         })
         .map(|(param, param_name, _, hir::FileRange { range, .. })| {
-            let linked_location = param.and_then(|name| sema.original_range_opt(name.syntax()));
-
-            let label = render_label(&param_name, config, linked_location);
+            let colon = if config.render_colons { ":" } else { "" };
+            let label = InlayHintLabel::simple(
+                format!("{}{colon}", param_name.display(sema.db, krate.edition(sema.db))),
+                None,
+                config.lazy_location_opt(|| {
+                    let source = sema.source(param)?;
+                    let name_syntax = match source.value.as_ref() {
+                        Either::Left(pat) => pat.name(),
+                        Either::Right(param) => match param.pat()? {
+                            ast::Pat::IdentPat(it) => it.name(),
+                            _ => None,
+                        },
+                    }?;
+                    sema.original_range_opt(name_syntax.syntax()).map(|frange| ide_db::FileRange {
+                        file_id: frange.file_id.file_id(sema.db),
+                        range: frange.range,
+                    })
+                }),
+            );
             InlayHint {
                 range,
                 kind: InlayKind::Parameter,
@@ -60,21 +79,12 @@ pub(super) fn hints(
                 position: InlayHintPosition::Before,
                 pad_left: false,
                 pad_right: true,
+                resolve_parent: Some(expr.syntax().text_range()),
             }
         });
 
     acc.extend(hints);
     Some(())
-}
-
-pub(super) fn render_label(
-    param_name: impl Display,
-    config: &InlayHintsConfig,
-    linked_location: Option<hir::FileRange>,
-) -> InlayHintLabel {
-    let colon = if config.render_colons { ":" } else { "" };
-
-    InlayHintLabel::simple(format!("{param_name}{colon}"), None, linked_location.map(Into::into))
 }
 
 fn get_callable(
@@ -96,9 +106,13 @@ fn get_callable(
     }
 }
 
+const INSIGNIFICANT_METHOD_NAMES: &[&str] = &["clone", "as_ref", "into"];
+const INSIGNIFICANT_PARAMETER_NAMES: &[&str] = &["predicate", "value", "pat", "rhs", "other"];
+
 fn should_hide_param_name_hint(
     sema: &Semantics<'_, RootDatabase>,
-    callable: &hir::Callable,
+    unary_function: bool,
+    function_name: Option<&str>,
     param_name: &str,
     argument: &ast::Expr,
 ) -> bool {
@@ -116,95 +130,128 @@ fn should_hide_param_name_hint(
         return true;
     }
 
-    if matches!(argument, ast::Expr::PrefixExpr(prefix) if prefix.op_kind() == Some(UnaryOp::Not)) {
-        return false;
+    if param_name.starts_with("ra_fixture") {
+        return true;
     }
 
-    let fn_name = match callable.kind() {
-        hir::CallableKind::Function(it) => Some(it.name(sema.db).display_no_db().to_smolstr()),
-        _ => None,
-    };
-    let fn_name = fn_name.as_deref();
-    is_param_name_suffix_of_fn_name(param_name, callable, fn_name)
-        || is_argument_expr_similar_to_param_name(argument, param_name)
-        || param_name.starts_with("ra_fixture")
-        || (callable.n_params() == 1 && is_obvious_param(param_name))
-        || is_adt_constructor_similar_to_param_name(sema, argument, param_name)
+    if unary_function {
+        if let Some(function_name) = function_name {
+            if is_param_name_suffix_of_fn_name(param_name, function_name) {
+                return true;
+            }
+        }
+        if is_obvious_param(param_name) {
+            return true;
+        }
+    }
+
+    is_argument_expr_similar_to_param_name(sema, argument, param_name)
 }
 
 /// Hide the parameter name of a unary function if it is a `_` - prefixed suffix of the function's name, or equal.
 ///
 /// `fn strip_suffix(suffix)` will be hidden.
 /// `fn stripsuffix(suffix)` will not be hidden.
-fn is_param_name_suffix_of_fn_name(
-    param_name: &str,
-    callable: &Callable,
-    fn_name: Option<&str>,
-) -> bool {
-    match (callable.n_params(), fn_name) {
-        (1, Some(function)) => {
-            function == param_name
-                || function
-                    .len()
-                    .checked_sub(param_name.len())
-                    .and_then(|at| function.is_char_boundary(at).then(|| function.split_at(at)))
-                    .map_or(false, |(prefix, suffix)| {
-                        suffix.eq_ignore_ascii_case(param_name) && prefix.ends_with('_')
-                    })
-        }
-        _ => false,
-    }
+fn is_param_name_suffix_of_fn_name(param_name: &str, fn_name: &str) -> bool {
+    fn_name == param_name
+        || fn_name
+            .len()
+            .checked_sub(param_name.len())
+            .and_then(|at| fn_name.is_char_boundary(at).then(|| fn_name.split_at(at)))
+            .is_some_and(|(prefix, suffix)| {
+                suffix.eq_ignore_ascii_case(param_name) && prefix.ends_with('_')
+            })
 }
 
-fn is_argument_expr_similar_to_param_name(argument: &ast::Expr, param_name: &str) -> bool {
-    let argument = match get_string_representation(argument) {
-        Some(argument) => argument,
-        None => return false,
-    };
-    is_argument_similar_to_param_name(&argument, param_name)
+fn is_argument_expr_similar_to_param_name(
+    sema: &Semantics<'_, RootDatabase>,
+    argument: &ast::Expr,
+    param_name: &str,
+) -> bool {
+    match get_segment_representation(argument) {
+        Some(Either::Left(argument)) => is_argument_similar_to_param_name(&argument, param_name),
+        Some(Either::Right(path)) => {
+            path.segment()
+                .and_then(|it| it.name_ref())
+                .is_some_and(|name_ref| name_ref.text().eq_ignore_ascii_case(param_name))
+                || is_adt_constructor_similar_to_param_name(sema, &path, param_name)
+        }
+        None => false,
+    }
 }
 
 /// Check whether param_name and argument are the same or
 /// whether param_name is a prefix/suffix of argument(split at `_`).
-pub(super) fn is_argument_similar_to_param_name(argument: &str, param_name: &str) -> bool {
-    // std is honestly too panic happy...
-    let str_split_at = |str: &str, at| str.is_char_boundary(at).then(|| argument.split_at(at));
+pub(super) fn is_argument_similar_to_param_name(
+    argument: &[ast::NameRef],
+    param_name: &str,
+) -> bool {
+    debug_assert!(!argument.is_empty());
+    debug_assert!(!param_name.is_empty());
+    let param_name = param_name.split('_');
+    let argument = argument.iter().flat_map(|it| it.text_non_mutable().split('_'));
 
-    let param_name = param_name.trim_start_matches('_');
-    let argument = argument.trim_start_matches('_');
-
-    match str_split_at(argument, param_name.len()) {
-        Some((prefix, rest)) if prefix.eq_ignore_ascii_case(param_name) => {
-            return rest.is_empty() || rest.starts_with('_');
-        }
-        _ => (),
-    }
-    match argument.len().checked_sub(param_name.len()).and_then(|at| str_split_at(argument, at)) {
-        Some((rest, suffix)) if param_name.eq_ignore_ascii_case(suffix) => {
-            return rest.is_empty() || rest.ends_with('_');
-        }
-        _ => (),
-    }
-    false
+    let prefix_match = zip(argument.clone(), param_name.clone())
+        .all(|(arg, param)| arg.eq_ignore_ascii_case(param));
+    let postfix_match = || {
+        zip(argument.rev(), param_name.rev()).all(|(arg, param)| arg.eq_ignore_ascii_case(param))
+    };
+    prefix_match || postfix_match()
 }
 
-fn get_string_representation(expr: &ast::Expr) -> Option<String> {
+pub(super) fn get_segment_representation(
+    expr: &ast::Expr,
+) -> Option<Either<Vec<ast::NameRef>, ast::Path>> {
     match expr {
         ast::Expr::MethodCallExpr(method_call_expr) => {
+            let receiver =
+                method_call_expr.receiver().and_then(|expr| get_segment_representation(&expr));
             let name_ref = method_call_expr.name_ref()?;
-            match name_ref.text().as_str() {
-                "clone" | "as_ref" => method_call_expr.receiver().map(|rec| rec.to_string()),
-                name_ref => Some(name_ref.to_owned()),
+            if INSIGNIFICANT_METHOD_NAMES.contains(&name_ref.text().as_str()) {
+                return receiver;
             }
+            Some(Either::Left(match receiver {
+                Some(Either::Left(mut left)) => {
+                    left.push(name_ref);
+                    left
+                }
+                Some(Either::Right(_)) | None => vec![name_ref],
+            }))
         }
-        ast::Expr::MacroExpr(macro_expr) => {
-            Some(macro_expr.macro_call()?.path()?.segment()?.to_string())
+        ast::Expr::FieldExpr(field_expr) => {
+            let expr = field_expr.expr().and_then(|expr| get_segment_representation(&expr));
+            let name_ref = field_expr.name_ref()?;
+            let res = match expr {
+                Some(Either::Left(mut left)) => {
+                    left.push(name_ref);
+                    left
+                }
+                Some(Either::Right(_)) | None => vec![name_ref],
+            };
+            Some(Either::Left(res))
         }
-        ast::Expr::FieldExpr(field_expr) => Some(field_expr.name_ref()?.to_string()),
-        ast::Expr::PathExpr(path_expr) => Some(path_expr.path()?.segment()?.to_string()),
-        ast::Expr::PrefixExpr(prefix_expr) => get_string_representation(&prefix_expr.expr()?),
-        ast::Expr::RefExpr(ref_expr) => get_string_representation(&ref_expr.expr()?),
-        ast::Expr::CastExpr(cast_expr) => get_string_representation(&cast_expr.expr()?),
+        // paths
+        ast::Expr::MacroExpr(macro_expr) => macro_expr.macro_call()?.path().map(Either::Right),
+        ast::Expr::RecordExpr(record_expr) => record_expr.path().map(Either::Right),
+        ast::Expr::PathExpr(path_expr) => {
+            let path = path_expr.path()?;
+            // single segment paths are likely locals
+            Some(match path.as_single_name_ref() {
+                None => Either::Right(path),
+                Some(name_ref) => Either::Left(vec![name_ref]),
+            })
+        }
+        ast::Expr::PrefixExpr(prefix_expr) if prefix_expr.op_kind() == Some(UnaryOp::Not) => None,
+        // recurse
+        ast::Expr::PrefixExpr(prefix_expr) => get_segment_representation(&prefix_expr.expr()?),
+        ast::Expr::RefExpr(ref_expr) => get_segment_representation(&ref_expr.expr()?),
+        ast::Expr::CastExpr(cast_expr) => get_segment_representation(&cast_expr.expr()?),
+        ast::Expr::CallExpr(call_expr) => get_segment_representation(&call_expr.expr()?),
+        ast::Expr::AwaitExpr(await_expr) => get_segment_representation(&await_expr.expr()?),
+        ast::Expr::IndexExpr(index_expr) => get_segment_representation(&index_expr.base()?),
+        ast::Expr::ParenExpr(paren_expr) => get_segment_representation(&paren_expr.expr()?),
+        ast::Expr::TryExpr(try_expr) => get_segment_representation(&try_expr.expr()?),
+        // ast::Expr::ClosureExpr(closure_expr) => todo!(),
         _ => None,
     }
 }
@@ -212,30 +259,15 @@ fn get_string_representation(expr: &ast::Expr) -> Option<String> {
 fn is_obvious_param(param_name: &str) -> bool {
     // avoid displaying hints for common functions like map, filter, etc.
     // or other obvious words used in std
-    let is_obvious_param_name =
-        matches!(param_name, "predicate" | "value" | "pat" | "rhs" | "other");
-    param_name.len() == 1 || is_obvious_param_name
+    param_name.len() == 1 || INSIGNIFICANT_PARAMETER_NAMES.contains(&param_name)
 }
 
 fn is_adt_constructor_similar_to_param_name(
     sema: &Semantics<'_, RootDatabase>,
-    argument: &ast::Expr,
+    path: &ast::Path,
     param_name: &str,
 ) -> bool {
-    let path = match argument {
-        ast::Expr::CallExpr(c) => c.expr().and_then(|e| match e {
-            ast::Expr::PathExpr(p) => p.path(),
-            _ => None,
-        }),
-        ast::Expr::PathExpr(p) => p.path(),
-        ast::Expr::RecordExpr(r) => r.path(),
-        _ => return false,
-    };
-    let path = match path {
-        Some(it) => it,
-        None => return false,
-    };
-    (|| match sema.resolve_path(&path)? {
+    (|| match sema.resolve_path(path)? {
         hir::PathResolution::Def(hir::ModuleDef::Adt(_)) => {
             Some(to_lower_snake_case(&path.segment()?.name_ref()?.text()) == param_name)
         }
@@ -259,12 +291,12 @@ fn is_adt_constructor_similar_to_param_name(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[track_caller]
-    fn check_params(ra_fixture: &str) {
+    fn check_params(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig { parameter_hints: true, ..DISABLED_CONFIG },
             ra_fixture,
@@ -503,6 +535,7 @@ fn enum_matches_param_name(completion_kind: CompletionKind) {}
 
 fn foo(param: u32) {}
 fn bar(param_eter: u32) {}
+fn baz(a_d_e: u32) {}
 
 enum CompletionKind {
     Keyword,
@@ -555,6 +588,14 @@ fn main() {
       //^^^^^^^^^^^ param_eter
 
     non_ident_pat((0, 0));
+
+    baz(a.d.e);
+    baz(a.dc.e);
+     // ^^^^^^ a_d_e
+    baz(ac.d.e);
+     // ^^^^^^ a_d_e
+    baz(a.d.ec);
+     // ^^^^^^ a_d_e
 }"#,
         );
     }

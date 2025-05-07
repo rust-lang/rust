@@ -39,9 +39,10 @@ pub(crate) fn inactive_code(
 
 #[cfg(test)]
 mod tests {
-    use crate::{tests::check_diagnostics_with_config, DiagnosticsConfig};
+    use crate::{DiagnosticsConfig, tests::check_diagnostics_with_config};
 
-    pub(crate) fn check(ra_fixture: &str) {
+    #[track_caller]
+    pub(crate) fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let config = DiagnosticsConfig {
             disabled: std::iter::once("unlinked-file".to_owned()).collect(),
             ..DiagnosticsConfig::test_sample()
@@ -192,6 +193,22 @@ union FooBar {
 //- /outline_inner.rs
 #![cfg(outline_inner)]
 //- /outline.rs
+"#,
+        );
+    }
+
+    #[test]
+    fn cfg_true_false() {
+        check(
+            r#"
+  #[cfg(false)] fn inactive() {}
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: false is disabled
+
+  #[cfg(true)] fn active() {}
+
+  #[cfg(any(not(true)), false)] fn inactive2() {}
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: true is enabled
+
 "#,
         );
     }

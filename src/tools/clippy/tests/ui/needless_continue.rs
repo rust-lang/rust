@@ -28,7 +28,8 @@ fn main() {
             let i = 0;
             println!("bar {} ", i);
         } else {
-            //~^ ERROR: this `else` block is redundant
+            //~^ needless_continue
+
             continue;
         }
 
@@ -44,7 +45,8 @@ fn main() {
         }
 
         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
-            //~^ ERROR: there is no need for an explicit `else` block for this `if` expression
+            //~^ needless_continue
+
             continue;
         } else {
             println!("Blabber");
@@ -58,7 +60,7 @@ fn main() {
 fn simple_loop() {
     loop {
         continue;
-        //~^ ERROR: this `continue` expression is redundant
+        //~^ needless_continue
     }
 }
 
@@ -66,7 +68,7 @@ fn simple_loop2() {
     loop {
         println!("bleh");
         continue;
-        //~^ ERROR: this `continue` expression is redundant
+        //~^ needless_continue
     }
 }
 
@@ -74,7 +76,8 @@ fn simple_loop2() {
 fn simple_loop3() {
     loop {
         continue
-        //~^ ERROR: this `continue` expression is redundant
+        //~^ needless_continue
+
     }
 }
 
@@ -83,7 +86,16 @@ fn simple_loop4() {
     loop {
         println!("bleh");
         continue
-        //~^ ERROR: this `continue` expression is redundant
+        //~^ needless_continue
+
+    }
+}
+
+fn simple_loop5() {
+    loop {
+        println!("bleh");
+        { continue }
+        //~^ needless_continue
     }
 }
 
@@ -134,14 +146,16 @@ mod issue_2329 {
                 if condition() {
                     println!("bar-3");
                 } else {
-                    //~^ ERROR: this `else` block is redundant
+                    //~^ needless_continue
+
                     continue 'inner;
                 }
                 println!("bar-4");
 
                 update_condition();
                 if condition() {
-                    //~^ ERROR: there is no need for an explicit `else` block for this `if` ex
+                    //~^ needless_continue
+
                     continue;
                 } else {
                     println!("bar-5");
@@ -149,5 +163,84 @@ mod issue_2329 {
                 println!("bar-6");
             }
         }
+    }
+}
+
+fn issue_13641() {
+    'a: while std::hint::black_box(true) {
+        #[allow(clippy::never_loop)]
+        loop {
+            continue 'a;
+        }
+    }
+
+    #[allow(clippy::never_loop)]
+    while std::hint::black_box(true) {
+        'b: loop {
+            continue 'b;
+            //~^ needless_continue
+        }
+    }
+}
+
+mod issue_4077 {
+    fn main() {
+        'outer: loop {
+            'inner: loop {
+                do_something();
+                if some_expr() {
+                    println!("bar-7");
+                    continue 'outer;
+                } else if !some_expr() {
+                    println!("bar-8");
+                    continue 'inner;
+                    //~^ needless_continue
+                } else {
+                    println!("bar-9");
+                    continue 'inner;
+                    //~^ needless_continue
+                }
+            }
+        }
+
+        for _ in 0..10 {
+            match "foo".parse::<i32>() {
+                Ok(_) => do_something(),
+                Err(_) => {
+                    println!("bar-10");
+                    continue;
+                    //~^ needless_continue
+                },
+            }
+        }
+
+        loop {
+            if true {
+            } else {
+                //~^ needless_continue
+                // redundant `else`
+                continue; // redundant `continue`
+            }
+        }
+
+        loop {
+            if some_expr() {
+                //~^ needless_continue
+                continue;
+            } else {
+                do_something();
+            }
+        }
+    }
+
+    // The contents of these functions are irrelevant, the purpose of this file is
+    // shown in main.
+
+    fn do_something() {
+        std::process::exit(0);
+    }
+
+    fn some_expr() -> bool {
+        true
     }
 }

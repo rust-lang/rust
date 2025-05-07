@@ -45,7 +45,7 @@ def convert_to_string(content):
     return content
 
 
-def extract_instrinsics_from_llvm(llvm_path, intrinsics):
+def extract_intrinsics_from_llvm(llvm_path, intrinsics):
     command = ["llvm-tblgen", "llvm/IR/Intrinsics.td"]
     cwd = os.path.join(llvm_path, "llvm/include")
     print("=> Running command `{}` from `{}`".format(command, cwd))
@@ -88,7 +88,7 @@ def append_translation(json_data, p, array):
     append_intrinsic(array, content[1], content[3])
 
 
-def extract_instrinsics_from_llvmint(llvmint, intrinsics):
+def extract_intrinsics_from_llvmint(llvmint, intrinsics):
     archs = [
         "AMDGPU",
         "aarch64",
@@ -152,9 +152,9 @@ def update_intrinsics(llvm_path, llvmint, llvmint2):
     intrinsics_llvmint = {}
     all_intrinsics = {}
 
-    extract_instrinsics_from_llvm(llvm_path, intrinsics_llvm)
-    extract_instrinsics_from_llvmint(llvmint, intrinsics_llvmint)
-    extract_instrinsics_from_llvmint(llvmint2, intrinsics_llvmint)
+    extract_intrinsics_from_llvm(llvm_path, intrinsics_llvm)
+    extract_intrinsics_from_llvmint(llvmint, intrinsics_llvmint)
+    extract_intrinsics_from_llvmint(llvmint2, intrinsics_llvmint)
 
     intrinsics = {}
     # We give priority to translations from LLVM over the ones from llvmint.

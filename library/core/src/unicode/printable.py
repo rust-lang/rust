@@ -9,7 +9,8 @@ import csv
 import os
 import subprocess
 
-NUM_CODEPOINTS=0x110000
+NUM_CODEPOINTS = 0x110000
+
 
 def to_ranges(iter):
     current = None
@@ -23,10 +24,14 @@ def to_ranges(iter):
     if current is not None:
         yield tuple(current)
 
+
 def get_escaped(codepoints):
     for c in codepoints:
-        if (c.class_ or "Cn") in "Cc Cf Cs Co Cn Zl Zp Zs".split() and c.value != ord(' '):
+        if (c.class_ or "Cn") in "Cc Cf Cs Co Cn Zl Zp Zs".split() and c.value != ord(
+            " "
+        ):
             yield c.value
+
 
 def get_file(f):
     try:
@@ -35,7 +40,9 @@ def get_file(f):
         subprocess.run(["curl", "-O", f], check=True)
         return open(os.path.basename(f))
 
-Codepoint = namedtuple('Codepoint', 'value class_')
+
+Codepoint = namedtuple("Codepoint", "value class_")
+
 
 def get_codepoints(f):
     r = csv.reader(f, delimiter=";")
@@ -66,13 +73,14 @@ def get_codepoints(f):
     for c in range(prev_codepoint + 1, NUM_CODEPOINTS):
         yield Codepoint(c, None)
 
+
 def compress_singletons(singletons):
-    uppers = [] # (upper, # items in lowers)
+    uppers = []  # (upper, # items in lowers)
     lowers = []
 
     for i in singletons:
         upper = i >> 8
-        lower = i & 0xff
+        lower = i & 0xFF
         if len(uppers) == 0 or uppers[-1][0] != upper:
             uppers.append((upper, 1))
         else:
@@ -82,10 +90,11 @@ def compress_singletons(singletons):
 
     return uppers, lowers
 
+
 def compress_normal(normal):
     # lengths 0x00..0x7f are encoded as 00, 01, ..., 7e, 7f
     # lengths 0x80..0x7fff are encoded as 80 80, 80 81, ..., ff fe, ff ff
-    compressed = [] # [truelen, (truelenaux), falselen, (falselenaux)]
+    compressed = []  # [truelen, (truelenaux), falselen, (falselenaux)]
 
     prev_start = 0
     for start, count in normal:
@@ -95,20 +104,21 @@ def compress_normal(normal):
 
         assert truelen < 0x8000 and falselen < 0x8000
         entry = []
-        if truelen > 0x7f:
+        if truelen > 0x7F:
             entry.append(0x80 | (truelen >> 8))
-            entry.append(truelen & 0xff)
+            entry.append(truelen & 0xFF)
         else:
-            entry.append(truelen & 0x7f)
-        if falselen > 0x7f:
+            entry.append(truelen & 0x7F)
+        if falselen > 0x7F:
             entry.append(0x80 | (falselen >> 8))
-            entry.append(falselen & 0xff)
+            entry.append(falselen & 0xFF)
         else:
-            entry.append(falselen & 0x7f)
+            entry.append(falselen & 0x7F)
 
         compressed.append(entry)
 
     return compressed
+
 
 def print_singletons(uppers, lowers, uppersname, lowersname):
     print("#[rustfmt::skip]")
@@ -119,8 +129,11 @@ def print_singletons(uppers, lowers, uppersname, lowersname):
     print("#[rustfmt::skip]")
     print("const {}: &[u8] = &[".format(lowersname))
     for i in range(0, len(lowers), 8):
-        print("    {}".format(" ".join("{:#04x},".format(x) for x in lowers[i:i+8])))
+        print(
+            "    {}".format(" ".join("{:#04x},".format(x) for x in lowers[i : i + 8]))
+        )
     print("];")
+
 
 def print_normal(normal, normalname):
     print("#[rustfmt::skip]")
@@ -129,12 +142,13 @@ def print_normal(normal, normalname):
         print("    {}".format(" ".join("{:#04x},".format(i) for i in v)))
     print("];")
 
+
 def main():
     file = get_file("https://www.unicode.org/Public/UNIDATA/UnicodeData.txt")
 
     codepoints = get_codepoints(file)
 
-    CUTOFF=0x10000
+    CUTOFF = 0x10000
     singletons0 = []
     singletons1 = []
     normal0 = []
@@ -234,10 +248,11 @@ pub(crate) fn is_printable(x: char) -> bool {
 }\
 """)
     print()
-    print_singletons(singletons0u, singletons0l, 'SINGLETONS0U', 'SINGLETONS0L')
-    print_singletons(singletons1u, singletons1l, 'SINGLETONS1U', 'SINGLETONS1L')
-    print_normal(normal0, 'NORMAL0')
-    print_normal(normal1, 'NORMAL1')
+    print_singletons(singletons0u, singletons0l, "SINGLETONS0U", "SINGLETONS0L")
+    print_singletons(singletons1u, singletons1l, "SINGLETONS1U", "SINGLETONS1L")
+    print_normal(normal0, "NORMAL0")
+    print_normal(normal1, "NORMAL1")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

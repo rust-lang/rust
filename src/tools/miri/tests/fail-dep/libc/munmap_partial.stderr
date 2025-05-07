@@ -1,5 +1,5 @@
 error: Undefined Behavior: incorrect layout on deallocation: ALLOC has size SIZE and alignment ALIGN, but gave size SIZE and alignment ALIGN
-  --> $DIR/munmap_partial.rs:LL:CC
+  --> tests/fail-dep/libc/munmap_partial.rs:LL:CC
    |
 LL |         libc::munmap(ptr, 1);
    |         ^^^^^^^^^^^^^^^^^^^^ incorrect layout on deallocation: ALLOC has size SIZE and alignment ALIGN, but gave size SIZE and alignment ALIGN
@@ -7,7 +7,7 @@ LL |         libc::munmap(ptr, 1);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/munmap_partial.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/libc/munmap_partial.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

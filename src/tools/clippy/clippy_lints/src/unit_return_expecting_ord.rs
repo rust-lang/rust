@@ -5,7 +5,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{BytePos, Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -123,7 +123,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
         && let ty = cx.tcx.instantiate_bound_regions_with_erased(ret_ty)
         && ty.is_unit()
     {
-        let body = cx.tcx.hir().body(body);
+        let body = cx.tcx.hir_body(body);
         if let ExprKind::Block(block, _) = body.value.kind
             && block.expr.is_none()
             && let Some(stmt) = block.stmts.last()

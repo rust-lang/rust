@@ -1,5 +1,5 @@
 error[E0425]: cannot find value `ferris` in this scope
-  --> remapped/errors/remap-path-prefix.rs:19:5
+  --> remapped/errors/remap-path-prefix.rs:15:5
    |
 LL |     ferris
    |     ^^^^^^ not found in this scope

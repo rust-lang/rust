@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, should_call_clone_as_function};
 use clippy_utils::{is_diag_trait_item, peel_blocks};
@@ -11,7 +11,7 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::MAP_CLONE;
 
@@ -41,36 +41,36 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) ->
     true
 }
 
-pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: &Msrv) {
+pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: Msrv) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && should_run_lint(cx, e, method_id)
     {
         match arg.kind {
             hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
-                let closure_body = cx.tcx.hir().body(body);
+                let closure_body = cx.tcx.hir_body(body);
                 let closure_expr = peel_blocks(closure_body.value);
                 match closure_body.params[0].pat.kind {
                     hir::PatKind::Ref(inner, Mutability::Not) => {
-                        if let hir::PatKind::Binding(hir::BindingMode::NONE, .., name, None) = inner.kind {
-                            if ident_eq(name, closure_expr) {
-                                lint_explicit_closure(cx, e.span, recv.span, true, msrv);
-                            }
+                        if let hir::PatKind::Binding(hir::BindingMode::NONE, .., name, None) = inner.kind
+                            && ident_eq(name, closure_expr)
+                        {
+                            lint_explicit_closure(cx, e.span, recv.span, true, msrv);
                         }
                     },
                     hir::PatKind::Binding(hir::BindingMode::NONE, .., name, None) => {
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
-                                if ident_eq(name, inner) {
-                                    if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
-                                        lint_explicit_closure(cx, e.span, recv.span, true, msrv);
-                                    }
+                                if ident_eq(name, inner)
+                                    && let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind()
+                                {
+                                    lint_explicit_closure(cx, e.span, recv.span, true, msrv);
                                 }
                             },
                             hir::ExprKind::MethodCall(method, obj, [], _) => {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone
                                 && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
                                 && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
-                                && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
+                                && cx.tcx.lang_items().clone_trait() == Some(trait_id)
                                 // no autoderefs
                                 && !cx.typeck_results().expr_adjustments(obj).iter()
                                     .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
@@ -86,9 +86,8 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                     }
                                 }
                             },
-                            hir::ExprKind::Call(call, args) => {
+                            hir::ExprKind::Call(call, [arg]) => {
                                 if let hir::ExprKind::Path(qpath) = call.kind
-                                    && let [arg] = args
                                     && ident_eq(name, arg)
                                 {
                                     handle_path(cx, call, &qpath, e, recv);
@@ -115,19 +114,17 @@ fn handle_path(
 ) {
     if let Some(path_def_id) = cx.qpath_res(qpath, arg.hir_id).opt_def_id()
         && cx.tcx.lang_items().get(LangItem::CloneFn) == Some(path_def_id)
-    {
         // The `copied` and `cloned` methods are only available on `&T` and `&mut T` in `Option`
         // and `Result`.
-        if let ty::Adt(_, args) = cx.typeck_results().expr_ty(recv).kind()
-            && let args = args.as_slice()
-            && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
-            && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
-            && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
-            && lst.iter().all(|l| l.as_type() == Some(*ty))
-            && !should_call_clone_as_function(cx, *ty)
-        {
-            lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
-        }
+        && let ty::Adt(_, args) = cx.typeck_results().expr_ty(recv).kind()
+        && let args = args.as_slice()
+        && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
+        && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
+        && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
+        && lst.iter().all(|l| l.as_type() == Some(*ty))
+        && !should_call_clone_as_function(cx, *ty)
+    {
+        lint_path(cx, e.span, recv.span, is_copy(cx, ty.peel_refs()));
     }
 }
 
@@ -170,10 +167,10 @@ fn lint_path(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool) {
     );
 }
 
-fn lint_explicit_closure(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool, msrv: &Msrv) {
+fn lint_explicit_closure(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool, msrv: Msrv) {
     let mut applicability = Applicability::MachineApplicable;
 
-    let (message, sugg_method) = if is_copy && msrv.meets(msrvs::ITERATOR_COPIED) {
+    let (message, sugg_method) = if is_copy && msrv.meets(cx, msrvs::ITERATOR_COPIED) {
         ("you are using an explicit closure for copying elements", "copied")
     } else {
         ("you are using an explicit closure for cloning elements", "cloned")

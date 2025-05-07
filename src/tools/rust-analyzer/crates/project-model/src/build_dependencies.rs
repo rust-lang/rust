@@ -9,18 +9,18 @@
 use std::{cell::RefCell, io, mem, process::Command};
 
 use base_db::Env;
-use cargo_metadata::{camino::Utf8Path, Message};
+use cargo_metadata::{Message, camino::Utf8Path};
 use cfg::CfgAtom;
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::Deserialize;
+use serde::Deserialize as _;
 use toolchain::Tool;
 
 use crate::{
-    utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
-    InvocationStrategy, ManifestPath, Package, Sysroot, TargetKind,
+    CargoConfig, CargoFeatures, CargoWorkspace, InvocationStrategy, ManifestPath, Package, Sysroot,
+    TargetKind, utf8_stdout,
 };
 
 /// Output of the build script and proc-macro building steps for a workspace.
@@ -63,10 +63,7 @@ impl WorkspaceBuildScripts {
         progress: &dyn Fn(String),
         sysroot: &Sysroot,
     ) -> io::Result<WorkspaceBuildScripts> {
-        let current_dir = match &config.invocation_location {
-            InvocationLocation::Root(root) if config.run_build_script_command.is_some() => root,
-            _ => workspace.workspace_root(),
-        };
+        let current_dir = workspace.workspace_root();
 
         let allowed_features = workspace.workspace_features();
         let cmd = Self::build_command(
@@ -85,25 +82,16 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspaces: &[&CargoWorkspace],
         progress: &dyn Fn(String),
-        workspace_root: &AbsPathBuf,
+        working_directory: &AbsPathBuf,
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
 
-        let current_dir = match &config.invocation_location {
-            InvocationLocation::Root(root) => root,
-            InvocationLocation::Workspace => {
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Cannot run build scripts from workspace with invocation strategy `once`",
-                ))
-            }
-        };
         let cmd = Self::build_command(
             config,
             &Default::default(),
             // This is not gonna be used anyways, so just construct a dummy here
-            &ManifestPath::try_from(workspace_root.clone()).unwrap(),
-            current_dir,
+            &ManifestPath::try_from(working_directory.clone()).unwrap(),
+            working_directory,
             &Sysroot::empty(),
         )?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
@@ -175,7 +163,7 @@ impl WorkspaceBuildScripts {
     pub(crate) fn rustc_crates(
         rustc: &CargoWorkspace,
         current_dir: &AbsPath,
-        extra_env: &FxHashMap<String, String>,
+        extra_env: &FxHashMap<String, Option<String>>,
         sysroot: &Sysroot,
     ) -> Self {
         let mut bs = WorkspaceBuildScripts::default();
@@ -184,19 +172,16 @@ impl WorkspaceBuildScripts {
         }
         let res = (|| {
             let target_libdir = (|| {
-                let mut cargo_config = sysroot.tool(Tool::Cargo);
-                cargo_config.envs(extra_env);
+                let mut cargo_config = sysroot.tool(Tool::Cargo, current_dir, extra_env);
                 cargo_config
-                    .current_dir(current_dir)
                     .args(["rustc", "-Z", "unstable-options", "--print", "target-libdir"])
                     .env("RUSTC_BOOTSTRAP", "1");
-                if let Ok(it) = utf8_stdout(cargo_config) {
+                if let Ok(it) = utf8_stdout(&mut cargo_config) {
                     return Ok(it);
                 }
-                let mut cmd = sysroot.tool(Tool::Rustc);
-                cmd.envs(extra_env);
+                let mut cmd = sysroot.tool(Tool::Rustc, current_dir, extra_env);
                 cmd.args(["--print", "target-libdir"]);
-                utf8_stdout(cmd)
+                utf8_stdout(&mut cmd)
             })()?;
 
             let target_libdir = AbsPathBuf::try_from(Utf8PathBuf::from(target_libdir))
@@ -356,7 +341,8 @@ impl WorkspaceBuildScripts {
                     Message::CompilerArtifact(message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
                             progress(format!("building proc-macros: {name}"));
-                            if message.target.kind.iter().any(|k| k == "proc-macro") {
+                            if message.target.kind.contains(&cargo_metadata::TargetKind::ProcMacro)
+                            {
                                 // Skip rmeta file
                                 if let Some(filename) =
                                     message.filenames.iter().find(|file| is_dylib(file))
@@ -402,12 +388,12 @@ impl WorkspaceBuildScripts {
     ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
-                let mut cmd = Command::new(program);
+                let mut cmd = toolchain::command(program, current_dir, &config.extra_env);
                 cmd.args(args);
                 cmd
             }
             _ => {
-                let mut cmd = sysroot.tool(Tool::Cargo);
+                let mut cmd = sysroot.tool(Tool::Cargo, current_dir, &config.extra_env);
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
@@ -460,8 +446,6 @@ impl WorkspaceBuildScripts {
             }
         };
 
-        cmd.current_dir(current_dir);
-        cmd.envs(&config.extra_env);
         if config.wrap_rustc_in_build_scripts {
             // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
             // that to compile only proc macros and build scripts during the initial

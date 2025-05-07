@@ -28,11 +28,11 @@ impl std::convert::From<B> for String {
 }
 impl PartialEq for B {
     fn eq(&self, rhs: &Self) -> bool {
-        //~^ ERROR: renamed function parameter of trait impl
+        //~^ renamed_function_params
         self.0 == rhs.0
     }
     fn ne(&self, rhs: &Self) -> bool {
-        //~^ ERROR: renamed function parameter of trait impl
+        //~^ renamed_function_params
         self.0 != rhs.0
     }
 }
@@ -46,6 +46,8 @@ trait MyTrait {
 
 impl MyTrait for B {
     fn foo(&self, i_dont_wanna_use_your_name: u8) {} // only lint in `extend`
+    //
+    //~[default]^^ renamed_function_params
     fn bar(_a: u8, _: u8) {}
     fn baz(self, val: u8) {}
     fn quz(&self, val: u8) {}
@@ -53,11 +55,11 @@ impl MyTrait for B {
 
 impl Hash for B {
     fn hash<H: Hasher>(&self, states: &mut H) {
-        //~^ ERROR: renamed function parameter of trait impl
+        //~^ renamed_function_params
         self.0.hash(states);
     }
     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
-        //~^ ERROR: renamed function parameters of trait impl
+        //~^ renamed_function_params
         for d in date {
             d.hash(states);
         }
@@ -78,6 +80,7 @@ enum C {
 impl std::ops::Add<B> for C {
     type Output = C;
     fn add(self, b: B) -> C {
+        //~[default]^ renamed_function_params
         // only lint in `extend`
         C::B(b.0)
     }

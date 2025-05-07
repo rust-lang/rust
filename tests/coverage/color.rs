@@ -1,5 +1,5 @@
 //@ edition: 2021
-//@ ignore-mode-coverage-map
+//@ ignore-coverage-map
 //@ ignore-windows
 //@ llvm-cov-flags: --use-color
 

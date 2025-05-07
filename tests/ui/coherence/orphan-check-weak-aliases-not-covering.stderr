@@ -1,0 +1,12 @@
+error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+  --> $DIR/orphan-check-weak-aliases-not-covering.rs:13:6
+   |
+LL | impl<T> foreign::Trait1<Local, T> for Identity<T> {}
+   |      ^ type parameter `T` must be covered by another type when it appears before the first local type (`Local`)
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
+   = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0210`.

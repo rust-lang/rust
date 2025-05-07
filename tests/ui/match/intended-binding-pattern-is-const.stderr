@@ -1,0 +1,27 @@
+error[E0004]: non-exhaustive patterns: `i32::MIN..=3_i32` and `5_i32..=i32::MAX` not covered
+  --> $DIR/intended-binding-pattern-is-const.rs:2:11
+   |
+LL |     match 1 {
+   |           ^ patterns `i32::MIN..=3_i32` and `5_i32..=i32::MAX` not covered
+...
+LL |         x => {}
+   |         - this pattern doesn't introduce a new catch-all binding, but rather pattern matches against the value of constant `x`
+   |
+   = note: the matched value is of type `i32`
+note: constant `x` defined here
+  --> $DIR/intended-binding-pattern-is-const.rs:9:5
+   |
+LL |     const x: i32 = 4;
+   |     ^^^^^^^^^^^^
+help: if you meant to introduce a binding, use a different name
+   |
+LL |         x_var => {}
+   |          ++++
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL |         x => {}, i32::MIN..=3_i32 | 5_i32..=i32::MAX => todo!()
+   |                ++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0004`.

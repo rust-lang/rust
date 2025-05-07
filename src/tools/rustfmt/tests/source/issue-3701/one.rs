@@ -1,4 +1,4 @@
-// rustfmt-version: One
+// rustfmt-style_edition: 2015
 
 fn build_sorted_static_get_entry_names(
     mut entries: Vec<(u8, &'static str)>,

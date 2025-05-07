@@ -1,9 +1,9 @@
 // tidy-alphabetical-start
 #![allow(rustc::potential_query_instability, internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(assert_matches)]
 #![feature(core_intrinsics)]
-#![feature(hash_raw_entry)]
-#![feature(let_chains)]
+#![feature(dropck_eyepatch)]
 #![feature(min_specialization)]
 // tidy-alphabetical-end
 
@@ -14,7 +14,7 @@ pub mod ich;
 pub mod query;
 mod values;
 
-pub use error::{HandleCycleError, LayoutOfDepth, QueryOverflow};
+pub use error::{HandleCycleError, QueryOverflow, QueryOverflowNote};
 pub use values::Value;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

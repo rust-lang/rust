@@ -56,7 +56,8 @@ assert-property: ("#crate-search", {"value": "lib2"})
 assert-false: "#results .externcrate"
 
 // Checking that the text for the "title" is correct (the "all crates" comes from the "<select>").
-assert-text: (".search-results-title", "Results in all crates", STARTS_WITH)
+assert-text: (".search-results-title", "Results", STARTS_WITH)
+assert-text: (".search-results-title + .sub-heading", " in all crates", STARTS_WITH)
 
 // Checking the display of the crate filter.
 // We start with the light theme.
@@ -84,6 +85,6 @@ wait-for-css: ("#crate-search", {
 click: "#theme-ayu"
 wait-for-css: ("#crate-search", {
     "border": "1px solid #5c6773",
-    "color": "#fff",
+    "color": "#c5c5c5",
     "background-color": "#0f1419",
 })

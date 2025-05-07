@@ -7,10 +7,10 @@ mod a {
         //~^ ERROR `self` imports are only allowed within a { } list
         use super as B;
         //~^ ERROR unresolved import `super` [E0432]
-        //~| no `super` in the root
+        //~| NOTE no `super` in the root
         use super::{self as C};
         //~^ ERROR unresolved import `super` [E0432]
-        //~| no `super` in the root
+        //~| NOTE no `super` in the root
     }
 }
 

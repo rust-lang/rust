@@ -1,5 +1,5 @@
 use super::sealed::Sealed;
-use crate::simd::{cmp::SimdPartialEq, num::SimdUint, LaneCount, Mask, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Mask, Simd, SupportedLaneCount, cmp::SimdPartialEq, num::SimdUint};
 
 /// Operations on SIMD vectors of mutable pointers.
 pub trait SimdMutPtr: Copy + Sealed {
@@ -38,6 +38,19 @@ pub trait SimdMutPtr: Copy + Sealed {
     ///
     /// Equivalent to calling [`pointer::addr`] on each element.
     fn addr(self) -> Self::Usize;
+
+    /// Converts an address to a pointer without giving it any provenance.
+    ///
+    /// Without provenance, this pointer is not associated with any actual allocation. Such a
+    /// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
+    /// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers
+    /// are little more than a usize address in disguise.
+    ///
+    /// This is different from [`Self::with_exposed_provenance`], which creates a pointer that picks up a
+    /// previously exposed provenance.
+    ///
+    /// Equivalent to calling [`core::ptr::without_provenance`] on each element.
+    fn without_provenance(addr: Self::Usize) -> Self;
 
     /// Creates a new pointer with the given address.
     ///
@@ -113,6 +126,14 @@ where
         // SAFETY: Pointer-to-integer transmutes are valid (if you are okay with losing the
         // provenance).
         unsafe { core::mem::transmute_copy(&self) }
+    }
+
+    #[inline]
+    fn without_provenance(addr: Self::Usize) -> Self {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        // SAFETY: Integer-to-pointer transmutes are valid (if you are okay with not getting any
+        // provenance).
+        unsafe { core::mem::transmute_copy(&addr) }
     }
 
     #[inline]

@@ -23,14 +23,19 @@ help: the `Box` type always has a statically known size and allocates its conten
 LL |     b: Box<T>,
    |        ++++ +
 
-error[E0375]: implementing the trait `CoerceUnsized` requires multiple coercions
+error[E0375]: implementing `CoerceUnsized` does not allow multiple fields to be coerced
   --> $DIR/E0375.rs:10:12
    |
 LL | impl<T, U> CoerceUnsized<Foo<U, T>> for Foo<T, U> {}
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^ requires multiple coercions
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
-   = note: currently, 2 fields need coercions: `b` (`T` to `U`), `c` (`U` to `T`)
+note: the trait `CoerceUnsized` may only be implemented when a single field is being coerced
+  --> $DIR/E0375.rs:6:5
+   |
+LL |     b: T,
+   |     ^^^^
+LL |     c: U,
+   |     ^^^^
 
 error: aborting due to 2 previous errors
 

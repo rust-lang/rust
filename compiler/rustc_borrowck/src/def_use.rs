@@ -4,13 +4,13 @@ use rustc_middle::mir::visit::{
 };
 
 #[derive(Eq, PartialEq, Clone)]
-pub enum DefUse {
+pub(crate) enum DefUse {
     Def,
     Use,
     Drop,
 }
 
-pub fn categorize(context: PlaceContext) -> Option<DefUse> {
+pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
     match context {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS
@@ -55,8 +55,8 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::NonMutatingUse(NonMutatingUseContext::PlaceMention) |
         PlaceContext::NonUse(NonUseContext::AscribeUserTy(_)) |
 
-        PlaceContext::MutatingUse(MutatingUseContext::AddressOf) |
-        PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf) |
+        PlaceContext::MutatingUse(MutatingUseContext::RawBorrow) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) |
@@ -76,6 +76,9 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
 
         // Debug info is neither def nor use.
         PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,
+
+        // Backwards incompatible drop hint is not a use, just a marker for linting.
+        PlaceContext::NonUse(NonUseContext::BackwardIncompatibleDropHint) => None,
 
         PlaceContext::MutatingUse(MutatingUseContext::Deinit | MutatingUseContext::SetDiscriminant) => {
             bug!("These statements are not allowed in this MIR phase")

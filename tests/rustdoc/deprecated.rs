@@ -1,6 +1,5 @@
-//@ has deprecated/index.html '//*[@class="item-name"]/span[@class="stab deprecated"]' \
-//      'Deprecated'
-//@ has - '//*[@class="desc docblock-short"]' 'Deprecated docs'
+//@ has deprecated/index.html '//dt/span[@class="stab deprecated"]' 'Deprecated'
+//@ has - '//dd' 'Deprecated docs'
 
 //@ has deprecated/struct.S.html '//*[@class="stab deprecated"]' \
 //      'Deprecated since 1.0.0: text'
@@ -8,7 +7,7 @@
 #[deprecated(since = "1.0.0", note = "text")]
 pub struct S;
 
-//@ matches deprecated/index.html '//*[@class="desc docblock-short"]' '^Docs'
+//@ matches deprecated/index.html '//dd' '^Docs'
 /// Docs
 pub struct T;
 

@@ -5,9 +5,10 @@ LL |     let b = 44;
    |         - binding `b` declared here
 ...
 LL |     let x: DoubleCell<_> = make_cell(&b);
-   |            -------------             ^^ borrowed value does not live long enough
-   |            |
-   |            type annotation requires that `b` is borrowed for `'static`
+   |                            ----------^^-
+   |                            |         |
+   |                            |         borrowed value does not live long enough
+   |                            assignment requires that `b` is borrowed for `'static`
 ...
 LL | }
    | - `b` dropped here while still borrowed

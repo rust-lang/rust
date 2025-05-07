@@ -26,6 +26,18 @@ fn int_range(_1: usize, _2: usize) -> () {
                 let mut _12: usize;
                 scope 6 {
                     debug old => _11;
+                    scope 8 (inlined <usize as Step>::forward_unchecked) {
+                        debug start => _11;
+                        debug n => const 1_usize;
+                        scope 9 (inlined core::num::<impl usize>::unchecked_add) {
+                            debug self => _11;
+                            debug rhs => const 1_usize;
+                            scope 10 (inlined core::ub_checks::check_language_ub) {
+                                scope 11 (inlined core::ub_checks::check_language_ub::runtime) {
+                                }
+                            }
+                        }
+                    }
                 }
                 scope 7 (inlined std::cmp::impls::<impl PartialOrd for usize>::lt) {
                     debug self => _6;
@@ -41,25 +53,24 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb0: {
-        _3 = std::ops::Range::<usize> { start: _1, end: _2 };
+        _3 = std::ops::Range::<usize> { start: copy _1, end: copy _2 };
         StorageLive(_4);
-        _4 = _3;
+        _4 = copy _3;
         goto -> bb1;
     }
 
     bb1: {
         StorageLive(_13);
         _5 = &mut _4;
-        StorageLive(_11);
         StorageLive(_10);
         StorageLive(_6);
         _6 = &(_4.0: usize);
         StorageLive(_7);
         _7 = &(_4.1: usize);
         StorageLive(_8);
-        _8 = (_4.0: usize);
+        _8 = copy (_4.0: usize);
         StorageLive(_9);
-        _9 = (_4.1: usize);
+        _9 = copy (_4.1: usize);
         _10 = Lt(move _8, move _9);
         StorageDead(_9);
         StorageDead(_8);
@@ -70,7 +81,6 @@ fn int_range(_1: usize, _2: usize) -> () {
         StorageDead(_7);
         StorageDead(_6);
         StorageDead(_10);
-        StorageDead(_11);
         StorageDead(_13);
         StorageDead(_4);
         return;
@@ -79,22 +89,18 @@ fn int_range(_1: usize, _2: usize) -> () {
     bb3: {
         StorageDead(_7);
         StorageDead(_6);
-        _11 = (_4.0: usize);
+        _11 = copy (_4.0: usize);
         StorageLive(_12);
-        _12 = <usize as Step>::forward_unchecked(_11, const 1_usize) -> [return: bb4, unwind continue];
+        _12 = AddUnchecked(copy _11, const 1_usize);
+        (_4.0: usize) = move _12;
+        StorageDead(_12);
+        _13 = Option::<usize>::Some(copy _11);
+        StorageDead(_10);
+        _14 = copy ((_13 as Some).0: usize);
+        _15 = opaque::<usize>(move _14) -> [return: bb4, unwind continue];
     }
 
     bb4: {
-        (_4.0: usize) = move _12;
-        StorageDead(_12);
-        _13 = Option::<usize>::Some(_11);
-        StorageDead(_10);
-        StorageDead(_11);
-        _14 = ((_13 as Some).0: usize);
-        _15 = opaque::<usize>(move _14) -> [return: bb5, unwind continue];
-    }
-
-    bb5: {
         StorageDead(_13);
         goto -> bb1;
     }

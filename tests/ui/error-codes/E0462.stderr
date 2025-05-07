@@ -5,7 +5,7 @@ LL | extern crate found_staticlib;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the following crate versions were found:
-           crate `found_staticlib`: $TEST_BUILD_DIR/error-codes/E0462/auxiliary/libfound_staticlib.somelib
+           crate `found_staticlib`: $TEST_BUILD_DIR/auxiliary/libfound_staticlib.somelib
    = help: please recompile that crate using --crate-type lib
 
 error: aborting due to 1 previous error

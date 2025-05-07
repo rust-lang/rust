@@ -1,9 +1,8 @@
-use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, SubdiagMessageOp, Subdiagnostic};
+use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::symbol::kw;
-use rustc_span::Span;
+use rustc_span::{Span, kw};
 
 use crate::error_reporting::infer::nice_region_error::find_anon_type;
 use crate::fluent_generated as fluent;
@@ -21,13 +20,13 @@ impl<'a> DescriptionCtx<'a> {
         region: ty::Region<'tcx>,
         alt_span: Option<Span>,
     ) -> Option<Self> {
-        let (span, kind, arg) = match *region {
+        let (span, kind, arg) = match region.kind() {
             ty::ReEarlyParam(br) => {
                 let scope = tcx
                     .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
                     .expect_local();
                 let span = if let Some(param) =
-                    tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+                    tcx.hir_get_generics(scope).and_then(|generics| generics.get_named(br.name))
                 {
                     param.span
                 } else {
@@ -40,18 +39,16 @@ impl<'a> DescriptionCtx<'a> {
                 }
             }
             ty::ReLateParam(ref fr) => {
-                if !fr.bound_region.is_named()
-                    && let Some((ty, _)) =
-                        find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
+                if !fr.kind.is_named()
+                    && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
                 {
                     (Some(ty.span), "defined_here", String::new())
                 } else {
                     let scope = fr.scope.expect_local();
-                    match fr.bound_region {
-                        ty::BoundRegionKind::BrNamed(_, name) => {
+                    match fr.kind {
+                        ty::LateParamRegionKind::Named(_, name) => {
                             let span = if let Some(param) = tcx
-                                .hir()
-                                .get_generics(scope)
+                                .hir_get_generics(scope)
                                 .and_then(|generics| generics.get_named(name))
                             {
                                 param.span
@@ -64,7 +61,7 @@ impl<'a> DescriptionCtx<'a> {
                                 (Some(span), "as_defined", name.to_string())
                             }
                         }
-                        ty::BrAnon => {
+                        ty::LateParamRegionKind::Anon(_) => {
                             let span = Some(tcx.def_span(scope));
                             (span, "defined_here", String::new())
                         }
@@ -108,7 +105,7 @@ pub enum SuffixKind {
 }
 
 impl IntoDiagArg for PrefixKind {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::RefValidFor => "ref_valid_for",
@@ -130,7 +127,7 @@ impl IntoDiagArg for PrefixKind {
 }
 
 impl IntoDiagArg for SuffixKind {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::Continues => "continues",
@@ -165,17 +162,13 @@ impl RegionExplanation<'_> {
 }
 
 impl Subdiagnostic for RegionExplanation<'_> {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.arg("pref_kind", self.prefix);
         diag.arg("suff_kind", self.suffix);
         diag.arg("desc_kind", self.desc.kind);
         diag.arg("desc_arg", self.desc.arg);
 
-        let msg = f(diag, fluent::trait_selection_region_explanation.into());
+        let msg = diag.eagerly_translate(fluent::trait_selection_region_explanation);
         if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {

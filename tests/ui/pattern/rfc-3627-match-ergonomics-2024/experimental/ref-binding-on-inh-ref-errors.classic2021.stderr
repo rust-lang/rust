@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:73:10
+   |
+LL |     let [ref mut x] = &[0];
+   |          ^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0596`.

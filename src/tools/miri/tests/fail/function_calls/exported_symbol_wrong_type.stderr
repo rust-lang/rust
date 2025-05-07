@@ -1,5 +1,5 @@
 error: Undefined Behavior: attempt to call an exported symbol that is not defined as a function
-  --> $DIR/exported_symbol_wrong_type.rs:LL:CC
+  --> tests/fail/function_calls/exported_symbol_wrong_type.rs:LL:CC
    |
 LL |     unsafe { FOO() }
    |              ^^^^^ attempt to call an exported symbol that is not defined as a function
@@ -7,7 +7,7 @@ LL |     unsafe { FOO() }
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/exported_symbol_wrong_type.rs:LL:CC
+   = note: inside `main` at tests/fail/function_calls/exported_symbol_wrong_type.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

@@ -1,4 +1,4 @@
-#![deny(clippy::internal)]
+#![deny(clippy::collapsible_span_lint_calls)]
 #![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
 

@@ -1,5 +1,6 @@
+//@ add-core-stubs
 //@ revisions: linux apple
-//@ compile-flags: -C opt-level=0 -C no-prepopulate-passes -C passes=lint
+//@ compile-flags: -Copt-level=0 -Cno-prepopulate-passes -Zlint-llvm-ir
 
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86
@@ -13,12 +14,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 struct S {

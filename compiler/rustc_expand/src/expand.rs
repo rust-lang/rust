@@ -1,39 +1,38 @@
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::{iter, mem};
 
 use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::visit::{self, try_visit, walk_list, AssocCtxt, Visitor, VisitorResult};
+use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind, ForeignItemKind,
-    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind, NestedMetaItem,
-    NodeId, PatKind, StmtKind, TyKind,
+    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind,
+    NodeId, PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
+    token_descr,
 };
 use rustc_parse::validate_attr;
-use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiag;
+use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_session::{Limit, Session};
 use rustc_span::hygiene::SyntaxContext;
-use rustc_span::symbol::{sym, Ident};
-use rustc_span::{ErrorGuaranteed, FileName, LocalExpnId, Span};
+use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, sym};
 use smallvec::SmallVec;
 
 use crate::base::*;
-use crate::config::StripUnconfigured;
+use crate::config::{StripUnconfigured, attr_into_trace};
 use crate::errors::{
     EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
@@ -41,8 +40,10 @@ use crate::errors::{
 };
 use crate::fluent_generated;
 use crate::mbe::diagnostics::annotate_err_with_kind;
-use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
-use crate::placeholders::{placeholder, PlaceholderExpander};
+use crate::module::{
+    DirOwnership, ParsedExternalMod, mod_dir_path, mod_file_path_from_attr, parse_external_mod,
+};
+use crate::placeholders::{PlaceholderExpander, placeholder};
 
 macro_rules! ast_fragments {
     (
@@ -186,8 +187,14 @@ ast_fragments! {
     ImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
         "impl item";
         many fn flat_map_assoc_item;
-        fn visit_assoc_item(AssocCtxt::Impl);
+        fn visit_assoc_item(AssocCtxt::Impl { of_trait: false });
         fn make_impl_items;
+    }
+    TraitImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
+        "impl item";
+        many fn flat_map_assoc_item;
+        fn visit_assoc_item(AssocCtxt::Impl { of_trait: true });
+        fn make_trait_impl_items;
     }
     ForeignItems(SmallVec<[P<ast::ForeignItem>; 1]>) {
         "foreign item";
@@ -225,6 +232,12 @@ ast_fragments! {
     Variants(SmallVec<[ast::Variant; 1]>) {
         "variant"; many fn flat_map_variant; fn visit_variant(); fn make_variants;
     }
+    WherePredicates(SmallVec<[ast::WherePredicate; 1]>) {
+        "where predicate";
+        many fn flat_map_where_predicate;
+        fn visit_where_predicate();
+        fn make_where_predicates;
+     }
     Crate(ast::Crate) { "crate"; one fn visit_crate; fn visit_crate; fn make_crate; }
 }
 
@@ -249,6 +262,7 @@ impl AstFragmentKind {
             AstFragmentKind::Items
             | AstFragmentKind::TraitItems
             | AstFragmentKind::ImplItems
+            | AstFragmentKind::TraitImplItems
             | AstFragmentKind::ForeignItems
             | AstFragmentKind::Crate => SupportsMacroExpansion::Yes { supports_inner_attrs: true },
             AstFragmentKind::Arms
@@ -257,7 +271,8 @@ impl AstFragmentKind {
             | AstFragmentKind::GenericParams
             | AstFragmentKind::Params
             | AstFragmentKind::FieldDefs
-            | AstFragmentKind::Variants => SupportsMacroExpansion::No,
+            | AstFragmentKind::Variants
+            | AstFragmentKind::WherePredicates => SupportsMacroExpansion::No,
         }
     }
 
@@ -288,11 +303,17 @@ impl AstFragmentKind {
             AstFragmentKind::Variants => {
                 AstFragment::Variants(items.map(Annotatable::expect_variant).collect())
             }
+            AstFragmentKind::WherePredicates => AstFragment::WherePredicates(
+                items.map(Annotatable::expect_where_predicate).collect(),
+            ),
             AstFragmentKind::Items => {
                 AstFragment::Items(items.map(Annotatable::expect_item).collect())
             }
             AstFragmentKind::ImplItems => {
                 AstFragment::ImplItems(items.map(Annotatable::expect_impl_item).collect())
+            }
+            AstFragmentKind::TraitImplItems => {
+                AstFragment::TraitImplItems(items.map(Annotatable::expect_impl_item).collect())
             }
             AstFragmentKind::TraitItems => {
                 AstFragment::TraitItems(items.map(Annotatable::expect_trait_item).collect())
@@ -335,10 +356,10 @@ pub enum InvocationKind {
     },
     Attr {
         attr: ast::Attribute,
-        // Re-insertion position for inert attributes.
+        /// Re-insertion position for inert attributes.
         pos: usize,
         item: Annotatable,
-        // Required for resolving derive helper attributes.
+        /// Required for resolving derive helper attributes.
         derives: Vec<ast::Path>,
     },
     Derive {
@@ -348,6 +369,8 @@ pub enum InvocationKind {
     },
     GlobDelegation {
         item: P<ast::AssocItem>,
+        /// Whether this is a trait impl or an inherent impl
+        of_trait: bool,
     },
 }
 
@@ -376,7 +399,7 @@ impl Invocation {
             InvocationKind::Bang { span, .. } => *span,
             InvocationKind::Attr { attr, .. } => attr.span,
             InvocationKind::Derive { path, .. } => path.span,
-            InvocationKind::GlobDelegation { item } => item.span,
+            InvocationKind::GlobDelegation { item, .. } => item.span,
         }
     }
 
@@ -385,7 +408,7 @@ impl Invocation {
             InvocationKind::Bang { span, .. } => span,
             InvocationKind::Attr { attr, .. } => &mut attr.span,
             InvocationKind::Derive { path, .. } => &mut path.span,
-            InvocationKind::GlobDelegation { item } => &mut item.span,
+            InvocationKind::GlobDelegation { item, .. } => &mut item.span,
         }
     }
 }
@@ -577,7 +600,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         &mut self,
         mut fragment: AstFragment,
         extra_placeholders: &[NodeId],
-    ) -> (AstFragment, Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>) {
+    ) -> (AstFragment, Vec<(Invocation, Option<Arc<SyntaxExtension>>)>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
 
@@ -720,7 +743,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     item_inner.kind,
                                     ItemKind::Mod(
                                         _,
-                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _),
+                                        _,
+                                        ModKind::Unloaded | ModKind::Loaded(_, Inline::No, _, _),
                                     )
                                 ) =>
                         {
@@ -729,7 +753,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.unwrap_normal_item();
-                    if let AttrArgs::Eq(..) = attr_item.args {
+                    if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
@@ -768,8 +792,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             }
                         }
                         Err(err) => {
-                            let guar = err.emit();
-                            fragment_kind.dummy(span, guar)
+                            let _guar = err.emit();
+                            fragment_kind.expect_from_annotatables(iter::once(item))
                         }
                     }
                 }
@@ -808,7 +832,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::GlobDelegation { item } => {
+            InvocationKind::GlobDelegation { item, of_trait } => {
                 let AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
                 let suffixes = match ext {
                     SyntaxExtensionKind::GlobDelegation(expander) => match expander.expand(self.cx)
@@ -817,7 +841,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         ExpandResult::Retry(()) => {
                             // Reassemble the original invocation for retrying.
                             return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::GlobDelegation { item },
+                                kind: InvocationKind::GlobDelegation { item, of_trait },
                                 ..invoc
                             });
                         }
@@ -835,7 +859,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx, deleg, &item, &suffixes, item.span, true,
                 );
                 fragment_kind.expect_from_annotatables(
-                    single_delegations.map(|item| Annotatable::AssocItem(P(item), AssocCtxt::Impl)),
+                    single_delegations
+                        .map(|item| Annotatable::AssocItem(P(item), AssocCtxt::Impl { of_trait })),
                 )
             }
         })
@@ -863,9 +888,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::GenericParam(..)
             | Annotatable::Param(..)
             | Annotatable::FieldDef(..)
-            | Annotatable::Variant(..) => panic!("unexpected annotatable"),
+            | Annotatable::Variant(..)
+            | Annotatable::WherePredicate(..) => panic!("unexpected annotatable"),
         };
-        if self.cx.ecfg.features.proc_macro_hygiene {
+        if self.cx.ecfg.features.proc_macro_hygiene() {
             return;
         }
         feature_err(
@@ -885,8 +911,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
-                    ItemKind::Mod(_, mod_kind)
-                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
+                    ItemKind::Mod(_, _, mod_kind)
+                        if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _)) =>
                     {
                         feature_err(
                             self.sess,
@@ -903,7 +929,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         }
 
-        if !self.cx.ecfg.features.proc_macro_hygiene {
+        if !self.cx.ecfg.features.proc_macro_hygiene() {
             annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
         }
     }
@@ -960,6 +986,13 @@ pub fn parse_ast_fragment<'a>(
             }
             AstFragment::ImplItems(items)
         }
+        AstFragmentKind::TraitImplItems => {
+            let mut items = SmallVec::new();
+            while let Some(item) = this.parse_impl_item(ForceCollect::No)? {
+                items.extend(item);
+            }
+            AstFragment::TraitImplItems(items)
+        }
         AstFragmentKind::ForeignItems => {
             let mut items = SmallVec::new();
             while let Some(item) = this.parse_foreign_item(ForceCollect::No)? {
@@ -970,7 +1003,7 @@ pub fn parse_ast_fragment<'a>(
         AstFragmentKind::Stmts => {
             let mut stmts = SmallVec::new();
             // Won't make progress on a `}`.
-            while this.token != token::Eof && this.token != token::CloseDelim(Delimiter::Brace) {
+            while this.token != token::Eof && this.token != token::CloseBrace {
                 if let Some(stmt) = this.parse_full_stmt(AttemptLocalParseRecovery::Yes)? {
                     stmts.push(stmt);
                 }
@@ -987,7 +1020,7 @@ pub fn parse_ast_fragment<'a>(
             }
         }
         AstFragmentKind::Ty => AstFragment::Ty(this.parse_ty()?),
-        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_alt(
+        AstFragmentKind::Pat => AstFragment::Pat(this.parse_pat_allow_top_guard(
             None,
             RecoverComma::No,
             RecoverColon::Yes,
@@ -1000,7 +1033,8 @@ pub fn parse_ast_fragment<'a>(
         | AstFragmentKind::GenericParams
         | AstFragmentKind::Params
         | AstFragmentKind::FieldDefs
-        | AstFragmentKind::Variants => panic!("unexpected AST fragment kind"),
+        | AstFragmentKind::Variants
+        | AstFragmentKind::WherePredicates => panic!("unexpected AST fragment kind"),
     })
 }
 
@@ -1011,7 +1045,7 @@ pub(crate) fn ensure_complete_parse<'a>(
     span: Span,
 ) {
     if parser.token != token::Eof {
-        let token = pprust::token_to_string(&parser.token);
+        let descr = token_descr(&parser.token);
         // Avoid emitting backtrace info twice.
         let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
@@ -1027,11 +1061,11 @@ pub(crate) fn ensure_complete_parse<'a>(
 
         parser.dcx().emit_err(IncompleteParse {
             span: def_site_span,
-            token,
+            descr,
             label_span: span,
             macro_path,
             kind_name,
-            expands_to_match_arm: expands_to_match_arm.then_some(()),
+            expands_to_match_arm,
             add_semicolon,
         });
     }
@@ -1134,9 +1168,9 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
-    /// All of the names (items) declared by this node.
+    /// All of the identifiers (items) declared by this node.
     /// This is an approximation and should only be used for diagnostics.
-    fn declared_names(&self) -> Vec<Ident> {
+    fn declared_idents(&self) -> Vec<Ident> {
         vec![]
     }
 }
@@ -1187,12 +1221,11 @@ impl InvocationCollectorNode for P<ast::Item> {
         }
 
         // Work around borrow checker not seeing through `P`'s deref.
-        let (ident, span, mut attrs) = (node.ident, node.span, mem::take(&mut node.attrs));
-        let ItemKind::Mod(_, mod_kind) = &mut node.kind else { unreachable!() };
-
+        let (span, mut attrs) = (node.span, mem::take(&mut node.attrs));
+        let ItemKind::Mod(_, ident, ref mut mod_kind) = node.kind else { unreachable!() };
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
-            ModKind::Loaded(_, inline, _) => {
+            ModKind::Loaded(_, inline, _, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
                     ecx.sess,
@@ -1202,21 +1235,33 @@ impl InvocationCollectorNode for P<ast::Item> {
                     ecx.current_expansion.dir_ownership,
                     *inline,
                 );
+                // If the module was parsed from an external file, recover its path.
+                // This lets `parse_external_mod` catch cycles if it's self-referential.
+                let file_path = match inline {
+                    Inline::Yes => None,
+                    Inline::No => mod_file_path_from_attr(ecx.sess, &attrs, &dir_path),
+                };
                 node.attrs = attrs;
-                (None, dir_path, dir_ownership)
+                (file_path, dir_path, dir_ownership)
             }
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
                 let old_attrs_len = attrs.len();
-                let ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership } =
-                    parse_external_mod(
-                        ecx.sess,
-                        ident,
-                        span,
-                        &ecx.current_expansion.module,
-                        ecx.current_expansion.dir_ownership,
-                        &mut attrs,
-                    );
+                let ParsedExternalMod {
+                    items,
+                    spans,
+                    file_path,
+                    dir_path,
+                    dir_ownership,
+                    had_parse_error,
+                } = parse_external_mod(
+                    ecx.sess,
+                    ident,
+                    span,
+                    &ecx.current_expansion.module,
+                    ecx.current_expansion.dir_ownership,
+                    &mut attrs,
+                );
 
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
@@ -1230,7 +1275,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                     );
                 }
 
-                *mod_kind = ModKind::Loaded(items, Inline::No, spans);
+                *mod_kind = ModKind::Loaded(items, Inline::No, spans, had_parse_error);
                 node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,
@@ -1259,7 +1304,8 @@ impl InvocationCollectorNode for P<ast::Item> {
         collector.cx.current_expansion.module = orig_module;
         res
     }
-    fn declared_names(&self) -> Vec<Ident> {
+
+    fn declared_idents(&self) -> Vec<Ident> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
                 match &ut.kind {
@@ -1278,7 +1324,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             return idents;
         }
 
-        vec![self.ident]
+        if let Some(ident) = self.kind.ident() { vec![ident] } else { vec![] }
     }
 }
 
@@ -1294,7 +1340,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
         fragment.make_trait_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(visitor, self.wrapped)
+        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Trait)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1329,13 +1375,13 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
     type ItemKind = AssocItemKind;
     const KIND: AstFragmentKind = AstFragmentKind::ImplItems;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::AssocItem(self.wrapped, AssocCtxt::Impl)
+        Annotatable::AssocItem(self.wrapped, AssocCtxt::Impl { of_trait: false })
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_impl_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(visitor, self.wrapped)
+        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Impl { of_trait: false })
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1364,6 +1410,47 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
     }
 }
 
+struct TraitImplItemTag;
+impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitImplItemTag> {
+    type OutputTy = SmallVec<[P<ast::AssocItem>; 1]>;
+    type ItemKind = AssocItemKind;
+    const KIND: AstFragmentKind = AstFragmentKind::TraitImplItems;
+    fn to_annotatable(self) -> Annotatable {
+        Annotatable::AssocItem(self.wrapped, AssocCtxt::Impl { of_trait: true })
+    }
+    fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
+        fragment.make_trait_impl_items()
+    }
+    fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
+        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Impl { of_trait: true })
+    }
+    fn is_mac_call(&self) -> bool {
+        matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
+    }
+    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+        let item = self.wrapped.into_inner();
+        match item.kind {
+            AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
+            _ => unreachable!(),
+        }
+    }
+    fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
+        match &self.wrapped.kind {
+            AssocItemKind::DelegationMac(deleg) => Some((deleg, &self.wrapped)),
+            _ => None,
+        }
+    }
+    fn delegation_item_kind(deleg: Box<ast::Delegation>) -> Self::ItemKind {
+        AssocItemKind::Delegation(deleg)
+    }
+    fn from_item(item: ast::Item<Self::ItemKind>) -> Self {
+        AstNodeWrapper::new(P(item), TraitImplItemTag)
+    }
+    fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
+        items.flatten().collect()
+    }
+}
+
 impl InvocationCollectorNode for P<ast::ForeignItem> {
     const KIND: AstFragmentKind = AstFragmentKind::ForeignItems;
     fn to_annotatable(self) -> Annotatable {
@@ -1373,7 +1460,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
         fragment.make_foreign_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_item(visitor, self)
+        walk_flat_map_foreign_item(visitor, self)
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))
@@ -1397,6 +1484,19 @@ impl InvocationCollectorNode for ast::Variant {
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
         walk_flat_map_variant(visitor, self)
+    }
+}
+
+impl InvocationCollectorNode for ast::WherePredicate {
+    const KIND: AstFragmentKind = AstFragmentKind::WherePredicates;
+    fn to_annotatable(self) -> Annotatable {
+        Annotatable::WherePredicate(self)
+    }
+    fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
+        fragment.make_where_predicates()
+    }
+    fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
+        walk_flat_map_where_predicate(visitor, self)
     }
 }
 
@@ -1744,11 +1844,11 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
             id: ast::DUMMY_NODE_ID,
             span: if from_glob { item_span } else { ident.span },
             vis: item.vis.clone(),
-            ident: rename.unwrap_or(ident),
             kind: Node::delegation_item_kind(Box::new(ast::Delegation {
                 id: ast::DUMMY_NODE_ID,
                 qself: deleg.qself.clone(),
                 path,
+                ident: rename.unwrap_or(ident),
                 rename,
                 body: deleg.body.clone(),
                 from_glob,
@@ -1760,7 +1860,7 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
 
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
-    invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
+    invocations: Vec<(Invocation, Option<Arc<SyntaxExtension>>)>,
     monotonic: bool,
 }
 
@@ -1816,9 +1916,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect_glob_delegation(
         &mut self,
         item: P<ast::AssocItem>,
+        of_trait: bool,
         kind: AstFragmentKind,
     ) -> AstFragment {
-        self.collect(kind, InvocationKind::GlobDelegation { item })
+        self.collect(kind, InvocationKind::GlobDelegation { item, of_trait })
     }
 
     /// If `item` is an attribute invocation, remove the attribute and return it together with
@@ -1855,8 +1956,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .iter()
                         .filter(|a| a.has_name(sym::derive))
                         .flat_map(|a| a.meta_item_list().unwrap_or_default())
-                        .filter_map(|nested_meta| match nested_meta {
-                            NestedMetaItem::MetaItem(ast::MetaItem {
+                        .filter_map(|meta_item_inner| match meta_item_inner {
+                            MetaItemInner::MetaItem(ast::MetaItem {
                                 kind: MetaItemKind::Word,
                                 path,
                                 ..
@@ -1882,7 +1983,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_attr(features, &self.cx.sess.psess, attr);
+            validate_attr::check_attr(
+                &self.cx.sess.psess,
+                attr,
+                self.cx.current_expansion.lint_node_id,
+            );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -1898,11 +2003,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.lint_node_id,
                     BuiltinLintDiag::UnusedDocComment(attr.span),
                 );
-            } else if rustc_attr::is_builtin_attr(attr) {
+            } else if rustc_attr_parsing::is_builtin_attr(attr) {
                 let attr_name = attr.ident().unwrap().name;
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
-                if attr_name != sym::cfg && attr_name != sym::cfg_attr {
+                if attr_name != sym::cfg_trace && attr_name != sym::cfg_attr_trace {
                     self.cx.sess.psess.buffer_lint(
                         UNUSED_ATTRIBUTES,
                         attr.span,
@@ -1926,11 +2031,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) -> (bool, Option<ast::MetaItem>) {
         let (res, meta_item) = self.cfg().cfg_true(&attr);
         if res {
-            // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
-            // and some tools like rustdoc and clippy rely on that. Find a way to remove them
-            // while keeping the tools working.
-            self.cx.expanded_inert_attrs.mark(&attr);
-            node.visit_attrs(|attrs| attrs.insert(pos, attr));
+            // A trace attribute left in AST in place of the original `cfg` attribute.
+            // It can later be used by lints or other diagnostics.
+            let trace_attr = attr_into_trace(attr, sym::cfg_trace);
+            node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 
         (res, meta_item)
@@ -1952,25 +2056,25 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) -> Node::OutputTy {
         loop {
             return match self.take_first_attr(&mut node) {
-                Some((attr, pos, derives)) => match attr.name_or_empty() {
-                    sym::cfg => {
+                Some((attr, pos, derives)) => match attr.name() {
+                    Some(sym::cfg) => {
                         let (res, meta_item) = self.expand_cfg_true(&mut node, attr, pos);
                         if res {
                             continue;
                         }
 
                         if let Some(meta_item) = meta_item {
-                            for name in node.declared_names() {
+                            for ident in node.declared_idents() {
                                 self.cx.resolver.append_stripped_cfg_item(
                                     self.cx.current_expansion.lint_node_id,
-                                    name,
+                                    ident,
                                     meta_item.clone(),
                                 )
                             }
                         }
                         Default::default()
                     }
-                    sym::cfg_attr => {
+                    Some(sym::cfg_attr) => {
                         self.expand_cfg_attr(&mut node, &attr, pos);
                         continue;
                     }
@@ -1991,8 +2095,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     let Some(suffixes) = &deleg.suffixes else {
                         let traitless_qself =
                             matches!(&deleg.qself, Some(qself) if qself.position == 0);
-                        let item = match node.to_annotatable() {
-                            Annotatable::AssocItem(item, AssocCtxt::Impl) => item,
+                        let (item, of_trait) = match node.to_annotatable() {
+                            Annotatable::AssocItem(item, AssocCtxt::Impl { of_trait }) => {
+                                (item, of_trait)
+                            }
                             ann @ (Annotatable::Item(_)
                             | Annotatable::AssocItem(..)
                             | Annotatable::Stmt(_)) => {
@@ -2007,7 +2113,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             self.cx.dcx().emit_err(GlobDelegationTraitlessQpath { span });
                             return Default::default();
                         }
-                        return self.collect_glob_delegation(item, Node::KIND).make_ast::<Node>();
+                        return self
+                            .collect_glob_delegation(item, of_trait, Node::KIND)
+                            .make_ast::<Node>();
                     };
 
                     let single_delegations = build_single_delegations::<Node>(
@@ -2039,8 +2147,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     ) {
         loop {
             return match self.take_first_attr(node) {
-                Some((attr, pos, derives)) => match attr.name_or_empty() {
-                    sym::cfg => {
+                Some((attr, pos, derives)) => match attr.name() {
+                    Some(sym::cfg) => {
                         let span = attr.span;
                         if self.expand_cfg_true(node, attr, pos).0 {
                             continue;
@@ -2049,7 +2157,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         node.expand_cfg_false(self, pos, span);
                         continue;
                     }
-                    sym::cfg_attr => {
+                    Some(sym::cfg_attr) => {
                         self.expand_cfg_attr(node, &attr, pos);
                         continue;
                     }
@@ -2087,7 +2195,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     ) -> SmallVec<[P<ast::AssocItem>; 1]> {
         match ctxt {
             AssocCtxt::Trait => self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
-            AssocCtxt::Impl => self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag)),
+            AssocCtxt::Impl { of_trait: false } => {
+                self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
+            }
+            AssocCtxt::Impl { of_trait: true } => {
+                self.flat_map_node(AstNodeWrapper::new(node, TraitImplItemTag))
+            }
         }
     }
 
@@ -2099,6 +2212,13 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn flat_map_variant(&mut self, node: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
+        self.flat_map_node(node)
+    }
+
+    fn flat_map_where_predicate(
+        &mut self,
+        node: ast::WherePredicate,
+    ) -> SmallVec<[ast::WherePredicate; 1]> {
         self.flat_map_node(node)
     }
 

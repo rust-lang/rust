@@ -4,12 +4,17 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(associated_type_defaults)]
+#![feature(box_patterns)]
 #![feature(closure_track_caller)]
-#![feature(let_chains)]
+#![feature(debug_closure_helpers)]
+#![feature(exhaustive_patterns)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(variant_count)]
+#![recursion_limit = "256"]
 // tidy-alphabetical-end
 
 extern crate self as rustc_hir;
@@ -32,6 +37,7 @@ pub mod weak_lang_items;
 #[cfg(test)]
 mod tests;
 
+#[doc(no_inline)]
 pub use hir::*;
 pub use hir_id::*;
 pub use lang_items::{LangItem, LanguageItems};

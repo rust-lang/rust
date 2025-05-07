@@ -1,5 +1,3 @@
-#![feature(precise_capturing)]
-
 use std::future::Future;
 use std::pin::Pin;
 

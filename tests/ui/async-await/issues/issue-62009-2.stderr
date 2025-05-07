@@ -1,5 +1,5 @@
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-2.rs:8:23
+  --> $DIR/issue-62009-2.rs:6:23
    |
 LL | fn main() {
    | --------- this is not `async`

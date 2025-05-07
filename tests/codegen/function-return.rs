@@ -1,6 +1,7 @@
 // Test that the `fn_ret_thunk_extern` function attribute is (not) emitted when
 // the `-Zfunction-return={keep,thunk-extern}` flag is (not) set.
 
+//@ add-core-stubs
 //@ revisions: unset keep thunk-extern keep-thunk-extern thunk-extern-keep
 //@ needs-llvm-components: x86
 //@ compile-flags: --target x86_64-unknown-linux-gnu
@@ -13,8 +14,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 pub fn foo() {
@@ -26,3 +27,9 @@ pub fn foo() {
     // keep-thunk-extern: attributes #0 = { {{.*}}fn_ret_thunk_extern{{.*}} }
     // thunk-extern-keep-NOT: fn_ret_thunk_extern
 }
+
+// unset-NOT: !{{[0-9]+}} = !{i32 4, !"function_return_thunk_extern", i32 1}
+// keep-NOT: !{{[0-9]+}} = !{i32 4, !"function_return_thunk_extern", i32 1}
+// thunk-extern: !{{[0-9]+}} = !{i32 4, !"function_return_thunk_extern", i32 1}
+// keep-thunk-extern: !{{[0-9]+}} = !{i32 4, !"function_return_thunk_extern", i32 1}
+// thunk-extern-keep-NOT: !{{[0-9]+}} = !{i32 4, !"function_return_thunk_extern", i32 1}

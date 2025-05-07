@@ -27,6 +27,7 @@ fn doit() -> Result<(), Box<dyn Error>> {
     let mut out_path = None;
     let mut rustc_path = None;
     let mut rustc_target = None;
+    let mut rustc_linker = None;
     let mut verbose = false;
     let mut validate = false;
     while let Some(arg) = args.next() {
@@ -55,6 +56,12 @@ fn doit() -> Result<(), Box<dyn Error>> {
                     None => return Err("--rustc-target requires a value".into()),
                 };
             }
+            "--rustc-linker" => {
+                rustc_linker = match args.next() {
+                    Some(s) => Some(s),
+                    None => return Err("--rustc-linker requires a value".into()),
+                };
+            }
             "-v" | "--verbose" => verbose = true,
             "--validate" => validate = true,
             s => return Err(format!("unexpected argument `{}`", s).into()),
@@ -77,6 +84,7 @@ fn doit() -> Result<(), Box<dyn Error>> {
         out_path: &out_path.unwrap(),
         rustc_path: &rustc_path.unwrap(),
         rustc_target: &rustc_target.unwrap(),
+        rustc_linker: rustc_linker.as_deref(),
         verbose,
         validate,
     };

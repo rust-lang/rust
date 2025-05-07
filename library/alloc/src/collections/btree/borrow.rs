@@ -11,7 +11,7 @@ use core::ptr::NonNull;
 /// the compiler to follow. A `DormantMutRef` allows you to check borrowing
 /// yourself, while still expressing its stacked nature, and encapsulating
 /// the raw pointer code needed to do this without undefined behavior.
-pub struct DormantMutRef<'a, T> {
+pub(super) struct DormantMutRef<'a, T> {
     ptr: NonNull<T>,
     _marker: PhantomData<&'a mut T>,
 }
@@ -23,7 +23,7 @@ impl<'a, T> DormantMutRef<'a, T> {
     /// Capture a unique borrow, and immediately reborrow it. For the compiler,
     /// the lifetime of the new reference is the same as the lifetime of the
     /// original reference, but you promise to use it for a shorter period.
-    pub fn new(t: &'a mut T) -> (&'a mut T, Self) {
+    pub(super) fn new(t: &'a mut T) -> (&'a mut T, Self) {
         let ptr = NonNull::from(t);
         // SAFETY: we hold the borrow throughout 'a via `_marker`, and we expose
         // only this reference, so it is unique.
@@ -37,7 +37,7 @@ impl<'a, T> DormantMutRef<'a, T> {
     ///
     /// The reborrow must have ended, i.e., the reference returned by `new` and
     /// all pointers and references derived from it, must not be used anymore.
-    pub unsafe fn awaken(self) -> &'a mut T {
+    pub(super) unsafe fn awaken(self) -> &'a mut T {
         // SAFETY: our own safety conditions imply this reference is again unique.
         unsafe { &mut *self.ptr.as_ptr() }
     }
@@ -48,7 +48,7 @@ impl<'a, T> DormantMutRef<'a, T> {
     ///
     /// The reborrow must have ended, i.e., the reference returned by `new` and
     /// all pointers and references derived from it, must not be used anymore.
-    pub unsafe fn reborrow(&mut self) -> &'a mut T {
+    pub(super) unsafe fn reborrow(&mut self) -> &'a mut T {
         // SAFETY: our own safety conditions imply this reference is again unique.
         unsafe { &mut *self.ptr.as_ptr() }
     }
@@ -59,7 +59,7 @@ impl<'a, T> DormantMutRef<'a, T> {
     ///
     /// The reborrow must have ended, i.e., the reference returned by `new` and
     /// all pointers and references derived from it, must not be used anymore.
-    pub unsafe fn reborrow_shared(&self) -> &'a T {
+    pub(super) unsafe fn reborrow_shared(&self) -> &'a T {
         // SAFETY: our own safety conditions imply this reference is again unique.
         unsafe { &*self.ptr.as_ptr() }
     }

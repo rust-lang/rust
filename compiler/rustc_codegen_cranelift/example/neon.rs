@@ -203,6 +203,44 @@ unsafe fn test_vqadd_u8() {
 }
 
 #[cfg(target_arch = "aarch64")]
+unsafe fn test_vmaxq_f32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.fmax.v4f32
+    let a = f32x4::from([0., -1., 2., -3.]);
+    let b = f32x4::from([-4., 5., -6., 7.]);
+    let e = f32x4::from([0., 5., 2., 7.]);
+    let r: f32x4 = transmute(vmaxq_f32(transmute(a), transmute(b)));
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vminq_f32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.fmin.v4f32
+    let a = f32x4::from([0., -1., 2., -3.]);
+    let b = f32x4::from([-4., 5., -6., 7.]);
+    let e = f32x4::from([-4., -1., -6., -3.]);
+    let r: f32x4 = transmute(vminq_f32(transmute(a), transmute(b)));
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vaddvq_f32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.faddv.f32.v4f32
+    let a = f32x4::from([0., 1., 2., 3.]);
+    let e = 6f32;
+    let r = vaddvq_f32(transmute(a));
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vrndnq_f32() {
+    // AArch64 llvm intrinsic: llvm.aarch64.neon.frintn.v4f32
+    let a = f32x4::from([0.1, -1.9, 4.5, 5.5]);
+    let e = f32x4::from([0., -2., 4., 6.]);
+    let r: f32x4 = transmute(vrndnq_f32(transmute(a)));
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
 fn main() {
     unsafe {
         test_vpmin_s8();
@@ -229,6 +267,11 @@ fn main() {
 
         test_vqsub_u8();
         test_vqadd_u8();
+
+        test_vmaxq_f32();
+        test_vminq_f32();
+        test_vaddvq_f32();
+        test_vrndnq_f32();
     }
 }
 

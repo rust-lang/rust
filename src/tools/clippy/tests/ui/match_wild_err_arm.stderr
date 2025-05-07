@@ -9,7 +9,7 @@ LL |         Err(_) => panic!("err"),
    = help: to override `-D warnings` add `#[allow(clippy::match_wild_err_arm)]`
 
 error: `Err(_)` matches all errors
-  --> tests/ui/match_wild_err_arm.rs:31:9
+  --> tests/ui/match_wild_err_arm.rs:30:9
    |
 LL |         Err(_) => panic!(),
    |         ^^^^^^
@@ -17,7 +17,7 @@ LL |         Err(_) => panic!(),
    = note: match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable
 
 error: `Err(_)` matches all errors
-  --> tests/ui/match_wild_err_arm.rs:39:9
+  --> tests/ui/match_wild_err_arm.rs:37:9
    |
 LL |         Err(_) => {
    |         ^^^^^^
@@ -25,7 +25,7 @@ LL |         Err(_) => {
    = note: match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable
 
 error: `Err(_e)` matches all errors
-  --> tests/ui/match_wild_err_arm.rs:49:9
+  --> tests/ui/match_wild_err_arm.rs:47:9
    |
 LL |         Err(_e) => panic!(),
    |         ^^^^^^^

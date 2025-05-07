@@ -1,4 +1,4 @@
-use rustc_hir as hir;
+use rustc_hir::{self as hir, LangItem};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, impl_lint_pass};
@@ -61,11 +61,12 @@ declare_lint! {
     "detects calling `into_iter` on boxed slices in Rust 2015, 2018, and 2021",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/intoiterator-box-slice.html>"
     };
 }
 
 #[derive(Copy, Clone)]
-pub struct ShadowedIntoIter;
+pub(crate) struct ShadowedIntoIter;
 
 impl_lint_pass!(ShadowedIntoIter => [ARRAY_INTO_ITER, BOXED_SLICE_INTO_ITER]);
 
@@ -80,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) else {
             return;
         };
-        if Some(method_def_id) != cx.tcx.lang_items().into_iter_fn() {
+        if !cx.tcx.is_lang_item(method_def_id, LangItem::IntoIterIntoIter) {
             return;
         }
 
@@ -94,12 +95,9 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         fn is_ref_to_array(ty: Ty<'_>) -> bool {
             if let ty::Ref(_, pointee_ty, _) = *ty.kind() { pointee_ty.is_array() } else { false }
         }
-        fn is_boxed_slice(ty: Ty<'_>) -> bool {
-            ty.is_box() && ty.boxed_ty().is_slice()
-        }
         fn is_ref_to_boxed_slice(ty: Ty<'_>) -> bool {
             if let ty::Ref(_, pointee_ty, _) = *ty.kind() {
-                is_boxed_slice(pointee_ty)
+                pointee_ty.boxed_ty().is_some_and(Ty::is_slice)
             } else {
                 false
             }
@@ -119,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
                     .iter()
                     .copied()
                     .take_while(|ty| !is_ref_to_boxed_slice(*ty))
-                    .position(|ty| is_boxed_slice(ty))
+                    .position(|ty| ty.boxed_ty().is_some_and(Ty::is_slice))
             {
                 (BOXED_SLICE_INTO_ITER, "Box<[T]>", "2024", idx == 0)
             } else {
@@ -130,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         // we should just suggest removing the `.into_iter()` or changing it to `.iter()`
         // to disambiguate if we want to iterate by-value or by-ref.
         let sub = if let Some((_, hir::Node::Expr(parent_expr))) =
-            cx.tcx.hir().parent_iter(expr.hir_id).nth(1)
+            cx.tcx.hir_parent_iter(expr.hir_id).nth(1)
             && let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) =
                 &parent_expr.kind
             && let hir::ExprKind::Call(path, [_]) = &arg.kind

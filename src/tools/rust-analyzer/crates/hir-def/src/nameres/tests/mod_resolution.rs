@@ -144,14 +144,14 @@ pub struct Baz;
 
             crate::r#async
             Bar: t v
-            foo: t
             r#async: t
-
-            crate::r#async::foo
-            Foo: t v
+            foo: t
 
             crate::r#async::r#async
             Baz: t v
+
+            crate::r#async::foo
+            Foo: t v
         "#]],
     );
 }

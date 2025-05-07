@@ -7,8 +7,9 @@ LL |         self.input_stream(&mut stream);
    = note: cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
 help: try using a fully qualified path to specify the expected types
    |
-LL |         <u8 as StreamHash<H>>::input_stream(self, &mut stream);
-   |         ++++++++++++++++++++++++++++++++++++    ~
+LL -         self.input_stream(&mut stream);
+LL +         <u8 as StreamHash<H>>::input_stream(self, &mut stream);
+   |
 
 error: aborting due to 1 previous error
 

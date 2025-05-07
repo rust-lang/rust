@@ -242,22 +242,6 @@ pub unsafe extern "ptx-kernel" fn f_float_array_arg(_a: [f32; 5]) {}
 //pub unsafe extern "ptx-kernel" fn f_u128_array_arg(_a: [u128; 5]) {}
 
 // CHECK: .visible .entry f_u32_slice_arg(
-// CHECK: .param .u64 f_u32_slice_arg_param_0
-// CHECK: .param .u64 f_u32_slice_arg_param_1
+// CHECK: .param .align 8 .b8 f_u32_slice_arg_param_0[16]
 #[no_mangle]
 pub unsafe extern "ptx-kernel" fn f_u32_slice_arg(_a: &[u32]) {}
-
-// CHECK: .visible .entry f_tuple_u8_u8_arg(
-// CHECK: .param .align 1 .b8 f_tuple_u8_u8_arg_param_0[2]
-#[no_mangle]
-pub unsafe extern "ptx-kernel" fn f_tuple_u8_u8_arg(_a: (u8, u8)) {}
-
-// CHECK: .visible .entry f_tuple_u32_u32_arg(
-// CHECK: .param .align 4 .b8 f_tuple_u32_u32_arg_param_0[8]
-#[no_mangle]
-pub unsafe extern "ptx-kernel" fn f_tuple_u32_u32_arg(_a: (u32, u32)) {}
-
-// CHECK: .visible .entry f_tuple_u8_u8_u32_arg(
-// CHECK: .param .align 4 .b8 f_tuple_u8_u8_u32_arg_param_0[8]
-#[no_mangle]
-pub unsafe extern "ptx-kernel" fn f_tuple_u8_u8_u32_arg(_a: (u8, u8, u32)) {}

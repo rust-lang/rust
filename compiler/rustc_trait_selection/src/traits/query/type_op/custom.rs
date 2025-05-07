@@ -5,11 +5,12 @@ use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
 use rustc_span::Span;
+use tracing::info;
 
-use crate::infer::canonical::query_response;
 use crate::infer::InferCtxt;
-use crate::traits::query::type_op::TypeOpOutput;
+use crate::infer::canonical::query_response;
 use crate::traits::ObligationCtxt;
+use crate::traits::query::type_op::TypeOpOutput;
 
 pub struct CustomTypeOp<F> {
     closure: F,

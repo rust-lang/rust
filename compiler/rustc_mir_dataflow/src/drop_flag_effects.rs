@@ -1,9 +1,28 @@
+use rustc_abi::VariantIdx;
 use rustc_middle::mir::{self, Body, Location, Terminator, TerminatorKind};
-use rustc_target::abi::VariantIdx;
 use tracing::debug;
 
 use super::move_paths::{InitKind, LookupResult, MoveData, MovePathIndex};
-use crate::elaborate_drops::DropFlagState;
+
+/// The value of an inserted drop flag.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum DropFlagState {
+    /// The tracked value is initialized and needs to be dropped when leaving its scope.
+    Present,
+
+    /// The tracked value is uninitialized or was moved out of and does not need to be dropped when
+    /// leaving its scope.
+    Absent,
+}
+
+impl DropFlagState {
+    pub fn value(self) -> bool {
+        match self {
+            DropFlagState::Present => true,
+            DropFlagState::Absent => false,
+        }
+    }
+}
 
 pub fn move_path_children_matching<'tcx, F>(
     move_data: &MoveData<'tcx>,

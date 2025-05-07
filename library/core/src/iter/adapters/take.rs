@@ -317,3 +317,60 @@ impl<I: Iterator + TrustedRandomAccess> SpecTake for Take<I> {
         }
     }
 }
+
+#[stable(feature = "exact_size_take_repeat", since = "1.82.0")]
+impl<T: Clone> DoubleEndedIterator for Take<crate::iter::Repeat<T>> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.next()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.nth(n)
+    }
+
+    #[inline]
+    fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        self.try_fold(init, fold)
+    }
+
+    #[inline]
+    fn rfold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc
+    where
+        Self: Sized,
+        Fold: FnMut(Acc, Self::Item) -> Acc,
+    {
+        self.fold(init, fold)
+    }
+
+    #[inline]
+    #[rustc_inherit_overflow_checks]
+    fn advance_back_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
+        self.advance_by(n)
+    }
+}
+
+// Note: It may be tempting to impl DoubleEndedIterator for Take<RepeatWith>.
+// One must fight that temptation since such implementation wouldn’t be correct
+// because we have no way to return value of nth invocation of repeater followed
+// by n-1st without remembering all results.
+
+#[stable(feature = "exact_size_take_repeat", since = "1.82.0")]
+impl<T: Clone> ExactSizeIterator for Take<crate::iter::Repeat<T>> {
+    fn len(&self) -> usize {
+        self.n
+    }
+}
+
+#[stable(feature = "exact_size_take_repeat", since = "1.82.0")]
+impl<F: FnMut() -> A, A> ExactSizeIterator for Take<crate::iter::RepeatWith<F>> {
+    fn len(&self) -> usize {
+        self.n
+    }
+}

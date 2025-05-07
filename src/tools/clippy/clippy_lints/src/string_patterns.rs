@@ -1,21 +1,21 @@
 use std::ops::ControlFlow;
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::macros::matching_root_macro_call;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::path_to_local_id;
 use clippy_utils::source::{snippet, str_literal_to_char_literal};
-use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::visitors::{Descend, for_each_expr};
 use itertools::Itertools;
 use rustc_ast::{BinOpKind, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind};
+use rustc_hir::{Expr, ExprKind, PatExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// "Hello World!".trim_end_matches(['.', ',', '!', '?']);
     /// ```
-    #[clippy::version = "1.80.0"]
+    #[clippy::version = "1.81.0"]
     pub MANUAL_PATTERN_CHAR_COMPARISON,
     style,
     "manual char comparison in string patterns"
@@ -77,9 +77,7 @@ pub struct StringPatterns {
 
 impl StringPatterns {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -136,9 +134,9 @@ fn get_char_span<'tcx>(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Optio
     }
 }
 
-fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<'_>, msrv: &Msrv) {
+fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<'_>, msrv: Msrv) {
     if let ExprKind::Closure(closure) = method_arg.kind
-        && let body = cx.tcx.hir().body(closure.body)
+        && let body = cx.tcx.hir_body(closure.body)
         && let Some(PatKind::Binding(_, binding, ..)) = body.params.first().map(|p| p.pat.kind)
     {
         let mut set_char_spans: Vec<Span> = Vec::new();
@@ -171,7 +169,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
                         return ControlFlow::Break(());
                     }
                     if arm.pat.walk_short(|pat| match pat.kind {
-                        PatKind::Lit(expr) if let ExprKind::Lit(lit) = expr.kind => {
+                        PatKind::Expr(expr) if let PatExprKind::Lit { lit, negated: false } = expr.kind => {
                             if let LitKind::Char(_) = lit.node {
                                 set_char_spans.push(lit.span);
                             }
@@ -192,7 +190,7 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
         {
             return;
         }
-        if set_char_spans.len() > 1 && !msrv.meets(msrvs::PATTERN_TRAIT_CHAR_ARRAY) {
+        if set_char_spans.len() > 1 && !msrv.meets(cx, msrvs::PATTERN_TRAIT_CHAR_ARRAY) {
             return;
         }
         span_lint_and_then(
@@ -238,9 +236,7 @@ impl<'tcx> LateLintPass<'tcx> for StringPatterns {
         {
             check_single_char_pattern_lint(cx, arg);
 
-            check_manual_pattern_char_comparison(cx, arg, &self.msrv);
+            check_manual_pattern_char_comparison(cx, arg, self.msrv);
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

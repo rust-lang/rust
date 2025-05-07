@@ -3,14 +3,14 @@ Input: TokenStream [Ident { ident: "$crate", span: $DIR/meta-macro-hygiene.rs:26
 Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Joint, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: ':', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Ident { ident: "dummy", span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Punct { ch: '!', spacing: Alone, span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }, Group { delimiter: Parenthesis, stream: TokenStream [], span: $DIR/auxiliary/make-macro.rs:7:9: 7:56 (#4) }]
 #![feature /* 0#0 */(prelude_import)]
 //@ aux-build:make-macro.rs
-//@ aux-build:meta-macro.rs
+//@ proc-macro: meta-macro.rs
 //@ edition:2018
 //@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene -Z trim-diagnostic-paths=no
 //@ check-pass
 // ignore-tidy-linelength
-//@ normalize-stdout-test: "\d+#" -> "0#"
-//@ normalize-stdout-test: "expn\d{3,}" -> "expnNNN"
-//@ normalize-stdout-test: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
+//@ normalize-stdout: "\d+#" -> "0#"
+//@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
+//@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"
 //
 // We don't care about symbol ids, so we set them all to 0
 // in the stdout
@@ -20,7 +20,6 @@ Respanned: TokenStream [Ident { ident: "$crate", span: $DIR/auxiliary/make-macro
 use core /* 0#1 */::prelude /* 0#1 */::rust_2018 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#1 */;
-extern crate compiler_builtins /* NNN */ as _ /* 0#1 */;
 // Don't load unnecessary hygiene information from std
 extern crate std /* 0#0 */;
 
@@ -61,11 +60,11 @@ SyntaxContexts:
 #0: parent: #0, outer_mark: (crate0::{{expn0}}, Opaque)
 #1: parent: #0, outer_mark: (crate0::{{expn1}}, Opaque)
 #2: parent: #0, outer_mark: (crate0::{{expn1}}, Transparent)
-#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiTransparent)
+#3: parent: #0, outer_mark: (crate0::{{expn2}}, SemiOpaque)
 #4: parent: #0, outer_mark: (crate0::{{expn3}}, Opaque)
 #5: parent: #3, outer_mark: (crate0::{{expn3}}, Transparent)
-#6: parent: #0, outer_mark: (crate0::{{expn3}}, SemiTransparent)
+#6: parent: #0, outer_mark: (crate0::{{expn3}}, SemiOpaque)
 #7: parent: #0, outer_mark: (crate0::{{expn4}}, Opaque)
 #8: parent: #4, outer_mark: (crate0::{{expn4}}, Transparent)
-#9: parent: #4, outer_mark: (crate0::{{expn4}}, SemiTransparent)
+#9: parent: #4, outer_mark: (crate0::{{expn4}}, SemiOpaque)
 */

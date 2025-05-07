@@ -2,7 +2,7 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
-import { expectNotUndefined, log, unwrapUndefinable } from "./util";
+import { expectNotUndefined, log, normalizeDriveLetter, unwrapUndefinable } from "./util";
 import type { Env } from "./util";
 import type { Disposable } from "vscode";
 
@@ -12,6 +12,8 @@ export type RunnableEnvCfgItem = {
     platform?: string | string[];
 };
 export type RunnableEnvCfg = Record<string, string> | RunnableEnvCfgItem[];
+
+type ShowStatusBar = "always" | "never" | { documentSelector: vscode.DocumentSelector };
 
 export class Config {
     readonly extensionId = "rust-lang.rust-analyzer";
@@ -24,6 +26,8 @@ export class Config {
         "serverPath",
         "server",
         "files",
+        "cfg",
+        "showSyntaxTree",
     ].map((opt) => `${this.rootSection}.${opt}`);
 
     private readonly requiresWindowReloadOpts = ["testExplorer"].map(
@@ -137,13 +141,13 @@ export class Config {
                 {
                     // Parent doc single-line comment
                     // e.g. //!|
-                    beforeText: /^\s*\/{2}\!.*$/,
+                    beforeText: /^\s*\/{2}!.*$/,
                     action: { indentAction, appendText: "//! " },
                 },
                 {
                     // Begins an auto-closed multi-line comment (standard or parent doc)
                     // e.g. /** | */ or /*! | */
-                    beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
+                    beforeText: /^\s*\/\*(\*|!)(?!\/)([^*]|\*(?!\/))*$/,
                     afterText: /^\s*\*\/$/,
                     action: {
                         indentAction: vscode.IndentAction.IndentOutdent,
@@ -153,19 +157,19 @@ export class Config {
                 {
                     // Begins a multi-line comment (standard or parent doc)
                     // e.g. /** ...| or /*! ...|
-                    beforeText: /^\s*\/\*(\*|\!)(?!\/)([^\*]|\*(?!\/))*$/,
+                    beforeText: /^\s*\/\*(\*|!)(?!\/)([^*]|\*(?!\/))*$/,
                     action: { indentAction, appendText: " * " },
                 },
                 {
                     // Continues a multi-line comment
                     // e.g.  * ...|
-                    beforeText: /^(\ \ )*\ \*(\ ([^\*]|\*(?!\/))*)?$/,
+                    beforeText: /^( {2})* \*( ([^*]|\*(?!\/))*)?$/,
                     action: { indentAction, appendText: "* " },
                 },
                 {
                     // Dedents after closing a multi-line comment
                     // e.g.  */|
-                    beforeText: /^(\ \ )*\ \*\/\s*$/,
+                    beforeText: /^( {2})* \*\/\s*$/,
                     action: { indentAction, removeText: 1 },
                 },
             ];
@@ -209,19 +213,22 @@ export class Config {
 
     get serverExtraEnv(): Env {
         const extraEnv =
-            this.get<{ [key: string]: string | number } | null>("server.extraEnv") ?? {};
+            this.get<{ [key: string]: { toString(): string } | null } | null>("server.extraEnv") ??
+            {};
         return substituteVariablesInEnv(
             Object.fromEntries(
                 Object.entries(extraEnv).map(([k, v]) => [
                     k,
-                    typeof v !== "string" ? v.toString() : v,
+                    typeof v === "string" ? v : v?.toString(),
                 ]),
             ),
         );
     }
+
     get checkOnSave() {
         return this.get<boolean>("checkOnSave") ?? false;
     }
+
     async toggleCheckOnSave() {
         const config = this.cfg.inspect<boolean>("checkOnSave") ?? { key: "checkOnSave" };
         let overrideInLanguage;
@@ -252,10 +259,6 @@ export class Config {
         await this.cfg.update("checkOnSave", !(value || false), target || null, overrideInLanguage);
     }
 
-    get discoverProjectRunner(): string | undefined {
-        return this.get<string | undefined>("discoverProjectRunner");
-    }
-
     get problemMatcher(): string[] {
         return this.get<string[]>("runnables.problemMatcher") || [];
     }
@@ -264,9 +267,11 @@ export class Config {
         return this.get<boolean | undefined>("testExplorer");
     }
 
-    get runnablesExtraEnv() {
+    runnablesExtraEnv(label: string): Record<string, string> | undefined {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const item = this.get<any>("runnables.extraEnv") ?? this.get<any>("runnableEnv");
-        if (!item) return item;
+        if (!item) return undefined;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fixRecord = (r: Record<string, any>) => {
             for (const key in r) {
                 if (typeof r[key] !== "string") {
@@ -274,11 +279,28 @@ export class Config {
                 }
             }
         };
+
+        const platform = process.platform;
+        const checkPlatform = (it: RunnableEnvCfgItem) => {
+            if (it.platform) {
+                const platforms = Array.isArray(it.platform) ? it.platform : [it.platform];
+                return platforms.indexOf(platform) >= 0;
+            }
+            return true;
+        };
+
         if (item instanceof Array) {
-            item.forEach((x) => fixRecord(x.env));
-        } else {
-            fixRecord(item);
+            const env = {};
+            for (const it of item) {
+                const masked = !it.mask || new RegExp(it.mask).test(label);
+                if (masked && checkPlatform(it)) {
+                    Object.assign(env, it.env);
+                }
+            }
+            fixRecord(env);
+            return env;
         }
+        fixRecord(item);
         return item;
     }
 
@@ -302,7 +324,7 @@ export class Config {
         return {
             engine: this.get<string>("debug.engine"),
             engineSettings: this.get<object>("debug.engineSettings") ?? {},
-            openDebugPane: this.get<boolean>("debug.openDebugPane"),
+            buildBeforeRestart: this.get<boolean>("debug.buildBeforeRestart"),
             sourceFileMap: sourceFileMap,
         };
     }
@@ -317,6 +339,7 @@ export class Config {
             gotoTypeDef: this.get<boolean>("hover.actions.gotoTypeDef.enable"),
         };
     }
+
     get previewRustcOutput() {
         return this.get<boolean>("diagnostics.previewRustcOutput");
     }
@@ -329,19 +352,41 @@ export class Config {
         return this.get<boolean>("showDependenciesExplorer");
     }
 
+    get showSyntaxTree() {
+        return this.get<boolean>("showSyntaxTree");
+    }
+
     get statusBarClickAction() {
         return this.get<string>("statusBar.clickAction");
+    }
+
+    get statusBarShowStatusBar() {
+        return this.get<ShowStatusBar>("statusBar.showStatusBar");
+    }
+
+    get initializeStopped() {
+        return this.get<boolean>("initializeStopped");
+    }
+
+    get askBeforeUpdateTest() {
+        return this.get<boolean>("runnables.askBeforeUpdateTest");
+    }
+
+    async setAskBeforeUpdateTest(value: boolean) {
+        await this.cfg.update("runnables.askBeforeUpdateTest", value, true);
     }
 }
 
 export function prepareVSCodeConfig<T>(resp: T): T {
     if (Is.string(resp)) {
         return substituteVSCodeVariableInString(resp) as T;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } else if (resp && Is.array<any>(resp)) {
         return resp.map((val) => {
             return prepareVSCodeConfig(val);
         }) as T;
     } else if (resp && typeof resp === "object") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const res: { [key: string]: any } = {};
         for (const key in resp) {
             const val = resp[key];
@@ -354,6 +399,7 @@ export function prepareVSCodeConfig<T>(resp: T): T {
 
 // FIXME: Merge this with `substituteVSCodeVariables` above
 export function substituteVariablesInEnv(env: Env): Env {
+    const depRe = new RegExp(/\${(?<depName>.+?)}/g);
     const missingDeps = new Set<string>();
     // vscode uses `env:ENV_NAME` for env vars resolution, and it's easier
     // to follow the same convention for our dependency tracking
@@ -361,15 +407,16 @@ export function substituteVariablesInEnv(env: Env): Env {
     const envWithDeps = Object.fromEntries(
         Object.entries(env).map(([key, value]) => {
             const deps = new Set<string>();
-            const depRe = new RegExp(/\${(?<depName>.+?)}/g);
-            let match = undefined;
-            while ((match = depRe.exec(value))) {
-                const depName = unwrapUndefinable(match.groups?.["depName"]);
-                deps.add(depName);
-                // `depName` at this point can have a form of `expression` or
-                // `prefix:expression`
-                if (!definedEnvKeys.has(depName)) {
-                    missingDeps.add(depName);
+            if (value) {
+                let match = undefined;
+                while ((match = depRe.exec(value))) {
+                    const depName = unwrapUndefinable(match.groups?.["depName"]);
+                    deps.add(depName);
+                    // `depName` at this point can have a form of `expression` or
+                    // `prefix:expression`
+                    if (!definedEnvKeys.has(depName)) {
+                        missingDeps.add(depName);
+                    }
                 }
             }
             return [`env:${key}`, { deps: [...deps], value }];
@@ -410,11 +457,10 @@ export function substituteVariablesInEnv(env: Env): Env {
     do {
         leftToResolveSize = toResolve.size;
         for (const key of toResolve) {
-            const item = unwrapUndefinable(envWithDeps[key]);
-            if (item.deps.every((dep) => resolved.has(dep))) {
-                item.value = item.value.replace(/\${(?<depName>.+?)}/g, (_wholeMatch, depName) => {
-                    const item = unwrapUndefinable(envWithDeps[depName]);
-                    return item.value;
+            const item = envWithDeps[key];
+            if (item && item.deps.every((dep) => resolved.has(dep))) {
+                item.value = item.value?.replace(/\${(?<depName>.+?)}/g, (_wholeMatch, depName) => {
+                    return envWithDeps[depName]?.value ?? "";
                 });
                 resolved.add(key);
                 toResolve.delete(key);
@@ -448,14 +494,13 @@ function computeVscodeVar(varName: string): string | null {
         // TODO: support for remote workspaces?
         const fsPath: string =
             folder === undefined
-                ? // no workspace opened
-                  ""
+                ? "" // no workspace opened
                 : // could use currently opened document to detect the correct
                   // workspace. However, that would be determined by the document
                   // user has opened on Editor startup. Could lead to
                   // unpredictable workspace selection in practice.
                   // It's better to pick the first one
-                  folder.uri.fsPath;
+                  normalizeDriveLetter(folder.uri.fsPath);
         return fsPath;
     };
     // https://code.visualstudio.com/docs/editor/variables-reference

@@ -2,7 +2,7 @@ error: called `unwrap` on `x` after checking its variant with `is_some`
   --> tests/ui/checked_unwrap/complex_conditionals_nested.rs:13:13
    |
 LL |         if x.is_some() {
-   |         -------------- help: try: `if let Some(..) = x`
+   |         -------------- help: try: `if let Some(<item>) = x`
 LL |             // unnecessary
 LL |             x.unwrap();
    |             ^^^^^^^^^^

@@ -16,12 +16,16 @@ error: lifetime may not live long enough
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:37:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
-   |                                                ---------  - has type `&'?7 Cell<&'1 u32>`
+   |                                                ---------  - has type `&'?6 Cell<&'1 u32>`
    |                                                |
-   |                                                has type `&'?5 Cell<&'2 &'?1 u32>`
+   |                                                has type `&'?4 Cell<&'2 &'?1 u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&'?37 u32>`, which makes the generic argument `&'?37 u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 note: no external requirements
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:34:1

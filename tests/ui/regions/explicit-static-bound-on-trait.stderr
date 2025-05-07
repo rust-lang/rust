@@ -1,0 +1,32 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/explicit-static-bound-on-trait.rs:2:12
+   |
+LL |     value: Box<dyn std::any::Any + 'a>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/explicit-static-bound-on-trait.rs:1:14
+   |
+LL | struct Hello<'a> {
+   |              ^^
+note: but lifetime parameter must outlive the static lifetime
+  --> $SRC_DIR/core/src/any.rs:LL:COL
+
+error[E0310]: the parameter type `T` may not live long enough
+  --> $DIR/explicit-static-bound-on-trait.rs:8:23
+   |
+LL |         Self { value: Box::new(value) }
+   |                       ^^^^^^^^^^^^^^^
+   |                       |
+   |                       the parameter type `T` must be valid for the static lifetime...
+   |                       ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL |     fn new<T: 'a + 'static>(value: T) -> Self {
+   |                  +++++++++
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0310, E0478.
+For more information about an error, try `rustc --explain E0310`.

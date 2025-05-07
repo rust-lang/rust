@@ -7,22 +7,23 @@ use std::{cell::RefCell, fs::read_to_string, panic::AssertUnwindSafe, path::Path
 
 use hir::{ChangeWithProcMacros, Crate};
 use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
+use ide_db::base_db;
 use itertools::Either;
 use paths::Utf8PathBuf;
 use profile::StopWatch;
-use project_model::target_data_layout::RustcDataLayoutConfig;
+use project_model::toolchain_info::{QueryConfig, target_data_layout};
 use project_model::{
-    target_data_layout, CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind,
-    RustLibSource, Sysroot,
+    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource,
+    RustSourceWorkspaceConfig, Sysroot,
 };
 
-use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
 use rustc_hash::FxHashMap;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, FileId};
 use walkdir::WalkDir;
 
-use crate::cli::{flags, report_metric, Result};
+use crate::cli::{Result, flags, report_metric};
 
 struct Tester {
     host: AnalysisHost,
@@ -67,12 +68,21 @@ impl Tester {
         path.push("ra-rustc-test.rs");
         let tmp_file = AbsPathBuf::try_from(Utf8PathBuf::from_path_buf(path).unwrap()).unwrap();
         std::fs::write(&tmp_file, "")?;
-        let cargo_config =
-            CargoConfig { sysroot: Some(RustLibSource::Discover), ..Default::default() };
+        let cargo_config = CargoConfig {
+            sysroot: Some(RustLibSource::Discover),
+            all_targets: true,
+            set_test: true,
+            ..Default::default()
+        };
 
-        let sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
+        let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
+        let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo());
+        if let Some(loaded_sysroot) = loaded_sysroot {
+            sysroot.set_workspace(loaded_sysroot);
+        }
+
         let data_layout = target_data_layout::get(
-            RustcDataLayoutConfig::Rustc(&sysroot),
+            QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
             None,
             &cargo_config.extra_env,
         );
@@ -81,13 +91,14 @@ impl Tester {
             kind: ProjectWorkspaceKind::DetachedFile {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
-                cargo_config_extra_env: Default::default(),
             },
             sysroot,
             rustc_cfg: vec![],
             toolchain: None,
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: Default::default(),
+            extra_includes: vec![],
+            set_test: true,
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,
@@ -129,7 +140,7 @@ impl Tester {
             FxHashMap::default()
         };
         let text = read_to_string(&p).unwrap();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         // Ignore unstable tests, since they move too fast and we do not intend to support all of them.
         let mut ignore_test = text.contains("#![feature");
         // Ignore test with extern crates, as this infra don't support them yet.
@@ -154,13 +165,13 @@ impl Tester {
                     let analysis = self.host.analysis();
                     let root_file = self.root_file;
                     move || {
-                        let res = std::panic::catch_unwind(move || {
+                        let res = std::panic::catch_unwind(AssertUnwindSafe(move || {
                             analysis.full_diagnostics(
                                 diagnostic_config,
                                 ide::AssistResolveStrategy::None,
                                 root_file,
                             )
-                        });
+                        }));
                         main.unpark();
                         res
                     }
@@ -293,14 +304,14 @@ impl flags::RustcTests {
                     continue;
                 }
             }
-            if p.extension().map_or(true, |x| x != "rs") {
+            if p.extension().is_none_or(|x| x != "rs") {
                 continue;
             }
             if let Err(e) = std::panic::catch_unwind({
                 let tester = AssertUnwindSafe(&mut tester);
                 let p = p.clone();
                 move || {
-                    let _guard = stdx::panic_context::enter(p.display().to_string());
+                    let _guard = base_db::DbPanicContext::enter(p.display().to_string());
                     { tester }.0.test(p);
                 }
             }) {

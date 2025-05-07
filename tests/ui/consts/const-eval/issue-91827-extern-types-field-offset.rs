@@ -37,7 +37,7 @@ const OFFSET: () = unsafe {
     // fails.
     let field = &x.a;
     //~^ ERROR: evaluation of constant value failed
-    //~| does not have a known offset
+    //~| NOTE does not have a known offset
 };
 
 fn main() {}

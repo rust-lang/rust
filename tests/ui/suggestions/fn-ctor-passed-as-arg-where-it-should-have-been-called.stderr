@@ -20,10 +20,11 @@ error[E0277]: the trait bound `{closure@$DIR/fn-ctor-passed-as-arg-where-it-shou
   --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:19:9
    |
 LL |     bar(closure);
-   |     --- ^^^^^^^ the trait `T` is not implemented for closure `{closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21}`
+   |     --- ^^^^^^^ unsatisfied trait bound
    |     |
    |     required by a bound introduced by this call
    |
+   = help: the trait `T` is not implemented for closure `{closure@$DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:18:19: 18:21}`
 note: required by a bound in `bar`
   --> $DIR/fn-ctor-passed-as-arg-where-it-should-have-been-called.rs:14:16
    |

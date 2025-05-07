@@ -18,6 +18,7 @@ struct Foo<'a> {
 type F = impl Future;
 
 impl<'a> Foo<'a> {
+    #[define_opaque(F)]
     fn reply(&mut self) -> F {
         AndThen(|| ())
     }

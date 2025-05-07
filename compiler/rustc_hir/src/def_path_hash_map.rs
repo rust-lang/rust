@@ -1,4 +1,4 @@
-use rustc_data_structures::stable_hasher::Hash64;
+use rustc_hashes::Hash64;
 use rustc_span::def_id::DefIndex;
 
 #[derive(Clone, Default)]

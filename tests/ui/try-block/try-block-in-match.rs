@@ -1,5 +1,5 @@
 //@ run-pass
-//@ compile-flags: --edition 2018
+//@ edition: 2018
 
 #![feature(try_blocks)]
 

@@ -1,0 +1,75 @@
+error[E0277]: the trait bound `for<'a> (): Trait<'a>` is not satisfied
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:7:22
+   |
+LL | fn foo(x: for<'a> fn(<() as Trait<'a>>::Assoc)) {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:3:1
+   |
+LL | trait Trait<'a> {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `for<'a> (): Trait<'a>` is not satisfied
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:7:8
+   |
+LL | fn foo(x: for<'a> fn(<() as Trait<'a>>::Assoc)) {
+   |        ^ the trait `for<'a> Trait<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:3:1
+   |
+LL | trait Trait<'a> {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `for<'a> (): Trait<'a>` is not satisfied
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:11:14
+   |
+LL |     unsafe { std::mem::transmute::<_, ()>(x); }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:3:1
+   |
+LL | trait Trait<'a> {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `for<'a> (): Trait<'a>` is not satisfied
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:11:36
+   |
+LL |     unsafe { std::mem::transmute::<_, ()>(x); }
+   |                                    ^ the trait `for<'a> Trait<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:3:1
+   |
+LL | trait Trait<'a> {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `for<'a> (): Trait<'a>` is not satisfied
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:11:43
+   |
+LL |     unsafe { std::mem::transmute::<_, ()>(x); }
+   |                                           ^ the trait `for<'a> Trait<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:3:1
+   |
+LL | trait Trait<'a> {
+   | ^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `for<'a> (): Trait<'a>` is not satisfied
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:7:1
+   |
+LL | fn foo(x: for<'a> fn(<() as Trait<'a>>::Assoc)) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Trait<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/dont-ice-on-bad-transmute-in-typeck.rs:3:1
+   |
+LL | trait Trait<'a> {
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

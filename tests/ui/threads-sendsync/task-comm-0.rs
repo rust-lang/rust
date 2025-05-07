@@ -2,12 +2,14 @@
 #![allow(unused_must_use)]
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::{channel, Sender};
+use std::thread;
 
-pub fn main() { test05(); }
+pub fn main() {
+    test05();
+}
 
-fn test05_start(tx : &Sender<isize>) {
+fn test05_start(tx: &Sender<isize>) {
     tx.send(10).unwrap();
     println!("sent 10");
     tx.send(20).unwrap();
@@ -18,7 +20,7 @@ fn test05_start(tx : &Sender<isize>) {
 
 fn test05() {
     let (tx, rx) = channel();
-    let t = thread::spawn(move|| { test05_start(&tx) });
+    let t = thread::spawn(move || test05_start(&tx));
     let mut value: isize = rx.recv().unwrap();
     println!("{}", value);
     value = rx.recv().unwrap();

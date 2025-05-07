@@ -30,8 +30,8 @@ fn unsafe_imm() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{:?}", (*t.0).s);
-        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture t[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing t[(0, 0),Deref,(0, 0)] -> Immutable
+        //~| NOTE: Min Capture t[(0, 0)] -> Immutable
     };
 
     c();
@@ -51,8 +51,8 @@ fn unsafe_mut() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let x = unsafe { &mut (*p).s };
-        //~^ NOTE: Capturing p[Deref,(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture p[] -> ImmBorrow
+        //~^ NOTE: Capturing p[Deref,(0, 0)] -> Immutable
+        //~| NOTE: Min Capture p[] -> Immutable
         *x = "s".into();
     };
     c();

@@ -17,14 +17,14 @@ pub fn main() {
     let a = (1, 2, 3);
     let b = (1, 2, 3);
     assert_eq!(a, b);
-    assert!((a != (1, 2, 4)));
-    assert!((a < (1, 2, 4)));
-    assert!((a <= (1, 2, 4)));
-    assert!(((1, 2, 4) > a));
-    assert!(((1, 2, 4) >= a));
+    assert!(a != (1, 2, 4));
+    assert!(a < (1, 2, 4));
+    assert!(a <= (1, 2, 4));
+    assert!((1, 2, 4) > a);
+    assert!((1, 2, 4) >= a);
     let x = foo::large;
     let y = foo::small;
-    assert!((x != y));
+    assert!(x != y);
     assert_eq!(x, foo::large);
-    assert!((x != foo::small));
+    assert!(x != foo::small);
 }

@@ -1,0 +1,101 @@
+error: expected `{`, found `map`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:2:30
+   |
+LL |     for _ in [1, 2, 3].iter()map(|x| x) {}
+   |                              ^^^ expected `{`
+   |
+help: you might have meant to write a method call
+   |
+LL |     for _ in [1, 2, 3].iter().map(|x| x) {}
+   |                              +
+
+error: expected `{`, found `cos`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:7:21
+   |
+LL |     for _ in 1.3f64 cos() {}
+   |                     ^^^ expected `{`
+   |
+help: you might have meant to write a method call
+   |
+LL |     for _ in 1.3f64.cos() {}
+   |                    +
+
+error: expected `{`, found `cos`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:12:18
+   |
+LL |     for _ in 1.3 cos {}
+   |                  ^^^ expected `{`
+   |
+help: you might have meant to write a field access
+   |
+LL |     for _ in 1.3.cos {}
+   |                 +
+
+error: expected `{`, found `cos`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:17:16
+   |
+LL |     for _ in 1 cos() {}
+   |                ^^^ expected `{`
+   |
+help: you might have meant to write a method call
+   |
+LL |     for _ in 1.cos() {}
+   |               +
+
+error: expected `{`, found `cos`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:22:16
+   |
+LL |     for _ in 1 cos {}
+   |                ^^^ expected `{`
+   |
+help: you might have meant to write a field access
+   |
+LL |     for _ in 1.cos {}
+   |               +
+
+error: expected `{`, found `0`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:28:16
+   |
+LL |     for _ in x 0 {}
+   |                ^ expected `{`
+   |
+help: you might have meant to write a field access
+   |
+LL |     for _ in x.0 {}
+   |               +
+
+error: expected `{`, found `0.0`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:34:16
+   |
+LL |     for _ in x 0.0 {}
+   |                ^^^ expected `{`
+   |
+help: you might have meant to write a field access
+   |
+LL |     for _ in x.0.0 {}
+   |               +
+
+error: expected `{`, found `unwrap`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:40:16
+   |
+LL |     for _ in x unwrap() {}
+   |                ^^^^^^ expected `{`
+   |
+help: you might have meant to write a method call
+   |
+LL |     for _ in x.unwrap() {}
+   |               +
+
+error: expected `{`, found `a`
+  --> $DIR/missing-dot-on-if-condition-expression.rs:46:16
+   |
+LL |     for _ in x a.b {}
+   |                ^ expected `{`
+   |
+help: you might have meant to write a field access
+   |
+LL |     for _ in x.a.b {}
+   |               +
+
+error: aborting due to 9 previous errors
+

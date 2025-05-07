@@ -4,6 +4,12 @@ error[E0075]: SIMD vector cannot be empty
 LL | struct Bad;
    | ^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error[E0075]: SIMD vector cannot have multiple fields
+  --> $DIR/E0075.rs:7:1
+   |
+LL | struct AlsoBad([i32; 1], [i32; 1]);
+   | ^^^^^^^^^^^^^^           -------- excess field
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0075`.

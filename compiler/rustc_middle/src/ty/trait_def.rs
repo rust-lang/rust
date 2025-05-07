@@ -70,12 +70,12 @@ pub struct TraitDef {
 
     /// Whether to add a builtin `dyn Trait: Trait` implementation.
     /// This is enabled for all traits except ones marked with
-    /// `#[rustc_deny_explicit_impl(implement_via_object = false)]`.
+    /// `#[rustc_do_not_implement_via_object]`.
     pub implement_via_object: bool,
 
     /// Whether a trait is fully built-in, and any implementation is disallowed.
     /// This only applies to built-in traits, and is marked via
-    /// `#[rustc_deny_explicit_impl(implement_via_object = ...)]`.
+    /// `#[rustc_deny_explicit_impl]`.
     pub deny_explicit_impl: bool,
 }
 
@@ -129,21 +129,6 @@ impl<'tcx> TraitDef {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn for_each_impl<F: FnMut(DefId)>(self, trait_def_id: DefId, mut f: F) {
-        let impls = self.trait_impls_of(trait_def_id);
-
-        for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
-        }
-
-        for v in impls.non_blanket_impls.values() {
-            for &impl_def_id in v {
-                f(impl_def_id);
-            }
-        }
-    }
-
     /// Iterate over every impl that could possibly match the self type `self_ty`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
@@ -168,9 +153,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // whose outer level is not a parameter or projection. Especially for things like
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        // Note that we're using `TreatParams::ForLookup` to query `non_blanket_impls` while using
-        // `TreatParams::AsCandidateKey` while actually adding them.
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::ForLookup) {
+        // Note that we're using `TreatParams::AsRigid` to query `non_blanket_impls` while using
+        // `TreatParams::InstantiateWithInfer` while actually adding them.
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsRigid) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     f(impl_def_id);
@@ -188,9 +173,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-    ) -> impl Iterator<Item = DefId> + 'tcx {
+    ) -> impl Iterator<Item = DefId> {
         let impls = self.trait_impls_of(trait_def_id);
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsCandidateKey) {
+        if let Some(simp) =
+            fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
+        {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 return impls.iter().copied();
             }
@@ -202,7 +189,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns an iterator containing all impls for `trait_def_id`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
 
         blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
@@ -233,13 +220,13 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
     }
 
-    for &impl_def_id in tcx.hir().trait_impls(trait_id) {
+    for &impl_def_id in tcx.local_trait_impls(trait_id) {
         let impl_def_id = impl_def_id.to_def_id();
 
         let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
 
         if let Some(simplified_self_ty) =
-            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::AsCandidateKey)
+            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::InstantiateWithInfer)
         {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {
@@ -251,35 +238,21 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
 }
 
 /// Query provider for `incoherent_impls`.
-pub(super) fn incoherent_impls_provider(
-    tcx: TyCtxt<'_>,
-    simp: SimplifiedType,
-) -> Result<&[DefId], ErrorGuaranteed> {
+pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
     let mut impls = Vec::new();
-
-    let mut res = Ok(());
     for cnum in iter::once(LOCAL_CRATE).chain(tcx.crates(()).iter().copied()) {
-        let incoherent_impls = match tcx.crate_incoherent_impls((cnum, simp)) {
-            Ok(impls) => impls,
-            Err(e) => {
-                res = Err(e);
-                continue;
-            }
-        };
-        for &impl_def_id in incoherent_impls {
+        for &impl_def_id in tcx.crate_incoherent_impls((cnum, simp)) {
             impls.push(impl_def_id)
         }
     }
-
     debug!(?impls);
-    res?;
 
-    Ok(tcx.arena.alloc_slice(&impls))
+    tcx.arena.alloc_slice(&impls)
 }
 
 pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
     let mut traits = Vec::new();
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
             traits.push(id.owner_id.to_def_id())
         }
@@ -290,7 +263,7 @@ pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
 
 pub(super) fn trait_impls_in_crate_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
     let mut trait_impls = Vec::new();
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
             && tcx.impl_trait_ref(id.owner_id).is_some()
         {

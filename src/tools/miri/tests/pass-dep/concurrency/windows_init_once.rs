@@ -1,13 +1,13 @@
-//@only-target-windows: Uses win32 api functions
+//@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::ptr::null_mut;
 use std::thread;
 
 use windows_sys::Win32::Foundation::{FALSE, TRUE};
 use windows_sys::Win32::System::Threading::{
-    InitOnceBeginInitialize, InitOnceComplete, INIT_ONCE, INIT_ONCE_INIT_FAILED,
+    INIT_ONCE, INIT_ONCE_INIT_FAILED, InitOnceBeginInitialize, InitOnceComplete,
 };
 
 // not in windows-sys

@@ -18,12 +18,10 @@ static Y: u32 = 0;
 
 const fn get_Y() -> u32 {
     Y
-    //~^ ERROR referencing statics in constant functions
 }
 
 const fn get_Y_addr() -> &'static u32 {
     &Y
-    //~^ ERROR referencing statics in constant functions
 }
 
 const fn get() -> u32 {

@@ -4,11 +4,7 @@ error[E0477]: the type `&'a i32` does not fulfill the required lifetime
 LL | impl<'a> Tr for &'a i32 {
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: type must satisfy the static lifetime as required by this binding
-  --> $DIR/specialize_with_generalize_lifetimes.rs:12:15
-   |
-LL | impl<T: Any + 'static> Tr for T {
-   |               ^^^^^^^
+   = note: type must satisfy the static lifetime
 
 error[E0477]: the type `Wrapper<'a>` does not fulfill the required lifetime
   --> $DIR/specialize_with_generalize_lifetimes.rs:31:1
@@ -16,11 +12,7 @@ error[E0477]: the type `Wrapper<'a>` does not fulfill the required lifetime
 LL | impl<'a> Tr for Wrapper<'a> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: type must satisfy the static lifetime as required by this binding
-  --> $DIR/specialize_with_generalize_lifetimes.rs:12:15
-   |
-LL | impl<T: Any + 'static> Tr for T {
-   |               ^^^^^^^
+   = note: type must satisfy the static lifetime
 
 error: aborting due to 2 previous errors
 

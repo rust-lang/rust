@@ -3,7 +3,7 @@ mod sync_bitset;
 use self::sync_bitset::*;
 use crate::cell::Cell;
 use crate::num::NonZero;
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 use crate::{mem, ptr};
 
 #[cfg(target_pointer_width = "64")]
@@ -11,18 +11,16 @@ const USIZE_BITS: usize = 64;
 const TLS_KEYS: usize = 128; // Same as POSIX minimum
 const TLS_KEYS_BITSET_SIZE: usize = (TLS_KEYS + (USIZE_BITS - 1)) / USIZE_BITS;
 
+// Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
-#[export_name = "_ZN16__rust_internals3std3sys3sgx3abi3tls14TLS_KEY_IN_USEE"]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx3abi3tls14TLS_KEY_IN_USEE")]
 static TLS_KEY_IN_USE: SyncBitset = SYNC_BITSET_INIT;
-macro_rules! dup {
-    ((* $($exp:tt)*) $($val:tt)*) => (dup!( ($($exp)*) $($val)* $($val)* ));
-    (() $($val:tt)*) => ([$($val),*])
-}
+// Specifying linkage/symbol name is solely to ensure a single instance between this crate and its unit tests
 #[cfg_attr(test, linkage = "available_externally")]
-#[export_name = "_ZN16__rust_internals3std3sys3sgx3abi3tls14TLS_DESTRUCTORE"]
-static TLS_DESTRUCTOR: [AtomicUsize; TLS_KEYS] = dup!((* * * * * * *) (AtomicUsize::new(0)));
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys3pal3sgx3abi3tls14TLS_DESTRUCTORE")]
+static TLS_DESTRUCTOR: [Atomic<usize>; TLS_KEYS] = [const { AtomicUsize::new(0) }; TLS_KEYS];
 
-extern "C" {
+unsafe extern "C" {
     fn get_tls_ptr() -> *const u8;
     fn set_tls_ptr(tls: *const u8);
 }
@@ -82,7 +80,7 @@ impl<'a> Drop for ActiveTls<'a> {
 
 impl Tls {
     pub fn new() -> Tls {
-        Tls { data: dup!((* * * * * * *) (Cell::new(ptr::null_mut()))) }
+        Tls { data: [const { Cell::new(ptr::null_mut()) }; TLS_KEYS] }
     }
 
     pub unsafe fn activate(&self) -> ActiveTls<'_> {

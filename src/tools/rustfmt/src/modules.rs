@@ -4,8 +4,8 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
 use rustc_ast::visit::Visitor;
-use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
+use rustc_span::symbol::{self, Symbol, sym};
 use thin_vec::ThinVec;
 use thiserror::Error;
 
@@ -152,7 +152,7 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
         let mut visitor = visitor::CfgIfVisitor::new(self.psess);
         visitor.visit_item(&item);
         for module_item in visitor.mods() {
-            if let ast::ItemKind::Mod(_, ref sub_mod_kind) = module_item.item.kind {
+            if let ast::ItemKind::Mod(_, _, ref sub_mod_kind) = module_item.item.kind {
                 self.visit_sub_mod(
                     &module_item.item,
                     Module::new(
@@ -178,7 +178,7 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
                 continue;
             }
 
-            if let ast::ItemKind::Mod(_, ref sub_mod_kind) = item.kind {
+            if let ast::ItemKind::Mod(_, _, ref sub_mod_kind) = item.kind {
                 let span = item.span;
                 self.visit_sub_mod(
                     &item,
@@ -204,7 +204,7 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
                 self.visit_cfg_if(Cow::Borrowed(item))?;
             }
 
-            if let ast::ItemKind::Mod(_, ref sub_mod_kind) = item.kind {
+            if let ast::ItemKind::Mod(_, _, ref sub_mod_kind) = item.kind {
                 let span = item.span;
                 self.visit_sub_mod(
                     item,
@@ -248,7 +248,7 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
         if is_mod_decl(item) {
             // mod foo;
             // Look for an extern file.
-            self.find_external_module(item.ident, &item.attrs, sub_mod)
+            self.find_external_module(item.kind.ident().unwrap(), &item.attrs, sub_mod)
         } else {
             // An internal module (`mod foo { /* ... */ }`);
             Ok(Some(SubModKind::Internal(item)))
@@ -291,7 +291,7 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
                 self.visit_sub_mod_after_directory_update(sub_mod, Some(directory))
             }
             SubModKind::Internal(item) => {
-                self.push_inline_mod_directory(item.ident, &item.attrs);
+                self.push_inline_mod_directory(item.kind.ident().unwrap(), &item.attrs);
                 self.visit_sub_mod_after_directory_update(sub_mod, None)
             }
             SubModKind::MultiExternal(mods) => {
@@ -316,12 +316,11 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
             self.directory = directory;
         }
         match (sub_mod.ast_mod_kind, sub_mod.items) {
-            (Some(Cow::Borrowed(ast::ModKind::Loaded(items, _, _))), _) => {
+            (Some(Cow::Borrowed(ast::ModKind::Loaded(items, _, _, _))), _) => {
                 self.visit_mod_from_ast(items)
             }
-            (Some(Cow::Owned(ast::ModKind::Loaded(items, _, _))), _) | (_, Cow::Owned(items)) => {
-                self.visit_mod_outside_ast(items)
-            }
+            (Some(Cow::Owned(ast::ModKind::Loaded(items, _, _, _))), _)
+            | (_, Cow::Owned(items)) => self.visit_mod_outside_ast(items),
             (_, _) => Ok(()),
         }
     }

@@ -3,8 +3,6 @@ fn g2(#[attr1] x: u8) {}
 
 extern "C" { fn printf(format: *const i8, #[attr] ...) -> i32; }
 
-fn foo<F: FnMut(#[attr] &mut Foo<'a>)>(){}
-
 trait Foo {
     fn bar(#[attr] _: u64, # [attr] mut x: i32);
 }

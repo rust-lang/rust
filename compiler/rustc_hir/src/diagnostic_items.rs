@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_span::def_id::DefIdMap;
 use rustc_span::Symbol;
+use rustc_span::def_id::DefIdMap;
 
 use crate::def_id::DefId;
 

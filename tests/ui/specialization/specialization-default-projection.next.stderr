@@ -1,0 +1,43 @@
+warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/specialization-default-projection.rs:5:12
+   |
+LL | #![feature(specialization)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
+   = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-projection.rs:25:5
+   |
+LL | fn generic<T>() -> <T as Foo>::Assoc {
+   |                    ----------------- expected `<T as Foo>::Assoc` because of return type
+...
+LL |     ()
+   |     ^^ types differ
+   |
+   = note: expected associated type `<T as Foo>::Assoc`
+                    found unit type `()`
+   = help: consider constraining the associated type `<T as Foo>::Assoc` to `()` or calling a method that returns `<T as Foo>::Assoc`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error[E0308]: mismatched types
+  --> $DIR/specialization-default-projection.rs:32:5
+   |
+LL | fn monomorphic() -> () {
+   |                     -- expected `()` because of return type
+...
+LL |     generic::<()>()
+   |     ^^^^^^^^^^^^^^^- help: consider using a semicolon here: `;`
+   |     |
+   |     types differ
+   |
+   = note:    expected unit type `()`
+           found associated type `<() as Foo>::Assoc`
+   = help: consider constraining the associated type `<() as Foo>::Assoc` to `()`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

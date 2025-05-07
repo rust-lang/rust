@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::source_map::Spanned;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 use super::VEC_RESIZE_TO_ZERO;
 

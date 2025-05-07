@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::vxworks::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
@@ -11,11 +11,11 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),
-            std: None, // ?
+            std: Some(true),
         },
         pointer_width: 64,
         data_layout:

@@ -5,6 +5,8 @@
 // if we use -Clink-dead-code.
 
 // EMIT_MIR core.ptr-drop_in_place.[String].AddMovesForPackedDrops.before.mir
+// EMIT_MIR core.ptr-drop_in_place.[String;42].AddMovesForPackedDrops.before.mir
 fn main() {
     let _fn = std::ptr::drop_in_place::<[String]> as unsafe fn(_);
+    let _fn = std::ptr::drop_in_place::<[String; 42]> as unsafe fn(_);
 }

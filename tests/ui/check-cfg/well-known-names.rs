@@ -2,7 +2,12 @@
 //
 //@ check-pass
 //@ no-auto-check-cfg
-//@ compile-flags: --check-cfg=cfg()
+//@ compile-flags: --check-cfg=cfg() -Zcheck-cfg-all-expected
+//@ normalize-stderr: "`, `" -> "`\n`"
+
+#[cfg(list_all_well_known_cfgs)]
+//~^ WARNING unexpected `cfg` condition name
+fn in_diagnostics() {}
 
 #[cfg(target_oz = "linux")]
 //~^ WARNING unexpected `cfg` condition name

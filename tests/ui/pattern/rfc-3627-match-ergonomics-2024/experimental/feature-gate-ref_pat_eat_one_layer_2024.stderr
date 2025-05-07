@@ -1,0 +1,133 @@
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:5:22
+   |
+LL |     if let Some(Some(&x)) = &Some(&Some(0)) {
+   |                      ^^     --------------- this expression has type `&Option<&Option<{integer}>>`
+   |                      |
+   |                      expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     if let Some(Some(&x)) = &Some(&Some(0)) {
+LL +     if let Some(Some(x)) = &Some(&Some(0)) {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:10:23
+   |
+LL |         let _: &u32 = x;
+   |                ----   ^ expected `&u32`, found integer
+   |                |
+   |                expected due to this
+   |
+help: consider borrowing here
+   |
+LL |         let _: &u32 = &x;
+   |                       +
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:13:23
+   |
+LL |     if let Some(Some(&&x)) = &Some(Some(&0)) {
+   |                       ^^     --------------- this expression has type `&Option<Option<&{integer}>>`
+   |                       |
+   |                       expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     if let Some(Some(&&x)) = &Some(Some(&0)) {
+LL +     if let Some(Some(&x)) = &Some(Some(&0)) {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:17:17
+   |
+LL |     if let Some(&Some(x)) = &Some(Some(0)) {
+   |                 ^^^^^^^^    -------------- this expression has type `&Option<Option<{integer}>>`
+   |                 |
+   |                 expected `Option<{integer}>`, found `&_`
+   |
+   = note:   expected enum `Option<{integer}>`
+           found reference `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:21:22
+   |
+LL |     if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
+   |                      ^^^^^^     ----------------------- this expression has type `&mut Option<&mut Option<{integer}>>`
+   |                      |
+   |                      expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:21:22
+   |
+LL |     if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
+   |                      ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     if let Some(Some(&mut x)) = &mut Some(&mut Some(0)) {
+LL +     if let Some(Some(x)) = &mut Some(&mut Some(0)) {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:25:22
+   |
+LL |     if let Some(Some(&x)) = &Some(&Some(0)) {
+   |                      ^^     --------------- this expression has type `&Option<&Option<{integer}>>`
+   |                      |
+   |                      expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     if let Some(Some(&x)) = &Some(&Some(0)) {
+LL +     if let Some(Some(x)) = &Some(&Some(0)) {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:29:27
+   |
+LL |     if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
+   |                           ^^     ------------------- this expression has type `&Option<&mut Option<{integer}>>`
+   |                           |
+   |                           expected integer, found `&_`
+   |
+   = note:   expected type `{integer}`
+           found reference `&_`
+help: consider removing `&` from the pattern
+   |
+LL -     if let Some(&mut Some(&x)) = &Some(&mut Some(0)) {
+LL +     if let Some(&mut Some(x)) = &Some(&mut Some(0)) {
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:33:23
+   |
+LL |     if let Some(&Some(&mut x)) = &mut Some(&Some(0)) {
+   |                       ^^^^^^     ------------------- this expression has type `&mut Option<&Option<{integer}>>`
+   |                       |
+   |                       expected integer, found `&mut _`
+   |
+   = note:           expected type `{integer}`
+           found mutable reference `&mut _`
+note: to declare a mutable binding use: `mut x`
+  --> $DIR/feature-gate-ref_pat_eat_one_layer_2024.rs:33:23
+   |
+LL |     if let Some(&Some(&mut x)) = &mut Some(&Some(0)) {
+   |                       ^^^^^^
+help: consider removing `&mut` from the pattern
+   |
+LL -     if let Some(&Some(&mut x)) = &mut Some(&Some(0)) {
+LL +     if let Some(&Some(x)) = &mut Some(&Some(0)) {
+   |
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

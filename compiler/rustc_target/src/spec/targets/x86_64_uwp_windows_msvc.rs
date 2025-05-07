@@ -1,6 +1,6 @@
-use crate::spec::{base, Target};
+use crate::spec::{Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_uwp_msvc::opts();
     base.cpu = "x86-64".into();
     base.features = "+cx16,+sse3,+sahf".into();
@@ -9,7 +9,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

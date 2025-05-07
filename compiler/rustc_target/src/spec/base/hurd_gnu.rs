@@ -1,5 +1,5 @@
-use crate::spec::{base, TargetOptions};
+use crate::spec::{TargetOptions, base};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions { env: "gnu".into(), ..base::hurd::opts() }
 }

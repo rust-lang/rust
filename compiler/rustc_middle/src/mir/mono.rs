@@ -1,24 +1,27 @@
 use std::fmt;
 use std::hash::Hash;
 
-use rustc_attr::InlineAttr;
-use rustc_data_structures::base_n::{BaseNString, ToBaseN, CASE_INSENSITIVE};
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
+use rustc_attr_data_structures::InlineAttr;
+use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
+use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_index::Idx;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
+use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
-use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
+use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -45,11 +48,44 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
     GlobalAsm(ItemId),
+}
+
+fn opt_incr_drop_glue_mode<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InstantiationMode {
+    // Non-ADTs can't have a Drop impl. This case is mostly hit by closures whose captures require
+    // dropping.
+    let ty::Adt(adt_def, _) = ty.kind() else {
+        return InstantiationMode::LocalCopy;
+    };
+
+    // Types that don't have a direct Drop impl, but have fields that require dropping.
+    let Some(dtor) = adt_def.destructor(tcx) else {
+        // We use LocalCopy for drops of enums only; this code is inherited from
+        // https://github.com/rust-lang/rust/pull/67332 and the theory is that we get to optimize
+        // out code like drop_in_place(Option::None) before crate-local ThinLTO, which improves
+        // compile time. At the time of writing, simply removing this entire check does seem to
+        // regress incr-opt compile times. But it sure seems like a more sophisticated check could
+        // do better here.
+        if adt_def.is_enum() {
+            return InstantiationMode::LocalCopy;
+        } else {
+            return InstantiationMode::GloballyShared { may_conflict: true };
+        }
+    };
+
+    // We've gotten to a drop_in_place for a type that directly implements Drop.
+    // The drop glue is a wrapper for the Drop::drop impl, and we are an optimized build, so in an
+    // effort to coordinate with the mode that the actual impl will get, we make the glue also
+    // LocalCopy.
+    if tcx.cross_crate_inlinable(dtor.did) {
+        InstantiationMode::LocalCopy
+    } else {
+        InstantiationMode::GloballyShared { may_conflict: true }
+    }
 }
 
 impl<'tcx> MonoItem<'tcx> {
@@ -65,31 +101,16 @@ impl<'tcx> MonoItem<'tcx> {
     // change NON_INCR_MIN_CGU_SIZE as well.
     pub fn size_estimate(&self, tcx: TyCtxt<'tcx>) -> usize {
         match *self {
-            MonoItem::Fn(instance) => {
-                match instance.def {
-                    // "Normal" functions size estimate: the number of
-                    // statements, plus one for the terminator.
-                    InstanceKind::Item(..)
-                    | InstanceKind::DropGlue(..)
-                    | InstanceKind::AsyncDropGlueCtorShim(..) => {
-                        let mir = tcx.instance_mir(instance.def);
-                        mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
-                    }
-                    // Other compiler-generated shims size estimate: 1
-                    _ => 1,
-                }
-            }
+            MonoItem::Fn(instance) => tcx.size_estimate(instance),
             // Conservatively estimate the size of a static declaration or
             // assembly item to be 1.
             MonoItem::Static(_) | MonoItem::GlobalAsm(_) => 1,
         }
     }
 
-    pub fn is_generic_fn(&self, tcx: TyCtxt<'tcx>) -> bool {
+    pub fn is_generic_fn(&self) -> bool {
         match self {
-            MonoItem::Fn(instance) => {
-                instance.args.non_erasable_generics(tcx, instance.def_id()).next().is_some()
-            }
+            MonoItem::Fn(instance) => instance.args.non_erasable_generics().next().is_some(),
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => false,
         }
     }
@@ -105,46 +126,109 @@ impl<'tcx> MonoItem<'tcx> {
     }
 
     pub fn instantiation_mode(&self, tcx: TyCtxt<'tcx>) -> InstantiationMode {
-        let generate_cgu_internal_copies = tcx
-            .sess
-            .opts
-            .unstable_opts
-            .inline_in_all_cgus
-            .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
-            && !tcx.sess.link_dead_code();
+        // The case handling here is written in the same style as cross_crate_inlinable, we first
+        // handle the cases where we must use a particular instantiation mode, then cascade down
+        // through a sequence of heuristics.
 
-        match *self {
-            MonoItem::Fn(ref instance) => {
-                let entry_def_id = tcx.entry_fn(()).map(|(id, _)| id);
-                // If this function isn't inlined or otherwise has an extern
-                // indicator, then we'll be creating a globally shared version.
-                if tcx.codegen_fn_attrs(instance.def_id()).contains_extern_indicator()
-                    || !instance.def.generates_cgu_internal_copy(tcx)
-                    || Some(instance.def_id()) == entry_def_id
-                {
-                    return InstantiationMode::GloballyShared { may_conflict: false };
-                }
+        // The first thing we do is detect MonoItems which we must instantiate exactly once in the
+        // whole program.
 
-                // At this point we don't have explicit linkage and we're an
-                // inlined function. If we're inlining into all CGUs then we'll
-                // be creating a local copy per CGU.
-                if generate_cgu_internal_copies {
-                    return InstantiationMode::LocalCopy;
-                }
-
-                // Finally, if this is `#[inline(always)]` we're sure to respect
-                // that with an inline copy per CGU, but otherwise we'll be
-                // creating one copy of this `#[inline]` function which may
-                // conflict with upstream crates as it could be an exported
-                // symbol.
-                match tcx.codegen_fn_attrs(instance.def_id()).inline {
-                    InlineAttr::Always => InstantiationMode::LocalCopy,
-                    _ => InstantiationMode::GloballyShared { may_conflict: true },
-                }
-            }
+        // Statics and global_asm! must be instantiated exactly once.
+        let instance = match *self {
+            MonoItem::Fn(instance) => instance,
             MonoItem::Static(..) | MonoItem::GlobalAsm(..) => {
-                InstantiationMode::GloballyShared { may_conflict: false }
+                return InstantiationMode::GloballyShared { may_conflict: false };
             }
+        };
+
+        // Similarly, the executable entrypoint must be instantiated exactly once.
+        if let Some((entry_def_id, _)) = tcx.entry_fn(()) {
+            if instance.def_id() == entry_def_id {
+                return InstantiationMode::GloballyShared { may_conflict: false };
+            }
+        }
+
+        // If the function is #[naked] or contains any other attribute that requires exactly-once
+        // instantiation:
+        // We emit an unused_attributes lint for this case, which should be kept in sync if possible.
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(instance.def_id());
+        if codegen_fn_attrs.contains_extern_indicator()
+            || codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED)
+        {
+            return InstantiationMode::GloballyShared { may_conflict: false };
+        }
+
+        // This is technically a heuristic even though it's in the "not a heuristic" part of
+        // instantiation mode selection.
+        // It is surely possible to untangle this; the root problem is that the way we instantiate
+        // InstanceKind other than Item is very complicated.
+        //
+        // The fallback case is to give everything else GloballyShared at OptLevel::No and
+        // LocalCopy at all other opt levels. This is a good default, except for one specific build
+        // configuration: Optimized incremental builds.
+        // In the current compiler architecture there is a fundamental tension between
+        // optimizations (which want big CGUs with as many things LocalCopy as possible) and
+        // incrementality (which wants small CGUs with as many things GloballyShared as possible).
+        // The heuristics implemented here do better than a completely naive approach in the
+        // compiler benchmark suite, but there is no reason to believe they are optimal.
+        if let InstanceKind::DropGlue(_, Some(ty)) = instance.def {
+            if tcx.sess.opts.optimize == OptLevel::No {
+                return InstantiationMode::GloballyShared { may_conflict: false };
+            }
+            if tcx.sess.opts.incremental.is_none() {
+                return InstantiationMode::LocalCopy;
+            }
+            return opt_incr_drop_glue_mode(tcx, ty);
+        }
+
+        // We need to ensure that we do not decide the InstantiationMode of an exported symbol is
+        // LocalCopy. Since exported symbols are computed based on the output of
+        // cross_crate_inlinable, we are beholden to our previous decisions.
+        //
+        // Note that just like above, this check for requires_inline is technically a heuristic
+        // even though it's in the "not a heuristic" part of instantiation mode selection.
+        if !tcx.cross_crate_inlinable(instance.def_id()) && !instance.def.requires_inline(tcx) {
+            return InstantiationMode::GloballyShared { may_conflict: false };
+        }
+
+        // Beginning of heuristics. The handling of link-dead-code and inline(always) are QoL only,
+        // the compiler should not crash and linkage should work, but codegen may be undesirable.
+
+        // -Clink-dead-code was given an unfortunate name; the point of the flag is to assist
+        // coverage tools which rely on having every function in the program appear in the
+        // generated code. If we select LocalCopy, functions which are not used because they are
+        // missing test coverage will disappear from such coverage reports, defeating the point.
+        // Note that -Cinstrument-coverage does not require such assistance from us, only coverage
+        // tools implemented without compiler support ironically require a special compiler flag.
+        if tcx.sess.link_dead_code() {
+            return InstantiationMode::GloballyShared { may_conflict: true };
+        }
+
+        // To ensure that #[inline(always)] can be inlined as much as possible, especially in unoptimized
+        // builds, we always select LocalCopy.
+        if codegen_fn_attrs.inline.always() {
+            return InstantiationMode::LocalCopy;
+        }
+
+        // #[inline(never)] functions in general are poor candidates for inlining and thus since
+        // LocalCopy generally increases code size for the benefit of optimizations from inlining,
+        // we want to give them GloballyShared codegen.
+        // The slight problem is that generic functions need to always support cross-crate
+        // compilation, so all previous stages of the compiler are obligated to treat generic
+        // functions the same as those that unconditionally get LocalCopy codegen. It's only when
+        // we get here that we can at least not codegen a #[inline(never)] generic function in all
+        // of our CGUs.
+        if let InlineAttr::Never = tcx.codegen_fn_attrs(instance.def_id()).inline
+            && self.is_generic_fn()
+        {
+            return InstantiationMode::GloballyShared { may_conflict: true };
+        }
+
+        // The fallthrough case is to generate LocalCopy for all optimized builds, and
+        // GloballyShared with conflict prevention when optimizations are disabled.
+        match tcx.sess.opts.optimize {
+            OptLevel::No => InstantiationMode::GloballyShared { may_conflict: true },
+            _ => InstantiationMode::LocalCopy,
         }
     }
 
@@ -213,7 +297,7 @@ impl<'tcx> MonoItem<'tcx> {
     /// Returns the item's `CrateNum`
     pub fn krate(&self) -> CrateNum {
         match self {
-            MonoItem::Fn(ref instance) => instance.def_id().krate,
+            MonoItem::Fn(instance) => instance.def_id().krate,
             MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
         }
@@ -234,7 +318,7 @@ impl<'tcx> fmt::Display for MonoItem<'tcx> {
         match *self {
             MonoItem::Fn(instance) => write!(f, "fn {instance}"),
             MonoItem::Static(def_id) => {
-                write!(f, "static {}", Instance::new(def_id, GenericArgs::empty()))
+                write!(f, "static {}", Instance::new_raw(def_id, GenericArgs::empty()))
             }
             MonoItem::GlobalAsm(..) => write!(f, "global_asm"),
         }
@@ -249,6 +333,13 @@ impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
         self.hash_stable(&mut hcx.clone(), &mut hasher);
         hasher.finish()
     }
+}
+
+#[derive(Debug, HashStable, Copy, Clone)]
+pub struct MonoItemPartitions<'tcx> {
+    pub codegen_units: &'tcx [CodegenUnit<'tcx>],
+    pub all_mono_items: &'tcx DefIdSet,
+    pub autodiff_items: &'tcx [AutoDiffItem],
 }
 
 #[derive(Debug, HashStable)]
@@ -291,18 +382,38 @@ pub enum Linkage {
     LinkOnceODR,
     WeakAny,
     WeakODR,
-    Appending,
     Internal,
-    Private,
     ExternalWeak,
     Common,
 }
 
+/// Specifies the symbol visibility with regards to dynamic linking.
+///
+/// Visibility doesn't have any effect when linkage is internal.
+///
+/// DSO means dynamic shared object, that is a dynamically linked executable or dylib.
 #[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum Visibility {
+    /// Export the symbol from the DSO and apply overrides of the symbol by outside DSOs to within
+    /// the DSO if the object file format supports this.
     Default,
+    /// Hide the symbol outside of the defining DSO even when external linkage is used to export it
+    /// from the object file.
     Hidden,
+    /// Export the symbol from the DSO, but don't apply overrides of the symbol by outside DSOs to
+    /// within the DSO. Equivalent to default visibility with object file formats that don't support
+    /// overriding exported symbols by another DSO.
     Protected,
+}
+
+impl From<SymbolVisibility> for Visibility {
+    fn from(value: SymbolVisibility) -> Self {
+        match value {
+            SymbolVisibility::Hidden => Visibility::Hidden,
+            SymbolVisibility::Protected => Visibility::Protected,
+            SymbolVisibility::Interposable => Visibility::Default,
+        }
+    }
 }
 
 impl<'tcx> CodegenUnit<'tcx> {
@@ -396,7 +507,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
+        struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
@@ -415,11 +526,12 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::Virtual(..)
                             | InstanceKind::ClosureOnceShim { .. }
                             | InstanceKind::ConstructCoroutineInClosureShim { .. }
-                            | InstanceKind::CoroutineKindShim { .. }
                             | InstanceKind::DropGlue(..)
                             | InstanceKind::CloneShim(..)
                             | InstanceKind::ThreadLocalShim(..)
                             | InstanceKind::FnPtrAddrShim(..)
+                            | InstanceKind::AsyncDropGlue(..)
+                            | InstanceKind::FutureDropPollShim(..)
                             | InstanceKind::AsyncDropGlueCtorShim(..) => None,
                         }
                     }
@@ -547,4 +659,22 @@ impl<'tcx> CodegenUnitNameBuilder<'tcx> {
 
         Symbol::intern(&cgu_name)
     }
+}
+
+/// See module-level docs of `rustc_monomorphize::collector` on some context for "mentioned" items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+pub enum CollectionMode {
+    /// Collect items that are used, i.e., actually needed for codegen.
+    ///
+    /// Which items are used can depend on optimization levels, as MIR optimizations can remove
+    /// uses.
+    UsedItems,
+    /// Collect items that are mentioned. The goal of this mode is that it is independent of
+    /// optimizations: the set of "mentioned" items is computed before optimizations are run.
+    ///
+    /// The exact contents of this set are *not* a stable guarantee. (For instance, it is currently
+    /// computed after drop-elaboration. If we ever do some optimizations even in debug builds, we
+    /// might decide to run them before computing mentioned items.) The key property of this set is
+    /// that it is optimization-independent.
+    MentionedItems,
 }

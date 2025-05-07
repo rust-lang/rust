@@ -44,13 +44,13 @@ macro_rules! define_reify_functions {
         fn $name:ident $(<$($param:ident),*>)?
             for $(extern $abi:tt)? fn($($arg:ident: $arg_ty:ty),*) -> $ret_ty:ty;
     )+) => {
-        $(pub const fn $name<
+        $(pub(super) const fn $name<
             $($($param,)*)?
             F: Fn($($arg_ty),*) -> $ret_ty + Copy
         >(f: F) -> $(extern $abi)? fn($($arg_ty),*) -> $ret_ty {
             // FIXME(eddyb) describe the `F` type (e.g. via `type_name::<F>`) once panic
             // formatting becomes possible in `const fn`.
-            assert!(mem::size_of::<F>() == 0, "selfless_reify: closure must be zero-sized");
+            assert!(size_of::<F>() == 0, "selfless_reify: closure must be zero-sized");
 
             $(extern $abi)? fn wrapper<
                 $($($param,)*)?

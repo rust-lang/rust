@@ -1,4 +1,4 @@
-// rustfmt-version: Two
+// rustfmt-style_edition: 2024
 
 fn foo<T>(_: T)
 where

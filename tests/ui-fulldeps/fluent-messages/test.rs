@@ -1,4 +1,4 @@
-//@ normalize-stderr-test: "could not open Fluent resource:.*" -> "could not open Fluent resource: os-specific message"
+//@ normalize-stderr: "could not open Fluent resource:.*" -> "could not open Fluent resource: os-specific message"
 
 #![feature(rustc_private)]
 #![crate_type = "lib"]
@@ -79,4 +79,9 @@ mod bad_escape {
     //~^ ERROR invalid escape `\n`
     //~| ERROR invalid escape `\"`
     //~| ERROR invalid escape `\'`
+}
+
+mod many_lines {
+    rustc_fluent_macro::fluent_messages! { "./many-lines.ftl" }
+    //~^ ERROR could not parse Fluent resource
 }

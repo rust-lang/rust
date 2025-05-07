@@ -13,7 +13,7 @@ fn main() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("This uses new capture analyysis to capture s={}", s);
-        //~^ NOTE: Capturing s[] -> ImmBorrow
-        //~| NOTE: Min Capture s[] -> ImmBorrow
+        //~^ NOTE: Capturing s[] -> Immutable
+        //~| NOTE: Min Capture s[] -> Immutable
     };
 }

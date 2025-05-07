@@ -19,6 +19,18 @@ fn foo(bar: Option<()>) {
     }
 }
 
+// EMIT_MIR matches_reduce_branches.my_is_some.MatchBranchSimplification.diff
+// Test for #131219.
+fn my_is_some(bar: Option<()>) -> bool {
+    // CHECK-LABEL: fn my_is_some(
+    // CHECK: = Ne
+    // CHECK: return
+    match bar {
+        Some(_) => true,
+        None => false,
+    }
+}
+
 // EMIT_MIR matches_reduce_branches.bar.MatchBranchSimplification.diff
 fn bar(i: i32) -> (bool, bool, bool, bool) {
     // CHECK-LABEL: fn bar(
@@ -651,4 +663,6 @@ fn main() {
     let _: u8 = match_trunc_u16_u8_failed(EnumAu16::u0_0x0000);
 
     let _ = match_i128_u128(EnumAi128::A);
+
+    let _ = my_is_some(None);
 }

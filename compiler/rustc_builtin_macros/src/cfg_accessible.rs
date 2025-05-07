@@ -4,8 +4,7 @@ use rustc_ast as ast;
 use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt, Indeterminate, MultiItemModifier};
 use rustc_feature::AttributeTemplate;
 use rustc_parse::validate_attr;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 
 use crate::errors;
 
@@ -47,7 +46,6 @@ impl MultiItemModifier for Expander {
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         let template = AttributeTemplate { list: Some("path"), ..Default::default() };
         validate_attr::check_builtin_meta_item(
-            &ecx.ecfg.features,
             &ecx.sess.psess,
             meta_item,
             ast::AttrStyle::Outer,

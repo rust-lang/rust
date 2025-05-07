@@ -13,9 +13,9 @@ from nor used with any official Nintendo SDK.
 This target is maintained by members of the [@rust3ds](https://github.com/rust3ds)
 organization:
 
-- [@Meziu](https://github.com/Meziu)
-- [@AzureMarker](https://github.com/AzureMarker)
-- [@ian-h-chamberlain](https://github.com/ian-h-chamberlain)
+[@Meziu](https://github.com/Meziu)
+[@AzureMarker](https://github.com/AzureMarker)
+[@ian-h-chamberlain](https://github.com/ian-h-chamberlain)
 
 ## Requirements
 
@@ -50,7 +50,7 @@ This target generates binaries in the ELF format.
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml` and providing paths to the devkitARM toolchain.
+list in `bootstrap.toml` and providing paths to the devkitARM toolchain.
 
 ```toml
 [build]

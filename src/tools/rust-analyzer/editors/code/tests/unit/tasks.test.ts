@@ -114,6 +114,7 @@ function f(task: vscode.Task): {
         execution,
     };
 }
+
 function executionToSimple(
     taskExecution: vscode.ProcessExecution | vscode.ShellExecution | vscode.CustomExecution,
 ): {
@@ -122,8 +123,8 @@ function executionToSimple(
     const exec = taskExecution as vscode.ProcessExecution | vscode.ShellExecution;
     if (exec instanceof vscode.ShellExecution) {
         return {
-            command: typeof exec.command === "string" ? exec.command : exec.command.value,
-            args: exec.args.map((arg) => {
+            command: typeof exec.command === "string" ? exec.command : (exec.command?.value ?? ""),
+            args: (exec.args ?? []).map((arg) => {
                 if (typeof arg === "string") {
                     return arg;
                 }

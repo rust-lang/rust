@@ -37,7 +37,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "assert_eq_macro")]
+#[rustc_diagnostic_item = "assert_eq_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -93,7 +93,7 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "assert_ne_macro")]
+#[rustc_diagnostic_item = "assert_ne_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => {
@@ -213,10 +213,10 @@ pub macro assert_matches {
 /// #![feature(cfg_match)]
 ///
 /// cfg_match! {
-///     cfg(unix) => {
+///     unix => {
 ///         fn foo() { /* unix specific functionality */ }
 ///     }
-///     cfg(target_pointer_width = "32") => {
+///     target_pointer_width = "32" => {
 ///         fn foo() { /* non-unix, 32-bit functionality */ }
 ///     }
 ///     _ => {
@@ -224,64 +224,38 @@ pub macro assert_matches {
 ///     }
 /// }
 /// ```
+///
+/// If desired, it is possible to return expressions through the use of surrounding braces:
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// let _some_string = cfg_match! {{
+///     unix => { "With great power comes great electricity bills" }
+///     _ => { "Behind every successful diet is an unwatched pizza" }
+/// }};
+/// ```
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
+#[rustc_macro_transparency = "semitransparent"]
 pub macro cfg_match {
-    // with a final wildcard
-    (
-        $(cfg($initial_meta:meta) => { $($initial_tokens:item)* })+
-        _ => { $($extra_tokens:item)* }
-    ) => {
-        cfg_match! {
-            @__items ();
-            $((($initial_meta) ($($initial_tokens)*)),)+
-            (() ($($extra_tokens)*)),
-        }
+    ({ $($tt:tt)* }) => {{
+        $crate::cfg_match! { $($tt)* }
+    }},
+    (_ => { $($output:tt)* }) => {
+        $($output)*
     },
-
-    // without a final wildcard
     (
-        $(cfg($extra_meta:meta) => { $($extra_tokens:item)* })*
+        $cfg:meta => $output:tt
+        $($( $rest:tt )+)?
     ) => {
-        cfg_match! {
-            @__items ();
-            $((($extra_meta) ($($extra_tokens)*)),)*
-        }
+        #[cfg($cfg)]
+        $crate::cfg_match! { _ => $output }
+        $(
+            #[cfg(not($cfg))]
+            $crate::cfg_match! { $($rest)+ }
+        )?
     },
-
-    // Internal and recursive macro to emit all the items
-    //
-    // Collects all the previous cfgs in a list at the beginning, so they can be
-    // negated. After the semicolon is all the remaining items.
-    (@__items ($($_:meta,)*);) => {},
-    (
-        @__items ($($no:meta,)*);
-        (($($yes:meta)?) ($($tokens:item)*)),
-        $($rest:tt,)*
-    ) => {
-        // Emit all items within one block, applying an appropriate #[cfg]. The
-        // #[cfg] will require all `$yes` matchers specified and must also negate
-        // all previous matchers.
-        #[cfg(all(
-            $($yes,)?
-            not(any($($no),*))
-        ))]
-        cfg_match! { @__identity $($tokens)* }
-
-        // Recurse to emit all other items in `$rest`, and when we do so add all
-        // our `$yes` matchers to the list of `$no` matchers as future emissions
-        // will have to negate everything we just matched as well.
-        cfg_match! {
-            @__items ($($no,)* $($yes,)?);
-            $($rest,)*
-        }
-    },
-
-    // Internal macro to make __apply work out right for different match types,
-    // because of how macros match/expand stuff.
-    (@__identity $($tokens:item)*) => {
-        $($tokens)*
-    }
 }
 
 /// Asserts that a boolean expression is `true` at runtime.
@@ -358,7 +332,7 @@ macro_rules! debug_assert {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_eq_macro")]
+#[rustc_diagnostic_item = "debug_assert_eq_macro"]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -388,7 +362,7 @@ macro_rules! debug_assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_ne_macro")]
+#[rustc_diagnostic_item = "debug_assert_ne_macro"]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -469,7 +443,7 @@ pub macro debug_assert_matches($($arg:tt)*) {
 /// ```
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "matches_macro")]
+#[rustc_diagnostic_item = "matches_macro"]
 macro_rules! matches {
     ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
         match $expression {
@@ -644,7 +618,7 @@ macro_rules! r#try {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
+#[rustc_diagnostic_item = "write_macro"]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => {
         $dst.write_fmt($crate::format_args!($($arg)*))
@@ -678,7 +652,7 @@ macro_rules! write {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
+#[rustc_diagnostic_item = "writeln_macro"]
 #[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
@@ -745,7 +719,7 @@ macro_rules! writeln {
 #[rustc_builtin_macro(unreachable)]
 #[allow_internal_unstable(edition_panic)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "unreachable_macro")]
+#[rustc_diagnostic_item = "unreachable_macro"]
 macro_rules! unreachable {
     // Expands to either `$crate::panic::unreachable_2015` or `$crate::panic::unreachable_2021`
     // depending on the edition of the caller.
@@ -830,7 +804,7 @@ macro_rules! unreachable {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "unimplemented_macro")]
+#[rustc_diagnostic_item = "unimplemented_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! unimplemented {
     () => {
@@ -910,7 +884,7 @@ macro_rules! unimplemented {
 /// ```
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "todo_macro")]
+#[rustc_diagnostic_item = "todo_macro"]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! todo {
     () => {
@@ -1022,7 +996,7 @@ pub(crate) mod builtin {
     /// and cannot be stored for later use.
     /// This is a known limitation, see [#92698](https://github.com/rust-lang/rust/issues/92698).
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "format_args_macro")]
+    #[rustc_diagnostic_item = "format_args_macro"]
     #[allow_internal_unsafe]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
@@ -1072,7 +1046,7 @@ pub(crate) mod builtin {
     /// If the environment variable is not defined, then a compilation error
     /// will be emitted. To not emit a compile error, use the [`option_env!`]
     /// macro instead. A compilation error will also be emitted if the
-    /// environment variable is not a vaild Unicode string.
+    /// environment variable is not a valid Unicode string.
     ///
     /// # Examples
     ///
@@ -1107,17 +1081,19 @@ pub(crate) mod builtin {
     ///
     /// If the named environment variable is present at compile time, this will
     /// expand into an expression of type `Option<&'static str>` whose value is
-    /// `Some` of the value of the environment variable. If the environment
-    /// variable is not present, then this will expand to `None`. See
-    /// [`Option<T>`][Option] for more information on this type.  Use
-    /// [`std::env::var`] instead if you want to read the value at runtime.
+    /// `Some` of the value of the environment variable (a compilation error
+    /// will be emitted if the environment variable is not a valid Unicode
+    /// string). If the environment variable is not present, then this will
+    /// expand to `None`. See [`Option<T>`][Option] for more information on this
+    /// type.  Use [`std::env::var`] instead if you want to read the value at
+    /// runtime.
     ///
     /// [`std::env::var`]: ../std/env/fn.var.html
     ///
-    /// A compile time error is never emitted when using this macro regardless
-    /// of whether the environment variable is present or not.
-    /// To emit a compile error if the environment variable is not present,
-    /// use the [`env!`] macro instead.
+    /// A compile time error is only emitted when using this macro if the
+    /// environment variable exists and is not a valid Unicode string. To also
+    /// emit a compile error if the environment variable is not present, use the
+    /// [`env!`] macro instead.
     ///
     /// # Examples
     ///
@@ -1161,6 +1137,10 @@ pub(crate) mod builtin {
         feature = "concat_idents",
         issue = "29599",
         reason = "`concat_idents` is not stable enough for use and is subject to change"
+    )]
+    #[deprecated(
+        since = "1.88.0",
+        note = "use `${concat(...)}` with the `macro_metavar_expr_concat` feature instead"
     )]
     #[rustc_builtin_macro]
     #[macro_export]
@@ -1367,7 +1347,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "include_str_macro")]
+    #[rustc_diagnostic_item = "include_str_macro"]
     macro_rules! include_str {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1407,7 +1387,7 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "include_bytes_macro")]
+    #[rustc_diagnostic_item = "include_bytes_macro"]
     macro_rules! include_bytes {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
@@ -1537,6 +1517,23 @@ pub(crate) mod builtin {
     #[rustc_diagnostic_item = "include_macro"] // useful for external lints
     macro_rules! include {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
+    }
+
+    /// Automatic Differentiation macro which allows generating a new function to compute
+    /// the derivative of a given function. It may only be applied to a function.
+    /// The expected usage syntax is
+    /// `#[autodiff(NAME, MODE, INPUT_ACTIVITIES, OUTPUT_ACTIVITY)]`
+    /// where:
+    /// NAME is a string that represents a valid function name.
+    /// MODE is any of Forward, Reverse, ForwardFirst, ReverseFirst.
+    /// INPUT_ACTIVITIES consists of one valid activity for each input parameter.
+    /// OUTPUT_ACTIVITY must not be set if we implicitly return nothing (or explicitly return
+    /// `-> ()`). Otherwise it must be set to one of the allowed activities.
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[allow_internal_unstable(rustc_attrs)]
+    #[rustc_builtin_macro]
+    pub macro autodiff($item:item) {
+        /* compiler built-in */
     }
 
     /// Asserts that a boolean expression is `true` at runtime.
@@ -1695,6 +1692,30 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Attribute macro applied to a function to give it a post-condition.
+    ///
+    /// The attribute carries an argument token-tree which is
+    /// eventually parsed as a unary closure expression that is
+    /// invoked on a reference to the return value.
+    #[unstable(feature = "contracts", issue = "128044")]
+    #[allow_internal_unstable(contracts_internals)]
+    #[rustc_builtin_macro]
+    pub macro contracts_ensures($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Attribute macro applied to a function to give it a precondition.
+    ///
+    /// The attribute carries an argument token-tree which is
+    /// eventually parsed as an boolean expression with access to the
+    /// function's formal parameters
+    #[unstable(feature = "contracts", issue = "128044")]
+    #[allow_internal_unstable(contracts_internals)]
+    #[rustc_builtin_macro]
+    pub macro contracts_requires($item:item) {
+        /* compiler built-in */
+    }
+
     /// Attribute macro applied to a function to register it as a handler for allocation failure.
     ///
     /// See also [`std::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
@@ -1727,6 +1748,20 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Provide a list of type aliases and other opaque-type-containing type definitions
+    /// to an item with a body. This list will be used in that body to define opaque
+    /// types' hidden types.
+    /// Can only be applied to things that have bodies.
+    #[unstable(
+        feature = "type_alias_impl_trait",
+        issue = "63063",
+        reason = "`type_alias_impl_trait` has open design concerns"
+    )]
+    #[rustc_builtin_macro]
+    pub macro define_opaque($($tt:tt)*) {
+        /* compiler built-in */
+    }
+
     /// Unstable placeholder for type ascription.
     #[allow_internal_unstable(builtin_syntax)]
     #[unstable(
@@ -1748,33 +1783,5 @@ pub(crate) mod builtin {
     )]
     pub macro deref($pat:pat) {
         builtin # deref($pat)
-    }
-
-    /// Derive macro for `rustc-serialize`. Should not be used in new code.
-    #[rustc_builtin_macro]
-    #[unstable(
-        feature = "rustc_encodable_decodable",
-        issue = "none",
-        soft,
-        reason = "derive macro for `rustc-serialize`; should not be used in new code"
-    )]
-    #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
-    #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
-    pub macro RustcDecodable($item:item) {
-        /* compiler built-in */
-    }
-
-    /// Derive macro for `rustc-serialize`. Should not be used in new code.
-    #[rustc_builtin_macro]
-    #[unstable(
-        feature = "rustc_encodable_decodable",
-        issue = "none",
-        soft,
-        reason = "derive macro for `rustc-serialize`; should not be used in new code"
-    )]
-    #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
-    #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
-    pub macro RustcEncodable($item:item) {
-        /* compiler built-in */
     }
 }

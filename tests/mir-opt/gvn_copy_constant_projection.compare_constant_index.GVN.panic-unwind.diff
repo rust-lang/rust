@@ -1,0 +1,58 @@
+- // MIR for `compare_constant_index` before GVN
++ // MIR for `compare_constant_index` after GVN
+  
+  fn compare_constant_index(_1: [i32; 1], _2: [i32; 1]) -> std::cmp::Ordering {
+      debug x => _1;
+      debug y => _2;
+      let mut _0: std::cmp::Ordering;
+      let _3: &i32;
+      let _4: usize;
+      let mut _5: bool;
+      let _6: &i32;
+      let _7: usize;
+      let mut _8: bool;
+      scope 1 (inlined std::cmp::impls::<impl Ord for i32>::cmp) {
+          let mut _9: i32;
+          let mut _10: i32;
+      }
+  
+      bb0: {
+-         StorageLive(_4);
++         nop;
+          _4 = const 0_usize;
+-         _5 = Lt(copy _4, const 1_usize);
+-         assert(move _5, "index out of bounds: the length is {} but the index is {}", const 1_usize, copy _4) -> [success: bb1, unwind continue];
++         _5 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 1_usize, const 0_usize) -> [success: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         _3 = &_1[_4];
++         _3 = &_1[0 of 1];
+          StorageLive(_7);
+          _7 = const 0_usize;
+-         _8 = Lt(copy _7, const 1_usize);
+-         assert(move _8, "index out of bounds: the length is {} but the index is {}", const 1_usize, copy _7) -> [success: bb2, unwind continue];
++         _8 = const true;
++         assert(const true, "index out of bounds: the length is {} but the index is {}", const 1_usize, const 0_usize) -> [success: bb2, unwind continue];
+      }
+  
+      bb2: {
+-         _6 = &_2[_7];
++         _6 = &_2[0 of 1];
+          StorageLive(_9);
+-         _9 = copy (*_3);
++         _9 = copy _1[0 of 1];
+          StorageLive(_10);
+-         _10 = copy (*_6);
++         _10 = copy _2[0 of 1];
+          _0 = Cmp(move _9, move _10);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageDead(_7);
+-         StorageDead(_4);
++         nop;
+          return;
+      }
+  }
+  

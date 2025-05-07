@@ -11,7 +11,7 @@ use crate::ub_checks::assert_unsafe_precondition;
 #[must_use]
 #[inline]
 pub(super) const fn from_u32(i: u32) -> Option<char> {
-    // FIXME: once Result::ok is const fn, use it here
+    // FIXME(const-hack): once Result::ok is const fn, use it here
     match char_try_from_u32(i) {
         Ok(c) => Some(c),
         Err(_) => None,
@@ -21,6 +21,7 @@ pub(super) const fn from_u32(i: u32) -> Option<char> {
 /// Converts a `u32` to a `char`, ignoring validity. See [`char::from_u32_unchecked`].
 #[inline]
 #[must_use]
+#[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
 pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
     unsafe {
@@ -40,11 +41,9 @@ impl From<char> for u32 {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
-    ///
     /// let c = 'c';
     /// let u = u32::from(c);
-    /// assert!(4 == mem::size_of_val(&u))
+    /// assert!(4 == size_of_val(&u))
     /// ```
     #[inline]
     fn from(c: char) -> Self {
@@ -59,11 +58,9 @@ impl From<char> for u64 {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
-    ///
     /// let c = '👤';
     /// let u = u64::from(c);
-    /// assert!(8 == mem::size_of_val(&u))
+    /// assert!(8 == size_of_val(&u))
     /// ```
     #[inline]
     fn from(c: char) -> Self {
@@ -80,11 +77,9 @@ impl From<char> for u128 {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
-    ///
     /// let c = '⚙';
     /// let u = u128::from(c);
-    /// assert!(16 == mem::size_of_val(&u))
+    /// assert!(16 == size_of_val(&u))
     /// ```
     #[inline]
     fn from(c: char) -> Self {
@@ -167,11 +162,9 @@ impl From<u8> for char {
     /// # Examples
     ///
     /// ```
-    /// use std::mem;
-    ///
     /// let u = 32 as u8;
     /// let c = char::from(u);
-    /// assert!(4 == mem::size_of_val(&c))
+    /// assert!(4 == size_of_val(&c))
     /// ```
     #[inline]
     fn from(i: u8) -> Self {
@@ -229,6 +222,7 @@ impl FromStr for char {
 }
 
 #[inline]
+#[cfg_attr(not(bootstrap), allow(unnecessary_transmutes))]
 const fn char_try_from_u32(i: u32) -> Result<char, CharTryFromError> {
     // This is an optimized version of the check
     // (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF),

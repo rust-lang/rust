@@ -4,10 +4,8 @@
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub mod fs {
-    #[doc(inline)]
     #[stable(feature = "file_set_times", since = "1.75.0")]
     pub use crate::os::darwin::fs::FileTimesExt;
-    #[doc(inline)]
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     pub use crate::os::darwin::fs::MetadataExt;
 }

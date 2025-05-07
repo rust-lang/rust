@@ -1,10 +1,11 @@
-use crate::abi::Endian;
-use crate::spec::{base, Target, TargetOptions};
+use rustc_abi::Endian;
 
-pub fn target() -> Target {
+use crate::spec::{Target, TargetMetadata, TargetOptions, base};
+
+pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "mips-unknown-linux-uclibc".into(),
-        metadata: crate::spec::TargetMetadata {
+        llvm_target: "mips-unknown-linux-gnu".into(),
+        metadata: TargetMetadata {
             description: Some("MIPS Linux with uClibc".into()),
             tier: Some(3),
             host_tools: Some(false),

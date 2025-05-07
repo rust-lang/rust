@@ -1,11 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:29:20
+  --> $DIR/detect-extra-ub.rs:30:20
    |
 LL |     let _x: bool = transmute(3u8);
    |                    ^^^^^^^^^^^^^^ constructing invalid value: encountered 0x03, but expected a boolean
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:35:21
+  --> $DIR/detect-extra-ub.rs:36:21
    |
 LL |     let _x: usize = transmute(&3u8);
    |                     ^^^^^^^^^^^^^^^ constructing invalid value: encountered a pointer, but expected an integer
@@ -14,7 +14,7 @@ LL |     let _x: usize = transmute(&3u8);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:41:28
+  --> $DIR/detect-extra-ub.rs:42:28
    |
 LL |     let _x: PtrSizedEnum = transmute(&3u8);
    |                            ^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered a pointer, but expected an integer
@@ -23,7 +23,7 @@ LL |     let _x: PtrSizedEnum = transmute(&3u8);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:48:30
+  --> $DIR/detect-extra-ub.rs:49:30
    |
 LL |     let _x: (usize, usize) = transmute(x);
    |                              ^^^^^^^^^^^^ constructing invalid value at .0: encountered a pointer, but expected an integer
@@ -32,19 +32,19 @@ LL |     let _x: (usize, usize) = transmute(x);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:54:20
+  --> $DIR/detect-extra-ub.rs:55:20
    |
 LL |     let _x: &u32 = transmute(&[0u8; 4]);
    |                    ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required 4 byte alignment but found 1)
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:62:13
+  --> $DIR/detect-extra-ub.rs:63:13
    |
 LL |     let v = *addr_of!(data).cast::<UninhDiscriminant>();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at .<enum-tag>: encountered an uninhabited enum variant
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:82:16
+  --> $DIR/detect-extra-ub.rs:83:16
    |
 LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a partial pointer or a mix of pointers
@@ -53,7 +53,7 @@ LL |     let _val = *(&mem as *const Align as *const [*const u8; 2]);
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/detect-extra-ub.rs:97:16
+  --> $DIR/detect-extra-ub.rs:98:16
    |
 LL |     let _val = &*slice;
    |                ^^^^^^^ constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object

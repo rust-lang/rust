@@ -1,21 +1,17 @@
-//! Checks for needless boolean results of if-else expressions
-//!
-//! This lint is **warn** by default
-
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{
-    get_parent_expr, higher, is_block_like, is_else_clause, is_expn_of, is_parent_stmt, is_receiver_of_method_call,
-    peel_blocks, peel_blocks_with_stmt, span_extract_comment, SpanlessEq,
+    SpanlessEq, get_parent_expr, higher, is_block_like, is_else_clause, is_expn_of, is_parent_stmt,
+    is_receiver_of_method_call, peel_blocks, peel_blocks_with_stmt, span_extract_comment,
 };
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::source_map::Spanned;
 use rustc_span::Span;
+use rustc_span::source_map::Spanned;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -158,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     || is_receiver_of_method_call(cx, e)
                     || is_as_argument(cx, e)
                 {
-                    snip = snip.maybe_par();
+                    snip = snip.maybe_paren();
                 }
 
                 span_lint_and_sugg(
@@ -430,10 +426,10 @@ fn fetch_bool_block(expr: &Expr<'_>) -> Option<Expression> {
 }
 
 fn fetch_bool_expr(expr: &Expr<'_>) -> Option<bool> {
-    if let ExprKind::Lit(lit_ptr) = peel_blocks(expr).kind {
-        if let LitKind::Bool(value) = lit_ptr.node {
-            return Some(value);
-        }
+    if let ExprKind::Lit(lit_ptr) = peel_blocks(expr).kind
+        && let LitKind::Bool(value) = lit_ptr.node
+    {
+        return Some(value);
     }
     None
 }

@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<T as Pointee>::Metadata == ()`
-  --> $DIR/pointee-tail-is-generic-errors.rs:13:15
+  --> $DIR/pointee-tail-is-generic-errors.rs:14:15
    |
 LL |     is_thin::<T>();
    |               ^ expected `()`, found associated type
@@ -9,13 +9,13 @@ LL |     is_thin::<T>();
    = help: consider constraining the associated type `<T as Pointee>::Metadata` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 note: required by a bound in `is_thin`
-  --> $DIR/pointee-tail-is-generic-errors.rs:20:33
+  --> $DIR/pointee-tail-is-generic-errors.rs:21:33
    |
 LL | fn is_thin<T: std::ptr::Pointee<Metadata = ()> + ?Sized>() {}
    |                                 ^^^^^^^^^^^^^ required by this bound in `is_thin`
 
 error[E0271]: type mismatch resolving `<Opaque as Pointee>::Metadata == ()`
-  --> $DIR/pointee-tail-is-generic-errors.rs:16:15
+  --> $DIR/pointee-tail-is-generic-errors.rs:17:15
    |
 LL | type Opaque = impl std::fmt::Debug + ?Sized;
    |               ----------------------------- the found opaque type
@@ -26,7 +26,7 @@ LL |     is_thin::<Opaque>();
    = note:    expected unit type `()`
            found associated type `<Opaque as Pointee>::Metadata`
 note: required by a bound in `is_thin`
-  --> $DIR/pointee-tail-is-generic-errors.rs:20:33
+  --> $DIR/pointee-tail-is-generic-errors.rs:21:33
    |
 LL | fn is_thin<T: std::ptr::Pointee<Metadata = ()> + ?Sized>() {}
    |                                 ^^^^^^^^^^^^^ required by this bound in `is_thin`

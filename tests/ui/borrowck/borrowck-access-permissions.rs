@@ -16,7 +16,6 @@ fn main() {
         let _y1 = &mut static_x; //~ ERROR [E0596]
         unsafe {
             let _y2 = &mut static_x_mut;
-            //~^ WARN mutable reference to mutable static is discouraged [static_mut_refs]
         }
     }
 

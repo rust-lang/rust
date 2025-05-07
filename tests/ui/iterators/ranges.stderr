@@ -4,7 +4,7 @@ error[E0277]: `RangeTo<{integer}>` is not an iterator
 LL |     for _ in ..10 {}
    |              ^^^^ if you meant to iterate until a value, add a starting value
    |
-   = help: the trait `Iterator` is not implemented for `RangeTo<{integer}>`, which is required by `RangeTo<{integer}>: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `RangeTo<{integer}>`
    = note: `..end` is a `RangeTo`, which cannot be iterated on; you might have meant to have a bounded `Range`: `0..end`
    = note: required for `RangeTo<{integer}>` to implement `IntoIterator`
 
@@ -14,7 +14,7 @@ error[E0277]: `RangeToInclusive<{integer}>` is not an iterator
 LL |     for _ in ..=10 {}
    |              ^^^^^ if you meant to iterate until a value (including it), add a starting value
    |
-   = help: the trait `Iterator` is not implemented for `RangeToInclusive<{integer}>`, which is required by `RangeToInclusive<{integer}>: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `RangeToInclusive<{integer}>`
    = note: `..=end` is a `RangeToInclusive`, which cannot be iterated on; you might have meant to have a bounded `RangeInclusive`: `0..=end`
    = note: required for `RangeToInclusive<{integer}>` to implement `IntoIterator`
 

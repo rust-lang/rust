@@ -184,18 +184,18 @@ fn main() {
     let mut m = Mock;
     let mut u_32 = 3000;
     let a = 200;
-    let mut _b = 8;
+    let mut b = 8;
 
     if m != 0 {
         m -= 1;
     }
 
     if a > 0 {
-        _b -= 1;
+        b -= 1;
     }
 
     if 0 > a {
-        _b -= 1;
+        b -= 1;
     }
 
     if u_32 > 0 {
@@ -214,4 +214,41 @@ fn main() {
     } else if u_32 > 0 {
         u_32 -= 1;
     }
+
+    let result = if a < b {
+        println!("we shouldn't remove this");
+        0
+    } else {
+        a - b
+    };
+}
+
+fn regression_13524(a: usize, b: usize, c: bool) -> usize {
+    if c {
+        123
+    } else { b.saturating_sub(a) }
+}
+
+fn with_side_effect(a: u64) -> u64 {
+    println!("a = {a}");
+    a
+}
+
+fn arbitrary_expression() {
+    let (a, b) = (15u64, 20u64);
+
+    let _ = (a * 2).saturating_sub(b);
+    //~^ implicit_saturating_sub
+
+    let _ = a.saturating_sub(b * 2);
+    //~^ implicit_saturating_sub
+
+    let _ = a.saturating_sub(b * 2);
+    //~^ implicit_saturating_sub
+
+    let _ = if with_side_effect(a) > a {
+        with_side_effect(a) - a
+    } else {
+        0
+    };
 }

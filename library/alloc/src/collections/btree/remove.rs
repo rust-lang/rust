@@ -3,14 +3,14 @@ use core::alloc::Allocator;
 use super::map::MIN_LEN;
 use super::node::ForceResult::*;
 use super::node::LeftOrRight::*;
-use super::node::{marker, Handle, NodeRef};
+use super::node::{Handle, NodeRef, marker};
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
     /// Removes a key-value pair from the tree, and returns that pair, as well as
     /// the leaf edge corresponding to that former pair. It's possible this empties
     /// a root node that is internal, which the caller should pop from the map
     /// holding the tree. The caller should also decrement the map's length.
-    pub fn remove_kv_tracking<F: FnOnce(), A: Allocator + Clone>(
+    pub(super) fn remove_kv_tracking<F: FnOnce(), A: Allocator + Clone>(
         self,
         handle_emptied_internal_root: F,
         alloc: A,

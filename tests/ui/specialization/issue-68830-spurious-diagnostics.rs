@@ -17,7 +17,6 @@ impl<T, D> MyTrait<T> for D {
 }
 
 impl<T> MyTrait<T> for BadStruct {
-//~^ ERROR: conflicting implementations of trait `MyTrait<_>` for type `BadStruct`
     fn foo() {}
 }
 

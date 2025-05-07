@@ -9,8 +9,8 @@ Apple visionOS / xrOS targets.
 
 ## Target maintainers
 
-- [@agg23](https://github.com/agg23)
-- [@madsmtm](https://github.com/madsmtm)
+[@agg23](https://github.com/agg23)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
@@ -18,7 +18,8 @@ These targets are cross-compiled, and require the corresponding visionOS SDK
 (`XROS.sdk` or `XRSimulator.sdk`), as provided by Xcode 15 or newer.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk xros --show-sdk-path`.
 
 ### OS version
 
@@ -31,7 +32,7 @@ case `XROS_DEPLOYMENT_TARGET`.
 ## Building the target
 
 The targets can be built by enabling them for a `rustc` build in
-`config.toml`, by adding, for example:
+`bootstrap.toml`, by adding, for example:
 
 ```toml
 [build]

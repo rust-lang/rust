@@ -1,17 +1,17 @@
 //@ has 'glob_shadowing/index.html'
-//@ count - '//div[@class="item-name"]' 6
-//@ !has - '//div[@class="desc docblock-short"]' 'sub1::describe'
-//@ has - '//div[@class="desc docblock-short"]' 'sub2::describe'
+//@ count - '//dt' 6
+//@ !has - '//dd' 'sub1::describe'
+//@ has - '//dd' 'sub2::describe'
 
-//@ !has - '//div[@class="desc docblock-short"]' 'sub1::describe2'
+//@ !has - '//dd' 'sub1::describe2'
 
-//@ !has - '//div[@class="desc docblock-short"]' 'sub1::prelude'
-//@ has - '//div[@class="desc docblock-short"]' 'mod::prelude'
+//@ !has - '//dd' 'sub1::prelude'
+//@ has - '//dd' 'mod::prelude'
 
-//@ has - '//div[@class="desc docblock-short"]' 'sub1::Foo (struct)'
-//@ has - '//div[@class="desc docblock-short"]' 'mod::Foo (function)'
+//@ has - '//dd' 'sub1::Foo (struct)'
+//@ has - '//dd' 'mod::Foo (function)'
 
-//@ has - '//div[@class="desc docblock-short"]' 'sub4::inner::X'
+//@ has - '//dd' 'sub4::inner::X'
 
 //@ has 'glob_shadowing/fn.describe.html'
 //@ has - '//div[@class="docblock"]' 'sub2::describe'

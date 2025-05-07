@@ -13,5 +13,6 @@ struct Other {
 fn main() {
     unsafe {
         std::mem::transmute::<Option<()>, Option<&Other>>(None);
+        //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
     }
 }

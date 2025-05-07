@@ -11,12 +11,14 @@ struct MyStruct {
 
 impl MyTrait for MyStruct {}
 
+#[define_opaque(TE)]
 fn bla() -> TE {
     return MyStruct { v: 1 };
 }
 
+#[define_opaque(TE)]
 fn bla2() -> TE {
-    //~^ ERROR: item does not constrain `TE::{opaque#0}`, but has it in its signature
+    //~^ ERROR: item does not constrain `TE::{opaque#0}`
     bla()
 }
 

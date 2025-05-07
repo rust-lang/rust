@@ -1,7 +1,6 @@
 // NOTE: We always compile this test with -Copt-level=0 because higher opt-levels
 //       prevent drop-glue from participating in share-generics.
-//@ compile-flags:-Zshare-generics=yes -Copt-level=0
-//@ no-prefer-dynamic
+//@ compile-flags: -Zshare-generics=yes -Copt-level=0
 
 #![crate_type = "rlib"]
 

@@ -12,17 +12,26 @@
 
 use hir::ChangeWithProcMacros;
 use ide::{
-    AnalysisHost, CallableSnippets, CompletionConfig, DiagnosticsConfig, FilePosition, TextSize,
+    AnalysisHost, CallableSnippets, CompletionConfig, CompletionFieldsToResolve, DiagnosticsConfig,
+    FilePosition, TextSize,
 };
 use ide_db::{
-    imports::insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use project_model::CargoConfig;
 use test_utils::project_root;
 use vfs::{AbsPathBuf, VfsPath};
 
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
+
+#[track_caller]
+fn file_id(vfs: &vfs::Vfs, path: &VfsPath) -> vfs::FileId {
+    match vfs.file_id(path) {
+        Some((file_id, vfs::FileExcluded::No)) => file_id,
+        None | Some((_, vfs::FileExcluded::Yes)) => panic!("can't find virtual file for {path}"),
+    }
+}
 
 #[test]
 fn integrated_highlighting_benchmark() {
@@ -36,6 +45,8 @@ fn integrated_highlighting_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
@@ -59,7 +70,7 @@ fn integrated_highlighting_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
+        file_id(&vfs, &path)
     };
 
     {
@@ -75,7 +86,7 @@ fn integrated_highlighting_benchmark() {
             "self.data.cargo_buildScripts_rebuildOnSave",
             "self. data. cargo_buildScripts_rebuildOnSave",
         );
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
     }
@@ -102,6 +113,8 @@ fn integrated_completion_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
@@ -125,7 +138,7 @@ fn integrated_completion_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
+        file_id(&vfs, &path)
     };
 
     // kick off parsing and index population
@@ -136,7 +149,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
                 + "sel".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -167,6 +180,12 @@ fn integrated_completion_benchmark() {
             prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
+            add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
+            exclude_flyimport: vec![],
+            exclude_traits: &[],
+            enable_auto_await: true,
+            enable_auto_iter: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -181,7 +200,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", ";sel;\ndb.struct_data(self.id)")
                 + ";sel".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -213,6 +232,12 @@ fn integrated_completion_benchmark() {
             prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
+            add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
+            exclude_flyimport: vec![],
+            exclude_traits: &[],
+            enable_auto_await: true,
+            enable_auto_iter: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -225,7 +250,7 @@ fn integrated_completion_benchmark() {
         let completion_offset =
             patch(&mut text, "sel;\ndb.struct_data(self.id)", "self.;\ndb.struct_data(self.id)")
                 + "self.".len();
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
         completion_offset
@@ -257,6 +282,12 @@ fn integrated_completion_benchmark() {
             prefer_absolute: false,
             snippets: Vec::new(),
             limit: None,
+            add_semicolon_to_unit: true,
+            fields_to_resolve: CompletionFieldsToResolve::empty(),
+            exclude_flyimport: vec![],
+            exclude_traits: &[],
+            enable_auto_await: true,
+            enable_auto_iter: true,
         };
         let position =
             FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
@@ -276,6 +307,8 @@ fn integrated_diagnostics_benchmark() {
 
     let cargo_config = CargoConfig {
         sysroot: Some(project_model::RustLibSource::Discover),
+        all_targets: true,
+        set_test: true,
         ..CargoConfig::default()
     };
     let load_cargo_config = LoadCargoConfig {
@@ -299,7 +332,7 @@ fn integrated_diagnostics_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
+        file_id(&vfs, &path)
     };
 
     let diagnostics_config = DiagnosticsConfig {
@@ -334,7 +367,7 @@ fn integrated_diagnostics_benchmark() {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         patch(&mut text, "db.struct_data(self.id)", "();\ndb.struct_data(self.id)");
-        let mut change = ChangeWithProcMacros::new();
+        let mut change = ChangeWithProcMacros::default();
         change.change_file(file_id, Some(text));
         host.apply_change(change);
     };

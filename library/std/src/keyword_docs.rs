@@ -91,7 +91,7 @@ mod as_keyword {}
 ///
 /// When associated with `loop`, a break expression may be used to return a value from that loop.
 /// This is only valid with `loop` and not with any other type of loop.
-/// If no value is specified, `break;` returns `()`.
+/// If no value is specified for `break;` it returns `()`.
 /// Every `break` within a loop must return the same type.
 ///
 /// ```rust
@@ -109,6 +109,33 @@ mod as_keyword {}
 /// println!("{result}");
 /// ```
 ///
+/// It is also possible to exit from any *labelled* block returning the value early.
+/// If no value is specified for `break;` it returns `()`.
+///
+/// ```rust
+/// let inputs = vec!["Cow", "Cat", "Dog", "Snake", "Cod"];
+///
+/// let mut results = vec![];
+/// for input in inputs {
+///     let result = 'filter: {
+///         if input.len() > 3 {
+///             break 'filter Err("Too long");
+///         };
+///
+///         if !input.contains("C") {
+///             break 'filter Err("No Cs");
+///         };
+///
+///         Ok(input.to_uppercase())
+///     };
+///
+///     results.push(result);
+/// }
+///
+/// // [Ok("COW"), Ok("CAT"), Err("No Cs"), Err("Too long"), Ok("COD")]
+/// println!("{:?}", results)
+/// ```
+///
 /// For more details consult the [Reference on "break expression"] and the [Reference on "break and
 /// loop values"].
 ///
@@ -119,7 +146,7 @@ mod break_keyword {}
 
 #[doc(keyword = "const")]
 //
-/// Compile-time constants, compile-time evaluable functions, and raw pointers.
+/// Compile-time constants, compile-time blocks, compile-time evaluable functions, and raw pointers.
 ///
 /// ## Compile-time constants
 ///
@@ -166,6 +193,12 @@ mod break_keyword {}
 ///
 /// For more detail on `const`, see the [Rust Book] or the [Reference].
 ///
+/// ## Compile-time blocks
+///
+/// The `const` keyword can also be used to define a block of code that is evaluated at compile time.
+/// This is useful for ensuring certain computations are completed before optimizations happen, as well as
+/// before runtime. For more details, see the [Reference][const-blocks].
+///
 /// ## Compile-time evaluable functions
 ///
 /// The other main use of the `const` keyword is in `const fn`. This marks a function as being
@@ -184,6 +217,7 @@ mod break_keyword {}
 /// [pointer primitive]: pointer
 /// [Rust Book]: ../book/ch03-01-variables-and-mutability.html#constants
 /// [Reference]: ../reference/items/constant-items.html
+/// [const-blocks]: ../reference/expressions/block-expr.html#const-blocks
 /// [const-eval]: ../reference/const_eval.html
 mod const_keyword {}
 
@@ -381,11 +415,15 @@ mod enum_keyword {}
 /// lazy_static;`. The other use is in foreign function interfaces (FFI).
 ///
 /// `extern` is used in two different contexts within FFI. The first is in the form of external
-/// blocks, for declaring function interfaces that Rust code can call foreign code by.
+/// blocks, for declaring function interfaces that Rust code can call foreign code by. This use
+/// of `extern` is unsafe, since we are asserting to the compiler that all function declarations
+/// are correct. If they are not, using these items may lead to undefined behavior.
 ///
 /// ```rust ignore
+/// // SAFETY: The function declarations given below are in
+/// // line with the header files of `my_c_library`.
 /// #[link(name = "my_c_library")]
-/// extern "C" {
+/// unsafe extern "C" {
 ///     fn my_c_function(x: i32) -> bool;
 /// }
 /// ```
@@ -398,7 +436,7 @@ mod enum_keyword {}
 /// The mirror use case of FFI is also done via the `extern` keyword:
 ///
 /// ```rust
-/// #[no_mangle]
+/// #[unsafe(no_mangle)]
 /// pub extern "C" fn callable_from_c(x: i32) -> bool {
 ///     x % 3 == 0
 /// }
@@ -651,16 +689,24 @@ mod if_keyword {}
 
 #[doc(keyword = "impl")]
 //
-/// Implement some functionality for a type.
+/// Implementations of functionality for a type, or a type implementing some functionality.
+///
+/// There are two uses of the keyword `impl`:
+///  * An `impl` block is an item that is used to implement some functionality for a type.
+///  * An `impl Trait` in a type-position can be used to designate a type that implements a trait called `Trait`.
+///
+/// # Implementing Functionality for a Type
 ///
 /// The `impl` keyword is primarily used to define implementations on types. Inherent
 /// implementations are standalone, while trait implementations are used to implement traits for
 /// types, or other traits.
 ///
-/// Functions and consts can both be defined in an implementation. A function defined in an
-/// `impl` block can be standalone, meaning it would be called like `Foo::bar()`. If the function
+/// An implementation consists of definitions of functions and consts. A function defined in an
+/// `impl` block can be standalone, meaning it would be called like `Vec::new()`. If the function
 /// takes `self`, `&self`, or `&mut self` as its first argument, it can also be called using
-/// method-call syntax, a familiar feature to any object oriented programmer, like `foo.bar()`.
+/// method-call syntax, a familiar feature to any object-oriented programmer, like `vec.len()`.
+///
+/// ## Inherent Implementations
 ///
 /// ```rust
 /// struct Example {
@@ -680,6 +726,17 @@ mod if_keyword {}
 ///         self.number
 ///     }
 /// }
+/// ```
+///
+/// It matters little where an inherent implementation is defined;
+/// its functionality is in scope wherever its implementing type is.
+///
+/// ## Trait Implementations
+///
+/// ```rust
+/// struct Example {
+///     number: i32,
+/// }
 ///
 /// trait Thingy {
 ///     fn do_thingy(&self);
@@ -692,11 +749,19 @@ mod if_keyword {}
 /// }
 /// ```
 ///
+/// It matters little where a trait implementation is defined;
+/// its functionality can be brought into scope by importing the trait it implements.
+///
 /// For more information on implementations, see the [Rust book][book1] or the [Reference].
 ///
-/// The other use of the `impl` keyword is in `impl Trait` syntax, which can be seen as a shorthand
-/// for "a concrete type that implements this trait". Its primary use is working with closures,
-/// which have type definitions generated at compile time that can't be simply typed out.
+/// # Designating a Type that Implements Some Functionality
+///
+/// The other use of the `impl` keyword is in `impl Trait` syntax, which can be understood to mean
+/// "any (or some) concrete type that implements Trait".
+/// It can be used as the type of a variable declaration,
+/// in [argument position](https://rust-lang.github.io/rfcs/1951-expand-impl-trait.html)
+/// or in [return position](https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html).
+/// One pertinent use case is in working with closures, which have unnameable types.
 ///
 /// ```rust
 /// fn thing_returning_closure() -> impl Fn(i32) -> bool {
@@ -806,64 +871,6 @@ mod in_keyword {}
 /// [book2]: ../book/ch18-01-all-the-places-for-patterns.html#let-statements
 /// [Reference]: ../reference/statements.html#let-statements
 mod let_keyword {}
-
-#[doc(keyword = "while")]
-//
-/// Loop while a condition is upheld.
-///
-/// A `while` expression is used for predicate loops. The `while` expression runs the conditional
-/// expression before running the loop body, then runs the loop body if the conditional
-/// expression evaluates to `true`, or exits the loop otherwise.
-///
-/// ```rust
-/// let mut counter = 0;
-///
-/// while counter < 10 {
-///     println!("{counter}");
-///     counter += 1;
-/// }
-/// ```
-///
-/// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
-/// cannot break with a value and always evaluates to `()` unlike [`loop`].
-///
-/// ```rust
-/// let mut i = 1;
-///
-/// while i < 100 {
-///     i *= 2;
-///     if i == 64 {
-///         break; // Exit when `i` is 64.
-///     }
-/// }
-/// ```
-///
-/// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
-/// expressions with `while let`. The `while let` expression matches the pattern against the
-/// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
-/// We can use `break` and `continue` in `while let` expressions just like in `while`.
-///
-/// ```rust
-/// let mut counter = Some(0);
-///
-/// while let Some(i) = counter {
-///     if i == 10 {
-///         counter = None;
-///     } else {
-///         println!("{i}");
-///         counter = Some (i + 1);
-///     }
-/// }
-/// ```
-///
-/// For more information on `while` and loops in general, see the [reference].
-///
-/// See also, [`for`], [`loop`].
-///
-/// [`for`]: keyword.for.html
-/// [`loop`]: keyword.loop.html
-/// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
-mod while_keyword {}
 
 #[doc(keyword = "loop")]
 //
@@ -1095,7 +1102,7 @@ mod move_keyword {}
 /// ```rust,compile_fail,E0502
 /// let mut v = vec![0, 1];
 /// let mut_ref_v = &mut v;
-/// ##[allow(unused)]
+/// # #[allow(unused)]
 /// let ref_v = &v;
 /// mut_ref_v.push(2);
 /// ```
@@ -1226,6 +1233,28 @@ mod ref_keyword {}
 ///     Ok(())
 /// }
 /// ```
+///
+/// Within [closures] and [`async`] blocks, `return` returns a value from within the closure or
+/// `async` block, not from the parent function:
+///
+/// ```rust
+/// fn foo() -> i32 {
+///     let closure = || {
+///         return 5;
+///     };
+///
+///     let future = async {
+///         return 10;
+///     };
+///
+///     return 15;
+/// }
+///
+/// assert_eq!(foo(), 15);
+/// ```
+///
+/// [closures]: ../book/ch13-01-closures.html
+/// [`async`]: ../std/keyword.async.html
 mod return_keyword {}
 
 #[doc(keyword = "self")]
@@ -1321,10 +1350,10 @@ mod return_keyword {}
 /// [Reference]: ../reference/items/associated-items.html#methods
 mod self_keyword {}
 
-// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can remove the
-// three next lines and put back: `#[doc(keyword = "Self")]`.
+// FIXME: Once rustdoc can handle URL conflicts on case insensitive file systems, we can replace
+// these two lines with `#[doc(keyword = "Self")]` and update `is_doc_keyword` in
+// `CheckAttrVisitor`.
 #[doc(alias = "Self")]
-#[allow(rustc::existing_doc_keyword)]
 #[doc(keyword = "SelfTy")]
 //
 /// The implementing type within a [`trait`] or [`impl`] block, or the current type within a type
@@ -1448,6 +1477,9 @@ mod self_upper_keyword {}
 /// in a multithreaded context. As such, all accesses to mutable `static`s
 /// require an [`unsafe`] block.
 ///
+/// When possible, it's often better to use a non-mutable `static` with an
+/// interior mutable type such as [`Mutex`], [`OnceLock`], or an [atomic].
+///
 /// Despite their unsafety, mutable `static`s are necessary in many contexts:
 /// they can be used to represent global state shared by the whole program or in
 /// [`extern`] blocks to bind to variables from C libraries.
@@ -1456,7 +1488,7 @@ mod self_upper_keyword {}
 ///
 /// ```rust,no_run
 /// # #![allow(dead_code)]
-/// extern "C" {
+/// unsafe extern "C" {
 ///     static mut ERROR_MESSAGE: *mut std::os::raw::c_char;
 /// }
 /// ```
@@ -1468,7 +1500,10 @@ mod self_upper_keyword {}
 /// [`extern`]: keyword.extern.html
 /// [`mut`]: keyword.mut.html
 /// [`unsafe`]: keyword.unsafe.html
+/// [`Mutex`]: sync::Mutex
+/// [`OnceLock`]: sync::OnceLock
 /// [`RefCell`]: cell::RefCell
+/// [atomic]: sync::atomic
 /// [Reference]: ../reference/items/static-items.html
 mod static_keyword {}
 
@@ -1950,7 +1985,7 @@ mod type_keyword {}
 ///
 /// unsafe fn unsafe_fn() {}
 ///
-/// extern "C" {
+/// unsafe extern "C" {
 ///     fn unsafe_extern_fn();
 ///     static BAR: *mut u32;
 /// }
@@ -2146,10 +2181,13 @@ mod unsafe_keyword {}
 
 #[doc(keyword = "use")]
 //
-/// Import or rename items from other crates or modules.
+/// Import or rename items from other crates or modules, use values under ergonomic clones
+/// semantic, or specify precise capturing with `use<..>`.
 ///
-/// Usually a `use` keyword is used to shorten the path required to refer to a module item.
-/// The keyword may appear in modules, blocks and even functions, usually at the top.
+/// ## Importing items
+///
+/// The `use` keyword is employed to shorten the path required to refer to a module item.
+/// The keyword may appear in modules, blocks, and even functions, typically at the top.
 ///
 /// The most basic usage of the keyword is `use path::to::item;`,
 /// though a number of convenient shortcuts are supported:
@@ -2190,19 +2228,53 @@ mod unsafe_keyword {}
 /// // Compiles.
 /// let _ = VariantA;
 ///
-/// // Does not compile !
+/// // Does not compile!
 /// let n = new();
 /// ```
 ///
-/// For more information on `use` and paths in general, see the [Reference].
+/// For more information on `use` and paths in general, see the [Reference][ref-use-decls].
 ///
 /// The differences about paths and the `use` keyword between the 2015 and 2018 editions
-/// can also be found in the [Reference].
+/// can also be found in the [Reference][ref-use-decls].
+///
+/// ## Precise capturing
+///
+/// The `use<..>` syntax is used within certain `impl Trait` bounds to control which generic
+/// parameters are captured. This is important for return-position `impl Trait` (RPIT) types,
+/// as it affects borrow checking by controlling which generic parameters can be used in the
+/// hidden type.
+///
+/// For example, the following function demonstrates an error without precise capturing in
+/// Rust 2021 and earlier editions:
+///
+/// ```rust,compile_fail,edition2021
+/// fn f(x: &()) -> impl Sized { x }
+/// ```
+///
+/// By using `use<'_>` for precise capturing, it can be resolved:
+///
+/// ```rust
+/// fn f(x: &()) -> impl Sized + use<'_> { x }
+/// ```
+///
+/// This syntax specifies that the elided lifetime be captured and therefore available for
+/// use in the hidden type.
+///
+/// In Rust 2024, opaque types automatically capture all lifetime parameters in scope.
+/// `use<..>` syntax serves as an important way of opting-out of that default.
+///
+/// For more details about precise capturing, see the [Reference][ref-impl-trait].
+///
+/// ## Ergonomic clones
+///
+/// Use a values, copying its content if the value implements `Copy`, cloning the contents if the
+/// value implements `UseCloned` or moving it otherwise.
 ///
 /// [`crate`]: keyword.crate.html
 /// [`self`]: keyword.self.html
 /// [`super`]: keyword.super.html
-/// [Reference]: ../reference/items/use-declarations.html
+/// [ref-use-decls]: ../reference/items/use-declarations.html
+/// [ref-impl-trait]: ../reference/types/impl-trait.html
 mod use_keyword {}
 
 #[doc(keyword = "where")]
@@ -2305,6 +2377,64 @@ mod use_keyword {}
 /// [RFC]: https://github.com/rust-lang/rfcs/blob/master/text/0135-where.md
 mod where_keyword {}
 
+#[doc(keyword = "while")]
+//
+/// Loop while a condition is upheld.
+///
+/// A `while` expression is used for predicate loops. The `while` expression runs the conditional
+/// expression before running the loop body, then runs the loop body if the conditional
+/// expression evaluates to `true`, or exits the loop otherwise.
+///
+/// ```rust
+/// let mut counter = 0;
+///
+/// while counter < 10 {
+///     println!("{counter}");
+///     counter += 1;
+/// }
+/// ```
+///
+/// Like the [`for`] expression, we can use `break` and `continue`. A `while` expression
+/// cannot break with a value and always evaluates to `()` unlike [`loop`].
+///
+/// ```rust
+/// let mut i = 1;
+///
+/// while i < 100 {
+///     i *= 2;
+///     if i == 64 {
+///         break; // Exit when `i` is 64.
+///     }
+/// }
+/// ```
+///
+/// As `if` expressions have their pattern matching variant in `if let`, so too do `while`
+/// expressions with `while let`. The `while let` expression matches the pattern against the
+/// expression, then runs the loop body if pattern matching succeeds, or exits the loop otherwise.
+/// We can use `break` and `continue` in `while let` expressions just like in `while`.
+///
+/// ```rust
+/// let mut counter = Some(0);
+///
+/// while let Some(i) = counter {
+///     if i == 10 {
+///         counter = None;
+///     } else {
+///         println!("{i}");
+///         counter = Some (i + 1);
+///     }
+/// }
+/// ```
+///
+/// For more information on `while` and loops in general, see the [reference].
+///
+/// See also, [`for`], [`loop`].
+///
+/// [`for`]: keyword.for.html
+/// [`loop`]: keyword.loop.html
+/// [reference]: ../reference/expressions/loop-expr.html#predicate-loops
+mod while_keyword {}
+
 // 2018 Edition keywords
 
 #[doc(alias = "promise")]
@@ -2318,6 +2448,39 @@ mod where_keyword {}
 ///
 /// We have written an [async book] detailing `async`/`await` and trade-offs compared to using threads.
 ///
+/// ## Control Flow
+/// [`return`] statements and [`?`][try operator] operators within `async` blocks do not cause
+/// a return from the parent function; rather, they cause the `Future` returned by the block to
+/// return with that value.
+///
+/// For example, the following Rust function will return `5`, causing `x` to take the [`!` type][never type]:
+/// ```rust
+/// #[expect(unused_variables)]
+/// fn example() -> i32 {
+///     let x = {
+///         return 5;
+///     };
+/// }
+/// ```
+/// In contrast, the following asynchronous function assigns a `Future<Output = i32>` to `x`, and
+/// only returns `5` when `x` is `.await`ed:
+/// ```rust
+/// async fn example() -> i32 {
+///     let x = async {
+///         return 5;
+///     };
+///
+///     x.await
+/// }
+/// ```
+/// Code using `?` behaves similarly - it causes the `async` block to return a [`Result`] without
+/// affecting the parent function.
+///
+/// Note that you cannot use `break` or `continue` from within an `async` block to affect the
+/// control flow of a loop in the parent function.
+///
+/// Control flow in `async` blocks is documented further in the [async book][async book blocks].
+///
 /// ## Editions
 ///
 /// `async` is a keyword from the 2018 edition onwards.
@@ -2327,6 +2490,11 @@ mod where_keyword {}
 /// [`Future`]: future::Future
 /// [`.await`]: ../std/keyword.await.html
 /// [async book]: https://rust-lang.github.io/async-book/
+/// [`return`]: ../std/keyword.return.html
+/// [try operator]: ../reference/expressions/operator-expr.html#r-expr.try
+/// [never type]: ../reference/types/never.html
+/// [`Result`]: result::Result
+/// [async book blocks]: https://rust-lang.github.io/async-book/part-guide/more-async-await.html#async-blocks
 mod async_keyword {}
 
 #[doc(keyword = "await")]
@@ -2354,7 +2522,7 @@ mod await_keyword {}
 /// `dyn` is a prefix of a [trait object]'s type.
 ///
 /// The `dyn` keyword is used to highlight that calls to methods on the associated `Trait`
-/// are [dynamically dispatched]. To use the trait this way, it must be 'object safe'.
+/// are [dynamically dispatched]. To use the trait this way, it must be *dyn compatible*[^1].
 ///
 /// Unlike generic parameters or `impl Trait`, the compiler does not know the concrete type that
 /// is being passed. That is, the type has been [erased].
@@ -2367,7 +2535,7 @@ mod await_keyword {}
 /// the function pointer and then that function pointer is called.
 ///
 /// See the Reference for more information on [trait objects][ref-trait-obj]
-/// and [object safety][ref-obj-safety].
+/// and [dyn compatibility][ref-dyn-compat].
 ///
 /// ## Trade-offs
 ///
@@ -2380,8 +2548,9 @@ mod await_keyword {}
 /// [trait object]: ../book/ch17-02-trait-objects.html
 /// [dynamically dispatched]: https://en.wikipedia.org/wiki/Dynamic_dispatch
 /// [ref-trait-obj]: ../reference/types/trait-object.html
-/// [ref-obj-safety]: ../reference/items/traits.html#object-safety
+/// [ref-dyn-compat]: ../reference/items/traits.html#dyn-compatibility
 /// [erased]: https://en.wikipedia.org/wiki/Type_erasure
+/// [^1]: Formerly known as *object safe*.
 mod dyn_keyword {}
 
 #[doc(keyword = "union")]

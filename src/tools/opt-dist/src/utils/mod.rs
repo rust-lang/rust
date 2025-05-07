@@ -36,7 +36,9 @@ pub fn clear_llvm_files(env: &Environment) -> anyhow::Result<()> {
     // directories ourselves.
     log::info!("Clearing LLVM build files");
     delete_directory(&env.build_artifacts().join("llvm"))?;
-    delete_directory(&env.build_artifacts().join("lld"))?;
+    if env.build_artifacts().join("lld").is_dir() {
+        delete_directory(&env.build_artifacts().join("lld"))?;
+    }
     Ok(())
 }
 

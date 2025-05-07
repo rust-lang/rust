@@ -1,8 +1,8 @@
 // MIR for `main` after built
 
 | User Type Annotations
-| 0: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [&*b"AAAA"], user_self_ty: None }), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
-| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [UnevaluatedConst { def: DefId(0:8 ~ issue_99325[d56d]::main::{constant#1}), args: [] }], user_self_ty: None }), max_universe: U0, variables: [], defining_opaque_types: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 0: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [&*b"AAAA"], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:13:16: 13:46, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
+| 1: user_ty: Canonical { value: TypeOf(DefId(0:3 ~ issue_99325[d56d]::function_with_bytes), UserArgs { args: [UnevaluatedConst { def: DefId(0:8 ~ issue_99325[d56d]::main::{constant#1}), args: [] }], user_self_ty: None }), max_universe: U0, variables: [] }, span: $DIR/issue_99325.rs:14:16: 14:68, inferred_ty: fn() -> &'static [u8] {function_with_bytes::<&*b"AAAA">}
 |
 fn main() -> () {
     let mut _0: ();
@@ -83,9 +83,9 @@ fn main() -> () {
         StorageDead(_3);
         PlaceMention(_2);
         StorageLive(_8);
-        _8 = (_2.0: &&[u8]);
+        _8 = copy (_2.0: &&[u8]);
         StorageLive(_9);
-        _9 = (_2.1: &&[u8; 4]);
+        _9 = copy (_2.1: &&[u8; 4]);
         StorageLive(_10);
         StorageLive(_11);
         _11 = &(*_8);
@@ -187,9 +187,9 @@ fn main() -> () {
         StorageDead(_24);
         PlaceMention(_23);
         StorageLive(_28);
-        _28 = (_23.0: &&[u8]);
+        _28 = copy (_23.0: &&[u8]);
         StorageLive(_29);
-        _29 = (_23.1: &&[u8; 4]);
+        _29 = copy (_23.1: &&[u8; 4]);
         StorageLive(_30);
         StorageLive(_31);
         _31 = &(*_28);

@@ -1,10 +1,11 @@
 //@ run-pass
+//@ needs-deterministic-layouts
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![feature(never_type)]
 #![feature(pointer_is_aligned_to)]
-#![feature(strict_provenance)]
+#![feature(rustc_attrs)]
 
 use std::mem::size_of;
 use std::num::NonZero;
@@ -208,6 +209,23 @@ struct ReorderEndNiche {
     b: MiddleNiche4,
 }
 
+// We want that the niche selection doesn't depend on order of the fields. See issue #125630.
+pub enum NicheFieldOrder1 {
+    A {
+        x: NonZero<u64>,
+        y: [NonZero<u64>; 2],
+    },
+    B([u64; 2]),
+}
+
+pub enum NicheFieldOrder2 {
+    A {
+        y: [NonZero<u64>; 2],
+        x: NonZero<u64>,
+    },
+    B([u64; 2]),
+}
+
 
 // standins for std types which we want to be laid out in a reasonable way
 struct RawVecDummy {
@@ -219,6 +237,10 @@ struct VecDummy {
     r: RawVecDummy,
     len: usize,
 }
+
+#[rustc_layout_scalar_valid_range_start(1)]
+#[rustc_layout_scalar_valid_range_end(100)]
+struct PointerWithRange(#[allow(dead_code)] *const u8);
 
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
@@ -258,6 +280,9 @@ pub fn main() {
     assert_eq!(size_of::<EnumWithMaybeUninhabitedVariant<!>>(),
                size_of::<EnumWithMaybeUninhabitedVariant<()>>());
     assert_eq!(size_of::<NicheFilledEnumWithAbsentVariant>(), size_of::<&'static ()>());
+
+    assert_eq!(size_of::<NicheFieldOrder1>(), 24);
+    assert_eq!(size_of::<NicheFieldOrder2>(), 24);
 
     assert_eq!(size_of::<Option<Option<(bool, &())>>>(), size_of::<(bool, &())>());
     assert_eq!(size_of::<Option<Option<(&(), bool)>>>(), size_of::<(bool, &())>());
@@ -334,4 +359,6 @@ pub fn main() {
     assert!(ptr::from_ref(&v.a).addr() > ptr::from_ref(&v.b).addr());
 
 
+    assert_eq!(size_of::<Option<PointerWithRange>>(), size_of::<PointerWithRange>());
+    assert_eq!(size_of::<Option<Option<PointerWithRange>>>(), size_of::<PointerWithRange>());
 }

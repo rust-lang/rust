@@ -25,7 +25,7 @@ LL +     writeln!(v, "Hello {}", "world");
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> tests/ui/write_with_newline.rs:17:5
+  --> tests/ui/write_with_newline.rs:18:5
    |
 LL |     write!(v, "Hello {} {}\n", "world", "#2");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     writeln!(v, "Hello {} {}", "world", "#2");
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> tests/ui/write_with_newline.rs:19:5
+  --> tests/ui/write_with_newline.rs:21:5
    |
 LL |     write!(v, "{}\n", 1265);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     writeln!(v, "{}", 1265);
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> tests/ui/write_with_newline.rs:21:5
+  --> tests/ui/write_with_newline.rs:24:5
    |
 LL |     write!(v, "\n");
    |     ^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     writeln!(v);
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> tests/ui/write_with_newline.rs:44:5
+  --> tests/ui/write_with_newline.rs:47:5
    |
 LL |     write!(v, "\\\n");
    |     ^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     writeln!(v, "\\");
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> tests/ui/write_with_newline.rs:53:5
+  --> tests/ui/write_with_newline.rs:57:5
    |
 LL | /     write!(
 LL | |
@@ -91,7 +91,7 @@ LL ~         v
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> tests/ui/write_with_newline.rs:59:5
+  --> tests/ui/write_with_newline.rs:63:5
    |
 LL | /     write!(
 LL | |
@@ -109,7 +109,7 @@ LL ~         v
    |
 
 error: using `write!()` with a format string that ends in a single newline
-  --> tests/ui/write_with_newline.rs:69:5
+  --> tests/ui/write_with_newline.rs:73:5
    |
 LL |     write!(v, "\\r\n");
    |     ^^^^^^^^^^^^^^^^^^

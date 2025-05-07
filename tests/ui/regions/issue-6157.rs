@@ -1,5 +1,4 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 
 pub trait OpInt { fn call(&mut self, _: isize, _: isize) -> isize; }
 

@@ -1,5 +1,5 @@
 //@ check-fail
-//@ known-bug: unknown
+//@ known-bug: #91762
 
 // We almost certainly want this to pass, but
 // it's particularly difficult currently, because we need a way of specifying

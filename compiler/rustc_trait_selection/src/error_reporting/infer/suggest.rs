@@ -1,7 +1,7 @@
 use core::ops::ControlFlow;
 
 use hir::def::CtorKind;
-use hir::intravisit::{walk_expr, walk_stmt, Visitor};
+use hir::intravisit::{Visitor, walk_expr, walk_stmt};
 use hir::{LetStmt, QPath};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diag};
@@ -10,22 +10,29 @@ use rustc_hir::def::Res;
 use rustc_hir::{MatchSource, Node};
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-    StatementAsExpression,
 };
+use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
+use tracing::debug;
 
-use crate::error_reporting::infer::hir::Path;
 use crate::error_reporting::TypeErrCtxt;
+use crate::error_reporting::infer::hir::Path;
 use crate::errors::{
-    ConsiderAddingAwait, FnConsiderCasting, FnItemsAreDistinct, FnUniqTypes,
+    ConsiderAddingAwait, FnConsiderCasting, FnConsiderCastingBoth, FnItemsAreDistinct, FnUniqTypes,
     FunctionPointerSuggestion, SuggestAccessingField, SuggestRemoveSemiOrReturnBinding,
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+enum StatementAsExpression {
+    CorrectType,
+    NeedsBoxing,
+}
+
 #[derive(Clone, Copy)]
-pub enum SuggestAsRefKind {
+enum SuggestAsRefKind {
     Option,
     Result,
 }
@@ -166,6 +173,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             exp_span, exp_found.expected, exp_found.found,
         );
 
+        match self.tcx.coroutine_kind(cause.body_id) {
+            Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
+                _,
+            )) => (),
+            None
+            | Some(
+                hir::CoroutineKind::Coroutine(_)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _),
+            ) => return,
+        }
+
         if let ObligationCauseCode::CompareImplItem { .. } = cause.code() {
             return;
         }
@@ -209,7 +228,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (Some(ty), _) if self.same_type_modulo_infer(ty, exp_found.found) => match cause.code()
             {
                 ObligationCauseCode::Pattern { span: Some(then_span), origin_expr, .. } => {
-                    origin_expr.then_some(ConsiderAddingAwait::FutureSugg {
+                    origin_expr.is_some().then_some(ConsiderAddingAwait::FutureSugg {
                         span: then_span.shrink_to_hi(),
                     })
                 }
@@ -218,7 +237,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                    ref prior_non_diverging_arms,
+                    prior_non_diverging_arms,
                     ..
                 }) => Some({
                     ConsiderAddingAwait::FutureSuggMultiple {
@@ -368,21 +387,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    pub(super) fn suggest_function_pointers(
+    pub(crate) fn suggest_function_pointers_impl(
         &self,
-        cause: &ObligationCause<'tcx>,
-        span: Span,
+        span: Option<Span>,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
         diag: &mut Diag<'_>,
     ) {
-        debug!("suggest_function_pointers(cause={:?}, exp_found={:?})", cause, exp_found);
         let ty::error::ExpectedFound { expected, found } = exp_found;
         let expected_inner = expected.peel_refs();
         let found_inner = found.peel_refs();
         if !expected_inner.is_fn() || !found_inner.is_fn() {
             return;
         }
-        match (&expected_inner.kind(), &found_inner.kind()) {
+        match (expected_inner.kind(), found_inner.kind()) {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
                 let sig = sig_tys.with(*hdr);
                 let expected_sig = &(self.normalize_fn_sig)(sig);
@@ -398,8 +415,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     return;
                 }
 
+                let Some(span) = span else {
+                    let casting = format!("{fn_name} as {sig}");
+                    diag.subdiagnostic(FnItemsAreDistinct);
+                    diag.subdiagnostic(FnConsiderCasting { casting });
+                    return;
+                };
+
                 let sugg = match (expected.is_ref(), found.is_ref()) {
-                    (true, false) => FunctionPointerSuggestion::UseRef { span, fn_name },
+                    (true, false) => {
+                        FunctionPointerSuggestion::UseRef { span: span.shrink_to_lo() }
+                    }
                     (false, true) => FunctionPointerSuggestion::RemoveRef { span, fn_name },
                     (true, true) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
@@ -407,7 +433,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     (false, false) => {
                         diag.subdiagnostic(FnItemsAreDistinct);
-                        FunctionPointerSuggestion::Cast { span, fn_name, sig }
+                        FunctionPointerSuggestion::Cast { span: span.shrink_to_hi(), sig }
                     }
                 };
                 diag.subdiagnostic(sugg);
@@ -432,6 +458,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
 
                 let fn_name = self.tcx.def_path_str_with_args(*did2, args2);
+
+                let Some(span) = span else {
+                    diag.subdiagnostic(FnConsiderCastingBoth { sig: *expected_sig });
+                    return;
+                };
+
                 let sug = if found.is_ref() {
                     FunctionPointerSuggestion::CastBothRef {
                         span,
@@ -441,8 +473,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                 } else {
                     FunctionPointerSuggestion::CastBoth {
-                        span,
-                        fn_name,
+                        span: span.shrink_to_hi(),
                         found_sig: *found_sig,
                         expected_sig: *expected_sig,
                     }
@@ -475,7 +506,24 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         };
     }
 
-    pub fn should_suggest_as_ref_kind(
+    pub(super) fn suggest_function_pointers(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        span: Span,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        terr: TypeError<'tcx>,
+        diag: &mut Diag<'_>,
+    ) {
+        debug!("suggest_function_pointers(cause={:?}, exp_found={:?})", cause, exp_found);
+
+        if exp_found.expected.peel_refs().is_fn() && exp_found.found.peel_refs().is_fn() {
+            self.suggest_function_pointers_impl(Some(span), exp_found, diag);
+        } else if let TypeError::Sorts(exp_found) = terr {
+            self.suggest_function_pointers_impl(None, &exp_found, diag);
+        }
+    }
+
+    fn should_suggest_as_ref_kind(
         &self,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -545,8 +593,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> Option<TypeErrorAdditionalDiags> {
         /// Find the if expression with given span
         struct IfVisitor {
-            pub found_if: bool,
-            pub err_span: Span,
+            found_if: bool,
+            err_span: Span,
         }
 
         impl<'v> Visitor<'v> for IfVisitor {
@@ -581,7 +629,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body| {
+        self.tcx.hir_maybe_body_owned_by(cause.body_id).and_then(|body| {
             IfVisitor { err_span: span, found_if: false }
                 .visit_body(&body)
                 .is_break()
@@ -606,7 +654,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         else {
             return;
         };
-        let hir::Body { params, .. } = self.tcx.hir().body(*body);
+        let hir::Body { params, .. } = self.tcx.hir_body(*body);
 
         // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
@@ -642,7 +690,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     && let ty::Ref(found_region, _, _) = found.kind()
                     && expected_region.is_bound()
                     && !found_region.is_bound()
-                    && let hir::TyKind::Infer = arg_hir.kind
+                    && let hir::TyKind::Infer(()) = arg_hir.kind
                 {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
                     // to infer the type, we can suggest adding `: &_`.
@@ -693,7 +741,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Be helpful when the user wrote `{... expr; }` and taking the `;` off
     /// is enough to fix the error.
-    pub fn could_remove_semicolon(
+    fn could_remove_semicolon(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -730,18 +778,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let exp_local_id = exp_def_id.as_local()?;
 
                 match (
-                    &self.tcx.hir().expect_item(last_local_id).kind,
-                    &self.tcx.hir().expect_item(exp_local_id).kind,
+                    &self.tcx.hir_expect_opaque_ty(last_local_id),
+                    &self.tcx.hir_expect_opaque_ty(exp_local_id),
                 ) {
                     (
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
-                        hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
+                        hir::OpaqueTy { bounds: last_bounds, .. },
+                        hir::OpaqueTy { bounds: exp_bounds, .. },
                     ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| match (
                         left, right,
                     ) {
-                        (hir::GenericBound::Trait(tl, ml), hir::GenericBound::Trait(tr, mr))
+                        // FIXME: Suspicious
+                        (hir::GenericBound::Trait(tl), hir::GenericBound::Trait(tr))
                             if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
-                                && ml == mr =>
+                                && tl.modifiers == tr.modifiers =>
                         {
                             true
                         }
@@ -772,7 +821,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     /// Suggest returning a local binding with a compatible type if the block
     /// has no return expression.
-    pub fn consider_returning_binding_diag(
+    fn consider_returning_binding_diag(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -802,7 +851,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             true
         };
 
-        let hir = self.tcx.hir();
         for stmt in blk.stmts.iter().rev() {
             let hir::StmtKind::Let(local) = &stmt.kind else {
                 continue;
@@ -815,7 +863,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     pat.walk(&mut find_compatible_candidates);
                 }
 
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { body, .. }, .. })
                 | hir::Node::ImplItem(hir::ImplItem {
                     kind: hir::ImplItemKind::Fn(_, body), ..
                 })
@@ -827,7 +875,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
                     ..
                 }) => {
-                    for param in hir.body(*body).params {
+                    for param in self.tcx.hir_body(*body).params {
                         param.pat.walk(&mut find_compatible_candidates);
                     }
                 }

@@ -1,0 +1,4 @@
+error: `-Zsanitizer-kcfi-arity` requires LLVM 21.0.0 or later.
+
+error: aborting due to 1 previous error
+

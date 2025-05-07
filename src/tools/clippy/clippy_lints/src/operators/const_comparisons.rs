@@ -7,12 +7,12 @@ use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{Ty, TypeckResults};
-use rustc_span::source_map::Spanned;
 use rustc_span::Span;
+use rustc_span::source_map::Spanned;
 
+use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::source::snippet;
-use clippy_utils::SpanlessEq;
 
 use super::{IMPOSSIBLE_COMPARISONS, REDUNDANT_COMPARISONS};
 
@@ -26,7 +26,7 @@ fn comparison_to_const<'tcx>(
     if let ExprKind::Binary(operator, left, right) = expr.kind
         && let Ok(cmp_op) = CmpOp::try_from(operator.node)
     {
-        let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.param_env, typeck);
+        let ecx = ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), typeck);
         match (ecx.eval(left), ecx.eval(right)) {
             (Some(_), Some(_)) => None,
             (_, Some(con)) => Some((cmp_op, left, right, con, typeck.expr_ty(right))),
@@ -127,7 +127,7 @@ pub(super) fn check<'tcx>(
                 None,
                 note,
             );
-        };
+        }
     }
 }
 

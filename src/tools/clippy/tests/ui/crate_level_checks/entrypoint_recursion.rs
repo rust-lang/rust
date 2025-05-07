@@ -1,4 +1,5 @@
-//@ignore-target-apple
+//@check-pass
+//@ignore-target: apple
 
 #![feature(rustc_attrs)]
 

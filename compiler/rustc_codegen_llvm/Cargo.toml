@@ -1,7 +1,7 @@
 [package]
 name = "rustc_codegen_llvm"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 test = false
@@ -9,18 +9,23 @@ test = false
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
+# To avoid duplicate dependencies, this should match the version of gimli used
+# by `rustc_codegen_ssa` via its `thorin-dwp` dependency.
+gimli = "0.31"
 itertools = "0.12"
 libc = "0.2"
-measureme = "11"
-object = { version = "0.36.2", default-features = false, features = ["std", "read"] }
+measureme = "12.0.1"
+object = { version = "0.36.3", default-features = false, features = ["std", "read"] }
 rustc-demangle = "0.1.21"
+rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_attr = { path = "../rustc_attr" }
+rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
+rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_llvm = { path = "../rustc_llvm" }

@@ -17,7 +17,9 @@ fn main() {
 
     // due to clippy::inconsistent-digit-grouping
     let _fail1 = 100_200_300.123_456_789;
+    //~^ inconsistent_digit_grouping
 
     // fail due to the integer part
     let _fail2 = 100_200_300.300_200_100;
+    //~^ unreadable_literal
 }

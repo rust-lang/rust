@@ -49,7 +49,7 @@ enum EnumVariantField {
         field!(oopsies:()),
         //~^ NOTE macros cannot expand to struct fields
         //~| ERROR unexpected token: `!`
-        //~| unexpected token after this
+        //~| NOTE unexpected token after this
         field!(oopsies2:()),
     },
 }

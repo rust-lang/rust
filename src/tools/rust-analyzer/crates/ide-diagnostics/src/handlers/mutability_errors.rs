@@ -1,25 +1,35 @@
+use hir::db::ExpandDatabase;
 use ide_db::source_change::SourceChange;
-use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxToken, T};
-use text_edit::TextEdit;
+use ide_db::text_edit::TextEdit;
+use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, T, ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: need-mut
 //
 // This diagnostic is triggered on mutating an immutable variable.
 pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option<Diagnostic> {
-    if d.span.file_id.macro_file().is_some() {
-        // FIXME: Our infra can't handle allow from within macro expansions rn
-        return None;
-    }
+    let root = ctx.sema.db.parse_or_expand(d.span.file_id);
+    let node = d.span.value.to_node(&root);
+    let mut span = d.span;
+    if let Some(parent) = node.parent() {
+        if ast::BinExpr::can_cast(parent.kind()) {
+            // In case of an assignment, the diagnostic is provided on the variable name.
+            // We want to expand it to include the whole assignment, but only when this
+            // is an ordinary assignment, not a destructuring assignment. So, the direct
+            // parent is an assignment expression.
+            span = d.span.with_value(SyntaxNodePtr::new(&parent));
+        }
+    };
+
     let fixes = (|| {
         if d.local.is_ref(ctx.sema.db) {
             // There is no simple way to add `mut` to `ref x` and `ref mut x`
             return None;
         }
-        let file_id = d.span.file_id.file_id()?;
+        let file_id = span.file_id.file_id()?;
         let mut edit_builder = TextEdit::builder();
-        let use_range = d.span.value.text_range();
+        let use_range = span.value.text_range();
         for source in d.local.sources(ctx.sema.db) {
             let Some(ast) = source.name() else { continue };
             // FIXME: macros
@@ -29,10 +39,11 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
         Some(vec![fix(
             "add_mut",
             "Change it to be mutable",
-            SourceChange::from_text_edit(file_id, edit),
+            SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit),
             use_range,
         )])
     })();
+
     Some(
         Diagnostic::new_with_syntax_node_ptr(
             ctx,
@@ -40,9 +51,9 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
             DiagnosticCode::RustcHardError("E0384"),
             format!(
                 "cannot mutate immutable variable `{}`",
-                d.local.name(ctx.sema.db).display(ctx.sema.db)
+                d.local.name(ctx.sema.db).display(ctx.sema.db, ctx.edition)
             ),
-            d.span,
+            span,
         )
         .with_fixes(fixes),
     )
@@ -53,10 +64,6 @@ pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_>, d: &hir::NeedMut) -> Option
 // This diagnostic is triggered when a mutable variable isn't actually mutated.
 pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Option<Diagnostic> {
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
-    if ast.file_id.macro_file().is_some() {
-        // FIXME: Our infra can't handle allow from within macro expansions rn
-        return None;
-    }
     let fixes = (|| {
         let file_id = ast.file_id.file_id()?;
         let mut edit_builder = TextEdit::builder();
@@ -75,7 +82,7 @@ pub(crate) fn unused_mut(ctx: &DiagnosticsContext<'_>, d: &hir::UnusedMut) -> Op
         Some(vec![fix(
             "remove_mut",
             "Remove unnecessary `mut`",
-            SourceChange::from_text_edit(file_id, edit),
+            SourceChange::from_text_edit(file_id.file_id(ctx.sema.db), edit),
             use_range,
         )])
     })();
@@ -831,6 +838,7 @@ fn f(_: i32) {}
 fn main() {
     let ((Some(mut x), None) | (_, Some(mut x))) = (None, Some(7)) else { return };
              //^^^^^ 💡 warn: variable does not need to be mutable
+
     f(x);
 }
 "#,
@@ -937,7 +945,6 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
 
     #[test]
     fn closure() {
-        // FIXME: Diagnostic spans are inconsistent inside and outside closure
         check_diagnostics(
             r#"
         //- minicore: copy, fn
@@ -950,11 +957,11 @@ fn fn_once(mut x: impl FnOnce(u8) -> u8) -> u8 {
         fn f() {
             let x = 5;
             let closure1 = || { x = 2; };
-                              //^ 💡 error: cannot mutate immutable variable `x`
+                              //^^^^^ 💡 error: cannot mutate immutable variable `x`
             let _ = closure1();
                   //^^^^^^^^ 💡 error: cannot mutate immutable variable `closure1`
             let closure2 = || { x = x; };
-                              //^ 💡 error: cannot mutate immutable variable `x`
+                              //^^^^^ 💡 error: cannot mutate immutable variable `x`
             let closure3 = || {
                 let x = 2;
                 x = 5;
@@ -996,7 +1003,7 @@ fn f() {
             || {
                 let x = 2;
                 || { || { x = 5; } }
-                        //^ 💡 error: cannot mutate immutable variable `x`
+                        //^^^^^ 💡 error: cannot mutate immutable variable `x`
             }
         }
     };
@@ -1251,11 +1258,51 @@ fn foo(mut foo: Foo) {
 
 pub struct A {}
 pub unsafe fn foo(a: *mut A) {
-    let mut b = || -> *mut A { &mut *a };
+    let mut b = || -> *mut A { unsafe { &mut *a } };
       //^^^^^ 💡 warn: variable does not need to be mutable
     let _ = b();
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn regression_15799() {
+        check_diagnostics(
+            r#"
+//- minicore: deref_mut
+struct WrapPtr(*mut u32);
+
+impl core::ops::Deref for WrapPtr {
+    type Target = *mut u32;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+fn main() {
+    let mut x = 0u32;
+    let wrap = WrapPtr(&mut x);
+    unsafe {
+        **wrap = 6;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn destructuring_assignment_needs_mut() {
+        check_diagnostics(
+            r#"
+//- minicore: fn
+
+fn main() {
+	let mut var = 1;
+	let mut func = || (var,) = (2,);
+	func();
+}
+        "#,
         );
     }
 }

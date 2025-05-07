@@ -1,7 +1,7 @@
-use crate::path::{Dirs, RelPath};
+use crate::path::Dirs;
 use crate::prepare::GitRepo;
-use crate::utils::{spawn_and_wait, CargoProject, Compiler};
-use crate::{build_sysroot, CodegenBackend, SysrootKind};
+use crate::utils::{CargoProject, Compiler, spawn_and_wait};
+use crate::{CodegenBackend, SysrootKind, build_sysroot};
 
 static ABI_CAFE_REPO: GitRepo = GitRepo::github(
     "Gankra",
@@ -14,21 +14,19 @@ static ABI_CAFE_REPO: GitRepo = GitRepo::github(
 static ABI_CAFE: CargoProject = CargoProject::new(&ABI_CAFE_REPO.source_dir(), "abi_cafe_target");
 
 pub(crate) fn run(
-    channel: &str,
     sysroot_kind: SysrootKind,
     dirs: &Dirs,
     cg_clif_dylib: &CodegenBackend,
     rustup_toolchain_name: Option<&str>,
     bootstrap_host_compiler: &Compiler,
 ) {
-    RelPath::DOWNLOAD.ensure_exists(dirs);
+    std::fs::create_dir_all(&dirs.download_dir).unwrap();
     ABI_CAFE_REPO.fetch(dirs);
     ABI_CAFE_REPO.patch(dirs);
 
     eprintln!("Building sysroot for abi-cafe");
     build_sysroot::build_sysroot(
         dirs,
-        channel,
         sysroot_kind,
         cg_clif_dylib,
         bootstrap_host_compiler,
@@ -38,12 +36,11 @@ pub(crate) fn run(
 
     eprintln!("Running abi-cafe");
 
-    let pairs = ["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"];
-    let pairs =
+    let pairs: &[_] =
         if cfg!(not(any(target_os = "macos", all(target_os = "windows", target_env = "msvc")))) {
-            &pairs[..]
+            &["rustc_calls_cgclif", "cgclif_calls_rustc", "cgclif_calls_cc", "cc_calls_cgclif"]
         } else {
-            &pairs[..2]
+            &["rustc_calls_cgclif", "cgclif_calls_rustc"]
         };
 
     let mut cmd = ABI_CAFE.run(bootstrap_host_compiler, dirs);

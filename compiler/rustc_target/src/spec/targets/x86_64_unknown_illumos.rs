@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, SanitizerSet, Target};
+use crate::spec::{Cc, LinkerFlavor, SanitizerSet, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::illumos::opts();
     base.add_pre_link_args(LinkerFlavor::Unix(Cc::Yes), &["-m64", "-std=c99"]);
     base.cpu = "x86-64".into();
@@ -12,7 +12,7 @@ pub fn target() -> Target {
         // LLVM does not currently have a separate illumos target,
         // so we still pass Solaris to it
         llvm_target: "x86_64-pc-solaris".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("illumos".into()),
             tier: Some(2),
             host_tools: Some(true),

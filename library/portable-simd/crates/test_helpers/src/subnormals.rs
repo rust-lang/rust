@@ -12,7 +12,7 @@ macro_rules! impl_float {
         $(
         impl FlushSubnormals for $ty {
             fn flush(self) -> Self {
-                let is_f32 = core::mem::size_of::<Self>() == 4;
+                let is_f32 = size_of::<Self>() == 4;
                 let ppc_flush = is_f32 && cfg!(all(
                     any(target_arch = "powerpc", all(target_arch = "powerpc64", target_endian = "big")),
                     target_feature = "altivec",

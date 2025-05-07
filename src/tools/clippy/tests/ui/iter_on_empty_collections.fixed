@@ -3,11 +3,17 @@
 
 fn array() {
     assert_eq!(std::iter::empty().next(), Option::<i32>::None);
+    //~^ iter_on_empty_collections
     assert_eq!(std::iter::empty().next(), Option::<&mut i32>::None);
+    //~^ iter_on_empty_collections
     assert_eq!(std::iter::empty().next(), Option::<&i32>::None);
+    //~^ iter_on_empty_collections
     assert_eq!(std::iter::empty().next(), Option::<i32>::None);
+    //~^ iter_on_empty_collections
     assert_eq!(std::iter::empty().next(), Option::<&mut i32>::None);
+    //~^ iter_on_empty_collections
     assert_eq!(std::iter::empty().next(), Option::<&i32>::None);
+    //~^ iter_on_empty_collections
 
     // Don't trigger on non-iter methods
     let _: Option<String> = None.clone();
@@ -26,6 +32,7 @@ fn array() {
     // Don't trigger when the empty collection iter is relied upon for its concrete type
     // But do trigger if it is just an iterator, despite being an argument to a method
     for i in smth.as_ref().map_or([].iter(), |s| s.iter()).chain(std::iter::empty()) {
+        //~^ iter_on_empty_collections
         println!("{i}");
     }
 

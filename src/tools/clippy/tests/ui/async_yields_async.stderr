@@ -1,5 +1,5 @@
 error: an async construct yields a type which is itself awaitable
-  --> tests/ui/async_yields_async.rs:38:9
+  --> tests/ui/async_yields_async.rs:37:9
    |
 LL |        let _h = async {
    |  _____________________-
@@ -14,9 +14,9 @@ LL | |      };
    = help: to override `-D warnings` add `#[allow(clippy::async_yields_async)]`
 help: consider awaiting this value
    |
-LL ~         async {
-LL +             3
-LL +         }.await
+LL |         async {
+LL |             3
+LL ~         }.await
    |
 
 error: an async construct yields a type which is itself awaitable
@@ -33,7 +33,7 @@ LL | |     };
    | |_____- outer async construct
 
 error: an async construct yields a type which is itself awaitable
-  --> tests/ui/async_yields_async.rs:49:9
+  --> tests/ui/async_yields_async.rs:50:9
    |
 LL |        let _j = async || {
    |  ________________________-
@@ -46,13 +46,13 @@ LL | |      };
    |
 help: consider awaiting this value
    |
-LL ~         async {
-LL +             3
-LL +         }.await
+LL |         async {
+LL |             3
+LL ~         }.await
    |
 
 error: an async construct yields a type which is itself awaitable
-  --> tests/ui/async_yields_async.rs:54:9
+  --> tests/ui/async_yields_async.rs:56:9
    |
 LL |       let _k = async || {
    |  _______________________-
@@ -65,7 +65,7 @@ LL | |     };
    | |_____- outer async construct
 
 error: an async construct yields a type which is itself awaitable
-  --> tests/ui/async_yields_async.rs:56:23
+  --> tests/ui/async_yields_async.rs:59:23
    |
 LL |     let _l = async || CustomFutureType;
    |                       ^^^^^^^^^^^^^^^^
@@ -75,12 +75,11 @@ LL |     let _l = async || CustomFutureType;
    |                       help: consider awaiting this value: `CustomFutureType.await`
 
 error: an async construct yields a type which is itself awaitable
-  --> tests/ui/async_yields_async.rs:62:9
+  --> tests/ui/async_yields_async.rs:66:9
    |
 LL |       let _m = async || {
    |  _______________________-
 LL | |         println!("I'm bored");
-LL | |         // Some more stuff
 ...  |
 LL | |         CustomFutureType
    | |         ^^^^^^^^^^^^^^^^

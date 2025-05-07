@@ -1,8 +1,8 @@
-//! Check that pattern types don't implement traits of their base automatically
+//! Check that pattern types don't implement traits of their base automatically.
+//! Exceptions are `Clone` and `Copy`, which have builtin impls for pattern types.
 
 #![feature(pattern_types)]
-#![feature(core_pattern_types)]
-#![feature(core_pattern_type)]
+#![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;
 

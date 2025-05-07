@@ -5,9 +5,11 @@ use either::Either;
 use hir::{AsAssocItem, HirDisplay, ImportPathConfig, ModuleDef, SemanticsScope};
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
+use span::Edition;
 use syntax::{
-    ast::{self, make, AstNode, HasGenericArgs},
-    ted, NodeOrToken, SyntaxNode,
+    NodeOrToken, SyntaxNode,
+    ast::{self, AstNode, HasGenericArgs, make},
+    ted,
 };
 
 #[derive(Default)]
@@ -31,7 +33,7 @@ type DefaultedParam = Either<hir::TypeParam, hir::ConstParam>;
 /// block), you generally want to appropriately qualify the names, and sometimes
 /// you might want to substitute generic parameters as well:
 ///
-/// ```
+/// ```ignore
 /// mod x {
 ///   pub struct A<V>;
 ///   pub trait T<U> { fn foo(&self, _: U) -> A<U>; }
@@ -146,6 +148,7 @@ impl<'a> PathTransform<'a> {
         let mut type_substs: FxHashMap<hir::TypeParam, ast::Type> = Default::default();
         let mut const_substs: FxHashMap<hir::ConstParam, SyntaxNode> = Default::default();
         let mut defaulted_params: Vec<DefaultedParam> = Default::default();
+        let target_edition = target_module.krate().edition(self.source_scope.db);
         self.generic_def
             .into_iter()
             .flat_map(|it| it.type_or_const_params(db))
@@ -182,7 +185,7 @@ impl<'a> PathTransform<'a> {
                     if let Some(expr) = v.expr() {
                         // FIXME: expressions in curly brackets can cause ambiguity after insertion
                         // (e.g. `N * 2` -> `{1 + 1} * 2`; it's unclear whether `{1 + 1}`
-                        // is a standalone statement or a part of another expresson)
+                        // is a standalone statement or a part of another expression)
                         // and sometimes require slight modifications; see
                         // https://doc.rust-lang.org/reference/statements.html#expression-statements
                         // (default values in curly brackets can cause the same problem)
@@ -190,7 +193,9 @@ impl<'a> PathTransform<'a> {
                     }
                 }
                 (Either::Left(k), None) => {
-                    if let Some(default) = k.default(db) {
+                    if let Some(default) =
+                        k.default(db, target_module.krate().to_display_target(db))
+                    {
                         if let Some(default) = default.expr() {
                             const_substs.insert(k, default.syntax().clone_for_update());
                             defaulted_params.push(Either::Right(k));
@@ -204,7 +209,9 @@ impl<'a> PathTransform<'a> {
             .into_iter()
             .flat_map(|it| it.lifetime_params(db))
             .zip(self.substs.lifetimes.clone())
-            .filter_map(|(k, v)| Some((k.name(db).display(db.upcast()).to_string(), v.lifetime()?)))
+            .filter_map(|(k, v)| {
+                Some((k.name(db).display(db, target_edition).to_string(), v.lifetime()?))
+            })
             .collect();
         let ctx = Ctx {
             type_substs,
@@ -213,6 +220,7 @@ impl<'a> PathTransform<'a> {
             target_module,
             source_scope: self.source_scope,
             same_self_type: self.target_scope.has_same_self_type(self.source_scope),
+            target_edition,
         };
         ctx.transform_default_values(defaulted_params);
         ctx
@@ -226,6 +234,7 @@ struct Ctx<'a> {
     target_module: hir::Module,
     source_scope: &'a SemanticsScope<'a>,
     same_self_type: bool,
+    target_edition: Edition,
 }
 
 fn preorder_rev(item: &SyntaxNode) -> impl Iterator<Item = SyntaxNode> {
@@ -279,8 +288,9 @@ impl Ctx<'_> {
         if path.qualifier().is_some() {
             return None;
         }
-        if path.segment().map_or(false, |s| {
-            s.param_list().is_some() || (s.self_token().is_some() && path.parent_path().is_none())
+        if path.segment().is_some_and(|s| {
+            s.parenthesized_arg_list().is_some()
+                || (s.self_token().is_some() && path.parent_path().is_none())
         }) {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             // don't try to qualify sole `self` either, they are usually locals, but are returned as modules due to namespace clashing
@@ -312,13 +322,14 @@ impl Ctx<'_> {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
+                                allow_unstable: true,
                             };
                             let found_path = self.target_module.find_path(
-                                self.source_scope.db.upcast(),
+                                self.source_scope.db,
                                 hir::ModuleDef::Trait(trait_ref),
                                 cfg,
                             )?;
-                            match make::ty_path(mod_path_to_ast(&found_path)) {
+                            match make::ty_path(mod_path_to_ast(&found_path, self.target_edition)) {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
                                 _ => None,
                             }
@@ -371,10 +382,10 @@ impl Ctx<'_> {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,
+                    allow_unstable: true,
                 };
-                let found_path =
-                    self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
-                let res = mod_path_to_ast(&found_path).clone_for_update();
+                let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
+                let res = mod_path_to_ast(&found_path, self.target_edition).clone_for_update();
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
                     if let Some(segment) = res.segment() {
                         let old = segment.get_or_create_generic_arg_list();
@@ -410,14 +421,17 @@ impl Ctx<'_> {
                             prefer_no_std: false,
                             prefer_prelude: true,
                             prefer_absolute: false,
+                            allow_unstable: true,
                         };
                         let found_path = self.target_module.find_path(
-                            self.source_scope.db.upcast(),
+                            self.source_scope.db,
                             ModuleDef::from(adt),
                             cfg,
                         )?;
 
-                        if let Some(qual) = mod_path_to_ast(&found_path).qualifier() {
+                        if let Some(qual) =
+                            mod_path_to_ast(&found_path, self.target_edition).qualifier()
+                        {
                             let res = make::path_concat(qual, path_ty.path()?).clone_for_update();
                             ted::replace(path.syntax(), res.syntax());
                             return Some(());

@@ -65,7 +65,7 @@ impl RawEmitter {
         self.bytes_used += 256;
 
         writeln!(&mut self.file, "#[inline]").unwrap();
-        writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
+        writeln!(&mut self.file, "pub const fn lookup(c: char) -> bool {{").unwrap();
         writeln!(&mut self.file, "    match c as u32 >> 8 {{").unwrap();
         for arm in arms {
             writeln!(&mut self.file, "        {},", arm).unwrap();

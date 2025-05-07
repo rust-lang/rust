@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 
 // Make sure no bounds checks are emitted when slicing or indexing

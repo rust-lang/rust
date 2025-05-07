@@ -18,14 +18,15 @@ LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |
 help: copy the `where` clause predicates from the trait
    |
-LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'a: 'b;
-   |                                      ~~~~~~~~~~~~
+LL -     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
+LL +     type B<'a, 'b> = (&'a(), &'b ()) where 'a: 'b;
+   |
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/impl_bounds.rs:18:33
    |
 LL |     type C = String where Self: Copy;
-   |                                 ^^^^ the trait `Copy` is not implemented for `T`, which is required by `Fooy<T>: Copy`
+   |                                 ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:10:10
@@ -40,8 +41,7 @@ LL | trait Foo {
 ...
 LL |     type C where Self: Clone;
    |          ^ this trait's associated type doesn't have the requirement `Fooy<T>: Copy`
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++
@@ -50,23 +50,22 @@ error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/impl_bounds.rs:20:24
    |
 LL |     fn d() where Self: Copy {}
-   |                        ^^^^ the trait `Copy` is not implemented for `T`, which is required by `Fooy<T>: Copy`
+   |                        ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required for `Fooy<T>` to implement `Copy`
   --> $DIR/impl_bounds.rs:10:10
    |
 LL | #[derive(Copy, Clone)]
    |          ^^^^ unsatisfied trait bound introduced in this `derive` macro
-note: the requirement `Fooy<T>: Copy` appears on the `impl`'s method `d` but not on the corresponding trait's method
+note: the requirement `Fooy<T>: Copy` appears on the `impl`'s associated function `d` but not on the corresponding trait's associated function
   --> $DIR/impl_bounds.rs:7:8
    |
 LL | trait Foo {
    |       --- in this trait
 ...
 LL |     fn d() where Self: Clone;
-   |        ^ this trait's method doesn't have the requirement `Fooy<T>: Copy`
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider restricting type parameter `T`
+   |        ^ this trait's associated function doesn't have the requirement `Fooy<T>: Copy`
+help: consider restricting type parameter `T` with trait `Copy`
    |
 LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++

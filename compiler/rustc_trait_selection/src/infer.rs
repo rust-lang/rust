@@ -5,14 +5,17 @@ use rustc_hir::lang_items::LangItem;
 pub use rustc_infer::infer::*;
 use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
+use rustc_middle::infer::canonical::{
+    Canonical, CanonicalQueryInput, CanonicalQueryResponse, QueryResponse,
+};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_span::DUMMY_SP;
+use tracing::instrument;
 
 use crate::infer::at::ToTrace;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt, SelectionContext};
+use crate::traits::{self, Obligation, ObligationCause, ObligationCtxt};
 
 #[extension(pub trait InferCtxtExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
@@ -29,8 +32,10 @@ impl<'tcx> InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let ty = self.resolve_vars_if_possible(ty);
 
-        if !(param_env, ty).has_infer() {
-            return ty.is_copy_modulo_regions(self.tcx, param_env);
+        // FIXME(#132279): This should be removed as it causes us to incorrectly
+        // handle opaques in their defining scope.
+        if !self.next_trait_solver() && !(param_env, ty).has_infer() {
+            return self.tcx.type_is_copy_modulo_regions(self.typing_env(param_env), ty);
         }
 
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, None);
@@ -40,6 +45,22 @@ impl<'tcx> InferCtxt<'tcx> {
         // moves_by_default has a cache, which we want to use in other
         // cases.
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
+    }
+
+    fn type_is_clone_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+        let clone_def_id = self.tcx.require_lang_item(LangItem::Clone, None);
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, clone_def_id)
+    }
+
+    fn type_is_use_cloned_modulo_regions(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+        let use_cloned_def_id = self.tcx.require_lang_item(LangItem::UseCloned, None);
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
     }
 
     fn type_is_sized_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -57,6 +78,24 @@ impl<'tcx> InferCtxt<'tcx> {
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
     /// `Ty: Trait` causes overflow, EvaluatedToAmbigStackDependent will be returned.
+    ///
+    /// `type_implements_trait` is a convenience function for simple cases like
+    ///
+    /// ```ignore (illustrative)
+    /// let copy_trait = infcx.tcx.require_lang_item(LangItem::Copy, span);
+    /// let implements_copy = infcx.type_implements_trait(copy_trait, [ty], param_env)
+    /// .must_apply_modulo_regions();
+    /// ```
+    ///
+    /// In most cases you should instead create an [Obligation] and check whether
+    ///  it holds via [`evaluate_obligation`] or one of its helper functions like
+    /// [`predicate_must_hold_modulo_regions`], because it properly handles higher ranked traits
+    /// and it is more convenient and safer when your `params` are inside a [`Binder`].
+    ///
+    /// [Obligation]: traits::Obligation
+    /// [`evaluate_obligation`]: crate::traits::query::evaluate_obligation::InferCtxtExt::evaluate_obligation
+    /// [`predicate_must_hold_modulo_regions`]: crate::traits::query::evaluate_obligation::InferCtxtExt::predicate_must_hold_modulo_regions
+    /// [`Binder`]: ty::Binder
     #[instrument(level = "debug", skip(self, params), ret)]
     fn type_implements_trait(
         &self,
@@ -83,9 +122,6 @@ impl<'tcx> InferCtxt<'tcx> {
     /// - If this returns `Some([errors..])`, then the trait has an impl for
     /// the self type, but some nested obligations do not hold.
     /// - If this returns `None`, no implementation that applies could be found.
-    ///
-    /// FIXME(-Znext-solver): Due to the recursive nature of the new solver,
-    /// this will probably only ever return `Some([])` or `None`.
     fn type_implements_trait_shallow(
         &self,
         trait_def_id: DefId,
@@ -93,20 +129,29 @@ impl<'tcx> InferCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> Option<Vec<traits::FulfillmentError<'tcx>>> {
         self.probe(|_snapshot| {
-            let mut selcx = SelectionContext::new(self);
-            match selcx.select(&Obligation::new(
+            let ocx = ObligationCtxt::new_with_diagnostics(self);
+            ocx.register_obligation(Obligation::new(
                 self.tcx,
                 ObligationCause::dummy(),
                 param_env,
                 ty::TraitRef::new(self.tcx, trait_def_id, [ty]),
-            )) {
-                Ok(Some(selection)) => {
-                    let ocx = ObligationCtxt::new_with_diagnostics(self);
-                    ocx.register_obligations(selection.nested_obligations());
-                    Some(ocx.select_all_or_error())
+            ));
+            let errors = ocx.select_where_possible();
+            // Find the original predicate in the list of predicates that could definitely not be fulfilled.
+            // If it is in that list, then we know this doesn't even shallowly implement the trait.
+            // If it is not in that list, it was fulfilled, but there may be nested obligations, which we don't care about here.
+            for error in &errors {
+                let Some(trait_clause) = error.obligation.predicate.as_trait_clause() else {
+                    continue;
+                };
+                let Some(bound_ty) = trait_clause.self_ty().no_bound_vars() else { continue };
+                if trait_clause.def_id() == trait_def_id
+                    && ocx.eq(&ObligationCause::dummy(), param_env, bound_ty, ty).is_ok()
+                {
+                    return None;
                 }
-                Ok(None) | Err(_) => None,
             }
+            Some(errors)
         })
     }
 }
@@ -131,7 +176,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     /// `K: TypeFoldable<TyCtxt<'tcx>>`.)
     fn enter_canonical_trait_query<K, R>(
         self,
-        canonical_key: &Canonical<'tcx, K>,
+        canonical_key: &CanonicalQueryInput<'tcx, K>,
         operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Result<R, NoSolution>,
     ) -> Result<CanonicalQueryResponse<'tcx, R>, NoSolution>
     where

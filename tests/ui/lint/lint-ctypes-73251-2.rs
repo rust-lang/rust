@@ -24,10 +24,12 @@ type AliasA = impl TraitA<Assoc = u32>;
 
 type AliasB = impl TraitB<Assoc = AliasA>;
 
+#[define_opaque(AliasA)]
 fn use_of_a() -> AliasA {
     3
 }
 
+#[define_opaque(AliasB)]
 fn use_of_b() -> AliasB {
     3
 }

@@ -16,5 +16,5 @@ impl T1 for i32 {
 fn main() {
     let r = Box::new(0) as Box<dyn T1>;
     let r2: Box<dyn T2> = unsafe { std::mem::transmute(r) };
-    r2.method2(); //~ERROR: using vtable for trait `T1` but trait `T2` was expected
+    r2.method2(); //~ERROR: using vtable for `T1` but `T2` was expected
 }

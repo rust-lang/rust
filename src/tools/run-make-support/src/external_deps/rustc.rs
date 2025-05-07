@@ -1,11 +1,12 @@
 use std::ffi::{OsStr, OsString};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr as _;
 
 use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
-use crate::util::set_host_rpath;
-use crate::{is_darwin, is_msvc, is_windows, uname};
+use crate::util::set_host_compiler_dylib_path;
+use crate::{is_aix, is_darwin, is_msvc, is_windows, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -14,17 +15,11 @@ pub fn rustc() -> Rustc {
     Rustc::new()
 }
 
-/// Construct a plain `rustc` invocation with no flags set. Note that [`set_host_rpath`]
-/// still presets the environment variable `HOST_RPATH_DIR` by default.
+/// Construct a plain `rustc` invocation with no flags set. Note that [`set_host_compiler_dylib_path`]
+/// still presets the environment variable `HOST_RUSTC_DYLIB_PATH` by default.
 #[track_caller]
 pub fn bare_rustc() -> Rustc {
     Rustc::bare()
-}
-
-/// Construct a new `rustc` aux-build invocation.
-#[track_caller]
-pub fn aux_build() -> Rustc {
-    Rustc::new_aux_build()
 }
 
 /// A `rustc` invocation builder.
@@ -36,11 +31,14 @@ pub struct Rustc {
 
 crate::macros::impl_common_helpers!(Rustc);
 
+pub fn rustc_path() -> String {
+    env_var("RUSTC")
+}
+
 #[track_caller]
 fn setup_common() -> Command {
-    let rustc = env_var("RUSTC");
-    let mut cmd = Command::new(rustc);
-    set_host_rpath(&mut cmd);
+    let mut cmd = Command::new(rustc_path());
+    set_host_compiler_dylib_path(&mut cmd);
     cmd
 }
 
@@ -63,14 +61,6 @@ impl Rustc {
         Self { cmd }
     }
 
-    /// Construct a new `rustc` invocation with `aux_build` preset (setting `--crate-type=lib`).
-    #[track_caller]
-    pub fn new_aux_build() -> Self {
-        let mut cmd = setup_common();
-        cmd.arg("--crate-type=lib");
-        Self { cmd }
-    }
-
     // Argument provider methods
 
     /// Configure the compilation environment.
@@ -80,7 +70,7 @@ impl Rustc {
         self
     }
 
-    /// Specify default optimization level `-O` (alias for `-C opt-level=2`).
+    /// Specify default optimization level `-O` (alias for `-C opt-level=3`).
     pub fn opt(&mut self) -> &mut Self {
         self.cmd.arg("-O");
         self
@@ -212,6 +202,18 @@ impl Rustc {
         self
     }
 
+    /// Specify option of `-C symbol-mangling-version`.
+    pub fn symbol_mangling_version(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Csymbol-mangling-version={option}"));
+        self
+    }
+
+    /// Specify `-C prefer-dynamic`.
+    pub fn prefer_dynamic(&mut self) -> &mut Self {
+        self.cmd.arg(format!("-Cprefer-dynamic"));
+        self
+    }
+
     /// Specify error format to use
     pub fn error_format(&mut self, format: &str) -> &mut Self {
         self.cmd.arg(format!("--error-format={format}"));
@@ -224,10 +226,23 @@ impl Rustc {
         self
     }
 
+    /// Normalize the line number in the stderr output
+    pub fn ui_testing(&mut self) -> &mut Self {
+        self.cmd.arg(format!("-Zui-testing"));
+        self
+    }
+
     /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
         let target = target.as_ref();
         self.cmd.arg(format!("--target={target}"));
+        self
+    }
+
+    /// Specify the target CPU.
+    pub fn target_cpu<S: AsRef<str>>(&mut self, target_cpu: S) -> &mut Self {
+        let target_cpu = target_cpu.as_ref();
+        self.cmd.arg(format!("-Ctarget-cpu={target_cpu}"));
         self
     }
 
@@ -291,9 +306,9 @@ impl Rustc {
         self
     }
 
-    /// Specify a stdin input
-    pub fn stdin<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
-        self.cmd.stdin(input);
+    /// Specify a stdin input buffer.
+    pub fn stdin_buf<I: AsRef<[u8]>>(&mut self, input: I) -> &mut Self {
+        self.cmd.stdin_buf(input);
         self
     }
 
@@ -316,34 +331,27 @@ impl Rustc {
         self
     }
 
+    /// Specify `-C debuginfo=...`.
+    pub fn debuginfo(&mut self, level: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cdebuginfo={level}"));
+        self
+    }
+
+    /// Specify `-C split-debuginfo={packed,unpacked,off}`.
+    pub fn split_debuginfo(&mut self, split_kind: &str) -> &mut Self {
+        self.cmd.arg(format!("-Csplit-debuginfo={split_kind}"));
+        self
+    }
+
+    /// Pass the `--verbose` flag.
+    pub fn verbose(&mut self) -> &mut Self {
+        self.cmd.arg("--verbose");
+        self
+    }
+
     /// `EXTRARSCXXFLAGS`
     pub fn extra_rs_cxx_flags(&mut self) -> &mut Self {
-        // Adapted from tools.mk (trimmed):
-        //
-        // ```makefile
-        // ifdef IS_WINDOWS
-        //     ifdef IS_MSVC
-        //     else
-        //         EXTRARSCXXFLAGS := -lstatic:-bundle=stdc++
-        //     endif
-        // else
-        //     ifeq ($(UNAME),Darwin)
-        //         EXTRARSCXXFLAGS := -lc++
-        //     else
-        //         ifeq ($(UNAME),FreeBSD)
-        //         else
-        //             ifeq ($(UNAME),SunOS)
-        //             else
-        //                 ifeq ($(UNAME),OpenBSD)
-        //                 else
-        //                     EXTRARSCXXFLAGS := -lstdc++
-        //                 endif
-        //             endif
-        //         endif
-        //     endif
-        // endif
-        // ```
-        let flag = if is_windows() {
+        if is_windows() {
             // So this is a bit hacky: we can't use the DLL version of libstdc++ because
             // it pulls in the DLL version of libgcc, which means that we end up with 2
             // instances of the DW2 unwinding implementation. This is a problem on
@@ -359,18 +367,26 @@ impl Rustc {
             // So we end up with the following hack: we link use static:-bundle to only
             // link the parts of libstdc++ that we actually use, which doesn't include
             // the dependency on the pthreads DLL.
-            if is_msvc() { None } else { Some("-lstatic:-bundle=stdc++") }
+            if !is_msvc() {
+                self.cmd.arg("-lstatic:-bundle=stdc++");
+            };
         } else if is_darwin() {
-            Some("-lc++")
+            self.cmd.arg("-lc++");
+        } else if is_aix() {
+            self.cmd.arg("-lc++");
+            self.cmd.arg("-lc++abi");
         } else {
-            match &uname()[..] {
-                "FreeBSD" | "SunOS" | "OpenBSD" => None,
-                _ => Some("-lstdc++"),
-            }
+            if !matches!(&uname()[..], "FreeBSD" | "SunOS" | "OpenBSD") {
+                self.cmd.arg("-lstdc++");
+            };
         };
-        if let Some(flag) = flag {
-            self.cmd.arg(flag);
-        }
         self
     }
+}
+
+/// Query the sysroot path corresponding `rustc --print=sysroot`.
+#[track_caller]
+pub fn sysroot() -> PathBuf {
+    let path = rustc().print("sysroot").run().stdout_utf8();
+    PathBuf::from_str(path.trim()).unwrap()
 }

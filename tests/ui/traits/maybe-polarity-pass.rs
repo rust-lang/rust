@@ -1,5 +1,3 @@
-//@ check-pass
-
 #![feature(auto_traits)]
 #![feature(more_maybe_bounds)]
 #![feature(negative_impls)]
@@ -12,9 +10,9 @@ trait Trait4 where Self: Trait1 {}
 
 fn foo(_: Box<(dyn Trait3 + ?Trait2)>) {}
 fn bar<T: ?Sized + ?Trait2 + ?Trait1 + ?Trait4>(_: &T) {}
-//~^ WARN relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-//~| WARN relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-//~| WARN relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~^ ERROR relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~| ERROR relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~| ERROR relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
 
 struct S;
 impl !Trait2 for S {}

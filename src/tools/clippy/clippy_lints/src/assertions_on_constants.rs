@@ -1,7 +1,7 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_inside_always_const_context;
-use clippy_utils::macros::{find_assert_args, root_macro_call_first_node, PanicExpn};
+use clippy_utils::macros::{PanicExpn, find_assert_args, root_macro_call_first_node};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;

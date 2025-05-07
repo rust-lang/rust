@@ -1,4 +1,5 @@
-//@ normalize-stderr-test: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 #![feature(never_type, rustc_attrs, type_alias_impl_trait, repr_simd)]
 #![crate_type = "lib"]
 
@@ -17,6 +18,7 @@ type Test = Result<i32, i32>; //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
 type T = impl std::fmt::Debug; //~ ERROR: layout_of
+#[define_opaque(T)]
 fn f() -> T {
     0i32
 }
@@ -49,7 +51,7 @@ union P2 { x: (u32, u32) } //~ ERROR: layout_of
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-struct F32x4(f32, f32, f32, f32);
+struct F32x4([f32; 4]);
 
 #[rustc_layout(debug)]
 #[repr(packed(1))]
@@ -76,3 +78,13 @@ impl S {
 
 #[rustc_layout(debug)]
 type Impossible = (str, str); //~ ERROR: cannot be known at compilation time
+
+// Test that computing the layout of an empty union doesn't ICE.
+#[rustc_layout(debug)]
+union EmptyUnion {} //~ ERROR: has an unknown layout
+//~^ ERROR: unions cannot have zero fields
+
+// Test the error message of `LayoutError::TooGeneric`
+// (this error is never emitted to users).
+#[rustc_layout(debug)]
+type TooGeneric<T> = T; //~ ERROR: does not have a fixed layout

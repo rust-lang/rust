@@ -1,26 +1,23 @@
 //! Doctest functionality used only for doctests in `.rs` source files.
 
 use std::env;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
-use rustc_hir::{self as hir, intravisit, CRATE_HIR_ID};
-use rustc_middle::hir::map::Map;
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_resolve::rustdoc::span_of_fragments;
-use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
 
 use super::{DocTestVisitor, ScrapedDocTest};
-use crate::clean::types::AttributesExt;
-use crate::clean::Attributes;
+use crate::clean::{Attributes, extract_cfg_from_attrs};
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
-    source_map: Lrc<SourceMap>,
+    source_map: Arc<SourceMap>,
     tests: Vec<ScrapedDocTest>,
     cur_path: Vec<String>,
     position: Span,
@@ -63,82 +60,77 @@ impl DocTestVisitor for RustCollector {
     fn visit_header(&mut self, _name: &str, _level: u32) {}
 }
 
-pub(super) struct HirCollector<'a, 'tcx> {
-    sess: &'a Session,
-    map: Map<'tcx>,
+pub(super) struct HirCollector<'tcx> {
     codes: ErrorCodes,
     tcx: TyCtxt<'tcx>,
-    enable_per_target_ignores: bool,
     collector: RustCollector,
 }
 
-impl<'a, 'tcx> HirCollector<'a, 'tcx> {
-    pub fn new(
-        sess: &'a Session,
-        map: Map<'tcx>,
-        codes: ErrorCodes,
-        enable_per_target_ignores: bool,
-        tcx: TyCtxt<'tcx>,
-    ) -> Self {
+impl<'tcx> HirCollector<'tcx> {
+    pub fn new(codes: ErrorCodes, tcx: TyCtxt<'tcx>) -> Self {
         let collector = RustCollector {
-            source_map: sess.psess.clone_source_map(),
+            source_map: tcx.sess.psess.clone_source_map(),
             cur_path: vec![],
             position: DUMMY_SP,
             tests: vec![],
         };
-        Self { sess, map, codes, enable_per_target_ignores, tcx, collector }
+        Self { codes, tcx, collector }
     }
 
     pub fn collect_crate(mut self) -> Vec<ScrapedDocTest> {
         let tcx = self.tcx;
-        self.visit_testable("".to_string(), CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID), |this| {
-            tcx.hir().walk_toplevel_module(this)
+        self.visit_testable(None, CRATE_DEF_ID, tcx.hir_span(CRATE_HIR_ID), |this| {
+            tcx.hir_walk_toplevel_module(this)
         });
         self.collector.tests
     }
 }
 
-impl<'a, 'tcx> HirCollector<'a, 'tcx> {
+impl HirCollector<'_> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
-        name: String,
+        name: Option<String>,
         def_id: LocalDefId,
         sp: Span,
         nested: F,
     ) {
-        let ast_attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
-        if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
-            if !cfg.matches(&self.sess.psess, Some(self.tcx.features())) {
-                return;
-            }
+        let ast_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
+        if let Some(ref cfg) =
+            extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &FxHashSet::default())
+            && !cfg.matches(&self.tcx.sess.psess)
+        {
+            return;
         }
 
-        let has_name = !name.is_empty();
-        if has_name {
+        let mut has_name = false;
+        if let Some(name) = name {
             self.collector.cur_path.push(name);
+            has_name = true;
         }
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
-        let attrs = Attributes::from_ast(ast_attrs);
+        let attrs = Attributes::from_hir(ast_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
-            // Use the outermost invocation, so that doctest names come from where the docs were written.
-            let span = ast_attrs
-                .iter()
-                .find(|attr| attr.doc_str().is_some())
-                .map(|attr| attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span))
-                .unwrap_or(DUMMY_SP);
-            self.collector.position = span;
+            let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
+            self.collector.position = if span.edition().at_least_rust_2024() {
+                span
+            } else {
+                // this span affects filesystem path resolution,
+                // so we need to keep it the same as it was previously
+                ast_attrs
+                    .iter()
+                    .find(|attr| attr.doc_str().is_some())
+                    .map(|attr| {
+                        attr.span().ctxt().outer_expn().expansion_cause().unwrap_or(attr.span())
+                    })
+                    .unwrap_or(DUMMY_SP)
+            };
             markdown::find_testable_code(
                 &doc,
                 &mut self.collector,
                 self.codes,
-                self.enable_per_target_ignores,
-                Some(&crate::html::markdown::ExtraInfo::new(
-                    self.tcx,
-                    def_id.to_def_id(),
-                    span_of_fragments(&attrs.doc_strings).unwrap_or(sp),
-                )),
+                Some(&crate::html::markdown::ExtraInfo::new(self.tcx, def_id, span)),
             );
         }
 
@@ -150,19 +142,19 @@ impl<'a, 'tcx> HirCollector<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> intravisit::Visitor<'tcx> for HirCollector<'a, 'tcx> {
+impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.map
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
         let name = match &item.kind {
             hir::ItemKind::Impl(impl_) => {
-                rustc_hir_pretty::id_to_string(&self.map, impl_.self_ty.hir_id)
+                Some(rustc_hir_pretty::id_to_string(&self.tcx, impl_.self_ty.hir_id))
             }
-            _ => item.ident.to_string(),
+            _ => item.kind.ident().map(|ident| ident.to_string()),
         };
 
         self.visit_testable(name, item.owner_id.def_id, item.span, |this| {
@@ -171,31 +163,46 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for HirCollector<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
-            intravisit::walk_trait_item(this, item);
-        });
+        self.visit_testable(
+            Some(item.ident.to_string()),
+            item.owner_id.def_id,
+            item.span,
+            |this| {
+                intravisit::walk_trait_item(this, item);
+            },
+        );
     }
 
     fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
-            intravisit::walk_impl_item(this, item);
-        });
+        self.visit_testable(
+            Some(item.ident.to_string()),
+            item.owner_id.def_id,
+            item.span,
+            |this| {
+                intravisit::walk_impl_item(this, item);
+            },
+        );
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
-            intravisit::walk_foreign_item(this, item);
-        });
+        self.visit_testable(
+            Some(item.ident.to_string()),
+            item.owner_id.def_id,
+            item.span,
+            |this| {
+                intravisit::walk_foreign_item(this, item);
+            },
+        );
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'_>) {
-        self.visit_testable(v.ident.to_string(), v.def_id, v.span, |this| {
+        self.visit_testable(Some(v.ident.to_string()), v.def_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
     }
 
     fn visit_field_def(&mut self, f: &'tcx hir::FieldDef<'_>) {
-        self.visit_testable(f.ident.to_string(), f.def_id, f.span, |this| {
+        self.visit_testable(Some(f.ident.to_string()), f.def_id, f.span, |this| {
             intravisit::walk_field_def(this, f);
         });
     }

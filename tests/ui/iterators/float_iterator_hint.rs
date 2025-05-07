@@ -3,7 +3,7 @@
 fn main() {
     for i in 0.2 {
         //~^ ERROR `{float}` is not an iterator
-        //~| `{float}` is not an iterator
+        //~| NOTE `{float}` is not an iterator
         //~| NOTE in this expansion of desugaring of `for` loop
         //~| NOTE in this expansion of desugaring of `for` loop
         //~| NOTE in this expansion of desugaring of `for` loop

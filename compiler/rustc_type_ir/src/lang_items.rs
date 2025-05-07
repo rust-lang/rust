@@ -2,7 +2,6 @@
 /// representation of `LangItem`s used in the underlying compiler implementation.
 pub enum TraitSolverLangItem {
     // tidy-alphabetical-start
-    AsyncDestruct,
     AsyncFn,
     AsyncFnKindHelper,
     AsyncFnKindUpvars,
@@ -10,6 +9,7 @@ pub enum TraitSolverLangItem {
     AsyncFnOnce,
     AsyncFnOnceOutput,
     AsyncIterator,
+    BikeshedGuaranteedNoDrop,
     CallOnceFuture,
     CallRefFuture,
     Clone,
@@ -19,12 +19,8 @@ pub enum TraitSolverLangItem {
     CoroutineYield,
     Destruct,
     DiscriminantKind,
+    Drop,
     DynMetadata,
-    EffectsIntersection,
-    EffectsIntersectionOutput,
-    EffectsMaybe,
-    EffectsNoRuntime,
-    EffectsRuntime,
     Fn,
     FnMut,
     FnOnce,
@@ -36,7 +32,6 @@ pub enum TraitSolverLangItem {
     Metadata,
     Option,
     PointeeTrait,
-    PointerLike,
     Poll,
     Sized,
     TransmuteTrait,

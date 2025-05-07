@@ -2,10 +2,10 @@ use super::MIXED_ATTRIBUTES_STYLE;
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{AttrKind, AttrStyle, Attribute};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{EarlyContext, LintContext};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{SourceFile, Span, Symbol};
+use std::sync::Arc;
 
 #[derive(Hash, PartialEq, Eq)]
 enum SimpleAttrKind {
@@ -32,7 +32,7 @@ impl From<&AttrKind> for SimpleAttrKind {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, item_span: Span, attrs: &[Attribute]) {
+pub(super) fn check(cx: &EarlyContext<'_>, item_span: Span, attrs: &[Attribute]) {
     let mut inner_attr_kind: FxHashSet<SimpleAttrKind> = FxHashSet::default();
     let mut outer_attr_kind: FxHashSet<SimpleAttrKind> = FxHashSet::default();
 
@@ -60,13 +60,13 @@ pub(super) fn check(cx: &LateContext<'_>, item_span: Span, attrs: &[Attribute]) 
                 }
                 outer_attr_kind.insert(kind);
             },
-        };
+        }
     }
 }
 
-fn lint_mixed_attrs(cx: &LateContext<'_>, attrs: &[Attribute]) {
+fn lint_mixed_attrs(cx: &EarlyContext<'_>, attrs: &[Attribute]) {
     let mut attrs_iter = attrs.iter().filter(|attr| !attr.span.from_expansion());
-    let span = if let (Some(first), Some(last)) = (attrs_iter.next(), attrs_iter.last()) {
+    let span = if let (Some(first), Some(last)) = (attrs_iter.next(), attrs_iter.next_back()) {
         first.span.with_hi(last.span.hi())
     } else {
         return;
@@ -79,7 +79,7 @@ fn lint_mixed_attrs(cx: &LateContext<'_>, attrs: &[Attribute]) {
     );
 }
 
-fn attr_in_same_src_as_item(source_map: &SourceMap, item_src: &Lrc<SourceFile>, attr_span: Span) -> bool {
+fn attr_in_same_src_as_item(source_map: &SourceMap, item_src: &Arc<SourceFile>, attr_span: Span) -> bool {
     let attr_src = source_map.lookup_source_file(attr_span.lo());
-    Lrc::ptr_eq(item_src, &attr_src)
+    Arc::ptr_eq(item_src, &attr_src)
 }

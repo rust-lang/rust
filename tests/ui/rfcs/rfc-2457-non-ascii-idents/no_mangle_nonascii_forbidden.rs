@@ -1,11 +1,11 @@
 #[no_mangle]
-pub fn řųśť() {}  //~ `#[no_mangle]` requires ASCII identifier
+pub fn řųśť() {}  //~ ERROR `#[no_mangle]` requires ASCII identifier
 
 pub struct Foo;
 
 impl Foo {
     #[no_mangle]
-    pub fn řųśť() {}  //~ `#[no_mangle]` requires ASCII identifier
+    pub fn řųśť() {}  //~ ERROR `#[no_mangle]` requires ASCII identifier
 }
 
 trait Bar {
@@ -14,7 +14,7 @@ trait Bar {
 
 impl Bar for Foo {
     #[no_mangle]
-    fn řųśť() {}  //~ `#[no_mangle]` requires ASCII identifier
+    fn řųśť() {}  //~ ERROR `#[no_mangle]` requires ASCII identifier
 }
 
 fn main() {}

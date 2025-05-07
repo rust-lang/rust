@@ -1,9 +1,9 @@
-use crate::spec::{base, Target, TargetOptions};
+use crate::spec::{Target, TargetMetadata, TargetOptions, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     Target {
         llvm_target: "mipsel-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("MIPS (little endian) Linux (kernel 4.4, glibc 2.23)".into()),
             tier: Some(3),
             host_tools: Some(true),

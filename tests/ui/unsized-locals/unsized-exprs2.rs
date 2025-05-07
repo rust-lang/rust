@@ -1,13 +1,10 @@
-#![feature(unsized_tuple_coercion, unsized_fn_params)]
+#![feature(unsized_fn_params)]
 
 struct A<X: ?Sized>(X);
 
 fn udrop<T: ?Sized>(_x: T) {}
 fn foo() -> Box<[u8]> {
     Box::new(*b"foo")
-}
-fn tfoo() -> Box<(i32, [u8])> {
-    Box::new((42, *b"foo"))
 }
 fn afoo() -> Box<A<[u8]>> {
     Box::new(A(*b"foo"))

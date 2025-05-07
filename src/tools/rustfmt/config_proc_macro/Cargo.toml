@@ -1,7 +1,7 @@
 [package]
 name = "rustfmt-config_proc_macro"
 version = "0.3.0"
-edition = "2018"
+edition = "2021"
 description = "A collection of procedural macros for rustfmt"
 license = "Apache-2.0 OR MIT"
 categories = ["development-tools::procedural-macro-helpers"]
@@ -13,7 +13,7 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "2.0", features = ["full", "visit"] }
+syn = { version = "2.0", default-features = false, features = ["full", "parsing", "proc-macro", "printing"] }
 
 [dev-dependencies]
 serde = { version = "1.0.160", features = ["derive"] }

@@ -1,7 +1,10 @@
-use crate::abi::Endian;
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use rustc_abi::Endian;
 
-pub fn target() -> Target {
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
+
+pub(crate) fn target() -> Target {
     let mut base = base::vxworks::opts();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mspe", "--secure-plt"]);
     base.max_atomic_width = Some(32);
@@ -9,7 +12,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "powerpc-unknown-linux-gnuspe".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

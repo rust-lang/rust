@@ -29,10 +29,10 @@ LL |     [0; match [|f @ &ref _| () ] {} ]
    |         while parsing this `match` expression
 
 error[E0282]: type annotations needed
-  --> $DIR/issue-66706.rs:2:11
+  --> $DIR/issue-66706.rs:2:14
    |
 LL |     [0; [|_: _ &_| ()].len()]
-   |           ^ cannot infer type
+   |              ^ cannot infer type
 
 error[E0282]: type annotations needed
   --> $DIR/issue-66706.rs:13:11

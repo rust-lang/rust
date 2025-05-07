@@ -2,7 +2,7 @@ error[E0277]: the trait bound `&char: Pattern` is not satisfied
   --> $DIR/root-obligation.rs:6:38
    |
 LL |         .filter(|c| "aeiou".contains(c))
-   |                             -------- ^ the trait `Fn(char)` is not implemented for `char`, which is required by `&char: Pattern`
+   |                             -------- ^ the trait `Fn(char)` is not implemented for `char`
    |                             |
    |                             required by a bound introduced by this call
    |

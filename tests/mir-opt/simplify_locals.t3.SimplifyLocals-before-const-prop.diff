@@ -13,7 +13,7 @@
 -         StorageLive(_3);
 -         _3 = &/*tls*/ mut X;
 -         _2 = &mut (*_3);
--         _1 = (*_2);
+-         _1 = copy (*_2);
 -         StorageDead(_3);
 -         StorageDead(_2);
 -         StorageDead(_1);

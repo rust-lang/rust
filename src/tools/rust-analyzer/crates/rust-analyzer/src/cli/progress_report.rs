@@ -9,13 +9,13 @@ pub(crate) struct ProgressReport<'a> {
     text: String,
     hidden: bool,
 
-    len: u64,
+    len: usize,
     pos: u64,
     msg: Option<Box<dyn Fn() -> String + 'a>>,
 }
 
 impl<'a> ProgressReport<'a> {
-    pub(crate) fn new(len: u64) -> ProgressReport<'a> {
+    pub(crate) fn new(len: usize) -> ProgressReport<'a> {
         ProgressReport { curr: 0.0, text: String::new(), hidden: false, len, pos: 0, msg: None }
     }
 
@@ -79,8 +79,8 @@ impl<'a> ProgressReport<'a> {
         // Backtrack to the first differing character
         let mut output = String::new();
         output += &'\x08'.to_string().repeat(self.text.len() - common_prefix_length);
-        // Output new suffix
-        output += &text[common_prefix_length..text.len()];
+        // Output new suffix, using chars() iter to ensure unicode compatibility
+        output.extend(text.chars().skip(common_prefix_length));
 
         // If the new text is shorter than the old one: delete overlapping characters
         if let Some(overlap_count) = self.text.len().checked_sub(text.len()) {

@@ -13,13 +13,13 @@ fn main() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let x = &t.0.0.0;
-        //~^ NOTE: Capturing t[(0, 0),(0, 0),(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing t[(0, 0),(0, 0),(0, 0)] -> Immutable
         t.1.1.1 = 9;
-        //~^ NOTE: Capturing t[(1, 0),(1, 0),(1, 0)] -> MutBorrow
-        //~| NOTE: t[] captured as MutBorrow here
+        //~^ NOTE: Capturing t[(1, 0),(1, 0),(1, 0)] -> Mutable
+        //~| NOTE: t[] captured as Mutable here
         println!("{:?}", t);
-        //~^ NOTE: Min Capture t[] -> MutBorrow
-        //~| NOTE: Capturing t[] -> ImmBorrow
+        //~^ NOTE: Min Capture t[] -> Mutable
+        //~| NOTE: Capturing t[] -> Immutable
         //~| NOTE: t[] used here
     };
 }

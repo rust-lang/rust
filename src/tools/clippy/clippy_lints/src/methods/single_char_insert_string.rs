@@ -27,7 +27,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, receiver: &hir::
     }
 
     if let ExprKind::AddrOf(BorrowKind::Ref, _, arg) = &args[1].kind
-        && let ExprKind::MethodCall(path_segment, method_arg, _, _) = &arg.kind
+        && let ExprKind::MethodCall(path_segment, method_arg, [], _) = &arg.kind
         && path_segment.ident.name == rustc_span::sym::to_string
         && (is_ref_char(cx, method_arg) || is_char(cx, method_arg))
     {

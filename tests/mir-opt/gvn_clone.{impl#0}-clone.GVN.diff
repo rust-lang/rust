@@ -1,0 +1,71 @@
+- // MIR for `<impl at $DIR/gvn_clone.rs:12:10: 12:15>::clone` before GVN
++ // MIR for `<impl at $DIR/gvn_clone.rs:12:10: 12:15>::clone` after GVN
+  
+  fn <impl at $DIR/gvn_clone.rs:12:10: 12:15>::clone(_1: &AllCopy) -> AllCopy {
+      debug self => _1;
+      let mut _0: AllCopy;
+      let mut _2: i32;
+      let mut _3: &i32;
+      let _4: &i32;
+      let mut _5: u64;
+      let mut _6: &u64;
+      let _7: &u64;
+      let mut _8: [i8; 3];
+      let mut _9: &[i8; 3];
+      let _10: &[i8; 3];
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+-         StorageLive(_4);
++         nop;
+          _4 = &((*_1).0: i32);
+          _3 = copy _4;
+-         _2 = copy (*_3);
++         _2 = copy ((*_1).0: i32);
+          goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageLive(_5);
+          StorageLive(_6);
+-         StorageLive(_7);
++         nop;
+          _7 = &((*_1).1: u64);
+          _6 = copy _7;
+-         _5 = copy (*_6);
++         _5 = copy ((*_1).1: u64);
+          goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageLive(_8);
+          StorageLive(_9);
+-         StorageLive(_10);
++         nop;
+          _10 = &((*_1).2: [i8; 3]);
+          _9 = copy _10;
+-         _8 = copy (*_9);
++         _8 = copy ((*_1).2: [i8; 3]);
+          goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_9);
+-         _0 = AllCopy { a: move _2, b: move _5, c: move _8 };
+-         StorageDead(_10);
++         _0 = copy (*_1);
++         nop;
+          StorageDead(_8);
+-         StorageDead(_7);
++         nop;
+          StorageDead(_5);
+-         StorageDead(_4);
++         nop;
+          StorageDead(_2);
+          return;
+      }
+  }
+  

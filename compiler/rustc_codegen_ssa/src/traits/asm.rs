@@ -60,12 +60,19 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
     );
 }
 
-pub trait AsmMethods<'tcx> {
+pub trait AsmCodegenMethods<'tcx> {
     fn codegen_global_asm(
-        &self,
+        &mut self,
         template: &[InlineAsmTemplatePiece],
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
     );
+
+    /// The mangled name of this instance
+    ///
+    /// Additional mangling is used on
+    /// some targets to add a leading underscore (Mach-O)
+    /// or byte count suffixes (x86 Windows).
+    fn mangled_name(&self, instance: Instance<'tcx>) -> String;
 }

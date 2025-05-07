@@ -1,11 +1,11 @@
 use syntax::{
-    algo::neighbor,
-    ast::{self, edit::IndentLevel, make, AstNode},
-    ted::{self, Position},
     Direction, SyntaxKind, T,
+    algo::neighbor,
+    ast::{self, AstNode, edit::IndentLevel, make},
+    ted::{self, Position},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unmerge_match_arm
 //
@@ -34,6 +34,9 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let pipe_token = ctx.find_token_syntax_at_offset(T![|])?;
     let or_pat = ast::OrPat::cast(pipe_token.parent()?)?.clone_for_update();
+    if or_pat.leading_pipe().is_some_and(|it| it == pipe_token) {
+        return None;
+    }
     let match_arm = ast::MatchArm::cast(or_pat.syntax().parent()?)?;
     let match_arm_body = match_arm.expr()?;
 
@@ -44,25 +47,27 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let old_parent_range = new_parent.text_range();
 
     acc.add(
-        AssistId("unmerge_match_arm", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("unmerge_match_arm"),
         "Unmerge match arm",
         pipe_token.text_range(),
         |edit| {
             let pats_after = pipe_token
                 .siblings_with_tokens(Direction::Next)
-                .filter_map(|it| ast::Pat::cast(it.into_node()?));
-            // FIXME: We should add a leading pipe if the original arm has one.
-            let new_match_arm = make::match_arm(
-                pats_after,
-                match_arm.guard().and_then(|guard| guard.condition()),
-                match_arm_body,
-            )
-            .clone_for_update();
+                .filter_map(|it| ast::Pat::cast(it.into_node()?))
+                .collect::<Vec<_>>();
+            // It is guaranteed that `pats_after` has at least one element
+            let new_pat = if pats_after.len() == 1 {
+                pats_after[0].clone()
+            } else {
+                make::or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
+            };
+            let new_match_arm =
+                make::match_arm(new_pat, match_arm.guard(), match_arm_body).clone_for_update();
 
             let mut pipe_index = pipe_token.index();
             if pipe_token
                 .prev_sibling_or_token()
-                .map_or(false, |it| it.kind() == SyntaxKind::WHITESPACE)
+                .is_some_and(|it| it.kind() == SyntaxKind::WHITESPACE)
             {
                 pipe_index -= 1;
             }

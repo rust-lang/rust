@@ -5,5 +5,7 @@ fn main() {
     let d = &c;
 
     let _ = d.to_digit(8).is_some();
+    //~^ to_digit_is_some
     let _ = char::to_digit(c, 8).is_some();
+    //~^ to_digit_is_some
 }

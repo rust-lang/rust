@@ -1,14 +1,11 @@
-//@ force-host
-//@ no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![deny(warnings)]
 #![feature(proc_macro_expand, proc_macro_span)]
 
 extern crate proc_macro;
 
-use proc_macro::*;
 use std::str::FromStr;
+
+use proc_macro::*;
 
 // Flatten the TokenStream, removing any toplevel `Delimiter::None`s for
 // comparison.
@@ -140,9 +137,8 @@ pub fn check_expand_expr_file(ts: TokenStream) -> TokenStream {
         .to_string();
     assert_eq!(input_t, parse_t);
 
-    // Check that the literal matches `Span::call_site().source_file().path()`
-    let expect_t =
-        Literal::string(&Span::call_site().source_file().path().to_string_lossy()).to_string();
+    // Check that the literal matches `Span::call_site().file()`
+    let expect_t = Literal::string(&Span::call_site().file()).to_string();
     assert_eq!(input_t, expect_t);
 
     TokenStream::new()

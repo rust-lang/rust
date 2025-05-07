@@ -1,0 +1,17 @@
+error: consider using `sort_by_key`
+  --> tests/ui/unnecessary_sort_by_no_std.rs:10:5
+   |
+LL |     vec.sort_by(|a, b| (a + 1).cmp(&(b + 1)));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|a| a + 1)`
+   |
+   = note: `-D clippy::unnecessary-sort-by` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_sort_by)]`
+
+error: consider using `sort_by_key`
+  --> tests/ui/unnecessary_sort_by_no_std.rs:19:5
+   |
+LL |     vec.sort_by(|a, b| (b + 1).cmp(&(a + 1)));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|b| core::cmp::Reverse(b + 1))`
+
+error: aborting due to 2 previous errors
+

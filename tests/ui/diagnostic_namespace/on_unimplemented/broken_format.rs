@@ -1,3 +1,4 @@
+//@ reference: attributes.diagnostic.on_unimplemented.invalid-string
 #[diagnostic::on_unimplemented(message = "{{Test } thing")]
 //~^WARN unmatched `}` found
 //~|WARN unmatched `}` found
@@ -19,8 +20,8 @@ trait ImportantTrait3 {}
 trait ImportantTrait4 {}
 
 #[diagnostic::on_unimplemented(message = "Test {Self:!}")]
-//~^WARN expected `'}'`, found `'!'`
-//~|WARN expected `'}'`, found `'!'`
+//~^WARN expected `}`, found `!`
+//~|WARN expected `}`, found `!`
 //~|WARN unmatched `}` found
 //~|WARN unmatched `}` found
 trait ImportantTrait5 {}

@@ -1,0 +1,43 @@
+error: constant of non-structural type `(u32) is 1..` in a pattern
+  --> $DIR/matching_fail.rs:8:5
+   |
+LL | const THREE: pattern_type!(u32 is 1..) = 3;
+   | -------------------------------------- constant defined here
+...
+LL |     THREE => {}
+   |     ^^^^^ constant of non-structural type
+   |
+   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
+
+error[E0308]: mismatched types
+  --> $DIR/matching_fail.rs:14:5
+   |
+LL | const _: () = match THREE {
+   |                     ----- this expression has type `(u32) is 1..`
+LL |     3 => {}
+   |     ^ expected `(u32) is 1..`, found integer
+   |
+   = note: expected pattern type `(u32) is 1..`
+                      found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/matching_fail.rs:20:5
+   |
+LL | const THREE: pattern_type!(u32 is 1..) = 3;
+   | -------------------------------------- constant defined here
+...
+LL | const _: () = match 3 {
+   |                     - this expression has type `{integer}`
+LL |     THREE => {}
+   |     ^^^^^
+   |     |
+   |     expected integer, found `(u32) is 1..`
+   |     `THREE` is interpreted as a constant, not a new binding
+   |     help: introduce a new binding instead: `other_three`
+   |
+   = note:      expected type `{integer}`
+           found pattern type `(u32) is 1..`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

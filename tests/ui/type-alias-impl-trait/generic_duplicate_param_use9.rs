@@ -11,15 +11,13 @@ trait Foo {
     const BAR: Self::Bar;
 }
 
+#[define_opaque(Two)]
 fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
     (t, u, T::BAR)
-    //~^ ERROR the trait bound `A: Foo` is not satisfied
-    //~| ERROR `A` doesn't implement `Debug`
-    //~| ERROR `B` doesn't implement `Debug`
 }
 
+#[define_opaque(Two)]
 fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
+    //~^ ERROR concrete type differs
     (t, u, 42)
-    //~^ ERROR `A` doesn't implement `Debug`
-    //~| ERROR `B` doesn't implement `Debug`
 }

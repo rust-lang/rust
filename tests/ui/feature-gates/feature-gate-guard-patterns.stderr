@@ -1,0 +1,100 @@
+error: unexpected parentheses surrounding `match` arm pattern
+  --> $DIR/feature-gate-guard-patterns.rs:12:9
+   |
+LL |         (0 if guard(0)) => {},
+   |         ^             ^
+   |
+help: remove parentheses surrounding the pattern
+   |
+LL -         (0 if guard(0)) => {},
+LL +         0 if guard(0) => {},
+   |
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/feature-gate-guard-patterns.rs:23:22
+   |
+LL |     let ((x if guard(x)) | x) = 0;
+   |                      ^ not found in this scope
+
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/feature-gate-guard-patterns.rs:38:45
+   |
+LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {}
+   |                                             ^
+   |
+help: the binding `x` is available in a different scope in the same function
+  --> $DIR/feature-gate-guard-patterns.rs:23:11
+   |
+LL |     let ((x if guard(x)) | x) = 0;
+   |           ^
+
+error[E0658]: guard patterns are experimental
+  --> $DIR/feature-gate-guard-patterns.rs:18:15
+   |
+LL |         (0 if guard(0)) | 1 => {},
+   |               ^^^^^^^^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider using match arm guards
+
+error[E0658]: guard patterns are experimental
+  --> $DIR/feature-gate-guard-patterns.rs:23:16
+   |
+LL |     let ((x if guard(x)) | x) = 0;
+   |                ^^^^^^^^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider using match arm guards
+
+error[E0658]: guard patterns are experimental
+  --> $DIR/feature-gate-guard-patterns.rs:27:18
+   |
+LL |     if let (x if guard(x)) = 0 {}
+   |                  ^^^^^^^^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider using match arm guards
+
+error[E0658]: guard patterns are experimental
+  --> $DIR/feature-gate-guard-patterns.rs:30:21
+   |
+LL |     while let (x if guard(x)) = 0 {}
+   |                     ^^^^^^^^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider using match arm guards
+
+error[E0658]: guard patterns are experimental
+  --> $DIR/feature-gate-guard-patterns.rs:34:21
+   |
+LL |     while let (x if guard(x)) = 0 {}
+   |                     ^^^^^^^^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider using match arm guards
+
+error[E0658]: guard patterns are experimental
+  --> $DIR/feature-gate-guard-patterns.rs:38:39
+   |
+LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {}
+   |                                       ^^^^^^^^
+   |
+   = note: see issue #129967 <https://github.com/rust-lang/rust/issues/129967> for more information
+   = help: add `#![feature(guard_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = help: consider using match arm guards
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

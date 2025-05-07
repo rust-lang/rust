@@ -1,7 +1,0 @@
-error: using `#![feature(effects)]` without enabling next trait solver globally
-   |
-   = note: the next trait solver must be enabled globally for the effects feature to work correctly
-   = help: use `-Znext-solver` to enable
-
-error: aborting due to 1 previous error
-

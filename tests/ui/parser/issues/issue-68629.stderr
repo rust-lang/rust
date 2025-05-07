@@ -1,17 +1,17 @@
 error: unknown start of token: \u{1c}
-  --> $DIR/issue-68629.rs:4:1
+  --> $DIR/issue-68629.rs:6:1
    |
 LL | ␜␟ts␀![{i
    | ^
 
 error: unknown start of token: \u{1f}
-  --> $DIR/issue-68629.rs:4:2
+  --> $DIR/issue-68629.rs:6:2
    |
 LL | ␜␟ts␀![{i
    |  ^
 
 error: unknown start of token: \u{0}
-  --> $DIR/issue-68629.rs:4:5
+  --> $DIR/issue-68629.rs:6:5
    |
 LL | ␜␟ts␀![{i
    |     ^
@@ -19,7 +19,7 @@ LL | ␜␟ts␀![{i
    = help: source files must contain UTF-8 encoded text, unexpected null bytes might occur when a different encoding is used
 
 error: unknown start of token: \u{0}
-  --> $DIR/issue-68629.rs:5:1
+  --> $DIR/issue-68629.rs:7:1
    |
 LL | ␀␀  fn rݻoa>rݻm
    | ^^
@@ -28,7 +28,7 @@ LL | ␀␀  fn rݻoa>rݻm
    = note: character appears once more
 
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-68629.rs:5:17
+  --> $DIR/issue-68629.rs:7:17
    |
 LL | ␜␟ts␀![{i
    |       -- unclosed delimiter

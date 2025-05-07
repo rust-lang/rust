@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
-use rustc_hir::{GenericArg, GenericArgsParentheses, Mutability, Ty, TyKind};
+use rustc_hir::{AmbigArg, GenericArg, GenericArgsParentheses, Mutability, Ty, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
@@ -36,10 +36,10 @@ declare_clippy_lint! {
 declare_lint_pass!(RefOptionRef => [REF_OPTION_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx, AmbigArg>) {
         if let TyKind::Ref(_, ref mut_ty) = ty.kind
             && mut_ty.mutbl == Mutability::Not
-            && let TyKind::Path(ref qpath) = &mut_ty.ty.kind
+            && let TyKind::Path(qpath) = &mut_ty.ty.kind
             && let last = last_path_segment(qpath)
             && let Some(def_id) = last.res.opt_def_id()
             && cx.tcx.is_diagnostic_item(sym::Option, def_id)

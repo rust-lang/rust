@@ -1,11 +1,11 @@
 error: found `malloc` symbol definition that clashes with a built-in shim
-  --> $DIR/exported_symbol_shim_clashing.rs:LL:CC
+  --> tests/fail/function_calls/exported_symbol_shim_clashing.rs:LL:CC
    |
 LL |         malloc(0);
    |         ^^^^^^^^^ found `malloc` symbol definition that clashes with a built-in shim
    |
 help: the `malloc` symbol is defined here
-  --> $DIR/exported_symbol_shim_clashing.rs:LL:CC
+  --> tests/fail/function_calls/exported_symbol_shim_clashing.rs:LL:CC
    |
 LL | / extern "C" fn malloc(_: usize) -> *mut std::ffi::c_void {
 LL | |
@@ -13,7 +13,7 @@ LL | |     unreachable!()
 LL | | }
    | |_^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/exported_symbol_shim_clashing.rs:LL:CC
+   = note: inside `main` at tests/fail/function_calls/exported_symbol_shim_clashing.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

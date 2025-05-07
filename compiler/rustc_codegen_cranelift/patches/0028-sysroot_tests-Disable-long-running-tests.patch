@@ -1,0 +1,105 @@
+From eb703e627e7a84f1cd8d0d87f0f69da1f0acf765 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Fri, 3 Dec 2021 12:16:30 +0100
+Subject: [PATCH] Disable long running tests
+
+---
+ library/coretests/tests/slice.rs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/coretests/tests/slice.rs b/coretests/tests/slice.rs
+index 8402833..84592e0 100644
+--- a/coretests/tests/slice.rs
++++ b/coretests/tests/slice.rs
+@@ -1809,6 +1809,7 @@ fn sort_unstable() {
+     }
+ }
+ 
++/*
+ #[test]
+ #[cfg(not(target_arch = "wasm32"))]
+ #[cfg_attr(miri, ignore)] // Miri is too slow
+@@ -1914,6 +1915,7 @@ fn select_nth_unstable() {
+     v.select_nth_unstable(0);
+     assert!(v == [0xDEADBEEF]);
+ }
++*/
+ 
+ #[test]
+ #[should_panic(expected = "index 0 greater than length of slice")]
+@@ -2462,6 +2462,7 @@ take_tests! {
+ #[cfg(not(miri))] // unused in Miri
+ const EMPTY_MAX: &'static [()] = &[(); usize::MAX];
+ 
++/*
+ // can't be a constant due to const mutability rules
+ #[cfg(not(miri))] // unused in Miri
+ macro_rules! empty_max_mut {
+@@ -2485,6 +2486,7 @@ take_tests! {
+     (split_off_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
+     (split_off_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+ }
++*/
+ 
+ #[test]
+ fn test_slice_from_ptr_range() {
+diff --git a/alloctests/tests/sort/tests.rs b/alloctests/tests/sort/tests.rs
+index d321f8d..8b2040a 100644
+--- a/alloctests/tests/sort/tests.rs
++++ b/alloctests/tests/sort/tests.rs
+@@ -1,3 +1,5 @@
++#![cfg(any())]
++
+ use std::cell::Cell;
+ use std::cmp::Ordering;
+ use std::fmt::Debug;
+diff --git a/alloctests/tests/str.rs b/alloctests/tests/str.rs
+index 906fa2d..b82fa99 100644
+--- a/alloctests/tests/str.rs
++++ b/alloctests/tests/str.rs
+@@ -2234,7 +2234,7 @@ fn const_str_ptr() {
+     const C: *const u8 = B as *const u8;
+ 
+     // Miri does not deduplicate consts (https://github.com/rust-lang/miri/issues/131)
+-    #[cfg(not(miri))]
++    #[cfg(any())]
+     {
+         let foo = &A as *const u8;
+         assert_eq!(foo, C);
+diff --git a/alloctests/tests/task.rs b/alloctests/tests/task.rs
+index 390dec1..87df6e6 100644
+--- a/alloctests/tests/task.rs
++++ b/alloctests/tests/task.rs
+@@ -4,7 +4,7 @@ use alloc::task::{LocalWake, Wake};
+ use core::task::{LocalWaker, Waker};
+ 
+ #[test]
+-#[cfg_attr(miri, ignore)] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it can fail
++#[ignore] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it can fail
+ fn test_waker_will_wake_clone() {
+     struct NoopWaker;
+ 
+@@ -20,7 +20,7 @@ fn test_waker_will_wake_clone() {
+ }
+ 
+ #[test]
+-#[cfg_attr(miri, ignore)] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it can fail
++#[ignore] // `will_wake` doesn't guarantee that this test will work, and indeed on Miri it can fail
+ fn test_local_waker_will_wake_clone() {
+     struct NoopWaker;
+ 
+diff --git a/alloctests/tests/vec.rs b/alloctests/tests/vec.rs
+index f430d97..cfbd3cb 100644
+--- a/alloctests/tests/vec.rs
++++ b/alloctests/tests/vec.rs
+@@ -762,6 +762,7 @@ fn test_drain_inclusive_range() {
+ }
+ 
+ #[test]
++#[ignore]
+ fn test_drain_max_vec_size() {
+     let mut v = Vec::<()>::with_capacity(usize::MAX);
+     unsafe {
+-- 
+2.26.2.7.g19db9cfb68
+

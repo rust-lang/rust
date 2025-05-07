@@ -1,11 +1,11 @@
 use ide_db::FxHashSet;
 use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, HasGenericParams},
-    ted::{self, Position},
     AstNode, TextRange,
+    ast::{self, HasGenericParams, edit_in_place::GenericParamsOwnerEdit, make},
+    ted::{self, Position},
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 static ASSIST_NAME: &str = "introduce_named_lifetime";
 static ASSIST_LABEL: &str = "Introduce named lifetime";
@@ -83,7 +83,7 @@ fn generate_fn_def_assist(
             _ => return None,
         }
     };
-    acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
+    acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |builder| {
         let fn_def = builder.make_mut(fn_def);
         let lifetime = builder.make_mut(lifetime);
         let loc_needing_lifetime =
@@ -107,7 +107,7 @@ fn generate_impl_def_assist(
     lifetime: ast::Lifetime,
 ) -> Option<()> {
     let new_lifetime_param = generate_unique_lifetime_param_name(impl_def.generic_param_list())?;
-    acc.add(AssistId(ASSIST_NAME, AssistKind::Refactor), ASSIST_LABEL, lifetime_loc, |builder| {
+    acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |builder| {
         let impl_def = builder.make_mut(impl_def);
         let lifetime = builder.make_mut(lifetime);
 

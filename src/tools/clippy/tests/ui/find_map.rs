@@ -1,4 +1,5 @@
-#![warn(clippy::all, clippy::pedantic)]
+//@ check-pass
+
 #![allow(clippy::useless_vec)]
 
 #[derive(Debug, Copy, Clone)]

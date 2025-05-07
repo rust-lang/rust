@@ -1,4 +1,5 @@
 use clap::Parser;
+
 /// Inputs for the check_diff script
 #[derive(Parser)]
 struct CliInputs {
@@ -16,10 +17,5 @@ struct CliInputs {
 }
 
 fn main() {
-    let args = CliInputs::parse();
-    println!(
-        "remote_repo_url: {:?}, feature_branch: {:?},
-        optional_commit_hash: {:?}, optional_rustfmt_config: {:?}",
-        args.remote_repo_url, args.feature_branch, args.commit_hash, args.rustfmt_config
-    );
+    let _args = CliInputs::parse();
 }

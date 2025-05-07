@@ -1,4 +1,4 @@
-use super::{make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT_COUNTER_LOOP};
+use super::{EXPLICIT_COUNTER_LOOP, IncrementVisitor, InitializeVisitor, make_iterator_snippet};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_enclosing_block, is_integer_const};

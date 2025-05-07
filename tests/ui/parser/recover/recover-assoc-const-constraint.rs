@@ -1,4 +1,4 @@
-#[cfg(FALSE)]
+#[cfg(false)]
 fn syntax() {
     bar::<Item = 42>();
     //~^ ERROR associated const equality is incomplete

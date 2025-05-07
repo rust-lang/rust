@@ -1,13 +1,13 @@
 use syntax::{
     ast::{
-        self,
+        self, AstNode, HasName, HasTypeBounds,
         edit_in_place::{GenericParamsOwnerEdit, Removable},
-        make, AstNode, HasName, HasTypeBounds,
+        make,
     },
     match_ast,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: move_bounds_to_where_clause
 //
@@ -42,7 +42,7 @@ pub(crate) fn move_bounds_to_where_clause(
 
     let target = type_param_list.syntax().text_range();
     acc.add(
-        AssistId("move_bounds_to_where_clause", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("move_bounds_to_where_clause"),
         "Move to where clause",
         target,
         |edit| {
@@ -78,7 +78,7 @@ pub(crate) fn move_bounds_to_where_clause(
 
 fn build_predicate(param: ast::TypeParam) -> Option<ast::WherePred> {
     let path = make::ext::ident_path(&param.name()?.syntax().to_string());
-    let predicate = make::where_pred(path, param.type_bound_list()?.bounds());
+    let predicate = make::where_pred(make::ty_path(path), param.type_bound_list()?.bounds());
     Some(predicate.clone_for_update())
 }
 

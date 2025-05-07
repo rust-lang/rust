@@ -1,13 +1,14 @@
-// In this test, the symlink created is invalid (valid relative to the root, but not
-// relatively to where it is located), and used to cause an internal
-// compiler error (ICE) when passed as a library search path. This was fixed in #26044,
-// and this test checks that the invalid symlink is instead simply ignored.
+// In this test, the symlink created is invalid (valid relative to the root, but not relatively to
+// where it is located), and used to cause an internal compiler error (ICE) when passed as a library
+// search path. This was fixed in #26044, and this test checks that the invalid symlink is instead
+// simply ignored.
+//
 // See https://github.com/rust-lang/rust/issues/26006
 
 //@ needs-symlink
 //Reason: symlink requires elevated permission in Windows
 
-use run_make_support::{rfs, rustc};
+use run_make_support::{path, rfs, rustc};
 
 fn main() {
     // We create two libs: `bar` which depends on `foo`. We need to compile `foo` first.
@@ -20,9 +21,9 @@ fn main() {
         .metadata("foo")
         .output("out/foo/libfoo.rlib")
         .run();
-    rfs::create_dir("out/bar");
-    rfs::create_dir("out/bar/deps");
-    rfs::create_symlink("out/foo/libfoo.rlib", "out/bar/deps/libfoo.rlib");
+    rfs::create_dir_all("out/bar/deps");
+    rfs::symlink_file(path("out/foo/libfoo.rlib"), path("out/bar/deps/libfoo.rlib"));
+
     // Check that the invalid symlink does not cause an ICE
     rustc()
         .input("in/bar/lib.rs")

@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `Foo::{constant#0}::Foo::<17>::value` in constants
+error[E0015]: cannot call non-const associated function `Foo::{constant#0}::Foo::<17>::value` in constants
   --> $DIR/nested-type.rs:15:5
    |
 LL |     Foo::<17>::value()

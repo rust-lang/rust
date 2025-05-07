@@ -6,19 +6,16 @@
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
 
-mod foo {
-    pub trait MyTrait {}
+pub trait MyTrait {}
 
-    impl MyTrait for bool {}
+impl MyTrait for bool {}
 
-    pub type Foo = impl MyTrait;
+pub type Foo = impl MyTrait;
 
-    pub fn make_foo() -> Foo {
-        true
-    }
+#[define_opaque(Foo)]
+pub fn make_foo() -> Foo {
+    true
 }
-
-use foo::*;
 
 struct Blah {
     my_foo: Foo,

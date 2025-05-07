@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:macro-only-syntax.rs
+//@ proc-macro: macro-only-syntax.rs
 
 extern crate macro_only_syntax;
 

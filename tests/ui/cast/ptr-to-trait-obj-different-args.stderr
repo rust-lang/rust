@@ -4,53 +4,40 @@ error[E0606]: casting `*const dyn A` as `*const dyn B` is invalid
 LL |     let b: *const dyn B = a as _;
    |                           ^^^^^^
    |
-   = note: vtable kinds may not match
+   = note: the trait objects may have different vtables
 
-error[E0308]: mismatched types
+error[E0606]: casting `*const dyn Trait<X>` as `*const dyn Trait<Y>` is invalid
   --> $DIR/ptr-to-trait-obj-different-args.rs:21:34
    |
 LL |     let y: *const dyn Trait<Y> = x as _;
-   |                                  ^^^^^^ expected `X`, found `Y`
+   |                                  ^^^^^^
    |
-   = note: expected trait object `dyn Trait<X>`
-              found trait object `dyn Trait<Y>`
-   = help: `dyn Trait<Y>` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
+   = note: the trait objects may have different vtables
 
-error[E0308]: mismatched types
+error[E0606]: casting `*const (dyn Trait<X> + 'static)` as `*const dyn Trait<T>` is invalid
   --> $DIR/ptr-to-trait-obj-different-args.rs:27:34
    |
-LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) {
-   |            - found this type parameter
 LL |     let _: *const dyn Trait<T> = x as _;
-   |                                  ^^^^^^ expected `X`, found type parameter `T`
+   |                                  ^^^^^^
    |
-   = note: expected trait object `dyn Trait<X>`
-              found trait object `dyn Trait<T>`
-   = help: `dyn Trait<T>` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
+   = note: the trait objects may have different vtables
 
-error[E0308]: mismatched types
+error[E0606]: casting `*const (dyn Trait<T> + 'static)` as `*const dyn Trait<X>` is invalid
   --> $DIR/ptr-to-trait-obj-different-args.rs:28:34
    |
-LL | fn generic<T>(x: *const dyn Trait<X>, t: *const dyn Trait<T>) {
-   |            - expected this type parameter
-LL |     let _: *const dyn Trait<T> = x as _;
 LL |     let _: *const dyn Trait<X> = t as _;
-   |                                  ^^^^^^ expected type parameter `T`, found `X`
+   |                                  ^^^^^^
    |
-   = note: expected trait object `dyn Trait<T>`
-              found trait object `dyn Trait<X>`
-   = help: `dyn Trait<X>` implements `Trait` so you could box the found value and coerce it to the trait object `Box<dyn Trait>`, you will have to change the expected type as well
+   = note: the trait objects may have different vtables
 
-error[E0308]: mismatched types
+error[E0606]: casting `*mut (dyn Assocked<Assoc = u8> + 'static)` as `*mut (dyn Assocked<Assoc = u32> + 'static)` is invalid
   --> $DIR/ptr-to-trait-obj-different-args.rs:36:5
    |
 LL |     x as _
-   |     ^^^^^^ expected `u8`, found `u32`
+   |     ^^^^^^
    |
-   = note: expected trait object `dyn Assocked<Assoc = u8>`
-              found trait object `dyn Assocked<Assoc = u32>`
+   = note: the trait objects may have different vtables
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0308, E0606.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0606`.

@@ -1,4 +1,4 @@
-//@ aux-build:ident-mac.rs
+//@ proc-macro: ident-mac.rs
 
 #![feature(c_variadic)]
 #![allow(anonymous_parameters)]

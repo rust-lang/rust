@@ -12,7 +12,7 @@ pub(crate) fn expected_function(
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0618"),
-        format!("expected function, found {}", d.found.display(ctx.sema.db)),
+        format!("expected function, found {}", d.found.display(ctx.sema.db, ctx.display_target)),
         d.call.map(|it| it.into()),
     )
     .experimental()
@@ -31,10 +31,31 @@ fn foo() {
     x();
  // ^^^ error: expected function, found i32
     ""();
- // ^^^^ error: expected function, found &str
+ // ^^^^ error: expected function, found &'static str
     foo();
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn no_error_for_async_fn_traits() {
+        check_diagnostics(
+            r#"
+//- minicore: async_fn
+async fn f(it: impl AsyncFn(u32) -> i32) {
+    let fut = it(0);
+    let _: i32 = fut.await;
+}
+async fn g(mut it: impl AsyncFnMut(u32) -> i32) {
+    let fut = it(0);
+    let _: i32 = fut.await;
+}
+async fn h(it: impl AsyncFnOnce(u32) -> i32) {
+    let fut = it(0);
+    let _: i32 = fut.await;
+}
+        "#,
         );
     }
 }

@@ -1,5 +1,6 @@
 //@ run-pass
-//@ compile-flags: --edition 2021 -Copt-level=3 -Cdebuginfo=2 -Zmir-opt-level=3
+//@ compile-flags: -Copt-level=3 -Cdebuginfo=2 -Zmir-opt-level=3
+//@ edition: 2021
 
 fn main() {
     TranslatorI.visit_pre();

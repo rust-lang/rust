@@ -6,8 +6,9 @@ LL |     let x == 2;
    |
 help: try using `=` instead
    |
-LL |     let x = 2;
-   |           ~
+LL -     let x == 2;
+LL +     let x = 2;
+   |
 
 error: aborting due to 1 previous error
 

@@ -90,9 +90,9 @@ RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc sun
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-23/wasi-sdk-23.0-x86_64-linux.tar.gz | \
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-25.0-x86_64-linux.tar.gz | \
   tar -xz
-ENV WASI_SDK_PATH=/tmp/wasi-sdk-23.0-x86_64-linux
+ENV WASI_SDK_PATH=/tmp/wasi-sdk-25.0-x86_64-linux
 
 COPY scripts/freebsd-toolchain.sh /tmp/
 RUN /tmp/freebsd-toolchain.sh i686
@@ -114,10 +114,10 @@ ENV CARGO_TARGET_AARCH64_UNKNOWN_FUCHSIA_RUSTFLAGS \
 ENV TARGETS=x86_64-unknown-fuchsia
 ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
-ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,wasm32-wasip1
 ENV TARGETS=$TARGETS,wasm32-wasip1-threads
 ENV TARGETS=$TARGETS,wasm32-wasip2
+ENV TARGETS=$TARGETS,wasm32v1-none
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32

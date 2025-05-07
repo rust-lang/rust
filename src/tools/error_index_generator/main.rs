@@ -12,7 +12,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use mdbook::book::{parse_summary, BookItem, Chapter};
+use mdbook::book::{BookItem, Chapter, parse_summary};
 use mdbook::{Config, MDBook};
 use rustc_errors::codes::DIAGNOSTICS;
 

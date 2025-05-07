@@ -18,7 +18,6 @@ const ALLOWLIST: &[&str] = &[
     "const_eval_validation_failure_note",
     "driver_impl_ice",
     "incremental_corrupt_file",
-    "mir_build_pointer_pattern",
 ];
 
 fn check_period(filename: &str, contents: &str, bad: &mut bool) {

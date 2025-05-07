@@ -1,7 +1,7 @@
 #![feature(postfix_match)]
 
 fn main() {
-    Some(1).match { //~ non-exhaustive patterns
+    Some(1).match { //~ ERROR non-exhaustive patterns
         None => {},
     }
 }

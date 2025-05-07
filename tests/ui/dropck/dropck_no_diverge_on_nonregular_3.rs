@@ -29,7 +29,7 @@ enum Wrapper<T:'static> {
 }
 
 fn main() {
-    let w = //~ ERROR overflow while adding drop-check rules for Option
+    let w = //~ ERROR overflow while adding drop-check rules for `Option
         Some(Wrapper::Simple::<u32>);
-    //~^ ERROR overflow while adding drop-check rules for Wrapper
+    //~^ ERROR overflow while adding drop-check rules for `Wrapper
 }

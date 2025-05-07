@@ -75,11 +75,9 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     }
 }
 
-// CtfeProvenance is an AllocId and a bool.
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::CtfeProvenance {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.alloc_id().hash_stable(hcx, hasher);
-        self.immutable().hash_stable(hcx, hasher);
+        self.into_parts().hash_stable(hcx, hasher);
     }
 }
 

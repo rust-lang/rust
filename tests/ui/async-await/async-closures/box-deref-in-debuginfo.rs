@@ -2,8 +2,6 @@
 //@ edition:2021
 //@ run-pass
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 pub trait Trait {
@@ -16,7 +14,7 @@ impl Trait for (i32,) {
     }
 }
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 

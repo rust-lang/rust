@@ -1,11 +1,11 @@
 error: abnormal termination: called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread
-  --> $DIR/apple_os_unfair_lock_assert_owner.rs:LL:CC
+  --> tests/fail-dep/concurrency/apple_os_unfair_lock_assert_owner.rs:LL:CC
    |
 LL |         libc::os_unfair_lock_assert_owner(lock.get());
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ called os_unfair_lock_assert_owner on an os_unfair_lock not owned by the current thread
    |
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/apple_os_unfair_lock_assert_owner.rs:LL:CC
+   = note: inside `main` at tests/fail-dep/concurrency/apple_os_unfair_lock_assert_owner.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

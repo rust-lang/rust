@@ -72,7 +72,7 @@ extern "C" {
     pub fn transparent_fn(p: TransparentBadFn); //~ ERROR: uses type `Box<u32>`
     pub fn raw_array(arr: [u8; 8]); //~ ERROR: uses type `[u8; 8]`
 
-    pub fn no_niche_a(a: Option<UnsafeCell<extern fn()>>);
+    pub fn no_niche_a(a: Option<UnsafeCell<extern "C" fn()>>);
     //~^ ERROR: uses type `Option<UnsafeCell<extern "C" fn()>>`
     pub fn no_niche_b(b: Option<UnsafeCell<&i32>>);
     //~^ ERROR: uses type `Option<UnsafeCell<&i32>>`

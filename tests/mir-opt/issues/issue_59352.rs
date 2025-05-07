@@ -1,5 +1,6 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
+
 // This test is a mirror of codegen/issue-59352.rs.
 // The LLVM inliner doesn't inline `char::method::is_digit()` and so it doesn't recognize this case
 // as effectively `if x.is_some() { x.unwrap() } else { 0 }`.

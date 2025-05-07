@@ -35,13 +35,13 @@ LL | fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
    = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/feature-gate-more-maybe-bounds.rs:12:11
    |
 LL | fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
    |           ^^^^^^^
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/feature-gate-more-maybe-bounds.rs:12:21
    |
 LL | fn bar<T: ?Trait1 + ?Trait2>(_: T) {}
@@ -53,19 +53,19 @@ error[E0203]: type parameter has more than one relaxed default bound, only one i
 LL | fn baz<T: ?Trait + ?Trait>(_ : T) {}
    |           ^^^^^^   ^^^^^^
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/feature-gate-more-maybe-bounds.rs:19:11
    |
 LL | fn baz<T: ?Trait + ?Trait>(_ : T) {}
    |           ^^^^^^
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/feature-gate-more-maybe-bounds.rs:19:20
    |
 LL | fn baz<T: ?Trait + ?Trait>(_ : T) {}
    |                    ^^^^^^
 
-error: aborting due to 5 previous errors; 4 warnings emitted
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0203, E0658.
 For more information about an error, try `rustc --explain E0203`.

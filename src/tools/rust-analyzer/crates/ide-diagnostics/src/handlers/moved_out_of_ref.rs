@@ -8,7 +8,7 @@ pub(crate) fn moved_out_of_ref(ctx: &DiagnosticsContext<'_>, d: &hir::MovedOutOf
     Diagnostic::new_with_syntax_node_ptr(
         ctx,
         DiagnosticCode::RustcHardError("E0507"),
-        format!("cannot move `{}` out of reference", d.ty.display(ctx.sema.db)),
+        format!("cannot move `{}` out of reference", d.ty.display(ctx.sema.db, ctx.display_target)),
         d.span,
     )
     .experimental() // spans are broken, and I'm not sure how precise we can detect copy types
@@ -18,7 +18,22 @@ pub(crate) fn moved_out_of_ref(ctx: &DiagnosticsContext<'_>, d: &hir::MovedOutOf
 mod tests {
     use crate::tests::check_diagnostics;
 
-    // FIXME: spans are broken
+    #[test]
+    fn operand_field_span_respected() {
+        check_diagnostics(
+            r#"
+struct NotCopy;
+struct S {
+    field: NotCopy,
+}
+
+fn f(s: &S) -> S {
+    S { field: s.field }
+             //^^^^^^^ error: cannot move `NotCopy` out of reference
+}
+            "#,
+        );
+    }
 
     #[test]
     fn move_by_explicit_deref() {
@@ -85,7 +100,7 @@ fn consume<T>(_: X<T>) {
 fn main() {
     let a = &X(Y);
     consume(*a);
-  //^^^^^^^^^^^ error: cannot move `X<Y>` out of reference
+          //^^ error: cannot move `X<Y>` out of reference
     let a = &X(5);
     consume(*a);
 }
@@ -189,5 +204,17 @@ fn foo(mut slice: &[u32]) -> usize {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn regression_16564() {
+        check_diagnostics(
+            r#"
+//- minicore: copy
+fn test() {
+    let _x = (&(&mut (),)).0 as *const ();
+}
+            "#,
+        )
     }
 }

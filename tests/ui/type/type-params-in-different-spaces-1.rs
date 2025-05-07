@@ -1,11 +1,13 @@
+//@ dont-require-annotations: NOTE
+
 use std::ops::Add;
 
 trait BrokenAdd: Copy + Add<Output=Self> {
     fn broken_add<T>(&self, rhs: T) -> Self {
         *self + rhs //~  ERROR mismatched types
-                    //~| expected type parameter `Self`, found type parameter `T`
-                    //~| expected type parameter `Self`
-                    //~| found type parameter `T`
+                    //~| NOTE expected type parameter `Self`, found type parameter `T`
+                    //~| NOTE expected type parameter `Self`
+                    //~| NOTE found type parameter `T`
     }
 }
 

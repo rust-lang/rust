@@ -11,7 +11,7 @@ const MAX_STACK_ALLOCATION: usize = 384;
 const MAX_STACK_ALLOCATION: usize = 32;
 
 const NUL_ERR: io::Error =
-    io::const_io_error!(io::ErrorKind::InvalidInput, "file name contained an unexpected NUL byte");
+    io::const_error!(io::ErrorKind::InvalidInput, "file name contained an unexpected NUL byte");
 
 #[inline]
 pub fn run_path_with_cstr<T>(path: &Path, f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {

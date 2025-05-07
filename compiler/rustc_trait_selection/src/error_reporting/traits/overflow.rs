@@ -1,16 +1,14 @@
 use std::fmt;
 
-use rustc_errors::{
-    struct_span_code_err, Diag, EmissionGuarantee, ErrorGuaranteed, FatalError, E0275,
-};
+use rustc_errors::{Diag, E0275, EmissionGuarantee, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_infer::traits::{Obligation, PredicateObligation};
 use rustc_middle::ty::print::{FmtPrinter, Print};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, Upcast};
 use rustc_session::Limit;
 use rustc_span::Span;
-use rustc_type_ir::Upcast;
+use tracing::debug;
 
 use crate::error_reporting::TypeErrCtxt;
 
@@ -51,8 +49,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) -> ! {
         let mut err = self.build_overflow_error(cause, span, suggest_increasing_limit);
         mutate(&mut err);
-        err.emit();
-        FatalError.raise();
+        err.emit().raise_fatal();
     }
 
     pub fn build_overflow_error(
@@ -187,7 +184,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             suggest_increasing_limit,
         );
         self.note_obligation_cause(&mut err, &obligation);
-        self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit()
     }
 }

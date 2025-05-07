@@ -1,5 +1,6 @@
 //@compile-flags: -Zmiri-compare-exchange-weak-failure-rate=0.0
-use std::sync::atomic::{AtomicBool, Ordering::*};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::*;
 
 // Ensure that compare_exchange_weak never fails.
 fn main() {

@@ -1,7 +1,3 @@
-// Require a gdb or lldb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
-//@ needs-rust-lldb
-
 //@ compile-flags:-g
 
 // === GDB TESTS ===================================================================================
@@ -10,16 +6,16 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbr-check:$1 = generic_tuple_style_enum::Regular<u16, u32, u64>::Case1(0, 31868, 31868, 31868, 31868)
+// gdb-check:$1 = generic_tuple_style_enum::Regular<u16, u32, u64>::Case1(0, 31868, 31868, 31868, 31868)
 
 // gdb-command:print case2
-// gdbr-check:$2 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case2(0, 286331153, 286331153)
+// gdb-check:$2 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case2(0, 286331153, 286331153)
 
 // gdb-command:print case3
-// gdbr-check:$3 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case3(0, 6438275382588823897)
+// gdb-check:$3 = generic_tuple_style_enum::Regular<i16, i32, i64>::Case3(0, 6438275382588823897)
 
 // gdb-command:print univariant
-// gdbr-check:$4 = generic_tuple_style_enum::Univariant<i64>::TheOnlyCase(-1)
+// gdb-check:$4 = generic_tuple_style_enum::Univariant<i64>::TheOnlyCase(-1)
 
 
 // === LLDB TESTS ==================================================================================
@@ -27,16 +23,12 @@
 // lldb-command:run
 
 // lldb-command:v case1
-// lldbr-check:(generic_tuple_style_enum::Regular<u16, u32, u64>::Case1) case1 = { __0 = 0 __1 = 31868 __2 = 31868 __3 = 31868 __4 = 31868 }
 
 // lldb-command:v case2
-// lldbr-check:(generic_tuple_style_enum::Regular<i16, i32, i64>::Case2) case2 = Regular<i16, i32, i64>::Case2 { Case1: 0, Case2: 286331153, Case3: 286331153 }
 
 // lldb-command:v case3
-// lldbr-check:(generic_tuple_style_enum::Regular<i16, i32, i64>::Case3) case3 = Regular<i16, i32, i64>::Case3 { Case1: 0, Case2: 6438275382588823897 }
 
 // lldb-command:v univariant
-// lldbr-check:(generic_tuple_style_enum::Univariant<i64>) univariant = Univariant<i64> { TheOnlyCase: Univariant<i64>::TheOnlyCase(-1) }
 
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]

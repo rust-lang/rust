@@ -2,7 +2,6 @@ error: item has both inner and outer attributes
   --> tests/ui/mixed_attributes_style/auxiliary/submodule.rs:5:1
    |
 LL | / #[allow(unused)]
-LL | |
 LL | | mod foo {
 LL | |     #![allow(dead_code)]
    | |________________________^

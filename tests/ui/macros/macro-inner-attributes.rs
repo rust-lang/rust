@@ -5,7 +5,7 @@ macro_rules! test { ($nm:ident,
                      $i:item) => (mod $nm { #![$a] $i }); }
 
 test!(a,
-      #[cfg(FALSE)],
+      #[cfg(false)],
       pub fn bar() { });
 
 test!(b,
@@ -15,6 +15,6 @@ test!(b,
 #[rustc_dummy]
 fn main() {
     a::bar();
-    //~^ ERROR failed to resolve: use of undeclared crate or module `a`
+    //~^ ERROR failed to resolve: use of unresolved module or unlinked crate `a`
     b::bar();
 }

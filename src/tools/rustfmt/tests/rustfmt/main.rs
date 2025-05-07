@@ -5,7 +5,7 @@ use std::fs::remove_file;
 use std::path::Path;
 use std::process::Command;
 
-use rustfmt_config_proc_macro::rustfmt_only_ci_test;
+use rustfmt_config_proc_macro::{nightly_only_test, rustfmt_only_ci_test};
 
 /// Run the rustfmt executable and return its output.
 fn rustfmt(args: &[&str]) -> (String, String) {
@@ -206,4 +206,29 @@ fn rustfmt_emits_error_when_control_brace_style_is_always_next_line() {
 
     let (_stdout, stderr) = rustfmt(&args);
     assert!(!stderr.contains("error[internal]: left behind trailing whitespace"))
+}
+
+#[nightly_only_test]
+#[test]
+fn rustfmt_generates_no_error_if_failed_format_code_in_doc_comments() {
+    // See also https://github.com/rust-lang/rustfmt/issues/6109
+
+    let file = "tests/target/issue-6109.rs";
+    let args = ["--config", "format_code_in_doc_comments=true", file];
+    let (stdout, stderr) = rustfmt(&args);
+    assert!(stderr.is_empty());
+    assert!(stdout.is_empty());
+}
+
+#[test]
+fn rustfmt_error_improvement_regarding_invalid_toml() {
+    // See also https://github.com/rust-lang/rustfmt/issues/6302
+    let invalid_toml_config = "tests/config/issue-6302.toml";
+    let args = ["--config-path", invalid_toml_config];
+    let (_stdout, stderr) = rustfmt(&args);
+
+    let toml_path = Path::new(invalid_toml_config).canonicalize().unwrap();
+    let expected_error_message = format!("The file `{}` failed to parse", toml_path.display());
+
+    assert!(stderr.contains(&expected_error_message));
 }

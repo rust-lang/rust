@@ -46,6 +46,8 @@ fn load1(ss: &dyn SomeTrait) -> &dyn SomeTrait {
 }
 
 fn load2<'a>(ss: &'a dyn SomeTrait) -> &dyn SomeTrait {
+    //~^ WARNING elided lifetime has a name
+
     // Same as `load1` but with an explicit name thrown in for fun.
 
     ss

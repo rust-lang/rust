@@ -7,10 +7,16 @@
    LL|       |
    LL|      1|fn main() {
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    // Splitting this across multiple lines makes it easier to see where the
-   LL|      1|    // coverage mapping regions begin and end.
-   LL|      1|    #[rustfmt::skip]
+   LL|       |
+   LL|       |    static MY_STATIC: () = ();
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    const MY_CONST: () = ();
+   LL|       |
+   LL|       |    // Splitting this across multiple lines makes it easier to see where the
+   LL|       |    // coverage mapping regions begin and end.
+   LL|       |    #[rustfmt::skip]
    LL|      1|    let _closure =
    LL|       |        |
    LL|       |            _arg: (),
@@ -39,13 +45,21 @@
    LL|       |
    LL|      1|    black_box(());
    LL|       |
+   LL|       |    trait MyTrait {}
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    impl MyTrait for MyStruct {}
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
    LL|       |    macro_rules! _my_macro {
    LL|       |        () => {};
    LL|       |    }
    LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    #[rustfmt::skip]
+   LL|       |
+   LL|       |    #[rustfmt::skip]
    LL|      1|    let _const =
    LL|       |        const
    LL|       |        {
@@ -54,13 +68,32 @@
    LL|       |        ;
    LL|       |
    LL|      1|    black_box(());
-   LL|      1|
-   LL|      1|    #[rustfmt::skip]
+   LL|       |
+   LL|       |    #[rustfmt::skip]
    LL|      1|    let _async =
    LL|       |        async
    LL|      0|        {
    LL|      0|            7 + 4
    LL|      0|        }
+   LL|       |        ;
+   LL|       |
+   LL|      1|    black_box(());
+   LL|       |
+   LL|       |    // This tests the edge case of a const block nested inside an "anon const",
+   LL|       |    // such as the length of an array literal. Handling this case requires
+   LL|       |    // `nested_filter::OnlyBodies` or equivalent.
+   LL|       |    #[rustfmt::skip]
+   LL|      1|    let _const_block_inside_anon_const =
+   LL|       |        [
+   LL|       |            0
+   LL|       |            ;
+   LL|       |            7
+   LL|       |            +
+   LL|       |            const
+   LL|       |            {
+   LL|       |                3
+   LL|       |            }
+   LL|       |        ]
    LL|       |        ;
    LL|       |
    LL|      1|    black_box(());

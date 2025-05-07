@@ -1,4 +1,3 @@
-#![feature(unsafe_attributes)]
 // https://github.com/rust-lang/rust/issues/123757
 //
 #![simple_ident]

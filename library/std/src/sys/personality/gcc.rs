@@ -5,7 +5,7 @@
 //! documents linked from it.
 //! These are also good reads:
 //!  * <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>
-//!  * <https://monoinfinito.wordpress.com/series/exception-handling-in-c/>
+//!  * <https://nicolasbrailo.github.io/blog/projects_texts/13exceptionsunderthehood.html>
 //!  * <https://www.airs.com/blog/index.php?s=exception+frames>
 //!
 //! ## A brief summary
@@ -95,14 +95,15 @@ const UNWIND_DATA_REG: (i32, i32) = (4, 5); // a0, a1
 
 cfg_if::cfg_if! {
     if #[cfg(all(
-            target_arch = "arm",
-            not(all(target_vendor = "apple", not(target_os = "watchos"))),
-            not(target_os = "netbsd"),
-        ))] {
+        target_arch = "arm",
+        not(target_vendor = "apple"),
+        not(target_os = "netbsd"),
+    ))] {
         /// personality fn called by [ARM EHABI][armeabi-eh]
         ///
-        /// Apple 32-bit ARM (but not watchOS) uses the default routine instead
-        /// since it uses "setjmp-longjmp" unwinding.
+        /// 32-bit ARM on iOS/tvOS/watchOS does not use ARM EHABI, it uses
+        /// either "setjmp-longjmp" unwinding or DWARF CFI unwinding, which is
+        /// handled by the default routine.
         ///
         /// [armeabi-eh]: https://web.archive.org/web/20190728160938/https://infocenter.arm.com/help/topic/com.arm.doc.ihi0038b/IHI0038B_ehabi.pdf
         #[lang = "eh_personality"]
@@ -193,7 +194,7 @@ cfg_if::cfg_if! {
                     }
                 }
                 // defined in libgcc
-                extern "C" {
+                unsafe extern "C" {
                     fn __gnu_unwind_frame(
                         exception_object: *mut uw::_Unwind_Exception,
                         context: *mut uw::_Unwind_Context,
@@ -219,7 +220,7 @@ cfg_if::cfg_if! {
                     Ok(action) => action,
                     Err(_) => return uw::_URC_FATAL_PHASE1_ERROR,
                 };
-                if actions as i32 & uw::_UA_SEARCH_PHASE as i32 != 0 {
+                if actions & uw::_UA_SEARCH_PHASE != 0 {
                     match eh_action {
                         EHAction::None | EHAction::Cleanup(_) => uw::_URC_CONTINUE_UNWIND,
                         EHAction::Catch(_) | EHAction::Filter(_) => uw::_URC_HANDLER_FOUND,
@@ -229,7 +230,7 @@ cfg_if::cfg_if! {
                     match eh_action {
                         EHAction::None => uw::_URC_CONTINUE_UNWIND,
                         // Forced unwinding hits a terminate action.
-                        EHAction::Filter(_) if actions as i32 & uw::_UA_FORCE_UNWIND as i32 != 0 => uw::_URC_CONTINUE_UNWIND,
+                        EHAction::Filter(_) if actions & uw::_UA_FORCE_UNWIND != 0 => uw::_URC_CONTINUE_UNWIND,
                         EHAction::Cleanup(lpad) | EHAction::Catch(lpad) | EHAction::Filter(lpad) => {
                             uw::_Unwind_SetGR(
                                 context,
@@ -247,7 +248,10 @@ cfg_if::cfg_if! {
         }
 
         cfg_if::cfg_if! {
-            if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+            if #[cfg(any(
+                    all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+                    target_os = "cygwin",
+                ))] {
                 /// personality fn called by [Windows Structured Exception Handling][windows-eh]
                 ///
                 /// On x86_64 and AArch64 MinGW targets, the unwinding mechanism is SEH,

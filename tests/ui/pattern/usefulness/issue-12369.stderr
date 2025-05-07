@@ -2,9 +2,9 @@ error: unreachable pattern
   --> $DIR/issue-12369.rs:9:9
    |
 LL |         &[10,a, ref rest @ ..] => 10
-   |         ^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
+   |         ^^^^^^^^^^^^^^^^^^^^^^ no value can reach this
    |
-note: these patterns collectively make the last one unreachable
+note: multiple earlier patterns match some of the same values
   --> $DIR/issue-12369.rs:9:9
    |
 LL |         &[a,b,c] => 3,

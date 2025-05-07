@@ -70,6 +70,30 @@ macro_rules! impl_common_helpers {
                 self
             }
 
+            /// Configuration for the child process’s standard input (stdin) handle.
+            ///
+            /// See [`std::process::Command::stdin`].
+            pub fn stdin<T: Into<::std::process::Stdio>>(&mut self, cfg: T) -> &mut Self {
+                self.cmd.stdin(cfg);
+                self
+            }
+
+            /// Configuration for the child process’s standard output (stdout) handle.
+            ///
+            /// See [`std::process::Command::stdout`].
+            pub fn stdout<T: Into<::std::process::Stdio>>(&mut self, cfg: T) -> &mut Self {
+                self.cmd.stdout(cfg);
+                self
+            }
+
+            /// Configuration for the child process’s standard error (stderr) handle.
+            ///
+            /// See [`std::process::Command::stderr`].
+            pub fn stderr<T: Into<::std::process::Stdio>>(&mut self, cfg: T) -> &mut Self {
+                self.cmd.stderr(cfg);
+                self
+            }
+
             /// Inspect what the underlying [`Command`] is up to the
             /// current construction.
             pub fn inspect<I>(&mut self, inspector: I) -> &mut Self
@@ -77,6 +101,17 @@ macro_rules! impl_common_helpers {
                 I: FnOnce(&::std::process::Command),
             {
                 self.cmd.inspect(inspector);
+                self
+            }
+
+            /// Set an auxiliary stream passed to the process, besides the stdio streams.
+            #[cfg(unix)]
+            pub fn set_aux_fd<F: Into<std::os::fd::OwnedFd>>(
+                &mut self,
+                new_fd: std::os::fd::RawFd,
+                fd: F,
+            ) -> &mut Self {
+                self.cmd.set_aux_fd(new_fd, fd);
                 self
             }
 

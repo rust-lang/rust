@@ -1,7 +1,8 @@
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use rustc_ast::ast;
-use rustc_ast::token::{Delimiter, TokenKind};
+use rustc_ast::token::TokenKind;
+use rustc_parse::exp;
 use rustc_parse::parser::ForceCollect;
 use rustc_span::symbol::kw;
 
@@ -31,7 +32,7 @@ fn parse_cfg_if_inner<'a>(
 
     while parser.token.kind != TokenKind::Eof {
         if process_if_cfg {
-            if !parser.eat_keyword(kw::If) {
+            if !parser.eat_keyword(exp!(If)) {
                 return Err("Expected `if`");
             }
 
@@ -55,13 +56,11 @@ fn parse_cfg_if_inner<'a>(
                 })?;
         }
 
-        if !parser.eat(&TokenKind::OpenDelim(Delimiter::Brace)) {
+        if !parser.eat(exp!(OpenBrace)) {
             return Err("Expected an opening brace");
         }
 
-        while parser.token != TokenKind::CloseDelim(Delimiter::Brace)
-            && parser.token.kind != TokenKind::Eof
-        {
+        while parser.token != TokenKind::CloseBrace && parser.token.kind != TokenKind::Eof {
             let item = match parser.parse_item(ForceCollect::No) {
                 Ok(Some(item_ptr)) => item_ptr.into_inner(),
                 Ok(None) => continue,
@@ -78,15 +77,15 @@ fn parse_cfg_if_inner<'a>(
             }
         }
 
-        if !parser.eat(&TokenKind::CloseDelim(Delimiter::Brace)) {
+        if !parser.eat(exp!(CloseBrace)) {
             return Err("Expected a closing brace");
         }
 
-        if parser.eat(&TokenKind::Eof) {
+        if parser.eat(exp!(Eof)) {
             break;
         }
 
-        if !parser.eat_keyword(kw::Else) {
+        if !parser.eat_keyword(exp!(Else)) {
             return Err("Expected `else`");
         }
 

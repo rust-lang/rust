@@ -17,18 +17,18 @@ fn main() {
     //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
     //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
-    //~^ First Pass analysis includes:
-    //~| Min Capture analysis includes:
+    //~^ ERROR First Pass analysis includes:
+    //~| ERROR Min Capture analysis includes:
         println!("{:?}", p);
-        //~^ NOTE: Capturing p[] -> ImmBorrow
-        //~| NOTE: Min Capture p[] -> ImmBorrow
+        //~^ NOTE: Capturing p[] -> Immutable
+        //~| NOTE: Min Capture p[] -> Immutable
         println!("{:?}", p.x);
-        //~^ NOTE: Capturing p[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing p[(0, 0)] -> Immutable
 
         println!("{:?}", q.x);
-        //~^ NOTE: Capturing q[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing q[(0, 0)] -> Immutable
         println!("{:?}", q);
-        //~^ NOTE: Capturing q[] -> ImmBorrow
-        //~| NOTE: Min Capture q[] -> ImmBorrow
+        //~^ NOTE: Capturing q[] -> Immutable
+        //~| NOTE: Min Capture q[] -> Immutable
     };
 }

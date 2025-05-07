@@ -1,5 +1,5 @@
-use crate::net::test::{sa4, tsa};
 use crate::net::Ipv4Addr;
+use crate::net::test::{sa4, tsa};
 
 #[test]
 fn to_socket_addr_socketaddr() {

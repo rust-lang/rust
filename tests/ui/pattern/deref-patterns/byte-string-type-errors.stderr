@@ -1,0 +1,90 @@
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:13:12
+   |
+LL |     if let b"test" = () {}
+   |            ^^^^^^^   -- this expression has type `()`
+   |            |
+   |            expected `()`, found `&[u8; 4]`
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:20:12
+   |
+LL |     if let b"test" = &[] as &[i8] {}
+   |            ^^^^^^^   ------------ this expression has type `&[i8]`
+   |            |
+   |            expected `&[i8]`, found `&[u8]`
+   |
+   = note: expected reference `&[i8]`
+              found reference `&'static [u8]`
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:25:12
+   |
+LL |     if let b"test" = *(&[] as &[i8]) {}
+   |            ^^^^^^^   --------------- this expression has type `[i8]`
+   |            |
+   |            expected `[i8]`, found `[u8]`
+   |
+   = note: expected slice `[i8]`
+              found slice `[u8]`
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:30:12
+   |
+LL |     if let b"test" = [()] {}
+   |            ^^^^^^^   ---- this expression has type `[(); 1]`
+   |            |
+   |            expected `[(); 1]`, found `[u8; 4]`
+   |
+   = note: expected array `[(); 1]`
+              found array `[u8; 4]`
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:33:12
+   |
+LL |     if let b"test" = *b"this array is too long" {}
+   |            ^^^^^^^   -------------------------- this expression has type `[u8; 22]`
+   |            |
+   |            expected an array with a size of 22, found one with a size of 4
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:39:12
+   |
+LL |     if let b"test" = &mut () {}
+   |            ^^^^^^^   ------- this expression has type `&mut ()`
+   |            |
+   |            expected `()`, found `&[u8; 4]`
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:44:12
+   |
+LL |     if let b"test" = &mut [] as &mut [i8] {}
+   |            ^^^^^^^   -------------------- this expression has type `&mut [i8]`
+   |            |
+   |            expected `[i8]`, found `[u8]`
+   |
+   = note: expected slice `[i8]`
+              found slice `[u8]`
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:48:12
+   |
+LL |     if let b"test" = &mut [()] {}
+   |            ^^^^^^^   --------- this expression has type `&mut [(); 1]`
+   |            |
+   |            expected `[(); 1]`, found `[u8; 4]`
+   |
+   = note: expected array `[(); 1]`
+              found array `[u8; 4]`
+
+error[E0308]: mismatched types
+  --> $DIR/byte-string-type-errors.rs:52:12
+   |
+LL |     if let b"test" = &mut *b"this array is too long" {}
+   |            ^^^^^^^   ------------------------------- this expression has type `&mut [u8; 22]`
+   |            |
+   |            expected an array with a size of 22, found one with a size of 4
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

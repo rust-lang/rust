@@ -66,8 +66,7 @@ LL |   fn foo3() {
 LL | /     async {
 LL | |
 LL | |         let _ = #[track_caller] || {
-LL | |
-LL | |         };
+...  |
 LL | |     }
    | |_____^ expected `()`, found `async` block
    |

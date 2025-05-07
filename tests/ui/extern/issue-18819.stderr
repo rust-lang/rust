@@ -22,8 +22,9 @@ LL |     print_x(&X);
    |             +
 help: provide the argument
    |
-LL |     print_x(/* &dyn Foo<Item = bool> */, /* &str */);
-   |            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     print_x(X);
+LL +     print_x(/* &dyn Foo<Item = bool> */, /* &str */);
+   |
 
 error: aborting due to 1 previous error
 

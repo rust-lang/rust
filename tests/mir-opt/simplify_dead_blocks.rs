@@ -10,7 +10,7 @@ use std::intrinsics::mir::*;
 pub unsafe fn assert_nonzero_nonmax(x: u8) -> u8 {
     // CHECK-LABEL: fn assert_nonzero_nonmax(
     // CHECK: bb0: {
-    // CHECK-NEXT: switchInt({{.*}}) -> [0: [[unreachable:bb.*]], 1: [[retblock2:bb.*]], 255: [[unreachable:bb.*]], otherwise: [[retblock:bb.*]]];
+    // CHECK-NEXT: switchInt(copy {{_[0-9]+}}) -> [0: [[unreachable:bb.*]], 1: [[retblock2:bb.*]], 255: [[unreachable:bb.*]], otherwise: [[retblock:bb.*]]];
     // CHECK-NEXT: }
     // CHECK-NOT: _0 = const 1_u8;
     // CHECK: [[retblock2]]: {
@@ -21,7 +21,7 @@ pub unsafe fn assert_nonzero_nonmax(x: u8) -> u8 {
     // CHECK-NEXT: unreachable;
     // CHECK-NEXT: }
     // CHECK: [[retblock]]: {
-    // CHECK-NEXT: _0 = _1;
+    // CHECK-NEXT: _0 = copy _1;
     // CHECK-NEXT: return;
     // CHECK-NEXT: }
     mir! {

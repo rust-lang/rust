@@ -153,11 +153,10 @@ pub fn discriminant<T>(t: T) {
     core::intrinsics::discriminant_value(&E::B);
 }
 
-extern "rust-intrinsic" {
-    // Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
-    #[rustc_nounwind]
-    fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-}
+// Cannot use `std::intrinsics::copy_nonoverlapping` as that is a wrapper function
+#[rustc_nounwind]
+#[rustc_intrinsic]
+unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 
 // EMIT_MIR lower_intrinsics.f_copy_nonoverlapping.LowerIntrinsics.diff
 pub fn f_copy_nonoverlapping() {
@@ -197,7 +196,7 @@ pub fn with_overflow(a: i32, b: i32) {
 pub fn read_via_copy_primitive(r: &i32) -> i32 {
     // CHECK-LABEL: fn read_via_copy_primitive(
     // CHECK: [[tmp:_.*]] = &raw const (*_1);
-    // CHECK: _0 = (*[[tmp]]);
+    // CHECK: _0 = copy (*[[tmp]]);
     // CHECK: return;
 
     unsafe { core::intrinsics::read_via_copy(r) }
@@ -207,7 +206,7 @@ pub fn read_via_copy_primitive(r: &i32) -> i32 {
 pub fn read_via_copy_uninhabited(r: &Never) -> Never {
     // CHECK-LABEL: fn read_via_copy_uninhabited(
     // CHECK: [[tmp:_.*]] = &raw const (*_1);
-    // CHECK: _0 = (*[[tmp]]);
+    // CHECK: _0 = copy (*[[tmp]]);
     // CHECK: unreachable;
 
     unsafe { core::intrinsics::read_via_copy(r) }

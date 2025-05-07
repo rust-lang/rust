@@ -1,13 +1,16 @@
 use hir::HasSource;
-use syntax::ast::{self, make, AstNode};
+use syntax::{
+    Edition,
+    ast::{self, AstNode, make},
+};
 
 use crate::{
+    AssistId,
     assist_context::{AssistContext, Assists},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, DefaultMethods,
-        IgnoreAssocItems,
+        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
+        gen_trait_fn_body,
     },
-    AssistId, AssistKind,
 };
 
 // Assist: add_impl_missing_members
@@ -143,21 +146,30 @@ fn add_missing_impl_members_inner(
     }
 
     let target = impl_def.syntax().text_range();
-    acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |edit| {
+    acc.add(AssistId::quick_fix(assist_id), label, target, |edit| {
         let new_impl_def = edit.make_mut(impl_def.clone());
         let first_new_item = add_trait_assoc_items_to_impl(
             &ctx.sema,
+            ctx.config,
             &missing_items,
             trait_,
             &new_impl_def,
-            target_scope,
+            &target_scope,
         );
 
         if let Some(cap) = ctx.config.snippet_cap {
             let mut placeholder = None;
             if let DefaultMethods::No = mode {
                 if let ast::AssocItem::Fn(func) = &first_new_item {
-                    if try_gen_trait_body(ctx, func, trait_ref, &impl_def).is_none() {
+                    if try_gen_trait_body(
+                        ctx,
+                        func,
+                        trait_ref,
+                        &impl_def,
+                        target_scope.krate().edition(ctx.sema.db),
+                    )
+                    .is_none()
+                    {
                         if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
                         {
                             if m.syntax().text() == "todo!()" {
@@ -182,9 +194,11 @@ fn try_gen_trait_body(
     func: &ast::Fn,
     trait_ref: hir::TraitRef,
     impl_def: &ast::Impl,
+    edition: Edition,
 ) -> Option<()> {
-    let trait_path =
-        make::ext::ident_path(&trait_ref.trait_().name(ctx.db()).display(ctx.db()).to_string());
+    let trait_path = make::ext::ident_path(
+        &trait_ref.trait_().name(ctx.db()).display(ctx.db(), edition).to_string(),
+    );
     let hir_ty = ctx.sema.resolve_type(&impl_def.self_ty()?)?;
     let adt = hir_ty.as_adt()?.source(ctx.db())?;
     gen_trait_fn_body(func, &trait_path, &adt.value, Some(trait_ref))
@@ -577,9 +591,9 @@ mod m {
 }
 
 impl m::Foo for () {
-    $0fn get_n(&self) -> usize { {40 + 2} }
+    $0fn get_n(&self) -> usize { N }
 
-    fn get_m(&self) -> usize { {m::VAL + 1} }
+    fn get_m(&self) -> usize { M }
 }"#,
         )
     }
@@ -2303,6 +2317,51 @@ impl<'a> Test<'a, i32> for bool {
     }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn issue_17321() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+fn main() {}
+
+mod other_file_1 {
+    pub const SOME_CONSTANT: usize = 8;
+}
+
+mod other_file_2 {
+    use crate::other_file_1::SOME_CONSTANT;
+
+    pub trait Trait {
+        type Iter: Iterator<Item = [u8; SOME_CONSTANT]>;
+    }
+}
+
+pub struct MyStruct;
+
+impl other_file_2::Trait for MyStruct$0 {}"#,
+            r#"
+fn main() {}
+
+mod other_file_1 {
+    pub const SOME_CONSTANT: usize = 8;
+}
+
+mod other_file_2 {
+    use crate::other_file_1::SOME_CONSTANT;
+
+    pub trait Trait {
+        type Iter: Iterator<Item = [u8; SOME_CONSTANT]>;
+    }
+}
+
+pub struct MyStruct;
+
+impl other_file_2::Trait for MyStruct {
+    $0type Iter;
+}"#,
         );
     }
 }

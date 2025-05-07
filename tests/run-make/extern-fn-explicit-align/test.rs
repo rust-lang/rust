@@ -1,6 +1,6 @@
 // Issue #80127: Passing structs via FFI should work with explicit alignment.
 
-use std::ffi::{c_char, CStr};
+use std::ffi::{CStr, c_char};
 use std::ptr::null_mut;
 
 #[repr(C)]

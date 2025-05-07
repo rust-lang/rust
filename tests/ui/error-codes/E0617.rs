@@ -20,7 +20,8 @@ fn main() {
         //~^ ERROR can't pass `u16` to variadic function
         //~| HELP cast the value to `c_uint`
         printf(::std::ptr::null(), printf);
-        //~^ ERROR can't pass `unsafe extern "C" fn(*const i8, ...) {printf}` to variadic function
-        //~| HELP cast the value to `unsafe extern "C" fn(*const i8, ...)`
+        //~^ ERROR can't pass a function item to a variadic function
+        //~| HELP a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+        //~| HELP use a function pointer instead
     }
 }

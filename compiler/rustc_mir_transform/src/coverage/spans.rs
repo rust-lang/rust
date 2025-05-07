@@ -1,31 +1,56 @@
-use std::collections::VecDeque;
-
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
-use rustc_span::Span;
+use rustc_middle::ty::TyCtxt;
+use rustc_span::{DesugaringKind, ExpnKind, MacroKind, Span};
+use tracing::instrument;
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
-use crate::coverage::spans::from_mir::{
-    extract_covspans_from_mir, ExtractedCovspans, Hole, SpanFromMir,
-};
-use crate::coverage::{mappings, ExtractedHirInfo};
+use crate::coverage::spans::from_mir::{Hole, RawSpanFromMir, SpanFromMir};
+use crate::coverage::{ExtractedHirInfo, mappings, unexpand};
 
 mod from_mir;
 
-pub(super) fn extract_refined_covspans(
-    mir_body: &mir::Body<'_>,
+pub(super) fn extract_refined_covspans<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let ExtractedCovspans { mut covspans } =
-        extract_covspans_from_mir(mir_body, hir_info, basic_coverage_blocks);
+    let &ExtractedHirInfo { body_span, .. } = hir_info;
+
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+    let mut covspans = raw_spans
+        .into_iter()
+        .filter_map(|RawSpanFromMir { raw_span, bcb }| try {
+            let (span, expn_kind) =
+                unexpand::unexpand_into_body_span_with_expn_kind(raw_span, body_span)?;
+            // Discard any spans that fill the entire body, because they tend
+            // to represent compiler-inserted code, e.g. implicitly returning `()`.
+            if span.source_equal(body_span) {
+                return None;
+            };
+            SpanFromMir { span, expn_kind, bcb }
+        })
+        .collect::<Vec<_>>();
+
+    // Only proceed if we found at least one usable span.
+    if covspans.is_empty() {
+        return;
+    }
+
+    // Also add the function signature span, if available.
+    // Otherwise, add a fake span at the start of the body, to avoid an ugly
+    // gap between the start of the body and the first real span.
+    // FIXME: Find a more principled way to solve this problem.
+    covspans.push(SpanFromMir::for_fn_sig(
+        hir_info.fn_sig_span.unwrap_or_else(|| body_span.shrink_to_lo()),
+    ));
 
     // First, perform the passes that need macro information.
-    covspans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
-    remove_unwanted_macro_spans(&mut covspans);
-    split_visible_macro_spans(&mut covspans);
+    covspans.sort_by(|a, b| graph.cmp_in_dominator_order(a.bcb, b.bcb));
+    remove_unwanted_expansion_spans(&mut covspans);
+    shrink_visible_macro_spans(tcx, &mut covspans);
 
     // We no longer need the extra information in `SpanFromMir`, so convert to `Covspan`.
     let mut covspans = covspans.into_iter().map(SpanFromMir::into_covspan).collect::<Vec<_>>();
@@ -33,7 +58,7 @@ pub(super) fn extract_refined_covspans(
     let compare_covspans = |a: &Covspan, b: &Covspan| {
         compare_spans(a.span, b.span)
             // After deduplication, we want to keep only the most-dominated BCB.
-            .then_with(|| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
+            .then_with(|| graph.cmp_in_dominator_order(a.bcb, b.bcb).reverse())
     };
     covspans.sort_by(compare_covspans);
 
@@ -44,30 +69,28 @@ pub(super) fn extract_refined_covspans(
     covspans.dedup_by(|b, a| a.span.source_equal(b.span));
 
     // Sort the holes, and merge overlapping/adjacent holes.
-    let mut holes = hir_info.hole_spans.iter().map(|&span| Hole { span }).collect::<Vec<_>>();
+    let mut holes = hir_info
+        .hole_spans
+        .iter()
+        .copied()
+        // Discard any holes that aren't directly visible within the body span.
+        .filter(|&hole_span| body_span.contains(hole_span) && body_span.eq_ctxt(hole_span))
+        .map(|span| Hole { span })
+        .collect::<Vec<_>>();
     holes.sort_by(|a, b| compare_spans(a.span, b.span));
     holes.dedup_by(|b, a| a.merge_if_overlapping_or_adjacent(b));
 
-    // Split the covspans into separate buckets that don't overlap any holes.
-    let buckets = divide_spans_into_buckets(covspans, &holes);
+    // Discard any span that overlaps with a hole.
+    discard_spans_overlapping_holes(&mut covspans, &holes);
 
-    for mut covspans in buckets {
-        // Make sure each individual bucket is internally sorted.
-        covspans.sort_by(compare_covspans);
-        let _span = debug_span!("processing bucket", ?covspans).entered();
+    // Perform more refinement steps after holes have been dealt with.
+    let mut covspans = remove_unwanted_overlapping_spans(covspans);
+    covspans.dedup_by(|b, a| a.merge_if_eligible(b));
 
-        let mut covspans = remove_unwanted_overlapping_spans(covspans);
-        debug!(?covspans, "after removing overlaps");
-
-        // Do one last merge pass, to simplify the output.
-        covspans.dedup_by(|b, a| a.merge_if_eligible(b));
-        debug!(?covspans, "after merge");
-
-        code_mappings.extend(covspans.into_iter().map(|Covspan { span, bcb }| {
-            // Each span produced by the refiner represents an ordinary code region.
-            mappings::CodeMapping { span, bcb }
-        }));
-    }
+    code_mappings.extend(covspans.into_iter().map(|Covspan { span, bcb }| {
+        // Each span produced by the refiner represents an ordinary code region.
+        mappings::CodeMapping { span, bcb }
+    }));
 }
 
 /// Macros that expand into branches (e.g. `assert!`, `trace!`) tend to generate
@@ -75,110 +98,70 @@ pub(super) fn extract_refined_covspans(
 /// invocation, which is unhelpful. Keeping only the first such span seems to
 /// give better mappings, so remove the others.
 ///
+/// Similarly, `await` expands to a branch on the discriminant of `Poll`, which
+/// leads to incorrect coverage if the `Future` is immediately ready (#98712).
+///
 /// (The input spans should be sorted in BCB dominator order, so that the
 /// retained "first" span is likely to dominate the others.)
-fn remove_unwanted_macro_spans(covspans: &mut Vec<SpanFromMir>) {
-    let mut seen_macro_spans = FxHashSet::default();
-    covspans.retain(|covspan| {
-        // Ignore (retain) non-macro-expansion spans.
-        if covspan.visible_macro.is_none() {
-            return true;
-        }
+fn remove_unwanted_expansion_spans(covspans: &mut Vec<SpanFromMir>) {
+    let mut deduplicated_spans = FxHashSet::default();
 
-        // Retain only the first macro-expanded covspan with this span.
-        seen_macro_spans.insert(covspan.span)
+    covspans.retain(|covspan| {
+        match covspan.expn_kind {
+            // Retain only the first await-related or macro-expanded covspan with this span.
+            Some(ExpnKind::Desugaring(DesugaringKind::Await)) => {
+                deduplicated_spans.insert(covspan.span)
+            }
+            Some(ExpnKind::Macro(MacroKind::Bang, _)) => deduplicated_spans.insert(covspan.span),
+            // Ignore (retain) other spans.
+            _ => true,
+        }
     });
 }
 
 /// When a span corresponds to a macro invocation that is visible from the
-/// function body, split it into two parts. The first part covers just the
-/// macro name plus `!`, and the second part covers the rest of the macro
-/// invocation. This seems to give better results for code that uses macros.
-fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
-    let mut extra_spans = vec![];
+/// function body, truncate it to just the macro name plus `!`.
+/// This seems to give better results for code that uses macros.
+fn shrink_visible_macro_spans(tcx: TyCtxt<'_>, covspans: &mut Vec<SpanFromMir>) {
+    let source_map = tcx.sess.source_map();
 
-    covspans.retain(|covspan| {
-        let Some(visible_macro) = covspan.visible_macro else { return true };
-
-        let split_len = visible_macro.as_str().len() as u32 + 1;
-        let (before, after) = covspan.span.split_at(split_len);
-        if !covspan.span.contains(before) || !covspan.span.contains(after) {
-            // Something is unexpectedly wrong with the split point.
-            // The debug assertion in `split_at` will have already caught this,
-            // but in release builds it's safer to do nothing and maybe get a
-            // bug report for unexpected coverage, rather than risk an ICE.
-            return true;
-        }
-
-        extra_spans.push(SpanFromMir::new(before, covspan.visible_macro, covspan.bcb));
-        extra_spans.push(SpanFromMir::new(after, covspan.visible_macro, covspan.bcb));
-        false // Discard the original covspan that we just split.
-    });
-
-    // The newly-split spans are added at the end, so any previous sorting
-    // is not preserved.
-    covspans.extend(extra_spans);
-}
-
-/// Uses the holes to divide the given covspans into buckets, such that:
-/// - No span in any hole overlaps a bucket (truncating the spans if necessary).
-/// - The spans in each bucket are strictly after all spans in previous buckets,
-///   and strictly before all spans in subsequent buckets.
-///
-/// The resulting buckets are sorted relative to each other, but might not be
-/// internally sorted.
-#[instrument(level = "debug")]
-fn divide_spans_into_buckets(input_covspans: Vec<Covspan>, holes: &[Hole]) -> Vec<Vec<Covspan>> {
-    debug_assert!(input_covspans.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
-    debug_assert!(holes.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
-
-    // Now we're ready to start carving holes out of the initial coverage spans,
-    // and grouping them in buckets separated by the holes.
-
-    let mut input_covspans = VecDeque::from(input_covspans);
-    let mut fragments = vec![];
-
-    // For each hole:
-    // - Identify the spans that are entirely or partly before the hole.
-    // - Put those spans in a corresponding bucket, truncated to the start of the hole.
-    // - If one of those spans also extends after the hole, put the rest of it
-    //   in a "fragments" vector that is processed by the next hole.
-    let mut buckets = (0..holes.len()).map(|_| vec![]).collect::<Vec<_>>();
-    for (hole, bucket) in holes.iter().zip(&mut buckets) {
-        let fragments_from_prev = std::mem::take(&mut fragments);
-
-        // Only inspect spans that precede or overlap this hole,
-        // leaving the rest to be inspected by later holes.
-        // (This relies on the spans and holes both being sorted.)
-        let relevant_input_covspans =
-            drain_front_while(&mut input_covspans, |c| c.span.lo() < hole.span.hi());
-
-        for covspan in fragments_from_prev.into_iter().chain(relevant_input_covspans) {
-            let (before, after) = covspan.split_around_hole_span(hole.span);
-            bucket.extend(before);
-            fragments.extend(after);
+    for covspan in covspans {
+        if matches!(covspan.expn_kind, Some(ExpnKind::Macro(MacroKind::Bang, _))) {
+            covspan.span = source_map.span_through_char(covspan.span, '!');
         }
     }
-
-    // After finding the spans before each hole, any remaining fragments/spans
-    // form their own final bucket, after the final hole.
-    // (If there were no holes, this will just be all of the initial spans.)
-    fragments.extend(input_covspans);
-    buckets.push(fragments);
-
-    buckets
 }
 
-/// Similar to `.drain(..)`, but stops just before it would remove an item not
-/// satisfying the predicate.
-fn drain_front_while<'a, T>(
-    queue: &'a mut VecDeque<T>,
-    mut pred_fn: impl FnMut(&T) -> bool,
-) -> impl Iterator<Item = T> + Captures<'a> {
-    std::iter::from_fn(move || if pred_fn(queue.front()?) { queue.pop_front() } else { None })
+/// Discard all covspans that overlap a hole.
+///
+/// The lists of covspans and holes must be sorted, and any holes that overlap
+/// with each other must have already been merged.
+fn discard_spans_overlapping_holes(covspans: &mut Vec<Covspan>, holes: &[Hole]) {
+    debug_assert!(covspans.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
+    debug_assert!(holes.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
+    debug_assert!(holes.array_windows().all(|[a, b]| !a.span.overlaps_or_adjacent(b.span)));
+
+    let mut curr_hole = 0usize;
+    let mut overlaps_hole = |covspan: &Covspan| -> bool {
+        while let Some(hole) = holes.get(curr_hole) {
+            // Both lists are sorted, so we can permanently skip any holes that
+            // end before the start of the current span.
+            if hole.span.hi() <= covspan.span.lo() {
+                curr_hole += 1;
+                continue;
+            }
+
+            return hole.span.overlaps(covspan.span);
+        }
+
+        // No holes left, so this covspan doesn't overlap with any holes.
+        false
+    };
+
+    covspans.retain(|covspan| !overlaps_hole(covspan));
 }
 
-/// Takes one of the buckets of (sorted) spans extracted from MIR, and "refines"
+/// Takes a list of sorted spans extracted from MIR, and "refines"
 /// those spans by removing spans that overlap in unwanted ways.
 #[instrument(level = "debug")]
 fn remove_unwanted_overlapping_spans(sorted_spans: Vec<Covspan>) -> Vec<Covspan> {
@@ -218,35 +201,21 @@ struct Covspan {
 }
 
 impl Covspan {
-    /// Splits this covspan into 0-2 parts:
-    /// - The part that is strictly before the hole span, if any.
-    /// - The part that is strictly after the hole span, if any.
-    fn split_around_hole_span(&self, hole_span: Span) -> (Option<Self>, Option<Self>) {
-        let before = try {
-            let span = self.span.trim_end(hole_span)?;
-            Self { span, ..*self }
-        };
-        let after = try {
-            let span = self.span.trim_start(hole_span)?;
-            Self { span, ..*self }
-        };
-
-        (before, after)
-    }
-
-    /// If `self` and `other` can be merged (i.e. they have the same BCB),
-    /// mutates `self.span` to also include `other.span` and returns true.
+    /// If `self` and `other` can be merged, mutates `self.span` to also
+    /// include `other.span` and returns true.
     ///
-    /// Note that compatible covspans can be merged even if their underlying
-    /// spans are not overlapping/adjacent; any space between them will also be
-    /// part of the merged covspan.
+    /// Two covspans can be merged if they have the same BCB, and they are
+    /// overlapping or adjacent.
     fn merge_if_eligible(&mut self, other: &Self) -> bool {
-        if self.bcb != other.bcb {
-            return false;
-        }
+        let eligible_for_merge =
+            |a: &Self, b: &Self| (a.bcb == b.bcb) && a.span.overlaps_or_adjacent(b.span);
 
-        self.span = self.span.to(other.span);
-        true
+        if eligible_for_merge(self, other) {
+            self.span = self.span.to(other.span);
+            true
+        } else {
+            false
+        }
     }
 }
 

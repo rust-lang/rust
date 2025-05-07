@@ -1,4 +1,4 @@
-//@ aux-build:issue-54059.rs
+//@ proc-macro: issue-54059.rs
 //@ ignore-windows - dealing with weird symbols issues on dylibs isn't worth it
 //@ revisions: rpass1
 

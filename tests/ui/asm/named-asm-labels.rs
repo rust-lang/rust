@@ -10,9 +10,7 @@
 // which causes less readable LLVM errors and in the worst cases causes ICEs
 // or segfaults based on system dependent behavior and codegen flags.
 
-#![feature(naked_functions)]
-
-use std::arch::{asm, global_asm};
+use std::arch::{asm, global_asm, naked_asm};
 
 #[no_mangle]
 pub static FOO: usize = 42;
@@ -175,9 +173,9 @@ fn main() {
 
 // Trigger on naked fns too, even though they can't be inlined, reusing a
 // label or LTO can cause labels to break
-#[naked]
+#[unsafe(naked)]
 pub extern "C" fn foo() -> i32 {
-    unsafe { asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1, options(noreturn)) }
+    naked_asm!(".Lfoo: mov rax, {}; ret;", "nop", const 1)
     //~^ ERROR avoid using named labels
 }
 
@@ -188,21 +186,21 @@ pub extern "C" fn bar() {
     //~^ ERROR avoid using named labels
 }
 
-#[naked]
+#[unsafe(naked)]
 pub extern "C" fn aaa() {
     fn _local() {}
 
-    unsafe { asm!(".Laaa: nop; ret;", options(noreturn)) } //~ ERROR avoid using named labels
+    naked_asm!(".Laaa: nop; ret;") //~ ERROR avoid using named labels
 }
 
 pub fn normal() {
     fn _local1() {}
 
-    #[naked]
+    #[unsafe(naked)]
     pub extern "C" fn bbb() {
         fn _very_local() {}
 
-        unsafe { asm!(".Lbbb: nop; ret;", options(noreturn)) } //~ ERROR avoid using named labels
+        naked_asm!(".Lbbb: nop; ret;") //~ ERROR avoid using named labels
     }
 
     fn _local2() {}
@@ -219,9 +217,9 @@ fn closures() {
     };
 
     || {
-        #[naked]
-        unsafe extern "C" fn _nested() {
-            asm!("ret;", options(noreturn));
+        #[unsafe(naked)]
+        extern "C" fn _nested() {
+            naked_asm!("ret;");
         }
 
         unsafe {

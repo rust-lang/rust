@@ -4,10 +4,11 @@
 
 type Pointer<T> = impl std::ops::Deref<Target = T>;
 
+#[define_opaque(Pointer)]
 fn test() -> Pointer<_> {
-    //~^ ERROR: the placeholder `_` is not allowed within types
+    //~^ ERROR the placeholder `_` is not allowed within types
+    //~| ERROR expected generic type parameter, found `i32`
     Box::new(1)
-    //~^ ERROR: mismatched types
 }
 
 fn main() {
@@ -16,5 +17,5 @@ fn main() {
 
 extern "Rust" {
     fn bar() -> Pointer<_>;
-    //~^ ERROR: the placeholder `_` is not allowed within types
+    //~^ ERROR the placeholder `_` is not allowed within types
 }

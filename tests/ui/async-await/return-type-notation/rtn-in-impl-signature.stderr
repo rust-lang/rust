@@ -1,14 +1,5 @@
-warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/rtn-in-impl-signature.rs:1:12
-   |
-LL | #![feature(return_type_notation)]
-   |            ^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0229]: associated item constraints are not allowed here
-  --> $DIR/rtn-in-impl-signature.rs:10:17
+  --> $DIR/rtn-in-impl-signature.rs:9:17
    |
 LL | impl Super1<'_, bar(..): Send> for () {}
    |                 ^^^^^^^^^^^^^ associated item constraint not allowed here
@@ -20,7 +11,7 @@ LL + impl Super1<'_> for () {}
    |
 
 error[E0046]: not all trait items implemented, missing: `bar`
-  --> $DIR/rtn-in-impl-signature.rs:10:1
+  --> $DIR/rtn-in-impl-signature.rs:9:1
    |
 LL |     fn bar<'b>() -> bool;
    |     --------------------- `bar` from trait
@@ -28,7 +19,7 @@ LL |     fn bar<'b>() -> bool;
 LL | impl Super1<'_, bar(..): Send> for () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `bar` in implementation
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0046, E0229.
 For more information about an error, try `rustc --explain E0046`.

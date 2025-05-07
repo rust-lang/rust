@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
@@ -26,11 +26,7 @@ impl OmitFollowedCastReason<'_> {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
-    if !msrv.meets(msrvs::POINTER_CAST) {
-        return;
-    }
-
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if let ExprKind::Cast(cast_expr, cast_to_hir_ty) = expr.kind
         && let (cast_from, cast_to) = (cx.typeck_results().expr_ty(cast_expr), cx.typeck_results().expr_ty(expr))
         && let ty::RawPtr(_, from_mutbl) = cast_from.kind()
@@ -39,13 +35,14 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
             (Mutability::Not, Mutability::Not) | (Mutability::Mut, Mutability::Mut))
         // The `U` in `pointer::cast` have to be `Sized`
         // as explained here: https://github.com/rust-lang/rust/issues/60602.
-        && to_pointee_ty.is_sized(cx.tcx, cx.param_env)
+        && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
+        && msrv.meets(cx, msrvs::POINTER_CAST)
     {
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir_ty.kind {
-            TyKind::Infer => String::new(),
+            TyKind::Infer(()) => String::new(),
             TyKind::Ptr(mut_ty) => {
-                if matches!(mut_ty.ty.kind, TyKind::Infer) {
+                if matches!(mut_ty.ty.kind, TyKind::Infer(())) {
                     String::new()
                 } else {
                     format!(
@@ -84,7 +81,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
 
             (
                 "try `pointer::cast`, a safer alternative",
-                format!("{}.cast{turbofish}()", cast_expr_sugg.maybe_par()),
+                format!("{}.cast{turbofish}()", cast_expr_sugg.maybe_paren()),
             )
         };
 

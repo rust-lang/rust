@@ -59,8 +59,6 @@ fn main() {
     if stage == "0" {
         cmd.arg("--cfg=bootstrap");
     }
-    cmd.arg("-Zunstable-options");
-    cmd.arg("--check-cfg=cfg(bootstrap)");
 
     maybe_dump(format!("stage{stage}-rustdoc"), &cmd);
 

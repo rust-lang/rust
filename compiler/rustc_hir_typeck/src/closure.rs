@@ -3,24 +3,26 @@
 use std::iter;
 use std::ops::ControlFlow;
 
+use rustc_abi::ExternAbi;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult};
-use rustc_infer::traits::ObligationCauseCode;
+use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
-use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor,
+};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::spec::abi::Abi;
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::traits::ArgKind;
 use rustc_trait_selection::traits;
-use rustc_type_ir::ClosureKind;
+use tracing::{debug, instrument, trace};
 
-use super::{check_fn, CoroutineTypes, Expectation, FnCtxt};
+use super::{CoroutineTypes, Expectation, FnCtxt, check_fn};
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
@@ -43,14 +45,14 @@ struct ClosureSignatures<'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, closure), level = "debug")]
-    pub fn check_expr_closure(
+    pub(crate) fn check_expr_closure(
         &self,
         closure: &hir::Closure<'tcx>,
         expr_span: Span,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let body = tcx.hir().body(closure.body);
+        let body = tcx.hir_body(closure.body);
         let expr_def_id = closure.def_id;
 
         // It's always helpful for inference if we know the kind of
@@ -161,12 +163,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Resume type defaults to `()` if the coroutine has no argument.
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
-                let interior = self.next_ty_var(expr_span);
-                self.deferred_coroutine_interiors.borrow_mut().push((
-                    expr_def_id,
-                    body.id(),
-                    interior,
-                ));
+                // In the new solver, we can just instantiate this eagerly
+                // with the witness. This will ensure that goals that don't need
+                // to stall on interior types will get processed eagerly.
+                let interior = if self.next_trait_solver() {
+                    Ty::new_coroutine_witness(tcx, expr_def_id.to_def_id(), parent_args)
+                } else {
+                    self.next_ty_var(expr_span)
+                };
+
+                self.deferred_coroutine_interiors.borrow_mut().push((expr_def_id, interior));
 
                 // Coroutines that come from coroutine closures have not yet determined
                 // their kind ty, so make a fresh infer var which will be constrained
@@ -303,7 +309,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given the expected type, figures out what it can about this closure we
     /// are about to type check:
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip(self), level = "debug", ret)]
     fn deduce_closure_signature(
         &self,
         expected_ty: Ty<'tcx>,
@@ -315,7 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected_ty,
                     closure_kind,
                     self.tcx
-                        .explicit_item_super_predicates(def_id)
+                        .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
@@ -385,6 +391,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         bound_predicate.rebind(proj_predicate),
                     ),
                 );
+
                 // Make sure that we didn't infer a signature that mentions itself.
                 // This can happen when we elaborate certain supertrait bounds that
                 // mention projections containing the `Self` type. See #105401.
@@ -402,8 +409,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
-                    expected_sig = inferred_sig;
+
+                // Don't infer a closure signature from a goal that names the closure type as this will
+                // (almost always) lead to occurs check errors later in type checking.
+                if self.next_trait_solver()
+                    && let Some(inferred_sig) = inferred_sig
+                {
+                    // In the new solver it is difficult to explicitly normalize the inferred signature as we
+                    // would have to manually handle universes and rewriting bound vars and placeholders back
+                    // and forth.
+                    //
+                    // Instead we take advantage of the fact that we relating an inference variable with an alias
+                    // will only instantiate the variable if the alias is rigid(*not quite). Concretely we:
+                    // - Create some new variable `?sig`
+                    // - Equate `?sig` with the unnormalized signature, e.g. `fn(<Foo<?x> as Trait>::Assoc)`
+                    // - Depending on whether `<Foo<?x> as Trait>::Assoc` is rigid, ambiguous or normalizeable,
+                    //   we will either wind up with `?sig=<Foo<?x> as Trait>::Assoc/?y/ConcreteTy` respectively.
+                    //
+                    // *: In cases where there are ambiguous aliases in the signature that make use of bound vars
+                    //    they will wind up present in `?sig` even though they are non-rigid.
+                    //
+                    //    This is a bit weird and means we may wind up discarding the goal due to it naming `expected_ty`
+                    //    even though the normalized form may not name `expected_ty`. However, this matches the existing
+                    //    behaviour of the old solver and would be technically a breaking change to fix.
+                    let generalized_fnptr_sig = self.next_ty_var(span);
+                    let inferred_fnptr_sig = Ty::new_fn_ptr(self.tcx, inferred_sig.sig);
+                    self.demand_eqtype(span, inferred_fnptr_sig, generalized_fnptr_sig);
+
+                    let resolved_sig = self.resolve_vars_if_possible(generalized_fnptr_sig);
+
+                    if resolved_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                        expected_sig = Some(ExpectedSig {
+                            cause_span: inferred_sig.cause_span,
+                            sig: resolved_sig.fn_sig(self.tcx),
+                        });
+                    }
+                } else {
+                    if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                        expected_sig = inferred_sig;
+                    }
                 }
             }
 
@@ -461,20 +505,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_kind: hir::ClosureKind,
         projection: ty::PolyProjectionPredicate<'tcx>,
     ) -> Option<ExpectedSig<'tcx>> {
-        let tcx = self.tcx;
-
-        let trait_def_id = projection.trait_def_id(tcx);
+        let def_id = projection.item_def_id();
 
         // For now, we only do signature deduction based off of the `Fn` and `AsyncFn` traits,
         // for closures and async closures, respectively.
         match closure_kind {
-            hir::ClosureKind::Closure
-                if self.tcx.fn_trait_kind_from_def_id(trait_def_id).is_some() =>
-            {
+            hir::ClosureKind::Closure if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) => {
                 self.extract_sig_from_projection(cause_span, projection)
             }
             hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
-                if self.tcx.async_fn_trait_kind_from_def_id(trait_def_id).is_some() =>
+                if self.tcx.is_lang_item(def_id, LangItem::AsyncFnOnceOutput) =>
             {
                 self.extract_sig_from_projection(cause_span, projection)
             }
@@ -482,7 +522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // `F: FnOnce() -> Fut, Fut: Future<Output = T>` style bound. Let's still
             // guide inference here, since it's beneficial for the user.
             hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
-                if self.tcx.fn_trait_kind_from_def_id(trait_def_id).is_some() =>
+                if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) =>
             {
                 self.extract_sig_from_projection_and_future_bound(cause_span, projection)
             }
@@ -515,7 +555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ret_param_ty,
             false,
             hir::Safety::Safe,
-            Abi::Rust,
+            ExternAbi::Rust,
         ));
 
         Some(ExpectedSig { cause_span, sig })
@@ -601,10 +641,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_ty,
             false,
             hir::Safety::Safe,
-            Abi::Rust,
+            ExternAbi::Rust,
         ));
 
-        return Some(ExpectedSig { cause_span, sig });
+        Some(ExpectedSig { cause_span, sig })
     }
 
     fn sig_of_closure(
@@ -713,7 +753,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sig.output(),
                 sig.c_variadic,
                 hir::Safety::Safe,
-                Abi::RustCall,
+                ExternAbi::RustCall,
             )
         });
 
@@ -812,7 +852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // [c1]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341089706
         // [c2]: https://github.com/rust-lang/rust/pull/45072#issuecomment-341096796
         self.commit_if_ok(|_| {
-            let mut all_obligations = vec![];
+            let mut all_obligations = PredicateObligations::new();
             let supplied_sig = self.instantiate_binder_with_fresh_vars(
                 self.tcx.def_span(expr_def_id),
                 BoundRegionConversionTime::FnCall,
@@ -852,7 +892,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_output_ty,
                 expected_sigs.liberated_sig.c_variadic,
                 hir::Safety::Safe,
-                Abi::RustCall,
+                ExternAbi::RustCall,
             );
 
             Ok(InferOk { value: expected_sigs, obligations: all_obligations })
@@ -929,7 +969,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 supplied_return,
                 decl.c_variadic,
                 hir::Safety::Safe,
-                Abi::RustCall,
+                ExternAbi::RustCall,
             ),
             bound_vars,
         );
@@ -938,7 +978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         // Normalize only after registering in `user_provided_sigs`.
-        self.normalize(self.tcx.hir().span(hir_id), result)
+        self.normalize(self.tcx.def_span(expr_def_id), result)
     }
 
     /// Invoked when we are translating the coroutine that results
@@ -992,7 +1032,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
                 .tcx
-                .explicit_item_super_predicates(def_id)
+                .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return Some(ret_ty),
@@ -1093,7 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_ty,
             decl.c_variadic,
             hir::Safety::Safe,
-            Abi::RustCall,
+            ExternAbi::RustCall,
         ));
 
         debug!("supplied_sig_of_closure: result={:?}", result);

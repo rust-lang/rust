@@ -5,7 +5,6 @@
 // insufficient type propagation caused the type of the iterator to be
 // incorrectly unified with the `*const` type to which it is coerced.
 
-//@ pretty-expanded FIXME #23616
 
 use std::ptr;
 

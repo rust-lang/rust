@@ -2,10 +2,13 @@
 #![allow(unused_must_use)]
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::{channel, Sender};
+use std::thread;
 
-pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
+pub fn main() {
+    println!("===== WITHOUT THREADS =====");
+    test00();
+}
 
 fn test00_start(ch: &Sender<isize>, message: isize, count: isize) {
     println!("Starting test00_start");
@@ -34,9 +37,7 @@ fn test00() {
         let tx = tx.clone();
         results.push(thread::spawn({
             let i = i;
-            move|| {
-                test00_start(&tx, i, number_of_messages)
-            }
+            move || test00_start(&tx, i, number_of_messages)
         }));
         i = i + 1;
     }
@@ -53,7 +54,9 @@ fn test00() {
     }
 
     // Join spawned threads...
-    for r in results { r.join(); }
+    for r in results {
+        r.join();
+    }
 
     println!("Completed: Final number is: ");
     println!("{}", sum);

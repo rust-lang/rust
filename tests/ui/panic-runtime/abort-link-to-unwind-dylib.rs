@@ -1,10 +1,7 @@
 //@ build-fail
 //@ compile-flags:-C panic=abort -C prefer-dynamic
 //@ needs-unwind
-//@ ignore-musl - no dylibs here
-//@ ignore-emscripten
-//@ ignore-sgx no dynamic lib support
-//@ error-pattern:`panic_unwind` is not compiled with this crate's panic strategy
+//@ needs-crate-type: dylib
 
 // This is a test where the local crate, compiled with `panic=abort`, links to
 // the standard library **dynamically** which is already linked against
@@ -16,3 +13,5 @@
 
 fn main() {
 }
+
+//~? ERROR the linked panic runtime `panic_unwind` is not compiled with this crate's panic strategy `abort`

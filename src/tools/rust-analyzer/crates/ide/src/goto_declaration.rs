@@ -1,13 +1,13 @@
-use hir::{AsAssocItem, DescendPreference, Semantics};
+use hir::{AsAssocItem, Semantics};
 use ide_db::{
-    defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
+    defs::{Definition, NameClass, NameRefClass},
 };
-use syntax::{ast, match_ast, AstNode, SyntaxKind::*, T};
+use syntax::{AstNode, SyntaxKind::*, T, ast, match_ast};
 
 use crate::{
-    goto_definition::goto_definition, navigation_target::TryToNav, FilePosition, NavigationTarget,
-    RangeInfo,
+    FilePosition, NavigationTarget, RangeInfo, goto_definition::goto_definition,
+    navigation_target::TryToNav,
 };
 
 // Feature: Go to Declaration
@@ -29,14 +29,14 @@ pub(crate) fn goto_declaration(
         .find(|it| matches!(it.kind(), IDENT | T![self] | T![super] | T![crate] | T![Self]))?;
     let range = original_token.text_range();
     let info: Vec<NavigationTarget> = sema
-        .descend_into_macros(DescendPreference::None, original_token)
+        .descend_into_macros_no_opaque(original_token)
         .iter()
         .filter_map(|token| {
-            let parent = token.parent()?;
+            let parent = token.value.parent()?;
             let def = match_ast! {
                 match parent {
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
-                        NameRefClass::Definition(it) => Some(it),
+                        NameRefClass::Definition(it, _) => Some(it),
                         NameRefClass::FieldShorthand { field_ref, .. } =>
                             return field_ref.try_to_nav(db),
                         NameRefClass::ExternCrateShorthand { decl, .. } =>
@@ -52,7 +52,7 @@ pub(crate) fn goto_declaration(
             };
             let assoc = match def? {
                 Definition::Module(module) => {
-                    return Some(NavigationTarget::from_module_to_decl(db, module))
+                    return Some(NavigationTarget::from_module_to_decl(db, module));
                 }
                 Definition::Const(c) => c.as_assoc_item(db),
                 Definition::TypeAlias(ta) => ta.as_assoc_item(db),
@@ -69,11 +69,7 @@ pub(crate) fn goto_declaration(
         .flatten()
         .collect();
 
-    if info.is_empty() {
-        goto_definition(db, position)
-    } else {
-        Some(RangeInfo::new(range, info))
-    }
+    if info.is_empty() { goto_definition(db, position) } else { Some(RangeInfo::new(range, info)) }
 }
 
 #[cfg(test)]
@@ -83,7 +79,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis
             .goto_declaration(position)

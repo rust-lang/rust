@@ -1,7 +1,7 @@
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode, HasName};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: generate_default_from_enum_variant
 //
@@ -47,7 +47,7 @@ pub(crate) fn generate_default_from_enum_variant(
 
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("generate_default_from_enum_variant", AssistKind::Generate),
+        AssistId::generate("generate_default_from_enum_variant"),
         "Generate `Default` impl from this enum variant",
         target,
         |edit| {
@@ -77,11 +77,7 @@ fn existing_default_impl(
     let default_trait = FamousDefs(sema, krate).core_default_Default()?;
     let enum_type = enum_.ty(sema.db);
 
-    if enum_type.impls_trait(sema.db, default_trait, &[]) {
-        Some(())
-    } else {
-        None
-    }
+    if enum_type.impls_trait(sema.db, default_trait, &[]) { Some(()) } else { None }
 }
 
 #[cfg(test)]

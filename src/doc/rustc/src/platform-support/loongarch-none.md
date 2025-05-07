@@ -11,8 +11,8 @@ Freestanding/bare-metal LoongArch64 binaries in ELF format: firmware, kernels, e
 
 ## Target maintainers
 
-- [WANG Rui](https://github.com/heiher) `wangrui@loongson.cn`
-- [WANG Xuerui](https://github.com/xen0n) `git@xen0n.name`
+[@heiher](https://github.com/heiher)
+[@xen0n](https://github.com/xen0n)
 
 ## Requirements
 
@@ -32,7 +32,7 @@ By default, code generated with the soft-float target should run on any
 LoongArch64 hardware, with the hard-float target additionally requiring an FPU;
 enabling additional target features may raise this baseline.
 
-Code generated with the targets will use the `small` code model by default.
+Code generated with the targets will use the `medium` code model by default.
 You can change this using the `-C code-model=` option to rustc.
 
 On `loongarch64-unknown-none*`, `extern "C"` uses the [architecture's standard calling convention][lapcs].
@@ -46,7 +46,7 @@ scripts.
 ## Building the target
 
 You can build Rust with support for the targets by adding them to the `target`
-list in `config.toml`:
+list in `bootstrap.toml`:
 
 ```toml
 [build]

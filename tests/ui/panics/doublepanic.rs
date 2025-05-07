@@ -2,7 +2,7 @@
 
 //@ run-fail
 //@ error-pattern:One
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     panic!("One");

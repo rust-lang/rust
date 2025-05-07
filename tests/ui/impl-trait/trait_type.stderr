@@ -8,8 +8,9 @@ LL |    fn fmt(&self, x: &str) -> () { }
               found signature `fn(&MyType, &str) -> ()`
 help: change the parameter type to match the trait
    |
-LL |    fn fmt(&self, x: &mut Formatter<'_>) -> () { }
-   |                     ~~~~~~~~~~~~~~~~~~
+LL -    fn fmt(&self, x: &str) -> () { }
+LL +    fn fmt(&self, x: &mut Formatter<'_>) -> () { }
+   |
 
 error[E0050]: method `fmt` has 1 parameter but the declaration in trait `std::fmt::Display::fmt` has 2
   --> $DIR/trait_type.rs:12:11

@@ -15,8 +15,8 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use rustc_data_structures::memmap::Mmap;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_serialize::Encoder;
+use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use tracing::debug;
 
@@ -89,7 +89,7 @@ where
 ///   incompatible version of the compiler.
 /// - Returns `Err(..)` if some kind of IO error occurred while reading the
 ///   file.
-pub fn read_file(
+pub(crate) fn read_file(
     path: &Path,
     report_incremental_info: bool,
     is_nightly_build: bool,
@@ -123,7 +123,7 @@ pub fn read_file(
 
     // Check HEADER_FORMAT_VERSION
     {
-        debug_assert!(::std::mem::size_of_val(&HEADER_FORMAT_VERSION) == 2);
+        debug_assert!(size_of_val(&HEADER_FORMAT_VERSION) == 2);
         let mut header_format_version = [0u8; 2];
         file.read_exact(&mut header_format_version)?;
         let header_format_version =

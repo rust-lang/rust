@@ -1,6 +1,11 @@
 //@ run-pass
 //@ compile-flags: -Z validate-mir
-#![feature(let_chains)]
+//@ revisions: edition2021 edition2024
+//@ [edition2021] edition: 2021
+//@ [edition2024] compile-flags: -Z lint-mir
+//@ [edition2024] edition: 2024
+
+#![cfg_attr(edition2021, feature(let_chains))]
 
 use std::cell::RefCell;
 use std::convert::TryInto;
@@ -55,10 +60,17 @@ impl DropOrderCollector {
     }
 
     fn if_let(&self) {
+        #[cfg(edition2021)]
         if let None = self.option_loud_drop(2) {
             unreachable!();
         } else {
             self.print(1);
+        }
+        #[cfg(edition2024)]
+        if let None = self.option_loud_drop(1) {
+            unreachable!();
+        } else {
+            self.print(2);
         }
 
         if let Some(_) = self.option_loud_drop(4) {
@@ -93,6 +105,7 @@ impl DropOrderCollector {
             () => self.print(10),
         }
 
+        #[cfg(edition2021)]
         match {
             match self.option_loud_drop(14) {
                 _ => {
@@ -102,6 +115,17 @@ impl DropOrderCollector {
             }
         } {
             _ => self.print(12),
+        }
+        #[cfg(edition2024)]
+        match {
+            match self.option_loud_drop(12) {
+                _ => {
+                    self.print(11);
+                    self.option_loud_drop(14)
+                }
+            }
+        } {
+            _ => self.print(13),
         }
 
         match {
@@ -194,6 +218,7 @@ impl DropOrderCollector {
             self.print(3); // 3
         }
 
+        #[cfg(edition2021)]
         // take the "else" branch
         if self.option_loud_drop(5).is_some() // 1
             && self.option_loud_drop(6).is_some() // 2
@@ -201,6 +226,15 @@ impl DropOrderCollector {
             unreachable!();
         } else {
             self.print(7); // 3
+        }
+        #[cfg(edition2024)]
+        // take the "else" branch
+        if self.option_loud_drop(5).is_some() // 1
+            && self.option_loud_drop(6).is_some() // 2
+            && let None = self.option_loud_drop(7) { // 4
+            unreachable!();
+        } else {
+            self.print(8); // 3
         }
 
         // let exprs interspersed

@@ -1,7 +1,8 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::vxworks::opts();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
@@ -9,11 +10,11 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "i686-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),
-            std: None, // ?
+            std: Some(true),
         },
         pointer_width: 32,
         data_layout: "e-m:e-p:32:32-p270:32:32-p271:32:32-p272:64:64-\

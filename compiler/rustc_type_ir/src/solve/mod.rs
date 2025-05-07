@@ -5,73 +5,14 @@ use std::hash::Hash;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::search_graph::PathKind;
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
-/// Depending on the stage of compilation, we want projection to be
-/// more or less conservative.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
-pub enum Reveal {
-    /// At type-checking time, we refuse to project any associated
-    /// type that is marked `default`. Non-`default` ("final") types
-    /// are always projected. This is necessary in general for
-    /// soundness of specialization. However, we *could* allow
-    /// projections in fully-monomorphic cases. We choose not to,
-    /// because we prefer for `default type` to force the type
-    /// definition to be treated abstractly by any consumers of the
-    /// impl. Concretely, that means that the following example will
-    /// fail to compile:
-    ///
-    /// ```compile_fail,E0308
-    /// #![feature(specialization)]
-    /// trait Assoc {
-    ///     type Output;
-    /// }
-    ///
-    /// impl<T> Assoc for T {
-    ///     default type Output = bool;
-    /// }
-    ///
-    /// fn main() {
-    ///     let x: <() as Assoc>::Output = true;
-    /// }
-    /// ```
-    ///
-    /// We also do not reveal the hidden type of opaque types during
-    /// type-checking.
-    UserFacing,
-
-    /// At codegen time, all monomorphic projections will succeed.
-    /// Also, `impl Trait` is normalized to the concrete type,
-    /// which has to be already collected by type-checking.
-    ///
-    /// NOTE: as `impl Trait`'s concrete type should *never*
-    /// be observable directly by the user, `Reveal::All`
-    /// should not be used by checks which may expose
-    /// type equality or type contents to the user.
-    /// There are some exceptions, e.g., around auto traits and
-    /// transmute-checking, which expose some details, but
-    /// not the whole concrete type of the `impl Trait`.
-    All,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum SolverMode {
-    /// Ordinary trait solving, using everywhere except for coherence.
-    Normal,
-    /// Trait solving during coherence. There are a few notable differences
-    /// between coherence and ordinary trait solving.
-    ///
-    /// Most importantly, trait solving during coherence must not be incomplete,
-    /// i.e. return `Err(NoSolution)` for goals for which a solution exists.
-    /// This means that we must not make any guesses or arbitrary choices.
-    Coherence,
-}
-
-pub type CanonicalInput<I, T = <I as Interner>::Predicate> = Canonical<I, QueryInput<I, T>>;
+pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
+    ty::CanonicalQueryInput<I, QueryInput<I, T>>;
 pub type CanonicalResponse<I> = Canonical<I, Response<I>>;
 /// The result of evaluating a canonical query.
 ///
@@ -97,7 +38,10 @@ pub struct NoSolution;
 #[derive_where(Eq; I: Interner, P: Eq)]
 #[derive_where(Debug; I: Interner, P: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub struct Goal<I: Interner, P> {
     pub param_env: I::ParamEnv,
     pub predicate: P,
@@ -117,25 +61,40 @@ impl<I: Interner, P> Goal<I, P> {
 /// Why a specific goal has to be proven.
 ///
 /// This is necessary as we treat nested goals different depending on
-/// their source.
+/// their source. This is used to decide whether a cycle is coinductive.
+/// See the documentation of `EvalCtxt::step_kind_for_source` for more details
+/// about this.
+///
+/// It is also used by proof tree visitors, e.g. for diagnostics purposes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GoalSource {
     Misc,
+    /// A nested goal required to prove that types are equal/subtypes.
+    /// This is always an unproductive step.
+    ///
+    /// This is also used for all `NormalizesTo` goals as we they are used
+    /// to relate types in `AliasRelate`.
+    TypeRelating,
     /// We're proving a where-bound of an impl.
-    ///
-    /// FIXME(-Znext-solver=coinductive): Explain how and why this
-    /// changes whether cycles are coinductive.
-    ///
-    /// This also impacts whether we erase constraints on overflow.
-    /// Erasing constraints is generally very useful for perf and also
-    /// results in better error messages by avoiding spurious errors.
-    /// We do not erase overflow constraints in `normalizes-to` goals unless
-    /// they are from an impl where-clause. This is necessary due to
-    /// backwards compatability, cc trait-system-refactor-initiatitive#70.
     ImplWhereBound,
+    /// Const conditions that need to hold for `~const` alias bounds to hold.
+    AliasBoundConstCondition,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
+    /// Predicate required for an alias projection to be well-formed.
+    /// This is used in three places:
+    /// 1. projecting to an opaque whose hidden type is already registered in
+    ///    the opaque type storage,
+    /// 2. for rigid projections's trait goal,
+    /// 3. for GAT where clauses.
+    AliasWellFormed,
+    /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
+    /// aliases in the context of the parent may incorrectly change the cycle kind.
+    /// Normalizing aliases in goals therefore tracks the original path kind for this
+    /// nested goal. See the comment of the `ReplaceAliasWithInfer` visitor for more
+    /// details.
+    NormalizeGoal(PathKind),
 }
 
 #[derive_where(Clone; I: Interner, Goal<I, P>: Clone)]
@@ -145,7 +104,10 @@ pub enum GoalSource {
 #[derive_where(Eq; I: Interner, Goal<I, P>: Eq)]
 #[derive_where(Debug; I: Interner, Goal<I, P>: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
@@ -154,7 +116,10 @@ pub struct QueryInput<I: Interner, P> {
 /// Opaques that are defined in the inference context before a query is called.
 #[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub struct PredefinedOpaquesData<I: Interner> {
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
 }
@@ -225,8 +190,14 @@ pub enum CandidateSource<I: Interner> {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(HashStable_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
 pub enum BuiltinImplSource {
+    /// A built-in impl that is considered trivial, without any nested requirements. They
+    /// are preferred over where-clauses, and we want to track them explicitly.
+    Trivial,
     /// Some built-in impl we don't need to differentiate. This should be used
     /// unless more specific information is necessary.
     Misc,
@@ -234,14 +205,8 @@ pub enum BuiltinImplSource {
     Object(usize),
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
-    /// This can be removed when `feature(dyn_upcasting)` is stabilized, since we only
-    /// use it to detect when upcasting traits in hir typeck.
-    TraitUpcasting,
-    /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
-    ///
-    /// This can be removed when `feature(tuple_unsizing)` is stabilized, since we only
-    /// use it to detect when unsizing tuples in hir typeck.
-    TupleUnsizing,
+    /// The index is only used for winnowing.
+    TraitUpcasting(usize),
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
@@ -339,4 +304,11 @@ impl MaybeCause {
             ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
         }
     }
+}
+
+/// Indicates that a `impl Drop for Adt` is `const` or not.
+#[derive(Debug)]
+pub enum AdtDestructorKind {
+    NotConst,
+    Const,
 }

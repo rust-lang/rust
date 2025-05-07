@@ -34,8 +34,9 @@ LL |         (Nucleotide::Adenine, Nucleotide::Cytosine, _) => true
    |         +                                            +
 help: ...or a vertical bar to match on multiple alternatives
    |
-LL |         Nucleotide::Adenine | Nucleotide::Cytosine | _ => true
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         Nucleotide::Adenine, Nucleotide::Cytosine, _ => true
+LL +         Nucleotide::Adenine | Nucleotide::Cytosine | _ => true
+   |
 
 error: unexpected `,` in pattern
   --> $DIR/issue-48492-tuple-destructure-missing-parens.rs:67:10
@@ -65,7 +66,6 @@ error: unexpected `,` in pattern
 LL |     let women, men: (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()
    |              ^
    |
-   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 help: try adding parentheses to match on a tuple
    |
 LL |     let (women, men): (Vec<Genome>, Vec<Genome>) = genomes.iter().cloned()

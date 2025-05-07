@@ -1,7 +1,7 @@
 //@ revisions: angle paren ok elision
+//@[ok] check-pass
 
 #![allow(dead_code)]
-#![feature(rustc_attrs)]
 #![feature(unboxed_closures)]
 
 trait Foo {
@@ -67,5 +67,4 @@ fn ok2<T: for<'a,'b> Fn<(&'b Parameterized<'a>,), Output=&'a i32>>() {
 fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
 }
 
-#[rustc_error]
-fn main() { } //[ok]~ ERROR fatal error triggered by #[rustc_error]
+fn main() { }

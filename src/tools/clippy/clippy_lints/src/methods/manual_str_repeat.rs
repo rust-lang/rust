@@ -36,8 +36,8 @@ fn parse_repeat_arg(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<RepeatKind> {
     } else {
         let ty = cx.typeck_results().expr_ty(e);
         if is_type_lang_item(cx, ty, LangItem::String)
-            || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).map_or(false, Ty::is_str))
-            || (is_type_diagnostic_item(cx, ty, sym::Cow) && get_ty_param(ty).map_or(false, Ty::is_str))
+            || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).is_some_and(Ty::is_str))
+            || (is_type_diagnostic_item(cx, ty, sym::Cow) && get_ty_param(ty).is_some_and(Ty::is_str))
         {
             Some(RepeatKind::String)
         } else {
@@ -77,7 +77,7 @@ pub(super) fn check(
                 s @ Cow::Borrowed(_) => s,
             },
             RepeatKind::String => Sugg::hir_with_context(cx, repeat_arg, ctxt, "..", &mut app)
-                .maybe_par()
+                .maybe_paren()
                 .to_string()
                 .into(),
         };

@@ -9,7 +9,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def::DefKind;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::def_id::{LocalDefId, CRATE_DEF_ID};
+use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 
 use crate::ty::{TyCtxt, Visibility};
 

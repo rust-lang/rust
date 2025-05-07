@@ -41,9 +41,9 @@ fn arg_src(mut x: i32) -> i32 {
     // CHECK-LABEL: fn arg_src(
     // CHECK: debug x => [[x:_.*]];
     // CHECK: debug y => [[y:_.*]];
-    // CHECK: [[y]] = [[x]]
+    // CHECK: [[y]] = copy [[x]]
     // CHECK: [[x]] = const 123_i32;
-    // CHECK-NOT: {{_.*}} = [[y]];
+    // CHECK-NOT: {{_.*}} = copy [[y]];
     let y = x;
     x = 123; // Don't propagate this assignment to `y`
     y

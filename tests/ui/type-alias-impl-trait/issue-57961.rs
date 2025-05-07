@@ -11,6 +11,7 @@ impl Foo for () {
     //~^ ERROR expected `IntoIter<u32>` to be an iterator that yields `X`, but it yields `u32`
 }
 
+#[define_opaque(X)]
 fn incoherent() -> X {
     22_i32
 }

@@ -4,8 +4,8 @@ use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, QPath};
 use rustc_lint::LateContext;
-use rustc_span::symbol::sym;
 use rustc_span::Span;
+use rustc_span::symbol::sym;
 
 use super::CLEAR_WITH_DRAIN;
 

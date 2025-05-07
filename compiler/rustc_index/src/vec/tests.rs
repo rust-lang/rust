@@ -9,8 +9,6 @@ crate::newtype_index! {
 
 #[test]
 fn index_size_is_optimized() {
-    use std::mem::size_of;
-
     assert_eq!(size_of::<MyIdx>(), 4);
     // Uses 0xFFFF_FFFB
     assert_eq!(size_of::<Option<MyIdx>>(), 4);

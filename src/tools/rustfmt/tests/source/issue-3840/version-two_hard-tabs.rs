@@ -1,5 +1,5 @@
 // rustfmt-hard_tabs: true
-// rustfmt-version: Two
+// rustfmt-style_edition: 2024
 
 impl<Target: FromEvent<A> + FromEvent<B>, A: Widget2<Ctx = C>, B: Widget2<Ctx = C>, C: for<'a> CtxFamily<'a>> Widget2 for WidgetEventLifter<Target, A, B>
 {

@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{Item, VisibilityKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
-use rustc_span::symbol::kw;
 use rustc_span::Span;
+use rustc_span::symbol::kw;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -79,12 +78,10 @@ declare_lint_pass!(Visibility => [NEEDLESS_PUB_SELF, PUB_WITH_SHORTHAND, PUB_WIT
 
 impl EarlyLintPass for Visibility {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !in_external_macro(cx.sess(), item.span)
+        if !item.span.in_external_macro(cx.sess().source_map())
             && let VisibilityKind::Restricted { path, shorthand, .. } = &item.vis.kind
         {
-            if **path == kw::SelfLower
-                && let Some(false) = is_from_proc_macro(cx, item.vis.span)
-            {
+            if **path == kw::SelfLower && !is_from_proc_macro(cx, item.vis.span) {
                 span_lint_and_then(
                     cx,
                     NEEDLESS_PUB_SELF,
@@ -104,7 +101,7 @@ impl EarlyLintPass for Visibility {
             if (**path == kw::Super || **path == kw::SelfLower || **path == kw::Crate)
                 && !*shorthand
                 && let [.., last] = &*path.segments
-                && let Some(false) = is_from_proc_macro(cx, item.vis.span)
+                && !is_from_proc_macro(cx, item.vis.span)
             {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
                 span_lint_and_then(
@@ -125,7 +122,7 @@ impl EarlyLintPass for Visibility {
 
             if *shorthand
                 && let [.., last] = &*path.segments
-                && let Some(false) = is_from_proc_macro(cx, item.vis.span)
+                && !is_from_proc_macro(cx, item.vis.span)
             {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
                 span_lint_and_then(
@@ -147,6 +144,6 @@ impl EarlyLintPass for Visibility {
     }
 }
 
-fn is_from_proc_macro(cx: &EarlyContext<'_>, span: Span) -> Option<bool> {
-    snippet_opt(cx, span).map(|s| !s.starts_with("pub"))
+fn is_from_proc_macro(cx: &EarlyContext<'_>, span: Span) -> bool {
+    !span.check_source_text(cx, |src| src.starts_with("pub"))
 }

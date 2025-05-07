@@ -4,10 +4,12 @@
   fn bar() -> bool {
       let mut _0: bool;
   
-+     coverage Code(Counter(0)) => $DIR/instrument_coverage.rs:19:1 - 21:2;
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:27:1: 27:17 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:28:5: 28:9 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:29:2: 29:2 (#0);
 + 
       bb0: {
-+         Coverage::CounterIncrement(0);
++         Coverage::VirtualCounter(bcb0);
           _0 = const true;
           return;
       }

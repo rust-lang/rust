@@ -39,7 +39,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         let mut i = 0;
         let mut j = lines.len();
         // first line of all-stars should be omitted
-        if !lines.is_empty() && lines[0].chars().all(|c| c == '*') {
+        if lines.first().is_some_and(|line| line.chars().all(|c| c == '*')) {
             i += 1;
         }
 
@@ -97,7 +97,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
                 return None;
             }
         }
-        if lines.is_empty() { None } else { Some(lines[0][..i].into()) }
+        Some(lines.first()?[..i].to_string())
     }
 
     let data_s = data.as_str();

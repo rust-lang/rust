@@ -1,4 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
+};
 
 // This target if is for the baseline of the Android v7a ABI
 // in thumb mode. It's named armv7-* instead of thumbv7-*
@@ -8,12 +10,12 @@ use crate::spec::{base, Cc, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptio
 // See https://developer.android.com/ndk/guides/abis.html#v7a
 // for target ABI requirements.
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::android::opts();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"]);
     Target {
         llvm_target: "armv7-none-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-A Android".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -24,6 +26,7 @@ pub fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb-mode,+thumb2,+vfp3,-d32,-neon".into(),
             supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),

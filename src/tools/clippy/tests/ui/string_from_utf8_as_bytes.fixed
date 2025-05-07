@@ -2,4 +2,5 @@
 
 fn main() {
     let _ = Some(&"Hello World!"[6..11]);
+    //~^ string_from_utf8_as_bytes
 }

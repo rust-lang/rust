@@ -1,4 +1,4 @@
-//@ compile-flags: --edition=2021
+//@ edition: 2021
 
 #![feature(rustc_attrs)]
 

@@ -1,5 +1,5 @@
 use crate::cell::UnsafeCell;
-use crate::sys::sync::{mutex, Mutex};
+use crate::sys::sync::{Mutex, mutex};
 use crate::sys::{c, os};
 use crate::time::Duration;
 

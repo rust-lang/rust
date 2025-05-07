@@ -7,7 +7,7 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
 LL |     o_closure.closure();
    |               ^^^^^^^ field, not a method
    |
-help: to call the function stored in `closure`, surround the field access with parentheses
+help: to call the closure stored in `closure`, surround the field access with parentheses
    |
 LL |     (o_closure.closure)();
    |     +                 +
@@ -46,7 +46,7 @@ LL | struct BoxedObj {
 LL |     boxed_fn.boxed_closure();
    |              ^^^^^^^^^^^^^ field, not a method
    |
-help: to call the function stored in `boxed_closure`, surround the field access with parentheses
+help: to call the trait object stored in `boxed_closure`, surround the field access with parentheses
    |
 LL |     (boxed_fn.boxed_closure)();
    |     +                      +
@@ -60,7 +60,7 @@ LL | struct BoxedObj {
 LL |     boxed_closure.boxed_closure();
    |                   ^^^^^^^^^^^^^ field, not a method
    |
-help: to call the function stored in `boxed_closure`, surround the field access with parentheses
+help: to call the trait object stored in `boxed_closure`, surround the field access with parentheses
    |
 LL |     (boxed_closure.boxed_closure)();
    |     +                           +
@@ -99,7 +99,7 @@ LL | struct Obj<F> where F: FnOnce() -> u32 {
 LL |     check_expression().closure();
    |                        ^^^^^^^ field, not a method
    |
-help: to call the function stored in `closure`, surround the field access with parentheses
+help: to call the trait object stored in `closure`, surround the field access with parentheses
    |
 LL |     (check_expression().closure)();
    |     +                          +
@@ -113,7 +113,7 @@ LL | struct FuncContainer {
 LL |             (*self.container).f1(1);
    |                               ^^ field, not a method
    |
-help: to call the function stored in `f1`, surround the field access with parentheses
+help: to call the function pointer stored in `f1`, surround the field access with parentheses
    |
 LL |             ((*self.container).f1)(1);
    |             +                    +
@@ -127,7 +127,7 @@ LL | struct FuncContainer {
 LL |             (*self.container).f2(1);
    |                               ^^ field, not a method
    |
-help: to call the function stored in `f2`, surround the field access with parentheses
+help: to call the function pointer stored in `f2`, surround the field access with parentheses
    |
 LL |             ((*self.container).f2)(1);
    |             +                    +
@@ -141,7 +141,7 @@ LL | struct FuncContainer {
 LL |             (*self.container).f3(1);
    |                               ^^ field, not a method
    |
-help: to call the function stored in `f3`, surround the field access with parentheses
+help: to call the function pointer stored in `f3`, surround the field access with parentheses
    |
 LL |             ((*self.container).f3)(1);
    |             +                    +

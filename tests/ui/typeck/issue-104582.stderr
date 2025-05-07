@@ -6,8 +6,9 @@ LL |     let my_var: String(String?);
    |
 help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
    |
-LL |     let my_var: String(Option<String>);
-   |                        +++++++      ~
+LL -     let my_var: String(String?);
+LL +     let my_var: String(Option<String>);
+   |
 
 error[E0214]: parenthesized type parameters may only be used with a `Fn` trait
   --> $DIR/issue-104582.rs:2:17
@@ -17,8 +18,9 @@ LL |     let my_var: String(String?);
    |
 help: use angle brackets instead
    |
-LL |     let my_var: String<String?>;
-   |                       ~       ~
+LL -     let my_var: String(String?);
+LL +     let my_var: String<String?>;
+   |
 
 error: aborting due to 2 previous errors
 

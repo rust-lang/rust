@@ -1,8 +1,6 @@
 //@ aux-build:block-on.rs
 //@ edition:2021
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 struct NoCopy;

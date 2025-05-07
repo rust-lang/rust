@@ -37,12 +37,12 @@
 //!
 //! [mutex in Fuchsia's libsync]: https://cs.opensource.google/fuchsia/fuchsia/+/main:zircon/system/ulib/sync/mutex.c
 
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
+use crate::sync::atomic::{Atomic, AtomicU32};
 use crate::sys::futex::zircon::{
-    zx_futex_wait, zx_futex_wake_single_owner, zx_handle_t, zx_thread_self, ZX_ERR_BAD_HANDLE,
-    ZX_ERR_BAD_STATE, ZX_ERR_INVALID_ARGS, ZX_ERR_TIMED_OUT, ZX_ERR_WRONG_TYPE, ZX_OK,
-    ZX_TIME_INFINITE,
+    ZX_ERR_BAD_HANDLE, ZX_ERR_BAD_STATE, ZX_ERR_INVALID_ARGS, ZX_ERR_TIMED_OUT, ZX_ERR_WRONG_TYPE,
+    ZX_OK, ZX_TIME_INFINITE, zx_futex_wait, zx_futex_wake_single_owner, zx_handle_t,
+    zx_thread_self,
 };
 
 // The lowest two bits of a `zx_handle_t` are always set, so the lowest bit is used to mark the
@@ -52,7 +52,7 @@ const CONTESTED_BIT: u32 = 1;
 const UNLOCKED: u32 = 0;
 
 pub struct Mutex {
-    futex: AtomicU32,
+    futex: Atomic<u32>,
 }
 
 #[inline]

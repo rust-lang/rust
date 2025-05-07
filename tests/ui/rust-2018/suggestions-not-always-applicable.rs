@@ -1,4 +1,4 @@
-//@ aux-build:suggestions-not-always-applicable.rs
+//@ proc-macro: suggestions-not-always-applicable.rs
 //@ edition:2015
 //@ run-rustfix
 //@ rustfix-only-machine-applicable

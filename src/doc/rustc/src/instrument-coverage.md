@@ -2,12 +2,8 @@
 
 ## Introduction
 
-The Rust compiler includes two code coverage implementations:
-
--   A GCC-compatible, gcov-based coverage implementation, enabled with `-Z profile`, which derives coverage data based on DebugInfo.
--   A source-based code coverage implementation, enabled with `-C instrument-coverage`, which uses LLVM's native, efficient coverage instrumentation to generate very precise coverage data.
-
-This document describes how to enable and use the LLVM instrumentation-based coverage, via the `-C instrument-coverage` compiler flag.
+This document describes how to enable and use LLVM instrumentation-based coverage,
+via the `-C instrument-coverage` compiler flag.
 
 ## How it works
 
@@ -31,7 +27,7 @@ Rust's source-based code coverage requires the Rust "profiler runtime". Without 
 
 The Rust `nightly` distribution channel includes the profiler runtime, by default.
 
-> **Important**: If you are building the Rust compiler from the source distribution, the profiler runtime is _not_ enabled in the default `config.example.toml`. Edit your `config.toml` file and ensure the `profiler` feature is set it to `true` (either under the `[build]` section, or under the settings for an individual `[target.<triple>]`):
+> **Important**: If you are building the Rust compiler from the source distribution, the profiler runtime is _not_ enabled in the default `bootstrap.example.toml`. Edit your `bootstrap.toml` file and ensure the `profiler` feature is set it to `true` (either under the `[build]` section, or under the settings for an individual `[target.<triple>]`):
 >
 > ```toml
 > # Build the profiler runtime (required when compiling with options that depend

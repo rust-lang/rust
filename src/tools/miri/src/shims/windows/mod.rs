@@ -1,13 +1,14 @@
 pub mod foreign_items;
 
 mod env;
+mod fs;
 mod handle;
 mod sync;
 mod thread;
 
-pub use env::WindowsEnvVars;
 // All the Windows-specific extension traits
-pub use env::EvalContextExt as _;
-pub use handle::EvalContextExt as _;
-pub use sync::EvalContextExt as _;
-pub use thread::EvalContextExt as _;
+pub use self::env::{EvalContextExt as _, WindowsEnvVars};
+pub use self::fs::EvalContextExt as _;
+pub use self::handle::EvalContextExt as _;
+pub use self::sync::EvalContextExt as _;
+pub use self::thread::EvalContextExt as _;

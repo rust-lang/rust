@@ -2,14 +2,13 @@ use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::visitors::{for_each_expr_without_closures, Descend};
-use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id};
+use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
+use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id, sym};
 use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::sym;
 
 use super::{UNNECESSARY_FILTER_MAP, UNNECESSARY_FIND_MAP};
 
@@ -19,9 +18,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
     }
 
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
-        let body = cx.tcx.hir().body(body);
+        let body = cx.tcx.hir_body(body);
         let arg_id = body.params[0].pat.hir_id;
-        let mutates_arg = mutated_variables(body.value, cx).map_or(true, |used_mutably| used_mutably.contains(&arg_id));
+        let mutates_arg = mutated_variables(body.value, cx).is_none_or(|used_mutably| used_mutably.contains(&arg_id));
         let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, body.value);
 
         let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, body.value);
@@ -36,16 +35,33 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
                 ControlFlow::Continue(Descend::Yes)
             }
         });
-
         let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
         let sugg = if !found_filtering {
-            if name == "filter_map" { "map" } else { "map(..).next()" }
+            // Check if the closure is .filter_map(|x| Some(x))
+            if name == "filter_map"
+                && let hir::ExprKind::Call(expr, args) = body.value.kind
+                && is_res_lang_ctor(cx, path_res(cx, expr), OptionSome)
+                && let hir::ExprKind::Path(_) = args[0].kind
+            {
+                span_lint(
+                    cx,
+                    UNNECESSARY_FILTER_MAP,
+                    expr.span,
+                    String::from("this call to `.filter_map(..)` is unnecessary"),
+                );
+                return;
+            }
+            if name == "filter_map" {
+                "map(..)"
+            } else {
+                "map(..).next()"
+            }
         } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
             match cx.typeck_results().expr_ty(body.value).kind() {
                 ty::Adt(adt, subst)
                     if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && in_ty == subst.type_at(0) =>
                 {
-                    if name == "filter_map" { "filter" } else { "find" }
+                    if name == "filter_map" { "filter(..)" } else { "find(..)" }
                 },
                 _ => return,
             }
@@ -60,7 +76,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
                 UNNECESSARY_FIND_MAP
             },
             expr.span,
-            format!("this `.{name}` can be written more simply using `.{sugg}`"),
+            format!("this `.{name}(..)` can be written more simply using `.{sugg}`"),
         );
     }
 }
@@ -78,7 +94,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             (true, true)
         },
         hir::ExprKind::MethodCall(segment, recv, [arg], _) => {
-            if segment.ident.name == sym!(then_some)
+            if segment.ident.name == sym::then_some
                 && cx.typeck_results().expr_ty(recv).is_bool()
                 && path_to_local_id(arg, arg_id)
             {

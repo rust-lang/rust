@@ -1,5 +1,7 @@
 // We need this feature as it changes `dylib` linking behavior and allows us to link to `rustc_driver`.
 #![feature(rustc_private)]
+// Several crates are depended upon but unused so that they are present in the sysroot
+#![expect(unused_crate_dependencies)]
 
 // A note about jemalloc: rustc uses jemalloc when built for CI and
 // distribution. The obvious way to do this is with the `#[global_allocator]`
@@ -41,6 +43,8 @@ fn main() {
     {
         use std::os::raw::{c_int, c_void};
 
+        use tikv_jemalloc_sys as jemalloc_sys;
+
         #[used]
         static _F1: unsafe extern "C" fn(usize, usize) -> *mut c_void = jemalloc_sys::calloc;
         #[used]
@@ -61,7 +65,7 @@ fn main() {
         // linking, so we need to explicitly depend on the function.
         #[cfg(target_os = "macos")]
         {
-            extern "C" {
+            unsafe extern "C" {
                 fn _rjem_je_zone_register();
             }
 

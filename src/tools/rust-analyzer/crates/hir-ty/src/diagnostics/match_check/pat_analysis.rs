@@ -1,26 +1,26 @@
 //! Interface with `rustc_pattern_analysis`.
 
+use std::cell::LazyCell;
 use std::fmt;
 
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use intern::sym;
-use once_cell::unsync::Lazy;
 use rustc_pattern_analysis::{
-    constructor::{Constructor, ConstructorSet, VariantVisibility},
-    usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
     Captures, IndexVec, PatCx, PrivateUninhabitedField,
+    constructor::{Constructor, ConstructorSet, VariantVisibility},
+    usefulness::{PlaceValidity, UsefulnessReport, compute_match_usefulness},
 };
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use stdx::never;
 
 use crate::{
+    AdtId, Interner, Scalar, Ty, TyExt, TyKind,
     db::HirDatabase,
     infer::normalize,
     inhabitedness::{is_enum_variant_uninhabited_from, is_ty_uninhabited_from},
-    AdtId, Interner, Scalar, Ty, TyExt, TyKind,
 };
 
-use super::{is_box, FieldPat, Pat, PatKind};
+use super::{FieldPat, Pat, PatKind, is_box};
 
 use Constructor::*;
 
@@ -44,12 +44,12 @@ impl EnumVariantContiguousIndex {
     fn from_enum_variant_id(db: &dyn HirDatabase, target_evid: EnumVariantId) -> Self {
         // Find the index of this variant in the list of variants.
         use hir_def::Lookup;
-        let i = target_evid.lookup(db.upcast()).index as usize;
+        let i = target_evid.lookup(db).index as usize;
         EnumVariantContiguousIndex(i)
     }
 
     fn to_enum_variant_id(self, db: &dyn HirDatabase, eid: EnumId) -> EnumVariantId {
-        db.enum_data(eid).variants[self.0].0
+        db.enum_variants(eid).variants[self.0].0
     }
 }
 
@@ -95,7 +95,7 @@ impl<'db> MatchCheckCtx<'db> {
 
         let place_validity = PlaceValidity::from_bool(known_valid_scrutinee.unwrap_or(true));
         // Measured to take ~100ms on modern hardware.
-        let complexity_limit = Some(500000);
+        let complexity_limit = 500000;
         compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
     }
 
@@ -105,8 +105,8 @@ impl<'db> MatchCheckCtx<'db> {
 
     /// Returns whether the given ADT is from another crate declared `#[non_exhaustive]`.
     fn is_foreign_non_exhaustive(&self, adt: hir_def::AdtId) -> bool {
-        let is_local = adt.krate(self.db.upcast()) == self.module.krate();
-        !is_local && self.db.attrs(adt.into()).by_key(&sym::non_exhaustive).exists()
+        let is_local = adt.krate(self.db) == self.module.krate();
+        !is_local && self.db.attrs(adt.into()).by_key(sym::non_exhaustive).exists()
     }
 
     fn variant_id_for_adt(
@@ -139,7 +139,7 @@ impl<'db> MatchCheckCtx<'db> {
         let (_, substs) = ty.as_adt().unwrap();
 
         let field_tys = self.db.field_types(variant);
-        let fields_len = variant.variant_data(self.db.upcast()).fields().len() as u32;
+        let fields_len = variant.variant_data(self.db).fields().len() as u32;
 
         (0..fields_len).map(|idx| LocalFieldId::from_raw(idx.into())).map(move |fid| {
             let ty = field_tys[fid].clone().substitute(Interner, substs);
@@ -222,7 +222,7 @@ impl<'db> MatchCheckCtx<'db> {
                             }
                         };
                         let variant = Self::variant_id_for_adt(self.db, &ctor, adt).unwrap();
-                        arity = variant.variant_data(self.db.upcast()).fields().len();
+                        arity = variant.variant_data(self.db).fields().len();
                     }
                     _ => {
                         never!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, &pat.ty);
@@ -314,7 +314,7 @@ impl<'db> MatchCheckCtx<'db> {
     }
 }
 
-impl<'db> PatCx for MatchCheckCtx<'db> {
+impl PatCx for MatchCheckCtx<'_> {
     type Error = ();
     type Ty = Ty;
     type VariantIdx = EnumVariantContiguousIndex;
@@ -341,7 +341,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                         1
                     } else {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
-                        variant.variant_data(self.db.upcast()).fields().len()
+                        variant.variant_data(self.db).fields().len()
                     }
                 }
                 _ => {
@@ -361,11 +361,11 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
         }
     }
 
-    fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
-        ty: &'a Self::Ty,
-    ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> + Captures<'a> {
+    fn ctor_sub_tys(
+        &self,
+        ctor: &rustc_pattern_analysis::constructor::Constructor<Self>,
+        ty: &Self::Ty,
+    ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> {
         let single = |ty| smallvec![(ty, PrivateUninhabitedField(false))];
         let tys: SmallVec<[_; 2]> = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {
@@ -383,20 +383,16 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                     } else {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
-                        // Whether we must not match the fields of this variant exhaustively.
-                        let is_non_exhaustive = Lazy::new(|| self.is_foreign_non_exhaustive(adt));
-                        let visibilities = Lazy::new(|| self.db.field_visibilities(variant));
+                        let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
 
                         self.list_variant_fields(ty, variant)
                             .map(move |(fid, ty)| {
                                 let is_visible = || {
                                     matches!(adt, hir_def::AdtId::EnumId(..))
-                                        || visibilities[fid]
-                                            .is_visible_from(self.db.upcast(), self.module)
+                                        || visibilities[fid].is_visible_from(self.db, self.module)
                                 };
                                 let is_uninhabited = self.is_uninhabited(&ty);
-                                let private_uninhabited =
-                                    is_uninhabited && (!is_visible() || *is_non_exhaustive);
+                                let private_uninhabited = is_uninhabited && !is_visible();
                                 (ty, PrivateUninhabitedField(private_uninhabited))
                             })
                             .collect()
@@ -452,7 +448,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
             TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
             &TyKind::Adt(AdtId(adt @ hir_def::AdtId::EnumId(enum_id)), ref subst) => {
-                let enum_data = cx.db.enum_data(enum_id);
+                let enum_data = cx.db.enum_variants(enum_id);
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive(adt);
 
                 if enum_data.variants.is_empty() && !is_declared_nonexhaustive {
@@ -496,13 +492,13 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
         // if let Some(variant) = variant {
         //     match variant {
         //         VariantId::EnumVariantId(v) => {
-        //             write!(f, "{}", db.enum_variant_data(v).name.display(db.upcast()))?;
+        //             write!(f, "{}", db.enum_variant_data(v).name.display(db))?;
         //         }
         //         VariantId::StructId(s) => {
-        //             write!(f, "{}", db.struct_data(s).name.display(db.upcast()))?
+        //             write!(f, "{}", db.struct_data(s).name.display(db))?
         //         }
         //         VariantId::UnionId(u) => {
-        //             write!(f, "{}", db.union_data(u).name.display(db.upcast()))?
+        //             write!(f, "{}", db.union_data(u).name.display(db))?
         //         }
         //     }
         // }
@@ -518,7 +514,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
     }
 }
 
-impl<'db> fmt::Debug for MatchCheckCtx<'db> {
+impl fmt::Debug for MatchCheckCtx<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MatchCheckCtx").finish()
     }

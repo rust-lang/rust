@@ -27,6 +27,7 @@ const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
 
 #[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "build-metrics", derive(serde::Serialize))]
 pub enum Status {
     Accepted,
     Removed,
@@ -45,6 +46,7 @@ impl fmt::Display for Status {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "build-metrics", derive(serde::Serialize))]
 pub struct Feature {
     pub level: Status,
     pub since: Option<Version>,
@@ -455,9 +457,10 @@ fn get_and_check_lib_features(
                     if f.tracking_issue != s.tracking_issue && f.level != Status::Accepted {
                         tidy_error!(
                             bad,
-                            "{}:{}: `issue` \"{}\" mismatches the {} `issue` of \"{}\"",
+                            "{}:{}: feature gate {} has inconsistent `issue`: \"{}\" mismatches the {} `issue` of \"{}\"",
                             file.display(),
                             line,
+                            name,
                             f.tracking_issue_display(),
                             display,
                             s.tracking_issue_display(),

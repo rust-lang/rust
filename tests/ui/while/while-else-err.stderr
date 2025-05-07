@@ -6,8 +6,7 @@ LL |       while false {
 LL |
 LL |       } else {
    |  _______^
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____^
    |

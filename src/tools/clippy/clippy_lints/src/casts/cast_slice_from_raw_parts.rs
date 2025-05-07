@@ -1,5 +1,5 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -23,9 +23,8 @@ fn raw_parts_kind(cx: &LateContext<'_>, did: DefId) -> Option<RawPartsKind> {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>, msrv: &Msrv) {
-    if msrv.meets(msrvs::PTR_SLICE_RAW_PARTS)
-        && let ty::RawPtr(ptrty, _) = cast_to.kind()
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>, msrv: Msrv) {
+    if let ty::RawPtr(ptrty, _) = cast_to.kind()
         && let ty::Slice(_) = ptrty.kind()
         && let ExprKind::Call(fun, [ptr_arg, len_arg]) = cast_expr.peel_blocks().kind
         && let ExprKind::Path(ref qpath) = fun.kind
@@ -33,6 +32,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         && let Some(rpk) = raw_parts_kind(cx, fun_def_id)
         && let ctxt = expr.span.ctxt()
         && cast_expr.span.ctxt() == ctxt
+        && msrv.meets(cx, msrvs::PTR_SLICE_RAW_PARTS)
     {
         let func = match rpk {
             RawPartsKind::Immutable => "from_raw_parts",

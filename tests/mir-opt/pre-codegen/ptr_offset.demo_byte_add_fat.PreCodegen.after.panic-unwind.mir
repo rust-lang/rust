@@ -23,12 +23,12 @@ fn demo_byte_add_fat(_1: *const [u32], _2: usize) -> *const [u32] {
     bb0: {
         StorageLive(_4);
         StorageLive(_3);
-        _3 = _1 as *const u8 (PtrToPtr);
-        _4 = Offset(_3, _2);
+        _3 = copy _1 as *const u8 (PtrToPtr);
+        _4 = Offset(copy _3, copy _2);
         StorageDead(_3);
         StorageLive(_5);
-        _5 = PtrMetadata(_1);
-        _0 = *const [u32] from (_4, _5);
+        _5 = PtrMetadata(copy _1);
+        _0 = *const [u32] from (copy _4, copy _5);
         StorageDead(_5);
         StorageDead(_4);
         return;

@@ -29,20 +29,20 @@
           _3 = &raw mut _2;
           StorageLive(_4);
           StorageLive(_5);
-          _5 = (*_3);
+          _5 = copy (*_3);
           _4 = opaque::<i32>(move _5) -> [return: bb1, unwind continue];
       }
   
       bb1: {
           StorageDead(_5);
           StorageDead(_4);
--         _1 = _3;
+-         _1 = copy _3;
 -         StorageDead(_3);
           StorageDead(_2);
           StorageLive(_6);
           StorageLive(_7);
--         _7 = (*_1);
-+         _7 = (*_3);
+-         _7 = copy (*_1);
++         _7 = copy (*_3);
           _6 = opaque::<i32>(move _7) -> [return: bb2, unwind continue];
       }
   

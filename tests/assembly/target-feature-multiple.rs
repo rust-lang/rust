@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: x86
 //@ revisions: TWOFLAGS SINGLEFLAG
@@ -19,11 +20,8 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-impl Copy for u32 {}
+extern crate minicore;
+use minicore::*;
 
 // Use of these requires target features to be enabled
 extern "unadjusted" {

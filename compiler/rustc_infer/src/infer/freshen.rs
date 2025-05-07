@@ -35,8 +35,9 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::bug;
-use rustc_middle::ty::fold::TypeFolder;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+};
 
 use super::InferCtxt;
 
@@ -108,7 +109,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
+        match r.kind() {
             ty::ReBound(..) => {
                 // leave bound regions alone
                 r
@@ -153,15 +154,6 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                 drop(inner);
                 self.freshen_const(input, ty::InferConst::Fresh)
             }
-            ty::ConstKind::Infer(ty::InferConst::EffectVar(v)) => {
-                let mut inner = self.infcx.inner.borrow_mut();
-                let input =
-                    inner.effect_unification_table().probe_value(v).known().ok_or_else(|| {
-                        ty::InferConst::EffectVar(inner.effect_unification_table().find(v).vid)
-                    });
-                drop(inner);
-                self.freshen_const(input, ty::InferConst::Fresh)
-            }
             ty::ConstKind::Infer(ty::InferConst::Fresh(i)) => {
                 if i >= self.const_freshen_count {
                     bug!(
@@ -179,7 +171,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             }
 
             ty::ConstKind::Param(_)
-            | ty::ConstKind::Value(_, _)
+            | ty::ConstKind::Value(_)
             | ty::ConstKind::Unevaluated(..)
             | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),

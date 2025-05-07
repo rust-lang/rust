@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x86_64 i686
 //@ assembly-output: emit-asm
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
@@ -6,240 +7,62 @@
 //@[i686] needs-llvm-components: x86
 //@ compile-flags: -C llvm-args=--x86-asm-syntax=intel
 //@ compile-flags: -C target-feature=+avx512bw
+//@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, f16, f128)]
+#![feature(no_core, repr_simd, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
 
 #[repr(simd)]
-pub struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8, i8);
+pub struct i8x16([i8; 16]);
 #[repr(simd)]
-pub struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+pub struct i16x8([i16; 8]);
 #[repr(simd)]
-pub struct i32x4(i32, i32, i32, i32);
+pub struct i32x4([i32; 4]);
 #[repr(simd)]
-pub struct i64x2(i64, i64);
+pub struct i64x2([i64; 2]);
 #[repr(simd)]
-pub struct f16x8(f16, f16, f16, f16, f16, f16, f16, f16);
+pub struct f16x8([f16; 8]);
 #[repr(simd)]
-pub struct f32x4(f32, f32, f32, f32);
+pub struct f32x4([f32; 4]);
 #[repr(simd)]
-pub struct f64x2(f64, f64);
+pub struct f64x2([f64; 2]);
 
 #[repr(simd)]
-pub struct i8x32(
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-);
+pub struct i8x32([i8; 32]);
 #[repr(simd)]
-pub struct i16x16(i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16, i16);
+pub struct i16x16([i16; 16]);
 #[repr(simd)]
-pub struct i32x8(i32, i32, i32, i32, i32, i32, i32, i32);
+pub struct i32x8([i32; 8]);
 #[repr(simd)]
-pub struct i64x4(i64, i64, i64, i64);
+pub struct i64x4([i64; 4]);
 #[repr(simd)]
-pub struct f16x16(f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16, f16);
+pub struct f16x16([f16; 16]);
 #[repr(simd)]
-pub struct f32x8(f32, f32, f32, f32, f32, f32, f32, f32);
+pub struct f32x8([f32; 8]);
 #[repr(simd)]
-pub struct f64x4(f64, f64, f64, f64);
+pub struct f64x4([f64; 4]);
 
 #[repr(simd)]
-pub struct i8x64(
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-    i8,
-);
+pub struct i8x64([i8; 64]);
 #[repr(simd)]
-pub struct i16x32(
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-    i16,
-);
+pub struct i16x32([i16; 32]);
 #[repr(simd)]
-pub struct i32x16(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32);
+pub struct i32x16([i32; 16]);
 #[repr(simd)]
-pub struct i64x8(i64, i64, i64, i64, i64, i64, i64, i64);
+pub struct i64x8([i64; 8]);
 #[repr(simd)]
-pub struct f16x32(
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-    f16,
-);
+pub struct f16x32([f16; 32]);
 #[repr(simd)]
-pub struct f32x16(f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32, f32);
+pub struct f32x16([f32; 16]);
 #[repr(simd)]
-pub struct f64x8(f64, f64, f64, f64, f64, f64, f64, f64);
+pub struct f64x8([f64; 8]);
 
 macro_rules! impl_copy {
     ($($ty:ident)*) => {
@@ -250,7 +73,6 @@ macro_rules! impl_copy {
 }
 
 impl_copy!(
-    i8 i16 f16 i32 f32 i64 f64 f128 ptr
     i8x16 i16x8 i32x4 i64x2 f16x8 f32x4 f64x2
     i8x32 i16x16 i32x8 i64x4 f16x16 f32x8 f64x4
     i8x64 i16x32 i32x16 i64x8 f16x32 f32x16 f64x8
@@ -283,12 +105,6 @@ macro_rules! check {
     ($func:ident $ty:ident $class:ident $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " {}, {}"), lateout($class) y, in($class) x);
             y
@@ -300,12 +116,6 @@ macro_rules! check_reg {
     ($func:ident $ty:ident $reg:tt $mov:literal) => {
         #[no_mangle]
         pub unsafe fn $func(x: $ty) -> $ty {
-            // Hack to avoid function merging
-            extern "Rust" {
-                fn dont_merge(s: &str);
-            }
-            dont_merge(stringify!($func));
-
             let y;
             asm!(concat!($mov, " ", $reg, ", ", $reg), lateout($reg) y, in($reg) x);
             y

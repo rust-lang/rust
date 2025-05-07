@@ -3,7 +3,7 @@
 
 //@ check-pass
 //@ compile-flags: -Z span-debug
-//@ aux-build: test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;
@@ -14,14 +14,14 @@ extern crate test_macros;
 #[print_attr]
 #[derive(Print)]
 struct AttributeDerive {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     field: u8,
 }
 
 #[derive(Print)]
 #[print_attr]
 struct DeriveAttribute {
-    #[cfg(FALSE)]
+    #[cfg(false)]
     field: u8,
 }
 

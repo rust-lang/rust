@@ -15,9 +15,9 @@ Apple iOS / iPadOS targets.
 
 ## Target maintainers
 
-- [@badboy](https://github.com/badboy)
-- [@deg4uss3r](https://github.com/deg4uss3r)
-- [@madsmtm](https://github.com/madsmtm)
+[@badboy](https://github.com/badboy)
+[@deg4uss3r](https://github.com/deg4uss3r)
+[@madsmtm](https://github.com/madsmtm)
 
 ## Requirements
 
@@ -26,7 +26,8 @@ These targets are cross-compiled, and require the corresponding iOS SDK
 ARM64 targets, Xcode 12 or higher is required.
 
 The path to the SDK can be passed to `rustc` using the common `SDKROOT`
-environment variable.
+environment variable, or will be inferred when compiling on host macOS using
+roughly the same logic as `xcrun --sdk iphoneos --show-sdk-path`.
 
 ### OS version
 
@@ -47,7 +48,7 @@ $ rustup target add x86_64-apple-ios
 ```
 
 The tier 3 targets can be built by enabling them for a `rustc` build in
-`config.toml`, by adding, for example:
+`bootstrap.toml`, by adding, for example:
 
 ```toml
 [build]

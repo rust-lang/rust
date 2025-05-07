@@ -1,0 +1,472 @@
+blockquote { font-size: 1em; }
+
+.dropdown-menu {
+    color: var(--fg);
+    background: var(--theme-popup-bg);
+    border: 1px solid var(--theme-popup-border);
+}
+
+.dropdown-menu .divider {
+    background-color: var(--theme-popup-border);
+}
+
+.dropdown-menu .checkbox {
+    display: block;
+    white-space: nowrap;
+    margin: 0;
+}
+.dropdown-menu .checkbox label {
+    padding: 3px 20px;
+    width: 100%;
+}
+
+.dropdown-menu .checkbox input {
+    position: relative;
+    margin: 0 0.5rem 0;
+    padding: 0;
+}
+
+.dropdown-menu .checkbox:hover {
+    background-color: var(--theme-hover);
+}
+
+div.panel div.panel-body button {
+    background: var(--searchbar-bg);
+    color: var(--searchbar-fg);
+    border-color: var(--theme-popup-border);
+}
+
+div.panel div.panel-body button:hover {
+    box-shadow: 0 0 3px var(--searchbar-shadow-color);
+}
+
+div.panel div.panel-body  button.open {
+    filter: brightness(90%);
+}
+
+.dropdown-toggle .badge {
+    background-color: #777;
+}
+
+.panel-heading { cursor: pointer; }
+
+.panel-title { display: flex; flex-wrap: wrap;}
+.panel-title .label { display: inline-block; }
+
+.panel-title-name { flex: 1; min-width: 400px;}
+.panel-title-name span { vertical-align: bottom; }
+
+.panel .panel-title-name .anchor { display: none; }
+.panel:hover .panel-title-name .anchor { display: inline;}
+
+.search-control {
+    margin-top: 15px;
+}
+
+@media (min-width: 992px) {
+    .search-control {
+        margin-top: 0;
+    }
+}
+
+@media (min-width: 405px) {
+    #upper-filters {
+        display: flex;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 430px) {
+    /* Turn the version filter list to the left */
+    #version-filter-selector {
+        right: 0;
+        left: auto;
+    }
+}
+
+@media (max-width: 412px) {
+    #upper-filters,
+    .panel-body .search-control  {
+        padding-right: 8px;
+        padding-left: 8px;
+    }
+}
+
+.label {
+    padding-top: 0.3em;
+    padding-bottom: 0.3em;
+}
+
+.label-lint-group {
+    min-width: 8em;
+}
+.label-lint-level {
+    min-width: 4em;
+}
+
+.label-lint-level-allow {
+    background-color: #5cb85c;
+}
+.label-lint-level-warn {
+    background-color: #f0ad4e;
+}
+.label-lint-level-deny {
+    background-color: #d9534f;
+}
+.label-lint-level-none {
+    background-color: #777777;
+    opacity: 0.5;
+}
+
+.label-group-deprecated {
+    opacity: 0.5;
+}
+
+.label-doc-folding {
+    color: #000;
+    background-color: #fff;
+    border: 1px solid var(--theme-popup-border);
+}
+.label-doc-folding:hover {
+    background-color: #e6e6e6;
+}
+
+.lint-doc-md > h3 {
+    border-top: 1px solid var(--theme-popup-border);
+    padding: 10px 15px;
+    margin: 0 -15px;
+    font-size: 18px;
+}
+.lint-doc-md > h3:first-child {
+    border-top: none;
+    padding-top: 0px;
+}
+
+@media (max-width:749px) {
+    .lint-additional-info-container {
+        display: flex;
+        flex-flow: column;
+    }
+    .lint-additional-info-item + .lint-additional-info-item {
+        border-top: 1px solid var(--theme-popup-border);
+    }
+}
+@media (min-width:750px) {
+    .lint-additional-info-container {
+        display: flex;
+        flex-flow: row;
+    }
+    .lint-additional-info-item + .lint-additional-info-item {
+        border-left: 1px solid var(--theme-popup-border);
+    }
+}
+
+.lint-additional-info-item {
+    display: inline-flex;
+    min-width: 200px;
+    flex-grow: 1;
+    padding: 9px 5px 5px 15px;
+}
+
+.label-applicability {
+    background-color: #777777;
+    margin: auto 5px;
+}
+
+.label-version {
+    background-color: #777777;
+    margin: auto 5px;
+    font-family: monospace;
+}
+
+details {
+    border-radius: 4px;
+    padding: .5em .5em 0;
+}
+
+pre {
+    padding: 0;
+}
+
+summary {
+    font-weight: bold;
+    margin: -.5em -.5em 0;
+    padding: .5em;
+    display: revert;
+}
+
+details[open] {
+    padding: .5em;
+}
+
+/* Expanding the mdBook theme*/
+.light, body:not([class]) {
+    --inline-code-bg: #f6f7f6;
+}
+.rust {
+    --inline-code-bg: #f6f7f6;
+}
+.coal {
+    --inline-code-bg: #1d1f21;
+}
+.navy {
+    --inline-code-bg: #1d1f21;
+}
+.ayu {
+    --inline-code-bg: #191f26;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([class]) {
+        /*
+        In case JS is disabled and the user's system is in dark mode, we take "coal" as default
+        dark theme.
+        */
+        --inline-code-bg: #1d1f21;
+    }
+}
+
+html:not(.js) #settings-dropdown,
+html:not(.js)#menu-filters {
+    display: none;
+}
+
+#settings-dropdown {
+    position: absolute;
+    margin: 0.7em;
+    z-index: 10;
+    display: flex;
+}
+
+/* Applying the mdBook theme */
+.settings-icon {
+    text-align: center;
+    width: 2em;
+    height: 2em;
+    line-height: 2em;
+    border: solid 1px var(--icons);
+    border-radius: 5px;
+    user-select: none;
+    cursor: pointer;
+    background: var(--theme-hover);
+}
+.settings-menu {
+    display: none;
+    list-style: none;
+    border: 1px solid var(--theme-popup-border);
+    border-radius: 5px;
+    color: var(--fg);
+    background: var(--theme-popup-bg);
+    overflow: hidden;
+    padding: 9px;
+    width: 207px;
+    position: absolute;
+    top: 28px;
+}
+
+.settings-icon::before {
+    /* Wheel <https://www.svgrepo.com/svg/384069/settings-cog-gear> */
+    content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+<path d="M10.25,6c0-0.1243286-0.0261841-0.241333-0.0366211-0.362915l1.6077881-1.5545654l\
+-1.25-2.1650391  c0,0-1.2674561,0.3625488-2.1323853,0.6099854c-0.2034912-0.1431885-0.421875\
+-0.2639771-0.6494751-0.3701782L7.25,0h-2.5 c0,0-0.3214111,1.2857666-0.5393066,2.1572876\
+C3.9830933,2.2634888,3.7647095,2.3842773,3.5612183,2.5274658L1.428833,1.9174805 \
+l-1.25,2.1650391c0,0,0.9641113,0.9321899,1.6077881,1.5545654C1.7761841,5.758667,\
+1.75,5.8756714,1.75,6  s0.0261841,0.241333,0.0366211,0.362915L0.178833,7.9174805l1.25,\
+2.1650391l2.1323853-0.6099854  c0.2034912,0.1432495,0.421875,0.2639771,0.6494751,0.3701782\
+L4.75,12h2.5l0.5393066-2.1572876  c0.2276001-0.1062012,0.4459839-0.2269287,0.6494751\
+-0.3701782l2.1323853,0.6099854l1.25-2.1650391L10.2133789,6.362915  C10.2238159,6.241333,\
+10.25,6.1243286,10.25,6z M6,7.5C5.1715698,7.5,4.5,6.8284302,4.5,6S5.1715698,4.5,6,4.5S7.5\
+,5.1715698,7.5,6  S6.8284302,7.5,6,7.5z" fill="black"/></svg>');
+  width: 18px;
+  height: 18px;
+  display: block;
+  filter: invert(0.7);
+  position: absolute;
+  top: 4px;
+  left: 5px;
+}
+
+.settings-menu * {
+    font-weight: normal;
+}
+
+.settings-menu label {
+    cursor: pointer;
+}
+
+#settings-dropdown.open .settings-menu {
+    display: block;
+}
+
+#theme-choice {
+    margin-bottom: 10px;
+    background: var(--searchbar-bg);
+    color: var(--searchbar-fg);
+    border-color: var(--theme-popup-border);
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    border-width: 1px;
+    padding: 5px;
+}
+
+.alert {
+    color: var(--fg);
+    background: var(--theme-hover);
+    border: 1px solid var(--theme-popup-border);
+}
+.page-header {
+    border-color: var(--theme-popup-border);
+}
+.panel-default .panel-heading {
+    background: var(--theme-hover);
+    color: var(--fg);
+    border: 1px solid var(--theme-popup-border);
+}
+.panel-default .panel-heading:hover {
+    filter: brightness(90%);
+}
+.list-group-item {
+    background: 0%;
+    border: 1px solid var(--theme-popup-border);
+}
+.panel, pre, hr {
+    background: var(--bg);
+    border: 1px solid var(--theme-popup-border);
+}
+
+#version-filter-selector .checkbox {
+    display: flex;
+}
+
+ul.dropdown-menu li.checkbox > button {
+    border: 0;
+    width: 100%;
+    background: var(--theme-popup-bg);
+    color: var(--fg);
+}
+
+ul.dropdown-menu li.checkbox > button:hover {
+    background: var(--theme-hover);
+    box-shadow: none;
+}
+
+#version-filter {
+    min-width: available;
+}
+
+#version-filter li label {
+    padding-right: 0;
+    width: 35%;
+}
+
+.version-filter-input {
+    height: 60%;
+    width: 30%;
+    text-align: center;
+    border: none;
+    border-bottom: 1px solid #000000;
+}
+
+#filter-label, .filter-clear {
+    background: var(--searchbar-bg);
+    color: var(--searchbar-fg);
+    border-color: var(--theme-popup-border);
+    filter: brightness(95%);
+}
+#filter-label:hover, .filter-clear:hover {
+    filter: brightness(90%);
+}
+.filter-input {
+    background: var(--searchbar-bg);
+    color: var(--searchbar-fg);
+    border-color: var(--theme-popup-border);
+}
+
+.filter-input::-webkit-input-placeholder,
+.filter-input::-moz-placeholder {
+    color: var(--searchbar-fg);
+    opacity: 30%;
+}
+
+.expansion-group {
+    margin-top: 15px;
+    padding: 0px 8px;
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+@media (min-width: 992px) {
+    .expansion-group {
+        margin-top: 0;
+        padding: 0px 15px;
+    }
+}
+
+.expansion-control {
+    width: 50%;
+}
+
+:not(pre) > code {
+    color: var(--inline-code-color);
+    background-color: var(--inline-code-bg);
+}
+html {
+    scrollbar-color: var(--scrollbar) var(--bg);
+}
+body {
+    background: var(--bg);
+    color: var(--fg);
+}
+
+article > label {
+    width: 100%;
+    margin: 0;
+}
+article > input[type="checkbox"] {
+    display: none;
+}
+article > input[type="checkbox"] + label .label-doc-folding::before {
+    content: "+";
+}
+article > input[type="checkbox"]:checked + label .label-doc-folding::before {
+    content: "−";
+}
+.lint-docs {
+    display: none;
+}
+article > input[type="checkbox"]:checked ~ .lint-docs {
+    display: block;
+}
+
+.github-corner svg {
+    fill: var(--fg);
+    color: var(--bg);
+}
+.github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+}
+@keyframes octocat-wave {
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+    20%,
+    60% {
+        transform: rotate(-25deg);
+    }
+    40%,
+    80% {
+        transform: rotate(10deg);
+    }
+}
+@media (max-width: 500px) {
+    .github-corner:hover .octo-arm {
+        animation: none;
+    }
+    .github-corner .octo-arm {
+        animation: octocat-wave 560ms ease-in-out;
+    }
+}

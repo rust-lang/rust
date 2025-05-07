@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(const_mut_refs)]
-
 use std::marker::PhantomData;
 
 // rust-lang/rust#78174: ICE: "cannot convert ReErased to a region vid"

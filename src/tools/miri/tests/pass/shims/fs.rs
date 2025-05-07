@@ -1,14 +1,13 @@
-//@ignore-target-windows: File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fs::{
-    canonicalize, create_dir, read_dir, remove_dir, remove_dir_all, remove_file, rename, File,
-    OpenOptions,
+    File, OpenOptions, canonicalize, create_dir, read_dir, remove_dir, remove_dir_all, remove_file,
+    rename,
 };
 use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write};
 use std::path::Path;
@@ -18,20 +17,23 @@ mod utils;
 
 fn main() {
     test_path_conversion();
-    test_file();
-    test_file_clone();
     test_file_create_new();
-    test_seek();
-    test_metadata();
-    test_file_set_len();
-    test_file_sync();
-    test_errors();
-    test_rename();
-    test_directory();
-    test_canonicalize();
-    test_from_raw_os_error();
-    #[cfg(unix)]
-    test_pread_pwrite();
+    // Windows file handling is very incomplete.
+    if cfg!(not(windows)) {
+        test_file();
+        test_seek();
+        test_file_clone();
+        test_metadata();
+        test_file_set_len();
+        test_file_sync();
+        test_errors();
+        test_rename();
+        test_directory();
+        test_canonicalize();
+        test_from_raw_os_error();
+        #[cfg(unix)]
+        test_pread_pwrite();
+    }
 }
 
 fn test_path_conversion() {
@@ -144,10 +146,10 @@ fn test_metadata() {
     let path = utils::prepare_with_content("miri_test_fs_metadata.txt", bytes);
 
     // Test that metadata of an absolute path is correct.
-    check_metadata(bytes, &path).unwrap();
+    check_metadata(bytes, &path).expect("absolute path metadata");
     // Test that metadata of a relative path is correct.
     std::env::set_current_dir(path.parent().unwrap()).unwrap();
-    check_metadata(bytes, Path::new(path.file_name().unwrap())).unwrap();
+    check_metadata(bytes, Path::new(path.file_name().unwrap())).expect("relative path metadata");
 
     // Removing file should succeed.
     remove_file(&path).unwrap();
@@ -262,7 +264,7 @@ fn test_directory() {
     create_dir(&dir_1).unwrap();
     // Test that read_dir metadata calls succeed
     assert_eq!(
-        HashMap::from([
+        BTreeMap::from([
             (OsString::from("test_file_1"), true),
             (OsString::from("test_file_2"), true),
             (OsString::from("test_dir_1"), false)
@@ -273,10 +275,15 @@ fn test_directory() {
                 let e = e.unwrap();
                 (e.file_name(), e.metadata().unwrap().is_file())
             })
-            .collect::<HashMap<_, _>>()
+            .collect::<BTreeMap<_, _>>()
     );
     // Deleting the directory should fail, since it is not empty.
-    assert_eq!(ErrorKind::DirectoryNotEmpty, remove_dir(&dir_path).unwrap_err().kind());
+
+    // Solaris/Illumos `rmdir` call set errno to EEXIST if directory contains
+    // other entries than `.` and `..`.
+    // https://docs.oracle.com/cd/E86824_01/html/E54765/rmdir-2.html
+    let err = remove_dir(&dir_path).unwrap_err().kind();
+    assert!(matches!(err, ErrorKind::AlreadyExists | ErrorKind::DirectoryNotEmpty));
     // Clean up the files in the directory
     remove_file(&path_1).unwrap();
     remove_file(&path_2).unwrap();

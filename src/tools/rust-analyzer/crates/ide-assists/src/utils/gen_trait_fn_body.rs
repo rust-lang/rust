@@ -2,7 +2,7 @@
 
 use hir::TraitRef;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make, AstNode, BinaryOp, CmpOp, HasName, LogicOp},
+    ast::{self, AstNode, BinaryOp, CmpOp, HasName, LogicOp, edit::AstNodeEdit, make},
     ted,
 };
 
@@ -32,10 +32,10 @@ pub(crate) fn gen_trait_fn_body(
 
 /// Generate a `Clone` impl based on the fields and members of the target type.
 fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    stdx::always!(func.name().map_or(false, |name| name.text() == "clone"));
+    stdx::always!(func.name().is_some_and(|name| name.text() == "clone"));
     fn gen_clone_call(target: ast::Expr) -> ast::Expr {
         let method = make::name_ref("clone");
-        make::expr_method_call(target, method, make::arg_list(None))
+        make::expr_method_call(target, method, make::arg_list(None)).into()
     }
     let expr = match adt {
         // `Clone` cannot be derived for unions, so no default impl can be provided.
@@ -66,7 +66,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         let pat = make::record_pat(variant_name.clone(), pats.into_iter());
                         let fields = make::record_expr_field_list(fields);
                         let record_expr = make::record_expr(variant_name, fields).into();
-                        arms.push(make::match_arm(Some(pat.into()), None, record_expr));
+                        arms.push(make::match_arm(pat.into(), None, record_expr));
                     }
 
                     // => match self { Self::Name(arg1) => Self::Name(arg1.clone()) }
@@ -83,22 +83,23 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         }
                         let pat = make::tuple_struct_pat(variant_name.clone(), pats.into_iter());
                         let struct_name = make::expr_path(variant_name);
-                        let tuple_expr = make::expr_call(struct_name, make::arg_list(fields));
-                        arms.push(make::match_arm(Some(pat.into()), None, tuple_expr));
+                        let tuple_expr =
+                            make::expr_call(struct_name, make::arg_list(fields)).into();
+                        arms.push(make::match_arm(pat.into(), None, tuple_expr));
                     }
 
                     // => match self { Self::Name => Self::Name }
                     None => {
                         let pattern = make::path_pat(variant_name.clone());
                         let variant_expr = make::expr_path(variant_name);
-                        arms.push(make::match_arm(Some(pattern), None, variant_expr));
+                        arms.push(make::match_arm(pattern, None, variant_expr));
                     }
                 }
             }
 
             let match_target = make::expr_path(make::ext::ident_path("self"));
             let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-            make::expr_match(match_target, list)
+            make::expr_match(match_target, list).into()
         }
         ast::Adt::Struct(strukt) => {
             match strukt.field_list() {
@@ -126,7 +127,7 @@ fn gen_clone_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         fields.push(gen_clone_call(target));
                     }
                     let struct_name = make::expr_path(make::ext::ident_path("Self"));
-                    make::expr_call(struct_name, make::arg_list(fields))
+                    make::expr_call(struct_name, make::arg_list(fields)).into()
                 }
                 // => Self { }
                 None => {
@@ -165,7 +166,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         let method = make::name_ref("debug_struct");
                         let struct_name = format!("\"{name}\"");
                         let args = make::arg_list(Some(make::expr_literal(&struct_name).into()));
-                        let mut expr = make::expr_method_call(target, method, args);
+                        let mut expr = make::expr_method_call(target, method, args).into();
 
                         let mut pats = vec![];
                         for field in list.fields() {
@@ -181,16 +182,17 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             let path = &format!("{field_name}");
                             let path = make::expr_path(make::ext::ident_path(path));
                             let args = make::arg_list(vec![name, path]);
-                            expr = make::expr_method_call(expr, method_name, args);
+                            expr = make::expr_method_call(expr, method_name, args).into();
                         }
 
                         // => <expr>.finish()
                         let method = make::name_ref("finish");
-                        let expr = make::expr_method_call(expr, method, make::arg_list(None));
+                        let expr =
+                            make::expr_method_call(expr, method, make::arg_list(None)).into();
 
                         // => MyStruct { fields.. } => f.debug_struct("MyStruct")...finish(),
                         let pat = make::record_pat(variant_name.clone(), pats.into_iter());
-                        arms.push(make::match_arm(Some(pat.into()), None, expr));
+                        arms.push(make::match_arm(pat.into(), None, expr));
                     }
                     Some(ast::FieldList::TupleFieldList(list)) => {
                         // => f.debug_tuple(name)
@@ -198,7 +200,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         let method = make::name_ref("debug_tuple");
                         let struct_name = format!("\"{name}\"");
                         let args = make::arg_list(Some(make::expr_literal(&struct_name).into()));
-                        let mut expr = make::expr_method_call(target, method, args);
+                        let mut expr = make::expr_method_call(target, method, args).into();
 
                         let mut pats = vec![];
                         for (i, _) in list.fields().enumerate() {
@@ -214,25 +216,28 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             let field_path = &name.to_string();
                             let field_path = make::expr_path(make::ext::ident_path(field_path));
                             let args = make::arg_list(vec![field_path]);
-                            expr = make::expr_method_call(expr, method_name, args);
+                            expr = make::expr_method_call(expr, method_name, args).into();
                         }
 
                         // => <expr>.finish()
                         let method = make::name_ref("finish");
-                        let expr = make::expr_method_call(expr, method, make::arg_list(None));
+                        let expr =
+                            make::expr_method_call(expr, method, make::arg_list(None)).into();
 
                         // => MyStruct (fields..) => f.debug_tuple("MyStruct")...finish(),
                         let pat = make::tuple_struct_pat(variant_name.clone(), pats.into_iter());
-                        arms.push(make::match_arm(Some(pat.into()), None, expr));
+                        arms.push(make::match_arm(pat.into(), None, expr));
                     }
                     None => {
                         let fmt_string = make::expr_literal(&(format!("\"{name}\""))).into();
-                        let args = make::arg_list([target, fmt_string]);
-                        let macro_name = make::expr_path(make::ext::ident_path("write"));
-                        let macro_call = make::expr_macro_call(macro_name, args);
+                        let args = make::ext::token_tree_from_node(
+                            make::arg_list([target, fmt_string]).syntax(),
+                        );
+                        let macro_name = make::ext::ident_path("write");
+                        let macro_call = make::expr_macro(macro_name, args);
 
                         let variant_name = make::path_pat(variant_name);
-                        arms.push(make::match_arm(Some(variant_name), None, macro_call));
+                        arms.push(make::match_arm(variant_name, None, macro_call.into()));
                     }
                 }
             }
@@ -241,7 +246,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
             let match_expr = make::expr_match(match_target, list);
 
-            let body = make::block_expr(None, Some(match_expr));
+            let body = make::block_expr(None, Some(match_expr.into()));
             let body = body.indent(ast::edit::IndentLevel(1));
             ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
             Some(())
@@ -254,12 +259,12 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
             let expr = match strukt.field_list() {
                 // => f.debug_struct("Name").finish()
-                None => make::expr_method_call(target, make::name_ref("debug_struct"), args),
+                None => make::expr_method_call(target, make::name_ref("debug_struct"), args).into(),
 
                 // => f.debug_struct("Name").field("foo", &self.foo).finish()
                 Some(ast::FieldList::RecordFieldList(field_list)) => {
                     let method = make::name_ref("debug_struct");
-                    let mut expr = make::expr_method_call(target, method, args);
+                    let mut expr = make::expr_method_call(target, method, args).into();
                     for field in field_list.fields() {
                         let name = field.name()?;
                         let f_name = make::expr_literal(&(format!("\"{name}\""))).into();
@@ -267,7 +272,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         let f_path = make::expr_ref(f_path, false);
                         let f_path = make::expr_field(f_path, &format!("{name}"));
                         let args = make::arg_list([f_name, f_path]);
-                        expr = make::expr_method_call(expr, make::name_ref("field"), args);
+                        expr = make::expr_method_call(expr, make::name_ref("field"), args).into();
                     }
                     expr
                 }
@@ -275,20 +280,21 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                 // => f.debug_tuple("Name").field(self.0).finish()
                 Some(ast::FieldList::TupleFieldList(field_list)) => {
                     let method = make::name_ref("debug_tuple");
-                    let mut expr = make::expr_method_call(target, method, args);
+                    let mut expr = make::expr_method_call(target, method, args).into();
                     for (i, _) in field_list.fields().enumerate() {
                         let f_path = make::expr_path(make::ext::ident_path("self"));
                         let f_path = make::expr_ref(f_path, false);
                         let f_path = make::expr_field(f_path, &format!("{i}"));
                         let method = make::name_ref("field");
-                        expr = make::expr_method_call(expr, method, make::arg_list(Some(f_path)));
+                        expr = make::expr_method_call(expr, method, make::arg_list(Some(f_path)))
+                            .into();
                     }
                     expr
                 }
             };
 
             let method = make::name_ref("finish");
-            let expr = make::expr_method_call(expr, method, make::arg_list(None));
+            let expr = make::expr_method_call(expr, method, make::arg_list(None)).into();
             let body = make::block_expr(None, Some(expr)).indent(ast::edit::IndentLevel(1));
             ted::replace(func.body()?.syntax(), body.clone_for_update().syntax());
             Some(())
@@ -300,7 +306,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     fn gen_default_call() -> Option<ast::Expr> {
         let fn_name = make::ext::path_from_idents(["Default", "default"])?;
-        Some(make::expr_call(make::expr_path(fn_name), make::arg_list(None)))
+        Some(make::expr_call(make::expr_path(fn_name), make::arg_list(None)).into())
     }
     match adt {
         // `Debug` cannot be derived for unions, so no default impl can be provided.
@@ -327,7 +333,7 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                         .fields()
                         .map(|_| gen_default_call())
                         .collect::<Option<Vec<ast::Expr>>>()?;
-                    make::expr_call(struct_name, make::arg_list(fields))
+                    make::expr_call(struct_name, make::arg_list(fields)).into()
                 }
                 None => {
                     let struct_name = make::ext::ident_path("Self");
@@ -344,11 +350,11 @@ fn gen_default_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `Hash` impl based on the fields and members of the target type.
 fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
-    stdx::always!(func.name().map_or(false, |name| name.text() == "hash"));
+    stdx::always!(func.name().is_some_and(|name| name.text() == "hash"));
     fn gen_hash_call(target: ast::Expr) -> ast::Stmt {
         let method = make::name_ref("hash");
         let arg = make::expr_path(make::ext::ident_path("state"));
-        let expr = make::expr_method_call(target, method, make::arg_list(Some(arg)));
+        let expr = make::expr_method_call(target, method, make::arg_list(Some(arg))).into();
         make::expr_stmt(expr).into()
     }
 
@@ -361,7 +367,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
             let fn_name = make_discriminant()?;
 
             let arg = make::expr_path(make::ext::ident_path("self"));
-            let fn_call = make::expr_call(fn_name, make::arg_list(Some(arg)));
+            let fn_call = make::expr_call(fn_name, make::arg_list(Some(arg))).into();
             let stmt = gen_hash_call(fn_call);
 
             make::block_expr(Some(stmt), None).indent(ast::edit::IndentLevel(1))
@@ -400,7 +406,7 @@ fn gen_hash_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
 /// Generate a `PartialEq` impl based on the fields and members of the target type.
 fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
-    stdx::always!(func.name().map_or(false, |name| name.text() == "eq"));
+    stdx::always!(func.name().is_some_and(|name| name.text() == "eq"));
     fn gen_eq_chain(expr: Option<ast::Expr>, cmp: ast::Expr) -> Option<ast::Expr> {
         match expr {
             Some(expr) => Some(make::expr_bin_op(expr, BinaryOp::LogicOp(LogicOp::And), cmp)),
@@ -444,9 +450,11 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
         ast::Adt::Enum(enum_) => {
             // => std::mem::discriminant(self) == std::mem::discriminant(other)
             let lhs_name = make::expr_path(make::ext::ident_path("self"));
-            let lhs = make::expr_call(make_discriminant()?, make::arg_list(Some(lhs_name.clone())));
+            let lhs = make::expr_call(make_discriminant()?, make::arg_list(Some(lhs_name.clone())))
+                .into();
             let rhs_name = make::expr_path(make::ext::ident_path("other"));
-            let rhs = make::expr_call(make_discriminant()?, make::arg_list(Some(rhs_name.clone())));
+            let rhs = make::expr_call(make_discriminant()?, make::arg_list(Some(rhs_name.clone())))
+                .into();
             let eq_check =
                 make::expr_bin_op(lhs, BinaryOp::CmpOp(CmpOp::Eq { negated: false }), rhs);
 
@@ -485,7 +493,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
                         let tuple = make::tuple_pat(vec![left.into(), right.into()]);
 
                         if let Some(expr) = expr {
-                            arms.push(make::match_arm(Some(tuple.into()), None, expr));
+                            arms.push(make::match_arm(tuple.into(), None, expr));
                         }
                     }
 
@@ -518,7 +526,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
                         let tuple = make::tuple_pat(vec![left.into(), right.into()]);
 
                         if let Some(expr) = expr {
-                            arms.push(make::match_arm(Some(tuple.into()), None, expr));
+                            arms.push(make::match_arm(tuple.into(), None, expr));
                         }
                     }
                     None => continue,
@@ -538,12 +546,12 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
                         } else {
                             eq_check
                         };
-                        arms.push(make::match_arm(Some(lhs), None, rhs));
+                        arms.push(make::match_arm(lhs, None, rhs));
                     }
 
-                    let match_target = make::expr_tuple(vec![lhs_name, rhs_name]);
+                    let match_target = make::expr_tuple([lhs_name, rhs_name]).into();
                     let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-                    make::expr_match(match_target, list)
+                    make::expr_match(match_target, list).into()
                 }
             };
 
@@ -592,28 +600,28 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -
 }
 
 fn gen_partial_ord(adt: &ast::Adt, func: &ast::Fn, trait_ref: Option<TraitRef>) -> Option<()> {
-    stdx::always!(func.name().map_or(false, |name| name.text() == "partial_cmp"));
+    stdx::always!(func.name().is_some_and(|name| name.text() == "partial_cmp"));
     fn gen_partial_eq_match(match_target: ast::Expr) -> Option<ast::Stmt> {
         let mut arms = vec![];
 
         let variant_name =
             make::path_pat(make::ext::path_from_idents(["core", "cmp", "Ordering", "Equal"])?);
         let lhs = make::tuple_struct_pat(make::ext::path_from_idents(["Some"])?, [variant_name]);
-        arms.push(make::match_arm(Some(lhs.into()), None, make::expr_empty_block()));
+        arms.push(make::match_arm(lhs.into(), None, make::expr_empty_block().into()));
 
         arms.push(make::match_arm(
-            [make::ident_pat(false, false, make::name("ord")).into()],
+            make::ident_pat(false, false, make::name("ord")).into(),
             None,
             make::expr_return(Some(make::expr_path(make::ext::ident_path("ord")))),
         ));
         let list = make::match_arm_list(arms).indent(ast::edit::IndentLevel(1));
-        Some(make::expr_stmt(make::expr_match(match_target, list)).into())
+        Some(make::expr_stmt(make::expr_match(match_target, list).into()).into())
     }
 
     fn gen_partial_cmp_call(lhs: ast::Expr, rhs: ast::Expr) -> ast::Expr {
         let rhs = make::expr_ref(rhs, false);
         let method = make::name_ref("partial_cmp");
-        make::expr_method_call(lhs, method, make::arg_list(Some(rhs)))
+        make::expr_method_call(lhs, method, make::arg_list(Some(rhs))).into()
     }
 
     // Check that self type and rhs type match. We don't know how to implement the method

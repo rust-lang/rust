@@ -1,6 +1,6 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::is_trait_method;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -14,10 +14,10 @@ pub(super) fn check<'tcx>(
     expr: &'tcx hir::Expr<'_>,
     recv: &'tcx hir::Expr<'_>,
     arg: &'tcx hir::Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if is_trait_method(cx, expr, sym::Iterator) {
-        if !msrv.meets(msrvs::ITERATOR_FIND_MAP) {
+        if !msrv.meets(cx, msrvs::ITERATOR_FIND_MAP) {
             return;
         }
 

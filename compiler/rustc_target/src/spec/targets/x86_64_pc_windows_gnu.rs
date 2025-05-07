@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::windows_gnu::opts();
     base.cpu = "x86-64".into();
     base.features = "+cx16,+sse3,+sahf".into();
@@ -16,7 +16,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-pc-windows-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit MinGW (Windows 10+)".into()),
             tier: Some(1),
             host_tools: Some(true),

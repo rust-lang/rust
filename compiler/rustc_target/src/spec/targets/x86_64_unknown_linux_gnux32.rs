@@ -1,6 +1,6 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, base};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
     base.cpu = "x86-64".into();
     base.abi = "x32".into();
@@ -14,7 +14,7 @@ pub fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-linux-gnux32".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)".into()),
             tier: Some(2),
             host_tools: Some(false),

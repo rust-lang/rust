@@ -3,28 +3,32 @@ use std::cell::{Cell, RefCell};
 use gccjit::{
     Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
 };
+use rustc_abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
-use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, MiscMethods};
-use rustc_data_structures::base_n::{ToBaseN, ALPHANUMERIC_ONLY};
+use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
+use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError,
-    LayoutOfHelpers, TyAndLayout,
+    FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
+    LayoutOfHelpers,
 };
-use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::respan;
-use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
-use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, Target, TlsModel, WasmCAbi};
+use rustc_span::{DUMMY_SP, Span};
+use rustc_target::spec::{
+    HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, TlsModel, WasmCAbi, X86Abi,
+};
 
+#[cfg(feature = "master")]
+use crate::abi::conv_to_fn_attribute;
 use crate::callee::get_fn;
 use crate::common::SignType;
 
+#[cfg_attr(not(feature = "master"), allow(dead_code))]
 pub struct CodegenCx<'gcc, 'tcx> {
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
     pub context: &'gcc Context<'gcc>,
@@ -88,7 +92,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
+        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // TODO(antoyo): improve the SSA API to not require those.
     /// Mapping from function pointer type to indexes of on stack parameters.
@@ -142,7 +146,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         supports_f128_type: bool,
     ) -> Self {
         let create_type = |ctype, rust_type| {
-            let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
+            let layout = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
+                .unwrap();
             let align = layout.align.abi.bytes();
             #[cfg(feature = "master")]
             {
@@ -209,67 +215,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let bool_type = context.new_type::<bool>();
 
         let mut functions = FxHashMap::default();
-        let builtins = [
-            "__builtin_unreachable",
-            "abort",
-            "__builtin_expect", /*"__builtin_expect_with_probability",*/
-            "__builtin_constant_p",
-            "__builtin_add_overflow",
-            "__builtin_mul_overflow",
-            "__builtin_saddll_overflow",
-            /*"__builtin_sadd_overflow",*/
-            "__builtin_smulll_overflow", /*"__builtin_smul_overflow",*/
-            "__builtin_ssubll_overflow",
-            /*"__builtin_ssub_overflow",*/ "__builtin_sub_overflow",
-            "__builtin_uaddll_overflow",
-            "__builtin_uadd_overflow",
-            "__builtin_umulll_overflow",
-            "__builtin_umul_overflow",
-            "__builtin_usubll_overflow",
-            "__builtin_usub_overflow",
-            "sqrtf",
-            "sqrt",
-            "__builtin_powif",
-            "__builtin_powi",
-            "sinf",
-            "sin",
-            "cosf",
-            "cos",
-            "powf",
-            "pow",
-            "expf",
-            "exp",
-            "exp2f",
-            "exp2",
-            "logf",
-            "log",
-            "log10f",
-            "log10",
-            "log2f",
-            "log2",
-            "fmaf",
-            "fma",
-            "fabsf",
-            "fabs",
-            "fminf",
-            "fmin",
-            "fmaxf",
-            "fmax",
-            "copysignf",
-            "copysign",
-            "floorf",
-            "floor",
-            "ceilf",
-            "ceil",
-            "truncf",
-            "trunc",
-            "rintf",
-            "rint",
-            "nearbyintf",
-            "nearbyint",
-            "roundf",
-            "round",
-        ];
+        let builtins = ["abort"];
 
         for builtin in builtins.iter() {
             functions.insert(builtin.to_string(), context.get_builtin_function(builtin));
@@ -415,6 +361,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Value = RValue<'gcc>;
+    type Metadata = RValue<'gcc>;
+    // TODO(antoyo): change to Function<'gcc>.
     type Function = RValue<'gcc>;
 
     type BasicBlock = Block<'gcc>;
@@ -426,10 +374,10 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type DIVariable = (); // TODO(antoyo)
 }
 
-impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
         &self.vtables
     }
 
@@ -490,7 +438,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             Some(def_id) if !wants_msvc_seh(self.sess()) => {
                 let instance = ty::Instance::expect_resolve(
                     tcx,
-                    ty::ParamEnv::reveal_all(),
+                    self.typing_env(),
                     def_id,
                     ty::List::empty(),
                     DUMMY_SP,
@@ -537,11 +485,14 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
         let entry_name = self.sess().target.entry_name.as_ref();
         if !self.functions.borrow().contains_key(entry_name) {
-            Some(self.declare_entry_fn(entry_name, fn_type, ()))
+            #[cfg(feature = "master")]
+            let conv = conv_to_fn_attribute(self.sess().target.entry_abi, &self.sess().target.arch);
+            #[cfg(not(feature = "master"))]
+            let conv = None;
+            Some(self.declare_entry_fn(entry_name, fn_type, conv))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
-            // instead of #[start]
             None
         }
     }
@@ -571,9 +522,16 @@ impl<'gcc, 'tcx> HasWasmCAbiOpt for CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
-    type LayoutOfResult = TyAndLayout<'tcx>;
+impl<'gcc, 'tcx> HasX86AbiOpt for CodegenCx<'gcc, 'tcx> {
+    fn x86_abi_opt(&self) -> X86Abi {
+        X86Abi {
+            regparm: self.tcx.sess.opts.unstable_opts.regparm,
+            reg_struct_return: self.tcx.sess.opts.unstable_opts.reg_struct_return,
+        }
+    }
+}
 
+impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
@@ -585,8 +543,6 @@ impl<'gcc, 'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
 }
 
 impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
-    type FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>;
-
     #[inline]
     fn handle_fn_abi_err(
         &self,
@@ -612,9 +568,9 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'tcx, 'gcc> HasParamEnv<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx, 'gcc> HasTypingEnv<'tcx> for CodegenCx<'gcc, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 
@@ -629,7 +585,10 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
         let mut name = String::with_capacity(prefix.len() + 6);
         name.push_str(prefix);
         name.push('.');
-        name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
+        // Offset the index by the base so that always at least two characters
+        // are generated. This avoids cases where the suffix is interpreted as
+        // size by the assembler (for m68k: .b, .w, .l).
+        name.push_str(&(idx as u64 + ALPHANUMERIC_ONLY as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
 }

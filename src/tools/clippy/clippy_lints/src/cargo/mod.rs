@@ -161,6 +161,15 @@ declare_clippy_lint! {
     /// [dependencies]
     /// regex = "*"
     /// ```
+    /// Use instead:
+    /// ```toml
+    /// [dependencies]
+    /// # allow patch updates, but not minor or major version changes
+    /// some_crate_1 = "~1.2.3"
+    ///
+    /// # pin the version to a specific version
+    /// some_crate_2 = "=1.2.3"
+    /// ```
     #[clippy::version = "1.32.0"]
     pub WILDCARD_DEPENDENCIES,
     cargo,
@@ -205,7 +214,7 @@ declare_clippy_lint! {
 }
 
 pub struct Cargo {
-    allowed_duplicate_crates: &'static FxHashSet<String>,
+    allowed_duplicate_crates: FxHashSet<String>,
     ignore_publish: bool,
 }
 
@@ -221,7 +230,7 @@ impl_lint_pass!(Cargo => [
 impl Cargo {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            allowed_duplicate_crates: &conf.allowed_duplicate_crates,
+            allowed_duplicate_crates: conf.allowed_duplicate_crates.iter().cloned().collect(),
             ignore_publish: conf.cargo_ignore_publish,
         }
     }
@@ -263,7 +272,7 @@ impl LateLintPass<'_> for Cargo {
         {
             match MetadataCommand::new().exec() {
                 Ok(metadata) => {
-                    multiple_crate_versions::check(cx, &metadata, self.allowed_duplicate_crates);
+                    multiple_crate_versions::check(cx, &metadata, &self.allowed_duplicate_crates);
                 },
                 Err(e) => {
                     for lint in WITH_DEPS_LINTS {

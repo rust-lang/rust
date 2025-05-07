@@ -64,8 +64,9 @@ LL |     let _ = 42.into::<Option<_>>();
    |
 help: consider moving this generic argument to the `Into` trait, which takes up to 1 argument
    |
-LL |     let _ = Into::<Option<_>>::into(42);
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _ = 42.into::<Option<_>>();
+LL +     let _ = Into::<Option<_>>::into(42);
+   |
 help: remove the unnecessary generics
    |
 LL -     let _ = 42.into::<Option<_>>();

@@ -4,8 +4,6 @@
 // its address may be taken and it may be written to indirectly. Ensure that the const-eval
 // interpreter can handle this.
 
-#![feature(const_mut_refs)]
-
 #[inline(never)] // Try to ensure that MIR optimizations don't optimize this away.
 const fn init(buf: &mut [u8; 1024]) {
     buf[33] = 3;

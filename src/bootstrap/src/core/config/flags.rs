@@ -6,10 +6,13 @@
 use std::path::{Path, PathBuf};
 
 use clap::{CommandFactory, Parser, ValueEnum};
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
+use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
-use crate::core::config::{target_selection_list, Config, TargetSelectionList};
+use crate::core::config::{Config, TargetSelectionList, target_selection_list};
 use crate::{Build, DocTests};
 
 #[derive(Copy, Clone, Default, Debug, ValueEnum)]
@@ -51,7 +54,7 @@ pub struct Flags {
     /// TOML configuration file for build
     pub config: Option<PathBuf>,
     #[arg(global = true, long, value_hint = clap::ValueHint::DirPath, value_name = "DIR")]
-    /// Build directory, overrides `build.build-dir` in `config.toml`
+    /// Build directory, overrides `build.build-dir` in `bootstrap.toml`
     pub build_dir: Option<PathBuf>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "BUILD")]
@@ -110,11 +113,10 @@ pub struct Flags {
         short,
         long,
         value_hint = clap::ValueHint::Other,
-        default_value_t = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get),
         value_name = "JOBS"
     )]
     /// number of jobs to run in parallel
-    pub jobs: usize,
+    pub jobs: Option<u32>,
     // This overrides the deny-warnings configuration option,
     // which passes -Dwarnings to the compiler invocations.
     #[arg(global = true, long)]
@@ -143,9 +145,6 @@ pub struct Flags {
     /// Unless you know exactly what you are doing, you probably don't need this.
     pub bypass_bootstrap_lock: bool,
 
-    /// whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml
-    #[arg(global = true, long, value_name = "VALUE")]
-    pub llvm_skip_rebuild: Option<bool>,
     /// generate PGO profile with rustc build
     #[arg(global = true, value_hint = clap::ValueHint::FilePath, long, value_name = "PROFILE")]
     pub rust_profile_generate: Option<String>,
@@ -174,12 +173,15 @@ pub struct Flags {
     #[arg(global = true)]
     /// paths for the subcommand
     pub paths: Vec<PathBuf>,
-    /// override options in config.toml
+    /// override options in bootstrap.toml
     #[arg(global = true, value_hint = clap::ValueHint::Other, long, value_name = "section.option=value")]
     pub set: Vec<String>,
     /// arguments passed to subcommands
     #[arg(global = true, last(true), value_name = "ARGS")]
     pub free_args: Vec<String>,
+    /// Make bootstrap to behave as it's running on the CI environment or not.
+    #[arg(global = true, long, value_name = "bool")]
+    pub ci: Option<bool>,
 }
 
 impl Flags {
@@ -215,6 +217,10 @@ impl Flags {
         }
     }
 
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(level = "trace", name = "Flags::parse", skip_all, fields(args = ?args))
+    )]
     pub fn parse(args: &[String]) -> Self {
         Flags::parse_from(normalize_args(args))
     }
@@ -392,6 +398,9 @@ pub enum Subcommand {
         /// enable this to generate a Rustfix coverage file, which is saved in
         /// `/<build_base>/rustfix_missing_coverage.txt`
         rustfix_coverage: bool,
+        #[arg(long)]
+        /// don't capture stdout/stderr of tests
+        no_capture: bool,
     },
     /// Build and run some test suites *in Miri*
     Miri {
@@ -442,7 +451,7 @@ pub enum Subcommand {
     /// Set up the environment for development
     #[command(long_about = format!(
         "\n
-x.py setup creates a `config.toml` which changes the defaults for x.py itself,
+x.py setup creates a `bootstrap.toml` which changes the defaults for x.py itself,
 as well as setting up a git pre-push hook, VS Code config and toolchain link.
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
@@ -450,14 +459,14 @@ Arguments:
     The profile is optional and you will be prompted interactively if it is not given.
     The following profiles are available:
 {}
-    To only set up the git hook, VS Code config or toolchain link, you may use
+    To only set up the git hook, editor config or toolchain link, you may use
         ./x.py setup hook
-        ./x.py setup vscode
+        ./x.py setup editor
         ./x.py setup link", Profile::all_for_help("        ").trim_end()))]
     Setup {
-        /// Either the profile for `config.toml` or another setup action.
+        /// Either the profile for `bootstrap.toml` or another setup action.
         /// May be omitted to set up interactively
-        #[arg(value_name = "<PROFILE>|hook|vscode|link")]
+        #[arg(value_name = "<PROFILE>|hook|editor|link")]
         profile: Option<PathBuf>,
     },
     /// Suggest a subset of tests to run, based on modified files
@@ -476,28 +485,25 @@ Arguments:
         #[arg(long)]
         versioned_dirs: bool,
     },
-    /// Perform profiling and benchmarking of the compiler using the
-    /// `rustc-perf-wrapper` tool.
-    ///
-    /// You need to pass arguments after `--`, e.g.`x perf -- cachegrind`.
-    Perf {},
+    /// Perform profiling and benchmarking of the compiler using `rustc-perf`.
+    Perf(PerfArgs),
 }
 
 impl Subcommand {
     pub fn kind(&self) -> Kind {
         match self {
             Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Build { .. } => Kind::Build,
+            Subcommand::Build => Kind::Build,
             Subcommand::Check { .. } => Kind::Check,
             Subcommand::Clippy { .. } => Kind::Clippy,
             Subcommand::Doc { .. } => Kind::Doc,
-            Subcommand::Fix { .. } => Kind::Fix,
+            Subcommand::Fix => Kind::Fix,
             Subcommand::Format { .. } => Kind::Format,
             Subcommand::Test { .. } => Kind::Test,
             Subcommand::Miri { .. } => Kind::Miri,
             Subcommand::Clean { .. } => Kind::Clean,
-            Subcommand::Dist { .. } => Kind::Dist,
-            Subcommand::Install { .. } => Kind::Install,
+            Subcommand::Dist => Kind::Dist,
+            Subcommand::Install => Kind::Install,
             Subcommand::Run { .. } => Kind::Run,
             Subcommand::Setup { .. } => Kind::Setup,
             Subcommand::Suggest { .. } => Kind::Suggest,
@@ -563,6 +569,13 @@ impl Subcommand {
     pub fn force_rerun(&self) -> bool {
         match *self {
             Subcommand::Test { force_rerun, .. } => force_rerun,
+            _ => false,
+        }
+    }
+
+    pub fn no_capture(&self) -> bool {
+        match *self {
+            Subcommand::Test { no_capture, .. } => no_capture,
             _ => false,
         }
     }
@@ -637,7 +650,14 @@ pub fn get_completion<G: clap_complete::Generator>(shell: G, path: &Path) -> Opt
         })
     };
     let mut buf = Vec::new();
-    clap_complete::generate(shell, &mut cmd, "x.py", &mut buf);
+    let (bin_name, _) = path
+        .file_name()
+        .expect("path should be a regular file")
+        .to_str()
+        .expect("file name should be UTF-8")
+        .rsplit_once('.')
+        .expect("file name should have an extension");
+    clap_complete::generate(shell, &mut cmd, bin_name, &mut buf);
     if buf == current.as_bytes() {
         return None;
     }

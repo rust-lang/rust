@@ -1,0 +1,18 @@
+error[E0599]: no function or associated item named `from_mut` found for struct `AtomicU64` in the current scope
+  --> $DIR/atomic-from-mut-not-available.rs:24:36
+   |
+LL |     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
+   |                                    ^^^^^^^^ function or associated item not found in `AtomicU64`
+   |
+note: if you're trying to build a new `AtomicU64`, consider using `AtomicU64::new` which returns `AtomicU64`
+  --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
+   = note: this error originates in the macro `atomic_int` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: there is an associated function `from` with a similar name
+   |
+LL -     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
+LL +     core::sync::atomic::AtomicU64::from(&mut 0u64);
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

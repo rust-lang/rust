@@ -1,13 +1,12 @@
 use crate::ty::needs_ordered_drop;
 use crate::{get_enclosing_block, path_to_local_id};
 use core::ops::ControlFlow;
-use rustc_ast::visit::{try_visit, VisitorResult};
-use rustc_hir as hir;
+use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::intravisit::{self, walk_block, walk_expr, Visitor};
+use rustc_hir::intravisit::{self, Visitor, walk_block, walk_expr};
 use rustc_hir::{
-    AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, LetExpr, Pat, QPath,
-    Safety, Stmt, UnOp, UnsafeSource,
+    self as hir, AmbigArg, AnonConst, Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId,
+    ItemKind, LetExpr, Pat, QPath, Stmt, StructTailExpr, UnOp, UnsafeSource,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -122,7 +121,7 @@ pub fn for_each_expr_without_closures<'tcx, B, C: Continue>(
         }
 
         // Avoid unnecessary `walk_*` calls.
-        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
             ControlFlow::Continue(())
         }
         fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) -> Self::Result {
@@ -155,8 +154,8 @@ pub fn for_each_expr<'tcx, B, C: Continue>(
         type NestedFilter = nested_filter::OnlyBodies;
         type Result = ControlFlow<B>;
 
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.tcx
         }
 
         fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) -> Self::Result {
@@ -172,7 +171,7 @@ pub fn for_each_expr<'tcx, B, C: Continue>(
             ControlFlow::Continue(())
         }
         // Avoid unnecessary `walk_*` calls.
-        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) -> Self::Result {
+        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx, AmbigArg>) -> Self::Result {
             ControlFlow::Continue(())
         }
         fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) -> Self::Result {
@@ -297,11 +296,11 @@ where
 
 /// Checks if the given resolved path is used in the given body.
 pub fn is_res_used(cx: &LateContext<'_>, res: Res, body: BodyId) -> bool {
-    for_each_expr(cx, cx.tcx.hir().body(body).value, |e| {
-        if let ExprKind::Path(p) = &e.kind {
-            if cx.qpath_res(p, e.hir_id) == res {
-                return ControlFlow::Break(());
-            }
+    for_each_expr(cx, cx.tcx.hir_body(body).value, |e| {
+        if let ExprKind::Path(p) = &e.kind
+            && cx.qpath_res(p, e.hir_id) == res
+        {
+            return ControlFlow::Break(());
         }
         ControlFlow::Continue(())
     })
@@ -324,17 +323,15 @@ pub fn is_local_used<'tcx>(cx: &LateContext<'tcx>, visitable: impl Visitable<'tc
 pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     struct V<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
-        is_const: bool,
     }
+
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type Result = ControlFlow<()>;
         type NestedFilter = intravisit::nested_filter::None;
 
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if !self.is_const {
-                return;
-            }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
             match e.kind {
-                ExprKind::ConstBlock(_) => return,
+                ExprKind::ConstBlock(_) => return ControlFlow::Continue(()),
                 ExprKind::Call(
                     &Expr {
                         kind: ExprKind::Path(ref p),
@@ -346,13 +343,13 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                     .cx
                     .qpath_res(p, hir_id)
                     .opt_def_id()
-                    .map_or(false, |id| self.cx.tcx.is_const_fn_raw(id)) => {},
+                    .is_some_and(|id| self.cx.tcx.is_const_fn(id)) => {},
                 ExprKind::MethodCall(..)
                     if self
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| self.cx.tcx.is_const_fn_raw(id)) => {},
+                        .is_some_and(|id| self.cx.tcx.is_const_fn(id)) => {},
                 ExprKind::Binary(_, lhs, rhs)
                     if self.cx.typeck_results().expr_ty(lhs).peel_refs().is_primitive_ty()
                         && self.cx.typeck_results().expr_ty(rhs).peel_refs().is_primitive_ty() => {},
@@ -394,54 +391,49 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                 | ExprKind::Type(..) => (),
 
                 _ => {
-                    self.is_const = false;
-                    return;
+                    return ControlFlow::Break(());
                 },
             }
-            walk_expr(self, e);
+
+            walk_expr(self, e)
         }
     }
 
-    let mut v = V { cx, is_const: true };
-    v.visit_expr(e);
-    v.is_const
+    let mut v = V { cx };
+    v.visit_expr(e).is_continue()
 }
 
 /// Checks if the given expression performs an unsafe operation outside of an unsafe block.
 pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     struct V<'a, 'tcx> {
         cx: &'a LateContext<'tcx>,
-        is_unsafe: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        type Result = ControlFlow<()>;
+
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
-        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-            if self.is_unsafe {
-                return;
-            }
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
             match e.kind {
-                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_unsafe_ptr() => {
-                    self.is_unsafe = true;
+                ExprKind::Unary(UnOp::Deref, e) if self.cx.typeck_results().expr_ty(e).is_raw_ptr() => {
+                    ControlFlow::Break(())
                 },
                 ExprKind::MethodCall(..)
                     if self
                         .cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| {
-                            self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe
-                        }) =>
+                        .is_some_and(|id| self.cx.tcx.fn_sig(id).skip_binder().safety().is_unsafe()) =>
                 {
-                    self.is_unsafe = true;
+                    ControlFlow::Break(())
                 },
                 ExprKind::Call(func, _) => match *self.cx.typeck_results().expr_ty(func).peel_refs().kind() {
-                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety() == Safety::Unsafe => {
-                        self.is_unsafe = true;
+                    ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety().is_unsafe() => {
+                        ControlFlow::Break(())
                     },
-                    ty::FnPtr(_, hdr) if hdr.safety == Safety::Unsafe => self.is_unsafe = true,
+                    ty::FnPtr(_, hdr) if hdr.safety.is_unsafe() => ControlFlow::Break(()),
                     _ => walk_expr(self, e),
                 },
                 ExprKind::Path(ref p)
@@ -449,58 +441,56 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                         .cx
                         .qpath_res(p, e.hir_id)
                         .opt_def_id()
-                        .map_or(false, |id| self.cx.tcx.is_mutable_static(id)) =>
+                        .is_some_and(|id| self.cx.tcx.is_mutable_static(id)) =>
                 {
-                    self.is_unsafe = true;
+                    ControlFlow::Break(())
                 },
                 _ => walk_expr(self, e),
             }
         }
-        fn visit_block(&mut self, b: &'tcx Block<'_>) {
-            if !matches!(b.rules, BlockCheckMode::UnsafeBlock(_)) {
-                walk_block(self, b);
+        fn visit_block(&mut self, b: &'tcx Block<'_>) -> Self::Result {
+            if matches!(b.rules, BlockCheckMode::UnsafeBlock(_)) {
+                ControlFlow::Continue(())
+            } else {
+                walk_block(self, b)
             }
         }
-        fn visit_nested_item(&mut self, id: ItemId) {
-            if let ItemKind::Impl(i) = &self.cx.tcx.hir().item(id).kind {
-                self.is_unsafe = i.safety == Safety::Unsafe;
+        fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
+            if let ItemKind::Impl(i) = &self.cx.tcx.hir_item(id).kind
+                && i.safety.is_unsafe()
+            {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
             }
         }
     }
-    let mut v = V { cx, is_unsafe: false };
-    v.visit_expr(e);
-    v.is_unsafe
+    let mut v = V { cx };
+    v.visit_expr(e).is_break()
 }
 
 /// Checks if the given expression contains an unsafe block
 pub fn contains_unsafe_block<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
-        found_unsafe: bool,
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type Result = ControlFlow<()>;
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
-        fn visit_block(&mut self, b: &'tcx Block<'_>) {
-            if self.found_unsafe {
-                return;
-            }
+        fn visit_block(&mut self, b: &'tcx Block<'_>) -> Self::Result {
             if b.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
-                self.found_unsafe = true;
-                return;
+                ControlFlow::Break(())
+            } else {
+                walk_block(self, b)
             }
-            walk_block(self, b);
         }
     }
-    let mut v = V {
-        cx,
-        found_unsafe: false,
-    };
-    v.visit_expr(e);
-    v.found_unsafe
+    let mut v = V { cx };
+    v.visit_expr(e).is_break()
 }
 
 /// Runs the given function for each sub-expression producing the final value consumed by the parent
@@ -552,10 +542,10 @@ pub fn for_each_local_use_after_expr<'tcx, B>(
         res: ControlFlow<B>,
         f: F,
     }
-    impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
+    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'_, 'tcx, F, B> {
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
@@ -658,6 +648,9 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                     helper(typeck, true, arg, f)?;
                 }
             },
+            ExprKind::Use(expr, _) => {
+                helper(typeck, true, expr, f)?;
+            },
             ExprKind::Index(borrowed, consumed, _)
             | ExprKind::Assign(borrowed, consumed, _)
             | ExprKind::AssignOp(_, borrowed, consumed) => {
@@ -672,7 +665,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                 for field in fields {
                     helper(typeck, true, field.expr, f)?;
                 }
-                if let Some(default) = default {
+                if let StructTailExpr::Base(default) = default {
                     helper(typeck, false, default, f)?;
                 }
             },
@@ -684,6 +677,9 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                 }
             },
             ExprKind::Type(e, _) => {
+                helper(typeck, consume, e, f)?;
+            },
+            ExprKind::UnsafeBinderCast(_, e, _) => {
                 helper(typeck, consume, e, f)?;
             },
 
@@ -734,10 +730,10 @@ pub fn for_each_local_assignment<'tcx, B>(
         res: ControlFlow<B>,
         f: F,
     }
-    impl<'cx, 'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'cx, 'tcx, F, B> {
+    impl<'tcx, F: FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>, B> Visitor<'tcx> for V<'_, 'tcx, F, B> {
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {

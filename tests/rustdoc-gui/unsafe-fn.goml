@@ -17,7 +17,7 @@ define-function: (
     [theme, color],
     block {
         call-function: ("switch-theme", {"theme": |theme|})
-        assert-css: (".item-name sup", {"color": |color|})
+        assert-css: ("dt sup", {"color": |color|})
     },
 )
 

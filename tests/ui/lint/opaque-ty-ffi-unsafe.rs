@@ -3,6 +3,7 @@
 
 type A = impl Fn();
 
+#[define_opaque(A)]
 pub(crate) fn ret_closure() -> A {
     || {}
 }

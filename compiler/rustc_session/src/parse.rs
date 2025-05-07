@@ -2,22 +2,24 @@
 //! It also serves as an input to the parser itself.
 
 use std::str;
+use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
-use rustc_errors::emitter::{stderr_destination, HumanEmitter, SilentEmitter};
+use rustc_data_structures::sync::{AppendOnlyVec, Lock};
+use rustc_errors::emitter::{HumanEmitter, SilentEmitter, stderr_destination};
 use rustc_errors::{
-    fallback_fluent_bundle, ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage,
-    EmissionGuarantee, MultiSpan, StashKey,
+    ColorConfig, Diag, DiagCtxt, DiagCtxtHandle, DiagMessage, EmissionGuarantee, MultiSpan,
+    StashKey, fallback_fluent_bundle,
 };
-use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
+use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{Span, Symbol};
 
+use crate::Session;
 use crate::config::{Cfg, CheckCfg};
 use crate::errors::{
     CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
@@ -25,7 +27,6 @@ use crate::errors::{
 };
 use crate::lint::builtin::UNSTABLE_SYNTAX_PRE_EXPANSION;
 use crate::lint::{BufferedEarlyLint, BuiltinLintDiag, Lint, LintId};
-use crate::Session;
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
@@ -66,7 +67,7 @@ impl GatedSpans {
 #[derive(Default)]
 pub struct SymbolGallery {
     /// All symbols occurred and their first occurrence span.
-    pub symbols: Lock<FxHashMap<Symbol, Span>>,
+    pub symbols: Lock<FxIndexMap<Symbol, Span>>,
 }
 
 impl SymbolGallery {
@@ -79,7 +80,7 @@ impl SymbolGallery {
 
 // todo: this function now accepts `Session` instead of `ParseSess` and should be relocated
 /// Construct a diagnostic for a language feature error due to the given `span`.
-/// The `feature`'s `Symbol` is the one you used in `unstable.rs` and `rustc_span::symbols`.
+/// The `feature`'s `Symbol` is the one you used in `unstable.rs` and `rustc_span::symbol`.
 #[track_caller]
 pub fn feature_err(
     sess: &Session,
@@ -155,6 +156,7 @@ pub fn feature_warn_issue(
 }
 
 /// Adds the diagnostics for a feature to an existing error.
+/// Must be a language feature!
 pub fn add_feature_diagnostics<G: EmissionGuarantee>(
     err: &mut Diag<'_, G>,
     sess: &Session,
@@ -213,7 +215,7 @@ pub struct ParseSess {
     /// should be. Useful to avoid bad tokenization when encountering emoji. We group them to
     /// provide a single error per unique incorrect identifier.
     pub bad_unicode_identifiers: Lock<FxIndexMap<Symbol, Vec<Span>>>,
-    source_map: Lrc<SourceMap>,
+    source_map: Arc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
     /// Contains the spans of block expressions that could have been incomplete based on the
     /// operation token that followed it, but that the parser cannot identify without further
@@ -238,16 +240,16 @@ impl ParseSess {
     /// Used for testing.
     pub fn new(locale_resources: Vec<&'static str>) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
-        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = Box::new(
             HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle)
-                .sm(Some(sm.clone())),
+                .sm(Some(Arc::clone(&sm))),
         );
         let dcx = DiagCtxt::new(emitter);
         ParseSess::with_dcx(dcx, sm)
     }
 
-    pub fn with_dcx(dcx: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
+    pub fn with_dcx(dcx: DiagCtxt, source_map: Arc<SourceMap>) -> Self {
         Self {
             dcx,
             unstable_features: UnstableFeatures::from_environment(None),
@@ -275,15 +277,11 @@ impl ParseSess {
         emit_fatal_diagnostic: bool,
     ) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
-        let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let emitter = Box::new(HumanEmitter::new(
-            stderr_destination(ColorConfig::Auto),
-            fallback_bundle.clone(),
-        ));
-        let fatal_dcx = DiagCtxt::new(emitter);
+        let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
+        let fatal_emitter =
+            Box::new(HumanEmitter::new(stderr_destination(ColorConfig::Auto), fallback_bundle));
         let dcx = DiagCtxt::new(Box::new(SilentEmitter {
-            fallback_bundle,
-            fatal_dcx,
+            fatal_emitter,
             fatal_note: Some(fatal_note),
             emit_fatal_diagnostic,
         }))
@@ -296,8 +294,8 @@ impl ParseSess {
         &self.source_map
     }
 
-    pub fn clone_source_map(&self) -> Lrc<SourceMap> {
-        self.source_map.clone()
+    pub fn clone_source_map(&self) -> Arc<SourceMap> {
+        Arc::clone(&self.source_map)
     }
 
     pub fn buffer_lint(
@@ -331,7 +329,7 @@ impl ParseSess {
         self.proc_macro_quoted_spans.push(span)
     }
 
-    pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> + '_ {
+    pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> {
         // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
         // AppendOnlyVec, so we resort to this scheme.
         self.proc_macro_quoted_spans.iter_enumerated()

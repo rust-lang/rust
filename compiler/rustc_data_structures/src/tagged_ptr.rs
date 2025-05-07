@@ -1,116 +1,26 @@
-//! This module implements tagged pointers.
+//! This module implements tagged pointers. In order to utilize the pointer
+//! packing, you must have a tag type implementing the [`Tag`] trait.
 //!
-//! In order to utilize the pointer packing, you must have two types: a pointer,
-//! and a tag.
-//!
-//! The pointer must implement the [`Pointer`] trait, with the primary
-//! requirement being convertible to and from a raw pointer. Note that the
-//! pointer must be dereferenceable, so raw pointers generally cannot implement
-//! the [`Pointer`] trait. This implies that the pointer must also be non-null.
-//!
-//! Many common pointer types already implement the [`Pointer`] trait.
-//!
-//! The tag must implement the [`Tag`] trait.
-//!
-//! We assert that the tag and the [`Pointer`] types are compatible at compile
+//! We assert that the tag and the reference type is compatible at compile
 //! time.
 
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::num::NonZero;
 use std::ops::Deref;
 use std::ptr::NonNull;
-use std::rc::Rc;
-use std::sync::Arc;
 
 use crate::aligned::Aligned;
+use crate::stable_hasher::{HashStable, StableHasher};
 
-mod copy;
-mod drop;
-mod impl_tag;
-
-pub use copy::CopyTaggedPtr;
-pub use drop::TaggedPtr;
-
-/// This describes the pointer type encapsulated by [`TaggedPtr`] and
-/// [`CopyTaggedPtr`].
+/// This describes tags that the [`TaggedRef`] struct can hold.
 ///
 /// # Safety
 ///
-/// The pointer returned from [`into_ptr`] must be a [valid], pointer to
-/// [`<Self as Deref>::Target`].
-///
-/// Note that if `Self` implements [`DerefMut`] the pointer returned from
-/// [`into_ptr`] must be valid for writes (and thus calling [`NonNull::as_mut`]
-/// on it must be safe).
-///
-/// The [`BITS`] constant must be correct. [`BITS`] least-significant bits,
-/// must be zero on all pointers returned from [`into_ptr`].
-///
-/// For example, if the alignment of [`Self::Target`] is 2, then `BITS` should be 1.
-///
-/// [`BITS`]: Pointer::BITS
-/// [`into_ptr`]: Pointer::into_ptr
-/// [valid]: std::ptr#safety
-/// [`<Self as Deref>::Target`]: Deref::Target
-/// [`Self::Target`]: Deref::Target
-/// [`DerefMut`]: std::ops::DerefMut
-pub unsafe trait Pointer: Deref {
-    /// Number of unused (always zero) **least-significant bits** in this
-    /// pointer, usually related to the pointees alignment.
-    ///
-    /// For example if [`BITS`] = `2`, then given `ptr = Self::into_ptr(..)`,
-    /// `ptr.addr() & 0b11 == 0` must be true.
-    ///
-    /// Most likely the value you want to use here is the following, unless
-    /// your [`Self::Target`] type is unsized (e.g., `ty::List<T>` in rustc)
-    /// or your pointer is over/under aligned, in which case you'll need to
-    /// manually figure out what the right type to pass to [`bits_for`] is, or
-    /// what the value to set here.
-    ///
-    /// ```rust
-    /// # use std::ops::Deref;
-    /// # use rustc_data_structures::tagged_ptr::bits_for;
-    /// # struct T;
-    /// # impl Deref for T { type Target = u8; fn deref(&self) -> &u8 { &0 } }
-    /// # impl T {
-    /// const BITS: u32 = bits_for::<<Self as Deref>::Target>();
-    /// # }
-    /// ```
-    ///
-    /// [`BITS`]: Pointer::BITS
-    /// [`Self::Target`]: Deref::Target
-    const BITS: u32;
-
-    /// Turns this pointer into a raw, non-null pointer.
-    ///
-    /// The inverse of this function is [`from_ptr`].
-    ///
-    /// This function guarantees that the least-significant [`Self::BITS`] bits
-    /// are zero.
-    ///
-    /// [`from_ptr`]: Pointer::from_ptr
-    /// [`Self::BITS`]: Pointer::BITS
-    fn into_ptr(self) -> NonNull<Self::Target>;
-
-    /// Re-creates the original pointer, from a raw pointer returned by [`into_ptr`].
-    ///
-    /// # Safety
-    ///
-    /// The passed `ptr` must be returned from [`into_ptr`].
-    ///
-    /// This acts as [`ptr::read::<Self>()`] semantically, it should not be called more than
-    /// once on non-[`Copy`] `Pointer`s.
-    ///
-    /// [`into_ptr`]: Pointer::into_ptr
-    /// [`ptr::read::<Self>()`]: std::ptr::read
-    unsafe fn from_ptr(ptr: NonNull<Self::Target>) -> Self;
-}
-
-/// This describes tags that the [`TaggedPtr`] struct can hold.
-///
-/// # Safety
-///
-/// The [`BITS`] constant must be correct.
-///
-/// No more than [`BITS`] least-significant bits may be set in the returned usize.
+/// - The [`BITS`] constant must be correct.
+/// - No more than [`BITS`] least-significant bits may be set in the returned usize.
+/// - [`Eq`] and [`Hash`] must be implementable with the returned `usize` from `into_usize`.
 ///
 /// [`BITS`]: Tag::BITS
 pub unsafe trait Tag: Copy {
@@ -166,118 +76,217 @@ pub const fn bits_for_tags(mut tags: &[usize]) -> u32 {
     bits
 }
 
-unsafe impl<T: ?Sized + Aligned> Pointer for Box<T> {
-    const BITS: u32 = bits_for::<Self::Target>();
-
-    #[inline]
-    fn into_ptr(self) -> NonNull<T> {
-        // Safety: pointers from `Box::into_raw` are valid & non-null
-        unsafe { NonNull::new_unchecked(Box::into_raw(self)) }
-    }
-
-    #[inline]
-    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
-        // Safety: `ptr` comes from `into_ptr` which calls `Box::into_raw`
-        unsafe { Box::from_raw(ptr.as_ptr()) }
-    }
+/// A covariant [`Copy`] tagged borrow. This is essentially `{ pointer: &'a P, tag: T }` packed
+/// in a single reference.
+pub struct TaggedRef<'a, Pointee: Aligned + ?Sized, T: Tag> {
+    /// This is semantically a pair of `pointer: &'a P` and `tag: T` fields,
+    /// however we pack them in a single pointer, to save space.
+    ///
+    /// We pack the tag into the **most**-significant bits of the pointer to
+    /// ease retrieval of the value. A left shift is a multiplication and
+    /// those are embeddable in instruction encoding, for example:
+    ///
+    /// ```asm
+    /// // (<https://godbolt.org/z/jqcYPWEr3>)
+    /// example::shift_read3:
+    ///     mov     eax, dword ptr [8*rdi]
+    ///     ret
+    ///
+    /// example::mask_read3:
+    ///     and     rdi, -8
+    ///     mov     eax, dword ptr [rdi]
+    ///     ret
+    /// ```
+    ///
+    /// This is ASM outputted by rustc for reads of values behind tagged
+    /// pointers for different approaches of tagging:
+    /// - `shift_read3` uses `<< 3` (the tag is in the most-significant bits)
+    /// - `mask_read3` uses `& !0b111` (the tag is in the least-significant bits)
+    ///
+    /// The shift approach thus produces less instructions and is likely faster
+    /// (see <https://godbolt.org/z/Y913sMdWb>).
+    ///
+    /// Encoding diagram:
+    /// ```text
+    /// [ packed.addr                     ]
+    /// [ tag ] [ pointer.addr >> T::BITS ] <-- usize::BITS - T::BITS bits
+    ///    ^
+    ///    |
+    /// T::BITS bits
+    /// ```
+    ///
+    /// The tag can be retrieved by `packed.addr() >> T::BITS` and the pointer
+    /// can be retrieved by `packed.map_addr(|addr| addr << T::BITS)`.
+    packed: NonNull<Pointee>,
+    tag_pointer_ghost: PhantomData<(&'a Pointee, T)>,
 }
 
-unsafe impl<T: ?Sized + Aligned> Pointer for Rc<T> {
-    const BITS: u32 = bits_for::<Self::Target>();
-
+impl<'a, P, T> TaggedRef<'a, P, T>
+where
+    P: Aligned + ?Sized,
+    T: Tag,
+{
+    /// Tags `pointer` with `tag`.
+    ///
+    /// [`TaggedRef`]: crate::tagged_ptr::TaggedRef
     #[inline]
-    fn into_ptr(self) -> NonNull<T> {
-        // Safety: pointers from `Rc::into_raw` are valid & non-null
-        unsafe { NonNull::new_unchecked(Rc::into_raw(self).cast_mut()) }
+    pub fn new(pointer: &'a P, tag: T) -> Self {
+        Self { packed: Self::pack(NonNull::from(pointer), tag), tag_pointer_ghost: PhantomData }
     }
 
+    /// Retrieves the pointer.
     #[inline]
-    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
-        // Safety: `ptr` comes from `into_ptr` which calls `Rc::into_raw`
-        unsafe { Rc::from_raw(ptr.as_ptr()) }
-    }
-}
-
-unsafe impl<T: ?Sized + Aligned> Pointer for Arc<T> {
-    const BITS: u32 = bits_for::<Self::Target>();
-
-    #[inline]
-    fn into_ptr(self) -> NonNull<T> {
-        // Safety: pointers from `Arc::into_raw` are valid & non-null
-        unsafe { NonNull::new_unchecked(Arc::into_raw(self).cast_mut()) }
+    pub fn pointer(self) -> &'a P {
+        // SAFETY: pointer_raw returns the original pointer
+        unsafe { self.pointer_raw().as_ref() }
     }
 
+    /// Retrieves the tag.
     #[inline]
-    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
-        // Safety: `ptr` comes from `into_ptr` which calls `Arc::into_raw`
-        unsafe { Arc::from_raw(ptr.as_ptr()) }
-    }
-}
+    pub fn tag(&self) -> T {
+        // Unpack the tag, according to the `self.packed` encoding scheme
+        let tag = self.packed.addr().get() >> Self::TAG_BIT_SHIFT;
 
-unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a T {
-    const BITS: u32 = bits_for::<Self::Target>();
-
-    #[inline]
-    fn into_ptr(self) -> NonNull<T> {
-        NonNull::from(self)
-    }
-
-    #[inline]
-    unsafe fn from_ptr(ptr: NonNull<T>) -> Self {
         // Safety:
-        // `ptr` comes from `into_ptr` which gets the pointer from a reference
-        unsafe { ptr.as_ref() }
+        // The shift retrieves the original value from `T::into_usize`,
+        // satisfying `T::from_usize`'s preconditions.
+        unsafe { T::from_usize(tag) }
+    }
+
+    /// Sets the tag to a new value.
+    #[inline]
+    pub fn set_tag(&mut self, tag: T) {
+        self.packed = Self::pack(self.pointer_raw(), tag);
+    }
+
+    const TAG_BIT_SHIFT: u32 = usize::BITS - T::BITS;
+    const ASSERTION: () = { assert!(T::BITS <= bits_for::<P>()) };
+
+    /// Pack pointer `ptr` with a `tag`, according to `self.packed` encoding scheme.
+    #[inline]
+    fn pack(ptr: NonNull<P>, tag: T) -> NonNull<P> {
+        // Trigger assert!
+        let () = Self::ASSERTION;
+
+        let packed_tag = tag.into_usize() << Self::TAG_BIT_SHIFT;
+
+        ptr.map_addr(|addr| {
+            // Safety:
+            // - The pointer is `NonNull` => it's address is `NonZero<usize>`
+            // - `P::BITS` least significant bits are always zero (`Pointer` contract)
+            // - `T::BITS <= P::BITS` (from `Self::ASSERTION`)
+            //
+            // Thus `addr >> T::BITS` is guaranteed to be non-zero.
+            //
+            // `{non_zero} | packed_tag` can't make the value zero.
+
+            let packed = (addr.get() >> T::BITS) | packed_tag;
+            unsafe { NonZero::new_unchecked(packed) }
+        })
+    }
+
+    /// Retrieves the original raw pointer from `self.packed`.
+    #[inline]
+    pub(super) fn pointer_raw(&self) -> NonNull<P> {
+        self.packed.map_addr(|addr| unsafe { NonZero::new_unchecked(addr.get() << T::BITS) })
     }
 }
 
-unsafe impl<'a, T: 'a + ?Sized + Aligned> Pointer for &'a mut T {
-    const BITS: u32 = bits_for::<Self::Target>();
+impl<P, T> Copy for TaggedRef<'_, P, T>
+where
+    P: Aligned + ?Sized,
+    T: Tag,
+{
+}
+
+impl<P, T> Clone for TaggedRef<'_, P, T>
+where
+    P: Aligned + ?Sized,
+    T: Tag,
+{
+    #[inline]
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<P, T> Deref for TaggedRef<'_, P, T>
+where
+    P: Aligned + ?Sized,
+    T: Tag,
+{
+    type Target = P;
 
     #[inline]
-    fn into_ptr(self) -> NonNull<T> {
-        NonNull::from(self)
+    fn deref(&self) -> &Self::Target {
+        self.pointer()
     }
+}
 
+impl<P, T> fmt::Debug for TaggedRef<'_, P, T>
+where
+    P: Aligned + fmt::Debug + ?Sized,
+    T: Tag + fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TaggedRef")
+            .field("pointer", &self.pointer())
+            .field("tag", &self.tag())
+            .finish()
+    }
+}
+
+impl<P, T> PartialEq for TaggedRef<'_, P, T>
+where
+    P: Aligned + ?Sized,
+    T: Tag,
+{
     #[inline]
-    unsafe fn from_ptr(mut ptr: NonNull<T>) -> Self {
-        // Safety:
-        // `ptr` comes from `into_ptr` which gets the pointer from a reference
-        unsafe { ptr.as_mut() }
+    #[allow(ambiguous_wide_pointer_comparisons)]
+    fn eq(&self, other: &Self) -> bool {
+        self.packed == other.packed
     }
 }
 
-/// A tag type used in [`CopyTaggedPtr`] and [`TaggedPtr`] tests.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+impl<P, T: Tag> Eq for TaggedRef<'_, P, T> {}
+
+impl<P, T: Tag> Hash for TaggedRef<'_, P, T> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.packed.hash(state);
+    }
+}
+
+impl<'a, P, T, HCX> HashStable<HCX> for TaggedRef<'a, P, T>
+where
+    P: HashStable<HCX> + Aligned + ?Sized,
+    T: Tag + HashStable<HCX>,
+{
+    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+        self.pointer().hash_stable(hcx, hasher);
+        self.tag().hash_stable(hcx, hasher);
+    }
+}
+
+// Safety:
+// `TaggedRef<P, T, ..>` is semantically just `{ ptr: P, tag: T }`, as such
+// it's ok to implement `Sync` as long as `P: Sync, T: Sync`
+unsafe impl<P, T> Sync for TaggedRef<'_, P, T>
+where
+    P: Sync + Aligned + ?Sized,
+    T: Sync + Tag,
+{
+}
+
+// Safety:
+// `TaggedRef<P, T, ..>` is semantically just `{ ptr: P, tag: T }`, as such
+// it's ok to implement `Send` as long as `P: Send, T: Send`
+unsafe impl<P, T> Send for TaggedRef<'_, P, T>
+where
+    P: Sync + Aligned + ?Sized,
+    T: Send + Tag,
+{
+}
+
 #[cfg(test)]
-enum Tag2 {
-    B00 = 0b00,
-    B01 = 0b01,
-    B10 = 0b10,
-    B11 = 0b11,
-}
-
-#[cfg(test)]
-unsafe impl Tag for Tag2 {
-    const BITS: u32 = 2;
-
-    fn into_usize(self) -> usize {
-        self as _
-    }
-
-    unsafe fn from_usize(tag: usize) -> Self {
-        match tag {
-            0b00 => Tag2::B00,
-            0b01 => Tag2::B01,
-            0b10 => Tag2::B10,
-            0b11 => Tag2::B11,
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[cfg(test)]
-impl<HCX> crate::stable_hasher::HashStable<HCX> for Tag2 {
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut crate::stable_hasher::StableHasher) {
-        (*self as u8).hash_stable(hcx, hasher);
-    }
-}
+mod tests;

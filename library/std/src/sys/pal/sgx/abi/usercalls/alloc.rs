@@ -6,7 +6,7 @@ use super::super::mem::{is_enclave_range, is_user_range};
 use crate::arch::asm;
 use crate::cell::UnsafeCell;
 use crate::convert::TryInto;
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
 use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
@@ -63,7 +63,7 @@ unsafe impl<T: UserSafeSized> UserSafeSized for [T; 2] {}
 /// A type that can be represented in memory as one or more `UserSafeSized`s.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub unsafe trait UserSafe {
-    /// Equivalent to `mem::align_of::<Self>`.
+    /// Equivalent to `align_of::<Self>`.
     fn align_of() -> usize;
 
     /// Constructs a pointer to `Self` given a memory range in user space.
@@ -120,7 +120,7 @@ pub unsafe trait UserSafe {
         let is_aligned = |p: *const u8| -> bool { p.is_aligned_to(Self::align_of()) };
 
         assert!(is_aligned(ptr as *const u8));
-        assert!(is_user_range(ptr as _, mem::size_of_val(unsafe { &*ptr })));
+        assert!(is_user_range(ptr as _, size_of_val(unsafe { &*ptr })));
         assert!(!ptr.is_null());
     }
 }
@@ -128,11 +128,11 @@ pub unsafe trait UserSafe {
 #[unstable(feature = "sgx_platform", issue = "56975")]
 unsafe impl<T: UserSafeSized> UserSafe for T {
     fn align_of() -> usize {
-        mem::align_of::<T>()
+        align_of::<T>()
     }
 
     unsafe fn from_raw_sized_unchecked(ptr: *mut u8, size: usize) -> *mut Self {
-        assert_eq!(size, mem::size_of::<T>());
+        assert_eq!(size, size_of::<T>());
         ptr as _
     }
 }
@@ -140,7 +140,7 @@ unsafe impl<T: UserSafeSized> UserSafe for T {
 #[unstable(feature = "sgx_platform", issue = "56975")]
 unsafe impl<T: UserSafeSized> UserSafe for [T] {
     fn align_of() -> usize {
-        mem::align_of::<T>()
+        align_of::<T>()
     }
 
     /// # Safety
@@ -155,7 +155,7 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
     ///
     /// * the element size is not a factor of the size
     unsafe fn from_raw_sized_unchecked(ptr: *mut u8, size: usize) -> *mut Self {
-        let elem_size = mem::size_of::<T>();
+        let elem_size = size_of::<T>();
         assert_eq!(size % elem_size, 0);
         let len = size / elem_size;
         // SAFETY: The caller must uphold the safety contract for `from_raw_sized_unchecked`
@@ -209,6 +209,45 @@ impl<T: ?Sized> NewUserRef<NonNull<T>> for NonNull<UserRef<T>> {
     }
 }
 
+/// A type which can a destination for safely copying from userspace.
+///
+/// # Safety
+///
+/// Requires that `T` and `Self` have identical layouts.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub unsafe trait UserSafeCopyDestination<T: ?Sized> {
+    /// Returns a pointer for writing to the value.
+    fn as_mut_ptr(&mut self) -> *mut T;
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<T> for T {
+    fn as_mut_ptr(&mut self) -> *mut T {
+        self as _
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<[T]> for [T] {
+    fn as_mut_ptr(&mut self) -> *mut [T] {
+        self as _
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<T> for MaybeUninit<T> {
+    fn as_mut_ptr(&mut self) -> *mut T {
+        self as *mut Self as _
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<[T]> for [MaybeUninit<T>] {
+    fn as_mut_ptr(&mut self) -> *mut [T] {
+        self as *mut Self as _
+    }
+}
+
 #[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T: ?Sized> User<T>
 where
@@ -239,7 +278,7 @@ where
     /// Copies `val` into freshly allocated space in user memory.
     pub fn new_from_enclave(val: &T) -> Self {
         unsafe {
-            let mut user = Self::new_uninit_bytes(mem::size_of_val(val));
+            let mut user = Self::new_uninit_bytes(size_of_val(val));
             user.copy_from_enclave(val);
             user
         }
@@ -277,7 +316,7 @@ where
 {
     /// Allocates space for `T` in user memory.
     pub fn uninitialized() -> Self {
-        Self::new_uninit_bytes(mem::size_of::<T>())
+        Self::new_uninit_bytes(size_of::<T>())
     }
 }
 
@@ -288,7 +327,7 @@ where
 {
     /// Allocates space for a `[T]` of `n` elements in user memory.
     pub fn uninitialized(n: usize) -> Self {
-        Self::new_uninit_bytes(n * mem::size_of::<T>())
+        Self::new_uninit_bytes(n * size_of::<T>())
     }
 
     /// Creates an owned `User<[T]>` from a raw thin pointer and a slice length.
@@ -306,9 +345,7 @@ where
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts(ptr: *mut T, len: usize) -> Self {
-        User(unsafe {
-            NonNull::new_userref(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()))
-        })
+        User(unsafe { NonNull::new_userref(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>())) })
     }
 }
 
@@ -326,7 +363,7 @@ where
 // `<*const u8>::align_offset` aren't _guaranteed_ to compute the largest
 // possible middle region, and as such can't be used.
 fn u64_align_to_guaranteed(ptr: *const u8, mut len: usize) -> (usize, usize, usize) {
-    const QWORD_SIZE: usize = mem::size_of::<u64>();
+    const QWORD_SIZE: usize = size_of::<u64>();
 
     let offset = ptr as usize % QWORD_SIZE;
 
@@ -532,11 +569,11 @@ where
     /// the source. This can happen for dynamically-sized types such as slices.
     pub fn copy_from_enclave(&mut self, val: &T) {
         unsafe {
-            assert_eq!(mem::size_of_val(val), mem::size_of_val(&*self.0.get()));
+            assert_eq!(size_of_val(val), size_of_val(&*self.0.get()));
             copy_to_userspace(
                 val as *const T as *const u8,
                 self.0.get() as *mut T as *mut u8,
-                mem::size_of_val(val),
+                size_of_val(val),
             );
         }
     }
@@ -546,13 +583,13 @@ where
     /// # Panics
     /// This function panics if the destination doesn't have the same size as
     /// the source. This can happen for dynamically-sized types such as slices.
-    pub fn copy_to_enclave(&self, dest: &mut T) {
+    pub fn copy_to_enclave<U: ?Sized + UserSafeCopyDestination<T>>(&self, dest: &mut U) {
         unsafe {
-            assert_eq!(mem::size_of_val(dest), mem::size_of_val(&*self.0.get()));
+            assert_eq!(size_of_val(dest), size_of_val(&*self.0.get()));
             copy_from_userspace(
                 self.0.get() as *const T as *const u8,
-                dest as *mut T as *mut u8,
-                mem::size_of_val(dest),
+                dest.as_mut_ptr() as *mut u8,
+                size_of_val(dest),
             );
         }
     }
@@ -577,7 +614,7 @@ where
     pub fn to_enclave(&self) -> T {
         unsafe {
             let mut data = mem::MaybeUninit::uninit();
-            copy_from_userspace(self.0.get() as _, data.as_mut_ptr() as _, mem::size_of::<T>());
+            copy_from_userspace(self.0.get() as _, data.as_mut_ptr() as _, size_of::<T>());
             data.assume_init()
         }
     }
@@ -602,9 +639,7 @@ where
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts<'a>(ptr: *const T, len: usize) -> &'a Self {
         // SAFETY: The caller must uphold the safety contract for `from_raw_parts`.
-        unsafe {
-            &*(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *const Self)
-        }
+        unsafe { &*(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>()).as_ptr() as *const Self) }
     }
 
     /// Creates a `&mut UserRef<[T]>` from a raw thin pointer and a slice length.
@@ -624,7 +659,7 @@ where
     pub unsafe fn from_raw_parts_mut<'a>(ptr: *mut T, len: usize) -> &'a mut Self {
         // SAFETY: The caller must uphold the safety contract for `from_raw_parts_mut`.
         unsafe {
-            &mut *(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *mut Self)
+            &mut *(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>()).as_ptr() as *mut Self)
         }
     }
 
@@ -640,28 +675,21 @@ where
 
     /// Obtain the number of elements in this user slice.
     pub fn len(&self) -> usize {
-        unsafe { (*self.0.get()).len() }
+        unsafe { self.0.get().len() }
     }
 
-    /// Copies the value from user memory and place it into `dest`. Afterwards,
-    /// `dest` will contain exactly `self.len()` elements.
-    ///
-    /// # Panics
-    /// This function panics if the destination doesn't have the same size as
-    /// the source. This can happen for dynamically-sized types such as slices.
-    pub fn copy_to_enclave_vec(&self, dest: &mut Vec<T>) {
-        if let Some(missing) = self.len().checked_sub(dest.capacity()) {
-            dest.reserve(missing)
-        }
+    /// Copies the value from user memory and appends it to `dest`.
+    pub fn append_to_enclave_vec(&self, dest: &mut Vec<T>) {
+        dest.reserve(self.len());
+        self.copy_to_enclave(&mut dest.spare_capacity_mut()[..self.len()]);
         // SAFETY: We reserve enough space above.
-        unsafe { dest.set_len(self.len()) };
-        self.copy_to_enclave(&mut dest[..]);
+        unsafe { dest.set_len(dest.len() + self.len()) };
     }
 
     /// Copies the value from user memory into a vector in enclave memory.
     pub fn to_enclave(&self) -> Vec<T> {
         let mut ret = Vec::with_capacity(self.len());
-        self.copy_to_enclave_vec(&mut ret);
+        self.append_to_enclave_vec(&mut ret);
         ret
     }
 
@@ -744,7 +772,7 @@ where
     fn drop(&mut self) {
         unsafe {
             let ptr = (*self.0.as_ptr()).0.get();
-            super::free(ptr as _, mem::size_of_val(&mut *ptr), T::align_of());
+            super::free(ptr as _, size_of_val(&mut *ptr), T::align_of());
         }
     }
 }

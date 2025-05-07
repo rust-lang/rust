@@ -1,6 +1,9 @@
-use rustc_target::abi::HasDataLayout;
 use std::mem::variant_count;
 
+use rustc_abi::HasDataLayout;
+
+use crate::concurrency::thread::ThreadNotFound;
+use crate::shims::files::FdNum;
 use crate::*;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -14,6 +17,8 @@ pub enum Handle {
     Null,
     Pseudo(PseudoHandle),
     Thread(ThreadId),
+    File(FdNum),
+    Invalid,
 }
 
 impl PseudoHandle {
@@ -33,16 +38,30 @@ impl PseudoHandle {
     }
 }
 
+/// Errors that can occur when constructing a [`Handle`] from a Scalar.
+pub enum HandleError {
+    /// There is no thread with the given ID.
+    ThreadNotFound(ThreadNotFound),
+    /// Can't convert scalar to handle because it is structurally invalid.
+    InvalidHandle,
+}
+
 impl Handle {
     const NULL_DISCRIMINANT: u32 = 0;
     const PSEUDO_DISCRIMINANT: u32 = 1;
     const THREAD_DISCRIMINANT: u32 = 2;
+    const FILE_DISCRIMINANT: u32 = 3;
+    // Chosen to ensure Handle::Invalid encodes to -1. Update this value if there are ever more than
+    // 8 discriminants.
+    const INVALID_DISCRIMINANT: u32 = 7;
 
     fn discriminant(self) -> u32 {
         match self {
             Self::Null => Self::NULL_DISCRIMINANT,
             Self::Pseudo(_) => Self::PSEUDO_DISCRIMINANT,
             Self::Thread(_) => Self::THREAD_DISCRIMINANT,
+            Self::File(_) => Self::FILE_DISCRIMINANT,
+            Self::Invalid => Self::INVALID_DISCRIMINANT,
         }
     }
 
@@ -51,18 +70,28 @@ impl Handle {
             Self::Null => 0,
             Self::Pseudo(pseudo_handle) => pseudo_handle.value(),
             Self::Thread(thread) => thread.to_u32(),
+            #[expect(clippy::cast_sign_loss)]
+            Self::File(fd) => fd as u32,
+            // INVALID_HANDLE_VALUE is -1. This fact is explicitly declared or implied in several
+            // pages of Windows documentation.
+            // 1: https://learn.microsoft.com/en-us/dotnet/api/microsoft.win32.safehandles.safefilehandle?view=net-9.0
+            // 2: https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/get-osfhandle?view=msvc-170
+            Self::Invalid => 0x1FFFFFFF,
         }
     }
 
     fn packed_disc_size() -> u32 {
-        // ceil(log2(x)) is how many bits it takes to store x numbers
+        // ceil(log2(x)) is how many bits it takes to store x numbers.
+        // We ensure that INVALID_HANDLE_VALUE (0xFFFFFFFF) decodes to Handle::Invalid.
+        // see https://devblogs.microsoft.com/oldnewthing/20230914-00/?p=108766 for more detail on
+        // INVALID_HANDLE_VALUE.
         let variant_count = variant_count::<Self>();
 
-        // however, std's ilog2 is floor(log2(x))
+        // However, std's ilog2 is floor(log2(x)).
         let floor_log2 = variant_count.ilog2();
 
-        // we need to add one for non powers of two to compensate for the difference
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
+        // We need to add one for non powers of two to compensate for the difference.
+        #[expect(clippy::arithmetic_side_effects)] // cannot overflow
         if variant_count.is_power_of_two() { floor_log2 } else { floor_log2 + 1 }
     }
 
@@ -87,15 +116,21 @@ impl Handle {
 
         // packs the data into the lower `data_size` bits
         // and packs the discriminant right above the data
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
-        return discriminant << data_size | data;
+        (discriminant << data_size) | data
     }
 
     fn new(discriminant: u32, data: u32) -> Option<Self> {
         match discriminant {
             Self::NULL_DISCRIMINANT if data == 0 => Some(Self::Null),
             Self::PSEUDO_DISCRIMINANT => Some(Self::Pseudo(PseudoHandle::from_value(data)?)),
-            Self::THREAD_DISCRIMINANT => Some(Self::Thread(data.into())),
+            Self::THREAD_DISCRIMINANT => Some(Self::Thread(ThreadId::new_unchecked(data))),
+            #[expect(clippy::cast_possible_wrap)]
+            Self::FILE_DISCRIMINANT => {
+                // This cast preserves all bits.
+                assert_eq!(size_of_val(&data), size_of::<FdNum>());
+                Some(Self::File(data as FdNum))
+            }
+            Self::INVALID_DISCRIMINANT => Some(Self::Invalid),
             _ => None,
         }
     }
@@ -106,11 +141,10 @@ impl Handle {
         let data_size = u32::BITS.strict_sub(disc_size);
 
         // the lower `data_size` bits of this mask are 1
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
+        #[expect(clippy::arithmetic_side_effects)] // cannot overflow
         let data_mask = 2u32.pow(data_size) - 1;
 
         // the discriminant is stored right above the lower `data_size` bits
-        #[allow(clippy::arithmetic_side_effects)] // cannot overflow
         let discriminant = handle >> data_size;
 
         // the data is stored in the lower `data_size` bits
@@ -122,26 +156,40 @@ impl Handle {
     pub fn to_scalar(self, cx: &impl HasDataLayout) -> Scalar {
         // 64-bit handles are sign extended 32-bit handles
         // see https://docs.microsoft.com/en-us/windows/win32/winprog64/interprocess-communication
-        #[allow(clippy::cast_possible_wrap)] // we want it to wrap
+        #[expect(clippy::cast_possible_wrap)] // we want it to wrap
         let signed_handle = self.to_packed() as i32;
         Scalar::from_target_isize(signed_handle.into(), cx)
     }
 
-    pub fn from_scalar<'tcx>(
+    /// Convert a scalar into a structured `Handle`.
+    /// Structurally invalid handles return [`HandleError::InvalidHandle`].
+    /// If the handle is structurally valid but semantically invalid, e.g. a for non-existent thread
+    /// ID, returns [`HandleError::ThreadNotFound`].
+    fn try_from_scalar<'tcx>(
         handle: Scalar,
-        cx: &impl HasDataLayout,
-    ) -> InterpResult<'tcx, Option<Self>> {
+        cx: &MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, Result<Self, HandleError>> {
         let sign_extended_handle = handle.to_target_isize(cx)?;
 
-        #[allow(clippy::cast_sign_loss)] // we want to lose the sign
+        #[expect(clippy::cast_sign_loss)] // we want to lose the sign
         let handle = if let Ok(signed_handle) = i32::try_from(sign_extended_handle) {
             signed_handle as u32
         } else {
             // if a handle doesn't fit in an i32, it isn't valid.
-            return Ok(None);
+            return interp_ok(Err(HandleError::InvalidHandle));
         };
 
-        Ok(Self::from_packed(handle))
+        match Self::from_packed(handle) {
+            Some(Self::Thread(thread)) => {
+                // validate the thread id
+                match cx.machine.threads.thread_id_try_from(thread.to_u32()) {
+                    Ok(id) => interp_ok(Ok(Self::Thread(id))),
+                    Err(e) => interp_ok(Err(HandleError::ThreadNotFound(e))),
+                }
+            }
+            Some(handle) => interp_ok(Ok(handle)),
+            None => interp_ok(Err(HandleError::InvalidHandle)),
+        }
     }
 }
 
@@ -149,23 +197,68 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 
 #[allow(non_snake_case)]
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Convert a scalar into a structured `Handle`.
+    /// If the handle is invalid, or references a non-existent item, execution is aborted.
+    #[track_caller]
+    fn read_handle(&self, handle: &OpTy<'tcx>, function_name: &str) -> InterpResult<'tcx, Handle> {
+        let this = self.eval_context_ref();
+        let handle = this.read_scalar(handle)?;
+        match Handle::try_from_scalar(handle, this)? {
+            Ok(handle) => interp_ok(handle),
+            Err(HandleError::InvalidHandle) =>
+                throw_machine_stop!(TerminationInfo::Abort(format!(
+                    "invalid handle {} passed to {function_name}",
+                    handle.to_target_isize(this)?,
+                ))),
+            Err(HandleError::ThreadNotFound(_)) =>
+                throw_machine_stop!(TerminationInfo::Abort(format!(
+                    "invalid thread ID {} passed to {function_name}",
+                    handle.to_target_isize(this)?,
+                ))),
+        }
+    }
+
     fn invalid_handle(&mut self, function_name: &str) -> InterpResult<'tcx, !> {
         throw_machine_stop!(TerminationInfo::Abort(format!(
             "invalid handle passed to `{function_name}`"
         )))
     }
 
-    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx> {
+    fn CloseHandle(&mut self, handle_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
 
-        let handle = this.read_scalar(handle_op)?;
-
-        match Handle::from_scalar(handle, this)? {
-            Some(Handle::Thread(thread)) =>
-                this.detach_thread(thread, /*allow_terminated_joined*/ true)?,
+        let handle = this.read_handle(handle_op, "CloseHandle")?;
+        let ret = match handle {
+            Handle::Thread(thread) => {
+                this.detach_thread(thread, /*allow_terminated_joined*/ true)?;
+                this.eval_windows("c", "TRUE")
+            }
+            Handle::File(fd_num) =>
+                if let Some(fd) = this.machine.fds.remove(fd_num) {
+                    let err = fd.close_ref(this.machine.communicate(), this)?;
+                    if let Err(e) = err {
+                        this.set_last_error(e)?;
+                        this.eval_windows("c", "FALSE")
+                    } else {
+                        this.eval_windows("c", "TRUE")
+                    }
+                } else {
+                    this.invalid_handle("CloseHandle")?
+                },
             _ => this.invalid_handle("CloseHandle")?,
-        }
+        };
 
-        Ok(())
+        interp_ok(ret)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_invalid_encoding() {
+        // Ensure the invalid handle encodes to `u32::MAX`/`INVALID_HANDLE_VALUE`.
+        assert_eq!(Handle::Invalid.to_packed(), u32::MAX)
     }
 }

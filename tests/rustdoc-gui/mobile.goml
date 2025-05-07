@@ -5,22 +5,7 @@ set-window-size: (400, 600)
 set-font-size: 18
 wait-for: 100 // wait a bit for the resize and the font-size change to be fully taken into account.
 
-// The out-of-band info (source, stable version, collapse) should be below the
-// h1 when the screen gets narrow enough.
-assert-css: (".main-heading", {
-  "display": "flex",
-  "flex-direction": "column"
-})
-
 assert-property: (".mobile-topbar h2", {"offsetHeight": 33})
-
-// Note: We can't use assert-text here because the 'Since' is set by CSS and
-// is therefore not part of the DOM.
-assert-css: (".content .out-of-band .since::before", { "content": "\"Since \"" })
-
-set-window-size: (1000, 1000)
-wait-for: 100 // wait a bit for the resize to be fully taken into account.
-assert-css-false: (".content .out-of-band .since::before", { "content": "\"Since \"" })
 
 // On the settings page, the theme buttons should not line-wrap. Instead, they should
 // all be placed as a group on a line below the setting name "Theme."

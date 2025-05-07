@@ -1,4 +1,4 @@
-//@ compile-flags: --edition=2024 -Zunstable-options
+//@ edition: 2024
 //@ aux-build:expr_2021_implicit.rs
 
 //@ check-pass

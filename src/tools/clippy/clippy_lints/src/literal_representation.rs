@@ -1,15 +1,11 @@
-//! Lints concerned with the grouping of digits with underscores in integral or
-//! floating-point literal expressions.
-
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::SpanRangeExt;
 use rustc_ast::ast::{Expr, ExprKind, LitKind};
 use rustc_ast::token;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use std::iter;
@@ -210,7 +206,7 @@ impl_lint_pass!(LiteralDigitGrouping => [
 impl EarlyLintPass for LiteralDigitGrouping {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Lit(lit) = expr.kind
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             self.check_lit(cx, lit, expr.span);
         }
@@ -228,7 +224,7 @@ impl LiteralDigitGrouping {
     }
 
     fn check_lit(&self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
-        if let Some(src) = snippet_opt(cx, span)
+        if let Some(src) = span.get_source_text(cx)
             && let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
         {
@@ -254,7 +250,7 @@ impl LiteralDigitGrouping {
                     );
                     if !consistent {
                         return Err(WarningType::InconsistentDigitGrouping);
-                    };
+                    }
                 }
 
                 Ok(())
@@ -391,12 +387,11 @@ impl LiteralDigitGrouping {
 
         let first = groups.next().expect("At least one group");
 
-        if radix == Radix::Binary || radix == Radix::Octal || radix == Radix::Hexadecimal {
-            if let Some(second_size) = groups.next() {
-                if !groups.all(|i| i == second_size) || first > second_size {
-                    return Err(WarningType::UnusualByteGroupings);
-                }
-            }
+        if (radix == Radix::Binary || radix == Radix::Octal || radix == Radix::Hexadecimal)
+            && let Some(second_size) = groups.next()
+            && (!groups.all(|i| i == second_size) || first > second_size)
+        {
+            return Err(WarningType::UnusualByteGroupings);
         }
 
         if let Some(second) = groups.next() {
@@ -415,7 +410,6 @@ impl LiteralDigitGrouping {
     }
 }
 
-#[expect(clippy::module_name_repetitions)]
 pub struct DecimalLiteralRepresentation {
     threshold: u64,
 }
@@ -425,7 +419,7 @@ impl_lint_pass!(DecimalLiteralRepresentation => [DECIMAL_LITERAL_REPRESENTATION]
 impl EarlyLintPass for DecimalLiteralRepresentation {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::Lit(lit) = expr.kind
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             self.check_lit(cx, lit, expr.span);
         }
@@ -442,7 +436,7 @@ impl DecimalLiteralRepresentation {
         // Lint integral literals.
         if let Ok(lit_kind) = LitKind::from_token_lit(lit)
             && let LitKind::Int(val, _) = lit_kind
-            && let Some(src) = snippet_opt(cx, span)
+            && let Some(src) = span.get_source_text(cx)
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
             && num_lit.radix == Radix::Decimal
             && val >= u128::from(self.threshold)

@@ -12,7 +12,10 @@ cfg_if::cfg_if! {
     ))] {
         mod futex;
         pub use futex::Condvar;
-    } else if #[cfg(target_family = "unix")] {
+    } else if #[cfg(any(
+        target_family = "unix",
+        target_os = "teeos",
+    ))] {
         mod pthread;
         pub use pthread::Condvar;
     } else if #[cfg(all(target_os = "windows", target_vendor = "win7"))] {
@@ -24,9 +27,6 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "solid_asp3")] {
         mod itron;
         pub use itron::Condvar;
-    } else if #[cfg(target_os = "teeos")] {
-        mod teeos;
-        pub use teeos::Condvar;
     } else if #[cfg(target_os = "xous")] {
         mod xous;
         pub use xous::Condvar;

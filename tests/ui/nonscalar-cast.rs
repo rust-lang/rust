@@ -12,5 +12,5 @@ impl From<Foo> for isize {
 }
 
 fn main() {
-    println!("{}", Foo { x: 1 } as isize); //~ non-primitive cast: `Foo` as `isize` [E0605]
+    println!("{}", Foo { x: 1 } as isize); //~ ERROR non-primitive cast: `Foo` as `isize` [E0605]
 }

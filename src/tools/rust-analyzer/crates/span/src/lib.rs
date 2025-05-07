@@ -1,15 +1,13 @@
 //! File and span related types.
 use std::fmt::{self, Write};
 
-use salsa::InternId;
-
 mod ast_id;
 mod hygiene;
 mod map;
 
 pub use self::{
     ast_id::{AstIdMap, AstIdNode, ErasedFileAstId, FileAstId},
-    hygiene::{SyntaxContextData, SyntaxContextId, Transparency},
+    hygiene::{SyntaxContext, Transparency},
     map::{RealSpanMap, SpanMap},
 };
 
@@ -30,7 +28,7 @@ pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     // is required to be stable for the proc-macro-server
     ErasedFileAstId::from_raw(!0 - 1);
 
-pub type Span = SpanData<SyntaxContextId>;
+pub type Span = SpanData<SyntaxContext>;
 
 impl Span {
     pub fn cover(self, other: Span) -> Span {
@@ -182,6 +180,12 @@ impl EditionedFileId {
     }
 }
 
+#[cfg(not(feature = "salsa"))]
+mod salsa {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub struct Id(u32);
+}
+
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
 /// Rust are macros: each macro can be thought of as producing a "temporary
@@ -196,162 +200,25 @@ impl EditionedFileId {
 /// (`MacroCallId` uses the location interning. You can check details here:
 /// <https://en.wikipedia.org/wiki/String_interning>).
 ///
-/// The two variants are encoded in a single u32 which are differentiated by the MSB.
-/// If the MSB is 0, the value represents a `FileId`, otherwise the remaining 31 bits represent a
-/// `MacroCallId`.
+/// Internally this holds a `salsa::Id`, but we cannot use this definition here
+/// as it references things from base-db and hir-expand.
 // FIXME: Give this a better fitting name
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct HirFileId(u32);
-
-impl From<HirFileId> for u32 {
-    fn from(value: HirFileId) -> Self {
-        value.0
-    }
-}
-
-impl From<MacroCallId> for HirFileId {
-    fn from(value: MacroCallId) -> Self {
-        value.as_file()
-    }
-}
-
-impl fmt::Debug for HirFileId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.repr().fmt(f)
-    }
-}
-
-impl PartialEq<FileId> for HirFileId {
-    fn eq(&self, &other: &FileId) -> bool {
-        self.file_id().map(EditionedFileId::file_id) == Some(other)
-    }
-}
-impl PartialEq<HirFileId> for FileId {
-    fn eq(&self, other: &HirFileId) -> bool {
-        other.file_id().map(EditionedFileId::file_id) == Some(*self)
-    }
-}
-
-impl PartialEq<EditionedFileId> for HirFileId {
-    fn eq(&self, &other: &EditionedFileId) -> bool {
-        *self == HirFileId::from(other)
-    }
-}
-impl PartialEq<HirFileId> for EditionedFileId {
-    fn eq(&self, &other: &HirFileId) -> bool {
-        other == HirFileId::from(*self)
-    }
-}
-impl PartialEq<EditionedFileId> for FileId {
-    fn eq(&self, &other: &EditionedFileId) -> bool {
-        *self == FileId::from(other)
-    }
-}
-impl PartialEq<FileId> for EditionedFileId {
-    fn eq(&self, &other: &FileId) -> bool {
-        other == FileId::from(*self)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroFileId {
-    pub macro_call_id: MacroCallId,
-}
+pub struct HirFileId(pub salsa::Id);
 
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct MacroCallId(salsa::InternId);
+pub struct MacroCallId(pub salsa::Id);
 
-impl salsa::InternKey for MacroCallId {
-    fn from_intern_id(v: salsa::InternId) -> Self {
-        MacroCallId(v)
-    }
-    fn as_intern_id(&self) -> salsa::InternId {
-        self.0
-    }
-}
-
-impl MacroCallId {
-    pub const MAX_ID: u32 = 0x7fff_ffff;
-
-    pub fn as_file(self) -> HirFileId {
-        MacroFileId { macro_call_id: self }.into()
-    }
-
-    pub fn as_macro_file(self) -> MacroFileId {
-        MacroFileId { macro_call_id: self }
-    }
-}
-
+/// Legacy span type, only defined here as it is still used by the proc-macro server.
+/// While rust-analyzer doesn't use this anymore at all, RustRover relies on the legacy type for
+/// proc-macro expansion.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub enum HirFileIdRepr {
-    FileId(EditionedFileId),
-    MacroFile(MacroFileId),
-}
+pub struct TokenId(pub u32);
 
-impl fmt::Debug for HirFileIdRepr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::FileId(arg0) => arg0.fmt(f),
-            Self::MacroFile(arg0) => {
-                f.debug_tuple("MacroFile").field(&arg0.macro_call_id.0).finish()
-            }
-        }
-    }
-}
-
-impl From<EditionedFileId> for HirFileId {
-    #[allow(clippy::let_unit_value)]
-    fn from(id: EditionedFileId) -> Self {
-        assert!(id.as_u32() <= Self::MAX_HIR_FILE_ID, "FileId index {} is too large", id.as_u32());
-        HirFileId(id.as_u32())
-    }
-}
-
-impl From<MacroFileId> for HirFileId {
-    #[allow(clippy::let_unit_value)]
-    fn from(MacroFileId { macro_call_id: MacroCallId(id) }: MacroFileId) -> Self {
-        let id = id.as_u32();
-        assert!(id <= Self::MAX_HIR_FILE_ID, "MacroCallId index {id} is too large");
-        HirFileId(id | Self::MACRO_FILE_TAG_MASK)
-    }
-}
-
-impl HirFileId {
-    const MAX_HIR_FILE_ID: u32 = u32::MAX ^ Self::MACRO_FILE_TAG_MASK;
-    const MACRO_FILE_TAG_MASK: u32 = 1 << 31;
-
-    #[inline]
-    pub fn is_macro(self) -> bool {
-        self.0 & Self::MACRO_FILE_TAG_MASK != 0
-    }
-
-    #[inline]
-    pub fn macro_file(self) -> Option<MacroFileId> {
-        match self.0 & Self::MACRO_FILE_TAG_MASK {
-            0 => None,
-            _ => Some(MacroFileId {
-                macro_call_id: MacroCallId(InternId::from(self.0 ^ Self::MACRO_FILE_TAG_MASK)),
-            }),
-        }
-    }
-
-    #[inline]
-    pub fn file_id(self) -> Option<EditionedFileId> {
-        match self.0 & Self::MACRO_FILE_TAG_MASK {
-            0 => Some(EditionedFileId(self.0)),
-            _ => None,
-        }
-    }
-
-    #[inline]
-    pub fn repr(self) -> HirFileIdRepr {
-        match self.0 & Self::MACRO_FILE_TAG_MASK {
-            0 => HirFileIdRepr::FileId(EditionedFileId(self.0)),
-            _ => HirFileIdRepr::MacroFile(MacroFileId {
-                macro_call_id: MacroCallId(InternId::from(self.0 ^ Self::MACRO_FILE_TAG_MASK)),
-            }),
-        }
+impl std::fmt::Debug for TokenId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }

@@ -133,7 +133,7 @@ export const prepareTestExplorer = (
         }
         if (scope) {
             const recursivelyRemove = (tests: vscode.TestItemCollection) => {
-                for (const [_, test] of tests) {
+                for (const [, test] of tests) {
                     if (!testSet.has(test.id)) {
                         deleteTest(test, tests);
                     } else {

@@ -1,24 +1,23 @@
+use std::sync::Arc;
+
 use rustc_ast::{self as ast, *};
-use rustc_data_structures::sync::Lrc;
-use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::GenericArg;
-use rustc_middle::span_bug;
-use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, DesugaringKind, Span, Symbol, DUMMY_SP};
-use smallvec::{smallvec, SmallVec};
+use rustc_hir::{self as hir, GenericArg};
+use rustc_middle::{span_bug, ty};
+use rustc_session::parse::add_feature_diagnostics;
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
+use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::errors::{
     AsyncBoundNotOnTrait, AsyncBoundOnlyForFnTraits, BadReturnTypeNotation,
-    GenericTypeWithParentheses, UseAngleBrackets,
+    GenericTypeWithParentheses, RTNSuggestion, UseAngleBrackets,
 };
 use super::{
-    GenericArgsCtor, ImplTraitContext, LifetimeRes, LoweringContext, ParamMode,
-    ParenthesizedGenericArgs, ResolverAstLoweringExt,
+    AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
+    LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
 };
-use crate::ImplTraitPosition;
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
@@ -28,12 +27,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         qself: &Option<ptr::P<QSelf>>,
         p: &Path,
         param_mode: ParamMode,
+        allow_return_type_notation: AllowReturnTypeNotation,
         itctx: ImplTraitContext,
         // modifiers of the impl/bound if this is a trait path
         modifiers: Option<ast::TraitBoundModifiers>,
     ) -> hir::QPath<'hir> {
         let qself_position = qself.as_ref().map(|q| q.position);
-        let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
+        let qself = qself
+            .as_ref()
+            // Reject cases like `<impl Trait>::Assoc` and `<impl Trait as Trait>::Assoc`.
+            .map(|q| self.lower_ty(&q.ty, ImplTraitContext::Disallowed(ImplTraitPosition::Path)));
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
@@ -69,9 +72,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bound_modifier_allowed_features = if let Res::Def(DefKind::Trait, async_def_id) = res
             && self.tcx.async_fn_trait_kind_from_def_id(async_def_id).is_some()
         {
-            Some(self.allow_async_fn_traits.clone())
+            Some(Arc::clone(&self.allow_async_fn_traits))
         } else {
             None
+        };
+
+        // Only permit `impl Trait` in the final segment. E.g., we permit `Option<impl Trait>`,
+        // `option::Option<T>::Xyz<impl Trait>` and reject `option::Option<impl Trait>::Xyz`.
+        let itctx = |i| {
+            if i + 1 == p.segments.len() {
+                itctx
+            } else {
+                ImplTraitContext::Disallowed(ImplTraitPosition::Path)
+            }
         };
 
         let path_span_lo = p.span.shrink_to_lo();
@@ -90,10 +103,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => param_mode,
                     };
 
-                    let parenthesized_generic_args = match base_res {
+                    let generic_args_mode = match base_res {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
-                            ParenthesizedGenericArgs::ParenSugar
+                            GenericArgsMode::ParenSugar
                         }
                         // `a::b::Trait(Args)::TraitItem`
                         Res::Def(DefKind::AssocFn, _)
@@ -101,20 +114,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         | Res::Def(DefKind::AssocTy, _)
                             if i + 2 == proj_start =>
                         {
-                            ParenthesizedGenericArgs::ParenSugar
+                            GenericArgsMode::ParenSugar
+                        }
+                        Res::Def(DefKind::AssocFn, _) if i + 1 == proj_start => {
+                            match allow_return_type_notation {
+                                AllowReturnTypeNotation::Yes => GenericArgsMode::ReturnTypeNotation,
+                                AllowReturnTypeNotation::No => GenericArgsMode::Err,
+                            }
                         }
                         // Avoid duplicated errors.
-                        Res::Err => ParenthesizedGenericArgs::ParenSugar,
+                        Res::Err => GenericArgsMode::Silence,
                         // An error
-                        _ => ParenthesizedGenericArgs::Err,
+                        _ => GenericArgsMode::Err,
                     };
 
                     self.lower_path_segment(
                         p.span,
                         segment,
                         param_mode,
-                        parenthesized_generic_args,
-                        itctx,
+                        generic_args_mode,
+                        itctx(i),
                         bound_modifier_allowed_features.clone(),
                     )
                 },
@@ -164,12 +183,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         //   3. `<<std::vec::Vec<T>>::IntoIter>::Item`
         // * final path is `<<<std::vec::Vec<T>>::IntoIter>::Item>::clone`
         for (i, segment) in p.segments.iter().enumerate().skip(proj_start) {
+            // If this is a type-dependent `T::method(..)`.
+            let generic_args_mode = if i + 1 == p.segments.len()
+                && matches!(allow_return_type_notation, AllowReturnTypeNotation::Yes)
+            {
+                GenericArgsMode::ReturnTypeNotation
+            } else {
+                GenericArgsMode::Err
+            };
+
             let hir_segment = self.arena.alloc(self.lower_path_segment(
                 p.span,
                 segment,
                 param_mode,
-                ParenthesizedGenericArgs::Err,
-                itctx,
+                generic_args_mode,
+                itctx(i),
                 None,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
@@ -210,7 +238,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     p.span,
                     segment,
                     param_mode,
-                    ParenthesizedGenericArgs::Err,
+                    GenericArgsMode::Err,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                     None,
                 )
@@ -224,12 +252,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         path_span: Span,
         segment: &PathSegment,
         param_mode: ParamMode,
-        parenthesized_generic_args: ParenthesizedGenericArgs,
+        generic_args_mode: GenericArgsMode,
         itctx: ImplTraitContext,
         // Additional features ungated with a bound modifier like `async`.
         // This is passed down to the implicit associated type binding in
         // parenthesized bounds.
-        bound_modifier_allowed_features: Option<Lrc<[Symbol]>>,
+        bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment);
         let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
@@ -237,14 +265,55 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
-                GenericArgs::Parenthesized(data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::ParenSugar => self
+                GenericArgs::Parenthesized(data) => match generic_args_mode {
+                    GenericArgsMode::ReturnTypeNotation => {
+                        let err = match (&data.inputs[..], &data.output) {
+                            ([_, ..], FnRetTy::Default(_)) => {
+                                BadReturnTypeNotation::Inputs { span: data.inputs_span }
+                            }
+                            ([], FnRetTy::Default(_)) => {
+                                BadReturnTypeNotation::NeedsDots { span: data.inputs_span }
+                            }
+                            // The case `T: Trait<method(..) -> Ret>` is handled in the parser.
+                            (_, FnRetTy::Ty(ty)) => {
+                                let span = data.inputs_span.shrink_to_hi().to(ty.span);
+                                BadReturnTypeNotation::Output {
+                                    span,
+                                    suggestion: RTNSuggestion {
+                                        output: span,
+                                        input: data.inputs_span,
+                                    },
+                                }
+                            }
+                        };
+                        let mut err = self.dcx().create_err(err);
+                        if !self.tcx.features().return_type_notation()
+                            && self.tcx.sess.is_nightly_build()
+                        {
+                            add_feature_diagnostics(
+                                &mut err,
+                                &self.tcx.sess,
+                                sym::return_type_notation,
+                            );
+                        }
+                        err.emit();
+                        (
+                            GenericArgsCtor {
+                                args: Default::default(),
+                                constraints: &[],
+                                parenthesized: hir::GenericArgsParentheses::ReturnTypeNotation,
+                                span: path_span,
+                            },
+                            false,
+                        )
+                    }
+                    GenericArgsMode::ParenSugar | GenericArgsMode::Silence => self
                         .lower_parenthesized_parameter_data(
                             data,
                             itctx,
                             bound_modifier_allowed_features,
                         ),
-                    ParenthesizedGenericArgs::Err => {
+                    GenericArgsMode::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
                         let sub = if !data.inputs.is_empty() {
                             // Start of the span to the 1st character of 1st argument
@@ -280,7 +349,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 },
                 GenericArgs::ParenthesizedElided(span) => {
-                    self.dcx().emit_err(BadReturnTypeNotation::Position { span: *span });
+                    match generic_args_mode {
+                        GenericArgsMode::ReturnTypeNotation | GenericArgsMode::Silence => {
+                            // Ok
+                        }
+                        GenericArgsMode::ParenSugar | GenericArgsMode::Err => {
+                            self.dcx().emit_err(BadReturnTypeNotation::Position { span: *span });
+                        }
+                    }
                     (
                         GenericArgsCtor {
                             args: Default::default(),
@@ -356,27 +432,31 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Note: these spans are used for diagnostics when they can't be inferred.
         // See rustc_resolve::late::lifetimes::LifetimeContext::add_missing_lifetime_specifiers_label
-        let elided_lifetime_span = if generic_args.span.is_empty() {
-            // If there are no brackets, use the identifier span.
+        let (elided_lifetime_span, angle_brackets) = if generic_args.span.is_empty() {
+            // No brackets, e.g. `Path`: use an empty span just past the end of the identifier.
             // HACK: we use find_ancestor_inside to properly suggest elided spans in paths
             // originating from macros, since the segment's span might be from a macro arg.
-            segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span)
-        } else if generic_args.is_empty() {
-            // If there are brackets, but not generic arguments, then use the opening bracket
-            generic_args.span.with_hi(generic_args.span.lo() + BytePos(1))
+            (
+                segment_ident_span.find_ancestor_inside(path_span).unwrap_or(path_span),
+                hir::AngleBrackets::Missing,
+            )
         } else {
-            // Else use an empty span right after the opening bracket.
-            generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo()
+            // Brackets, e.g. `Path<>` or `Path<T>`: use an empty span just after the `<`.
+            (
+                generic_args.span.with_lo(generic_args.span.lo() + BytePos(1)).shrink_to_lo(),
+                if generic_args.is_empty() {
+                    hir::AngleBrackets::Empty
+                } else {
+                    hir::AngleBrackets::Full
+                },
+            )
         };
 
         generic_args.args.insert_many(
             0,
-            (start.as_u32()..end.as_u32()).map(|i| {
-                let id = NodeId::from_u32(i);
-                let l = self.lower_lifetime(&Lifetime {
-                    id,
-                    ident: Ident::new(kw::Empty, elided_lifetime_span),
-                });
+            (start..end).map(|id| {
+                let l =
+                    self.lower_lifetime_hidden_in_path(id, elided_lifetime_span, angle_brackets);
                 GenericArg::Lifetime(l)
             }),
         );
@@ -421,7 +501,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         data: &ParenthesizedArgs,
         itctx: ImplTraitContext,
-        bound_modifier_allowed_features: Option<Lrc<[Symbol]>>,
+        bound_modifier_allowed_features: Option<Arc<[Symbol]>>,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has
@@ -439,7 +519,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // //      disallowed --^^^^^^^^^^        allowed --^^^^^^^^^^
             // ```
             FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::OpaqueTy { .. }) => {
-                if self.tcx.features().impl_trait_in_fn_trait_return {
+                if self.tcx.features().impl_trait_in_fn_trait_return() {
                     self.lower_ty(ty, itctx)
                 } else {
                     self.lower_ty(
@@ -456,7 +536,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             FnRetTy::Default(_) => self.arena.alloc(self.ty_tup(*span, &[])),
         };
-        let args = smallvec![GenericArg::Type(self.arena.alloc(self.ty_tup(*inputs_span, inputs)))];
+        let args = smallvec![GenericArg::Type(
+            self.arena.alloc(self.ty_tup(*inputs_span, inputs)).try_as_ambig_ty().unwrap()
+        )];
 
         // If we have a bound like `async Fn() -> T`, make sure that we mark the
         // `Output = T` associated type bound with the right feature gates.
@@ -515,14 +597,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// lowering of `async Fn()` bounds to desugar to another trait like `LendingFn`.
     fn map_trait_to_async_trait(&self, def_id: DefId) -> Option<DefId> {
         let lang_items = self.tcx.lang_items();
-        if Some(def_id) == lang_items.fn_trait() {
-            lang_items.async_fn_trait()
-        } else if Some(def_id) == lang_items.fn_mut_trait() {
-            lang_items.async_fn_mut_trait()
-        } else if Some(def_id) == lang_items.fn_once_trait() {
-            lang_items.async_fn_once_trait()
-        } else {
-            None
+        match self.tcx.fn_trait_kind_from_def_id(def_id)? {
+            ty::ClosureKind::Fn => lang_items.async_fn_trait(),
+            ty::ClosureKind::FnMut => lang_items.async_fn_mut_trait(),
+            ty::ClosureKind::FnOnce => lang_items.async_fn_once_trait(),
         }
     }
 }

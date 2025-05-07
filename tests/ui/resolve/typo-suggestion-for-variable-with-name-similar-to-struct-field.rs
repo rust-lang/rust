@@ -4,15 +4,15 @@ struct A {
 
 impl A {
     fn new(cofig: String) -> Self {
-        Self { config } //~ Error cannot find value `config` in this scope
+        Self { config } //~ ERROR cannot find value `config` in this scope
     }
 
     fn do_something(cofig: String) {
-        println!("{config}"); //~ Error cannot find value `config` in this scope
+        println!("{config}"); //~ ERROR cannot find value `config` in this scope
     }
 
     fn self_is_available(self, cofig: String) {
-        println!("{config}"); //~ Error cannot find value `config` in this scope
+        println!("{config}"); //~ ERROR cannot find value `config` in this scope
     }
 }
 

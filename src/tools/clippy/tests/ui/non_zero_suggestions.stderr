@@ -1,0 +1,41 @@
+error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+  --> tests/ui/non_zero_suggestions.rs:9:18
+   |
+LL |     let r1 = x / u64::from(y.get());
+   |                  ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`
+   |
+   = note: `-D clippy::non-zero-suggestions` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::non_zero_suggestions)]`
+
+error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+  --> tests/ui/non_zero_suggestions.rs:12:18
+   |
+LL |     let r2 = x % u64::from(y.get());
+   |                  ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`
+
+error: consider using `NonZeroU32::from()` for more efficient and type-safe conversion
+  --> tests/ui/non_zero_suggestions.rs:18:18
+   |
+LL |     let r3 = a / u32::from(b.get());
+   |                  ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU32::from(b)`
+
+error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+  --> tests/ui/non_zero_suggestions.rs:21:13
+   |
+LL |     let x = u64::from(NonZeroU32::new(5).unwrap().get());
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(NonZeroU32::new(5).unwrap())`
+
+error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+  --> tests/ui/non_zero_suggestions.rs:52:9
+   |
+LL |     x / u64::from(y.get())
+   |         ^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(y)`
+
+error: consider using `NonZeroU64::from()` for more efficient and type-safe conversion
+  --> tests/ui/non_zero_suggestions.rs:62:22
+   |
+LL |         self.value / u64::from(divisor.get())
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `NonZeroU64::from(divisor)`
+
+error: aborting due to 6 previous errors
+

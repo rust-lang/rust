@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -101,10 +101,10 @@ fn is_unit_type(ty: Ty<'_>) -> bool {
 fn is_unit_function(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     let ty = cx.typeck_results().expr_ty(expr);
 
-    if let ty::FnDef(id, _) = *ty.kind() {
-        if let Some(fn_type) = cx.tcx.fn_sig(id).instantiate_identity().no_bound_vars() {
-            return is_unit_type(fn_type.output());
-        }
+    if let ty::FnDef(id, _) = *ty.kind()
+        && let Some(fn_type) = cx.tcx.fn_sig(id).instantiate_identity().no_bound_vars()
+    {
+        return is_unit_type(fn_type.output());
     }
     false
 }
@@ -163,7 +163,7 @@ fn unit_closure<'tcx>(
     expr: &hir::Expr<'_>,
 ) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = expr.kind
-        && let body = cx.tcx.hir().body(body)
+        && let body = cx.tcx.hir_body(body)
         && let body_expr = &body.value
         && fn_decl.inputs.len() == 1
         && is_unit_expression(cx, body_expr)
@@ -251,7 +251,7 @@ fn lint_map_unit_fn(
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for MapUnit {
+impl LateLintPass<'_> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &hir::Stmt<'_>) {
         if let hir::StmtKind::Semi(expr) = stmt.kind
             && !stmt.span.from_expansion()

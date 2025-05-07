@@ -1,11 +1,11 @@
-//@ignore-target-windows: File handling is not implemented yet
+//@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
 
 #![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
 use std::ffi::{CStr, CString, OsString};
-use std::fs::{canonicalize, remove_file, File};
+use std::fs::{File, canonicalize, remove_file};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
@@ -38,6 +38,8 @@ fn main() {
     test_isatty();
     test_read_and_uninit();
     test_nofollow_not_symlink();
+    #[cfg(target_os = "macos")]
+    test_ioctl();
 }
 
 fn test_file_open_unix_allow_two_args() {
@@ -169,7 +171,7 @@ fn test_ftruncate<T: From<i32>>(
 
 #[cfg(target_os = "linux")]
 fn test_o_tmpfile_flag() {
-    use std::fs::{create_dir, OpenOptions};
+    use std::fs::{OpenOptions, create_dir};
     use std::os::unix::fs::OpenOptionsExt;
     let dir_path = utils::prepare_dir("miri_test_fs_dir");
     create_dir(&dir_path).unwrap();
@@ -230,8 +232,7 @@ fn test_posix_mkstemp() {
 
 /// Test allocating variant of `realpath`.
 fn test_posix_realpath_alloc() {
-    use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::ffi::OsStringExt;
+    use std::os::unix::ffi::{OsStrExt, OsStringExt};
 
     let buf;
     let path = utils::tmp().join("miri_test_libc_posix_realpath_alloc");
@@ -431,4 +432,22 @@ fn test_nofollow_not_symlink() {
     let cpath = CString::new(path.as_os_str().as_bytes()).unwrap();
     let ret = unsafe { libc::open(cpath.as_ptr(), libc::O_NOFOLLOW | libc::O_CLOEXEC) };
     assert!(ret >= 0);
+}
+
+#[cfg(target_os = "macos")]
+fn test_ioctl() {
+    let path = utils::prepare_with_content("miri_test_libc_ioctl.txt", &[]);
+
+    let mut name = path.into_os_string();
+    name.push("\0");
+    let name_ptr = name.as_bytes().as_ptr().cast::<libc::c_char>();
+    unsafe {
+        // 100 surely is an invalid FD.
+        assert_eq!(libc::ioctl(100, libc::FIOCLEX), -1);
+        let errno = std::io::Error::last_os_error().raw_os_error().unwrap();
+        assert_eq!(errno, libc::EBADF);
+
+        let fd = libc::open(name_ptr, libc::O_RDONLY);
+        assert_eq!(libc::ioctl(fd, libc::FIOCLEX), 0);
+    }
 }

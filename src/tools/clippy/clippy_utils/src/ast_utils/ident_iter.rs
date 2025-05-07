@@ -1,5 +1,5 @@
 use core::iter::FusedIterator;
-use rustc_ast::visit::{walk_attribute, walk_expr, Visitor};
+use rustc_ast::visit::{Visitor, walk_attribute, walk_expr};
 use rustc_ast::{Attribute, Expr};
 use rustc_span::symbol::Ident;
 
@@ -39,7 +39,7 @@ impl From<&Attribute> for IdentIter {
 struct IdentCollector(Vec<Ident>);
 
 impl Visitor<'_> for IdentCollector {
-    fn visit_ident(&mut self, ident: Ident) {
-        self.0.push(ident);
+    fn visit_ident(&mut self, ident: &Ident) {
+        self.0.push(*ident);
     }
 }

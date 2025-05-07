@@ -1,9 +1,9 @@
 //! Name resolution for lifetimes and late-bound type and const variables: type declarations.
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir::def_id::DefId;
-use rustc_hir::{ItemLocalId, OwnerId};
+use rustc_hir::ItemLocalId;
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
 
 use crate::ty;
@@ -11,9 +11,9 @@ use crate::ty;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum ResolvedArg {
     StaticLifetime,
-    EarlyBound(/* decl */ DefId),
-    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* decl */ DefId),
-    Free(DefId, /* lifetime decl */ DefId),
+    EarlyBound(/* decl */ LocalDefId),
+    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* decl */ LocalDefId),
+    Free(LocalDefId, /* lifetime decl */ LocalDefId),
     Error(ErrorGuaranteed),
 }
 
@@ -45,13 +45,22 @@ pub enum ObjectLifetimeDefault {
     Param(DefId),
 }
 
-/// Maps the id of each lifetime reference to the lifetime decl
+/// Maps the id of each bound variable reference to the variable decl
 /// that it corresponds to.
-#[derive(Default, HashStable, Debug)]
+#[derive(Debug, Default, HashStable)]
 pub struct ResolveBoundVars {
-    /// Maps from every use of a named (not anonymous) lifetime to a
-    /// `Region` describing how that region is bound
-    pub defs: FxIndexMap<OwnerId, FxIndexMap<ItemLocalId, ResolvedArg>>,
+    // Maps from every use of a named (not anonymous) bound var to a
+    // `ResolvedArg` describing how that variable is bound.
+    pub defs: SortedMap<ItemLocalId, ResolvedArg>,
 
-    pub late_bound_vars: FxIndexMap<OwnerId, FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
+    // Maps relevant hir items to the bound vars on them. These include:
+    // - function defs
+    // - function pointers
+    // - closures
+    // - trait refs
+    // - bound types (like `T` in `for<'a> T<'a>: Foo`)
+    pub late_bound_vars: SortedMap<ItemLocalId, Vec<ty::BoundVariableKind>>,
+
+    // List captured variables for each opaque type.
+    pub opaque_captured_lifetimes: LocalDefIdMap<Vec<(ResolvedArg, LocalDefId)>>,
 }

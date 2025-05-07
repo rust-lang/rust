@@ -11,13 +11,16 @@
 extern crate proc_macros;
 
 pub(self) fn a() {}
+//~^ needless_pub_self
 pub(in self) fn b() {}
+//~^ needless_pub_self
 
 pub fn c() {}
 mod a {
     pub(in super) fn d() {}
     pub(super) fn e() {}
     pub(self) fn f() {}
+    //~^ needless_pub_self
 }
 
 external! {

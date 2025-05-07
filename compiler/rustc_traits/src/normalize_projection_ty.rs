@@ -1,5 +1,6 @@
-use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::canonical::{Canonical, QueryResponse};
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -12,7 +13,7 @@ use tracing::debug;
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
         normalize_canonicalized_projection_ty,
-        normalize_canonicalized_weak_ty,
+        normalize_canonicalized_free_alias,
         normalize_canonicalized_inherent_projection_ty,
         ..*p
     };
@@ -30,9 +31,15 @@ fn normalize_canonicalized_projection_ty<'tcx>(
             debug_assert!(!ocx.infcx.next_trait_solver());
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
-            let mut obligations = vec![];
-            let answer =
-                traits::normalize_projection_ty(selcx, param_env, goal, cause, 0, &mut obligations);
+            let mut obligations = PredicateObligations::new();
+            let answer = traits::normalize_projection_term(
+                selcx,
+                param_env,
+                goal.into(),
+                cause,
+                0,
+                &mut obligations,
+            );
             ocx.register_obligations(obligations);
             // #112047: With projections and opaques, we are able to create opaques that
             // are recursive (given some generic parameters of the opaque's type variables).
@@ -62,11 +69,11 @@ fn normalize_canonicalized_projection_ty<'tcx>(
     )
 }
 
-fn normalize_canonicalized_weak_ty<'tcx>(
+fn normalize_canonicalized_free_alias<'tcx>(
     tcx: TyCtxt<'tcx>,
     goal: CanonicalAliasGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
-    debug!("normalize_canonicalized_weak_ty(goal={:#?})", goal);
+    debug!("normalize_canonicalized_free_alias(goal={:#?})", goal);
 
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
@@ -99,18 +106,18 @@ fn normalize_canonicalized_inherent_projection_ty<'tcx>(
         |ocx, ParamEnvAnd { param_env, value: goal }| {
             let selcx = &mut SelectionContext::new(ocx.infcx);
             let cause = ObligationCause::dummy();
-            let mut obligations = vec![];
+            let mut obligations = PredicateObligations::new();
             let answer = traits::normalize_inherent_projection(
                 selcx,
                 param_env,
-                goal,
+                goal.into(),
                 cause,
                 0,
                 &mut obligations,
             );
             ocx.register_obligations(obligations);
 
-            Ok(NormalizationResult { normalized_ty: answer })
+            Ok(NormalizationResult { normalized_ty: answer.expect_type() })
         },
     )
 }

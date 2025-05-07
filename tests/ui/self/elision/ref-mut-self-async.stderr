@@ -10,8 +10,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn ref_self<'a>(&'a mut self, f: &'a u32) -> &u32 {
-   |                      ++++  ++               ++
+LL |     async fn ref_self<'a>(&mut self, f: &'a u32) -> &'a u32 {
+   |                      ++++                ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:20:9
@@ -25,8 +25,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn ref_Self<'a>(self: &'a mut Self, f: &'a u32) -> &u32 {
-   |                      ++++        ++               ++
+LL |     async fn ref_Self<'a>(self: &mut Self, f: &'a u32) -> &'a u32 {
+   |                      ++++                      ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:25:9
@@ -40,8 +40,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_ref_Self<'a>(self: Box<&'a mut Self>, f: &'a u32) -> &u32 {
-   |                          ++++            ++                ++
+LL |     async fn box_ref_Self<'a>(self: Box<&mut Self>, f: &'a u32) -> &'a u32 {
+   |                          ++++                           ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:30:9
@@ -55,8 +55,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn pin_ref_Self<'a>(self: Pin<&'a mut Self>, f: &'a u32) -> &u32 {
-   |                          ++++            ++                ++
+LL |     async fn pin_ref_Self<'a>(self: Pin<&mut Self>, f: &'a u32) -> &'a u32 {
+   |                          ++++                           ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:35:9
@@ -70,8 +70,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_box_ref_Self<'a>(self: Box<Box<&'a mut Self>>, f: &'a u32) -> &u32 {
-   |                              ++++                ++                 ++
+LL |     async fn box_box_ref_Self<'a>(self: Box<Box<&mut Self>>, f: &'a u32) -> &'a u32 {
+   |                              ++++                                ++          ++
 
 error: lifetime may not live long enough
   --> $DIR/ref-mut-self-async.rs:40:9
@@ -85,8 +85,8 @@ LL |         f
    |
 help: consider introducing a named lifetime parameter and update trait if needed
    |
-LL |     async fn box_pin_ref_Self<'a>(self: Box<Pin<&'a mut Self>>, f: &'a u32) -> &u32 {
-   |                              ++++                ++                 ++
+LL |     async fn box_pin_ref_Self<'a>(self: Box<Pin<&mut Self>>, f: &'a u32) -> &'a u32 {
+   |                              ++++                                ++          ++
 
 error: aborting due to 6 previous errors
 

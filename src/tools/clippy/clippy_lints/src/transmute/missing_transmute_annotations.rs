@@ -2,13 +2,12 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use rustc_errors::Applicability;
 use rustc_hir::{GenericArg, HirId, LetStmt, Node, Path, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
 
 fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId) -> Option<LetStmt<'tcx>> {
-    let mut parent_iter = cx.tcx.hir().parent_iter(expr_hir_id);
+    let mut parent_iter = cx.tcx.hir_parent_iter(expr_hir_id);
     if let Some((_, node)) = parent_iter.next() {
         match node {
             Node::LetStmt(local) => Some(*local),
@@ -29,8 +28,8 @@ fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId)
 }
 
 fn is_function_block(cx: &LateContext<'_>, expr_hir_id: HirId) -> bool {
-    let def_id = cx.tcx.hir().enclosing_body_owner(expr_hir_id);
-    if let Some(body) = cx.tcx.hir().maybe_body_owned_by(def_id) {
+    let def_id = cx.tcx.hir_enclosing_body_owner(expr_hir_id);
+    if let Some(body) = cx.tcx.hir_maybe_body_owned_by(def_id) {
         return body.value.peel_blocks().hir_id == expr_hir_id;
     }
     false
@@ -44,17 +43,13 @@ pub(super) fn check<'tcx>(
     expr_hir_id: HirId,
 ) -> bool {
     let last = path.segments.last().unwrap();
-    if in_external_macro(cx.tcx.sess, last.ident.span) {
+    if last.ident.span.in_external_macro(cx.tcx.sess.source_map()) {
         // If it comes from a non-local macro, we ignore it.
         return false;
     }
     let args = last.args;
     let missing_generic = match args {
-        Some(args) if !args.args.is_empty() => args.args.iter().any(|arg| match arg {
-            GenericArg::Infer(_) => true,
-            GenericArg::Type(ty) => matches!(ty.kind, TyKind::Infer),
-            _ => false,
-        }),
+        Some(args) if !args.args.is_empty() => args.args.iter().any(|arg| matches!(arg, GenericArg::Infer(_))),
         _ => true,
     };
     if !missing_generic {
@@ -65,7 +60,7 @@ pub(super) fn check<'tcx>(
         // ... which does have type annotations.
         if let Some(ty) = local.ty
             // If this is a `let x: _ =`, we should lint.
-            && !matches!(ty.kind, TyKind::Infer)
+            && !matches!(ty.kind, TyKind::Infer(()))
         {
             return false;
         }

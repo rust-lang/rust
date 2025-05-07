@@ -1,4 +1,4 @@
-//@ aux-build:attributes-included.rs
+//@ proc-macro: attributes-included.rs
 //@ check-pass
 
 #![warn(unused)]

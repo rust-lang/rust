@@ -9,13 +9,13 @@
 use std::cmp::Ordering;
 
 use rustc_ast::{ast, attr};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{Span, symbol::sym};
 
 use crate::config::{Config, GroupImportsTactic};
-use crate::imports::{normalize_use_trees_with_granularity, UseSegmentKind, UseTree};
+use crate::imports::{UseSegmentKind, UseTree, normalize_use_trees_with_granularity};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
-use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
-use crate::rewrite::RewriteContext;
+use crate::lists::{ListFormatting, ListItem, itemize_list, write_list};
+use crate::rewrite::{RewriteContext, RewriteErrorExt};
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;
 use crate::spanned::Spanned;
@@ -25,14 +25,17 @@ use crate::visitor::FmtVisitor;
 /// Choose the ordering between the given two items.
 fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
     match (&a.kind, &b.kind) {
-        (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
-            a.ident.as_str().cmp(b.ident.as_str())
+        (&ast::ItemKind::Mod(_, a_ident, _), &ast::ItemKind::Mod(_, b_ident, _)) => {
+            a_ident.as_str().cmp(b_ident.as_str())
         }
-        (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
+        (
+            &ast::ItemKind::ExternCrate(ref a_name, a_ident),
+            &ast::ItemKind::ExternCrate(ref b_name, b_ident),
+        ) => {
             // `extern crate foo as bar;`
             //               ^^^ Comparing this.
-            let a_orig_name = a_name.unwrap_or(a.ident.name);
-            let b_orig_name = b_name.unwrap_or(b.ident.name);
+            let a_orig_name = a_name.unwrap_or(a_ident.name);
+            let b_orig_name = b_name.unwrap_or(b_ident.name);
             let result = a_orig_name.as_str().cmp(b_orig_name.as_str());
             if result != Ordering::Equal {
                 return result;
@@ -44,7 +47,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
                 (Some(..), None) => Ordering::Greater,
                 (None, Some(..)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
-                (Some(..), Some(..)) => a.ident.as_str().cmp(b.ident.as_str()),
+                (Some(..), Some(..)) => a_ident.as_str().cmp(b_ident.as_str()),
             }
         }
         _ => unreachable!(),
@@ -59,7 +62,7 @@ fn wrap_reorderable_items(
     let fmt = ListFormatting::new(shape, context.config)
         .separator("")
         .align_comments(false);
-    write_list(list_items, &fmt)
+    write_list(list_items, &fmt).ok()
 }
 
 fn rewrite_reorderable_item(
@@ -69,7 +72,7 @@ fn rewrite_reorderable_item(
 ) -> Option<String> {
     match item.kind {
         ast::ItemKind::ExternCrate(..) => rewrite_extern_crate(context, item, shape),
-        ast::ItemKind::Mod(..) => rewrite_mod(context, item, shape),
+        ast::ItemKind::Mod(_, ident, _) => rewrite_mod(context, item, ident, shape),
         _ => None,
     }
 }
@@ -99,7 +102,7 @@ fn rewrite_reorderable_or_regroupable_items(
                 ";",
                 |item| item.span().lo(),
                 |item| item.span().hi(),
-                |_item| Some("".to_owned()),
+                |_item| Ok("".to_owned()),
                 span.lo(),
                 span.hi(),
                 false,
@@ -131,9 +134,16 @@ fn rewrite_reorderable_or_regroupable_items(
                 .map(|use_group| {
                     let item_vec: Vec<_> = use_group
                         .into_iter()
-                        .map(|use_tree| ListItem {
-                            item: use_tree.rewrite_top_level(context, nested_shape),
-                            ..use_tree.list_item.unwrap_or_else(ListItem::empty)
+                        .map(|use_tree| {
+                            let item = use_tree.rewrite_top_level(context, nested_shape);
+                            if let Some(list_item) = use_tree.list_item {
+                                ListItem {
+                                    item: item,
+                                    ..list_item
+                                }
+                            } else {
+                                ListItem::from_item(item)
+                            }
                         })
                         .collect();
                     wrap_reorderable_items(context, &item_vec, nested_shape)
@@ -151,7 +161,7 @@ fn rewrite_reorderable_or_regroupable_items(
                 ";",
                 |item| item.span().lo(),
                 |item| item.span().hi(),
-                |item| rewrite_reorderable_item(context, item, shape),
+                |item| rewrite_reorderable_item(context, item, shape).unknown_error(),
                 span.lo(),
                 span.hi(),
                 false,

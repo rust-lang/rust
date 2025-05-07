@@ -4,7 +4,7 @@ set-window-size: (1000, 1000) // Try desktop size first.
 wait-for: "#help"
 assert-css: ("#help", {"display": "block"})
 assert-css: ("#help dd", {"font-size": "16px"})
-click: "#help-button > a"
+assert-false: "#help-button > a"
 assert-css: ("#help", {"display": "block"})
 compare-elements-property: (".sub", "#help", ["offsetWidth"])
 compare-elements-position: (".sub", "#help", ["x"])
@@ -50,7 +50,8 @@ call-function: ("check-colors", {
 })
 
 // This test ensures that opening the help popover without switching pages works.
-go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
 set-window-size: (1000, 1000) // Only supported on desktop.
 assert-false: "#help"
 click: "#help-button > a"
@@ -62,7 +63,8 @@ compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
 compare-elements-position-false: (".sub", "#help", ["x"])
 
 // This test ensures that the "the rustdoc book" anchor link within the help popover works.
-go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html?search=a"
+wait-for: "#search-tabs" // Waiting for the search.js to load.
 set-window-size: (1000, 1000) // Popover only appears when the screen width is >700px.
 assert-false: "#help"
 click: "#help-button > a"

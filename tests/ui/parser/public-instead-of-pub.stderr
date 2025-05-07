@@ -6,8 +6,9 @@ LL | public struct X;
    |
 help: write `pub` instead of `public` to make the item public
    |
-LL | pub struct X;
-   | ~~~
+LL - public struct X;
+LL + pub struct X;
+   |
 
 error: aborting due to 1 previous error
 

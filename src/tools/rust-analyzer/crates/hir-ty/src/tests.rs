@@ -1,3 +1,4 @@
+mod closure_captures;
 mod coercion;
 mod diagnostics;
 mod display_source_code;
@@ -12,37 +13,38 @@ mod traits;
 mod type_alias_impl_traits;
 
 use std::env;
+use std::sync::LazyLock;
 
-use base_db::SourceDatabaseFileInputExt as _;
+use base_db::{Crate, SourceDatabase};
 use expect_test::Expect;
 use hir_def::{
-    body::{Body, BodySourceMap, SyntheticSyntax},
+    AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId, SyntheticSyntax,
     db::DefDatabase,
+    expr_store::{Body, BodySourceMap},
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
     src::HasSource,
-    AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::{db::ExpandDatabase, FileRange, InFile};
-use once_cell::race::OnceBool;
+use hir_expand::{FileRange, InFile, db::ExpandDatabase};
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use stdx::format_to;
 use syntax::{
-    ast::{self, AstNode, HasName},
     SyntaxNode,
+    ast::{self, AstNode, HasName},
 };
 use test_fixture::WithFixture;
-use tracing_subscriber::{layer::SubscriberExt, Registry};
+use tracing_subscriber::{Registry, layer::SubscriberExt};
 use tracing_tree::HierarchicalLayer;
 use triomphe::Arc;
 
 use crate::{
+    InferenceResult, Ty,
     db::HirDatabase,
-    display::HirDisplay,
+    display::{DisplayTarget, HirDisplay},
     infer::{Adjustment, TypeMismatch},
     test_db::TestDB,
-    InferenceResult, Ty,
 };
 
 // These tests compare the inference results for all expressions in a file
@@ -50,8 +52,8 @@ use crate::{
 // `env UPDATE_EXPECT=1 cargo test -p hir_ty` to update the snapshots.
 
 fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
-    static ENABLE: OnceBool = OnceBool::new();
-    if !ENABLE.get_or_init(|| env::var("CHALK_DEBUG").is_ok()) {
+    static ENABLE: LazyLock<bool> = LazyLock::new(|| env::var("CHALK_DEBUG").is_ok());
+    if !*ENABLE {
         return None;
     }
 
@@ -67,34 +69,39 @@ fn setup_tracing() -> Option<tracing::subscriber::DefaultGuard> {
 }
 
 #[track_caller]
-fn check_types(ra_fixture: &str) {
+fn check_types(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, true, false)
 }
 
 #[track_caller]
-fn check_types_source_code(ra_fixture: &str) {
+fn check_types_source_code(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, true, true)
 }
 
 #[track_caller]
-fn check_no_mismatches(ra_fixture: &str) {
+fn check_no_mismatches(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, true, false, false)
 }
 
 #[track_caller]
-fn check(ra_fixture: &str) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_impl(ra_fixture, false, false, false)
 }
 
 #[track_caller]
-fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_source: bool) {
+fn check_impl(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    allow_none: bool,
+    only_types: bool,
+    display_source: bool,
+) {
     let _tracing = setup_tracing();
     let (db, files) = TestDB::with_many_files(ra_fixture);
 
     let mut had_annotations = false;
     let mut mismatches = FxHashMap::default();
     let mut types = FxHashMap::default();
-    let mut adjustments = FxHashMap::<_, Vec<_>>::default();
+    let mut adjustments = FxHashMap::default();
     for (file_id, annotations) in db.extract_annotations() {
         for (range, expected) in annotations {
             let file_range = FileRange { file_id, range };
@@ -107,33 +114,36 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             } else if expected.starts_with("adjustments:") {
                 adjustments.insert(
                     file_range,
-                    expected
-                        .trim_start_matches("adjustments:")
-                        .trim()
-                        .split(',')
-                        .map(|it| it.trim().to_owned())
-                        .filter(|it| !it.is_empty())
-                        .collect(),
+                    expected.trim_start_matches("adjustments:").trim().to_owned(),
                 );
             } else {
-                panic!("unexpected annotation: {expected}");
+                panic!("unexpected annotation: {expected} @ {range:?}");
             }
             had_annotations = true;
         }
     }
     assert!(had_annotations || allow_none, "no `//^` annotations found");
 
-    let mut defs: Vec<DefWithBodyId> = Vec::new();
+    let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
     for file_id in files {
-        let module = db.module_for_file_opt(file_id);
+        let module = db.module_for_file_opt(file_id.file_id(&db));
         let module = match module {
             Some(m) => m,
             None => continue,
         };
         let def_map = module.def_map(&db);
-        visit_module(&db, &def_map, module.local_id, &mut |it| defs.push(it));
+        visit_module(&db, &def_map, module.local_id, &mut |it| {
+            let def = match it {
+                ModuleDefId::FunctionId(it) => it.into(),
+                ModuleDefId::EnumVariantId(it) => it.into(),
+                ModuleDefId::ConstId(it) => it.into(),
+                ModuleDefId::StaticId(it) => it.into(),
+                _ => return,
+            };
+            defs.push((def, module.krate()))
+        });
     }
-    defs.sort_by_key(|def| match def {
+    defs.sort_by_key(|(def, _)| match def {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
@@ -150,10 +160,10 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
         }
-        DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
     });
     let mut unexpected_type_mismatches = String::new();
-    for def in defs {
+    for (def, krate) in defs {
+        let display_target = DisplayTarget::from_crate(&db, krate);
         let (body, body_source_map) = db.body_with_source_map(def);
         let inference_result = db.infer(def);
 
@@ -170,7 +180,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
-                    ty.display_test(&db).to_string()
+                    ty.display_test(&db, display_target).to_string()
                 };
                 assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
@@ -186,7 +196,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
-                    ty.display_test(&db).to_string()
+                    ty.display_test(&db, display_target).to_string()
                 };
                 assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
@@ -200,7 +210,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                     adjustments
                         .iter()
                         .map(|Adjustment { kind, .. }| format!("{kind:?}"))
-                        .collect::<Vec<_>>()
+                        .join(", ")
                 );
             }
         }
@@ -215,8 +225,8 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
             let range = node.as_ref().original_file_range_rooted(&db);
             let actual = format!(
                 "expected {}, got {}",
-                mismatch.expected.display_test(&db),
-                mismatch.actual.display_test(&db)
+                mismatch.expected.display_test(&db, display_target),
+                mismatch.actual.display_test(&db, display_target)
             );
             match mismatches.remove(&range) {
                 Some(annotation) => assert_eq!(actual, annotation),
@@ -278,7 +288,7 @@ fn pat_node(
     })
 }
 
-fn infer(ra_fixture: &str) -> String {
+fn infer(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
     infer_with_mismatches(ra_fixture, false)
 }
 
@@ -290,7 +300,9 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
     let mut infer_def = |inference_result: Arc<InferenceResult>,
                          body: Arc<Body>,
-                         body_source_map: Arc<BodySourceMap>| {
+                         body_source_map: Arc<BodySourceMap>,
+                         krate: Crate| {
+        let display_target = DisplayTarget::from_crate(&db, krate);
         let mut types: Vec<(InFile<SyntaxNode>, &Ty)> = Vec::new();
         let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
 
@@ -352,7 +364,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 macro_prefix,
                 range,
                 ellipsize(text, 15),
-                ty.display_test(&db)
+                ty.display_test(&db, display_target)
             );
         }
         if include_mismatches {
@@ -368,19 +380,28 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                     "{}{:?}: expected {}, got {}\n",
                     macro_prefix,
                     range,
-                    mismatch.expected.display_test(&db),
-                    mismatch.actual.display_test(&db),
+                    mismatch.expected.display_test(&db, display_target),
+                    mismatch.actual.display_test(&db, display_target),
                 );
             }
         }
     };
 
-    let module = db.module_for_file(file_id);
+    let module = db.module_for_file(file_id.file_id(&db));
     let def_map = module.def_map(&db);
 
-    let mut defs: Vec<DefWithBodyId> = Vec::new();
-    visit_module(&db, &def_map, module.local_id, &mut |it| defs.push(it));
-    defs.sort_by_key(|def| match def {
+    let mut defs: Vec<(DefWithBodyId, Crate)> = Vec::new();
+    visit_module(&db, &def_map, module.local_id, &mut |it| {
+        let def = match it {
+            ModuleDefId::FunctionId(it) => it.into(),
+            ModuleDefId::EnumVariantId(it) => it.into(),
+            ModuleDefId::ConstId(it) => it.into(),
+            ModuleDefId::StaticId(it) => it.into(),
+            _ => return,
+        };
+        defs.push((def, module.krate()))
+    });
+    defs.sort_by_key(|(def, _)| match def {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
@@ -397,42 +418,41 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
         }
-        DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
     });
-    for def in defs {
+    for (def, krate) in defs {
         let (body, source_map) = db.body_with_source_map(def);
         let infer = db.infer(def);
-        infer_def(infer, body, source_map);
+        infer_def(infer, body, source_map, krate);
     }
 
     buf.truncate(buf.trim_end().len());
     buf
 }
 
-fn visit_module(
+pub(crate) fn visit_module(
     db: &TestDB,
     crate_def_map: &DefMap,
     module_id: LocalModuleId,
-    cb: &mut dyn FnMut(DefWithBodyId),
+    cb: &mut dyn FnMut(ModuleDefId),
 ) {
     visit_scope(db, crate_def_map, &crate_def_map[module_id].scope, cb);
     for impl_id in crate_def_map[module_id].scope.impls() {
-        let impl_data = db.impl_data(impl_id);
-        for &item in impl_data.items.iter() {
+        let impl_data = db.impl_items(impl_id);
+        for &(_, item) in impl_data.items.iter() {
             match item {
                 AssocItemId::FunctionId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
+                    cb(it.into());
                     visit_body(db, &body, cb);
                 }
                 AssocItemId::ConstId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
+                    cb(it.into());
                     visit_body(db, &body, cb);
                 }
-                AssocItemId::TypeAliasId(_) => (),
+                AssocItemId::TypeAliasId(it) => {
+                    cb(it.into());
+                }
             }
         }
     }
@@ -441,43 +461,37 @@ fn visit_module(
         db: &TestDB,
         crate_def_map: &DefMap,
         scope: &ItemScope,
-        cb: &mut dyn FnMut(DefWithBodyId),
+        cb: &mut dyn FnMut(ModuleDefId),
     ) {
         for decl in scope.declarations() {
+            cb(decl);
             match decl {
                 ModuleDefId::FunctionId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::ConstId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::StaticId(it) => {
-                    let def = it.into();
-                    cb(def);
-                    let body = db.body(def);
+                    let body = db.body(it.into());
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
-                    db.enum_data(it).variants.iter().for_each(|&(it, _)| {
-                        let def = it.into();
-                        cb(def);
-                        let body = db.body(def);
+                    db.enum_variants(it).variants.iter().for_each(|&(it, _)| {
+                        let body = db.body(it.into());
+                        cb(it.into());
                         visit_body(db, &body, cb);
                     });
                 }
                 ModuleDefId::TraitId(it) => {
-                    let trait_data = db.trait_data(it);
+                    let trait_data = db.trait_items(it);
                     for &(_, item) in trait_data.items.iter() {
                         match item {
                             AssocItemId::FunctionId(it) => cb(it.into()),
                             AssocItemId::ConstId(it) => cb(it.into()),
-                            AssocItemId::TypeAliasId(_) => (),
+                            AssocItemId::TypeAliasId(it) => cb(it.into()),
                         }
                     }
                 }
@@ -487,7 +501,7 @@ fn visit_module(
         }
     }
 
-    fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(DefWithBodyId)) {
+    fn visit_body(db: &TestDB, body: &Body, cb: &mut dyn FnMut(ModuleDefId)) {
         for (_, def_map) in body.blocks(db) {
             for (mod_id, _) in def_map.modules() {
                 visit_module(db, &def_map, mod_id, cb);
@@ -514,13 +528,13 @@ fn ellipsize(mut text: String, max_len: usize) -> String {
     text
 }
 
-fn check_infer(ra_fixture: &str, expect: Expect) {
+fn check_infer(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let mut actual = infer(ra_fixture);
     actual.push('\n');
     expect.assert_eq(&actual);
 }
 
-fn check_infer_with_mismatches(ra_fixture: &str, expect: Expect) {
+fn check_infer_with_mismatches(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let mut actual = infer_with_mismatches(ra_fixture, true);
     actual.push('\n');
     expect.assert_eq(&actual);
@@ -554,10 +568,16 @@ fn salsa_bug() {
     ",
     );
 
-    let module = db.module_for_file(pos.file_id);
+    let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
     visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
-        db.infer(def);
+        db.infer(match def {
+            ModuleDefId::FunctionId(it) => it.into(),
+            ModuleDefId::EnumVariantId(it) => it.into(),
+            ModuleDefId::ConstId(it) => it.into(),
+            ModuleDefId::StaticId(it) => it.into(),
+            _ => return,
+        });
     });
 
     let new_text = "
@@ -585,11 +605,17 @@ fn salsa_bug() {
         }
     ";
 
-    db.set_file_text(pos.file_id.file_id(), new_text);
+    db.set_file_text(pos.file_id.file_id(&db), new_text);
 
-    let module = db.module_for_file(pos.file_id);
+    let module = db.module_for_file(pos.file_id.file_id(&db));
     let crate_def_map = module.def_map(&db);
     visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
-        db.infer(def);
+        db.infer(match def {
+            ModuleDefId::FunctionId(it) => it.into(),
+            ModuleDefId::EnumVariantId(it) => it.into(),
+            ModuleDefId::ConstId(it) => it.into(),
+            ModuleDefId::StaticId(it) => it.into(),
+            _ => return,
+        });
     });
 }

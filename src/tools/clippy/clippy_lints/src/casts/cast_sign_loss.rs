@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::visitors::{for_each_expr_without_closures, Descend};
+use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use clippy_utils::{method_chain_args, sext};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -142,11 +142,11 @@ fn expr_sign<'cx, 'tcx>(cx: &LateContext<'cx>, mut expr: &'tcx Expr<'tcx>, ty: i
             expr = recv;
         }
 
-        if METHODS_POW.iter().any(|&name| method_name == name)
+        if METHODS_POW.contains(&method_name)
             && let [arg] = args
         {
             return pow_call_result_sign(cx, caller, arg);
-        } else if METHODS_RET_POSITIVE.iter().any(|&name| method_name == name) {
+        } else if METHODS_RET_POSITIVE.contains(&method_name) {
             return Sign::ZeroOrPositive;
         }
     }
@@ -205,7 +205,7 @@ fn expr_muldiv_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
             // - uncertain if there are any uncertain values (because they could be negative or positive),
             Sign::Uncertain => return Sign::Uncertain,
             Sign::ZeroOrPositive => (),
-        };
+        }
     }
 
     // A mul/div is:
@@ -236,7 +236,7 @@ fn expr_add_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
             // - uncertain if there are any uncertain values (because they could be negative or positive),
             Sign::Uncertain => return Sign::Uncertain,
             Sign::ZeroOrPositive => positive_count += 1,
-        };
+        }
     }
 
     // A sum is:

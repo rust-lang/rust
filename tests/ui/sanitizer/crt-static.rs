@@ -4,3 +4,5 @@
 #![feature(no_core)]
 #![no_core]
 #![no_main]
+
+//~? ERROR sanitizer is incompatible with statically linked libc

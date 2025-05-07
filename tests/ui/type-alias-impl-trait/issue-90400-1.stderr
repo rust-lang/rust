@@ -9,7 +9,7 @@ note: required by a bound in `<MyFoo as Foo>::foo`
    |
 LL |     fn foo<B: Bar>(&self, bar: B) -> Self::FooFn<B> {
    |               ^^^ required by this bound in `<MyFoo as Foo>::foo`
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Bar`
    |
 LL |     type FooFn<B: Bar> = impl FnOnce();
    |                 +++++

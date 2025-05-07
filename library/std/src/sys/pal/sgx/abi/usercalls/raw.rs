@@ -9,7 +9,7 @@ use crate::ptr::NonNull;
 #[repr(C)]
 struct UsercallReturn(u64, u64);
 
-extern "C" {
+unsafe extern "C" {
     fn usercall(nr: NonZero<u64>, p1: u64, p2: u64, abort: u64, p3: u64, p4: u64)
     -> UsercallReturn;
 }

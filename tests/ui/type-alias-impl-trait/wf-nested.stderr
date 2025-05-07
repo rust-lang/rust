@@ -27,7 +27,7 @@ LL | fn define_rpit<T: 'static>() -> impl Trait<&'static T, Out = impl Sized> {}
    |                 +++++++++
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/wf-nested.rs:41:47
+  --> $DIR/wf-nested.rs:42:47
    |
 LL | fn define_nested_rpit<T>() -> OuterOpaque2<T> {}
    |                                               ^^

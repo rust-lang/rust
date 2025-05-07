@@ -1,5 +1,4 @@
 //@ compile-flags: -C opt-level=3
-//@ min-llvm-version: 17.0.2
 #![crate_type = "lib"]
 
 // Regression test for issue 97217 (the following should result in no allocations)

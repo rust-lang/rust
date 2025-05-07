@@ -1,4 +1,12 @@
+use std::error::Error;
+
 use rustc_macros::{Diagnostic, Subdiagnostic};
+
+#[derive(Diagnostic)]
+#[diag(driver_impl_cant_emit_mir)]
+pub struct CantEmitMIR {
+    pub error: std::io::Error,
+}
 
 #[derive(Diagnostic)]
 #[diag(driver_impl_rlink_unable_to_read)]
@@ -93,3 +101,9 @@ pub(crate) struct IceFlags {
 #[derive(Diagnostic)]
 #[diag(driver_impl_ice_exclude_cargo_defaults)]
 pub(crate) struct IceExcludeCargoDefaults;
+
+#[derive(Diagnostic)]
+#[diag(driver_impl_unstable_feature_usage)]
+pub(crate) struct UnstableFeatureUsage {
+    pub error: Box<dyn Error>,
+}

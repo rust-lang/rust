@@ -5,14 +5,17 @@ fn main() {
     const MAX_LEN: usize = 42;
 
     for i in (0..10).rev() {
+        //~^ reversed_empty_ranges
         println!("{}", i);
     }
 
     for i in (0..=10).rev() {
+        //~^ reversed_empty_ranges
         println!("{}", i);
     }
 
     for i in (0..MAX_LEN).rev() {
+        //~^ reversed_empty_ranges
         println!("{}", i);
     }
 
@@ -32,15 +35,18 @@ fn main() {
     }
 
     for i in (0..10).rev().map(|x| x * 2) {
+        //~^ reversed_empty_ranges
         println!("{}", i);
     }
 
     // testing that the empty range lint folds constants
     for i in (5 + 4..10).rev() {
+        //~^ reversed_empty_ranges
         println!("{}", i);
     }
 
     for i in ((3 - 1)..(5 + 2)).rev() {
+        //~^ reversed_empty_ranges
         println!("{}", i);
     }
 

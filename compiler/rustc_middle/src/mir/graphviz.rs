@@ -2,10 +2,10 @@ use std::io::{self, Write};
 
 use gsgdt::GraphvizSettings;
 use rustc_graphviz as dot;
-use rustc_middle::mir::*;
 
 use super::generic_graph::mir_fn_to_generic_graph;
 use super::pretty::dump_mir_def_ids;
+use crate::mir::*;
 
 /// Write a graphviz DOT graph of a list of MIRs.
 pub fn write_mir_graphviz<W>(tcx: TyCtxt<'_>, single: Option<DefId>, w: &mut W) -> io::Result<()>
@@ -17,7 +17,7 @@ where
     let mirs = def_ids
         .iter()
         .flat_map(|def_id| {
-            if tcx.is_const_fn_raw(*def_id) {
+            if tcx.is_const_fn(*def_id) {
                 vec![tcx.optimized_mir(*def_id), tcx.mir_for_ctfe(*def_id)]
             } else {
                 vec![tcx.instance_mir(ty::InstanceKind::Item(*def_id))]

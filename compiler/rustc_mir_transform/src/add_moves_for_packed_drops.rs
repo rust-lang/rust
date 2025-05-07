@@ -1,7 +1,8 @@
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
+use tracing::debug;
 
+use crate::patch::MirPatch;
 use crate::util;
 
 /// This pass moves values being dropped that are within a packed
@@ -34,40 +35,43 @@ use crate::util;
 ///
 /// The storage instructions are required to avoid stack space
 /// blowup.
-pub struct AddMovesForPackedDrops;
+pub(super) struct AddMovesForPackedDrops;
 
-impl<'tcx> MirPass<'tcx> for AddMovesForPackedDrops {
+impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", body.source, body.span);
-        add_moves_for_packed_drops(tcx, body);
-    }
-}
+        let mut patch = MirPatch::new(body);
+        // FIXME(#132279): This is used during the phase transition from analysis
+        // to runtime, so we have to manually specify the correct typing mode.
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
 
-pub fn add_moves_for_packed_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let patch = add_moves_for_packed_drops_patch(tcx, body);
-    patch.apply(body);
-}
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
+            let loc = Location { block: bb, statement_index: data.statements.len() };
+            let terminator = data.terminator();
 
-fn add_moves_for_packed_drops_patch<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> MirPatch<'tcx> {
-    let def_id = body.source.def_id();
-    let mut patch = MirPatch::new(body);
-    let param_env = tcx.param_env(def_id);
-
-    for (bb, data) in body.basic_blocks.iter_enumerated() {
-        let loc = Location { block: bb, statement_index: data.statements.len() };
-        let terminator = data.terminator();
-
-        match terminator.kind {
-            TerminatorKind::Drop { place, .. }
-                if util::is_disaligned(tcx, body, param_env, place) =>
-            {
-                add_move_for_packed_drop(tcx, body, &mut patch, terminator, loc, data.is_cleanup);
+            match terminator.kind {
+                TerminatorKind::Drop { place, .. }
+                    if util::is_disaligned(tcx, body, typing_env, place) =>
+                {
+                    add_move_for_packed_drop(
+                        tcx,
+                        body,
+                        &mut patch,
+                        terminator,
+                        loc,
+                        data.is_cleanup,
+                    );
+                }
+                _ => {}
             }
-            _ => {}
         }
+
+        patch.apply(body);
     }
 
-    patch
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 fn add_move_for_packed_drop<'tcx>(
@@ -79,13 +83,15 @@ fn add_move_for_packed_drop<'tcx>(
     is_cleanup: bool,
 ) {
     debug!("add_move_for_packed_drop({:?} @ {:?})", terminator, loc);
-    let TerminatorKind::Drop { ref place, target, unwind, replace } = terminator.kind else {
+    let TerminatorKind::Drop { ref place, target, unwind, replace, drop, async_fut } =
+        terminator.kind
+    else {
         unreachable!();
     };
 
     let source_info = terminator.source_info;
     let ty = place.ty(body, tcx).ty;
-    let temp = patch.new_temp(ty, terminator.source_info.span);
+    let temp = patch.new_temp(ty, source_info.span);
 
     let storage_dead_block = patch.new_block(BasicBlockData {
         statements: vec![Statement { source_info, kind: StatementKind::StorageDead(temp) }],
@@ -102,6 +108,8 @@ fn add_move_for_packed_drop<'tcx>(
             target: storage_dead_block,
             unwind,
             replace,
+            drop,
+            async_fut,
         },
     );
 }

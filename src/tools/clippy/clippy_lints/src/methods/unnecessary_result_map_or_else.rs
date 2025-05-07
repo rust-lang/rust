@@ -8,8 +8,8 @@ use rustc_hir::{Closure, Expr, ExprKind, HirId, QPath};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
-use super::utils::get_last_chain_binding_hir_id;
 use super::UNNECESSARY_RESULT_MAP_OR_ELSE;
+use super::utils::get_last_chain_binding_hir_id;
 
 fn emit_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, def_arg: &Expr<'_>) {
     let msg = "unused \"map closure\" when calling `Result::map_or_else` value";
@@ -53,7 +53,7 @@ pub(super) fn check<'tcx>(
     // lint if the caller of `map_or_else()` is a `Result`
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Result)
         && let ExprKind::Closure(&Closure { body, .. }) = map_arg.kind
-        && let body = cx.tcx.hir().body(body)
+        && let body = cx.tcx.hir_body(body)
         && let Some(first_param) = body.params.first()
     {
         let body_expr = peel_blocks(body.value);

@@ -51,7 +51,6 @@ pkg_type! {
     Cargo = "cargo",
     HtmlDocs = "rust-docs",
     RustAnalysis = "rust-analysis",
-    Rls = "rls"; preview = true,
     RustAnalyzer = "rust-analyzer"; preview = true,
     Clippy = "clippy"; preview = true,
     Rustfmt = "rustfmt"; preview = true,
@@ -77,7 +76,6 @@ impl PkgType {
     fn should_use_rust_version(&self) -> bool {
         match self {
             PkgType::Cargo => false,
-            PkgType::Rls => false,
             PkgType::RustAnalyzer => false,
             PkgType::Clippy => false,
             PkgType::Rustfmt => false,
@@ -118,7 +116,6 @@ impl PkgType {
             HtmlDocs => HOSTS,
             JsonDocs => HOSTS,
             RustSrc => &["*"],
-            Rls => HOSTS,
             RustAnalyzer => HOSTS,
             Clippy => HOSTS,
             Miri => HOSTS,

@@ -25,12 +25,12 @@
   
       bb1: {
 +         StorageLive(_3);
-+         _2 = Lt(_0, const 1_usize);
-+         assert(move _2, "index out of bounds: the length is {} but the index is {}", const 1_usize, _0) -> [success: bb2, unwind unreachable];
++         _2 = Lt(copy _0, const 1_usize);
++         assert(move _2, "index out of bounds: the length is {} but the index is {}", const 1_usize, copy _0) -> [success: bb2, unwind unreachable];
 +     }
 + 
 +     bb2: {
-+         _3 = (*_1)[_0];
++         _3 = copy (*_1)[_0];
 +         switchInt(move _3) -> [0: bb3, otherwise: bb4];
 +     }
 + 

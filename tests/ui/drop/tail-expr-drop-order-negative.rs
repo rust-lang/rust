@@ -1,9 +1,6 @@
 //@ revisions: edition2021 edition2024
-//@ [edition2024] compile-flags: -Zunstable-options
 //@ [edition2024] edition: 2024
 //@ [edition2021] check-pass
-
-#![feature(shorter_tail_lifetimes)]
 
 fn why_would_you_do_this() -> bool {
     let mut x = None;

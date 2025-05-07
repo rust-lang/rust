@@ -4,9 +4,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, fold_regions};
+use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -21,7 +21,8 @@ pub(crate) fn provide(providers: &mut Providers) {
 }
 
 fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'tcx>, Span)] {
-    match tcx.def_kind(def_id) {
+    let kind = tcx.def_kind(def_id);
+    match kind {
         DefKind::Fn => {
             let sig = tcx.fn_sig(def_id).instantiate_identity();
             let liberated_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), sig);
@@ -75,7 +76,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     {
                         let orig_lt =
                             tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local());
-                        if matches!(*orig_lt, ty::ReLateParam(..)) {
+                        if matches!(orig_lt.kind(), ty::ReLateParam(..)) {
                             mapping.insert(
                                 orig_lt,
                                 ty::Region::new_early_param(
@@ -86,7 +87,8 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                         }
                     }
                     // FIXME: This could use a real folder, I guess.
-                    let remapped_wf_tys = tcx.fold_regions(
+                    let remapped_wf_tys = fold_regions(
+                        tcx,
                         tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(),
                         |region, _| {
                             // If `region` is a `ReLateParam` that is captured by the
@@ -120,35 +122,42 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
             }
         }
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.local_parent(def_id)),
-        DefKind::OpaqueTy => bug!("implied bounds are not defined for opaques"),
-        DefKind::Mod
+        DefKind::Static { .. }
+        | DefKind::Const
+        | DefKind::AnonConst
+        | DefKind::InlineConst
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
-        | DefKind::Variant
         | DefKind::Trait
-        | DefKind::TyAlias
-        | DefKind::ForeignTy
         | DefKind::TraitAlias
+        | DefKind::TyAlias => ty::List::empty(),
+        DefKind::OpaqueTy
+        | DefKind::Mod
+        | DefKind::Variant
+        | DefKind::ForeignTy
         | DefKind::TyParam
-        | DefKind::Const
         | DefKind::ConstParam
-        | DefKind::Static { .. }
         | DefKind::Ctor(_, _)
         | DefKind::Macro(_)
         | DefKind::ExternCrate
         | DefKind::Use
         | DefKind::ForeignMod
-        | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
-        | DefKind::Closure => ty::List::empty(),
+        | DefKind::Closure
+        | DefKind::SyntheticCoroutineBody => {
+            span_bug!(
+                tcx.def_span(def_id),
+                "`assumed_wf_types` not defined for {} `{def_id:?}`",
+                kind.descr(def_id.to_def_id())
+            );
+        }
     }
 }
 
-fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> + '_ {
+fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> {
     let node = tcx.hir_node_by_def_id(def_id);
     if let Some(decl) = node.fn_decl() {
         decl.inputs.iter().map(|ty| ty.span).chain(iter::once(decl.output.span()))
@@ -157,8 +166,8 @@ fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Spa
     }
 }
 
-fn impl_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> + '_ {
-    let item = tcx.hir().expect_item(def_id);
+fn impl_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> {
+    let item = tcx.hir_expect_item(def_id);
     if let hir::ItemKind::Impl(impl_) = item.kind {
         let trait_args = impl_
             .of_trait

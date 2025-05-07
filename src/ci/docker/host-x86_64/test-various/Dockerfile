@@ -40,9 +40,9 @@ WORKDIR /
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-23/wasi-sdk-23.0-x86_64-linux.tar.gz | \
+RUN curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-25/wasi-sdk-25.0-x86_64-linux.tar.gz | \
   tar -xz
-ENV WASI_SDK_PATH=/wasi-sdk-23.0-x86_64-linux
+ENV WASI_SDK_PATH=/wasi-sdk-25.0-x86_64-linux
 
 ENV RUST_CONFIGURE_ARGS \
   --musl-root-x86_64=/usr/local/x86_64-linux-musl \

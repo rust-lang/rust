@@ -10,7 +10,7 @@
 static FOO: () = FOO;
 //~^ ERROR could not evaluate static initializer
 
-static A: () = B; //~ cycle detected when evaluating initializer of static `A`
+static A: () = B; //~ ERROR cycle detected when evaluating initializer of static `A`
 static B: () = A;
 
 fn main() {

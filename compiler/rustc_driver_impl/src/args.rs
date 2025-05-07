@@ -1,7 +1,6 @@
 use std::{env, error, fmt, fs, io};
 
 use rustc_session::EarlyDiagCtxt;
-use rustc_span::ErrorGuaranteed;
 
 /// Expands argfiles in command line arguments.
 #[derive(Default)]
@@ -99,10 +98,7 @@ impl Expander {
 /// If this function is intended to be used with command line arguments,
 /// `argv[0]` must be removed prior to calling it manually.
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-pub fn arg_expand_all(
-    early_dcx: &EarlyDiagCtxt,
-    at_args: &[String],
-) -> Result<Vec<String>, ErrorGuaranteed> {
+pub fn arg_expand_all(early_dcx: &EarlyDiagCtxt, at_args: &[String]) -> Vec<String> {
     let mut expander = Expander::default();
     let mut result = Ok(());
     for arg in at_args {
@@ -110,7 +106,10 @@ pub fn arg_expand_all(
             result = Err(early_dcx.early_err(format!("failed to load argument file: {err}")));
         }
     }
-    result.map(|()| expander.finish())
+    if let Err(guar) = result {
+        guar.raise_fatal();
+    }
+    expander.finish()
 }
 
 /// Gets the raw unprocessed command-line arguments as Unicode strings, without doing any further
@@ -118,22 +117,22 @@ pub fn arg_expand_all(
 ///
 /// This function is identical to [`env::args()`] except that it emits an error when it encounters
 /// non-Unicode arguments instead of panicking.
-pub fn raw_args(early_dcx: &EarlyDiagCtxt) -> Result<Vec<String>, ErrorGuaranteed> {
-    let mut res = Ok(Vec::new());
+pub fn raw_args(early_dcx: &EarlyDiagCtxt) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut guar = Ok(());
     for (i, arg) in env::args_os().enumerate() {
         match arg.into_string() {
-            Ok(arg) => {
-                if let Ok(args) = &mut res {
-                    args.push(arg);
-                }
-            }
+            Ok(arg) => args.push(arg),
             Err(arg) => {
-                res =
+                guar =
                     Err(early_dcx.early_err(format!("argument {i} is not valid Unicode: {arg:?}")))
             }
         }
     }
-    res
+    if let Err(guar) = guar {
+        guar.raise_fatal();
+    }
+    args
 }
 
 #[derive(Debug)]

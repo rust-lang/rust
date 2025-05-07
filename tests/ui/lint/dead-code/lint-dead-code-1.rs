@@ -29,6 +29,7 @@ const used_const: isize = 0;
 pub const used_const2: isize = used_const;
 const USED_CONST: isize = 1;
 const CONST_USED_IN_ENUM_DISCRIMINANT: isize = 11;
+const CONST_USED_IN_RANGE_PATTERN: isize = 12;
 
 pub type typ = *const UsedStruct4;
 pub struct PubStruct;
@@ -81,6 +82,7 @@ pub fn pub_fn() {
     match i {
         USED_STATIC => (),
         USED_CONST => (),
+        CONST_USED_IN_RANGE_PATTERN..100 => {}
         _ => ()
     }
     f::<StructUsedInGeneric>();

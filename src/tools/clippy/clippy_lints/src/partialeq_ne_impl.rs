@@ -19,8 +19,8 @@ declare_clippy_lint! {
     /// struct Foo;
     ///
     /// impl PartialEq for Foo {
-    ///    fn eq(&self, other: &Foo) -> bool { true }
-    ///    fn ne(&self, other: &Foo) -> bool { !(self == other) }
+    ///     fn eq(&self, other: &Foo) -> bool { true }
+    ///     fn ne(&self, other: &Foo) -> bool { !(self == other) }
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -34,11 +34,11 @@ declare_lint_pass!(PartialEqNeImpl => [PARTIALEQ_NE_IMPL]);
 impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Impl(Impl {
-            of_trait: Some(ref trait_ref),
+            of_trait: Some(trait_ref),
             items: impl_items,
             ..
         }) = item.kind
-            && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
+            && !cx.tcx.is_automatically_derived(item.owner_id.to_def_id())
             && let Some(eq_trait) = cx.tcx.lang_items().eq_trait()
             && trait_ref.path.res.def_id() == eq_trait
         {
@@ -53,6 +53,6 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
                     );
                 }
             }
-        };
+        }
     }
 }

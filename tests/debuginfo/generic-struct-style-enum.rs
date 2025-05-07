@@ -1,24 +1,19 @@
-//@ min-lldb-version: 310
-
-// Require a gdb that can read DW_TAG_variant_part.
-//@ min-gdb-version: 8.2
-
 //@ compile-flags:-g
 
 // gdb-command:set print union on
 // gdb-command:run
 
 // gdb-command:print case1
-// gdbr-check:$1 = generic_struct_style_enum::Regular<u16, u32, i64>::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
+// gdb-check:$1 = generic_struct_style_enum::Regular<u16, u32, i64>::Case1{a: 0, b: 31868, c: 31868, d: 31868, e: 31868}
 
 // gdb-command:print case2
-// gdbr-check:$2 = generic_struct_style_enum::Regular<i16, u32, i64>::Case2{a: 0, b: 286331153, c: 286331153}
+// gdb-check:$2 = generic_struct_style_enum::Regular<i16, u32, i64>::Case2{a: 0, b: 286331153, c: 286331153}
 
 // gdb-command:print case3
-// gdbr-check:$3 = generic_struct_style_enum::Regular<u16, i32, u64>::Case3{a: 0, b: 6438275382588823897}
+// gdb-check:$3 = generic_struct_style_enum::Regular<u16, i32, u64>::Case3{a: 0, b: 6438275382588823897}
 
 // gdb-command:print univariant
-// gdbr-check:$4 = generic_struct_style_enum::Univariant<i32>::TheOnlyCase{a: -1}
+// gdb-check:$4 = generic_struct_style_enum::Univariant<i32>::TheOnlyCase{a: -1}
 
 
 #![feature(omit_gdb_pretty_printer_section)]

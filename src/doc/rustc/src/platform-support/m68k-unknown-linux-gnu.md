@@ -4,10 +4,10 @@
 
 Motorola 680x0 Linux
 
-## Designated Developers
+## Target Maintainers
 
-* [@glaubitz](https://github.com/glaubitz)
-* [@ricky26](https://github.com/ricky26)
+[@glaubitz](https://github.com/glaubitz)
+[@ricky26](https://github.com/ricky26)
 
 ## Requirements
 

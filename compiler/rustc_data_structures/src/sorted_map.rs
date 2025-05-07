@@ -1,9 +1,10 @@
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
-use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 
 use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
 
@@ -19,7 +20,7 @@ pub use index_map::SortedIndexMultiMap;
 /// stores data in a more compact way. It also supports accessing contiguous
 /// ranges of elements as a slice, and slices of already sorted elements can be
 /// inserted efficiently.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable_Generic, Decodable_Generic)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable_NoContext, Decodable_NoContext)]
 pub struct SortedMap<K, V> {
     data: Vec<(K, V)>,
 }
@@ -154,6 +155,38 @@ impl<K: Ord, V> SortedMap<K, V> {
     {
         let (start, end) = self.range_slice_indices(range);
         &self.data[start..end]
+    }
+
+    /// `sm.range_is_empty(r)` == `sm.range(r).is_empty()`, but is faster.
+    #[inline]
+    pub fn range_is_empty<R>(&self, range: R) -> bool
+    where
+        R: RangeBounds<K>,
+    {
+        // `range` must (via `range_slice_indices`) search for the start and
+        // end separately. But here we can do a single binary search for the
+        // entire range. If a single `x` matching `range` is found then the
+        // range is *not* empty.
+        self.data
+            .binary_search_by(|(x, _)| {
+                // Is `x` below `range`?
+                match range.start_bound() {
+                    Bound::Included(start) if x < start => return Ordering::Less,
+                    Bound::Excluded(start) if x <= start => return Ordering::Less,
+                    _ => {}
+                };
+
+                // Is `x` above `range`?
+                match range.end_bound() {
+                    Bound::Included(end) if x > end => return Ordering::Greater,
+                    Bound::Excluded(end) if x >= end => return Ordering::Greater,
+                    _ => {}
+                };
+
+                // `x` must be within `range`.
+                Ordering::Equal
+            })
+            .is_err()
     }
 
     #[inline]

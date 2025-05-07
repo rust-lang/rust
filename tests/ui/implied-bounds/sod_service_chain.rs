@@ -1,5 +1,7 @@
 // Found in a crater run on #118553
 
+//@ dont-require-annotations: NOTE
+
 pub trait Debug {}
 
 pub trait Service {
@@ -27,11 +29,19 @@ pub struct ServiceChainBuilder<P: Service, S: Service<Input = P::Output>> {
 }
 impl<P: Service, S: Service<Input = P::Output>> ServiceChainBuilder<P, S> {
     pub fn next<NS: Service<Input = S::Output>>(
+        //~^ ERROR the associated type
+        //~| ERROR the associated type
+        //~| ERROR the associated type
+        //~| NOTE the associated type
+        //~| NOTE the associated type
+        //~| NOTE the associated type
+        //~| ERROR may not live long enough
         self,
     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
-        //~^ the associated type
-        //~| the associated type
-        //~| the associated type
+        //~^ ERROR the associated type
+        //~| ERROR the associated type
+        //~| NOTE the associated type
+        //~| NOTE the associated type
         panic!();
     }
 }

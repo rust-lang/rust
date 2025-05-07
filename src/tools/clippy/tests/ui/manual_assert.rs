@@ -30,9 +30,11 @@ fn main() {
         panic!("qaqaq{:?}", a);
     }
     if !a.is_empty() {
+        //~^ manual_assert
         panic!("qaqaq{:?}", a);
     }
     if !a.is_empty() {
+        //~^ manual_assert
         panic!("qwqwq");
     }
     if a.len() == 3 {
@@ -50,21 +52,27 @@ fn main() {
     }
     let b = vec![1, 2, 3];
     if b.is_empty() {
+        //~^ manual_assert
         panic!("panic1");
     }
     if b.is_empty() && a.is_empty() {
+        //~^ manual_assert
         panic!("panic2");
     }
     if a.is_empty() && !b.is_empty() {
+        //~^ manual_assert
         panic!("panic3");
     }
     if b.is_empty() || a.is_empty() {
+        //~^ manual_assert
         panic!("panic4");
     }
     if a.is_empty() || !b.is_empty() {
+        //~^ manual_assert
         panic!("panic5");
     }
     if a.is_empty() {
+        //~^ manual_assert
         panic!("with expansion {}", one!())
     }
     if a.is_empty() {
@@ -77,6 +85,7 @@ fn main() {
 fn issue7730(a: u8) {
     // Suggestion should preserve comment
     if a > 2 {
+        //~^ manual_assert
         // comment
         /* this is a
         multiline
@@ -91,6 +100,7 @@ fn issue12505() {
 
     impl<T, const N: usize> Foo<T, N> {
         const BAR: () = if N == 0 {
+            //~^ manual_assert
             panic!()
         };
     }

@@ -1,4 +1,4 @@
-error: no rules expected the token `r#async`
+error: no rules expected `r#async`
   --> $DIR/edition-keywords-2015-2018-parsing.rs:16:31
    |
 LL |     r#async = consumes_async!(r#async);
@@ -10,7 +10,7 @@ note: while trying to match `async`
 LL |     (async) => (1)
    |      ^^^^^
 
-error: no rules expected the token `async`
+error: no rules expected `async`
   --> $DIR/edition-keywords-2015-2018-parsing.rs:17:35
    |
 LL |     r#async = consumes_async_raw!(async);

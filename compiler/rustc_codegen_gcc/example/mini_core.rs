@@ -44,32 +44,39 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U, ()>> for Box<T, ()> {}
 
-#[lang = "receiver"]
-pub trait Receiver {}
+#[lang = "legacy_receiver"]
+pub trait LegacyReceiver {}
 
-impl<T: ?Sized> Receiver for &T {}
-impl<T: ?Sized> Receiver for &mut T {}
-impl<T: ?Sized, A: Allocator> Receiver for Box<T, A> {}
+impl<T: ?Sized> LegacyReceiver for &T {}
+impl<T: ?Sized> LegacyReceiver for &mut T {}
+impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
+
+#[lang = "receiver"]
+trait Receiver {
+}
 
 #[lang = "copy"]
-pub unsafe trait Copy {}
+pub trait Copy {}
 
-unsafe impl Copy for bool {}
-unsafe impl Copy for u8 {}
-unsafe impl Copy for u16 {}
-unsafe impl Copy for u32 {}
-unsafe impl Copy for u64 {}
-unsafe impl Copy for usize {}
-unsafe impl Copy for i8 {}
-unsafe impl Copy for i16 {}
-unsafe impl Copy for i32 {}
-unsafe impl Copy for isize {}
-unsafe impl Copy for f32 {}
-unsafe impl Copy for f64 {}
-unsafe impl Copy for char {}
-unsafe impl<'a, T: ?Sized> Copy for &'a T {}
-unsafe impl<T: ?Sized> Copy for *const T {}
-unsafe impl<T: ?Sized> Copy for *mut T {}
+#[lang = "bikeshed_guaranteed_no_drop"]
+pub trait BikeshedGuaranteedNoDrop {}
+
+impl Copy for bool {}
+impl Copy for u8 {}
+impl Copy for u16 {}
+impl Copy for u32 {}
+impl Copy for u64 {}
+impl Copy for usize {}
+impl Copy for i8 {}
+impl Copy for i16 {}
+impl Copy for i32 {}
+impl Copy for isize {}
+impl Copy for f32 {}
+impl Copy for f64 {}
+impl Copy for char {}
+impl<'a, T: ?Sized> Copy for &'a T {}
+impl<T: ?Sized> Copy for *const T {}
+impl<T: ?Sized> Copy for *mut T {}
 
 #[lang = "sync"]
 pub unsafe trait Sync {}
@@ -131,7 +138,23 @@ impl Mul for u8 {
     }
 }
 
+impl Mul for i32 {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
 impl Mul for usize {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        self * rhs
+    }
+}
+
+impl Mul for isize {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -162,7 +185,23 @@ impl Add for i8 {
     }
 }
 
+impl Add for i32 {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
 impl Add for usize {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
+impl Add for isize {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
@@ -178,6 +217,14 @@ pub trait Sub<RHS = Self> {
 }
 
 impl Sub for usize {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for isize {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -202,6 +249,14 @@ impl Sub for i8 {
 }
 
 impl Sub for i16 {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        self - rhs
+    }
+}
+
+impl Sub for i32 {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self {
@@ -579,29 +634,32 @@ pub union MaybeUninit<T> {
 }
 
 pub mod intrinsics {
-    use crate::Sized;
-
-    extern "rust-intrinsic" {
-        #[rustc_safe_intrinsic]
-        pub fn abort() -> !;
-        #[rustc_safe_intrinsic]
-        pub fn size_of<T>() -> usize;
-        pub fn size_of_val<T: ?Sized>(val: *const T) -> usize;
-        #[rustc_safe_intrinsic]
-        pub fn min_align_of<T>() -> usize;
-        pub fn min_align_of_val<T: ?Sized>(val: *const T) -> usize;
-        pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
-        pub fn transmute<T, U>(e: T) -> U;
-        pub fn ctlz_nonzero<T>(x: T) -> u32;
-        #[rustc_safe_intrinsic]
-        pub fn needs_drop<T: ?Sized>() -> bool;
-        #[rustc_safe_intrinsic]
-        pub fn bitreverse<T>(x: T) -> T;
-        #[rustc_safe_intrinsic]
-        pub fn bswap<T>(x: T) -> T;
-        pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-        pub fn unreachable() -> !;
-    }
+    #[rustc_intrinsic]
+    pub fn abort() -> !;
+    #[rustc_intrinsic]
+    pub fn size_of<T>() -> usize;
+    #[rustc_intrinsic]
+    pub unsafe fn size_of_val<T: ?::Sized>(val: *const T) -> usize;
+    #[rustc_intrinsic]
+    pub fn min_align_of<T>() -> usize;
+    #[rustc_intrinsic]
+    pub unsafe fn min_align_of_val<T: ?::Sized>(val: *const T) -> usize;
+    #[rustc_intrinsic]
+    pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize);
+    #[rustc_intrinsic]
+    pub unsafe fn transmute<T, U>(e: T) -> U;
+    #[rustc_intrinsic]
+    pub unsafe fn ctlz_nonzero<T>(x: T) -> u32;
+    #[rustc_intrinsic]
+    pub fn needs_drop<T: ?::Sized>() -> bool;
+    #[rustc_intrinsic]
+    pub fn bitreverse<T>(x: T) -> T;
+    #[rustc_intrinsic]
+    pub fn bswap<T>(x: T) -> T;
+    #[rustc_intrinsic]
+    pub unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+    #[rustc_intrinsic]
+    pub unsafe fn unreachable() -> !;
 }
 
 pub mod libc {
@@ -614,6 +672,10 @@ pub mod libc {
         pub fn memcpy(dst: *mut u8, src: *const u8, size: usize);
         pub fn memmove(dst: *mut u8, src: *const u8, size: usize);
         pub fn strncpy(dst: *mut u8, src: *const u8, size: usize);
+        pub fn fflush(stream: *mut i32) -> i32;
+        pub fn exit(status: i32);
+
+        pub static stdout: *mut i32;
     }
 }
 
@@ -639,7 +701,7 @@ impl<T> Index<usize> for [T] {
     }
 }
 
-extern {
+extern "C" {
     type VaListImpl;
 }
 

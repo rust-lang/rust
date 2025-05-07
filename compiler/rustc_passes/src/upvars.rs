@@ -9,14 +9,14 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.upvars_mentioned = |tcx, def_id| {
         if !tcx.is_closure_like(def_id) {
             return None;
         }
 
         let local_def_id = def_id.expect_local();
-        let body = tcx.hir().maybe_body_owned_by(local_def_id)?;
+        let body = tcx.hir_maybe_body_owned_by(local_def_id)?;
 
         let mut local_collector = LocalCollector::default();
         local_collector.visit_body(&body);

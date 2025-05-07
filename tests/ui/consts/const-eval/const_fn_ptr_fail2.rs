@@ -7,14 +7,22 @@ const X: fn(usize) -> usize = double;
 
 const fn bar(x: fn(usize) -> usize, y: usize) -> usize {
     x(y)
-    //~^ ERROR evaluation of constant value failed
-    //~| ERROR evaluation of constant value failed
+    //~^ NOTE inside `bar`
+    //~| NOTE the failure occurred here
+    //~| NOTE inside `bar`
+    //~| NOTE the failure occurred here
 }
 
 const Y: usize = bar(X, 2); // FIXME: should fail to typeck someday
+//~^ ERROR evaluation of constant value failed
+//~| NOTE calling non-const function `double`
 const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
+//~^ ERROR evaluation of constant value failed
+//~| NOTE calling non-const function `double`
 
 fn main() {
     assert_eq!(Y, 4);
     assert_eq!(Z, 4);
 }
+
+//~? WARN skipping const checks

@@ -28,7 +28,8 @@ goals together. Essentially:
 
 */
 
-fn a(_: Tait) {
+#[define_opaque(Tait)]
+fn a() {
     let _: Tait = IntoIterator::into_iter([0i32; 32]);
 }
 

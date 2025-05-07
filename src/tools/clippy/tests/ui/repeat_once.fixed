@@ -7,9 +7,15 @@ fn main() {
     let slice = [1; 5];
 
     let a = [1; 5].to_vec();
+    //~^ repeat_once
     let b = slice.to_vec();
+    //~^ repeat_once
     let c = "hello".to_string();
+    //~^ repeat_once
     let d = "hi".to_string();
+    //~^ repeat_once
     let e = s.to_string();
+    //~^ repeat_once
     let f = string.clone();
+    //~^ repeat_once
 }

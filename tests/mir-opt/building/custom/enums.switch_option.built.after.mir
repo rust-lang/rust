@@ -6,7 +6,7 @@ fn switch_option(_1: Option<()>) -> bool {
 
     bb0: {
         _2 = discriminant(_1);
-        switchInt(_2) -> [0: bb1, 1: bb2, otherwise: bb2];
+        switchInt(copy _2) -> [0: bb1, 1: bb2, otherwise: bb2];
     }
 
     bb1: {

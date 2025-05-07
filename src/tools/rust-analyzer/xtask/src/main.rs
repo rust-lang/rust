@@ -9,7 +9,12 @@
 //! `.cargo/config`.
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
-#![allow(clippy::print_stderr, clippy::print_stdout)]
+#![allow(
+    clippy::print_stderr,
+    clippy::print_stdout,
+    clippy::disallowed_methods,
+    clippy::disallowed_types
+)]
 
 mod flags;
 
@@ -17,6 +22,7 @@ mod codegen;
 mod dist;
 mod install;
 mod metrics;
+mod pgo;
 mod publish;
 mod release;
 mod tidy;
@@ -24,7 +30,7 @@ mod util;
 
 use anyhow::bail;
 use std::{env, path::PathBuf};
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 fn main() -> anyhow::Result<()> {
     let flags = flags::Xtask::from_env_or_exit();

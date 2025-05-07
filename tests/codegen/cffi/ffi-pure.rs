@@ -9,8 +9,7 @@ pub fn bar() {
 extern "C" {
     // CHECK-LABEL: declare{{.*}}void @foo()
     // CHECK-SAME: [[ATTRS:#[0-9]+]]
-    // The attribute changed from `readonly` to `memory(read)` with LLVM 16.0.
-    // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}{{readonly|memory\(read\)}}{{.*}} }
-    #[ffi_pure]
+    // CHECK-DAG: attributes [[ATTRS]] = { {{.*}}memory(read){{.*}} }
+    #[unsafe(ffi_pure)]
     pub fn foo();
 }

@@ -1,4 +1,4 @@
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 //@ compile-flags: -Z span-debug
 //@ revisions: local remapped
 // [local] no-remap-src-base: The hack should work regardless of remapping.
@@ -18,3 +18,5 @@ mod second {
 }
 
 fn main() {}
+
+//~? ERROR using an old version of `rental`

@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 sym::mem_forget if is_copy => return,
                 sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => return,
                 sym::mem_drop
-                    if !(arg_ty.needs_drop(cx.tcx, cx.param_env)
+                    if !(arg_ty.needs_drop(cx.tcx, cx.typing_env())
                         || is_must_use_func_call(cx, arg)
                         || is_must_use_ty(cx, arg_ty)
                         || drop_is_single_call_in_arm) =>
@@ -107,12 +107,12 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                     (DROP_NON_DROP, DROP_NON_DROP_SUMMARY.into(), Some(arg.span))
                 },
                 sym::mem_forget => {
-                    if arg_ty.needs_drop(cx.tcx, cx.param_env) {
+                    if arg_ty.needs_drop(cx.tcx, cx.typing_env()) {
                         (
                             MEM_FORGET,
                             Cow::Owned(format!(
                                 "usage of `mem::forget` on {}",
-                                if arg_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {
+                                if arg_ty.ty_adt_def().is_some_and(|def| def.has_dtor(cx.tcx)) {
                                     "`Drop` type"
                                 } else {
                                     "type with `Drop` fields"
@@ -144,10 +144,10 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
 //     ..
 // }
 fn is_single_call_in_arm<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'_>, drop_expr: &'tcx Expr<'_>) -> bool {
-    if matches!(arg.kind, ExprKind::Call(..) | ExprKind::MethodCall(..)) {
-        if let Node::Arm(Arm { body, .. }) = cx.tcx.parent_hir_node(drop_expr.hir_id) {
-            return body.hir_id == drop_expr.hir_id;
-        }
+    if matches!(arg.kind, ExprKind::Call(..) | ExprKind::MethodCall(..))
+        && let Node::Arm(Arm { body, .. }) = cx.tcx.parent_hir_node(drop_expr.hir_id)
+    {
+        return body.hir_id == drop_expr.hir_id;
     }
     false
 }

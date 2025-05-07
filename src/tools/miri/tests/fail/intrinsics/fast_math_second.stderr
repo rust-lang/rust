@@ -1,5 +1,5 @@
 error: Undefined Behavior: `fmul_fast` intrinsic called with non-finite value as second parameter
-  --> $DIR/fast_math_second.rs:LL:CC
+  --> tests/fail/intrinsics/fast_math_second.rs:LL:CC
    |
 LL | ...f32 = core::intrinsics::fmul_fast(3.4f32, f32::INFINITY);
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `fmul_fast` intrinsic called with non-finite value as second parameter
@@ -7,7 +7,7 @@ LL | ...f32 = core::intrinsics::fmul_fast(3.4f32, f32::INFINITY);
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/fast_math_second.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/fast_math_second.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

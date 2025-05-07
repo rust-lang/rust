@@ -9,7 +9,7 @@ use crate::cell::UnsafeCell;
 use crate::marker::PhantomData;
 use crate::mem::MaybeUninit;
 use crate::ptr;
-use crate::sync::atomic::{self, AtomicPtr, AtomicUsize, Ordering};
+use crate::sync::atomic::{self, Atomic, AtomicPtr, AtomicUsize, Ordering};
 use crate::time::Instant;
 
 // Bits indicating the state of a slot:
@@ -37,7 +37,7 @@ struct Slot<T> {
     msg: UnsafeCell<MaybeUninit<T>>,
 
     /// The state of the slot.
-    state: AtomicUsize,
+    state: Atomic<usize>,
 }
 
 impl<T> Slot<T> {
@@ -55,7 +55,7 @@ impl<T> Slot<T> {
 /// Each block in the list can hold up to `BLOCK_CAP` messages.
 struct Block<T> {
     /// The next block in the linked list.
-    next: AtomicPtr<Block<T>>,
+    next: Atomic<*mut Block<T>>,
 
     /// Slots for messages.
     slots: [Slot<T>; BLOCK_CAP],
@@ -63,14 +63,14 @@ struct Block<T> {
 
 impl<T> Block<T> {
     /// Creates an empty block.
-    fn new() -> Block<T> {
+    fn new() -> Box<Block<T>> {
         // SAFETY: This is safe because:
-        //  [1] `Block::next` (AtomicPtr) may be safely zero initialized.
+        //  [1] `Block::next` (Atomic<*mut _>) may be safely zero initialized.
         //  [2] `Block::slots` (Array) may be safely zero initialized because of [3, 4].
         //  [3] `Slot::msg` (UnsafeCell) may be safely zero initialized because it
         //       holds a MaybeUninit.
-        //  [4] `Slot::state` (AtomicUsize) may be safely zero initialized.
-        unsafe { MaybeUninit::zeroed().assume_init() }
+        //  [4] `Slot::state` (Atomic<usize>) may be safely zero initialized.
+        unsafe { Box::new_zeroed().assume_init() }
     }
 
     /// Waits until the next pointer is set.
@@ -110,10 +110,10 @@ impl<T> Block<T> {
 #[derive(Debug)]
 struct Position<T> {
     /// The index in the channel.
-    index: AtomicUsize,
+    index: Atomic<usize>,
 
     /// The block in the linked list.
-    block: AtomicPtr<Block<T>>,
+    block: Atomic<*mut Block<T>>,
 }
 
 /// The token type for the list flavor.
@@ -199,13 +199,13 @@ impl<T> Channel<T> {
             // If we're going to have to install the next block, allocate it in advance in order to
             // make the wait for other threads as short as possible.
             if offset + 1 == BLOCK_CAP && next_block.is_none() {
-                next_block = Some(Box::new(Block::<T>::new()));
+                next_block = Some(Block::<T>::new());
             }
 
             // If this is the first message to be sent into the channel, we need to allocate the
             // first block and install it.
             if block.is_null() {
-                let new = Box::into_raw(Box::new(Block::<T>::new()));
+                let new = Box::into_raw(Block::<T>::new());
 
                 if self
                     .tail
@@ -213,6 +213,11 @@ impl<T> Channel<T> {
                     .compare_exchange(block, new, Ordering::Release, Ordering::Relaxed)
                     .is_ok()
                 {
+                    // This yield point leaves the channel in a half-initialized state where the
+                    // tail.block pointer is set but the head.block is not. This is used to
+                    // facilitate the test in src/tools/miri/tests/pass/issues/issue-139553.rs
+                    #[cfg(miri)]
+                    crate::thread::yield_now();
                     self.head.block.store(new, Ordering::Release);
                     block = new;
                 } else {
@@ -444,7 +449,8 @@ impl<T> Channel<T> {
                 }
 
                 // Block the current thread.
-                let sel = cx.wait_until(deadline);
+                // SAFETY: the context belongs to the current thread.
+                let sel = unsafe { cx.wait_until(deadline) };
 
                 match sel {
                     Selected::Waiting => unreachable!(),
@@ -551,7 +557,7 @@ impl<T> Channel<T> {
 
         let mut head = self.head.index.load(Ordering::Acquire);
         // The channel may be uninitialized, so we have to swap to avoid overwriting any sender's attempts
-        // to initalize the first block before noticing that the receivers disconnected. Late allocations
+        // to initialize the first block before noticing that the receivers disconnected. Late allocations
         // will be deallocated by the sender in Drop.
         let mut block = self.head.block.swap(ptr::null_mut(), Ordering::AcqRel);
 
@@ -563,9 +569,15 @@ impl<T> Channel<T> {
             // In that case, just wait until it gets initialized.
             while block.is_null() {
                 backoff.spin_heavy();
-                block = self.head.block.load(Ordering::Acquire);
+                block = self.head.block.swap(ptr::null_mut(), Ordering::AcqRel);
             }
         }
+        // After this point `head.block` is not modified again and it will be deallocated if it's
+        // non-null. The `Drop` code of the channel, which runs after this function, also attempts
+        // to deallocate `head.block` if it's non-null. Therefore this function must maintain the
+        // invariant that if a deallocation of head.block is attemped then it must also be set to
+        // NULL. Failing to do so will lead to the Drop code attempting a double free. For this
+        // reason both reads above do an atomic swap instead of a simple atomic load.
 
         unsafe {
             // Drop all messages between head and tail and deallocate the heap-allocated blocks.

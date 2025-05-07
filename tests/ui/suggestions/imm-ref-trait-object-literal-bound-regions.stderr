@@ -6,7 +6,7 @@ LL |     foo::<S>(s);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Trait` is implemented for `&'a mut S`
+   = help: the trait `Trait` is implemented for `&mut S`
    = note: `for<'b> Trait` is implemented for `&'b mut S`, but not for `&'b S`
 note: required by a bound in `foo`
   --> $DIR/imm-ref-trait-object-literal-bound-regions.rs:11:20

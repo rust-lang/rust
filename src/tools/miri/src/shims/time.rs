@@ -11,7 +11,8 @@ use crate::*;
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
 pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
     time.duration_since(SystemTime::UNIX_EPOCH)
-        .map_err(|_| err_unsup_format!("times before the Unix epoch are not supported").into())
+        .map_err(|_| err_unsup_format!("times before the Unix epoch are not supported"))
+        .into()
 }
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -20,7 +21,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         &mut self,
         clk_id_op: &OpTy<'tcx>,
         tp_op: &OpTy<'tcx>,
-    ) -> InterpResult<'tcx, Scalar> {
+        dest: &MPlaceTy<'tcx>,
+    ) -> InterpResult<'tcx> {
         // This clock support is deliberately minimal because a lot of clock types have fiddly
         // properties (is it possible for Miri to be suspended independently of the host?). If you
         // have a use for another clock type, please open an issue.
@@ -28,48 +30,49 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         this.assert_target_os_is_unix("clock_gettime");
+        let clockid_t_size = this.libc_ty_layout("clockid_t").size;
 
-        let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
+        let clk_id = this.read_scalar(clk_id_op)?.to_int(clockid_t_size)?;
         let tp = this.deref_pointer_as(tp_op, this.libc_ty_layout("timespec"))?;
 
         let absolute_clocks;
         let mut relative_clocks;
 
         match this.tcx.sess.target.os.as_ref() {
-            "linux" | "freebsd" => {
-                // Linux and FreeBSD have two main kinds of clocks. REALTIME clocks return the actual time since the
+            "linux" | "freebsd" | "android" => {
+                // Linux, Android, and FreeBSD have two main kinds of clocks. REALTIME clocks return the actual time since the
                 // Unix epoch, including effects which may cause time to move backwards such as NTP.
                 // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
                 // is just specified to be "faster and less precise", so we implement both the same way.
                 absolute_clocks = vec![
-                    this.eval_libc_i32("CLOCK_REALTIME"),
-                    this.eval_libc_i32("CLOCK_REALTIME_COARSE"),
+                    this.eval_libc("CLOCK_REALTIME").to_int(clockid_t_size)?,
+                    this.eval_libc("CLOCK_REALTIME_COARSE").to_int(clockid_t_size)?,
                 ];
                 // The second kind is MONOTONIC clocks for which 0 is an arbitrary time point, but they are
                 // never allowed to go backwards. We don't need to do any additional monotonicity
                 // enforcement because std::time::Instant already guarantees that it is monotonic.
                 relative_clocks = vec![
-                    this.eval_libc_i32("CLOCK_MONOTONIC"),
-                    this.eval_libc_i32("CLOCK_MONOTONIC_COARSE"),
+                    this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)?,
+                    this.eval_libc("CLOCK_MONOTONIC_COARSE").to_int(clockid_t_size)?,
                 ];
             }
             "macos" => {
-                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")];
-                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")];
+                absolute_clocks = vec![this.eval_libc("CLOCK_REALTIME").to_int(clockid_t_size)?];
+                relative_clocks = vec![this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)?];
                 // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
                 // that's not really something a program running inside Miri can tell, anyway.
                 // We need to support it because std uses it.
-                relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW"));
+                relative_clocks.push(this.eval_libc("CLOCK_UPTIME_RAW").to_int(clockid_t_size)?);
             }
             "solaris" | "illumos" => {
                 // The REALTIME clock returns the actual time since the Unix epoch.
-                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")];
+                absolute_clocks = vec![this.eval_libc("CLOCK_REALTIME").to_int(clockid_t_size)?];
                 // MONOTONIC, in the other hand, is the high resolution, non-adjustable
                 // clock from an arbitrary time in the past.
                 // Note that the man page mentions HIGHRES but it is just
                 // an alias of MONOTONIC and the libc crate does not expose it anyway.
                 // https://docs.oracle.com/cd/E23824_01/html/821-1465/clock-gettime-3c.html
-                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")];
+                relative_clocks = vec![this.eval_libc("CLOCK_MONOTONIC").to_int(clockid_t_size)?];
             }
             target => throw_unsup_format!("`clock_gettime` is not supported on target OS {target}"),
         }
@@ -78,19 +81,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             this.check_no_isolation("`clock_gettime` with `REALTIME` clocks")?;
             system_time_to_duration(&SystemTime::now())?
         } else if relative_clocks.contains(&clk_id) {
-            this.machine.clock.now().duration_since(this.machine.clock.epoch())
+            this.machine.monotonic_clock.now().duration_since(this.machine.monotonic_clock.epoch())
         } else {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return Ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return(LibcError("EINVAL"), dest);
         };
 
         let tv_sec = duration.as_secs();
         let tv_nsec = duration.subsec_nanos();
 
         this.write_int_fields(&[tv_sec.into(), tv_nsec.into()], &tp)?;
+        this.write_int(0, dest)?;
 
-        Ok(Scalar::from_i32(0))
+        interp_ok(())
     }
 
     fn gettimeofday(
@@ -108,9 +110,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
         if !this.ptr_is_null(tz)? {
-            let einval = this.eval_libc("EINVAL");
-            this.set_last_error(einval)?;
-            return Ok(Scalar::from_i32(-1));
+            return this.set_last_error_and_return_i32(LibcError("EINVAL"));
         }
 
         let duration = system_time_to_duration(&SystemTime::now())?;
@@ -119,7 +119,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         this.write_int_fields(&[tv_sec.into(), tv_usec.into()], &tv)?;
 
-        Ok(Scalar::from_i32(0))
+        interp_ok(Scalar::from_i32(0))
     }
 
     // The localtime() function shall convert the time in seconds since the Epoch pointed to by
@@ -135,16 +135,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         this.assert_target_os_is_unix("localtime_r");
         this.check_no_isolation("`localtime_r`")?;
 
-        let timep = this.deref_pointer(timep)?;
+        let time_layout = this.libc_ty_layout("time_t");
+        let timep = this.deref_pointer_as(timep, time_layout)?;
         let result = this.deref_pointer_as(result_op, this.libc_ty_layout("tm"))?;
 
         // The input "represents the number of seconds elapsed since the Epoch,
         // 1970-01-01 00:00:00 +0000 (UTC)".
-        let sec_since_epoch: i64 = this
-            .read_scalar(&timep)?
-            .to_int(this.libc_ty_layout("time_t").size)?
-            .try_into()
-            .unwrap();
+        let sec_since_epoch: i64 =
+            this.read_scalar(&timep)?.to_int(time_layout.size)?.try_into().unwrap();
         let dt_utc: DateTime<Utc> =
             DateTime::from_timestamp(sec_since_epoch, 0).expect("Invalid timestamp");
 
@@ -183,6 +181,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         if !matches!(&*this.tcx.sess.target.os, "solaris" | "illumos") {
             // tm_zone represents the timezone value in the form of: +0730, +08, -0730 or -08.
             // This may not be consistent with libc::localtime_r's result.
+
             let offset_in_seconds = dt.offset().fix().local_minus_utc();
             let tm_gmtoff = offset_in_seconds;
             let mut tm_zone = String::new();
@@ -192,21 +191,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 tm_zone.push('+');
             }
             let offset_hour = offset_in_seconds.abs() / 3600;
-            write!(tm_zone, "{:02}", offset_hour).unwrap();
+            write!(tm_zone, "{offset_hour:02}").unwrap();
             let offset_min = (offset_in_seconds.abs() % 3600) / 60;
             if offset_min != 0 {
-                write!(tm_zone, "{:02}", offset_min).unwrap();
+                write!(tm_zone, "{offset_min:02}").unwrap();
             }
 
-            // FIXME: String de-duplication is needed so that we only allocate this string only once
-            // even when there are multiple calls to this function.
-            let tm_zone_ptr = this
-                .alloc_os_str_as_c_str(&OsString::from(tm_zone), MiriMemoryKind::Machine.into())?;
+            // Add null terminator for C string compatibility.
+            tm_zone.push('\0');
 
+            // Deduplicate and allocate the string.
+            let tm_zone_ptr = this.allocate_bytes_dedup(tm_zone.as_bytes())?;
+
+            // Write the timezone pointer and offset into the result structure.
             this.write_pointer(tm_zone_ptr, &this.project_field_named(&result, "tm_zone")?)?;
             this.write_int_fields_named(&[("tm_gmtoff", tm_gmtoff.into())], &result)?;
         }
-        Ok(result.ptr())
+        interp_ok(result.ptr())
     }
     #[allow(non_snake_case, clippy::arithmetic_side_effects)]
     fn GetSystemTimeAsFileTime(
@@ -221,22 +222,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let filetime = this.deref_pointer_as(LPFILETIME_op, this.windows_ty_layout("FILETIME"))?;
 
-        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
-        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
-        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH");
-        let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
-        let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
-
-        let duration = system_time_to_duration(&SystemTime::now())?
-            + Duration::from_secs(SECONDS_TO_UNIX_EPOCH);
-        let duration_ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
-            .map_err(|_| err_unsup_format!("programs running more than 2^64 Windows ticks after the Windows epoch are not supported"))?;
+        let duration = this.system_time_since_windows_epoch(&SystemTime::now())?;
+        let duration_ticks = this.windows_ticks_for(duration)?;
 
         let dwLowDateTime = u32::try_from(duration_ticks & 0x00000000FFFFFFFF).unwrap();
         let dwHighDateTime = u32::try_from((duration_ticks & 0xFFFFFFFF00000000) >> 32).unwrap();
         this.write_int_fields(&[dwLowDateTime.into(), dwHighDateTime.into()], &filetime)?;
 
-        Ok(())
+        interp_ok(())
     }
 
     #[allow(non_snake_case)]
@@ -250,12 +243,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // QueryPerformanceCounter uses a hardware counter as its basis.
         // Miri will emulate a counter with a resolution of 1 nanosecond.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
+        let duration =
+            this.machine.monotonic_clock.now().duration_since(this.machine.monotonic_clock.epoch());
         let qpc = i64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^63 nanoseconds are not supported")
         })?;
-        this.write_scalar(Scalar::from_i64(qpc), &this.deref_pointer(lpPerformanceCount_op)?)?;
-        Ok(Scalar::from_i32(-1)) // return non-zero on success
+        this.write_scalar(
+            Scalar::from_i64(qpc),
+            &this.deref_pointer_as(lpPerformanceCount_op, this.machine.layouts.i64)?,
+        )?;
+        interp_ok(Scalar::from_i32(-1)) // return non-zero on success
     }
 
     #[allow(non_snake_case)]
@@ -276,7 +273,31 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Scalar::from_i64(1_000_000_000),
             &this.deref_pointer_as(lpFrequency_op, this.machine.layouts.u64)?,
         )?;
-        Ok(Scalar::from_i32(-1)) // Return non-zero on success
+        interp_ok(Scalar::from_i32(-1)) // Return non-zero on success
+    }
+
+    #[allow(non_snake_case, clippy::arithmetic_side_effects)]
+    fn system_time_since_windows_epoch(&self, time: &SystemTime) -> InterpResult<'tcx, Duration> {
+        let this = self.eval_context_ref();
+
+        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
+        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH");
+        let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
+
+        interp_ok(system_time_to_duration(time)? + Duration::from_secs(SECONDS_TO_UNIX_EPOCH))
+    }
+
+    #[allow(non_snake_case, clippy::arithmetic_side_effects)]
+    fn windows_ticks_for(&self, duration: Duration) -> InterpResult<'tcx, u64> {
+        let this = self.eval_context_ref();
+
+        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
+        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
+        let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
+
+        let ticks = u64::try_from(duration.as_nanos() / u128::from(NANOS_PER_INTERVAL))
+            .map_err(|_| err_unsup_format!("programs running more than 2^64 Windows ticks after the Windows epoch are not supported"))?;
+        interp_ok(ticks)
     }
 
     fn mach_absolute_time(&self) -> InterpResult<'tcx, Scalar> {
@@ -286,11 +307,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // This returns a u64, with time units determined dynamically by `mach_timebase_info`.
         // We return plain nanoseconds.
-        let duration = this.machine.clock.now().duration_since(this.machine.clock.epoch());
+        let duration =
+            this.machine.monotonic_clock.now().duration_since(this.machine.monotonic_clock.epoch());
         let res = u64::try_from(duration.as_nanos()).map_err(|_| {
             err_unsup_format!("programs running longer than 2^64 nanoseconds are not supported")
         })?;
-        Ok(Scalar::from_u64(res))
+        interp_ok(Scalar::from_u64(res))
     }
 
     fn mach_timebase_info(&mut self, info_op: &OpTy<'tcx>) -> InterpResult<'tcx, Scalar> {
@@ -305,7 +327,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let (numer, denom) = (1, 1);
         this.write_int_fields(&[numer.into(), denom.into()], &info)?;
 
-        Ok(Scalar::from_i32(0)) // KERN_SUCCESS
+        interp_ok(Scalar::from_i32(0)) // KERN_SUCCESS
     }
 
     fn nanosleep(
@@ -322,9 +344,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let duration = match this.read_timespec(&req)? {
             Some(duration) => duration,
             None => {
-                let einval = this.eval_libc("EINVAL");
-                this.set_last_error(einval)?;
-                return Ok(Scalar::from_i32(-1));
+                return this.set_last_error_and_return_i32(LibcError("EINVAL"));
             }
         };
 
@@ -333,11 +353,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { Ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
-        Ok(Scalar::from_i32(0))
+        interp_ok(Scalar::from_i32(0))
     }
 
     #[allow(non_snake_case)]
@@ -355,10 +377,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Some((TimeoutClock::Monotonic, TimeoutAnchor::Relative, duration)),
             callback!(
                 @capture<'tcx> {}
-                @unblock = |_this| { panic!("sleeping thread unblocked before time is up") }
-                @timeout = |_this| { Ok(()) }
+                |_this, unblock: UnblockKind| {
+                    assert_eq!(unblock, UnblockKind::TimedOut);
+                    interp_ok(())
+                }
             ),
         );
-        Ok(())
+        interp_ok(())
     }
 }

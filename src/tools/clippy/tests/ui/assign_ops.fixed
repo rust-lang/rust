@@ -5,25 +5,36 @@ use core::num::Wrapping;
 fn main() {
     let mut a = 5;
     a += 1;
+    //~^ assign_op_pattern
     a += 1;
+    //~^ assign_op_pattern
     a -= 1;
+    //~^ assign_op_pattern
     a *= 99;
+    //~^ assign_op_pattern
     a *= 42;
+    //~^ assign_op_pattern
     a /= 2;
+    //~^ assign_op_pattern
     a %= 5;
+    //~^ assign_op_pattern
     a &= 1;
+    //~^ assign_op_pattern
     a = 1 - a;
     a = 5 / a;
     a = 42 % a;
     a = 6 << a;
     let mut s = String::new();
     s += "bla";
+    //~^ assign_op_pattern
 
     // Issue #9180
     let mut a = Wrapping(0u32);
     a += Wrapping(1u32);
+    //~^ assign_op_pattern
     let mut v = vec![0u32, 1u32];
     v[0] += v[1];
+    //~^ assign_op_pattern
     let mut v = vec![Wrapping(0u32), Wrapping(1u32)];
     v[0] = v[0] + v[1];
     let _ = || v[0] = v[0] + v[1];

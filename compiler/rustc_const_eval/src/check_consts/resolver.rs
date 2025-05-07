@@ -5,15 +5,15 @@
 use std::fmt;
 use std::marker::PhantomData;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::MixedBitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{
     self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
 };
 use rustc_mir_dataflow::fmt::DebugWithContext;
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, JoinSemiLattice};
+use rustc_mir_dataflow::{Analysis, JoinSemiLattice};
 
-use super::{qualifs, ConstCx, Qualif};
+use super::{ConstCx, Qualif, qualifs};
 
 /// A `Visitor` that propagates qualifs between locals. This defines the transfer function of
 /// `FlowSensitiveAnalysis`.
@@ -22,17 +22,17 @@ use super::{qualifs, ConstCx, Qualif};
 /// qualified immediately after it is borrowed or its address escapes. The borrow must allow for
 /// mutation, which includes shared borrows of places with interior mutability. The type of
 /// borrowed place must contain the qualif.
-struct TransferFunction<'a, 'mir, 'tcx, Q> {
-    ccx: &'a ConstCx<'mir, 'tcx>,
-    state: &'a mut State,
+struct TransferFunction<'mir, 'tcx, Q> {
+    ccx: &'mir ConstCx<'mir, 'tcx>,
+    state: &'mir mut State,
     _qualif: PhantomData<Q>,
 }
 
-impl<'a, 'mir, 'tcx, Q> TransferFunction<'a, 'mir, 'tcx, Q>
+impl<'mir, 'tcx, Q> TransferFunction<'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    fn new(ccx: &'a ConstCx<'mir, 'tcx>, state: &'a mut State) -> Self {
+    fn new(ccx: &'mir ConstCx<'mir, 'tcx>, state: &'mir mut State) -> Self {
         TransferFunction { ccx, state, _qualif: PhantomData }
     }
 
@@ -96,7 +96,7 @@ where
     }
 
     fn address_of_allows_mutation(&self) -> bool {
-        // Exact set of permissions granted by AddressOf is undecided. Conservatively assume that
+        // Exact set of permissions granted by RawPtr is undecided. Conservatively assume that
         // it might allow mutation until resolution of #56604.
         true
     }
@@ -120,11 +120,11 @@ where
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
-        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.param_env)
+        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.typing_env)
     }
 }
 
-impl<'tcx, Q> Visitor<'tcx> for TransferFunction<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Visitor<'tcx> for TransferFunction<'_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -170,7 +170,7 @@ where
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            mir::Rvalue::AddressOf(_mt, borrowed_place) => {
+            mir::Rvalue::RawPtr(_mt, borrowed_place) => {
                 if !borrowed_place.is_indirect() && self.address_of_allows_mutation() {
                     let place_ty = borrowed_place.ty(self.ccx.body, self.ccx.tcx).ty;
                     if Q::in_any_value_of_ty(self.ccx, place_ty) {
@@ -202,7 +202,8 @@ where
             | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)
             | mir::Rvalue::Discriminant(..)
-            | mir::Rvalue::Aggregate(..) => {}
+            | mir::Rvalue::Aggregate(..)
+            | mir::Rvalue::WrapUnsafeBinder(..) => {}
         }
     }
 
@@ -227,31 +228,33 @@ where
 }
 
 /// The dataflow analysis used to propagate qualifs on arbitrary CFGs.
-pub(super) struct FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q> {
-    ccx: &'a ConstCx<'mir, 'tcx>,
+pub(super) struct FlowSensitiveAnalysis<'mir, 'tcx, Q> {
+    ccx: &'mir ConstCx<'mir, 'tcx>,
     _qualif: PhantomData<Q>,
 }
 
-impl<'a, 'mir, 'tcx, Q> FlowSensitiveAnalysis<'a, 'mir, 'tcx, Q>
+impl<'mir, 'tcx, Q> FlowSensitiveAnalysis<'mir, 'tcx, Q>
 where
     Q: Qualif,
 {
-    pub(super) fn new(_: Q, ccx: &'a ConstCx<'mir, 'tcx>) -> Self {
+    pub(super) fn new(_: Q, ccx: &'mir ConstCx<'mir, 'tcx>) -> Self {
         FlowSensitiveAnalysis { ccx, _qualif: PhantomData }
     }
 
-    fn transfer_function(&self, state: &'a mut State) -> TransferFunction<'a, 'mir, 'tcx, Q> {
+    fn transfer_function(&self, state: &'mir mut State) -> TransferFunction<'mir, 'tcx, Q> {
         TransferFunction::<Q>::new(self.ccx, state)
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
+/// The state for the `FlowSensitiveAnalysis` dataflow analysis. This domain is likely homogeneous,
+/// and has a big size, so we use a bitset that can be sparse (c.f. issue #134404).
 pub(super) struct State {
     /// Describes whether a local contains qualif.
-    pub qualif: BitSet<Local>,
+    pub qualif: MixedBitSet<Local>,
     /// Describes whether a local's address escaped and it might become qualified as a result an
     /// indirect mutation.
-    pub borrow: BitSet<Local>,
+    pub borrow: MixedBitSet<Local>,
 }
 
 impl Clone for State {
@@ -310,7 +313,7 @@ impl JoinSemiLattice for State {
     }
 }
 
-impl<'tcx, Q> AnalysisDomain<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
+impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, 'tcx, Q>
 where
     Q: Qualif,
 {
@@ -320,21 +323,16 @@ where
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
         State {
-            qualif: BitSet::new_empty(body.local_decls.len()),
-            borrow: BitSet::new_empty(body.local_decls.len()),
+            qualif: MixedBitSet::new_empty(body.local_decls.len()),
+            borrow: MixedBitSet::new_empty(body.local_decls.len()),
         }
     }
 
     fn initialize_start_block(&self, _body: &mir::Body<'tcx>, state: &mut Self::Domain) {
         self.transfer_function(state).initialize_state();
     }
-}
 
-impl<'tcx, Q> Analysis<'tcx> for FlowSensitiveAnalysis<'_, '_, 'tcx, Q>
-where
-    Q: Qualif,
-{
-    fn apply_statement_effect(
+    fn apply_primary_statement_effect(
         &mut self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
@@ -343,7 +341,7 @@ where
         self.transfer_function(state).visit_statement(statement, location);
     }
 
-    fn apply_terminator_effect<'mir>(
+    fn apply_primary_terminator_effect<'mir>(
         &mut self,
         state: &mut Self::Domain,
         terminator: &'mir mir::Terminator<'tcx>,

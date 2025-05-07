@@ -4,33 +4,38 @@
 use std::{
     fmt,
     ops::Div as _,
+    panic::AssertUnwindSafe,
     time::{Duration, Instant},
 };
 
-use always_assert::always;
-use crossbeam_channel::{select, Receiver};
-use ide_db::base_db::{SourceDatabase, SourceRootDatabase, VfsPath};
+use crossbeam_channel::{Receiver, select};
+use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
 use lsp_server::{Connection, Notification, Request};
-use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
+use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
-use tracing::{error, span, Level};
-use vfs::{loader::LoadingProgress, AbsPathBuf, FileId};
+use tracing::{Level, error, span};
+use vfs::{AbsPathBuf, FileId, loader::LoadingProgress};
 
 use crate::{
     config::Config,
-    diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
+    diagnostics::{DiagnosticsGeneration, NativeDiagnosticsFetchKind, fetch_native_diagnostics},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
     flycheck::{self, FlycheckMessage},
-    global_state::{file_id_to_url, url_to_file_id, FetchWorkspaceRequest, GlobalState},
-    hack_recover_crate_name,
-    handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
+    global_state::{
+        FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
+        file_id_to_url, url_to_file_id,
+    },
+    handlers::{
+        dispatch::{NotificationDispatcher, RequestDispatcher},
+        request::empty_diagnostic_report,
+    },
     lsp::{
         from_proto, to_proto,
-        utils::{notification_is, Progress},
+        utils::{Progress, notification_is},
     },
     lsp_ext,
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
-    test_runner::{CargoTestMessage, TestState},
+    test_runner::{CargoTestMessage, CargoTestOutput, TestState},
 };
 
 pub fn main_loop(config: Config, connection: Connection) -> anyhow::Result<()> {
@@ -195,7 +200,7 @@ impl GlobalState {
             ) {
                 return Ok(());
             }
-            self.handle_event(event)?;
+            self.handle_event(event);
         }
 
         Err(anyhow::anyhow!("A receiver has been dropped, something panicked!"))
@@ -249,6 +254,11 @@ impl GlobalState {
         &self,
         inbox: &Receiver<lsp_server::Message>,
     ) -> Result<Option<Event>, crossbeam_channel::RecvError> {
+        // Make sure we reply to formatting requests ASAP so the editor doesn't block
+        if let Ok(task) = self.fmt_pool.receiver.try_recv() {
+            return Ok(Some(Event::Task(task)));
+        }
+
         select! {
             recv(inbox) -> msg =>
                 return Ok(msg.ok().map(Event::Lsp)),
@@ -277,7 +287,7 @@ impl GlobalState {
         .map(Some)
     }
 
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<()> {
+    fn handle_event(&mut self, event: Event) {
         let loop_start = Instant::now();
         let _p = tracing::info_span!("GlobalState::handle_event", event = %event).entered();
 
@@ -294,7 +304,7 @@ impl GlobalState {
         match event {
             Event::Lsp(msg) => match msg {
                 lsp_server::Message::Request(req) => self.on_new_request(loop_start, req),
-                lsp_server::Message::Notification(not) => self.on_notification(not)?,
+                lsp_server::Message::Notification(not) => self.on_notification(not),
                 lsp_server::Message::Response(resp) => self.complete_request(resp),
             },
             Event::QueuedTask(task) => {
@@ -316,26 +326,30 @@ impl GlobalState {
                 }
 
                 for progress in prime_caches_progress {
-                    let (state, message, fraction);
+                    let (state, message, fraction, title);
                     match progress {
                         PrimeCachesProgress::Begin => {
                             state = Progress::Begin;
                             message = None;
                             fraction = 0.0;
+                            title = "Indexing";
                         }
                         PrimeCachesProgress::Report(report) => {
                             state = Progress::Report;
+                            title = report.work_type;
 
-                            message = match &report.crates_currently_indexing[..] {
+                            message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
-                                    "{}/{} ({crate_name})",
-                                    report.crates_done, report.crates_total
+                                    "{}/{} ({})",
+                                    report.crates_done,
+                                    report.crates_total,
+                                    crate_name.as_str(),
                                 )),
                                 [crate_name, rest @ ..] => Some(format!(
                                     "{}/{} ({} + {} more)",
                                     report.crates_done,
                                     report.crates_total,
-                                    crate_name,
+                                    crate_name.as_str(),
                                     rest.len()
                                 )),
                                 _ => None,
@@ -347,7 +361,9 @@ impl GlobalState {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
+                            title = "Indexing";
 
+                            self.analysis_host.raw_database_mut().trigger_lru_eviction();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
@@ -356,7 +372,13 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("Indexing", state, message, Some(fraction), None);
+                    self.report_progress(
+                        title,
+                        state,
+                        message,
+                        Some(fraction),
+                        Some("rustAnalyzer/cachePriming".to_owned()),
+                    );
                 }
             }
             Event::Vfs(message) => {
@@ -404,7 +426,10 @@ impl GlobalState {
         if self.is_quiescent() {
             let became_quiescent = !was_quiescent;
             if became_quiescent {
-                if self.config.check_on_save() {
+                if self.config.check_on_save(None)
+                    && self.config.flycheck_workspace(None)
+                    && !self.fetch_build_data_queue.op_requested()
+                {
                     // Project has loaded properly, kick off initial flycheck
                     self.flycheck.iter().for_each(|flycheck| flycheck.restart_workspace(None));
                 }
@@ -430,11 +455,21 @@ impl GlobalState {
                 if self.config.inlay_hints_refresh() {
                     self.send_request::<lsp_types::request::InlayHintRefreshRequest>((), |_, _| ());
                 }
+
+                if self.config.diagnostics_refresh() {
+                    self.send_request::<lsp_types::request::WorkspaceDiagnosticRefresh>(
+                        (),
+                        |_, _| (),
+                    );
+                }
             }
 
             let project_or_mem_docs_changed =
                 became_quiescent || state_changed || memdocs_added_or_removed;
-            if project_or_mem_docs_changed && self.config.publish_diagnostics() {
+            if project_or_mem_docs_changed
+                && !self.config.text_document_diagnostic()
+                && self.config.publish_diagnostics(None)
+            {
                 self.update_diagnostics();
             }
             if project_or_mem_docs_changed && self.config.test_explorer() {
@@ -455,7 +490,7 @@ impl GlobalState {
             }
         }
 
-        if self.config.cargo_autoreload_config()
+        if self.config.cargo_autoreload_config(None)
             || self.config.discover_workspace_config().is_some()
         {
             if let Some((cause, FetchWorkspaceRequest { path, force_crate_graph_reload })) =
@@ -468,8 +503,10 @@ impl GlobalState {
         if !self.fetch_workspaces_queue.op_in_progress() {
             if let Some((cause, ())) = self.fetch_build_data_queue.should_start_op() {
                 self.fetch_build_data(cause);
-            } else if let Some((cause, paths)) = self.fetch_proc_macros_queue.should_start_op() {
-                self.fetch_proc_macros(cause, paths);
+            } else if let Some((cause, (change, paths))) =
+                self.fetch_proc_macros_queue.should_start_op()
+            {
+                self.fetch_proc_macros(cause, change, paths);
             }
         }
 
@@ -481,12 +518,13 @@ impl GlobalState {
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
-            tracing::warn!("overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}");
+            tracing::warn!(
+                "overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}"
+            );
             self.poke_rust_analyzer_developer(format!(
                 "overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}"
             ));
         }
-        Ok(())
     }
 
     fn prime_caches(&mut self, cause: String) {
@@ -494,7 +532,7 @@ impl GlobalState {
         let num_worker_threads = self.config.prime_caches_num_threads();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
-            let analysis = self.snapshot().analysis;
+            let analysis = AssertUnwindSafe(self.snapshot().analysis);
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
                 let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
@@ -516,14 +554,18 @@ impl GlobalState {
             self.mem_docs
                 .iter()
                 .map(|path| vfs.file_id(path).unwrap())
+                .filter_map(|(file_id, excluded)| {
+                    (excluded == vfs::FileExcluded::No).then_some(file_id)
+                })
                 .filter(|&file_id| {
-                    let source_root = db.file_source_root(file_id);
+                    let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                    let source_root = db.source_root(source_root_id).source_root(db);
                     // Only publish diagnostics for files in the workspace, not from crates.io deps
                     // or the sysroot.
                     // While theoretically these should never have errors, we have quite a few false
                     // positives particularly in the stdlib, and those diagnostics would stay around
                     // forever if we emitted them here.
-                    !db.source_root(source_root).is_library
+                    !source_root.is_library
                 })
                 .collect::<std::sync::Arc<_>>()
         };
@@ -552,23 +594,33 @@ impl GlobalState {
                 let fetch_semantic =
                     self.vfs_done && self.fetch_workspaces_queue.last_op_result().is_some();
                 move |sender| {
-                    let diags = fetch_native_diagnostics(
-                        &snapshot,
-                        subscriptions.clone(),
-                        slice.clone(),
-                        NativeDiagnosticsFetchKind::Syntax,
-                    );
+                    // We aren't observing the semantics token cache here
+                    let snapshot = AssertUnwindSafe(&snapshot);
+                    let Ok(diags) = std::panic::catch_unwind(|| {
+                        fetch_native_diagnostics(
+                            &snapshot,
+                            subscriptions.clone(),
+                            slice.clone(),
+                            NativeDiagnosticsFetchKind::Syntax,
+                        )
+                    }) else {
+                        return;
+                    };
                     sender
                         .send(Task::Diagnostics(DiagnosticsTaskKind::Syntax(generation, diags)))
                         .unwrap();
 
                     if fetch_semantic {
-                        let diags = fetch_native_diagnostics(
-                            &snapshot,
-                            subscriptions,
-                            slice,
-                            NativeDiagnosticsFetchKind::Semantic,
-                        );
+                        let Ok(diags) = std::panic::catch_unwind(|| {
+                            fetch_native_diagnostics(
+                                &snapshot,
+                                subscriptions.clone(),
+                                slice.clone(),
+                                NativeDiagnosticsFetchKind::Semantic,
+                            )
+                        }) else {
+                            return;
+                        };
                         sender
                             .send(Task::Diagnostics(DiagnosticsTaskKind::Semantic(
                                 generation, diags,
@@ -590,9 +642,13 @@ impl GlobalState {
             .mem_docs
             .iter()
             .map(|path| self.vfs.read().0.file_id(path).unwrap())
+            .filter_map(|(file_id, excluded)| {
+                (excluded == vfs::FileExcluded::No).then_some(file_id)
+            })
             .filter(|&file_id| {
-                let source_root = db.file_source_root(file_id);
-                !db.source_root(source_root).is_library
+                let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                let source_root = db.source_root(source_root_id).source_root(db);
+                !source_root.is_library
             })
             .collect::<Vec<_>>();
         tracing::trace!("updating tests for {:?}", subscriptions);
@@ -608,9 +664,7 @@ impl GlobalState {
                     .filter_map(|f| snapshot.analysis.discover_tests_in_file(f).ok())
                     .flatten()
                     .collect::<Vec<_>>();
-                for t in &tests {
-                    hack_recover_crate_name::insert_name(t.id.clone());
-                }
+
                 Task::DiscoverTest(lsp_ext::DiscoverTestResults {
                     tests: tests
                         .into_iter()
@@ -633,8 +687,8 @@ impl GlobalState {
 
     fn update_status_or_notify(&mut self) {
         let status = self.current_status();
-        if self.last_reported_status.as_ref() != Some(&status) {
-            self.last_reported_status = Some(status.clone());
+        if self.last_reported_status != status {
+            self.last_reported_status = status.clone();
 
             if self.config.server_status_notification() {
                 self.send_notification::<lsp_ext::ServerStatusNotification>(status);
@@ -685,13 +739,14 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     ProjectWorkspaceProgress::Begin => (Progress::Begin, None),
                     ProjectWorkspaceProgress::Report(msg) => (Progress::Report, Some(msg)),
-                    ProjectWorkspaceProgress::End(workspaces, force_reload_crate_graph) => {
-                        self.fetch_workspaces_queue
-                            .op_completed(Some((workspaces, force_reload_crate_graph)));
+                    ProjectWorkspaceProgress::End(workspaces, force_crate_graph_reload) => {
+                        let resp = FetchWorkspaceResponse { workspaces, force_crate_graph_reload };
+                        self.fetch_workspaces_queue.op_completed(resp);
                         if let Err(e) = self.fetch_workspace_error() {
-                            error!("FetchWorkspaceError:\n{e}");
+                            error!("FetchWorkspaceError: {e}");
                         }
                         self.wants_to_switch = Some("fetched workspace".to_owned());
+                        self.diagnostics.clear_check_all();
                         (Progress::End, None)
                     }
                 };
@@ -717,7 +772,8 @@ impl GlobalState {
                             DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                         };
 
-                        let handle = discover.spawn(arg).unwrap();
+                        let handle =
+                            discover.spawn(arg, &std::env::current_dir().unwrap()).unwrap();
                         self.discover_handle = Some(handle);
                     }
                 }
@@ -726,10 +782,12 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     BuildDataProgress::Begin => (Some(Progress::Begin), None),
                     BuildDataProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
-                    BuildDataProgress::End(build_data_result) => {
-                        self.fetch_build_data_queue.op_completed(build_data_result);
+                    BuildDataProgress::End((workspaces, build_scripts)) => {
+                        let resp = FetchBuildDataResponse { workspaces, build_scripts };
+                        self.fetch_build_data_queue.op_completed(resp);
+
                         if let Err(e) = self.fetch_build_data_error() {
-                            error!("FetchBuildDataError:\n{e}");
+                            error!("FetchBuildDataError: {e}");
                         }
 
                         if self.wants_to_switch.is_none() {
@@ -747,9 +805,10 @@ impl GlobalState {
                 let (state, msg) = match progress {
                     ProcMacroProgress::Begin => (Some(Progress::Begin), None),
                     ProcMacroProgress::Report(msg) => (Some(Progress::Report), Some(msg)),
-                    ProcMacroProgress::End(proc_macro_load_result) => {
+                    ProcMacroProgress::End(change) => {
                         self.fetch_proc_macros_queue.op_completed(true);
-                        self.set_proc_macros(proc_macro_load_result);
+                        self.analysis_host.apply_change(change);
+                        self.finish_loading_crate_graph();
                         (Some(Progress::End), None)
                     }
                 };
@@ -784,13 +843,20 @@ impl GlobalState {
                 }
             }
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
-                let _p = tracing::info_span!("GlobalState::handle_vfs_mgs/progress").entered();
-                always!(config_version <= self.vfs_config_version);
+                let _p = span!(Level::INFO, "GlobalState::handle_vfs_msg/progress").entered();
+                stdx::always!(config_version <= self.vfs_config_version);
 
                 let (n_done, state) = match n_done {
-                    LoadingProgress::Started => (0, Progress::Begin),
+                    LoadingProgress::Started => {
+                        self.vfs_span =
+                            Some(span!(Level::INFO, "vfs_load", total = n_total).entered());
+                        (0, Progress::Begin)
+                    }
                     LoadingProgress::Progress(n_done) => (n_done.min(n_total), Progress::Report),
-                    LoadingProgress::Finished => (n_total, Progress::End),
+                    LoadingProgress::Finished => {
+                        self.vfs_span = None;
+                        (n_total, Progress::End)
+                    }
                 };
 
                 self.vfs_progress_config_version = config_version;
@@ -826,7 +892,10 @@ impl GlobalState {
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
                     let _p = tracing::info_span!("GlobalState::check_if_indexed").entered();
                     tracing::debug!(?uri, "handling uri");
-                    let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
+                    let Some(id) = from_proto::file_id(&snap, &uri).expect("unable to get FileId")
+                    else {
+                        return;
+                    };
                     if let Ok(crates) = &snap.analysis.crates_for(id) {
                         if crates.is_empty() {
                             if snap.config.discover_workspace_config().is_some() {
@@ -842,16 +911,15 @@ impl GlobalState {
                 });
             }
             QueuedTask::CheckProcMacroSources(modified_rust_files) => {
-                let crate_graph = self.analysis_host.raw_database().crate_graph();
-                let snap = self.snapshot();
+                let analysis = AssertUnwindSafe(self.snapshot().analysis);
                 self.task_pool.handle.spawn_with_sender(stdx::thread::ThreadIntent::Worker, {
                     move |sender| {
                         if modified_rust_files.into_iter().any(|file_id| {
                             // FIXME: Check whether these files could be build script related
-                            match snap.analysis.crates_for(file_id) {
-                                Ok(crates) => {
-                                    crates.iter().any(|&krate| crate_graph[krate].is_proc_macro)
-                                }
+                            match analysis.crates_for(file_id) {
+                                Ok(crates) => crates.iter().any(|&krate| {
+                                    analysis.is_proc_macro_crate(krate).is_ok_and(|it| it)
+                                }),
                                 _ => false,
                             }
                         }) {
@@ -871,17 +939,19 @@ impl GlobalState {
             .expect("No title could be found; this is a bug");
         match message {
             DiscoverProjectMessage::Finished { project, buildfile } => {
+                self.discover_handle = None;
                 self.report_progress(&title, Progress::End, None, None, None);
                 self.discover_workspace_queue.op_completed(());
 
                 let mut config = Config::clone(&*self.config);
-                config.add_linked_projects(project, buildfile);
+                config.add_discovered_project_from_command(project, buildfile);
                 self.update_configuration(config);
             }
             DiscoverProjectMessage::Progress { message } => {
                 self.report_progress(&title, Progress::Report, Some(message), None, None)
             }
             DiscoverProjectMessage::Error { error, source } => {
+                self.discover_handle = None;
                 let message = format!("Project discovery failed: {error}");
                 self.discover_workspace_queue.op_completed(());
                 self.show_and_log_error(message.clone(), source);
@@ -891,30 +961,31 @@ impl GlobalState {
     }
 
     fn handle_cargo_test_msg(&mut self, message: CargoTestMessage) {
-        match message {
-            CargoTestMessage::Test { name, state } => {
+        match message.output {
+            CargoTestOutput::Test { name, state } => {
                 let state = match state {
                     TestState::Started => lsp_ext::TestState::Started,
                     TestState::Ignored => lsp_ext::TestState::Skipped,
                     TestState::Ok => lsp_ext::TestState::Passed,
                     TestState::Failed { stdout } => lsp_ext::TestState::Failed { message: stdout },
                 };
-                let Some(test_id) = hack_recover_crate_name::lookup_name(name) else {
-                    return;
-                };
+
+                // The notification requires the namespace form (with underscores) of the target
+                let test_id = format!("{}::{name}", message.target.target.replace('-', "_"));
+
                 self.send_notification::<lsp_ext::ChangeTestState>(
                     lsp_ext::ChangeTestStateParams { test_id, state },
                 );
             }
-            CargoTestMessage::Suite => (),
-            CargoTestMessage::Finished => {
+            CargoTestOutput::Suite => (),
+            CargoTestOutput::Finished => {
                 self.test_run_remaining_jobs = self.test_run_remaining_jobs.saturating_sub(1);
                 if self.test_run_remaining_jobs == 0 {
                     self.send_notification::<lsp_ext::EndRunTest>(());
                     self.test_run_session = None;
                 }
             }
-            CargoTestMessage::Custom { text } => {
+            CargoTestOutput::Custom { text } => {
                 self.send_notification::<lsp_ext::AppendOutputToRunTest>(text);
             }
         }
@@ -922,22 +993,24 @@ impl GlobalState {
 
     fn handle_flycheck_msg(&mut self, message: FlycheckMessage) {
         match message {
-            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic } => {
+            FlycheckMessage::AddDiagnostic { id, workspace_root, diagnostic, package_id } => {
                 let snap = self.snapshot();
                 let diagnostics = crate::diagnostics::to_proto::map_rust_diagnostic_to_lsp(
-                    &self.config.diagnostics_map(),
+                    &self.config.diagnostics_map(None),
                     &diagnostic,
                     &workspace_root,
                     &snap,
                 );
                 for diag in diagnostics {
                     match url_to_file_id(&self.vfs.read().0, &diag.url) {
-                        Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                        Ok(Some(file_id)) => self.diagnostics.add_check_diagnostic(
                             id,
+                            &package_id,
                             file_id,
                             diag.diagnostic,
                             diag.fix,
                         ),
+                        Ok(None) => {}
                         Err(err) => {
                             error!(
                                 "flycheck {id}: File with cargo diagnostic not found in VFS: {}",
@@ -947,9 +1020,12 @@ impl GlobalState {
                     };
                 }
             }
-
-            FlycheckMessage::ClearDiagnostics { id } => self.diagnostics.clear_check(id),
-
+            FlycheckMessage::ClearDiagnostics { id, package_id: None } => {
+                self.diagnostics.clear_check(id)
+            }
+            FlycheckMessage::ClearDiagnostics { id, package_id: Some(package_id) } => {
+                self.diagnostics.clear_check_for_package(id, package_id)
+            }
             FlycheckMessage::Progress { id, progress } => {
                 let (state, message) = match progress {
                     flycheck::Progress::DidStart => (Progress::Begin, None),
@@ -973,9 +1049,9 @@ impl GlobalState {
                 // When we're running multiple flychecks, we have to include a disambiguator in
                 // the title, or the editor complains. Note that this is a user-facing string.
                 let title = if self.flycheck.len() == 1 {
-                    format!("{}", self.config.flycheck())
+                    format!("{}", self.config.flycheck(None))
                 } else {
-                    format!("{} (#{})", self.config.flycheck(), id + 1)
+                    format!("{} (#{})", self.config.flycheck(None), id + 1)
                 };
                 self.report_progress(
                     &title,
@@ -1056,6 +1132,13 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
+            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, empty_diagnostic_report, || lsp_server::ResponseError {
+                code: lsp_server::ErrorCode::ServerCancelled as i32,
+                message: "server cancelled the request".to_owned(),
+                data: serde_json::to_value(lsp_types::DiagnosticServerCancellationData {
+                    retrigger_request: true
+                }).ok(),
+            })
             .on::<RETRY, lsp_request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<RETRY, lsp_request::FoldingRangeRequest>(handlers::handle_folding_range)
             .on::<NO_RETRY, lsp_request::SignatureHelpRequest>(handlers::handle_signature_help)
@@ -1085,12 +1168,13 @@ impl GlobalState {
             .on::<RETRY, lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
             .on::<NO_RETRY, lsp_ext::Ssr>(handlers::handle_ssr)
             .on::<NO_RETRY, lsp_ext::ViewRecursiveMemoryLayout>(handlers::handle_view_recursive_memory_layout)
-            .on::<NO_RETRY, lsp_ext::SyntaxTree>(handlers::handle_syntax_tree)
+            .on::<NO_RETRY, lsp_ext::ViewSyntaxTree>(handlers::handle_view_syntax_tree)
             .on::<NO_RETRY, lsp_ext::ViewHir>(handlers::handle_view_hir)
             .on::<NO_RETRY, lsp_ext::ViewMir>(handlers::handle_view_mir)
             .on::<NO_RETRY, lsp_ext::InterpretFunction>(handlers::handle_interpret_function)
             .on::<NO_RETRY, lsp_ext::ExpandMacro>(handlers::handle_expand_macro)
             .on::<NO_RETRY, lsp_ext::ParentModule>(handlers::handle_parent_module)
+            .on::<NO_RETRY, lsp_ext::ChildModules>(handlers::handle_child_modules)
             .on::<NO_RETRY, lsp_ext::Runnables>(handlers::handle_runnables)
             .on::<NO_RETRY, lsp_ext::RelatedTests>(handlers::handle_related_tests)
             .on::<NO_RETRY, lsp_ext::CodeActionRequest>(handlers::handle_code_action)
@@ -1105,37 +1189,32 @@ impl GlobalState {
     }
 
     /// Handles an incoming notification.
-    fn on_notification(&mut self, not: Notification) -> anyhow::Result<()> {
+    fn on_notification(&mut self, not: Notification) {
         let _p =
             span!(Level::INFO, "GlobalState::on_notification", not.method = ?not.method).entered();
         use crate::handlers::notification as handlers;
         use lsp_types::notification as notifs;
 
         NotificationDispatcher { not: Some(not), global_state: self }
-            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)?
+            .on_sync_mut::<notifs::Cancel>(handlers::handle_cancel)
             .on_sync_mut::<notifs::WorkDoneProgressCancel>(
                 handlers::handle_work_done_progress_cancel,
-            )?
-            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)?
-            .on_sync_mut::<notifs::DidChangeTextDocument>(
-                handlers::handle_did_change_text_document,
-            )?
-            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)?
-            .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)?
+            )
+            .on_sync_mut::<notifs::DidOpenTextDocument>(handlers::handle_did_open_text_document)
+            .on_sync_mut::<notifs::DidChangeTextDocument>(handlers::handle_did_change_text_document)
+            .on_sync_mut::<notifs::DidCloseTextDocument>(handlers::handle_did_close_text_document)
+            .on_sync_mut::<notifs::DidSaveTextDocument>(handlers::handle_did_save_text_document)
             .on_sync_mut::<notifs::DidChangeConfiguration>(
                 handlers::handle_did_change_configuration,
-            )?
+            )
             .on_sync_mut::<notifs::DidChangeWorkspaceFolders>(
                 handlers::handle_did_change_workspace_folders,
-            )?
-            .on_sync_mut::<notifs::DidChangeWatchedFiles>(
-                handlers::handle_did_change_watched_files,
-            )?
-            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
-            .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)?
-            .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)?
-            .on_sync_mut::<lsp_ext::AbortRunTest>(handlers::handle_abort_run_test)?
+            )
+            .on_sync_mut::<notifs::DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
+            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)
+            .on_sync_mut::<lsp_ext::ClearFlycheck>(handlers::handle_clear_flycheck)
+            .on_sync_mut::<lsp_ext::RunFlycheck>(handlers::handle_run_flycheck)
+            .on_sync_mut::<lsp_ext::AbortRunTest>(handlers::handle_abort_run_test)
             .finish();
-        Ok(())
     }
 }

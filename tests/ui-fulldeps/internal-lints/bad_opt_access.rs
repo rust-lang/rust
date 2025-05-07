@@ -15,7 +15,7 @@ pub fn access_bad_option(sess: Session) {
     //~^ ERROR use `Session::split_debuginfo` instead of this field
 
     let _ = sess.opts.crate_types;
-    //~^ ERROR use `Session::crate_types` instead of this field
+    //~^ ERROR use `TyCtxt::crate_types` instead of this field
 
     let _ = sess.opts.crate_name;
     // okay!

@@ -43,12 +43,14 @@
 
 use std::fmt;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
-use rustc_ast_ir::visit::VisitorResult;
-use rustc_ast_ir::{try_visit, walk_visitable_list};
+pub use rustc_ast_ir::visit::VisitorResult;
+pub use rustc_ast_ir::{try_visit, walk_visitable_list};
 use rustc_index::{Idx, IndexVec};
+use smallvec::SmallVec;
+use thin_vec::ThinVec;
 
-use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::{self as ty, Interner, TypeFlags};
 
@@ -57,7 +59,7 @@ use crate::{self as ty, Interner, TypeFlags};
 ///
 /// To implement this conveniently, use the derive macro located in
 /// `rustc_macros`.
-pub trait TypeVisitable<I: Interner>: fmt::Debug + Clone {
+pub trait TypeVisitable<I: Interner>: fmt::Debug {
     /// The entry point for visiting. To visit a value `t` with a visitor `v`
     /// call: `t.visit_with(v)`.
     ///
@@ -165,7 +167,7 @@ impl<I: Interner, T: TypeVisitable<I>, E: TypeVisitable<I>> TypeVisitable<I> for
     }
 }
 
-impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Lrc<T> {
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Arc<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
     }
@@ -178,6 +180,20 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<T> {
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Vec<T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for ThinVec<T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>, const N: usize> TypeVisitable<I> for SmallVec<[T; N]> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()
@@ -202,6 +218,13 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<[T]> {
 }
 
 impl<I: Interner, T: TypeVisitable<I>, Ix: Idx> TypeVisitable<I> for IndexVec<Ix, T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        walk_visitable_list!(visitor, self.iter());
+        V::Result::output()
+    }
+}
+
+impl<I: Interner, T: TypeVisitable<I>, S> TypeVisitable<I> for indexmap::IndexSet<T, S> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         walk_visitable_list!(visitor, self.iter());
         V::Result::output()
@@ -244,10 +267,6 @@ pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {
 
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
-    }
-
-    fn has_coroutines(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_TY_COROUTINE)
     }
 
     fn references_error(&self) -> bool {

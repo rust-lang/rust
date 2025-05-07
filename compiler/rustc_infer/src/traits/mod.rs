@@ -12,20 +12,22 @@ use std::hash::{Hash, Hasher};
 
 use hir::def_id::LocalDefId;
 use rustc_hir as hir;
+use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 pub use rustc_middle::traits::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, Upcast};
 use rustc_span::Span;
+use thin_vec::ThinVec;
 
+pub use self::ImplSource::*;
+pub use self::SelectionError::*;
 pub use self::engine::{FromSolverError, ScrubbedTraitError, TraitEngine};
 pub(crate) use self::project::UndoLog;
 pub use self::project::{
     MismatchedProjectionTypes, Normalized, NormalizedTerm, ProjectionCache, ProjectionCacheEntry,
-    ProjectionCacheKey, ProjectionCacheStorage, Reveal,
+    ProjectionCacheKey, ProjectionCacheStorage,
 };
-pub use self::ImplSource::*;
-pub use self::SelectionError::*;
 use crate::infer::InferCtxt;
 
 /// An `Obligation` represents some trait reference (e.g., `i32: Eq`) for
@@ -34,9 +36,11 @@ use crate::infer::InferCtxt;
 /// either identifying an `impl` (e.g., `impl Eq for i32`) that
 /// satisfies the obligation, or else finding a bound that is in
 /// scope. The eventual result is usually a `Selection` (defined below).
-#[derive(Clone)]
+#[derive(Clone, TypeFoldable, TypeVisitable)]
 pub struct Obligation<'tcx, T> {
     /// The reason we have to prove this thing.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub cause: ObligationCause<'tcx>,
 
     /// The environment in which we should prove this thing.
@@ -50,7 +54,15 @@ pub struct Obligation<'tcx, T> {
     /// If this goes over a certain threshold, we abort compilation --
     /// in such cases, we can not say whether or not the predicate
     /// holds for certain. Stupid halting problem; such a drag.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
     pub recursion_depth: usize,
+}
+
+impl<'tcx, T: Copy> Obligation<'tcx, T> {
+    pub fn as_goal(&self) -> solve::Goal<'tcx, T> {
+        solve::Goal { param_env: self.param_env, predicate: self.predicate }
+    }
 }
 
 impl<'tcx, T: PartialEq> PartialEq<Obligation<'tcx, T>> for Obligation<'tcx, T> {
@@ -74,15 +86,11 @@ impl<T: Hash> Hash for Obligation<'_, T> {
     }
 }
 
-impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {
-    fn from(value: Obligation<'tcx, P>) -> Self {
-        solve::Goal { param_env: value.param_env, predicate: value.predicate }
-    }
-}
-
 pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::TraitPredicate<'tcx>>;
 pub type PolyTraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
+
+pub type PredicateObligations<'tcx> = ThinVec<PredicateObligation<'tcx>>;
 
 impl<'tcx> PredicateObligation<'tcx> {
     /// Flips the polarity of the inner predicate.

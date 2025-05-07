@@ -3,16 +3,18 @@
 //@no-rustfix
 fn main() {
     let mut def_err: Vec<u32> = Default::default();
-    //~^ ERROR: calls to `push` immediately after creation
-    //~| NOTE: `-D clippy::vec-init-then-push` implied by `-D warnings`
+    //~^ vec_init_then_push
+
     def_err.push(0);
 
     let mut new_err = Vec::<u32>::new();
-    //~^ ERROR: calls to `push` immediately after creation
+    //~^ vec_init_then_push
+
     new_err.push(1);
 
     let mut cap_err = Vec::with_capacity(2);
-    //~^ ERROR: calls to `push` immediately after creation
+    //~^ vec_init_then_push
+
     cap_err.push(0);
     cap_err.push(1);
     cap_err.push(2);
@@ -25,7 +27,8 @@ fn main() {
     cap_ok.push(0);
 
     new_err = Vec::new();
-    //~^ ERROR: calls to `push` immediately after creation
+    //~^ vec_init_then_push
+
     new_err.push(0);
 
     let mut vec = Vec::new();
@@ -76,7 +79,8 @@ fn _cond_push(x: bool) -> Vec<u32> {
 
 fn _push_then_edit(x: u32) -> Vec<u32> {
     let mut v = Vec::new();
-    //~^ ERROR: calls to `push` immediately after creation
+    //~^ vec_init_then_push
+
     v.push(x);
     v.push(1);
     v[0] = v[1] + 5;
@@ -85,7 +89,8 @@ fn _push_then_edit(x: u32) -> Vec<u32> {
 
 fn _cond_push_with_large_start(x: bool) -> Vec<u32> {
     let mut v = Vec::new();
-    //~^ ERROR: calls to `push` immediately after creation
+    //~^ vec_init_then_push
+
     v.push(0);
     v.push(1);
     v.push(0);
@@ -99,7 +104,8 @@ fn _cond_push_with_large_start(x: bool) -> Vec<u32> {
     }
 
     let mut v2 = Vec::new();
-    //~^ ERROR: calls to `push` immediately after creation
+    //~^ vec_init_then_push
+
     v2.push(0);
     v2.push(1);
     v2.push(0);
@@ -115,7 +121,8 @@ fn _cond_push_with_large_start(x: bool) -> Vec<u32> {
 
 fn f() {
     let mut v = Vec::new();
-    //~^ ERROR: calls to `push` immediately after creation
+    //~^ vec_init_then_push
+
     v.push((0i32, 0i32));
     let y = v[0].0.abs();
 }

@@ -1,5 +1,5 @@
 error: Undefined Behavior: attempting a write access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
-  --> $DIR/transmute-is-no-escape.rs:LL:CC
+  --> tests/fail/stacked_borrows/transmute-is-no-escape.rs:LL:CC
    |
 LL |     unsafe { *raw = 13 };
    |              ^^^^^^^^^
@@ -10,12 +10,12 @@ LL |     unsafe { *raw = 13 };
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
 help: <TAG> was created by a SharedReadWrite retag at offsets [0x4..0x8]
-  --> $DIR/transmute-is-no-escape.rs:LL:CC
+  --> tests/fail/stacked_borrows/transmute-is-no-escape.rs:LL:CC
    |
 LL |     let raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
    |                ^^^^^^^^^
    = note: BACKTRACE (of the first span):
-   = note: inside `main` at $DIR/transmute-is-no-escape.rs:LL:CC
+   = note: inside `main` at tests/fail/stacked_borrows/transmute-is-no-escape.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

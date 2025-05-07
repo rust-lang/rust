@@ -1,0 +1,52 @@
+error: first doc comment paragraph is too long
+  --> tests/ui/too_long_first_doc_paragraph.rs:8:5
+   |
+LL | /     //! A very short summary.
+LL | |
+LL | |     //! A much longer explanation that goes into a lot more detail about
+LL | |     //! how the thing works, possibly with doclinks and so one,
+LL | |     //! and probably spanning a many rows. Blablabla, it needs to be over
+LL | |     //! 200 characters so I needed to write something longeeeeeeer.
+   | |____^
+   |
+   = note: `-D clippy::too-long-first-doc-paragraph` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::too_long_first_doc_paragraph)]`
+help: add an empty line
+   |
+LL |     //! A very short summary.
+LL |
+LL ~     //!
+LL +
+LL ~     //! A much longer explanation that goes into a lot more detail about
+   |
+
+error: first doc comment paragraph is too long
+  --> tests/ui/too_long_first_doc_paragraph.rs:16:1
+   |
+LL | / /// Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
+LL | |
+LL | | /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
+LL | | /// gravida non lacinia at, rhoncus eu lacus.
+   | |_^
+
+error: first doc comment paragraph is too long
+  --> tests/ui/too_long_first_doc_paragraph.rs:38:1
+   |
+LL | / /// Lorem
+LL | |
+LL | | /// ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
+LL | | /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
+LL | | /// gravida non lacinia at, rhoncus eu lacus.
+   | |_^
+
+error: first doc comment paragraph is too long
+  --> tests/ui/too_long_first_doc_paragraph.rs:65:1
+   |
+LL | / /// Some function. This doc-string paragraph is too long. Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lore...
+LL | |
+LL | | ///
+LL | | /// Here's a second paragraph. It would be preferable to put the details here.
+   | |_^
+
+error: aborting due to 4 previous errors
+

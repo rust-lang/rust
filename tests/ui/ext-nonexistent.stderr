@@ -1,5 +1,5 @@
 error: cannot find macro `iamnotanextensionthatexists` in this scope
-  --> $DIR/ext-nonexistent.rs:2:13
+  --> $DIR/ext-nonexistent.rs:1:13
    |
 LL | fn main() { iamnotanextensionthatexists!(""); }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -11,30 +11,47 @@ const X: i32 = 1;
 fn main() {
     // Both are Literals
     let _ = (-6_i32).min(9);
+    //~^ unnecessary_min_or_max
     let _ = (-6_i32).max(9);
+    //~^ unnecessary_min_or_max
     let _ = 9_u32.min(6);
+    //~^ unnecessary_min_or_max
     let _ = 9_u32.max(6);
+    //~^ unnecessary_min_or_max
     let _ = 6.min(7_u8);
+    //~^ unnecessary_min_or_max
     let _ = 6.max(7_u8);
+    //~^ unnecessary_min_or_max
 
     let x: u32 = 42;
     // unsigned with zero
     let _ = 0.min(x);
+    //~^ unnecessary_min_or_max
     let _ = 0.max(x);
+    //~^ unnecessary_min_or_max
     let _ = x.min(0_u32);
+    //~^ unnecessary_min_or_max
     let _ = x.max(0_u32);
+    //~^ unnecessary_min_or_max
 
     let x: i32 = 42;
     // signed MIN
     let _ = i32::MIN.min(x);
+    //~^ unnecessary_min_or_max
     let _ = i32::MIN.max(x);
+    //~^ unnecessary_min_or_max
     let _ = x.min(i32::MIN);
+    //~^ unnecessary_min_or_max
     let _ = x.max(i32::MIN);
+    //~^ unnecessary_min_or_max
 
     let _ = x.min(i32::MIN - 0);
+    //~^ unnecessary_min_or_max
     let _ = x.max(i32::MIN);
+    //~^ unnecessary_min_or_max
 
     let _ = x.min(i32::MIN - 0);
+    //~^ unnecessary_min_or_max
 
     // The below cases shouldn't be lint
     let mut min = u32::MAX;
@@ -64,4 +81,33 @@ fn main() {
 fn random_u32() -> u32 {
     // random number generator
     0
+}
+
+struct Issue13191 {
+    min: u16,
+    max: u16,
+}
+
+impl Issue13191 {
+    fn new() -> Self {
+        Self { min: 0, max: 0 }
+    }
+
+    fn min(mut self, value: u16) -> Self {
+        self.min = value;
+        self
+    }
+
+    fn max(mut self, value: u16) -> Self {
+        self.max = value;
+        self
+    }
+}
+
+fn issue_13191() {
+    // should not fixed
+    Issue13191::new().min(0);
+
+    // should not fixed
+    Issue13191::new().max(0);
 }

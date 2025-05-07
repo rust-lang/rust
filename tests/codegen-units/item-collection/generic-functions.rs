@@ -1,7 +1,7 @@
 //@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 fn foo1<T1>(a: T1) -> (T1, u32) {
     (a, 1)
@@ -22,8 +22,8 @@ pub fn lifetime_only<'a>(a: &'a u32) -> &'a u32 {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn foo1::<i32>
     let _ = foo1(2i32);
     //~ MONO_ITEM fn foo1::<i64>

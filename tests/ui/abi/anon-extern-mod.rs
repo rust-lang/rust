@@ -1,5 +1,4 @@
 //@ run-pass
-//@ pretty-expanded FIXME #23616
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {

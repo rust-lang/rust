@@ -1,5 +1,5 @@
-//@only-target-x86_64: uses x86 target features
-//@ignore-target-x86_64-apple-darwin: that target actually has ssse3
+//@only-target: x86_64 # uses x86 target features
+//@ignore-target: x86_64-apple-darwin # that target actually has ssse3
 
 fn main() {
     assert!(!is_x86_feature_detected!("ssse3"));

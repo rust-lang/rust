@@ -2,7 +2,7 @@
 //@ build-fail
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
-//@ error-pattern: encountered overlapping memory in `Move` arguments to `Call`
+
 #![feature(custom_mir, core_intrinsics)]
 extern crate core;
 use core::intrinsics::mir::*;
@@ -12,7 +12,8 @@ pub fn main() {
     mir! {
         let a: [u8; 1024];
         {
-            Call(a = f(Move(a)), ReturnTo(bb1), UnwindUnreachable())
+            Call(a = f(Move(a)), ReturnTo(bb1), UnwindUnreachable()) //~ ERROR broken MIR
+            //~^ ERROR encountered overlapping memory in `Move` arguments to `Call`
         }
         bb1 = {
             Return()

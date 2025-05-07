@@ -35,27 +35,26 @@
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::graph::implementation::{Direction, NodeIndex, INCOMING, OUTGOING};
-use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
+use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex, OUTGOING};
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::dep_graph::{
-    dep_kinds, DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter,
+    DepGraphQuery, DepKind, DepNode, DepNodeExt, DepNodeFilter, EdgeFilter, dep_kinds,
 };
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
-use {rustc_ast as ast, rustc_graphviz as dot, rustc_hir as hir};
+use {rustc_graphviz as dot, rustc_hir as hir};
 
 use crate::errors;
 
 #[allow(missing_docs)]
-pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
+pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.unstable_opts.dump_dep_graph {
             tcx.dep_graph.with_query(dump_graph);
@@ -68,7 +67,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
         // if the `rustc_attrs` feature is not enabled, then the
         // attributes we are interested in cannot be present anyway, so
         // skip the walk.
-        if !tcx.features().rustc_attrs {
+        if !tcx.features().rustc_attrs() {
             return;
         }
 
@@ -77,7 +76,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
             let mut visitor =
                 IfThisChanged { tcx, if_this_changed: vec![], then_this_would_need: vec![] };
             visitor.process_attrs(CRATE_DEF_ID);
-            tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
+            tcx.hir_visit_all_item_likes_in_crate(&mut visitor);
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
 
@@ -106,7 +105,7 @@ struct IfThisChanged<'tcx> {
 }
 
 impl<'tcx> IfThisChanged<'tcx> {
-    fn argument(&self, attr: &ast::Attribute) -> Option<Symbol> {
+    fn argument(&self, attr: &hir::Attribute) -> Option<Symbol> {
         let mut value = None;
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.ident() {
@@ -124,7 +123,7 @@ impl<'tcx> IfThisChanged<'tcx> {
     fn process_attrs(&mut self, def_id: LocalDefId) {
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-        let attrs = self.tcx.hir().attrs(hir_id);
+        let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
             if attr.has_name(sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
@@ -138,13 +137,13 @@ impl<'tcx> IfThisChanged<'tcx> {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
+                                span: attr.span(),
                                 name: n,
                             }),
                         }
                     }
                 };
-                self.if_this_changed.push((attr.span, def_id.to_def_id(), dep_node));
+                self.if_this_changed.push((attr.span(), def_id.to_def_id(), dep_node));
             } else if attr.has_name(sym::rustc_then_this_would_need) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
@@ -152,17 +151,17 @@ impl<'tcx> IfThisChanged<'tcx> {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
+                                span: attr.span(),
                                 name: n,
                             }),
                         }
                     }
                     None => {
-                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span });
+                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span() });
                     }
                 };
                 self.then_this_would_need.push((
-                    attr.span,
+                    attr.span(),
                     dep_node_interned.unwrap(),
                     hir_id,
                     dep_node,
@@ -175,8 +174,8 @@ impl<'tcx> IfThisChanged<'tcx> {
 impl<'tcx> Visitor<'tcx> for IfThisChanged<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -245,7 +244,7 @@ fn dump_graph(query: &DepGraphQuery) {
     {
         // dump a .txt file with just the edges:
         let txt_path = format!("{path}.txt");
-        let mut file = BufWriter::new(File::create(&txt_path).unwrap());
+        let mut file = File::create_buffered(&txt_path).unwrap();
         for (source, target) in &edges {
             write!(file, "{source:?} -> {target:?}\n").unwrap();
         }
@@ -261,7 +260,7 @@ fn dump_graph(query: &DepGraphQuery) {
 }
 
 #[allow(missing_docs)]
-pub struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
+struct GraphvizDepGraph(FxIndexSet<DepKind>, Vec<(DepKind, DepKind)>);
 
 impl<'a> dot::GraphWalk<'a> for GraphvizDepGraph {
     type Node = DepKind;

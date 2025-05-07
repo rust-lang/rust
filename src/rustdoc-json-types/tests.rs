@@ -4,7 +4,7 @@ use super::*;
 fn test_struct_info_roundtrip() {
     let s = ItemEnum::Struct(Struct {
         generics: Generics { params: vec![], where_predicates: vec![] },
-        kind: StructKind::Plain { fields: vec![], fields_stripped: false },
+        kind: StructKind::Plain { fields: vec![], has_stripped_fields: false },
         impls: vec![],
     });
 
@@ -23,7 +23,7 @@ fn test_struct_info_roundtrip() {
 fn test_union_info_roundtrip() {
     let u = ItemEnum::Union(Union {
         generics: Generics { params: vec![], where_predicates: vec![] },
-        fields_stripped: false,
+        has_stripped_fields: false,
         fields: vec![],
         impls: vec![],
     });

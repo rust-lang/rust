@@ -1,8 +1,7 @@
 //@ check-pass
 //@ aux-build:external_extern_fn.rs
 #![crate_type = "lib"]
-#![warn(clashing_extern_declarations)]
-
+#![feature(pattern_type_macro, pattern_types)]
 mod redeclared_different_signature {
     mod a {
         extern "C" {
@@ -132,7 +131,7 @@ mod banana {
     mod three {
         // This _should_ trigger the lint, because repr(packed) should generate a struct that has a
         // different layout.
-        #[repr(packed)]
+        #[repr(C, packed)]
         struct Banana {
             weight: u32,
             length: u16,
@@ -141,6 +140,79 @@ mod banana {
         extern "C" {
             fn weigh_banana(count: *const Banana) -> u64;
             //~^ WARN `weigh_banana` redeclared with a different signature
+        }
+    }
+
+    mod four {
+        // This _should_ trigger the lint, because the type is not repr(C).
+        struct Banana {
+            weight: u32,
+            length: u16,
+        }
+        #[allow(improper_ctypes)]
+        extern "C" {
+            fn weigh_banana(count: *const Banana) -> u64;
+            //~^ WARN `weigh_banana` redeclared with a different signature
+        }
+    }
+}
+
+// 3-field structs can't be distinguished by ScalarPair, side-stepping some shortucts
+// the logic used to (incorrectly) take.
+mod banana3 {
+    mod one {
+        #[repr(C)]
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        }
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+        }
+    }
+
+    mod two {
+        #[repr(C)]
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        } // note: distinct type
+        // This should not trigger the lint because two::Banana is structurally equivalent to
+        // one::Banana.
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+        }
+    }
+
+    mod three {
+        // This _should_ trigger the lint, because repr(packed) should generate a struct that has a
+        // different layout.
+        #[repr(C, packed)]
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        }
+        #[allow(improper_ctypes)]
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+            //~^ WARN `weigh_banana3` redeclared with a different signature
+        }
+    }
+
+    mod four {
+        // This _should_ trigger the lint, because the type is not repr(C).
+        struct Banana {
+            weight: u32,
+            length: u16,
+            color: u8,
+        }
+        #[allow(improper_ctypes)]
+        extern "C" {
+            fn weigh_banana3(count: *const Banana) -> u64;
+            //~^ WARN `weigh_banana3` redeclared with a different signature
         }
     }
 }
@@ -176,6 +248,7 @@ mod sameish_members {
 
 mod same_sized_members_clash {
     mod a {
+        #[allow(uses_power_alignment)]
         #[repr(C)]
         struct Point3 {
             x: f32,
@@ -219,27 +292,6 @@ mod transparent {
             // Should warn, because there's a signedness conversion here:
             fn transparent_incorrect() -> isize;
             //~^ WARN `transparent_incorrect` redeclared with a different signature
-        }
-    }
-}
-
-#[allow(improper_ctypes)]
-mod zst {
-    mod transparent {
-        #[repr(transparent)]
-        struct TransparentZst(());
-        extern "C" {
-            fn zst() -> ();
-            fn transparent_zst() -> TransparentZst;
-        }
-    }
-
-    mod not_transparent {
-        struct NotTransparentZst(());
-        extern "C" {
-            // These shouldn't warn since all return types are zero sized
-            fn zst() -> NotTransparentZst;
-            fn transparent_zst() -> NotTransparentZst;
         }
     }
 }
@@ -384,6 +436,7 @@ mod unknown_layout {
         extern "C" {
             pub fn generic(l: Link<u32>);
         }
+        #[repr(C)]
         pub struct Link<T> {
             pub item: T,
             pub next: *const Link<T>,
@@ -394,6 +447,7 @@ mod unknown_layout {
         extern "C" {
             pub fn generic(l: Link<u32>);
         }
+        #[repr(C)]
         pub struct Link<T> {
             pub item: T,
             pub next: *const Link<T>,
@@ -433,6 +487,36 @@ mod hidden_niche {
             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usize>>>;
             //~^ WARN redeclared with a different signature
             //~| WARN block uses type `Option<UnsafeCell<NonZero<usize>>>`, which is not FFI-safe
+        }
+    }
+}
+
+mod pattern_types {
+    mod a {
+        use std::pat::pattern_type;
+        #[repr(transparent)]
+        struct NonZeroUsize(pattern_type!(usize is 1..));
+        extern "C" {
+            fn pt_non_zero_usize() -> pattern_type!(usize is 1..);
+            fn pt_non_zero_usize_opt() -> Option<pattern_type!(usize is 1..)>;
+            fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;
+            //~^ WARN not FFI-safe
+            fn pt_non_null_ptr() -> pattern_type!(usize is 1..);
+            fn pt_non_zero_usize_wrapper() -> NonZeroUsize;
+            fn pt_non_zero_usize_wrapper_opt() -> Option<NonZeroUsize>;
+        }
+    }
+    mod b {
+        extern "C" {
+            // If there's a clash in either of these cases you're either gaining an incorrect
+            // invariant that the value is non-zero, or you're missing out on that invariant. Both
+            // cases are warning for, from both a caller-convenience and optimisation perspective.
+            fn pt_non_zero_usize() -> usize;
+            fn pt_non_zero_usize_opt() -> usize;
+            fn pt_non_null_ptr() -> *const ();
+            //~^ WARN `pt_non_null_ptr` redeclared with a different signature
+            fn pt_non_zero_usize_wrapper() -> usize;
+            fn pt_non_zero_usize_wrapper_opt() -> usize;
         }
     }
 }

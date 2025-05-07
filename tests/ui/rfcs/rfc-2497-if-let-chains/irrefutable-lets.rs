@@ -75,4 +75,24 @@ fn main() {
         && let Range { start: local_start, end: _ } = first
         && let None = local_start {
     }
+
+    // No error. An extra nesting level would be required for the `else if`.
+    if opt == Some(None..None) {
+    } else if let x = opt.clone().map(|_| 1)
+        && x == Some(1)
+    {}
+
+    if opt == Some(None..None) {
+    } else if opt.is_some()
+        && let x = &opt
+        //[disallowed]~^ ERROR trailing irrefutable pattern in let chain
+    {}
+
+    if opt == Some(None..None) {
+    } else {
+        if let x = opt.clone().map(|_| 1)
+        //[disallowed]~^ ERROR leading irrefutable pattern in let chain
+            && x == Some(1)
+        {}
+    }
 }

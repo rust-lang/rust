@@ -1,5 +1,5 @@
 error: Undefined Behavior: exact_div: 2_u16 cannot be divided by 3_u16 without remainder
-  --> $DIR/exact_div2.rs:LL:CC
+  --> tests/fail/intrinsics/exact_div2.rs:LL:CC
    |
 LL |     unsafe { std::intrinsics::exact_div(2u16, 3) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ exact_div: 2_u16 cannot be divided by 3_u16 without remainder
@@ -7,7 +7,7 @@ LL |     unsafe { std::intrinsics::exact_div(2u16, 3) };
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `main` at $DIR/exact_div2.rs:LL:CC
+   = note: inside `main` at tests/fail/intrinsics/exact_div2.rs:LL:CC
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

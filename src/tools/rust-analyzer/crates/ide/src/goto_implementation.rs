@@ -1,24 +1,22 @@
-use hir::{AsAssocItem, DescendPreference, Impl, Semantics};
+use hir::{AsAssocItem, Impl, Semantics};
 use ide_db::{
+    RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
-    RootDatabase,
 };
-use syntax::{ast, AstNode, SyntaxKind::*, T};
+use syntax::{AstNode, SyntaxKind::*, T, ast};
 
 use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 
 // Feature: Go to Implementation
 //
-// Navigates to the impl blocks of types.
+// Navigates to the impl items of types.
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Ctrl+F12</kbd>
 //
-// | VS Code | kbd:[Ctrl+F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif[]
+// ![Go to Implementation](https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif)
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
@@ -32,48 +30,55 @@ pub(crate) fn goto_implementation(
         _ => 0,
     })?;
     let range = original_token.text_range();
-    let navs =
-        sema.descend_into_macros_single(DescendPreference::SameText, original_token)
-            .parent()
-            .and_then(ast::NameLike::cast)
-            .and_then(|node| match &node {
-                ast::NameLike::Name(name) => {
-                    NameClass::classify(&sema, name).and_then(|class| match class {
-                        NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
-                        NameClass::PatFieldShorthand { .. } => None,
-                    })
-                }
-                ast::NameLike::NameRef(name_ref) => NameRefClass::classify(&sema, name_ref)
-                    .and_then(|class| match class {
-                        NameRefClass::Definition(def) => Some(def),
-                        NameRefClass::FieldShorthand { .. }
-                        | NameRefClass::ExternCrateShorthand { .. } => None,
-                    }),
-                ast::NameLike::Lifetime(_) => None,
-            })
-            .and_then(|def| {
-                let navs = match def {
-                    Definition::Trait(trait_) => impls_for_trait(&sema, trait_),
-                    Definition::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
-                    Definition::TypeAlias(alias) => impls_for_ty(&sema, alias.ty(sema.db)),
-                    Definition::BuiltinType(builtin) => impls_for_ty(&sema, builtin.ty(sema.db)),
-                    Definition::Function(f) => {
-                        let assoc = f.as_assoc_item(sema.db)?;
-                        let name = assoc.name(sema.db)?;
-                        let trait_ = assoc.container_or_implemented_trait(sema.db)?;
-                        impls_for_trait_item(&sema, trait_, name)
+    let navs = sema
+        .descend_into_macros_exact(original_token)
+        .iter()
+        .filter_map(|token| {
+            token
+                .parent()
+                .and_then(ast::NameLike::cast)
+                .and_then(|node| match &node {
+                    ast::NameLike::Name(name) => {
+                        NameClass::classify(&sema, name).and_then(|class| match class {
+                            NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
+                            NameClass::PatFieldShorthand { .. } => None,
+                        })
                     }
-                    Definition::Const(c) => {
-                        let assoc = c.as_assoc_item(sema.db)?;
-                        let name = assoc.name(sema.db)?;
-                        let trait_ = assoc.container_or_implemented_trait(sema.db)?;
-                        impls_for_trait_item(&sema, trait_, name)
-                    }
-                    _ => return None,
-                };
-                Some(navs)
-            })
-            .unwrap_or_default();
+                    ast::NameLike::NameRef(name_ref) => NameRefClass::classify(&sema, name_ref)
+                        .and_then(|class| match class {
+                            NameRefClass::Definition(def, _) => Some(def),
+                            NameRefClass::FieldShorthand { .. }
+                            | NameRefClass::ExternCrateShorthand { .. } => None,
+                        }),
+                    ast::NameLike::Lifetime(_) => None,
+                })
+                .and_then(|def| {
+                    let navs = match def {
+                        Definition::Trait(trait_) => impls_for_trait(&sema, trait_),
+                        Definition::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
+                        Definition::TypeAlias(alias) => impls_for_ty(&sema, alias.ty(sema.db)),
+                        Definition::BuiltinType(builtin) => {
+                            impls_for_ty(&sema, builtin.ty(sema.db))
+                        }
+                        Definition::Function(f) => {
+                            let assoc = f.as_assoc_item(sema.db)?;
+                            let name = assoc.name(sema.db)?;
+                            let trait_ = assoc.container_or_implemented_trait(sema.db)?;
+                            impls_for_trait_item(&sema, trait_, name)
+                        }
+                        Definition::Const(c) => {
+                            let assoc = c.as_assoc_item(sema.db)?;
+                            let name = assoc.name(sema.db)?;
+                            let trait_ = assoc.container_or_implemented_trait(sema.db)?;
+                            impls_for_trait_item(&sema, trait_, name)
+                        }
+                        _ => return None,
+                    };
+                    Some(navs)
+                })
+        })
+        .flatten()
+        .collect();
 
     Some(RangeInfo { range, info: navs })
 }
@@ -122,7 +127,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
 
         let navs = analysis.goto_implementation(position).unwrap().unwrap().info;

@@ -1,13 +1,13 @@
 use syntax::{
+    AstNode, SyntaxKind, T, TextRange,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    AstNode, SyntaxKind, TextRange, T,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unwrap_block
 //
@@ -27,9 +27,8 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let assist_id = AssistId("unwrap_block", AssistKind::RefactorRewrite);
+    let assist_id = AssistId::refactor_rewrite("unwrap_block");
     let assist_label = "Unwrap block";
-
     let l_curly_token = ctx.find_token_syntax_at_offset(T!['{'])?;
     let mut block = ast::BlockExpr::cast(l_curly_token.parent_ancestors().nth(1)?)?;
     let target = block.syntax().text_range();
@@ -61,7 +60,7 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 }
             }
             None => {
-                let empty_tuple = make::expr_tuple([]);
+                let empty_tuple = make::ext::expr_unit();
                 make::let_stmt(pattern, ty, Some(empty_tuple)).to_string()
             }
         };
@@ -128,10 +127,12 @@ fn update_expr_string_without_newline(expr_string: String) -> String {
 }
 
 fn update_expr_string_with_pat(expr_str: String, whitespace_pat: &[char]) -> String {
-    // Remove leading whitespace, index [1..] to remove the leading '{',
+    // Remove leading whitespace, index to remove the leading '{',
     // then continue to remove leading whitespace.
-    let expr_str =
-        expr_str.trim_start_matches(whitespace_pat)[1..].trim_start_matches(whitespace_pat);
+    // We cannot assume the `{` is the first character because there are block modifiers
+    // (`unsafe`, `async` etc.).
+    let after_open_brace_index = expr_str.find('{').map_or(0, |it| it + 1);
+    let expr_str = expr_str[after_open_brace_index..].trim_start_matches(whitespace_pat);
 
     // Remove trailing whitespace, index [..expr_str.len() - 1] to remove the trailing '}',
     // then continue to remove trailing whitespace.
@@ -823,6 +824,56 @@ fn main() {
 fn main() {
     let a = 1;
     let x = foo;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unwrap_block_with_modifiers() {
+        // https://github.com/rust-lang/rust-analyzer/issues/17964
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    unsafe $0{
+        bar;
+    }
+}
+"#,
+            r#"
+fn main() {
+    bar;
+}
+"#,
+        );
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    async move $0{
+        bar;
+    }
+}
+"#,
+            r#"
+fn main() {
+    bar;
+}
+"#,
+        );
+        check_assist(
+            unwrap_block,
+            r#"
+fn main() {
+    try $0{
+        bar;
+    }
+}
+"#,
+            r#"
+fn main() {
+    bar;
 }
 "#,
         );

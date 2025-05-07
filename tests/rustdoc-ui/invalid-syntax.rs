@@ -47,7 +47,7 @@ pub fn baz() {}
 ///
 /// Indented block end
 pub fn quux() {}
-//~^^^^^ could not parse code block as Rust code
+//~^^^^^ WARN could not parse code block as Rust code
 
 /// Unclosed fence
 ///

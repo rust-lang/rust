@@ -4,8 +4,8 @@
 //! C and C++ compilers for each target configured. A compiler is found through
 //! a number of vectors (in order of precedence)
 //!
-//! 1. Configuration via `target.$target.cc` in `config.toml`.
-//! 2. Configuration via `target.$target.android-ndk` in `config.toml`, if
+//! 1. Configuration via `target.$target.cc` in `bootstrap.toml`.
+//! 2. Configuration via `target.$target.android-ndk` in `bootstrap.toml`, if
 //!    applicable
 //! 3. Special logic to probe on OpenBSD
 //! 4. The `CC_$target` environment variable.
@@ -26,14 +26,12 @@ use std::path::{Path, PathBuf};
 use std::{env, iter};
 
 use crate::core::config::TargetSelection;
-use crate::utils::exec::{command, BootstrapCommand};
+use crate::utils::exec::{BootstrapCommand, command};
 use crate::{Build, CLang, GitRepo};
 
-// The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
-// so use some simplified logic here. First we respect the environment variable `AR`, then
-// try to infer the archiver path from the C compiler path.
-// In the future this logic should be replaced by calling into the `cc` crate.
-fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
+/// Finds archiver tool for the given target if possible.
+/// FIXME(onur-ozkan): This logic should be replaced by calling into the `cc` crate.
+fn cc2ar(cc: &Path, target: TargetSelection, default_ar: PathBuf) -> Option<PathBuf> {
     if let Some(ar) = env::var_os(format!("AR_{}", target.triple.replace('-', "_"))) {
         Some(PathBuf::from(ar))
     } else if let Some(ar) = env::var_os("AR") {
@@ -44,22 +42,24 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
         Some(PathBuf::from("ar"))
     } else if target.contains("vxworks") {
         Some(PathBuf::from("wr-ar"))
+    } else if target.contains("-nto-") {
+        if target.starts_with("i586") {
+            Some(PathBuf::from("ntox86-ar"))
+        } else if target.starts_with("aarch64") {
+            Some(PathBuf::from("ntoaarch64-ar"))
+        } else if target.starts_with("x86_64") {
+            Some(PathBuf::from("ntox86_64-ar"))
+        } else {
+            panic!("Unknown architecture, cannot determine archiver for Neutrino QNX");
+        }
     } else if target.contains("android") || target.contains("-wasi") {
         Some(cc.parent().unwrap().join(PathBuf::from("llvm-ar")))
     } else {
-        let parent = cc.parent().unwrap();
-        let file = cc.file_name().unwrap().to_str().unwrap();
-        for suffix in &["gcc", "cc", "clang"] {
-            if let Some(idx) = file.rfind(suffix) {
-                let mut file = file[..idx].to_owned();
-                file.push_str("ar");
-                return Some(parent.join(&file));
-            }
-        }
-        Some(parent.join(file))
+        Some(default_ar)
     }
 }
 
+/// Creates and configures a new [`cc::Build`] instance for the given target.
 fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
     let mut cfg = cc::Build::new();
     cfg.cargo_metadata(false)
@@ -86,21 +86,46 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
     cfg
 }
 
+/// Probes for C and C++ compilers and configures the corresponding entries in the [`Build`]
+/// structure.
+///
+/// This function determines which targets need a C compiler (and, if needed, a C++ compiler)
+/// by combining the primary build target, host targets, and any additional targets. For
+/// each target, it calls [`find_target`] to configure the necessary compiler tools.
 pub fn find(build: &Build) {
-    // For all targets we're going to need a C compiler for building some shims
-    // and such as well as for being a linker for Rust code.
-    let targets = build
-        .targets
-        .iter()
-        .chain(&build.hosts)
-        .cloned()
-        .chain(iter::once(build.build))
-        .collect::<HashSet<_>>();
+    let targets: HashSet<_> = match build.config.cmd {
+        // We don't need to check cross targets for these commands.
+        crate::Subcommand::Clean { .. }
+        | crate::Subcommand::Check { .. }
+        | crate::Subcommand::Suggest { .. }
+        | crate::Subcommand::Format { .. }
+        | crate::Subcommand::Setup { .. } => {
+            build.hosts.iter().cloned().chain(iter::once(build.build)).collect()
+        }
+
+        _ => {
+            // For all targets we're going to need a C compiler for building some shims
+            // and such as well as for being a linker for Rust code.
+            build
+                .targets
+                .iter()
+                .chain(&build.hosts)
+                .cloned()
+                .chain(iter::once(build.build))
+                .collect()
+        }
+    };
+
     for target in targets.into_iter() {
         find_target(build, target);
     }
 }
 
+/// Probes and configures the C and C++ compilers for a single target.
+///
+/// This function uses both user-specified configuration (from `bootstrap.toml`) and auto-detection
+/// logic to determine the correct C/C++ compilers for the target. It also determines the appropriate
+/// archiver (`ar`) and sets up additional compilation flags (both handled and unhandled).
 pub fn find_target(build: &Build, target: TargetSelection) {
     let mut cfg = new_cc_build(build, target);
     let config = build.config.target_config.get(&target);
@@ -115,11 +140,12 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
         ar
     } else {
-        cc2ar(compiler.path(), target)
+        cc2ar(compiler.path(), target, PathBuf::from(cfg.get_archiver().get_program()))
     };
 
     build.cc.borrow_mut().insert(target, compiler.clone());
-    let cflags = build.cflags(target, GitRepo::Rustc, CLang::C);
+    let mut cflags = build.cc_handled_clags(target, CLang::C);
+    cflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
 
     // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
     // We'll need one anyways if the target triple is also a host triple
@@ -145,7 +171,8 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     build.verbose(|| println!("CC_{} = {:?}", target.triple, build.cc(target)));
     build.verbose(|| println!("CFLAGS_{} = {cflags:?}", target.triple));
     if let Ok(cxx) = build.cxx(target) {
-        let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
+        let mut cxxflags = build.cc_handled_clags(target, CLang::Cxx);
+        cxxflags.extend(build.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
         build.verbose(|| println!("CXX_{} = {cxx:?}", target.triple));
         build.verbose(|| println!("CXXFLAGS_{} = {cxxflags:?}", target.triple));
     }
@@ -159,6 +186,8 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     }
 }
 
+/// Determines the default compiler for a given target and language when not explicitly
+/// configured in `bootstrap.toml`.
 fn default_compiler(
     cfg: &mut cc::Build,
     compiler: Language,
@@ -167,7 +196,7 @@ fn default_compiler(
 ) -> Option<PathBuf> {
     match &*target.triple {
         // When compiling for android we may have the NDK configured in the
-        // config.toml in which case we look there. Otherwise the default
+        // bootstrap.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             build.config.android_ndk.as_ref().map(|ndk| ndk_compiler(compiler, &target.triple, ndk))
@@ -235,6 +264,12 @@ fn default_compiler(
     }
 }
 
+/// Constructs the path to the Android NDK compiler for the given target triple and language.
+///
+/// This helper function transform the target triple by converting certain architecture names
+/// (for example, translating "arm" to "arm7a"), appends the minimum API level (hardcoded as "21"
+/// for NDK r26d), and then constructs the full path based on the provided NDK directory and host
+/// platform.
 pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> PathBuf {
     let mut triple_iter = triple.split('-');
     let triple_translated = if let Some(arch) = triple_iter.next() {
@@ -264,7 +299,11 @@ pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> Path
     ndk.join("toolchains").join("llvm").join("prebuilt").join(host_tag).join("bin").join(compiler)
 }
 
-/// The target programming language for a native compiler.
+/// Representing the target programming language for a native compiler.
+///
+/// This enum is used to indicate whether a particular compiler is intended for C or C++.
+/// It also provides helper methods for obtaining the standard executable names for GCC and
+/// clang-based compilers.
 #[derive(PartialEq)]
 pub(crate) enum Language {
     /// The compiler is targeting C.
@@ -274,7 +313,7 @@ pub(crate) enum Language {
 }
 
 impl Language {
-    /// Obtains the name of a compiler in the GCC collection.
+    /// Returns the executable name for a GCC compiler corresponding to this language.
     fn gcc(self) -> &'static str {
         match self {
             Language::C => "gcc",
@@ -282,7 +321,7 @@ impl Language {
         }
     }
 
-    /// Obtains the name of a compiler in the clang suite.
+    /// Returns the executable name for a clang-based compiler corresponding to this language.
     fn clang(self) -> &'static str {
         match self {
             Language::C => "clang",
@@ -290,3 +329,6 @@ impl Language {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -8,7 +8,7 @@ use rustc_middle::mir::{PlaceRef, ProjectionElem};
 
 use super::MirBorrowckCtxt;
 
-pub trait IsPrefixOf<'tcx> {
+pub(crate) trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: PlaceRef<'tcx>) -> bool;
 }
 
@@ -34,7 +34,7 @@ pub(super) enum PrefixSet {
     Shallow,
 }
 
-impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// Returns an iterator over the prefixes of `place`
     /// (inclusive) from longest to smallest, potentially
     /// terminating the iteration early based on `kind`.
@@ -53,7 +53,7 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
         // may hold one further down (e.g., we never return
         // downcasts here, but may return a base of a downcast).
 
-        'cursor: loop {
+        loop {
             match cursor.last_projection() {
                 None => {
                     self.next = None;
@@ -66,13 +66,16 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                             self.next = Some(cursor_base);
                             return Some(cursor);
                         }
+                        ProjectionElem::UnwrapUnsafeBinder(_) => {
+                            self.next = Some(cursor_base);
+                            return Some(cursor);
+                        }
                         ProjectionElem::Downcast(..)
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::OpaqueCast { .. }
                         | ProjectionElem::ConstantIndex { .. }
                         | ProjectionElem::Index(_) => {
                             cursor = cursor_base;
-                            continue 'cursor;
                         }
                         ProjectionElem::Subtype(..) => {
                             panic!("Subtype projection is not allowed before borrow check")

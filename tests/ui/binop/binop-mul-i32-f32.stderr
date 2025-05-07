@@ -6,8 +6,8 @@ LL |     x * y
    |
    = help: the trait `Mul<f32>` is not implemented for `i32`
    = help: the following other types implement trait `Mul<Rhs>`:
-             `&'a i32` implements `Mul<i32>`
-             `&i32` implements `Mul<&i32>`
+             `&i32` implements `Mul<i32>`
+             `&i32` implements `Mul`
              `i32` implements `Mul<&i32>`
              `i32` implements `Mul`
 

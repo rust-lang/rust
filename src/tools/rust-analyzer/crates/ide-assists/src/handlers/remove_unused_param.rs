@@ -1,15 +1,15 @@
-use ide_db::{defs::Definition, search::FileReference, EditionedFileId};
+use ide_db::{EditionedFileId, defs::Definition, search::FileReference};
 use syntax::{
-    algo::find_node_at_range,
+    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, T, TextRange,
+    algo::{find_node_at_range, least_common_ancestor_element},
     ast::{self, HasArgList},
-    AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange, T,
+    syntax_editor::Element,
 };
 
 use SyntaxKind::WHITESPACE;
 
 use crate::{
-    assist_context::SourceChangeBuilder, utils::next_prev, AssistContext, AssistId, AssistKind,
-    Assists,
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::next_prev,
 };
 
 // Assist: remove_unused_param
@@ -47,7 +47,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         .parent() // AssocItemList
         .and_then(|x| x.parent())
         .and_then(ast::Impl::cast)
-        .map_or(false, |imp| imp.trait_().is_some())
+        .is_some_and(|imp| imp.trait_().is_some())
     {
         cov_mark::hit!(trait_impl);
         return None;
@@ -74,15 +74,21 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         cov_mark::hit!(keep_used);
         return None;
     }
+    let parent = param.syntax().parent()?;
     acc.add(
-        AssistId("remove_unused_param", AssistKind::Refactor),
+        AssistId::refactor("remove_unused_param"),
         "Remove unused parameter",
         param.syntax().text_range(),
         |builder| {
-            builder.delete(range_to_remove(param.syntax()));
+            let mut editor = builder.make_editor(&parent);
+            let elements = elements_to_remove(param.syntax());
+            for element in elements {
+                editor.delete(element);
+            }
             for (file_id, references) in fn_def.usages(&ctx.sema).all() {
                 process_usages(ctx, builder, file_id, references, param_position, is_self_present);
             }
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -90,26 +96,32 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
 fn process_usages(
     ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
-    file_id: EditionedFileId,
+    editioned_file_id: EditionedFileId,
     references: Vec<FileReference>,
     arg_to_remove: usize,
     is_self_present: bool,
 ) {
-    let source_file = ctx.sema.parse(file_id);
+    let source_file = ctx.sema.parse(editioned_file_id);
+    let file_id = editioned_file_id.file_id(ctx.db());
     builder.edit_file(file_id);
     let possible_ranges = references
         .into_iter()
         .filter_map(|usage| process_usage(&source_file, usage, arg_to_remove, is_self_present));
 
-    let mut ranges_to_delete: Vec<TextRange> = vec![];
-    for range in possible_ranges {
-        if !ranges_to_delete.iter().any(|it| it.contains_range(range)) {
-            ranges_to_delete.push(range)
+    for element_range in possible_ranges {
+        let Some(SyntaxElement::Node(parent)) = element_range
+            .iter()
+            .cloned()
+            .reduce(|a, b| least_common_ancestor_element(&a, &b).unwrap().syntax_element())
+        else {
+            continue;
+        };
+        let mut editor = builder.make_editor(&parent);
+        for element in element_range {
+            editor.delete(element);
         }
-    }
 
-    for range in ranges_to_delete {
-        builder.delete(range)
+        builder.add_file_edits(file_id, editor);
     }
 }
 
@@ -118,7 +130,7 @@ fn process_usage(
     FileReference { range, .. }: FileReference,
     mut arg_to_remove: usize,
     is_self_present: bool,
-) -> Option<TextRange> {
+) -> Option<Vec<SyntaxElement>> {
     let call_expr_opt: Option<ast::CallExpr> = find_node_at_range(source_file.syntax(), range);
     if let Some(call_expr) = call_expr_opt {
         let call_expr_range = call_expr.expr()?.syntax().text_range();
@@ -127,7 +139,7 @@ fn process_usage(
         }
 
         let arg = call_expr.arg_list()?.args().nth(arg_to_remove)?;
-        return Some(range_to_remove(arg.syntax()));
+        return Some(elements_to_remove(arg.syntax()));
     }
 
     let method_call_expr_opt: Option<ast::MethodCallExpr> =
@@ -143,7 +155,7 @@ fn process_usage(
         }
 
         let arg = method_call_expr.arg_list()?.args().nth(arg_to_remove)?;
-        return Some(range_to_remove(arg.syntax()));
+        return Some(elements_to_remove(arg.syntax()));
     }
 
     None
@@ -171,6 +183,29 @@ pub(crate) fn range_to_remove(node: &SyntaxNode) -> TextRange {
         node.text_range().cover(token.text_range())
     } else {
         node.text_range()
+    }
+}
+
+pub(crate) fn elements_to_remove(node: &SyntaxNode) -> Vec<SyntaxElement> {
+    let up_to_comma = next_prev().find_map(|dir| {
+        node.siblings_with_tokens(dir)
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == T![,])
+            .map(|it| (dir, it))
+    });
+    if let Some((dir, token)) = up_to_comma {
+        let after = token.siblings_with_tokens(dir).nth(1).unwrap();
+        let mut result: Vec<_> =
+            node.siblings_with_tokens(dir).take_while(|it| it != &after).collect();
+        if node.next_sibling().is_some() {
+            result.extend(
+                token.siblings_with_tokens(dir).skip(1).take_while(|it| it.kind() == WHITESPACE),
+            );
+        }
+
+        result
+    } else {
+        vec![node.syntax_element()]
     }
 }
 

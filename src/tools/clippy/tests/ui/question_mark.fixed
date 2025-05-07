@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
+use std::sync::MutexGuard;
+
 fn some_func(a: Option<u32>) -> Option<u32> {
     a?;
 
@@ -96,11 +98,41 @@ impl MoveStruct {
 }
 
 fn func() -> Option<i32> {
+    macro_rules! opt_none {
+        () => {
+            None
+        };
+    }
+
     fn f() -> Option<String> {
         Some(String::new())
     }
 
     f()?;
+
+    let _val = f()?;
+
+    let s: &str = match &Some(String::new()) {
+        Some(v) => v,
+        None => return None,
+    };
+
+    f()?;
+
+    opt_none!()?;
+
+    match f() {
+        Some(x) => x,
+        None => return opt_none!(),
+    };
+
+    match f() {
+        Some(val) => {
+            println!("{val}");
+            val
+        },
+        None => return None,
+    };
 
     Some(0)
 }
@@ -111,8 +143,13 @@ fn func_returning_result() -> Result<i32, i32> {
 
 fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     let _ = x?;
+    //~^ question_mark
 
     x?;
+
+    let _val = func_returning_result()?;
+
+    func_returning_result()?;
 
     // No warning
     let y = if let Ok(x) = x {
@@ -155,6 +192,28 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     }
 
     Ok(y)
+}
+
+fn infer_check() {
+    let closure = |x: Result<u8, ()>| {
+        // `?` would fail here, as it expands to `Err(val.into())` which is not constrained.
+        let _val = match x {
+            Ok(val) => val,
+            Err(val) => return Err(val),
+        };
+
+        Ok(())
+    };
+
+    let closure = |x: Result<u8, ()>| -> Result<(), _> {
+        // `?` would fail here, as it expands to `Err(val.into())` which is not constrained.
+        let _val = match x {
+            Ok(val) => val,
+            Err(val) => return Err(val),
+        };
+
+        Ok(())
+    };
 }
 
 // see issue #8019
@@ -242,6 +301,11 @@ fn pattern() -> Result<(), PatternedError> {
     res
 }
 
+fn expect_expr(a: Option<usize>) -> Option<usize> {
+    #[expect(clippy::needless_question_mark)]
+    Some(a?)
+}
+
 fn main() {}
 
 // `?` is not the same as `return None;` if inside of a try block
@@ -315,5 +379,67 @@ fn issue12412(foo: &Foo, bar: &Bar) -> Option<()> {
     };
     // lint
     let v = bar.foo.owned.clone()?;
+    //~^^^ question_mark
     Some(())
+}
+
+struct StructWithOptionString {
+    opt_x: Option<String>,
+}
+
+struct WrapperStructWithString(String);
+
+#[allow(clippy::disallowed_names)]
+fn issue_13417(foo: &mut StructWithOptionString) -> Option<String> {
+    let x = foo.opt_x.as_ref()?;
+    //~^^^ question_mark
+    let opt_y = Some(x.clone());
+    std::mem::replace(&mut foo.opt_x, opt_y)
+}
+
+#[allow(clippy::disallowed_names)]
+fn issue_13417_mut(foo: &mut StructWithOptionString) -> Option<String> {
+    let x = foo.opt_x.as_mut()?;
+    //~^^^ question_mark
+    let opt_y = Some(x.clone());
+    std::mem::replace(&mut foo.opt_x, opt_y)
+}
+
+#[allow(clippy::disallowed_names)]
+#[allow(unused)]
+fn issue_13417_weirder(foo: &mut StructWithOptionString, mut bar: Option<WrapperStructWithString>) -> Option<()> {
+    let x @ y = foo.opt_x.as_ref()?;
+    //~^^^ question_mark
+    let x @ &WrapperStructWithString(_) = bar.as_ref()?;
+    //~^^^ question_mark
+    let x @ &mut WrapperStructWithString(_) = bar.as_mut()?;
+    //~^^^ question_mark
+    Some(())
+}
+
+#[clippy::msrv = "1.12"]
+fn msrv_1_12(arg: Option<i32>) -> Option<i32> {
+    if arg.is_none() {
+        return None;
+    }
+    let val = match arg {
+        Some(val) => val,
+        None => return None,
+    };
+    println!("{}", val);
+    Some(val)
+}
+
+#[clippy::msrv = "1.13"]
+fn msrv_1_13(arg: Option<i32>) -> Option<i32> {
+    arg?;
+    let val = arg?;
+    println!("{}", val);
+    Some(val)
+}
+
+fn issue_14615(a: MutexGuard<Option<u32>>) -> Option<String> {
+    let a = (*a)?;
+    //~^^^ question_mark
+    Some(format!("{a}"))
 }

@@ -35,29 +35,25 @@ impl Display for ChangeSeverity {
     }
 }
 
-pub fn find_recent_config_change_ids(current_id: usize) -> Vec<ChangeInfo> {
-    if !CONFIG_CHANGE_HISTORY.iter().any(|config| config.change_id == current_id) {
+pub fn find_recent_config_change_ids(current_id: usize) -> &'static [ChangeInfo] {
+    if let Some(index) =
+        CONFIG_CHANGE_HISTORY.iter().position(|config| config.change_id == current_id)
+    {
+        // Skip the current_id and IDs before it
+        &CONFIG_CHANGE_HISTORY[index + 1..]
+    } else {
         // If the current change-id is greater than the most recent one, return
         // an empty list (it may be due to switching from a recent branch to an
         // older one); otherwise, return the full list (assuming the user provided
         // the incorrect change-id by accident).
         if let Some(config) = CONFIG_CHANGE_HISTORY.iter().max_by_key(|config| config.change_id) {
             if current_id > config.change_id {
-                return Vec::new();
+                return &[];
             }
         }
 
-        return CONFIG_CHANGE_HISTORY.to_vec();
+        CONFIG_CHANGE_HISTORY
     }
-
-    let index =
-        CONFIG_CHANGE_HISTORY.iter().position(|config| config.change_id == current_id).unwrap();
-
-    CONFIG_CHANGE_HISTORY
-        .iter()
-        .skip(index + 1) // Skip the current_id and IDs before it
-        .cloned()
-        .collect()
 }
 
 pub fn human_readable_changes(changes: &[ChangeInfo]) -> String {
@@ -229,5 +225,185 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         change_id: 128841,
         severity: ChangeSeverity::Warning,
         summary: "./x test --rustc-args was renamed to --compiletest-rustc-args as it only applies there. ./x miri --rustc-args was also removed.",
+    },
+    ChangeInfo {
+        change_id: 129295,
+        severity: ChangeSeverity::Info,
+        summary: "The `build.profiler` option now tries to use source code from `download-ci-llvm` if possible, instead of checking out the `src/llvm-project` submodule.",
+    },
+    ChangeInfo {
+        change_id: 129152,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.cargo-clippy` added for supporting the use of custom/external clippy.",
+    },
+    ChangeInfo {
+        change_id: 129925,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.split-debuginfo` as it was deprecated long time ago.",
+    },
+    ChangeInfo {
+        change_id: 129176,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.enzyme` to control whether the llvm based autodiff tool (Enzyme) is built.",
+    },
+    ChangeInfo {
+        change_id: 129473,
+        severity: ChangeSeverity::Warning,
+        summary: "`download-ci-llvm = true` now checks if CI llvm is available and has become the default for the compiler profile",
+    },
+    ChangeInfo {
+        change_id: 130202,
+        severity: ChangeSeverity::Info,
+        summary: "'tools' and 'library' profiles switched `download-ci-llvm` option from `if-unchanged` to `true`.",
+    },
+    ChangeInfo {
+        change_id: 130110,
+        severity: ChangeSeverity::Info,
+        summary: "New option `dist.vendor` added to control whether bootstrap should vendor dependencies for dist tarball.",
+    },
+    ChangeInfo {
+        change_id: 130529,
+        severity: ChangeSeverity::Info,
+        summary: "If `llvm.download-ci-llvm` is not defined, it defaults to `true`.",
+    },
+    ChangeInfo {
+        change_id: 131075,
+        severity: ChangeSeverity::Info,
+        summary: "New option `./x setup editor` added, replacing `./x setup vscode` and adding support for vim, emacs and helix.",
+    },
+    ChangeInfo {
+        change_id: 131838,
+        severity: ChangeSeverity::Info,
+        summary: "Allow setting `--jobs` in config.toml with `build.jobs`.",
+    },
+    ChangeInfo {
+        change_id: 131181,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.compiletest-diff-tool` that adds support for a custom differ for compiletest",
+    },
+    ChangeInfo {
+        change_id: 131513,
+        severity: ChangeSeverity::Info,
+        summary: "New option `llvm.offload` to control whether the llvm offload runtime for GPU support is built. Implicitly enables the openmp runtime as dependency.",
+    },
+    ChangeInfo {
+        change_id: 132282,
+        severity: ChangeSeverity::Warning,
+        summary: "Deprecated `rust.parallel_compiler` as the compiler now always defaults to being parallel (with 1 thread)",
+    },
+    ChangeInfo {
+        change_id: 132494,
+        severity: ChangeSeverity::Info,
+        summary: "`download-rustc='if-unchanged'` is now a default option for library profile.",
+    },
+    ChangeInfo {
+        change_id: 133207,
+        severity: ChangeSeverity::Info,
+        summary: "`rust.llvm-tools` is now enabled by default when no `config.toml` is provided.",
+    },
+    ChangeInfo {
+        change_id: 133068,
+        severity: ChangeSeverity::Warning,
+        summary: "Revert `rust.download-rustc` global default to `false` and only use `rust.download-rustc = \"if-unchanged\"` default for library and tools profile. As alt CI rustc is built without debug assertions, `rust.debug-assertions = true` will now inhibit downloading CI rustc.",
+    },
+    ChangeInfo {
+        change_id: 133853,
+        severity: ChangeSeverity::Info,
+        summary: "`build.vendor` is now enabled by default for dist/tarball sources when 'vendor' directory and '.cargo/config.toml' file are present.",
+    },
+    ChangeInfo {
+        change_id: 134809,
+        severity: ChangeSeverity::Warning,
+        summary: "compiletest now takes `--no-capture` instead of `--nocapture`; bootstrap now accepts `--no-capture` as an argument to test commands directly",
+    },
+    ChangeInfo {
+        change_id: 134650,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.parallel-compiler` as it was deprecated in #132282 long time ago.",
+    },
+    ChangeInfo {
+        change_id: 135326,
+        severity: ChangeSeverity::Warning,
+        summary: "It is now possible to configure `optimized-compiler-builtins` for per target.",
+    },
+    ChangeInfo {
+        change_id: 135281,
+        severity: ChangeSeverity::Warning,
+        summary: "Some stamp names in the build artifacts may have changed slightly (e.g., from `llvm-finished-building` to `.llvm-stamp`).",
+    },
+    ChangeInfo {
+        change_id: 135729,
+        severity: ChangeSeverity::Info,
+        summary: "Change the compiler profile to default to rust.debug-assertions = true",
+    },
+    ChangeInfo {
+        change_id: 135832,
+        severity: ChangeSeverity::Info,
+        summary: "Rustdoc now respects the value of rust.lto.",
+    },
+    ChangeInfo {
+        change_id: 136941,
+        severity: ChangeSeverity::Info,
+        summary: "The llvm.ccache option has moved to build.ccache. llvm.ccache is now deprecated.",
+    },
+    ChangeInfo {
+        change_id: 137170,
+        severity: ChangeSeverity::Info,
+        summary: "It is now possible to configure `jemalloc` for each target",
+    },
+    ChangeInfo {
+        change_id: 137215,
+        severity: ChangeSeverity::Info,
+        summary: "Added `build.test-stage = 2` to 'tools' profile defaults",
+    },
+    ChangeInfo {
+        change_id: 137220,
+        severity: ChangeSeverity::Info,
+        summary: "`rust.channel` now supports \"auto-detect\" to load the channel from `src/ci/channel`",
+    },
+    ChangeInfo {
+        change_id: 137723,
+        severity: ChangeSeverity::Info,
+        summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
+    },
+    ChangeInfo {
+        change_id: 138051,
+        severity: ChangeSeverity::Info,
+        summary: "There is now a new `gcc` config section that can be used to download GCC from CI using `gcc.download-ci-gcc = true`",
+    },
+    ChangeInfo {
+        change_id: 126856,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `src/tools/rls` tool as it was deprecated long time ago.",
+    },
+    ChangeInfo {
+        change_id: 137147,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `build.exclude` which works the same way as `--exclude` flag on `x`.",
+    },
+    ChangeInfo {
+        change_id: 137081,
+        severity: ChangeSeverity::Warning,
+        summary: "The default configuration filename has changed from `config.toml` to `bootstrap.toml`. `config.toml` is deprecated but remains supported for backward compatibility.",
+    },
+    ChangeInfo {
+        change_id: 138986,
+        severity: ChangeSeverity::Info,
+        summary: "You can now use `change-id = \"ignore\"` to suppress `change-id ` warnings in the console.",
+    },
+    ChangeInfo {
+        change_id: 139386,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `build.compiletest-use-stage0-libtest` to force `compiletest` to use the stage 0 libtest.",
+    },
+    ChangeInfo {
+        change_id: 138934,
+        severity: ChangeSeverity::Info,
+        summary: "Added new option `include` to create config extensions.",
+    },
+    ChangeInfo {
+        change_id: 140438,
+        severity: ChangeSeverity::Info,
+        summary: "Added a new option `rust.debug-assertions-tools` to control debug asssertions for tools.",
     },
 ];

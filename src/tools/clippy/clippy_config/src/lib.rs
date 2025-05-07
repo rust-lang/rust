@@ -13,18 +13,16 @@
     rustc::untranslatable_diagnostic
 )]
 
-extern crate rustc_ast;
 extern crate rustc_data_structures;
-#[allow(unused_extern_crates)]
-extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_hir;
+extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 
 mod conf;
 mod metadata;
-pub mod msrvs;
 pub mod types;
 
-pub use conf::{get_configuration_metadata, lookup_conf_file, Conf};
+pub use conf::{Conf, get_configuration_metadata, lookup_conf_file, sanitize_explanation};
 pub use metadata::ClippyConfiguration;

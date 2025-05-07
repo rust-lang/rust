@@ -17,7 +17,9 @@ mod issue10041 {
     struct Bomb2;
 
     impl Bomb2 {
+        #[define_opaque(X)]
         pub fn new() -> X {
+            //~^ ERROR: overflow evaluating the requirement
             0i32
         }
     }

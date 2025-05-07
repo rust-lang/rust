@@ -1,63 +1,36 @@
 //! Proc macro ABI
 
 use proc_macro::bridge;
-use proc_macro_api::ProcMacroKind;
 
-use libloading::Library;
+use crate::{ProcMacroKind, ProcMacroSrvSpan, server_impl::TopSubtree};
 
-use crate::{dylib::LoadProcMacroDylibError, ProcMacroSrvSpan};
-
-pub(crate) struct ProcMacros {
-    exported_macros: Vec<bridge::client::ProcMacro>,
-}
+#[repr(transparent)]
+pub(crate) struct ProcMacros([bridge::client::ProcMacro]);
 
 impl From<bridge::PanicMessage> for crate::PanicMessage {
     fn from(p: bridge::PanicMessage) -> Self {
-        Self { message: p.as_str().map(|s| s.to_string()) }
+        Self { message: p.as_str().map(|s| s.to_owned()) }
     }
 }
 
 impl ProcMacros {
-    /// Load a new ABI.
-    ///
-    /// # Arguments
-    ///
-    /// *`lib` - The dynamic library containing the macro implementations
-    /// *`symbol_name` - The symbol name the macros can be found attributes
-    /// *`info` - RustCInfo about the compiler that was used to compile the
-    ///           macro crate. This is the information we use to figure out
-    ///           which ABI to return
-    pub(crate) fn from_lib(
-        lib: &Library,
-        symbol_name: String,
-        version_string: &str,
-    ) -> Result<ProcMacros, LoadProcMacroDylibError> {
-        if version_string == crate::RUSTC_VERSION_STRING {
-            let macros =
-                unsafe { lib.get::<&&[bridge::client::ProcMacro]>(symbol_name.as_bytes()) }?;
-
-            return Ok(Self { exported_macros: macros.to_vec() });
-        }
-        Err(LoadProcMacroDylibError::AbiMismatch(version_string.to_owned()))
-    }
-
     pub(crate) fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
-        macro_body: tt::Subtree<S>,
-        attributes: Option<tt::Subtree<S>>,
+        macro_body: TopSubtree<S>,
+        attributes: Option<TopSubtree<S>>,
         def_site: S,
         call_site: S,
         mixed_site: S,
-    ) -> Result<tt::Subtree<S>, crate::PanicMessage> {
+    ) -> Result<TopSubtree<S>, crate::PanicMessage> {
         let parsed_body = crate::server_impl::TokenStream::with_subtree(macro_body);
 
         let parsed_attributes = attributes
-            .map_or_else(crate::server_impl::TokenStream::new, |attr| {
+            .map_or_else(crate::server_impl::TokenStream::default, |attr| {
                 crate::server_impl::TokenStream::with_subtree(attr)
             });
 
-        for proc_macro in &self.exported_macros {
+        for proc_macro in &self.0 {
             match proc_macro {
                 bridge::client::ProcMacro::CustomDerive { trait_name, client, .. }
                     if *trait_name == macro_name =>
@@ -103,7 +76,7 @@ impl ProcMacros {
     }
 
     pub(crate) fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
-        self.exported_macros
+        self.0
             .iter()
             .map(|proc_macro| match proc_macro {
                 bridge::client::ProcMacro::CustomDerive { trait_name, .. } => {

@@ -22,7 +22,7 @@
       }
   
       bb3: {
-          switchInt(_1) -> [0: bb5, otherwise: bb4];
+          switchInt(copy _1) -> [0: bb5, otherwise: bb4];
       }
   
       bb4: {

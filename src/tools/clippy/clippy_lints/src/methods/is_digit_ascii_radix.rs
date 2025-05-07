@@ -1,9 +1,7 @@
-//! Lint for `c.is_digit(10)`
-
 use super::IS_DIGIT_ASCII_RADIX;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -14,12 +12,8 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'_>,
     self_arg: &'tcx Expr<'_>,
     radix: &'tcx Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if !msrv.meets(msrvs::IS_ASCII_DIGIT) {
-        return;
-    }
-
     if !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_char() {
         return;
     }
@@ -31,6 +25,10 @@ pub(super) fn check<'tcx>(
             _ => return,
         };
         let mut applicability = Applicability::MachineApplicable;
+
+        if !msrv.meets(cx, msrvs::IS_ASCII_DIGIT) {
+            return;
+        }
 
         span_lint_and_sugg(
             cx,

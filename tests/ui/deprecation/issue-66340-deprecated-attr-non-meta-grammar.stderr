@@ -9,5 +9,13 @@ help: surround the identifier with quotation marks to make it into a string lite
 LL | #[deprecated(note = "test")]
    |                     +    +
 
-error: aborting due to 1 previous error
+warning: use of deprecated function `foo`
+  --> $DIR/issue-66340-deprecated-attr-non-meta-grammar.rs:6:5
+   |
+LL |     foo()
+   |     ^^^
+   |
+   = note: `#[warn(deprecated)]` on by default
+
+error: aborting due to 1 previous error; 1 warning emitted
 

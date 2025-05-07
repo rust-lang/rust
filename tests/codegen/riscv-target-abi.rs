@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions:riscv64gc riscv32gc riscv32imac
 
 //@[riscv64gc] compile-flags: --target=riscv64gc-unknown-linux-gnu
@@ -10,11 +11,11 @@
 
 //@[riscv32imac] compile-flags: --target=riscv32imac-unknown-none-elf
 //@[riscv32imac] needs-llvm-components: riscv
-// riscv32imac-NOT: !"target-abi"
+// riscv32imac: !{i32 1, !"target-abi", !"ilp32"}
 
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;

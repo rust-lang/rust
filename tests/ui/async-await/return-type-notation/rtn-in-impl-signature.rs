@@ -1,5 +1,4 @@
 #![feature(return_type_notation)]
-//~^ WARN the feature `return_type_notation` is incomplete
 
 // Shouldn't ICE when we have a (bad) RTN in an impl header
 

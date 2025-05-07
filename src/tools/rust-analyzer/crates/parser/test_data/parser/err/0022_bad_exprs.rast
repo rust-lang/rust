@@ -35,8 +35,8 @@ SOURCE_FILE
         WHITESPACE " "
         LET_STMT
           LET_KW "let"
-          ERROR
-            R_BRACK "]"
+        ERROR
+          R_BRACK "]"
         WHITESPACE " "
         R_CURLY "}"
   WHITESPACE "\n"
@@ -149,7 +149,8 @@ error 17: expected expression, item or let statement
 error 25: expected a name
 error 26: expected `;`, `{`, or `(`
 error 30: expected pattern
-error 31: expected SEMICOLON
+error 30: expected SEMICOLON
+error 30: expected expression, item or let statement
 error 53: expected expression
 error 54: expected R_PAREN
 error 54: expected SEMICOLON

@@ -5,7 +5,7 @@ use clippy_utils::visitors::for_each_expr_without_closures;
 use rustc_ast::LitKind;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
-use rustc_hir::{ArrayLen, ConstArgKind, ExprKind, Node};
+use rustc_hir::{ConstArgKind, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
@@ -47,7 +47,6 @@ declare_lint_pass!(ZeroRepeatSideEffects => [ZERO_REPEAT_SIDE_EFFECTS]);
 
 impl LateLintPass<'_> for ZeroRepeatSideEffects {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &rustc_hir::Expr<'_>) {
-        let hir_map = cx.tcx.hir();
         if let Some(args) = VecArgs::hir(cx, expr)
             && let VecArgs::Repeat(inner_expr, len) = args
             && let ExprKind::Lit(l) = len.kind
@@ -60,10 +59,9 @@ impl LateLintPass<'_> for ZeroRepeatSideEffects {
         // doesn't seem as confusing as `[f(); 0]`. It would also have false positives when eg.
         // the const item depends on `#[cfg]s` and has different values in different compilation
         // sessions).
-        else if let ExprKind::Repeat(inner_expr, length) = expr.kind
-            && let ArrayLen::Body(const_arg) = length
+        else if let ExprKind::Repeat(inner_expr, const_arg) = expr.kind
             && let ConstArgKind::Anon(anon_const) = const_arg.kind
-            && let length_expr = hir_map.body(anon_const.body).value
+            && let length_expr = cx.tcx.hir_body(anon_const.body).value
             && !length_expr.span.from_expansion()
             && let ExprKind::Lit(literal) = length_expr.kind
             && let LitKind::Int(Pu128(0), _) = literal.node

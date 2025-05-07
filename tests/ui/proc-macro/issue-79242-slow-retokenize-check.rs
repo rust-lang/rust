@@ -1,5 +1,5 @@
 //@ check-pass
-//@ aux-build:issue-79242.rs
+//@ proc-macro: issue-79242.rs
 
 // Regression test for issue #79242
 // Tests that compilation time doesn't blow up for a proc-macro

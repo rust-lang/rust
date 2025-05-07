@@ -1,14 +1,14 @@
 #![allow(clippy::wildcard_imports, clippy::enum_glob_use)]
 
-use clippy_config::msrvs::{self, Msrv};
 use clippy_config::Conf;
 use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::over;
+use rustc_ast::PatKind::*;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::PatKind::*;
-use rustc_ast::{self as ast, Mutability, Pat, PatKind, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, DUMMY_NODE_ID, Mutability, Pat, PatKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -16,7 +16,7 @@ use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
 use std::cell::Cell;
 use std::mem;
-use thin_vec::{thin_vec, ThinVec};
+use thin_vec::{ThinVec, thin_vec};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -48,13 +48,13 @@ declare_clippy_lint! {
 }
 
 pub struct UnnestedOrPatterns {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl UnnestedOrPatterns {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -69,10 +69,10 @@ impl EarlyLintPass for UnnestedOrPatterns {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if self.msrv.meets(msrvs::OR_PATTERNS) {
-            if let ast::ExprKind::Let(pat, _, _, _) = &e.kind {
-                lint_unnested_or_patterns(cx, pat);
-            }
+        if self.msrv.meets(msrvs::OR_PATTERNS)
+            && let ast::ExprKind::Let(pat, _, _, _) = &e.kind
+        {
+            lint_unnested_or_patterns(cx, pat);
         }
     }
 
@@ -88,11 +88,11 @@ impl EarlyLintPass for UnnestedOrPatterns {
         }
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }
 
 fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
-    if let Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
+    if let Ident(.., None) | Expr(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_) = pat.kind {
         // This is a leaf pattern, so cloning is unprofitable.
         return;
     }
@@ -120,18 +120,25 @@ fn lint_unnested_or_patterns(cx: &EarlyContext<'_>, pat: &Pat) {
 
 /// Remove all `(p)` patterns in `pat`.
 fn remove_all_parens(pat: &mut P<Pat>) {
-    struct Visitor;
+    #[derive(Default)]
+    struct Visitor {
+        /// If is not in the outer most pattern. This is needed to avoid removing the outermost
+        /// parens because top-level or-patterns are not allowed in let statements.
+        is_inner: bool,
+    }
+
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut P<Pat>) {
+            let is_inner = mem::replace(&mut self.is_inner, true);
             walk_pat(self, pat);
             let inner = match &mut pat.kind {
-                Paren(i) => mem::replace(&mut i.kind, Wild),
+                Paren(i) if is_inner => mem::replace(&mut i.kind, Wild),
                 _ => return,
             };
             pat.kind = inner;
         }
     }
-    Visitor.visit_pat(pat);
+    Visitor::default().visit_pat(pat);
 }
 
 /// Insert parens where necessary according to Rust's precedence rules for patterns.
@@ -224,17 +231,18 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
 
     // We're trying to find whatever kind (~"constructor") we found in `alternatives[start..]`.
     let changed = match &mut focus_kind {
+        Missing => unreachable!(),
         // These pattern forms are "leafs" and do not have sub-patterns.
         // Therefore they are not some form of constructor `C`,
         // with which a pattern `C(p_0)` may be formed,
         // which we would want to join with other `C(p_j)`s.
-        Ident(.., None) | Lit(_) | Wild | Err(_) | Never | Path(..) | Range(..) | Rest | MacCall(_)
+        Ident(.., None) | Expr(_) | Wild | Err(_) | Never | Path(..) | Range(..) | Rest | MacCall(_)
         // Skip immutable refs, as grouping them saves few characters,
         // and almost always requires adding parens (increasing noisiness).
         // In the case of only two patterns, replacement adds net characters.
         | Ref(_, Mutability::Not)
         // Dealt with elsewhere.
-        | Or(_) | Paren(_) | Deref(_) => false,
+        | Or(_) | Paren(_) | Deref(_) | Guard(..) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
         //
         // The cases below until `Slice(...)` deal with *singleton* products.
@@ -275,12 +283,15 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
             |k, ps1, idx| matches!(
                 k,
                 TupleStruct(qself2, path2, ps2)
-                    if eq_maybe_qself(qself1, qself2) && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
+                    if eq_maybe_qself(qself1.as_ref(), qself2.as_ref())
+                       && eq_path(path1, path2) && eq_pre_post(ps1, ps2, idx)
             ),
             |k| always_pat!(k, TupleStruct(_, _, ps) => ps),
         ),
         // Transform a record pattern `S { fp_0, ..., fp_n }`.
-        Struct(qself1, path1, fps1, rest1) => extend_with_struct_pat(qself1, path1, fps1, *rest1, start, alternatives),
+        Struct(qself1, path1, fps1, rest1) => {
+            extend_with_struct_pat(qself1.as_ref(), path1, fps1, *rest1, start, alternatives)
+        },
     };
 
     alternatives[focus_idx].kind = focus_kind;
@@ -292,7 +303,7 @@ fn transform_with_focus_on_idx(alternatives: &mut ThinVec<P<Pat>>, focus_idx: us
 /// So when we fixate on some `ident_k: pat_k`, we try to find `ident_k` in the other pattern
 /// and check that all `fp_i` where `i ∈ ((0...n) \ k)` between two patterns are equal.
 fn extend_with_struct_pat(
-    qself1: &Option<P<ast::QSelf>>,
+    qself1: Option<&P<ast::QSelf>>,
     path1: &ast::Path,
     fps1: &mut [ast::PatField],
     rest1: ast::PatFieldsRest,
@@ -307,7 +318,7 @@ fn extend_with_struct_pat(
             |k| {
                 matches!(k, Struct(qself2, path2, fps2, rest2)
                 if rest1 == *rest2 // If one struct pattern has `..` so must the other.
-                && eq_maybe_qself(qself1, qself2)
+                && eq_maybe_qself(qself1, qself2.as_ref())
                 && eq_path(path1, path2)
                 && fps1.len() == fps2.len()
                 && fps1.iter().enumerate().all(|(idx_1, fp1)| {

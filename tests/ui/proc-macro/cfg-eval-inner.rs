@@ -1,5 +1,5 @@
 //@ compile-flags: -Z span-debug
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 //@ check-pass
 
 #![feature(cfg_eval)]
@@ -32,7 +32,7 @@ impl Foo<[u8; {
     #![cfg_attr(not(FALSE), rustc_dummy(evaluated_attr))]
 
     fn bar() {
-        #[cfg(FALSE)] let a = 1;
+        #[cfg(false)] let a = 1;
     }
 }
 

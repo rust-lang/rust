@@ -2,14 +2,19 @@
 #![allow(unused_must_use)]
 //@ needs-threads
 
-use std::thread;
 use std::sync::mpsc::{channel, Sender};
+use std::thread;
 
-pub fn main() { test00(); }
+pub fn main() {
+    test00();
+}
 
 fn test00_start(c: &Sender<isize>, number_of_messages: isize) {
     let mut i: isize = 0;
-    while i < number_of_messages { c.send(i + 0).unwrap(); i += 1; }
+    while i < number_of_messages {
+        c.send(i + 0).unwrap();
+        i += 1;
+    }
 }
 
 fn test00() {
@@ -18,7 +23,7 @@ fn test00() {
     let (tx, rx) = channel();
     let number_of_messages: isize = 10;
 
-    let result = thread::spawn(move|| {
+    let result = thread::spawn(move || {
         test00_start(&tx, number_of_messages);
     });
 

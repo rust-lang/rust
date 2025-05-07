@@ -1,8 +1,8 @@
 use rustc_macros::extension;
 use rustc_middle::span_bug;
 
-use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
+use crate::infer::canonical::OriginalQueryValues;
 use crate::traits::{
     EvaluationResult, ObligationCtxt, OverflowError, PredicateObligation, SelectionContext,
 };
@@ -87,10 +87,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 Ok(result)
             })
         } else {
-            assert!(!self.intercrate);
             let c_pred =
                 self.canonicalize_query(param_env.and(obligation.predicate), &mut _orig_values);
-            self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
+            self.tcx.at(obligation.cause.span).evaluate_obligation(c_pred)
         }
     }
 

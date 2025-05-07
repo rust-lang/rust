@@ -1,0 +1,59 @@
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/trait-fn-const.rs:6:5
+   |
+LL | #[const_trait]
+   | -------------- this declares all associated functions implicitly const
+LL | trait Trait {
+LL |     const fn fun();
+   |     ^^^^^-
+   |     |
+   |     functions in traits cannot be const
+   |     help: remove the `const`
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/trait-fn-const.rs:10:5
+   |
+LL | impl const Trait for () {
+   |      ----- this declares all associated functions implicitly const
+LL |     const fn fun() {}
+   |     ^^^^^-
+   |     |
+   |     functions in trait impls cannot be const
+   |     help: remove the `const`
+
+error[E0379]: functions in trait impls cannot be declared const
+  --> $DIR/trait-fn-const.rs:14:5
+   |
+LL |     const fn fun() {}
+   |     ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const` ...
+   |
+LL -     const fn fun() {}
+LL +     fn fun() {}
+   |
+help: ... and declare the impl to be const instead
+   |
+LL | impl const Trait for u32 {
+   |      +++++
+
+error[E0379]: functions in traits cannot be declared const
+  --> $DIR/trait-fn-const.rs:18:5
+   |
+LL |     const fn fun();
+   |     ^^^^^ functions in traits cannot be const
+   |
+help: remove the `const` ...
+   |
+LL -     const fn fun();
+LL +     fn fun();
+   |
+help: ... and declare the trait to be a `#[const_trait]` instead
+   |
+LL + #[const_trait]
+LL | trait NonConst {
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0379`.

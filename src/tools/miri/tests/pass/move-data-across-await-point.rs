@@ -1,4 +1,3 @@
-#![feature(noop_waker)]
 use std::future::Future;
 use std::ptr;
 

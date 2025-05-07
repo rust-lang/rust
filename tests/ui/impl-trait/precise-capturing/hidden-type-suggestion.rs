@@ -1,5 +1,3 @@
-#![feature(precise_capturing)]
-
 fn lifetime<'a, 'b>(x: &'a ()) -> impl Sized + use<'b> {
 //~^ HELP add `'a` to the `use<...>` bound
     x

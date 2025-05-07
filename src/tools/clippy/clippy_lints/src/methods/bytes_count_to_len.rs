@@ -32,5 +32,5 @@ pub(super) fn check<'tcx>(
             ),
             applicability,
         );
-    };
+    }
 }

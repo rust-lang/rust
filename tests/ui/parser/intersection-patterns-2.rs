@@ -12,8 +12,8 @@ fn main() {
     match s {
         Some(x) @ Some(y) => {}
         //~^ ERROR left-hand side of `@` must be a binding
-        //~| interpreted as a pattern, not a binding
-        //~| also a pattern
+        //~| NOTE interpreted as a pattern, not a binding
+        //~| NOTE also a pattern
         //~| NOTE bindings are `x`, `mut x`, `ref x`, and `ref mut x`
         _ => {}
     }

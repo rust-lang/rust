@@ -1,8 +1,8 @@
 error[E0093]: unrecognized intrinsic function: `foo`
-  --> $DIR/E0093.rs:3:5
+  --> $DIR/E0093.rs:4:11
    |
-LL |     fn foo();
-   |     ^^^^^^^^^ unrecognized intrinsic
+LL | unsafe fn foo();
+   |           ^^^ unrecognized intrinsic
    |
    = help: if you're adding an intrinsic, be sure to update `check_intrinsic_type`
 

@@ -1,17 +1,17 @@
-use std::collections::{HashMap, HashSet};
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::OnceLock;
 use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
+use camino::{Utf8Path, Utf8PathBuf};
+use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
-use test::{ColorConfig, OutputFormat};
 
 pub use self::Mode::*;
-use crate::util::{add_dylib_path, PathBufExt};
+use crate::executor::{ColorConfig, OutputFormat};
+use crate::util::{Utf8PathBufExt, add_dylib_path};
 
 macro_rules! string_enum {
     ($(#[$meta:meta])* $vis:vis enum $name:ident { $($variant:ident => $repr:expr,)* }) => {
@@ -38,22 +38,25 @@ macro_rules! string_enum {
         }
 
         impl FromStr for $name {
-            type Err = ();
+            type Err = String;
 
-            fn from_str(s: &str) -> Result<Self, ()> {
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     $($repr => Ok(Self::$variant),)*
-                    _ => Err(()),
+                    _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
                 }
             }
         }
     }
 }
 
+// Make the macro visible outside of this module, for tests.
+#[cfg(test)]
+pub(crate) use string_enum;
+
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
     pub enum Mode {
-        RunPassValgrind => "run-pass-valgrind",
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
@@ -63,7 +66,7 @@ string_enum! {
         Incremental => "incremental",
         RunMake => "run-make",
         Ui => "ui",
-        JsDocTest => "js-doc-test",
+        RustdocJs => "rustdoc-js",
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",
@@ -174,20 +177,30 @@ pub struct Config {
     /// `true` to overwrite stderr/stdout files instead of complaining about changes in output.
     pub bless: bool,
 
+    /// Stop as soon as possible after any test fails.
+    /// May run a few more tests before stopping, due to threading.
+    pub fail_fast: bool,
+
     /// The library paths required for running the compiler.
-    pub compile_lib_path: PathBuf,
+    pub compile_lib_path: Utf8PathBuf,
 
     /// The library paths required for running compiled programs.
-    pub run_lib_path: PathBuf,
+    pub run_lib_path: Utf8PathBuf,
 
     /// The rustc executable.
-    pub rustc_path: PathBuf,
+    pub rustc_path: Utf8PathBuf,
+
+    /// The cargo executable.
+    pub cargo_path: Option<Utf8PathBuf>,
+
+    /// Rustc executable used to compile run-make recipes.
+    pub stage0_rustc_path: Option<Utf8PathBuf>,
 
     /// The rustdoc executable.
-    pub rustdoc_path: Option<PathBuf>,
+    pub rustdoc_path: Option<Utf8PathBuf>,
 
     /// The coverage-dump executable.
-    pub coverage_dump_path: Option<PathBuf>,
+    pub coverage_dump_path: Option<Utf8PathBuf>,
 
     /// The Python executable to use for LLDB and htmldocck.
     pub python: String,
@@ -199,32 +212,31 @@ pub struct Config {
     pub jsondoclint_path: Option<String>,
 
     /// The LLVM `FileCheck` binary path.
-    pub llvm_filecheck: Option<PathBuf>,
+    pub llvm_filecheck: Option<Utf8PathBuf>,
 
     /// Path to LLVM's bin directory.
-    pub llvm_bin_dir: Option<PathBuf>,
-
-    /// The valgrind path.
-    pub valgrind_path: Option<String>,
-
-    /// Whether to fail if we can't run run-pass-valgrind tests under valgrind
-    /// (or, alternatively, to silently run them like regular run-pass tests).
-    pub force_valgrind: bool,
+    pub llvm_bin_dir: Option<Utf8PathBuf>,
 
     /// The path to the Clang executable to run Clang-based tests with. If
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
-    /// The directory containing the tests to run
-    pub src_base: PathBuf,
+    /// The directory containing the sources.
+    pub src_root: Utf8PathBuf,
+    /// The directory containing the test suite sources. Must be a subdirectory of `src_root`.
+    pub src_test_suite_root: Utf8PathBuf,
 
-    /// The directory where programs should be built
-    pub build_base: PathBuf,
+    /// Root build directory (e.g. `build/`).
+    pub build_root: Utf8PathBuf,
+    /// Test suite specific build directory (e.g. `build/host/test/ui/`).
+    pub build_test_suite_root: Utf8PathBuf,
 
     /// The directory containing the compiler sysroot
-    pub sysroot_base: PathBuf,
+    pub sysroot_base: Utf8PathBuf,
 
-    /// The name of the stage being built (stage1, etc)
+    /// The number of the stage under test.
+    pub stage: u32,
+    /// The id of the stage under test (stage1-xxx, etc).
     pub stage_id: String,
 
     /// The test mode, e.g. ui or debuginfo.
@@ -240,8 +252,11 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
-    /// Whether to run tests with `ignore-debug` header
-    pub with_debug_assertions: bool,
+    /// Whether rustc was built with debug assertions.
+    pub with_rustc_debug_assertions: bool,
+
+    /// Whether std was built with debug assertions.
+    pub with_std_debug_assertions: bool,
 
     /// Only run tests that match these filters
     pub filters: Vec<String>,
@@ -259,9 +274,6 @@ pub struct Config {
     /// Explicitly enable or disable running.
     pub run: Option<bool>,
 
-    /// Write out a parseable log of tests that were run
-    pub logfile: Option<PathBuf>,
-
     /// A command line to prefix program execution with,
     /// for running under valgrind for example.
     ///
@@ -274,6 +286,9 @@ pub struct Config {
     /// Flags to pass to the compiler when building for the target
     pub target_rustcflags: Vec<String>,
 
+    /// Whether the compiler and stdlib has been built with randomized struct layouts
+    pub rust_randomized_layout: bool,
+
     /// Whether tests should be optimized by default. Individual test-suites and test files may
     /// override this setting.
     pub optimize_tests: bool,
@@ -285,7 +300,7 @@ pub struct Config {
     pub host: String,
 
     /// Path to / name of the Microsoft Console Debugger (CDB) executable
-    pub cdb: Option<OsString>,
+    pub cdb: Option<Utf8PathBuf>,
 
     /// Version of CDB
     pub cdb_version: Option<[u16; 4]>,
@@ -296,23 +311,17 @@ pub struct Config {
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     pub gdb_version: Option<u32>,
 
-    /// Whether GDB has native rust support
-    pub gdb_native_rust: bool,
-
     /// Version of LLDB
     pub lldb_version: Option<u32>,
 
-    /// Whether LLDB has native rust support
-    pub lldb_native_rust: bool,
-
     /// Version of LLVM
-    pub llvm_version: Option<u32>,
+    pub llvm_version: Option<Version>,
 
     /// Is LLVM a system LLVM
     pub system_llvm: bool,
 
     /// Path to the android tools
-    pub android_cross_path: PathBuf,
+    pub android_cross_path: Utf8PathBuf,
 
     /// Extra parameter to run adb on arm-linux-androideabi
     pub adb_path: String,
@@ -336,18 +345,21 @@ pub struct Config {
     pub color: ColorConfig,
 
     /// where to find the remote test client process, if we're using it
-    pub remote_test_client: Option<PathBuf>,
+    pub remote_test_client: Option<Utf8PathBuf>,
 
     /// mode describing what file the actual ui output will be compared to
     pub compare_mode: Option<CompareMode>,
 
     /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
     /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
-    /// created in `/<build_base>/rustfix_missing_coverage.txt`
+    /// created in `<test_suite_build_root>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
-    /// whether to run `tidy` when a rustdoc test fails
-    pub has_tidy: bool,
+    /// whether to run `tidy` (html-tidy) when a rustdoc test fails
+    pub has_html_tidy: bool,
+
+    /// whether to run `enzyme` autodiff tests
+    pub has_enzyme: bool,
 
     /// The current Rust channel
     pub channel: String,
@@ -381,16 +393,26 @@ pub struct Config {
     pub only_modified: bool,
 
     pub target_cfgs: OnceLock<TargetCfgs>,
+    pub builtin_cfg_names: OnceLock<HashSet<String>>,
+    pub supported_crate_types: OnceLock<HashSet<String>>,
 
     pub nocapture: bool,
 
     // Needed both to construct build_helper::git::GitConfig
-    pub git_repository: String,
     pub nightly_branch: String,
+    pub git_merge_commit_email: String,
 
     /// True if the profiler runtime is enabled for this target.
-    /// Used by the "needs-profiler-support" header in test files.
-    pub profiler_support: bool,
+    /// Used by the "needs-profiler-runtime" directive in test files.
+    pub profiler_runtime: bool,
+
+    /// Command for visual diff display, e.g. `diff-tool --color=always`.
+    pub diff_command: Option<String>,
+
+    /// Path to minicore aux library, used for `no_core` tests that need `core` stubs in
+    /// cross-compilation scenarios that do not otherwise want/need to `-Zbuild-std`. Used in e.g.
+    /// ABI tests.
+    pub minicore_path: Utf8PathBuf,
 }
 
 impl Config {
@@ -444,6 +466,16 @@ impl Config {
         self.target_cfg().panic == PanicStrategy::Unwind
     }
 
+    /// Get the list of builtin, 'well known' cfg names
+    pub fn builtin_cfg_names(&self) -> &HashSet<String> {
+        self.builtin_cfg_names.get_or_init(|| builtin_cfg_names(self))
+    }
+
+    /// Get the list of crate types that the target platform supports.
+    pub fn supported_crate_types(&self) -> &HashSet<String> {
+        self.supported_crate_types.get_or_init(|| supported_crate_types(self))
+    }
+
     pub fn has_threads(&self) -> bool {
         // Wasm targets don't have threads unless `-threads` is in the target
         // name, such as `wasm32-wasip1-threads`.
@@ -454,9 +486,17 @@ impl Config {
     }
 
     pub fn has_asm_support(&self) -> bool {
+        // This should match the stable list in `LoweringContext::lower_inline_asm`.
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
-            "x86", "x86_64", "arm", "aarch64", "riscv32",
+            "x86",
+            "x86_64",
+            "arm",
+            "aarch64",
+            "arm64ec",
+            "riscv32",
             "riscv64",
+            "loongarch64",
+            "s390x",
             // These targets require an additional asm_experimental_arch feature.
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
@@ -464,9 +504,26 @@ impl Config {
     }
 
     pub fn git_config(&self) -> GitConfig<'_> {
-        GitConfig { git_repository: &self.git_repository, nightly_branch: &self.nightly_branch }
+        GitConfig {
+            nightly_branch: &self.nightly_branch,
+            git_merge_commit_email: &self.git_merge_commit_email,
+        }
+    }
+
+    pub fn has_subprocess_support(&self) -> bool {
+        // FIXME(#135928): compiletest is always a **host** tool. Building and running an
+        // capability detection executable against the **target** is not trivial. The short term
+        // solution here is to hard-code some targets to allow/deny, unfortunately.
+
+        let unsupported_target = self.target_cfg().env == "sgx"
+            || matches!(self.target_cfg().arch.as_str(), "wasm32" | "wasm64")
+            || self.target_cfg().os == "emscripten";
+        !unsupported_target
     }
 }
+
+/// Known widths of `target_has_atomic`.
+pub const KNOWN_TARGET_HAS_ATOMIC_WIDTHS: &[&str] = &["8", "16", "32", "64", "128", "ptr"];
 
 #[derive(Debug, Clone)]
 pub struct TargetCfgs {
@@ -479,6 +536,7 @@ pub struct TargetCfgs {
     pub all_abis: HashSet<String>,
     pub all_families: HashSet<String>,
     pub all_pointer_widths: HashSet<String>,
+    pub all_rustc_abis: HashSet<String>,
 }
 
 impl TargetCfgs {
@@ -498,6 +556,9 @@ impl TargetCfgs {
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
+        // NOTE: for distinction between `abi` and `rustc_abi`, see comment on
+        // `TargetCfg::rustc_abi`.
+        let mut all_rustc_abis = HashSet::new();
 
         // If current target is not included in the `--print=all-target-specs-json` output,
         // we check whether it is a custom target from the user or a synthetic target from bootstrap.
@@ -538,7 +599,9 @@ impl TargetCfgs {
                 all_families.insert(family.clone());
             }
             all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
-
+            if let Some(rustc_abi) = &cfg.rustc_abi {
+                all_rustc_abis.insert(rustc_abi.clone());
+            }
             all_targets.insert(target.clone());
         }
 
@@ -552,6 +615,7 @@ impl TargetCfgs {
             all_abis,
             all_families,
             all_pointer_widths,
+            all_rustc_abis,
         }
     }
 
@@ -593,6 +657,17 @@ impl TargetCfgs {
                 ("panic", Some("abort")) => cfg.panic = PanicStrategy::Abort,
                 ("panic", Some("unwind")) => cfg.panic = PanicStrategy::Unwind,
                 ("panic", other) => panic!("unexpected value for panic cfg: {other:?}"),
+
+                ("target_has_atomic", Some(width))
+                    if KNOWN_TARGET_HAS_ATOMIC_WIDTHS.contains(&width) =>
+                {
+                    cfg.target_has_atomic.insert(width.to_string());
+                }
+                ("target_has_atomic", Some(other)) => {
+                    panic!("unexpected value for `target_has_atomic` cfg: {other:?}")
+                }
+                // Nightly-only std-internal impl detail.
+                ("target_has_atomic", None) => {}
                 _ => {}
             }
         }
@@ -627,6 +702,16 @@ pub struct TargetCfg {
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]
     pub(crate) relocation_model: String,
+    // NOTE: `rustc_abi` should not be confused with `abi`. `rustc_abi` was introduced in #137037 to
+    // make SSE2 *required* by the ABI (kind of a hack to make a target feature *required* via the
+    // target spec).
+    pub(crate) rustc_abi: Option<String>,
+
+    // Not present in target cfg json output, additional derived information.
+    #[serde(skip)]
+    /// Supported target atomic widths: e.g. `8` to `128` or `ptr`. This is derived from the builtin
+    /// `target_has_atomic` `cfg`s e.g. `target_has_atomic="8"`.
+    pub(crate) target_has_atomic: BTreeSet<String>,
 }
 
 impl TargetCfg {
@@ -649,6 +734,43 @@ pub enum Endian {
     #[default]
     Little,
     Big,
+}
+
+fn builtin_cfg_names(config: &Config) -> HashSet<String> {
+    rustc_output(
+        config,
+        &["--print=check-cfg", "-Zunstable-options", "--check-cfg=cfg()"],
+        Default::default(),
+    )
+    .lines()
+    .map(|l| if let Some((name, _)) = l.split_once('=') { name.to_string() } else { l.to_string() })
+    .chain(std::iter::once(String::from("test")))
+    .collect()
+}
+
+pub const KNOWN_CRATE_TYPES: &[&str] =
+    &["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"];
+
+fn supported_crate_types(config: &Config) -> HashSet<String> {
+    let crate_types: HashSet<_> = rustc_output(
+        config,
+        &["--target", &config.target, "--print=supported-crate-types", "-Zunstable-options"],
+        Default::default(),
+    )
+    .lines()
+    .map(|l| l.to_string())
+    .collect();
+
+    for crate_type in crate_types.iter() {
+        assert!(
+            KNOWN_CRATE_TYPES.contains(&crate_type.as_str()),
+            "unexpected crate type `{}`: known crate types are {:?}",
+            crate_type,
+            KNOWN_CRATE_TYPES
+        );
+    }
+
+    crate_types
 }
 
 fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
@@ -679,8 +801,8 @@ fn serde_parse_u32<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u32, D:
 
 #[derive(Debug, Clone)]
 pub struct TestPaths {
-    pub file: PathBuf,         // e.g., compile-test/foo/bar/baz.rs
-    pub relative_dir: PathBuf, // e.g., foo/bar
+    pub file: Utf8PathBuf,         // e.g., compile-test/foo/bar/baz.rs
+    pub relative_dir: Utf8PathBuf, // e.g., foo/bar
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
@@ -689,7 +811,7 @@ pub fn expected_output_path(
     revision: Option<&str>,
     compare_mode: &Option<CompareMode>,
     kind: &str,
-) -> PathBuf {
+) -> Utf8PathBuf {
     assert!(UI_EXTENSIONS.contains(&kind));
     let mut parts = Vec::new();
 
@@ -732,12 +854,16 @@ pub const UI_STDERR_16: &str = "16bit.stderr";
 pub const UI_COVERAGE: &str = "coverage";
 pub const UI_COVERAGE_MAP: &str = "cov-map";
 
-/// Absolute path to the directory where all output for all tests in the given
-/// `relative_dir` group should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/
+/// Absolute path to the directory where all output for all tests in the given `relative_dir` group
+/// should reside. Example:
+///
+/// ```text
+/// /path/to/build/host-tuple/test/ui/relative/
+/// ```
+///
 /// This is created early when tests are collected to avoid race conditions.
-pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
-    config.build_base.join(relative_dir)
+pub fn output_relative_path(config: &Config, relative_dir: &Utf8Path) -> Utf8PathBuf {
+    config.build_test_suite_root.join(relative_dir)
 }
 
 /// Generates a unique name for the test, such as `testname.revision.mode`.
@@ -745,10 +871,10 @@ pub fn output_testname_unique(
     config: &Config,
     testpaths: &TestPaths,
     revision: Option<&str>,
-) -> PathBuf {
+) -> Utf8PathBuf {
     let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
     let debugger = config.debugger.as_ref().map_or("", |m| m.to_str());
-    PathBuf::from(&testpaths.file.file_stem().unwrap())
+    Utf8PathBuf::from(&testpaths.file.file_stem().unwrap())
         .with_extra_extension(config.mode.output_dir_disambiguator())
         .with_extra_extension(revision.unwrap_or(""))
         .with_extra_extension(mode)
@@ -757,27 +883,33 @@ pub fn output_testname_unique(
 
 /// Absolute path to the directory where all output for the given
 /// test/revision should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
-pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
-    // In run-make tests, constructing a relative path + unique testname causes a double layering
-    // since revisions are not supported, causing unnecessary nesting.
-    if config.mode == Mode::RunMake {
-        output_relative_path(config, &testpaths.relative_dir)
-    } else {
-        output_relative_path(config, &testpaths.relative_dir)
-            .join(output_testname_unique(config, testpaths, revision))
-    }
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/
+pub fn output_base_dir(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> Utf8PathBuf {
+    output_relative_path(config, &testpaths.relative_dir)
+        .join(output_testname_unique(config, testpaths, revision))
 }
 
 /// Absolute path to the base filename used as output for the given
 /// test/revision. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/testname
-pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/testname
+pub fn output_base_name(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> Utf8PathBuf {
     output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
 }
 
 /// Absolute path to the directory to use for incremental compilation. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.mode/testname.inc
-pub fn incremental_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+///   /path/to/build/host-tuple/test/ui/relative/testname.mode/testname.inc
+pub fn incremental_dir(
+    config: &Config,
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+) -> Utf8PathBuf {
     output_base_name(config, testpaths, revision).with_extension("inc")
 }

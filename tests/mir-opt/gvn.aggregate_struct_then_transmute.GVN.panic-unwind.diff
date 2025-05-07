@@ -1,0 +1,340 @@
+- // MIR for `aggregate_struct_then_transmute` before GVN
++ // MIR for `aggregate_struct_then_transmute` after GVN
+  
+  fn aggregate_struct_then_transmute(_1: u16, _2: *const u8) -> () {
+      debug id => _1;
+      debug thin => _2;
+      let mut _0: ();
+      let _3: MyId;
+      let mut _4: u16;
+      let _5: ();
+      let mut _6: u16;
+      let mut _7: MyId;
+      let mut _9: u16;
+      let mut _10: std::marker::PhantomData<std::string::String>;
+      let _11: ();
+      let mut _12: u16;
+      let mut _13: TypedId<std::string::String>;
+      let mut _15: u16;
+      let _16: ();
+      let mut _17: u16;
+      let mut _18: std::result::Result<Never, u16>;
+      let mut _20: u16;
+      let _21: ();
+      let mut _22: u32;
+      let mut _23: std::option::Option<u16>;
+      let mut _25: u16;
+      let _26: ();
+      let mut _27: i16;
+      let mut _28: MyId;
+      let mut _30: u16;
+      let mut _31: u16;
+      let _32: ();
+      let mut _33: u32;
+      let mut _34: aggregate_struct_then_transmute::Pair;
+      let mut _36: u16;
+      let mut _37: u16;
+      let _38: ();
+      let mut _39: u16;
+      let mut _40: aggregate_struct_then_transmute::Pair;
+      let mut _42: u16;
+      let _43: ();
+      let mut _44: u16;
+      let mut _45: (u16,);
+      let mut _47: u16;
+      let _48: ();
+      let mut _49: u16;
+      let mut _50: [u16; 1];
+      let mut _52: *const u8;
+      let mut _53: ();
+      let _54: ();
+      let mut _55: *const u8;
+      let mut _56: *const i32;
+      scope 1 {
+          debug a => _3;
+          let _8: TypedId<std::string::String>;
+          scope 2 {
+              debug b => _8;
+              let _14: std::result::Result<Never, u16>;
+              scope 3 {
+                  debug c => _14;
+                  let _19: std::option::Option<u16>;
+                  scope 4 {
+                      debug d => _19;
+                      let _24: MyId;
+                      scope 5 {
+                          debug e => _24;
+                          let _29: aggregate_struct_then_transmute::Pair;
+                          scope 6 {
+                              debug f => _29;
+                              let _35: aggregate_struct_then_transmute::Pair;
+                              scope 7 {
+                                  debug g => _35;
+                                  let _41: (u16,);
+                                  scope 8 {
+                                      debug h => _41;
+                                      let _46: [u16; 1];
+                                      scope 9 {
+                                          debug i => _46;
+                                          let _51: *const i32;
+                                          scope 10 {
+                                              debug j => _51;
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _1;
+-         _3 = MyId(move _4);
++         _3 = MyId(copy _1);
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+-         _7 = move _3;
+-         _6 = move _7 as u16 (Transmute);
++         _7 = copy _3;
++         _6 = copy _1;
+          StorageDead(_7);
+-         _5 = opaque::<u16>(move _6) -> [return: bb1, unwind continue];
++         _5 = opaque::<u16>(copy _1) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageDead(_5);
+-         StorageLive(_8);
++         nop;
+          StorageLive(_9);
+          _9 = copy _1;
+          StorageLive(_10);
+-         _10 = PhantomData::<String>;
+-         _8 = TypedId::<String>(move _9, move _10);
++         _10 = const PhantomData::<String>;
++         _8 = TypedId::<String>(copy _1, const PhantomData::<String>);
+          StorageDead(_10);
+          StorageDead(_9);
+          StorageLive(_11);
+          StorageLive(_12);
+          StorageLive(_13);
+-         _13 = move _8;
+-         _12 = move _13 as u16 (Transmute);
++         _13 = copy _8;
++         _12 = copy _1;
+          StorageDead(_13);
+-         _11 = opaque::<u16>(move _12) -> [return: bb2, unwind continue];
++         _11 = opaque::<u16>(copy _1) -> [return: bb2, unwind continue];
+      }
+  
+      bb2: {
+          StorageDead(_12);
+          StorageDead(_11);
+-         StorageLive(_14);
++         nop;
+          StorageLive(_15);
+          _15 = copy _1;
+-         _14 = Result::<Never, u16>::Err(move _15);
++         _14 = Result::<Never, u16>::Err(copy _1);
+          StorageDead(_15);
+          StorageLive(_16);
+          StorageLive(_17);
+          StorageLive(_18);
+-         _18 = move _14;
+-         _17 = move _18 as u16 (Transmute);
++         _18 = copy _14;
++         _17 = copy _1;
+          StorageDead(_18);
+-         _16 = opaque::<u16>(move _17) -> [return: bb3, unwind continue];
++         _16 = opaque::<u16>(copy _1) -> [return: bb3, unwind continue];
+      }
+  
+      bb3: {
+          StorageDead(_17);
+          StorageDead(_16);
+-         StorageLive(_19);
++         nop;
+          StorageLive(_20);
+          _20 = copy _1;
+-         _19 = Option::<u16>::Some(move _20);
++         _19 = Option::<u16>::Some(copy _1);
+          StorageDead(_20);
+          StorageLive(_21);
+          StorageLive(_22);
+          StorageLive(_23);
+          _23 = copy _19;
+-         _22 = move _23 as u32 (Transmute);
++         _22 = copy _19 as u32 (Transmute);
+          StorageDead(_23);
+          _21 = opaque::<u32>(move _22) -> [return: bb4, unwind continue];
+      }
+  
+      bb4: {
+          StorageDead(_22);
+          StorageDead(_21);
+          StorageLive(_24);
+          StorageLive(_25);
+          _25 = copy _1;
+-         _24 = MyId(move _25);
++         _24 = copy _3;
+          StorageDead(_25);
+          StorageLive(_26);
+          StorageLive(_27);
+          StorageLive(_28);
+-         _28 = move _24;
+-         _27 = move _28 as i16 (Transmute);
++         _28 = copy _3;
++         _27 = copy _1 as i16 (Transmute);
+          StorageDead(_28);
+          _26 = opaque::<i16>(move _27) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+          StorageDead(_27);
+          StorageDead(_26);
+-         StorageLive(_29);
++         nop;
+          StorageLive(_30);
+          _30 = copy _1;
+          StorageLive(_31);
+          _31 = copy _1;
+-         _29 = Pair(move _30, move _31);
++         _29 = Pair(copy _1, copy _1);
+          StorageDead(_31);
+          StorageDead(_30);
+          StorageLive(_32);
+          StorageLive(_33);
+          StorageLive(_34);
+-         _34 = move _29;
+-         _33 = move _34 as u32 (Transmute);
++         _34 = copy _29;
++         _33 = copy _29 as u32 (Transmute);
+          StorageDead(_34);
+          _32 = opaque::<u32>(move _33) -> [return: bb6, unwind continue];
+      }
+  
+      bb6: {
+          StorageDead(_33);
+          StorageDead(_32);
+          StorageLive(_35);
+          StorageLive(_36);
+          _36 = copy _1;
+          StorageLive(_37);
+          _37 = copy _1;
+-         _35 = Pair(move _36, move _37);
++         _35 = copy _29;
+          StorageDead(_37);
+          StorageDead(_36);
+          StorageLive(_38);
+          StorageLive(_39);
+          StorageLive(_40);
+-         _40 = move _35;
+-         _39 = move _40 as u16 (Transmute);
++         _40 = copy _29;
++         _39 = copy _29 as u16 (Transmute);
+          StorageDead(_40);
+          _38 = opaque::<u16>(move _39) -> [return: bb7, unwind continue];
+      }
+  
+      bb7: {
+          StorageDead(_39);
+          StorageDead(_38);
+-         StorageLive(_41);
++         nop;
+          StorageLive(_42);
+          _42 = copy _1;
+-         _41 = (move _42,);
++         _41 = (copy _1,);
+          StorageDead(_42);
+          StorageLive(_43);
+          StorageLive(_44);
+          StorageLive(_45);
+          _45 = copy _41;
+-         _44 = move _45 as u16 (Transmute);
++         _44 = copy _1;
+          StorageDead(_45);
+-         _43 = opaque::<u16>(move _44) -> [return: bb8, unwind continue];
++         _43 = opaque::<u16>(copy _1) -> [return: bb8, unwind continue];
+      }
+  
+      bb8: {
+          StorageDead(_44);
+          StorageDead(_43);
+-         StorageLive(_46);
++         nop;
+          StorageLive(_47);
+          _47 = copy _1;
+-         _46 = [move _47];
++         _46 = [copy _1];
+          StorageDead(_47);
+          StorageLive(_48);
+          StorageLive(_49);
+          StorageLive(_50);
+          _50 = copy _46;
+-         _49 = move _50 as u16 (Transmute);
++         _49 = copy _1;
+          StorageDead(_50);
+-         _48 = opaque::<u16>(move _49) -> [return: bb9, unwind continue];
++         _48 = opaque::<u16>(copy _1) -> [return: bb9, unwind continue];
+      }
+  
+      bb9: {
+          StorageDead(_49);
+          StorageDead(_48);
+-         StorageLive(_51);
++         nop;
+          StorageLive(_52);
+          _52 = copy _2;
+          StorageLive(_53);
+-         _53 = ();
+-         _51 = *const i32 from (move _52, move _53);
++         _53 = const ();
++         _51 = *const i32 from (copy _2, const ());
+          StorageDead(_53);
+          StorageDead(_52);
+          StorageLive(_54);
+          StorageLive(_55);
+          StorageLive(_56);
+          _56 = copy _51;
+-         _55 = move _56 as *const u8 (Transmute);
++         _55 = copy _2;
+          StorageDead(_56);
+-         _54 = opaque::<*const u8>(move _55) -> [return: bb10, unwind continue];
++         _54 = opaque::<*const u8>(copy _2) -> [return: bb10, unwind continue];
+      }
+  
+      bb10: {
+          StorageDead(_55);
+          StorageDead(_54);
+          _0 = const ();
+-         StorageDead(_51);
+-         StorageDead(_46);
+-         StorageDead(_41);
++         nop;
++         nop;
++         nop;
+          StorageDead(_35);
+-         StorageDead(_29);
++         nop;
+          StorageDead(_24);
+-         StorageDead(_19);
+-         StorageDead(_14);
+-         StorageDead(_8);
+-         StorageDead(_3);
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  

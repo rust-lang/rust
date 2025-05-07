@@ -1,0 +1,129 @@
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:25:13
+   |
+LL |     let _ = (x + (y - 1)) / y;
+   |             ^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(y)`
+   |
+   = note: `-D clippy::manual-div-ceil` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::manual_div_ceil)]`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:27:13
+   |
+LL |     let _ = ((y - 1) + x) / y;
+   |             ^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(y)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:29:13
+   |
+LL |     let _ = (x + y - 1) / y;
+   |             ^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(y)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:32:13
+   |
+LL |     let _ = (7_u32 + (4 - 1)) / 4;
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `7_u32.div_ceil(4)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:34:13
+   |
+LL |     let _ = (7_i32 as u32 + (4 - 1)) / 4;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `(7_i32 as u32).div_ceil(4)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:6:17
+   |
+LL |         let _ = (x + 7) / 8;
+   |                 ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+...
+LL |     y!();
+   |     ---- in this macro invocation
+   |
+   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:8:17
+   |
+LL |         let _ = (7 + x) / 8;
+   |                 ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+...
+LL |     y!();
+   |     ---- in this macro invocation
+   |
+   = note: this error originates in the macro `y` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:56:13
+   |
+LL |     let _ = (33u32 + 7) / eight!();
+   |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `33u32.div_ceil(eight!())`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:62:13
+   |
+LL |     let _ = (2048 + x - 1) / x;
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `2048_usize.div_ceil(x)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:66:13
+   |
+LL |     let _ = (2048usize + x - 1) / x;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `2048usize.div_ceil(x)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:70:13
+   |
+LL |     let _ = (2048_usize + x - 1) / x;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `2048_usize.div_ceil(x)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:74:13
+   |
+LL |     let _ = (x + 4 - 1) / 4;
+   |             ^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(4)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:77:18
+   |
+LL |     let _: u32 = (2048 + 6 - 1) / 6;
+   |                  ^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `2048_u32.div_ceil(6)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:79:20
+   |
+LL |     let _: usize = (2048 + 6 - 1) / 6;
+   |                    ^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `2048_usize.div_ceil(6)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:81:18
+   |
+LL |     let _: u32 = (0x2048 + 0x6 - 1) / 0x6;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `0x2048_u32.div_ceil(0x6)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:84:13
+   |
+LL |     let _ = (2048 + 6u32 - 1) / 6u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `2048_u32.div_ceil(6u32)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:87:13
+   |
+LL |     let _ = (1_000_000 + 6u32 - 1) / 6u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.div_ceil()`: `1_000_000_u32.div_ceil(6u32)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:93:13
+   |
+LL |     let _ = (x + 7) / 8;
+   |             ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+
+error: manually reimplementing `div_ceil`
+  --> tests/ui/manual_div_ceil.rs:95:13
+   |
+LL |     let _ = (7 + x) / 8;
+   |             ^^^^^^^^^^^ help: consider using `.div_ceil()`: `x.div_ceil(8)`
+
+error: aborting due to 19 previous errors
+

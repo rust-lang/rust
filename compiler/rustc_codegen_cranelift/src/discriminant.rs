@@ -3,7 +3,8 @@
 //! Adapted from <https://github.com/rust-lang/rust/blob/31c0645b9d2539f47eecb096142474b29dc542f7/compiler/rustc_codegen_ssa/src/mir/place.rs>
 //! (<https://github.com/rust-lang/rust/pull/104535>)
 
-use rustc_target::abi::{Int, TagEncoding, Variants};
+use rustc_abi::Primitive::Int;
+use rustc_abi::{TagEncoding, Variants};
 
 use crate::prelude::*;
 
@@ -13,10 +14,11 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
     variant_index: VariantIdx,
 ) {
     let layout = place.layout();
-    if layout.for_variant(fx, variant_index).abi.is_uninhabited() {
+    if layout.for_variant(fx, variant_index).is_uninhabited() {
         return;
     }
     match layout.variants {
+        Variants::Empty => unreachable!("we already handled uninhabited types"),
         Variants::Single { index } => {
             assert_eq!(index, variant_index);
         }
@@ -79,11 +81,12 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
 ) {
     let layout = value.layout();
 
-    if layout.abi.is_uninhabited() {
+    if layout.is_uninhabited() {
         return;
     }
 
     let (tag_scalar, tag_field, tag_encoding) = match &layout.variants {
+        Variants::Empty => unreachable!("we already handled uninhabited types"),
         Variants::Single { index } => {
             let discr_val = layout
                 .ty

@@ -1,6 +1,6 @@
-use crate::spec::{base, LinkerFlavor, Lld, TargetOptions};
+use crate::spec::{LinkerFlavor, Lld, TargetOptions, base};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut opts = base::windows_msvc::opts();
 
     opts.abi = "uwp".into();

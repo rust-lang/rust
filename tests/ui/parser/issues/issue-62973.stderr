@@ -1,5 +1,5 @@
 error: mismatched closing delimiter: `)`
-  --> $DIR/issue-62973.rs:6:27
+  --> $DIR/issue-62973.rs:8:27
    |
 LL | fn p() { match s { v, E { [) {) }
    |                           ^^ mismatched closing delimiter
@@ -7,7 +7,7 @@ LL | fn p() { match s { v, E { [) {) }
    |                           unclosed delimiter
 
 error: mismatched closing delimiter: `)`
-  --> $DIR/issue-62973.rs:6:30
+  --> $DIR/issue-62973.rs:8:30
    |
 LL | fn p() { match s { v, E { [) {) }
    |                              ^^ mismatched closing delimiter
@@ -15,7 +15,7 @@ LL | fn p() { match s { v, E { [) {) }
    |                              unclosed delimiter
 
 error: this file contains an unclosed delimiter
-  --> $DIR/issue-62973.rs:8:2
+  --> $DIR/issue-62973.rs:10:2
    |
 LL | fn p() { match s { v, E { [) {) }
    |        -         -         -  - missing open `(` for this delimiter

@@ -1,4 +1,4 @@
-use std::num::NonZero;
+use std::num::{NonZero, ParseIntError};
 
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
@@ -9,10 +9,18 @@ use rustc_errors::{
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
-use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
+use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
 use crate::config::CrateType;
 use crate::parse::ParseSess;
+
+#[derive(Diagnostic)]
+pub(crate) enum AppleDeploymentTarget {
+    #[diag(session_apple_deployment_target_invalid)]
+    Invalid { env_var: &'static str, error: ParseIntError },
+    #[diag(session_apple_deployment_target_too_low)]
+    TooLow { env_var: &'static str, version: String, os_min: String },
+}
 
 pub(crate) struct FeatureGateError {
     pub(crate) span: MultiSpan,
@@ -148,6 +156,10 @@ pub(crate) struct SanitizerCfiGeneralizePointersRequiresCfi;
 pub(crate) struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
+#[diag(session_sanitizer_kcfi_arity_requires_kcfi)]
+pub(crate) struct SanitizerKcfiArityRequiresKcfi;
+
+#[derive(Diagnostic)]
 #[diag(session_sanitizer_kcfi_requires_panic_abort)]
 pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 
@@ -161,15 +173,32 @@ pub(crate) struct UnstableVirtualFunctionElimination;
 
 #[derive(Diagnostic)]
 #[diag(session_unsupported_dwarf_version)]
+#[help(session_unsupported_dwarf_version_help)]
 pub(crate) struct UnsupportedDwarfVersion {
     pub(crate) dwarf_version: u32,
 }
 
 #[derive(Diagnostic)]
+#[diag(session_embed_source_insufficient_dwarf_version)]
+pub(crate) struct EmbedSourceInsufficientDwarfVersion {
+    pub(crate) dwarf_version: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_embed_source_requires_debug_info)]
+pub(crate) struct EmbedSourceRequiresDebugInfo;
+
+#[derive(Diagnostic)]
 #[diag(session_target_stack_protector_not_supported)]
 pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
     pub(crate) stack_protector: StackProtector,
-    pub(crate) target_triple: &'a TargetTriple,
+    pub(crate) target_triple: &'a TargetTuple,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_target_small_data_threshold_not_supported)]
+pub(crate) struct SmallDataThresholdNotSupportedForTarget<'a> {
+    pub(crate) target_triple: &'a TargetTuple,
 }
 
 #[derive(Diagnostic)]
@@ -196,21 +225,6 @@ pub(crate) struct FileWriteFail<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_crate_name_does_not_match)]
-pub(crate) struct CrateNameDoesNotMatch {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) s: Symbol,
-    pub(crate) name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(session_crate_name_invalid)]
-pub(crate) struct CrateNameInvalid<'a> {
-    pub(crate) s: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_crate_name_empty)]
 pub(crate) struct CrateNameEmpty {
     #[primary_span]
@@ -218,20 +232,14 @@ pub(crate) struct CrateNameEmpty {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_invalid_character_in_create_name)]
+#[diag(session_invalid_character_in_crate_name)]
 pub(crate) struct InvalidCharacterInCrateName {
     #[primary_span]
     pub(crate) span: Option<Span>,
     pub(crate) character: char,
     pub(crate) crate_name: Symbol,
-    #[subdiagnostic]
-    pub(crate) crate_name_help: Option<InvalidCrateNameHelp>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum InvalidCrateNameHelp {
-    #[help(session_invalid_character_in_create_name_help)]
-    AddCrateName,
+    #[help]
+    pub(crate) help: Option<()>,
 }
 
 #[derive(Subdiagnostic)]
@@ -367,7 +375,7 @@ struct BinaryFloatLiteralNotSupported {
 #[diag(session_unsupported_crate_type_for_target)]
 pub(crate) struct UnsupportedCrateTypeForTarget<'a> {
     pub(crate) crate_type: CrateType,
-    pub(crate) target_triple: &'a TargetTriple,
+    pub(crate) target_triple: &'a TargetTuple,
 }
 
 pub fn report_lit_error(
@@ -448,12 +456,6 @@ pub fn report_lit_error(
 }
 
 #[derive(Diagnostic)]
-#[diag(session_optimization_fuel_exhausted)]
-pub(crate) struct OptimisationFuelExhausted {
-    pub(crate) msg: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_incompatible_linker_flavor)]
 #[note]
 pub(crate) struct IncompatibleLinkerFlavor {
@@ -470,7 +472,32 @@ pub(crate) struct FunctionReturnRequiresX86OrX8664;
 pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
 
 #[derive(Diagnostic)]
+#[diag(session_unsupported_regparm)]
+pub(crate) struct UnsupportedRegparm {
+    pub(crate) regparm: u32,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_regparm_arch)]
+pub(crate) struct UnsupportedRegparmArch;
+
+#[derive(Diagnostic)]
+#[diag(session_unsupported_reg_struct_return_arch)]
+pub(crate) struct UnsupportedRegStructReturnArch;
+
+#[derive(Diagnostic)]
 #[diag(session_failed_to_create_profiler)]
 pub(crate) struct FailedToCreateProfiler {
     pub(crate) err: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(session_soft_float_ignored)]
+#[note]
+pub(crate) struct SoftFloatIgnored;
+
+#[derive(Diagnostic)]
+#[diag(session_soft_float_deprecated)]
+#[note]
+#[note(session_soft_float_deprecated_issue)]
+pub(crate) struct SoftFloatDeprecated;

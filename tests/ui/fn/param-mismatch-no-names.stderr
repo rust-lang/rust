@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/param-mismatch-no-names.rs:4:20
+   |
+LL |     same_type([x], Some(y));
+   |     --------- ---  ^^^^^^^ expected `[X; 1]`, found `Option<Y>`
+   |     |         |
+   |     |         expected all arguments to be this `[X; 1]` type because they need to match the type of this parameter
+   |     arguments to this function are incorrect
+   |
+   = note: expected array `[X; 1]`
+               found enum `Option<Y>`
+note: function defined here
+  --> $DIR/param-mismatch-no-names.rs:1:4
+   |
+LL | fn same_type<T>(_: T, _: T) {}
+   |    ^^^^^^^^^ -  ----  ---- this parameter needs to match the `[X; 1]` type of parameter #1
+   |              |  |
+   |              |  parameter #2 needs to match the `[X; 1]` type of this parameter
+   |              parameter #1 and parameter #2 both reference this parameter `T`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -12,5 +12,5 @@ fn main() {
     //~| NOTE creates a temporary value which is freed while still in use
     //~| HELP consider using a `let` binding to create a longer lived value
     println!("{}", val);
-    //~^ borrow later used here
+    //~^ NOTE borrow later used here
 }

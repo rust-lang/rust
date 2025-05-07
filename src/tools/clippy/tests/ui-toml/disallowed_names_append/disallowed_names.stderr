@@ -8,7 +8,7 @@ LL |     let foo = "bar";
    = help: to override `-D warnings` add `#[allow(clippy::disallowed_names)]`
 
 error: use of a disallowed/placeholder name `ducks`
-  --> tests/ui-toml/disallowed_names_append/disallowed_names.rs:7:9
+  --> tests/ui-toml/disallowed_names_append/disallowed_names.rs:8:9
    |
 LL |     let ducks = ["quack", "quack"];
    |         ^^^^^

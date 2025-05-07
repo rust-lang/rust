@@ -6,6 +6,9 @@
 //@ revisions: target_pointer_width_ target_vendor_ target_has_atomic_
 //@ revisions: target_has_atomic_equal_alignment_ target_has_atomic_load_store_
 //@ revisions: target_thread_local_ relocation_model_
+//@ revisions: fmt_debug_
+//@ revisions: emscripten_wasm_eh_
+//@ revisions: reliable_f16_ reliable_f16_math_ reliable_f128_ reliable_f128_math_
 
 //@ [overflow_checks_]compile-flags: --cfg overflow_checks
 //@ [debug_assertions_]compile-flags: --cfg debug_assertions
@@ -31,5 +34,13 @@
 //@ [target_has_atomic_load_store_]compile-flags: --cfg target_has_atomic_load_store="32"
 //@ [target_thread_local_]compile-flags: --cfg target_thread_local
 //@ [relocation_model_]compile-flags: --cfg relocation_model="a"
+//@ [fmt_debug_]compile-flags: --cfg fmt_debug="shallow"
+//@ [emscripten_wasm_eh_]compile-flags: --cfg emscripten_wasm_eh
+//@ [reliable_f16_]compile-flags: --cfg target_has_reliable_f16
+//@ [reliable_f16_math_]compile-flags: --cfg target_has_reliable_f16_math
+//@ [reliable_f128_]compile-flags: --cfg target_has_reliable_f128
+//@ [reliable_f128_math_]compile-flags: --cfg target_has_reliable_f128_math
 
 fn main() {}
+
+//~? ERROR unexpected `--cfg

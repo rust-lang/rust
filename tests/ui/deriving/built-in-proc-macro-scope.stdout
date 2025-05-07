@@ -1,10 +1,11 @@
 #![feature(prelude_import)]
 #![no_std]
 //@ check-pass
-//@ aux-build: another-proc-macro.rs
+//@ proc-macro: another-proc-macro.rs
 //@ compile-flags: -Zunpretty=expanded
+//@ edition:2015
 
-#![feature(derive_smart_pointer)]
+#![feature(derive_coerce_pointee)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]
@@ -13,12 +14,14 @@ extern crate std;
 #[macro_use]
 extern crate another_proc_macro;
 
-use another_proc_macro::{pointee, AnotherMacro};
+use another_proc_macro::{AnotherMacro, pointee};
 
 #[repr(transparent)]
 pub struct Ptr<'a, #[pointee] T: ?Sized> {
     data: &'a mut T,
 }
+#[automatically_derived]
+impl<'a, T: ?Sized> ::core::marker::CoercePointeeValidated for Ptr<'a, T> { }
 #[automatically_derived]
 impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
     ::core::ops::DispatchFromDyn<Ptr<'a, __S>> for Ptr<'a, T> {

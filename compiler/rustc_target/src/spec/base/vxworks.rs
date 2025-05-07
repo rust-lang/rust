@@ -1,6 +1,6 @@
-use crate::spec::{cvs, TargetOptions};
+use crate::spec::{TargetOptions, cvs};
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
         os: "vxworks".into(),
         env: "gnu".into(),

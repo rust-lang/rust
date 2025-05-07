@@ -4,7 +4,9 @@
 
 use std::sync::mpsc::channel;
 
-pub fn main() { test00(); }
+pub fn main() {
+    test00();
+}
 
 fn test00() {
     let mut r: isize = 0;
@@ -38,5 +40,4 @@ fn test00() {
     assert_eq!(sum, 1998000);
     // assert (sum == 4 * ((number_of_messages *
     //                   (number_of_messages - 1)) / 2));
-
 }

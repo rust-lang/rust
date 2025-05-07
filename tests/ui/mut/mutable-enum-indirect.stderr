@@ -6,7 +6,7 @@ LL |     bar(&x);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `&Foo`, the trait `Sync` is not implemented for `NoSync`, which is required by `&Foo: Sync`
+   = help: within `&Foo`, the trait `Sync` is not implemented for `NoSync`
 note: required because it appears within the type `Foo`
   --> $DIR/mutable-enum-indirect.rs:11:6
    |

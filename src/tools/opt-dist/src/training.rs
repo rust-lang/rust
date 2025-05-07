@@ -3,8 +3,8 @@ use build_helper::{LLVM_PGO_CRATES, RUSTC_PGO_CRATES};
 use camino::{Utf8Path, Utf8PathBuf};
 use humansize::BINARY;
 
-use crate::environment::{executable_extension, Environment};
-use crate::exec::{cmd, CmdBuilder};
+use crate::environment::{Environment, executable_extension};
+use crate::exec::{CmdBuilder, cmd};
 use crate::utils::io::{count_files, delete_directory};
 use crate::utils::with_log_group;
 
@@ -70,7 +70,9 @@ fn merge_llvm_profiles(
     profdata: LlvmProfdata,
 ) -> anyhow::Result<()> {
     let llvm_profdata = match profdata {
-        LlvmProfdata::Host => env.host_llvm_dir().join("bin/llvm-profdata"),
+        LlvmProfdata::Host => {
+            env.host_llvm_dir().join(format!("bin/llvm-profdata{}", executable_extension()))
+        }
         LlvmProfdata::Target => env
             .build_artifacts()
             .join("llvm")

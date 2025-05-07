@@ -6,9 +6,10 @@ use rustc_middle::{bug, mir};
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
 use stable_mir::ty::{Allocation, ConstantKind, MirConst};
-use stable_mir::{opaque, Error};
+use stable_mir::{Error, opaque};
 
-use crate::rustc_smir::{alloc, Stable, Tables};
+use crate::rustc_smir::{Stable, Tables, alloc};
+use crate::stable_mir;
 
 impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = stable_mir::mir::Body;
@@ -151,6 +152,10 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
             mir::StatementKind::ConstEvalCounter => {
                 stable_mir::mir::StatementKind::ConstEvalCounter
             }
+            // BackwardIncompatibleDropHint has no semantics, so it is translated to Nop.
+            mir::StatementKind::BackwardIncompatibleDropHint { .. } => {
+                stable_mir::mir::StatementKind::Nop
+            }
             mir::StatementKind::Nop => stable_mir::mir::StatementKind::Nop,
         }
     }
@@ -174,7 +179,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
             ThreadLocalRef(def_id) => {
                 stable_mir::mir::Rvalue::ThreadLocalRef(tables.crate_item(*def_id))
             }
-            AddressOf(mutability, place) => {
+            RawPtr(mutability, place) => {
                 stable_mir::mir::Rvalue::AddressOf(mutability.stable(tables), place.stable(tables))
             }
             Len(place) => stable_mir::mir::Rvalue::Len(place.stable(tables)),
@@ -213,6 +218,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 stable_mir::mir::Rvalue::ShallowInitBox(op.stable(tables), ty.stable(tables))
             }
             CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable(tables)),
+            WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -224,6 +230,18 @@ impl<'tcx> Stable<'tcx> for mir::Mutability {
         match *self {
             Not => stable_mir::mir::Mutability::Not,
             Mut => stable_mir::mir::Mutability::Mut,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::RawPtrKind {
+    type T = stable_mir::mir::RawPtrKind;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use mir::RawPtrKind::*;
+        match *self {
+            Const => stable_mir::mir::RawPtrKind::Const,
+            Mut => stable_mir::mir::RawPtrKind::Mut,
+            FakeForPtrMetadata => stable_mir::mir::RawPtrKind::FakeForPtrMetadata,
         }
     }
 }
@@ -274,6 +292,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
             UbChecks => stable_mir::mir::NullOp::UbChecks,
+            ContractChecks => stable_mir::mir::NullOp::ContractChecks,
         }
     }
 }
@@ -282,11 +301,12 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
     type T = stable_mir::mir::CastKind;
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         use rustc_middle::mir::CastKind::*;
+        use rustc_middle::ty::adjustment::PointerCoercion;
         match self {
             PointerExposeProvenance => stable_mir::mir::CastKind::PointerExposeAddress,
             PointerWithExposedProvenance => stable_mir::mir::CastKind::PointerWithExposedProvenance,
-            PointerCoercion(c) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
-            DynStar => stable_mir::mir::CastKind::DynStar,
+            PointerCoercion(PointerCoercion::DynStar, _) => stable_mir::mir::CastKind::DynStar,
+            PointerCoercion(c, _) => stable_mir::mir::CastKind::PointerCoercion(c.stable(tables)),
             IntToInt => stable_mir::mir::CastKind::IntToInt,
             FloatToInt => stable_mir::mir::CastKind::FloatToInt,
             FloatToFloat => stable_mir::mir::CastKind::FloatToFloat,
@@ -378,6 +398,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
             OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(ty.stable(tables)),
             Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(ty.stable(tables)),
+            UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -473,11 +494,17 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
             AssertKind::ResumedAfterPanic(coroutine) => {
                 stable_mir::mir::AssertMessage::ResumedAfterPanic(coroutine.stable(tables))
             }
+            AssertKind::ResumedAfterDrop(coroutine) => {
+                stable_mir::mir::AssertMessage::ResumedAfterDrop(coroutine.stable(tables))
+            }
             AssertKind::MisalignedPointerDereference { required, found } => {
                 stable_mir::mir::AssertMessage::MisalignedPointerDereference {
                     required: required.stable(tables),
                     found: found.stable(tables),
                 }
+            }
+            AssertKind::NullPointerDereference => {
+                stable_mir::mir::AssertMessage::NullPointerDereference
             }
         }
     }
@@ -560,8 +587,11 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
-            mir::AggregateKind::CoroutineClosure(..) => {
-                todo!("FIXME(async_closures): Lower these to SMIR")
+            mir::AggregateKind::CoroutineClosure(def_id, generic_args) => {
+                stable_mir::mir::AggregateKind::CoroutineClosure(
+                    tables.coroutine_closure_def(*def_id),
+                    generic_args.stable(tables),
+                )
             }
             mir::AggregateKind::RawPtr(ty, mutability) => {
                 stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))
@@ -621,13 +651,18 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
             mir::TerminatorKind::UnwindTerminate(_) => TerminatorKind::Abort,
             mir::TerminatorKind::Return => TerminatorKind::Return,
             mir::TerminatorKind::Unreachable => TerminatorKind::Unreachable,
-            mir::TerminatorKind::Drop { place, target, unwind, replace: _ } => {
-                TerminatorKind::Drop {
-                    place: place.stable(tables),
-                    target: target.as_usize(),
-                    unwind: unwind.stable(tables),
-                }
-            }
+            mir::TerminatorKind::Drop {
+                place,
+                target,
+                unwind,
+                replace: _,
+                drop: _,
+                async_fut: _,
+            } => TerminatorKind::Drop {
+                place: place.stable(tables),
+                target: target.as_usize(),
+                unwind: unwind.stable(tables),
+            },
             mir::TerminatorKind::Call {
                 func,
                 args,
@@ -654,6 +689,7 @@ impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
                 }
             }
             mir::TerminatorKind::InlineAsm {
+                asm_macro: _,
                 template,
                 operands,
                 options,
@@ -689,11 +725,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        alloc::allocation_filter(
-            self,
-            alloc_range(rustc_target::abi::Size::ZERO, self.size()),
-            tables,
-        )
+        alloc::allocation_filter(self, alloc_range(rustc_abi::Size::ZERO, self.size()), tables)
     }
 }
 
@@ -712,8 +744,9 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
             mir::interpret::GlobalAlloc::Function { instance, .. } => {
                 GlobalAlloc::Function(instance.stable(tables))
             }
-            mir::interpret::GlobalAlloc::VTable(ty, trait_ref) => {
-                GlobalAlloc::VTable(ty.stable(tables), trait_ref.stable(tables))
+            mir::interpret::GlobalAlloc::VTable(ty, dyn_ty) => {
+                // FIXME: Should we record the whole vtable?
+                GlobalAlloc::VTable(ty.stable(tables), dyn_ty.principal().stable(tables))
             }
             mir::interpret::GlobalAlloc::Static(def) => {
                 GlobalAlloc::Static(tables.static_def(*def))

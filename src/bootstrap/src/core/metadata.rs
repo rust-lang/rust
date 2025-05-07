@@ -1,9 +1,17 @@
+//! This module interacts with Cargo metadata to collect and store information about
+//! the packages in the Rust workspace.
+//!
+//! It runs `cargo metadata` to gather details about each package, including its name,
+//! source, dependencies, targets, and available features. The collected metadata is then
+//! used to update the `Build` structure, ensuring proper dependency resolution and
+//! compilation flow.
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use serde_derive::Deserialize;
 
 use crate::utils::exec::command;
-use crate::{t, Build, Crate};
+use crate::{Build, Crate, t};
 
 /// For more information, see the output of
 /// <https://doc.rust-lang.org/nightly/cargo/commands/cargo-metadata.html>
@@ -20,7 +28,7 @@ struct Package {
     source: Option<String>,
     manifest_path: String,
     dependencies: Vec<Dependency>,
-    targets: Vec<Target>,
+    features: BTreeMap<String, Vec<String>>,
 }
 
 /// For more information, see the output of
@@ -29,11 +37,6 @@ struct Package {
 struct Dependency {
     name: String,
     source: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Target {
-    kind: Vec<String>,
 }
 
 /// Collects and stores package metadata of each workspace members into `build`,
@@ -50,8 +53,12 @@ pub fn build(build: &mut Build) {
                 .filter(|dep| dep.source.is_none())
                 .map(|dep| dep.name)
                 .collect();
-            let has_lib = package.targets.iter().any(|t| t.kind.iter().any(|k| k == "lib"));
-            let krate = Crate { name: name.clone(), deps, path, has_lib };
+            let krate = Crate {
+                name: name.clone(),
+                deps,
+                path,
+                features: package.features.keys().cloned().collect(),
+            };
             let relative_path = krate.local_path(build);
             build.crates.insert(name.clone(), krate);
             let existing_path = build.crate_paths.insert(relative_path, name);

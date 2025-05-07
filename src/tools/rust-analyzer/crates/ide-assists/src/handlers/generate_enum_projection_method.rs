@@ -5,8 +5,8 @@ use syntax::ast::HasVisibility;
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
+    AssistContext, AssistId, Assists,
     utils::{add_method_to_adt, find_struct_impl},
-    AssistContext, AssistId, AssistKind, Assists,
 };
 
 // Assist: generate_enum_try_into_method
@@ -153,7 +153,7 @@ fn generate_enum_projection_method(
     let target = variant.syntax().text_range();
     acc.add_group(
         &GroupLabel("Generate an `is_`,`as_`, or `try_into_` for this enum variant".to_owned()),
-        AssistId(assist_id, AssistKind::Generate),
+        AssistId::generate(assist_id),
         assist_description,
         target,
         |builder| {

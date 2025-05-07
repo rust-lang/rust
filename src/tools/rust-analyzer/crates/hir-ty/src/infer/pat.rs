@@ -3,76 +3,42 @@
 use std::iter::repeat_with;
 
 use hir_def::{
-    body::Body,
-    hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId},
-    path::Path,
+    HasModule,
+    expr_store::{Body, path::Path},
+    hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
 };
 use hir_expand::name::Name;
 use stdx::TupleExt;
 
 use crate::{
-    consteval::{try_const_usize, usize_const},
-    error_lifetime,
-    infer::{BindingMode, Expectation, InferenceContext, TypeMismatch},
+    DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
+    TyBuilder, TyExt, TyKind,
+    consteval::{self, try_const_usize, usize_const},
+    infer::{
+        BindingMode, Expectation, InferenceContext, TypeMismatch, coerce::CoerceNever,
+        expr::ExprIsRead,
+    },
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
-    TyBuilder, TyExt, TyKind,
+    static_lifetime,
 };
-
-/// Used to generalize patterns and assignee expressions.
-pub(super) trait PatLike: Into<ExprOrPatId> + Copy {
-    type BindingMode: Copy;
-
-    fn infer(
-        this: &mut InferenceContext<'_>,
-        id: Self,
-        expected_ty: &Ty,
-        default_bm: Self::BindingMode,
-    ) -> Ty;
-}
-
-impl PatLike for ExprId {
-    type BindingMode = ();
-
-    fn infer(
-        this: &mut InferenceContext<'_>,
-        id: Self,
-        expected_ty: &Ty,
-        (): Self::BindingMode,
-    ) -> Ty {
-        this.infer_assignee_expr(id, expected_ty)
-    }
-}
-
-impl PatLike for PatId {
-    type BindingMode = BindingMode;
-
-    fn infer(
-        this: &mut InferenceContext<'_>,
-        id: Self,
-        expected_ty: &Ty,
-        default_bm: Self::BindingMode,
-    ) -> Ty {
-        this.infer_pat(id, expected_ty, default_bm)
-    }
-}
 
 impl InferenceContext<'_> {
     /// Infers type for tuple struct pattern or its corresponding assignee expression.
     ///
     /// Ellipses found in the original pattern or expression must be filtered out.
-    pub(super) fn infer_tuple_struct_pat_like<T: PatLike>(
+    pub(super) fn infer_tuple_struct_pat_like(
         &mut self,
         path: Option<&Path>,
         expected: &Ty,
-        default_bm: T::BindingMode,
-        id: T,
+        default_bm: BindingMode,
+        id: PatId,
         ellipsis: Option<u32>,
-        subs: &[T],
+        subs: &[PatId],
+        decl: Option<DeclContext>,
     ) -> Ty {
-        let (ty, def) = self.resolve_variant(path, true);
-        let var_data = def.map(|it| it.variant_data(self.db.upcast()));
+        let (ty, def) = self.resolve_variant(id.into(), path, true);
+        let var_data = def.map(|it| it.variant_data(self.db));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -94,7 +60,7 @@ impl InferenceContext<'_> {
             _ if subs.is_empty() => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db.upcast());
+                let variant_data = def.variant_data(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let (pre, post) = match ellipsis {
@@ -113,7 +79,7 @@ impl InferenceContext<'_> {
                         match variant_data.field(&Name::new_tuple_field(i)) {
                             Some(local_id) => {
                                 if !visibilities[local_id]
-                                    .is_visible_from(self.db.upcast(), self.resolver.module())
+                                    .is_visible_from(self.db, self.resolver.module())
                                 {
                                     // FIXME(DIAGNOSE): private tuple field
                                 }
@@ -128,13 +94,13 @@ impl InferenceContext<'_> {
                         }
                     };
 
-                    T::infer(self, subpat, &expected_ty, default_bm);
+                    self.infer_pat(subpat, &expected_ty, default_bm, decl);
                 }
             }
             None => {
                 let err_ty = self.err_ty();
                 for &inner in subs {
-                    T::infer(self, inner, &err_ty, default_bm);
+                    self.infer_pat(inner, &err_ty, default_bm, decl);
                 }
             }
         }
@@ -143,15 +109,16 @@ impl InferenceContext<'_> {
     }
 
     /// Infers type for record pattern or its corresponding assignee expression.
-    pub(super) fn infer_record_pat_like<T: PatLike>(
+    pub(super) fn infer_record_pat_like(
         &mut self,
         path: Option<&Path>,
         expected: &Ty,
-        default_bm: T::BindingMode,
-        id: T,
-        subs: impl ExactSizeIterator<Item = (Name, T)>,
+        default_bm: BindingMode,
+        id: PatId,
+        subs: impl ExactSizeIterator<Item = (Name, PatId)>,
+        decl: Option<DeclContext>,
     ) -> Ty {
-        let (ty, def) = self.resolve_variant(path, false);
+        let (ty, def) = self.resolve_variant(id.into(), path, false);
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -162,7 +129,7 @@ impl InferenceContext<'_> {
             _ if subs.len() == 0 => {}
             Some(def) => {
                 let field_types = self.db.field_types(def);
-                let variant_data = def.variant_data(self.db.upcast());
+                let variant_data = def.variant_data(self.db);
                 let visibilities = self.db.field_visibilities(def);
 
                 let substs = ty.as_adt().map(TupleExt::tail);
@@ -172,7 +139,7 @@ impl InferenceContext<'_> {
                         match variant_data.field(&name) {
                             Some(local_id) => {
                                 if !visibilities[local_id]
-                                    .is_visible_from(self.db.upcast(), self.resolver.module())
+                                    .is_visible_from(self.db, self.resolver.module())
                                 {
                                     self.push_diagnostic(InferenceDiagnostic::NoSuchField {
                                         field: inner.into(),
@@ -198,13 +165,13 @@ impl InferenceContext<'_> {
                         }
                     };
 
-                    T::infer(self, inner, &expected_ty, default_bm);
+                    self.infer_pat(inner, &expected_ty, default_bm, decl);
                 }
             }
             None => {
                 let err_ty = self.err_ty();
                 for (_, inner) in subs {
-                    T::infer(self, inner, &err_ty, default_bm);
+                    self.infer_pat(inner, &err_ty, default_bm, decl);
                 }
             }
         }
@@ -215,12 +182,13 @@ impl InferenceContext<'_> {
     /// Infers type for tuple pattern or its corresponding assignee expression.
     ///
     /// Ellipses found in the original pattern or expression must be filtered out.
-    pub(super) fn infer_tuple_pat_like<T: PatLike>(
+    pub(super) fn infer_tuple_pat_like(
         &mut self,
         expected: &Ty,
-        default_bm: T::BindingMode,
+        default_bm: BindingMode,
         ellipsis: Option<u32>,
-        subs: &[T],
+        subs: &[PatId],
+        decl: Option<DeclContext>,
     ) -> Ty {
         let expected = self.resolve_ty_shallow(expected);
         let expectations = match expected.as_tuple() {
@@ -245,26 +213,41 @@ impl InferenceContext<'_> {
 
         // Process pre
         for (ty, pat) in inner_tys.iter_mut().zip(pre) {
-            *ty = T::infer(self, *pat, ty, default_bm);
+            *ty = self.infer_pat(*pat, ty, default_bm, decl);
         }
 
         // Process post
         for (ty, pat) in inner_tys.iter_mut().skip(pre.len() + n_uncovered_patterns).zip(post) {
-            *ty = T::infer(self, *pat, ty, default_bm);
+            *ty = self.infer_pat(*pat, ty, default_bm, decl);
         }
 
         TyKind::Tuple(inner_tys.len(), Substitution::from_iter(Interner, inner_tys))
             .intern(Interner)
     }
 
-    pub(super) fn infer_top_pat(&mut self, pat: PatId, expected: &Ty) {
-        self.infer_pat(pat, expected, BindingMode::default());
+    /// The resolver needs to be updated to the surrounding expression when inside assignment
+    /// (because there, `Pat::Path` can refer to a variable).
+    pub(super) fn infer_top_pat(&mut self, pat: PatId, expected: &Ty, decl: Option<DeclContext>) {
+        self.infer_pat(pat, expected, BindingMode::default(), decl);
     }
 
-    fn infer_pat(&mut self, pat: PatId, expected: &Ty, mut default_bm: BindingMode) -> Ty {
+    fn infer_pat(
+        &mut self,
+        pat: PatId,
+        expected: &Ty,
+        mut default_bm: BindingMode,
+        decl: Option<DeclContext>,
+    ) -> Ty {
         let mut expected = self.resolve_ty_shallow(expected);
 
-        if self.is_non_ref_pat(self.body, pat) {
+        if matches!(&self.body[pat], Pat::Ref { .. }) || self.inside_assignment {
+            cov_mark::hit!(match_ergonomics_ref);
+            // When you encounter a `&pat` pattern, reset to Move.
+            // This is so that `w` is by value: `let (_, &w) = &(1, &2);`
+            // Destructuring assignments also reset the binding mode and
+            // don't do match ergonomics.
+            default_bm = BindingMode::Move;
+        } else if self.is_non_ref_pat(self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
                 pat_adjustments.push(expected.clone());
@@ -280,11 +263,6 @@ impl InferenceContext<'_> {
                 pat_adjustments.shrink_to_fit();
                 self.result.pat_adjustments.insert(pat, pat_adjustments);
             }
-        } else if let Pat::Ref { .. } = &self.body[pat] {
-            cov_mark::hit!(match_ergonomics_ref);
-            // When you encounter a `&pat` pattern, reset to Move.
-            // This is so that `w` is by value: `let (_, &w) = &(1, &2);`
-            default_bm = BindingMode::Move;
         }
 
         // Lose mutability.
@@ -293,11 +271,11 @@ impl InferenceContext<'_> {
 
         let ty = match &self.body[pat] {
             Pat::Tuple { args, ellipsis } => {
-                self.infer_tuple_pat_like(&expected, default_bm, *ellipsis, args)
+                self.infer_tuple_pat_like(&expected, default_bm, *ellipsis, args, decl)
             }
             Pat::Or(pats) => {
                 for pat in pats.iter() {
-                    self.infer_pat(*pat, &expected, default_bm);
+                    self.infer_pat(*pat, &expected, default_bm, decl);
                 }
                 expected.clone()
             }
@@ -306,6 +284,7 @@ impl InferenceContext<'_> {
                 lower_to_chalk_mutability(mutability),
                 &expected,
                 default_bm,
+                decl,
             ),
             Pat::TupleStruct { path: p, args: subpats, ellipsis } => self
                 .infer_tuple_struct_pat_like(
@@ -315,20 +294,47 @@ impl InferenceContext<'_> {
                     pat,
                     *ellipsis,
                     subpats,
+                    decl,
                 ),
             Pat::Record { path: p, args: fields, ellipsis: _ } => {
                 let subs = fields.iter().map(|f| (f.name.clone(), f.pat));
-                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs)
+                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs, decl)
             }
             Pat::Path(path) => {
-                // FIXME update resolver for the surrounding expression
-                self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty())
+                let ty = self.infer_path(path, pat.into()).unwrap_or_else(|| self.err_ty());
+                let ty_inserted_vars = self.insert_type_vars_shallow(ty.clone());
+                match self.table.coerce(&expected, &ty_inserted_vars, CoerceNever::Yes) {
+                    Ok((adjustments, coerced_ty)) => {
+                        if !adjustments.is_empty() {
+                            self.result
+                                .pat_adjustments
+                                .entry(pat)
+                                .or_default()
+                                .extend(adjustments.into_iter().map(|adjust| adjust.target));
+                        }
+                        self.write_pat_ty(pat, coerced_ty);
+                        return self.pat_ty_after_adjustment(pat);
+                    }
+                    Err(_) => {
+                        self.result.type_mismatches.insert(
+                            pat.into(),
+                            TypeMismatch {
+                                expected: expected.clone(),
+                                actual: ty_inserted_vars.clone(),
+                            },
+                        );
+                        self.write_pat_ty(pat, ty);
+                        // We return `expected` to prevent cascading errors. I guess an alternative is to
+                        // not emit type mismatches for error types and emit an error type here.
+                        return expected;
+                    }
+                }
             }
             Pat::Bind { id, subpat } => {
-                return self.infer_bind_pat(pat, *id, default_bm, *subpat, &expected);
+                return self.infer_bind_pat(pat, *id, default_bm, *subpat, &expected, decl);
             }
             Pat::Slice { prefix, slice, suffix } => {
-                self.infer_slice_pat(&expected, prefix, slice, suffix, default_bm)
+                self.infer_slice_pat(&expected, prefix, slice, suffix, default_bm, decl)
             }
             Pat::Wild => expected.clone(),
             Pat::Range { .. } => {
@@ -351,7 +357,7 @@ impl InferenceContext<'_> {
                         _ => (self.result.standard_types.unknown.clone(), None),
                     };
 
-                    let inner_ty = self.infer_pat(*inner, &inner_ty, default_bm);
+                    let inner_ty = self.infer_pat(*inner, &inner_ty, default_bm, decl);
                     let mut b = TyBuilder::adt(self.db, box_adt).push(inner_ty);
 
                     if let Some(alloc_ty) = alloc_ty {
@@ -362,7 +368,40 @@ impl InferenceContext<'_> {
                 None => self.err_ty(),
             },
             Pat::ConstBlock(expr) => {
-                self.infer_expr(*expr, &Expectation::has_type(expected.clone()))
+                let old_inside_assign = std::mem::replace(&mut self.inside_assignment, false);
+                let result = self.infer_expr(
+                    *expr,
+                    &Expectation::has_type(expected.clone()),
+                    ExprIsRead::Yes,
+                );
+                self.inside_assignment = old_inside_assign;
+                result
+            }
+            Pat::Expr(expr) => {
+                let old_inside_assign = std::mem::replace(&mut self.inside_assignment, false);
+                // LHS of assignment doesn't constitute reads.
+                let result = self.infer_expr_coerce(
+                    *expr,
+                    &Expectation::has_type(expected.clone()),
+                    ExprIsRead::No,
+                );
+                // We are returning early to avoid the unifiability check below.
+                let lhs_ty = self.insert_type_vars_shallow(result);
+                let ty = match self.coerce(None, &expected, &lhs_ty, CoerceNever::Yes) {
+                    Ok(ty) => ty,
+                    Err(_) => {
+                        self.result.type_mismatches.insert(
+                            pat.into(),
+                            TypeMismatch { expected: expected.clone(), actual: lhs_ty.clone() },
+                        );
+                        // `rhs_ty` is returned so no further type mismatches are
+                        // reported because of this mismatch.
+                        expected
+                    }
+                };
+                self.write_pat_ty(pat, ty.clone());
+                self.inside_assignment = old_inside_assign;
+                return ty;
             }
             Pat::Missing => self.err_ty(),
         };
@@ -393,20 +432,22 @@ impl InferenceContext<'_> {
         mutability: Mutability,
         expected: &Ty,
         default_bm: BindingMode,
+        decl: Option<DeclContext>,
     ) -> Ty {
-        let expectation = match expected.as_reference() {
-            Some((inner_ty, _lifetime, _exp_mut)) => inner_ty.clone(),
+        let (expectation_type, expectation_lt) = match expected.as_reference() {
+            Some((inner_ty, lifetime, _exp_mut)) => (inner_ty.clone(), lifetime),
             None => {
                 let inner_ty = self.table.new_type_var();
+                let inner_lt = self.table.new_lifetime_var();
                 let ref_ty =
-                    TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner);
+                    TyKind::Ref(mutability, inner_lt.clone(), inner_ty.clone()).intern(Interner);
                 // Unification failure will be reported by the caller.
                 self.unify(&ref_ty, expected);
-                inner_ty
+                (inner_ty, inner_lt)
             }
         };
-        let subty = self.infer_pat(inner_pat, &expectation, default_bm);
-        TyKind::Ref(mutability, error_lifetime(), subty).intern(Interner)
+        let subty = self.infer_pat(inner_pat, &expectation_type, default_bm, decl);
+        TyKind::Ref(mutability, expectation_lt, subty).intern(Interner)
     }
 
     fn infer_bind_pat(
@@ -416,6 +457,7 @@ impl InferenceContext<'_> {
         default_bm: BindingMode,
         subpat: Option<PatId>,
         expected: &Ty,
+        decl: Option<DeclContext>,
     ) -> Ty {
         let Binding { mode, .. } = self.body.bindings[binding];
         let mode = if mode == BindingAnnotation::Unannotated {
@@ -426,14 +468,15 @@ impl InferenceContext<'_> {
         self.result.binding_modes.insert(pat, mode);
 
         let inner_ty = match subpat {
-            Some(subpat) => self.infer_pat(subpat, expected, default_bm),
+            Some(subpat) => self.infer_pat(subpat, expected, default_bm, decl),
             None => expected.clone(),
         };
         let inner_ty = self.insert_type_vars_shallow(inner_ty);
 
         let bound_ty = match mode {
             BindingMode::Ref(mutability) => {
-                TyKind::Ref(mutability, error_lifetime(), inner_ty.clone()).intern(Interner)
+                let inner_lt = self.table.new_lifetime_var();
+                TyKind::Ref(mutability, inner_lt, inner_ty.clone()).intern(Interner)
             }
             BindingMode::Move => inner_ty.clone(),
         };
@@ -449,14 +492,28 @@ impl InferenceContext<'_> {
         slice: &Option<PatId>,
         suffix: &[PatId],
         default_bm: BindingMode,
+        decl: Option<DeclContext>,
     ) -> Ty {
+        let expected = self.resolve_ty_shallow(expected);
+
+        // If `expected` is an infer ty, we try to equate it to an array if the given pattern
+        // allows it. See issue #16609
+        if self.pat_is_irrefutable(decl) && expected.is_ty_var() {
+            if let Some(resolved_array_ty) =
+                self.try_resolve_slice_ty_to_array_ty(prefix, suffix, slice)
+            {
+                self.unify(&expected, &resolved_array_ty);
+            }
+        }
+
+        let expected = self.resolve_ty_shallow(&expected);
         let elem_ty = match expected.kind(Interner) {
             TyKind::Array(st, _) | TyKind::Slice(st) => st.clone(),
             _ => self.err_ty(),
         };
 
         for &pat_id in prefix.iter().chain(suffix.iter()) {
-            self.infer_pat(pat_id, &elem_ty, default_bm);
+            self.infer_pat(pat_id, &elem_ty, default_bm, decl);
         }
 
         if let &Some(slice_pat_id) = slice {
@@ -470,7 +527,7 @@ impl InferenceContext<'_> {
                 _ => TyKind::Slice(elem_ty.clone()),
             }
             .intern(Interner);
-            self.infer_pat(slice_pat_id, &rest_pat_ty, default_bm);
+            self.infer_pat(slice_pat_id, &rest_pat_ty, default_bm, decl);
         }
 
         match expected.kind(Interner) {
@@ -496,10 +553,10 @@ impl InferenceContext<'_> {
             }
         }
 
-        self.infer_expr(expr, &Expectation::has_type(expected.clone()))
+        self.infer_expr(expr, &Expectation::has_type(expected.clone()), ExprIsRead::Yes)
     }
 
-    fn is_non_ref_pat(&mut self, body: &hir_def::body::Body, pat: PatId) -> bool {
+    fn is_non_ref_pat(&mut self, body: &hir_def::expr_store::Body, pat: PatId) -> bool {
         match &body[pat] {
             Pat::Tuple { .. }
             | Pat::TupleStruct { .. }
@@ -507,19 +564,75 @@ impl InferenceContext<'_> {
             | Pat::Range { .. }
             | Pat::Slice { .. } => true,
             Pat::Or(pats) => pats.iter().all(|p| self.is_non_ref_pat(body, *p)),
-            Pat::Path(p) => {
-                let v = self.resolve_value_path_inner(p, pat.into());
-                v.is_some_and(|x| !matches!(x.0, hir_def::resolver::ValueNs::ConstId(_)))
+            Pat::Path(path) => {
+                // A const is a reference pattern, but other value ns things aren't (see #16131).
+                let resolved = self.resolve_value_path_inner(path, pat.into(), true);
+                resolved.is_some_and(|it| !matches!(it.0, hir_def::resolver::ValueNs::ConstId(_)))
             }
             Pat::ConstBlock(..) => false,
             Pat::Lit(expr) => !matches!(
                 body[*expr],
                 Expr::Literal(Literal::String(..) | Literal::CString(..) | Literal::ByteString(..))
             ),
-            Pat::Wild | Pat::Bind { .. } | Pat::Ref { .. } | Pat::Box { .. } | Pat::Missing => {
-                false
-            }
+            Pat::Wild
+            | Pat::Bind { .. }
+            | Pat::Ref { .. }
+            | Pat::Box { .. }
+            | Pat::Missing
+            | Pat::Expr(_) => false,
         }
+    }
+
+    fn try_resolve_slice_ty_to_array_ty(
+        &mut self,
+        before: &[PatId],
+        suffix: &[PatId],
+        slice: &Option<PatId>,
+    ) -> Option<Ty> {
+        if !slice.is_none() {
+            return None;
+        }
+
+        let len = before.len() + suffix.len();
+        let size = consteval::usize_const(self.db, Some(len as u128), self.owner.krate(self.db));
+
+        let elem_ty = self.table.new_type_var();
+        let array_ty = TyKind::Array(elem_ty, size).intern(Interner);
+        Some(array_ty)
+    }
+
+    /// Used to determine whether we can infer the expected type in the slice pattern to be of type array.
+    /// This is only possible if we're in an irrefutable pattern. If we were to allow this in refutable
+    /// patterns we wouldn't e.g. report ambiguity in the following situation:
+    ///
+    /// ```ignore(rust)
+    ///    struct Zeroes;
+    ///    const ARR: [usize; 2] = [0; 2];
+    ///    const ARR2: [usize; 2] = [2; 2];
+    ///
+    ///    impl Into<&'static [usize; 2]> for Zeroes {
+    ///        fn into(self) -> &'static [usize; 2] {
+    ///            &ARR
+    ///        }
+    ///    }
+    ///
+    ///    impl Into<&'static [usize]> for Zeroes {
+    ///        fn into(self) -> &'static [usize] {
+    ///            &ARR2
+    ///        }
+    ///    }
+    ///
+    ///    fn main() {
+    ///        let &[a, b]: &[usize] = Zeroes.into() else {
+    ///           ..
+    ///        };
+    ///    }
+    /// ```
+    ///
+    /// If we're in an irrefutable pattern we prefer the array impl candidate given that
+    /// the slice impl candidate would be rejected anyway (if no ambiguity existed).
+    fn pat_is_irrefutable(&self, decl_ctxt: Option<DeclContext>) -> bool {
+        matches!(decl_ctxt, Some(DeclContext { origin: DeclOrigin::LocalDecl { has_else: false } }))
     }
 }
 

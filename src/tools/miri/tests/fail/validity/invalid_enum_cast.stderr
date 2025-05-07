@@ -1,5 +1,5 @@
 error: Undefined Behavior: enum value has invalid tag: 0xff
-  --> $DIR/invalid_enum_cast.rs:LL:CC
+  --> tests/fail/validity/invalid_enum_cast.rs:LL:CC
    |
 LL |         let _val = *ptr as u32;
    |                    ^^^^^^^^^^^ enum value has invalid tag: 0xff
@@ -7,9 +7,9 @@ LL |         let _val = *ptr as u32;
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
-   = note: inside `cast` at $DIR/invalid_enum_cast.rs:LL:CC
+   = note: inside `cast` at tests/fail/validity/invalid_enum_cast.rs:LL:CC
 note: inside `main`
-  --> $DIR/invalid_enum_cast.rs:LL:CC
+  --> tests/fail/validity/invalid_enum_cast.rs:LL:CC
    |
 LL |     cast(&v as *const u32 as *const E);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

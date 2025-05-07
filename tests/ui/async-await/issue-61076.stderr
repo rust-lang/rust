@@ -28,7 +28,7 @@ error[E0609]: no field `0` on type `impl Future<Output = Tuple>`
 LL |     let _: i32 = tuple().0;
    |                          ^ field not available in `impl Future`, but it is available in its `Output`
    |
-help: consider `await`ing on the `Future` and access the field of its `Output`
+help: consider `await`ing on the `Future` to access the field
    |
 LL |     let _: i32 = tuple().await.0;
    |                         ++++++
@@ -39,7 +39,7 @@ error[E0609]: no field `a` on type `impl Future<Output = Struct>`
 LL |     let _: i32 = struct_().a;
    |                            ^ field not available in `impl Future`, but it is available in its `Output`
    |
-help: consider `await`ing on the `Future` and access the field of its `Output`
+help: consider `await`ing on the `Future` to access the field
    |
 LL |     let _: i32 = struct_().await.a;
    |                           ++++++

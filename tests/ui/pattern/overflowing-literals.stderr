@@ -1,0 +1,37 @@
+error: literal out of range for `u8`
+  --> $DIR/overflowing-literals.rs:8:35
+   |
+LL | type TooBig = pattern_type!(u8 is 500..);
+   |                                   ^^^
+   |
+   = note: the literal `500` does not fit into the type `u8` whose range is `0..=255`
+   = note: `#[deny(overflowing_literals)]` on by default
+
+error: literal out of range for `i8`
+  --> $DIR/overflowing-literals.rs:10:37
+   |
+LL | type TooSmall = pattern_type!(i8 is -500..);
+   |                                     ^^^^
+   |
+   = note: the literal `-500` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `i16` instead
+
+error: literal out of range for `i8`
+  --> $DIR/overflowing-literals.rs:12:41
+   |
+LL | type TooBigSigned = pattern_type!(i8 is 200..);
+   |                                         ^^^
+   |
+   = note: the literal `200` does not fit into the type `i8` whose range is `-128..=127`
+   = help: consider using the type `u8` instead
+
+error: literal out of range for `u8`
+  --> $DIR/overflowing-literals.rs:17:9
+   |
+LL |         500 => {}
+   |         ^^^
+   |
+   = note: the literal `500` does not fit into the type `u8` whose range is `0..=255`
+
+error: aborting due to 4 previous errors
+

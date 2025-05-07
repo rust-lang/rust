@@ -1,5 +1,5 @@
 //@ check-pass
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #![feature(decl_macro)]
 #![feature(stmt_expr_attributes)]

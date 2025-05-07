@@ -25,6 +25,9 @@ git -c user.name=Dummy -c user.email=dummy@example.com -c commit.gpgSign=false \
 cat > config.toml <<EOF
 change-id = 999999
 
+[llvm]
+download-ci-llvm = true
+
 [build]
 rustc = "$(pwd)/../dist/bin/rustc-clif"
 cargo = "$(rustup which cargo)"
@@ -32,10 +35,39 @@ full-bootstrap = true
 local-rebuild = true
 
 [rust]
+download-rustc = false
 codegen-backends = ["cranelift"]
 deny-warnings = false
 verbose-tests = false
+# The cg_clif sysroot doesn't contain llvm tools and unless llvm_tools is
+# disabled bootstrap will crash trying to copy llvm tools for the bootstrap
+# compiler.
+llvm-tools = false
+std-features = ["panic-unwind", "compiler-builtins-no-f16-f128"]
+
 EOF
+
+cat <<EOF | git apply -
+diff --git a/src/bootstrap/src/core/config/config.rs b/src/bootstrap/src/core/config/config.rs
+index cf4ef4ee310..fe78560fcaf 100644
+--- a/src/bootstrap/src/core/config/config.rs
++++ b/src/bootstrap/src/core/config/config.rs
+@@ -3138,13 +3138,6 @@ fn parse_download_ci_llvm(
+                     );
+                 }
+
+-                if b && self.is_running_on_ci {
+-                    // On CI, we must always rebuild LLVM if there were any modifications to it
+-                    panic!(
+-                        "\`llvm.download-ci-llvm\` cannot be set to \`true\` on CI. Use \`if-unchanged\` instead."
+-                    );
+-                }
+-
+                 // If download-ci-llvm=true we also want to check that CI llvm is available
+                 b && llvm::is_ci_llvm_available_for_target(self, asserts)
+             }
+EOF
+
 popd
 
 # Allow the testsuite to use llvm tools

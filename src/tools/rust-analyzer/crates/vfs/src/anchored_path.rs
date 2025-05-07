@@ -2,7 +2,7 @@
 //!
 //! The primary goal of this is to losslessly represent paths like
 //!
-//! ```
+//! ```ignore
 //! #[path = "./bar.rs"]
 //! mod foo;
 //! ```

@@ -1,7 +1,5 @@
 //@ edition:2018
 
-#![feature(async_closure)]
-
 async fn print_dur() {}
 
 fn main() {

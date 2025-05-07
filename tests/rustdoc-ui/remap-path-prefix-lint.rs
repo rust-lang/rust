@@ -8,3 +8,5 @@
 
 /// </script>
 pub struct Bar;
+
+//~? ERROR unopened HTML tag `script`

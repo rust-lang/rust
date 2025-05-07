@@ -1,6 +1,8 @@
-use crate::spec::{base, Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
+};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let mut base = base::linux_ohos::opts();
     base.cpu = "x86-64".into();
     base.max_atomic_width = Some(64);
@@ -15,9 +17,8 @@ pub fn target() -> Target {
     base.supports_xray = true;
 
     Target {
-        // LLVM 15 doesn't support OpenHarmony yet, use a linux target instead.
-        llvm_target: "x86_64-unknown-linux-musl".into(),
-        metadata: crate::spec::TargetMetadata {
+        llvm_target: "x86_64-unknown-linux-ohos".into(),
+        metadata: TargetMetadata {
             description: Some("x86_64 OpenHarmony".into()),
             tier: Some(2),
             host_tools: Some(false),

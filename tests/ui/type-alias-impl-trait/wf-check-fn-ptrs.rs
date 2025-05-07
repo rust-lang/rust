@@ -8,8 +8,11 @@ trait Bar {
 
 type FooFn<B> = impl FnOnce(B);
 
+#[define_opaque(FooFn)]
 fn foo<B: Bar>() -> FooFn<B> {
-    fn mop<B: Bar>(bar: B) { bar.bar() }
+    fn mop<B: Bar>(bar: B) {
+        bar.bar()
+    }
     mop as fn(B)
     // function pointers don't have any obligations on them,
     // thus the above compiles. It's obviously unsound to just

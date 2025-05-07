@@ -1,5 +1,5 @@
 #![warn(clippy::serde_api_misuse)]
-#![allow(dead_code)]
+#![allow(dead_code, clippy::needless_lifetimes)]
 
 extern crate serde;
 
@@ -37,8 +37,7 @@ impl<'de> serde::de::Visitor<'de> for B {
     }
 
     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
-    //~^ ERROR: you should not implement `visit_string` without also implementing `visit_s
-    //~| NOTE: `-D clippy::serde-api-misuse` implied by `-D warnings`
+    //~^ serde_api_misuse
     where
         E: serde::de::Error,
     {

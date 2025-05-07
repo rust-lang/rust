@@ -20,9 +20,12 @@ The target names follow this format: `$ARCH-unknown-openbsd`, where `$ARCH` spec
 Note that all OS versions are *major* even if using X.Y notation (`6.8` and `6.9` are different major versions) and could be binary incompatibles (with breaking changes).
 
 
-## Designated Developers
+## Target Maintainers
 
-- [@semarie](https://github.com/semarie), `semarie@openbsd.org`
+[@semarie](https://github.com/semarie)
+
+Further contacts:
+
 - [lang/rust](https://cvsweb.openbsd.org/cgi-bin/cvsweb/ports/lang/rust/Makefile?rev=HEAD&content-type=text/x-cvsweb-markup) maintainer (see MAINTAINER variable)
 
 Fallback to ports@openbsd.org, OpenBSD third parties public mailing-list (with openbsd developers readers)

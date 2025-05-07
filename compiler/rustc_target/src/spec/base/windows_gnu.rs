@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    add_link_args, crt_objects, cvs, Cc, DebuginfoKind, LinkSelfContainedDefault, LinkerFlavor,
-    Lld, SplitDebuginfo, TargetOptions,
+    BinaryFormat, Cc, DebuginfoKind, LinkSelfContainedDefault, LinkerFlavor, Lld, SplitDebuginfo,
+    TargetOptions, add_link_args, crt_objects, cvs,
 };
 
-pub fn opts() -> TargetOptions {
+pub(crate) fn opts() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Gnu(Cc::No, Lld::No),
         &[
@@ -90,6 +90,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".into(),
         families: cvs!["windows"],
         is_like_windows: true,
+        binary_format: BinaryFormat::Coff,
         allows_weak_linkage: false,
         pre_link_args,
         pre_link_objects: crt_objects::pre_mingw(),
@@ -104,9 +105,9 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         requires_uwtable: true,
         eh_frame_header: false,
+        debuginfo_kind: DebuginfoKind::Dwarf,
         // FIXME(davidtwco): Support Split DWARF on Windows GNU - may require LLVM changes to
         // output DWO, despite using DWARF, doesn't use ELF..
-        debuginfo_kind: DebuginfoKind::Pdb,
         supported_split_debuginfo: Cow::Borrowed(&[SplitDebuginfo::Off]),
         ..Default::default()
     }

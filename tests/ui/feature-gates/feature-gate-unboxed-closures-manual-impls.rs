@@ -11,7 +11,7 @@ impl Fn<()> for Foo {
     //~| ERROR manual implementations of `Fn` are experimental
     //~| ERROR expected a `FnMut()` closure, found `Foo`
     extern "rust-call" fn call(self, args: ()) -> () {}
-    //~^ ERROR rust-call ABI is subject to change
+    //~^ ERROR "rust-call" ABI is experimental and subject to change
     //~| ERROR `call` has an incompatible type for trait
 }
 struct Foo1;
@@ -20,7 +20,7 @@ impl FnOnce() for Foo1 {
     //~| ERROR manual implementations of `FnOnce` are experimental
     //~| ERROR not all trait items implemented
     extern "rust-call" fn call_once(self, args: ()) -> () {}
-    //~^ ERROR rust-call ABI is subject to change
+    //~^ ERROR "rust-call" ABI is experimental and subject to change
 }
 struct Bar;
 impl FnMut<()> for Bar {
@@ -28,7 +28,7 @@ impl FnMut<()> for Bar {
     //~| ERROR manual implementations of `FnMut` are experimental
     //~| ERROR expected a `FnOnce()` closure, found `Bar`
     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
-    //~^ ERROR rust-call ABI is subject to change
+    //~^ ERROR "rust-call" ABI is experimental and subject to change
     //~| ERROR incompatible type for trait
 }
 struct Baz;
@@ -37,7 +37,7 @@ impl FnOnce<()> for Baz {
     //~| ERROR manual implementations of `FnOnce` are experimental
     //~| ERROR not all trait items implemented
     extern "rust-call" fn call_once(&self, args: ()) -> () {}
-    //~^ ERROR rust-call ABI is subject to change
+    //~^ ERROR "rust-call" ABI is experimental and subject to change
 }
 
 fn main() {}

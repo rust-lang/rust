@@ -1,5 +1,5 @@
 //@ run-pass
-//@ aux-build:macro-dump-debug.rs
+//@ proc-macro: macro-dump-debug.rs
 //@ compile-flags: -Z span-debug
 
 

@@ -1,18 +1,22 @@
 use std::io::Read;
-use std::path::Path;
-use std::str::FromStr;
 
-use super::iter_header;
+use camino::Utf8Path;
+use semver::Version;
+
+use super::{
+    EarlyProps, HeadersCache, extract_llvm_version, extract_version_range, iter_header,
+    parse_normalize_rule,
+};
 use crate::common::{Config, Debugger, Mode};
-use crate::header::{parse_normalize_rule, EarlyProps, HeadersCache};
+use crate::executor::{CollectedTestDesc, ShouldPanic};
 
 fn make_test_description<R: Read>(
     config: &Config,
-    name: test::TestName,
-    path: &Path,
+    name: String,
+    path: &Utf8Path,
     src: R,
     revision: Option<&str>,
-) -> test::TestDesc {
+) -> CollectedTestDesc {
     let cache = HeadersCache::load(config);
     let mut poisoned = false;
     let test = crate::header::make_test_description(
@@ -32,11 +36,14 @@ fn make_test_description<R: Read>(
 
 #[test]
 fn test_parse_normalize_rule() {
-    let good_data = &[(
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)""#,
-        "something (32 bits)",
-        "something ($WORD bits)",
-    )];
+    let good_data = &[
+        (
+            r#""something (32 bits)" -> "something ($WORD bits)""#,
+            "something (32 bits)",
+            "something ($WORD bits)",
+        ),
+        (r#"  " with whitespace"   ->   "    replacement""#, " with whitespace", "    replacement"),
+    ];
 
     for &(input, expected_regex, expected_replacement) in good_data {
         let parsed = parse_normalize_rule(input);
@@ -46,15 +53,15 @@ fn test_parse_normalize_rule() {
     }
 
     let bad_data = &[
-        r#"normalize-stderr-32bit "something (32 bits)" -> "something ($WORD bits)""#,
-        r#"normalize-stderr-16bit: something (16 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: something (32 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits) -> something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"#,
-        r#"normalize-stderr-32bit: "something (32 bits)" -> "something ($WORD bits)"."#,
+        r#"something (11 bits) -> something ($WORD bits)"#,
+        r#"something (12 bits) -> something ($WORD bits)"#,
+        r#""something (13 bits) -> something ($WORD bits)"#,
+        r#""something (14 bits)" -> "something ($WORD bits)"#,
+        r#""something (15 bits)" -> "something ($WORD bits)"."#,
     ];
 
     for &input in bad_data {
+        println!("- {input:?}");
         let parsed = parse_normalize_rule(input);
         assert_eq!(parsed, None);
     }
@@ -66,11 +73,14 @@ struct ConfigBuilder {
     channel: Option<String>,
     host: Option<String>,
     target: Option<String>,
+    stage: Option<u32>,
     stage_id: Option<String>,
     llvm_version: Option<String>,
     git_hash: bool,
     system_llvm: bool,
-    profiler_support: bool,
+    profiler_runtime: bool,
+    rustc_debug_assertions: bool,
+    std_debug_assertions: bool,
 }
 
 impl ConfigBuilder {
@@ -94,6 +104,11 @@ impl ConfigBuilder {
         self
     }
 
+    fn stage(&mut self, n: u32) -> &mut Self {
+        self.stage = Some(n);
+        self
+    }
+
     fn stage_id(&mut self, s: &str) -> &mut Self {
         self.stage_id = Some(s.to_owned());
         self
@@ -114,8 +129,18 @@ impl ConfigBuilder {
         self
     }
 
-    fn profiler_support(&mut self, s: bool) -> &mut Self {
-        self.profiler_support = s;
+    fn profiler_runtime(&mut self, is_available: bool) -> &mut Self {
+        self.profiler_runtime = is_available;
+        self
+    }
+
+    fn rustc_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
+        self.rustc_debug_assertions = is_enabled;
+        self
+    }
+
+    fn std_debug_assertions(&mut self, is_enabled: bool) -> &mut Self {
+        self.std_debug_assertions = is_enabled;
         self
     }
 
@@ -129,8 +154,10 @@ impl ConfigBuilder {
             "--run-lib-path=",
             "--python=",
             "--jsondocck-path=",
-            "--src-base=",
-            "--build-base=",
+            "--src-root=",
+            "--src-test-suite-root=",
+            "--build-root=",
+            "--build-test-suite-root=",
             "--sysroot-base=",
             "--cc=c",
             "--cxx=c++",
@@ -138,6 +165,8 @@ impl ConfigBuilder {
             "--cxxflags=",
             "--llvm-components=",
             "--android-cross-path=",
+            "--stage",
+            &self.stage.unwrap_or(2).to_string(),
             "--stage-id",
             self.stage_id.as_deref().unwrap_or("stage2-x86_64-unknown-linux-gnu"),
             "--channel",
@@ -146,8 +175,9 @@ impl ConfigBuilder {
             self.host.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
             "--target",
             self.target.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
-            "--git-repository=",
             "--nightly-branch=",
+            "--git-merge-commit-email=",
+            "--minicore-path=",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();
 
@@ -162,8 +192,14 @@ impl ConfigBuilder {
         if self.system_llvm {
             args.push("--system-llvm".to_owned());
         }
-        if self.profiler_support {
-            args.push("--profiler-support".to_owned());
+        if self.profiler_runtime {
+            args.push("--profiler-runtime".to_owned());
+        }
+        if self.rustc_debug_assertions {
+            args.push("--with-rustc-debug-assertions".to_owned());
+        }
+        if self.std_debug_assertions {
+            args.push("--with-std-debug-assertions".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -193,31 +229,26 @@ fn cfg() -> ConfigBuilder {
 
 fn parse_rs(config: &Config, contents: &str) -> EarlyProps {
     let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Path::new("a.rs"), bytes)
+    EarlyProps::from_reader(config, Utf8Path::new("a.rs"), bytes)
 }
 
 fn check_ignore(config: &Config, contents: &str) -> bool {
-    let tn = test::DynTestName(String::new());
-    let p = Path::new("a.rs");
+    let tn = String::new();
+    let p = Utf8Path::new("a.rs");
     let d = make_test_description(&config, tn, p, std::io::Cursor::new(contents), None);
     d.ignore
-}
-
-fn parse_makefile(config: &Config, contents: &str) -> EarlyProps {
-    let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Path::new("Makefile"), bytes)
 }
 
 #[test]
 fn should_fail() {
     let config: Config = cfg().build();
-    let tn = test::DynTestName(String::new());
-    let p = Path::new("a.rs");
+    let tn = String::new();
+    let p = Utf8Path::new("a.rs");
 
     let d = make_test_description(&config, tn.clone(), p, std::io::Cursor::new(""), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::No);
+    assert_eq!(d.should_panic, ShouldPanic::No);
     let d = make_test_description(&config, tn, p, std::io::Cursor::new("//@ should-fail"), None);
-    assert_eq!(d.should_panic, test::ShouldPanic::Yes);
+    assert_eq!(d.should_panic, ShouldPanic::Yes);
 }
 
 #[test]
@@ -225,10 +256,6 @@ fn revisions() {
     let config: Config = cfg().build();
 
     assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-    assert_eq!(
-        parse_makefile(&config, "# revisions: hello there").revisions,
-        vec!["hello", "there"],
-    );
 }
 
 #[test]
@@ -243,7 +270,8 @@ fn aux_build() {
         //@ aux-build: b.rs
         "
         )
-        .aux,
+        .aux
+        .builds,
         vec!["a.rs", "b.rs"],
     );
 }
@@ -261,6 +289,30 @@ fn llvm_version() {
 
     let config: Config = cfg().llvm_version("10.0.0").build();
     assert!(!check_ignore(&config, "//@ min-llvm-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 9.0"));
+
+    let config: Config = cfg().llvm_version("9.0.0").build();
+    assert!(check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10.0"));
+
+    let config: Config = cfg().llvm_version("10.0.0").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+
+    let config: Config = cfg().llvm_version("10.6.2").build();
+    assert!(!check_ignore(&config, "//@ exact-llvm-major-version: 10"));
+
+    let config: Config = cfg().llvm_version("19.0.0").build();
+    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+
+    let config: Config = cfg().llvm_version("19.1.2").build();
+    assert!(!check_ignore(&config, "//@ max-llvm-major-version: 19"));
+
+    let config: Config = cfg().llvm_version("20.0.0").build();
+    assert!(check_ignore(&config, "//@ max-llvm-major-version: 19"));
 }
 
 #[test]
@@ -310,8 +362,34 @@ fn only_target() {
 }
 
 #[test]
+fn rustc_debug_assertions() {
+    let config: Config = cfg().rustc_debug_assertions(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-rustc-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+
+    let config: Config = cfg().rustc_debug_assertions(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-rustc-debug-assertions"));
+    assert!(check_ignore(&config, "//@ ignore-rustc-debug-assertions"));
+}
+
+#[test]
+fn std_debug_assertions() {
+    let config: Config = cfg().std_debug_assertions(false).build();
+
+    assert!(check_ignore(&config, "//@ needs-std-debug-assertions"));
+    assert!(!check_ignore(&config, "//@ ignore-std-debug-assertions"));
+
+    let config: Config = cfg().std_debug_assertions(true).build();
+
+    assert!(!check_ignore(&config, "//@ needs-std-debug-assertions"));
+    assert!(check_ignore(&config, "//@ ignore-std-debug-assertions"));
+}
+
+#[test]
 fn stage() {
-    let config: Config = cfg().stage_id("stage1-x86_64-unknown-linux-gnu").build();
+    let config: Config = cfg().stage(1).stage_id("stage1-x86_64-unknown-linux-gnu").build();
 
     assert!(check_ignore(&config, "//@ ignore-stage1"));
     assert!(!check_ignore(&config, "//@ ignore-stage2"));
@@ -369,18 +447,18 @@ fn sanitizers() {
 }
 
 #[test]
-fn profiler_support() {
-    let config: Config = cfg().profiler_support(false).build();
-    assert!(check_ignore(&config, "//@ needs-profiler-support"));
+fn profiler_runtime() {
+    let config: Config = cfg().profiler_runtime(false).build();
+    assert!(check_ignore(&config, "//@ needs-profiler-runtime"));
 
-    let config: Config = cfg().profiler_support(true).build();
-    assert!(!check_ignore(&config, "//@ needs-profiler-support"));
+    let config: Config = cfg().profiler_runtime(true).build();
+    assert!(!check_ignore(&config, "//@ needs-profiler-runtime"));
 }
 
 #[test]
 fn asm_support() {
     let asms = [
-        ("avr-unknown-gnu-atmega328", false),
+        ("avr-none", false),
         ("i686-unknown-netbsd", true),
         ("riscv32gc-unknown-linux-gnu", true),
         ("riscv64imac-unknown-none-elf", true),
@@ -408,25 +486,133 @@ fn channel() {
 }
 
 #[test]
-fn test_extract_version_range() {
-    use super::{extract_llvm_version, extract_version_range};
-
-    assert_eq!(extract_version_range("1.2.3 - 4.5.6", extract_llvm_version), Some((10203, 40506)));
-    assert_eq!(extract_version_range("0   - 4.5.6", extract_llvm_version), Some((0, 40506)));
-    assert_eq!(extract_version_range("1.2.3 -", extract_llvm_version), None);
-    assert_eq!(extract_version_range("1.2.3 - ", extract_llvm_version), None);
-    assert_eq!(extract_version_range("- 4.5.6", extract_llvm_version), None);
-    assert_eq!(extract_version_range("-", extract_llvm_version), None);
-    assert_eq!(extract_version_range(" - 4.5.6", extract_llvm_version), None);
-    assert_eq!(extract_version_range("   - 4.5.6", extract_llvm_version), None);
-    assert_eq!(extract_version_range("0  -", extract_llvm_version), None);
+fn test_extract_llvm_version() {
+    // Note: officially, semver *requires* that versions at the minimum have all three
+    // `major.minor.patch` numbers, though for test-writer's convenience we allow omitting the minor
+    // and patch numbers (which will be stubbed out as 0).
+    assert_eq!(extract_llvm_version("0"), Version::new(0, 0, 0));
+    assert_eq!(extract_llvm_version("0.0"), Version::new(0, 0, 0));
+    assert_eq!(extract_llvm_version("0.0.0"), Version::new(0, 0, 0));
+    assert_eq!(extract_llvm_version("1"), Version::new(1, 0, 0));
+    assert_eq!(extract_llvm_version("1.2"), Version::new(1, 2, 0));
+    assert_eq!(extract_llvm_version("1.2.3"), Version::new(1, 2, 3));
+    assert_eq!(extract_llvm_version("4.5.6git"), Version::new(4, 5, 6));
+    assert_eq!(extract_llvm_version("4.5.6-rc1"), Version::new(4, 5, 6));
+    assert_eq!(extract_llvm_version("123.456.789-rc1"), Version::new(123, 456, 789));
+    assert_eq!(extract_llvm_version("8.1.2-rust"), Version::new(8, 1, 2));
+    assert_eq!(extract_llvm_version("9.0.1-rust-1.43.0-dev"), Version::new(9, 0, 1));
+    assert_eq!(extract_llvm_version("9.3.1-rust-1.43.0-dev"), Version::new(9, 3, 1));
+    assert_eq!(extract_llvm_version("10.0.0-rust"), Version::new(10, 0, 0));
+    assert_eq!(extract_llvm_version("11.1.0"), Version::new(11, 1, 0));
+    assert_eq!(extract_llvm_version("12.0.0libcxx"), Version::new(12, 0, 0));
+    assert_eq!(extract_llvm_version("12.0.0-rc3"), Version::new(12, 0, 0));
+    assert_eq!(extract_llvm_version("13.0.0git"), Version::new(13, 0, 0));
 }
 
 #[test]
-#[should_panic(expected = "Duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
+#[should_panic]
+fn test_llvm_version_invalid_components() {
+    extract_llvm_version("4.x.6");
+}
+
+#[test]
+#[should_panic]
+fn test_llvm_version_invalid_prefix() {
+    extract_llvm_version("meow4.5.6");
+}
+
+#[test]
+#[should_panic]
+fn test_llvm_version_too_many_components() {
+    extract_llvm_version("4.5.6.7");
+}
+
+#[test]
+fn test_extract_version_range() {
+    let wrapped_extract = |s: &str| Some(extract_llvm_version(s));
+
+    assert_eq!(
+        extract_version_range("1.2.3 - 4.5.6", wrapped_extract),
+        Some((Version::new(1, 2, 3), Version::new(4, 5, 6)))
+    );
+    assert_eq!(
+        extract_version_range("0   - 4.5.6", wrapped_extract),
+        Some((Version::new(0, 0, 0), Version::new(4, 5, 6)))
+    );
+    assert_eq!(extract_version_range("1.2.3 -", wrapped_extract), None);
+    assert_eq!(extract_version_range("1.2.3 - ", wrapped_extract), None);
+    assert_eq!(extract_version_range("- 4.5.6", wrapped_extract), None);
+    assert_eq!(extract_version_range("-", wrapped_extract), None);
+    assert_eq!(extract_version_range(" - 4.5.6", wrapped_extract), None);
+    assert_eq!(extract_version_range("   - 4.5.6", wrapped_extract), None);
+    assert_eq!(extract_version_range("0  -", wrapped_extract), None);
+}
+
+#[test]
+#[should_panic(expected = "duplicate revision: `rpass1` in line ` rpass1 rpass1`")]
 fn test_duplicate_revisions() {
     let config: Config = cfg().build();
     parse_rs(&config, "//@ revisions: rpass1 rpass1");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_assembly_mode_forbidden_revisions() {
+    let config = cfg().mode("assembly").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(expected = "revision name `true` is not permitted")]
+fn test_forbidden_revisions() {
+    let config = cfg().mode("ui").build();
+    parse_rs(&config, "//@ revisions: true");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_codegen_mode_forbidden_revisions() {
+    let config = cfg().mode("codegen").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+#[should_panic(
+    expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
+)]
+fn test_miropt_mode_forbidden_revisions() {
+    let config = cfg().mode("mir-opt").build();
+    parse_rs(&config, "//@ revisions: CHECK");
+}
+
+#[test]
+fn test_forbidden_revisions_allowed_in_non_filecheck_dir() {
+    let revisions = ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+    let modes = [
+        "pretty",
+        "debuginfo",
+        "rustdoc",
+        "rustdoc-json",
+        "codegen-units",
+        "incremental",
+        "ui",
+        "rustdoc-js",
+        "coverage-map",
+        "coverage-run",
+        "crashes",
+    ];
+
+    for rev in revisions {
+        let content = format!("//@ revisions: {rev}");
+        for mode in modes {
+            let config = cfg().mode(mode).build();
+            parse_rs(&config, &content);
+        }
+    }
 }
 
 #[test]
@@ -530,10 +716,6 @@ fn wasm_special() {
         ("wasm32-unknown-emscripten", "emscripten", true),
         ("wasm32-unknown-emscripten", "wasm32", true),
         ("wasm32-unknown-emscripten", "wasm32-bare", false),
-        ("wasm32-wasi", "emscripten", false),
-        ("wasm32-wasi", "wasm32", true),
-        ("wasm32-wasi", "wasm32-bare", false),
-        ("wasm32-wasi", "wasi", true),
         ("wasm32-wasip1", "emscripten", false),
         ("wasm32-wasip1", "wasm32", true),
         ("wasm32-wasip1", "wasm32-bare", false),
@@ -573,19 +755,15 @@ fn families() {
 }
 
 #[test]
-fn ignore_mode() {
-    for &mode in Mode::STR_VARIANTS {
-        // Indicate profiler support so that "coverage-run" tests aren't skipped.
-        let config: Config = cfg().mode(mode).profiler_support(true).build();
-        let other = if mode == "coverage-run" { "coverage-map" } else { "coverage-run" };
+fn ignore_coverage() {
+    // Indicate profiler runtime availability so that "coverage-run" tests aren't skipped.
+    let config = cfg().mode("coverage-map").profiler_runtime(true).build();
+    assert!(check_ignore(&config, "//@ ignore-coverage-map"));
+    assert!(!check_ignore(&config, "//@ ignore-coverage-run"));
 
-        assert_ne!(mode, other);
-        assert_eq!(config.mode, Mode::from_str(mode).unwrap());
-        assert_ne!(config.mode, Mode::from_str(other).unwrap());
-
-        assert!(check_ignore(&config, &format!("//@ ignore-mode-{mode}")));
-        assert!(!check_ignore(&config, &format!("//@ ignore-mode-{other}")));
-    }
+    let config = cfg().mode("coverage-run").profiler_runtime(true).build();
+    assert!(!check_ignore(&config, "//@ ignore-coverage-map"));
+    assert!(check_ignore(&config, "//@ ignore-coverage-run"));
 }
 
 #[test]
@@ -605,7 +783,7 @@ fn threads_support() {
     }
 }
 
-fn run_path(poisoned: &mut bool, path: &Path, buf: &[u8]) {
+fn run_path(poisoned: &mut bool, path: &Utf8Path, buf: &[u8]) {
     let rdr = std::io::Cursor::new(&buf);
     iter_header(Mode::Ui, "ui", poisoned, path, rdr, &mut |_| {});
 }
@@ -615,19 +793,8 @@ fn test_unknown_directive_check() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/unknown_directive.rs"),
-    );
-    assert!(poisoned);
-}
-
-#[test]
-fn test_known_legacy_directive_check() {
-    let mut poisoned = false;
-    run_path(
-        &mut poisoned,
-        Path::new("a.rs"),
-        include_bytes!("./test-auxillary/known_legacy_directive.rs"),
     );
     assert!(poisoned);
 }
@@ -637,7 +804,7 @@ fn test_known_directive_check_no_error() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/known_directive.rs"),
     );
     assert!(!poisoned);
@@ -648,7 +815,7 @@ fn test_error_annotation_no_error() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.rs"),
+        Utf8Path::new("a.rs"),
         include_bytes!("./test-auxillary/error_annotation.rs"),
     );
     assert!(!poisoned);
@@ -659,7 +826,7 @@ fn test_non_rs_unknown_directive_not_checked() {
     let mut poisoned = false;
     run_path(
         &mut poisoned,
-        Path::new("a.Makefile"),
+        Utf8Path::new("a.Makefile"),
         include_bytes!("./test-auxillary/not_rs.Makefile"),
     );
     assert!(!poisoned);
@@ -668,20 +835,113 @@ fn test_non_rs_unknown_directive_not_checked() {
 #[test]
 fn test_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86 only-arm");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86 only-arm");
     assert!(poisoned);
 }
 
 #[test]
 fn test_trailing_directive_with_comment() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ only-x86   only-arm with comment");
     assert!(poisoned);
 }
 
 #[test]
 fn test_not_trailing_directive() {
     let mut poisoned = false;
-    run_path(&mut poisoned, Path::new("a.rs"), b"//@ revisions: incremental");
+    run_path(&mut poisoned, Utf8Path::new("a.rs"), b"//@ revisions: incremental");
     assert!(!poisoned);
+}
+
+#[test]
+fn test_needs_target_has_atomic() {
+    use std::collections::BTreeSet;
+
+    // `x86_64-unknown-linux-gnu` supports `["8", "16", "32", "64", "ptr"]` but not `128`.
+
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    // Expectation sanity check.
+    assert_eq!(
+        config.target_cfg().target_has_atomic,
+        BTreeSet::from([
+            "8".to_string(),
+            "16".to_string(),
+            "32".to_string(),
+            "64".to_string(),
+            "ptr".to_string()
+        ]),
+        "expected `x86_64-unknown-linux-gnu` to not have 128-bit atomic support"
+    );
+
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 16"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 32"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 64"));
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: ptr"));
+
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 128"));
+
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8,16,32,64,ptr"));
+
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 8,16,32,64,ptr,128"));
+
+    // Check whitespace between widths is permitted.
+    assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr"));
+    assert!(check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr, 128"));
+}
+
+#[test]
+fn test_rustc_abi() {
+    let config = cfg().target("i686-unknown-linux-gnu").build();
+    assert_eq!(config.target_cfg().rustc_abi, Some("x86-sse2".to_string()));
+    assert!(check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
+    assert!(!check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    assert_eq!(config.target_cfg().rustc_abi, None);
+    assert!(!check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
+    assert!(check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
+}
+
+#[test]
+fn test_supported_crate_types() {
+    // Basic assumptions check on under-test compiler's `--print=supported-crate-types` output based
+    // on knowledge about the cherry-picked `x86_64-unknown-linux-gnu` and `wasm32-unknown-unknown`
+    // targets. Also smoke tests the `needs-crate-type` directive itself.
+
+    use std::collections::HashSet;
+
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    assert_eq!(
+        config.supported_crate_types().iter().map(String::as_str).collect::<HashSet<_>>(),
+        HashSet::from(["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"]),
+    );
+    assert!(!check_ignore(&config, "//@ needs-crate-type: rlib"));
+    assert!(!check_ignore(&config, "//@ needs-crate-type: dylib"));
+    assert!(!check_ignore(
+        &config,
+        "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
+    ));
+
+    let config = cfg().target("wasm32-unknown-unknown").build();
+    assert_eq!(
+        config.supported_crate_types().iter().map(String::as_str).collect::<HashSet<_>>(),
+        HashSet::from(["bin", "cdylib", "lib", "rlib", "staticlib"]),
+    );
+
+    // rlib is supported
+    assert!(!check_ignore(&config, "//@ needs-crate-type: rlib"));
+    // dylib is not
+    assert!(check_ignore(&config, "//@ needs-crate-type: dylib"));
+    // If multiple crate types are specified, then all specified crate types need to be supported.
+    assert!(check_ignore(&config, "//@ needs-crate-type: cdylib, dylib"));
+    assert!(check_ignore(
+        &config,
+        "//@ needs-crate-type: bin, cdylib, dylib, lib, proc-macro, rlib, staticlib"
+    ));
+}
+
+#[test]
+fn test_ignore_auxiliary() {
+    let config = cfg().build();
+    assert!(check_ignore(&config, "//@ ignore-auxiliary"));
 }

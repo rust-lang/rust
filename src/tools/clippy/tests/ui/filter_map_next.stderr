@@ -3,9 +3,6 @@ error: called `filter_map(..).next()` on an `Iterator`. This is more succinctly 
    |
 LL |       let _: Option<u32> = vec![1, 2, 3, 4, 5, 6]
    |  __________________________^
-LL | |
-LL | |
-LL | |         .into_iter()
 ...  |
 LL | |         })
 LL | |         .next();

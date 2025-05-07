@@ -2,7 +2,7 @@ error[E0277]: the trait bound `u8: Pattern` is not satisfied
   --> $DIR/assoc-fn-bound-root-obligation.rs:2:20
    |
 LL |     s.strip_suffix(b'\n').unwrap_or(s)
-   |       ------------ ^^^^^ the trait `FnMut(char)` is not implemented for `u8`, which is required by `u8: Pattern`
+   |       ------------ ^^^^^ the trait `FnMut(char)` is not implemented for `u8`
    |       |
    |       required by a bound introduced by this call
    |

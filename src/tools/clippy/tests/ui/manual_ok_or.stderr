@@ -8,34 +8,25 @@ LL |     foo.map_or(Err("error"), |v| Ok(v));
    = help: to override `-D warnings` add `#[allow(clippy::manual_ok_or)]`
 
 error: this pattern reimplements `Option::ok_or`
-  --> tests/ui/manual_ok_or.rs:14:5
+  --> tests/ui/manual_ok_or.rs:15:5
    |
 LL |     foo.map_or(Err("error"), Ok);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `foo.ok_or("error")`
 
-error: called `map_or(Err(_), Ok)` on an `Option` value
-  --> tests/ui/manual_ok_or.rs:14:5
-   |
-LL |     foo.map_or(Err("error"), Ok);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `ok_or`: `foo.ok_or("error")`
-   |
-   = note: `-D clippy::option-map-or-err-ok` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::option_map_or_err_ok)]`
-
 error: this pattern reimplements `Option::ok_or`
-  --> tests/ui/manual_ok_or.rs:17:5
+  --> tests/ui/manual_ok_or.rs:19:5
    |
 LL |     None::<i32>.map_or(Err("error"), |v| Ok(v));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `None::<i32>.ok_or("error")`
 
 error: this pattern reimplements `Option::ok_or`
-  --> tests/ui/manual_ok_or.rs:21:5
+  --> tests/ui/manual_ok_or.rs:24:5
    |
 LL | /     foo.map_or(Err::<i32, &str>(
+LL | |
 LL | |         &format!(
 LL | |             "{}{}{}{}{}{}{}",
-LL | |             "Alice", "Bob", "Sarah", "Marc", "Sandra", "Eric", "Jenifer")
-LL | |         ),
+...  |
 LL | |         |v| Ok(v),
 LL | |     );
    | |_____^
@@ -47,5 +38,5 @@ LL +         "{}{}{}{}{}{}{}",
 LL ~         "Alice", "Bob", "Sarah", "Marc", "Sandra", "Eric", "Jenifer"));
    |
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

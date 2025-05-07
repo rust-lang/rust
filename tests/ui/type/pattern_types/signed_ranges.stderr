@@ -1,0 +1,41 @@
+error[E0277]: the trait bound `u8: Neg` is not satisfied
+  --> $DIR/signed_ranges.rs:14:9
+   |
+LL |         -10..253 => {}
+   |         ^^^ the trait `Neg` is not implemented for `u8`
+   |
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
+
+error[E0277]: the trait bound `char: Neg` is not satisfied
+  --> $DIR/signed_ranges.rs:20:9
+   |
+LL |         -'\0'..'a' => {}
+   |         ^^^^^ the trait `Neg` is not implemented for `char`
+
+error[E0600]: cannot apply unary operator `-` to type `u32`
+  --> $DIR/signed_ranges.rs:6:34
+   |
+LL | type Sign = pattern_type!(u32 is -10..);
+   |                                  ^^^ cannot apply unary operator `-`
+   |
+   = note: unsigned values cannot be negated
+
+error[E0600]: cannot apply unary operator `-` to type `char`
+  --> $DIR/signed_ranges.rs:9:41
+   |
+LL | type SignedChar = pattern_type!(char is -'A'..);
+   |                                         ^^^^ cannot apply unary operator `-`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0600.
+For more information about an error, try `rustc --explain E0277`.

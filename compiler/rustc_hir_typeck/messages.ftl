@@ -10,6 +10,13 @@ hir_typeck_address_of_temporary_taken = cannot take address of a temporary
 hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
     .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
 
+hir_typeck_as_deref_suggestion = consider using `as_deref` here
+hir_typeck_base_expression_double_dot = base expression required after `..`
+hir_typeck_base_expression_double_dot_add_expr = add a base expression here
+hir_typeck_base_expression_double_dot_enable_default_field_values =
+    add `#![feature(default_field_values)]` to the crate attributes to enable default values on `struct` fields
+hir_typeck_base_expression_double_dot_remove = remove the `..` as all the fields are already present
+
 hir_typeck_candidate_trait_note = `{$trait_name}` defines an item `{$item_name}`{$action_or_ty ->
     [NONE] {""}
     [implement] , perhaps you need to implement it
@@ -21,19 +28,22 @@ hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
     .help = compare with zero instead
     .label = unsupported cast
 
+hir_typeck_cant_dereference = type `{$ty}` cannot be dereferenced
+hir_typeck_cant_dereference_label = can't be dereferenced
+
 hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
 
-hir_typeck_cast_thin_pointer_to_fat_pointer = cannot cast thin pointer `{$expr_ty}` to fat pointer `{$cast_ty}`
+hir_typeck_cast_thin_pointer_to_wide_pointer = cannot cast thin pointer `{$expr_ty}` to wide pointer `{$cast_ty}`
     .teach_help = Thin pointers are "simple" pointers: they are purely a reference to a
         memory address.
 
-        Fat pointers are pointers referencing "Dynamically Sized Types" (also
+        Wide pointers are pointers referencing "Dynamically Sized Types" (also
         called DST). DST don't have a statically known size, therefore they can
         only exist behind some kind of pointers that contain additional
         information. Slices and trait objects are DSTs. In the case of slices,
-        the additional information the fat pointer holds is their size.
+        the additional information the wide pointer holds is their size.
 
-        To fix this error, don't try to cast directly between thin and fat
+        To fix this error, don't try to cast directly between thin and wide
         pointers.
 
         For more information about casts, take a look at The Book:
@@ -66,6 +76,9 @@ hir_typeck_dependency_on_unit_never_type_fallback = this function depends on nev
 
 hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
 
+hir_typeck_expected_array_or_slice = expected an array or slice, found `{$ty}`
+hir_typeck_expected_array_or_slice_label = pattern cannot match with input type `{$ty}`
+
 hir_typeck_expected_default_return_type = expected `()` because of default return type
 
 hir_typeck_expected_return_type = expected `{$expected}` because of return type
@@ -78,6 +91,11 @@ hir_typeck_field_multiply_specified_in_initializer =
     field `{$ident}` specified more than once
     .label = used more than once
     .previous_use_label = first use of `{$ident}`
+
+hir_typeck_fn_item_to_variadic_function = can't pass a function item to a variadic function
+    .suggestion = use a function pointer instead
+    .help = a function item is zero-sized and needs to be cast into a function pointer to be used in FFI
+    .note = for more information on function items, visit https://doc.rust-lang.org/reference/types/function-item.html
 
 hir_typeck_fru_expr = this expression does not end in a comma...
 hir_typeck_fru_expr2 = ... so this is interpreted as a `..` range expression, instead of functional record update syntax
@@ -101,7 +119,11 @@ hir_typeck_int_to_fat = cannot cast `{$expr_ty}` to a pointer that {$known_wide 
 hir_typeck_int_to_fat_label = creating a `{$cast_ty}` requires both an address and {$metadata}
 hir_typeck_int_to_fat_label_nightly = consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
 
-hir_typeck_invalid_callee = expected function, found {$ty}
+hir_typeck_invalid_callee = expected function, found {$found}
+hir_typeck_invalid_defined = `{$path}` defined here
+hir_typeck_invalid_defined_kind = {$kind} `{$path}` defined here
+hir_typeck_invalid_fn_defined = `{$func}` defined here returns `{$ty}`
+hir_typeck_invalid_local = `{$local_name}` has type `{$ty}`
 
 hir_typeck_lossy_provenance_int2ptr =
     strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`
@@ -126,10 +148,16 @@ hir_typeck_never_type_fallback_flowing_into_unsafe_path = never type fallback af
 hir_typeck_never_type_fallback_flowing_into_unsafe_union_field = never type fallback affects this union access
     .help = specify the type explicitly
 
-hir_typeck_no_associated_item = no {$item_kind} named `{$item_name}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
+hir_typeck_no_associated_item = no {$item_kind} named `{$item_ident}` found for {$ty_prefix} `{$ty_str}`{$trait_missing_method ->
     [true] {""}
     *[other] {" "}in the current scope
 }
+
+hir_typeck_no_field_on_type = no field `{$field}` on type `{$ty}`
+
+hir_typeck_no_field_on_variant = no field named `{$field}` on enum variant `{$container}::{$ident}`
+hir_typeck_no_field_on_variant_enum = this enum variant...
+hir_typeck_no_field_on_variant_field = ...does not have this field
 
 hir_typeck_note_caller_chooses_ty_for_ty_param = the caller chooses a type for `{$ty_param_name}` which can be different from `{$found_ty}`
 
@@ -141,19 +169,26 @@ hir_typeck_option_result_copied = use `{$def_path}::copied` to copy the value in
 
 hir_typeck_pass_to_variadic_function = can't pass `{$ty}` to variadic function
     .suggestion = cast the value to `{$cast_ty}`
-    .help = cast the value to `{$cast_ty}`
     .teach_help = certain types, like `{$ty}`, must be casted before passing them to a variadic function, because of arcane ABI rules dictated by the C standard
 
-hir_typeck_ptr_cast_add_auto_to_object = adding {$traits_len ->
-    [1] an auto trait {$traits}
+hir_typeck_ptr_cast_add_auto_to_object = cannot add {$traits_len ->
+    [1] auto trait {$traits}
     *[other] auto traits {$traits}
-} to a trait object in a pointer cast may cause UB later on
+} to dyn bound via pointer cast
+    .note = this could allow UB elsewhere
+    .help = use `transmute` if you're sure this is sound
+    .label = unsupported cast
+
+hir_typeck_register_type_unstable =
+    type `{$ty}` cannot be used with this register class in stable
 
 hir_typeck_remove_semi_for_coerce = you might have meant to return the `match` expression
 hir_typeck_remove_semi_for_coerce_expr = this could be implicitly returned but it is a statement, not a tail expression
 hir_typeck_remove_semi_for_coerce_ret = the `match` arms can conform to this return type
 hir_typeck_remove_semi_for_coerce_semi = the `match` is a statement because of this semicolon, consider removing it
 hir_typeck_remove_semi_for_coerce_suggestion = remove this semicolon
+
+hir_typeck_replace_comma_with_semicolon = replace the comma with a semicolon to create {$descr}
 
 hir_typeck_return_stmt_outside_of_fn_body =
     {$statement_kind} statement outside of function body
@@ -171,6 +206,8 @@ hir_typeck_self_ctor_from_outer_item = can't reference `Self` constructor from o
     .label = the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
     .suggestion = replace `Self` with the actual type
 
+hir_typeck_slicing_suggestion = consider slicing here
+
 hir_typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression
 
@@ -179,6 +216,14 @@ hir_typeck_suggest_boxing_note = for more on the distinction between the stack a
 hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `Box::new`
 
 hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
+
+hir_typeck_supertrait_item_multiple_shadowee = items from several supertraits are shadowed: {$traits}
+
+hir_typeck_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by a subtrait item
+
+hir_typeck_supertrait_item_shadower = item from `{$subtrait}` shadows a supertrait item
+
+hir_typeck_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
 
 hir_typeck_trivial_cast = trivial {$numeric ->
     [true] numeric cast

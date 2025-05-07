@@ -12,4 +12,5 @@ assert-attribute-false: (".impl-items .toggle", {"open": ""})
 
 // Click the "Trait" part of "impl Trait" and verify it navigates.
 click: "#impl-Trait-for-Foo h3 a:first-of-type"
-assert-text: (".main-heading h1", "Trait lib2::TraitCopy item path")
+assert-text: (".main-heading .rustdoc-breadcrumbs", "lib2")
+assert-text: (".main-heading h1", "Trait TraitCopy item path")

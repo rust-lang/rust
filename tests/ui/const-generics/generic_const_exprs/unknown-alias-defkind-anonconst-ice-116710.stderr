@@ -4,16 +4,6 @@ error[E0423]: expected value, found builtin type `u8`
 LL | struct A<const N: u32 = 1, const M: u32 = u8>;
    |                                           ^^ not a value
 
-error[E0119]: conflicting implementations of trait `Trait` for type `A<_>`
-  --> $DIR/unknown-alias-defkind-anonconst-ice-116710.rs:12:1
-   |
-LL | impl<const N: u32> Trait for A<N> {}
-   | --------------------------------- first implementation here
-LL |
-LL | impl<const N: u32> Trait for A<N> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `A<_>`
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0119, E0423.
-For more information about an error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0423`.

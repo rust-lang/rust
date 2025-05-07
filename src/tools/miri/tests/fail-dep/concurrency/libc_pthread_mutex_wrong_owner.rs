@@ -1,4 +1,4 @@
-//@ignore-target-windows: No pthreads on Windows
+//@ignore-target: windows # No pthreads on Windows
 
 use std::cell::UnsafeCell;
 use std::sync::Arc;

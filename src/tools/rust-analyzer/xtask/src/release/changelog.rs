@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::{env, iter};
 
 use anyhow::bail;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 pub(crate) fn get_changelog(
     sh: &Shell,
@@ -13,7 +13,9 @@ pub(crate) fn get_changelog(
 ) -> anyhow::Result<String> {
     let token = match env::var("GITHUB_TOKEN") {
         Ok(token) => token,
-        Err(_) => bail!("Please obtain a personal access token from https://github.com/settings/tokens and set the `GITHUB_TOKEN` environment variable."),
+        Err(_) => bail!(
+            "Please obtain a personal access token from https://github.com/settings/tokens and set the `GITHUB_TOKEN` environment variable."
+        ),
     };
 
     let git_log = cmd!(sh, "git log {prev_tag}..HEAD --reverse").read()?;
@@ -128,16 +130,13 @@ fn unescape(s: &str) -> String {
 }
 
 fn parse_pr_number(s: &str) -> Option<u32> {
-    const BORS_PREFIX: &str = "Merge #";
+    const GITHUB_PREFIX: &str = "Merge pull request #";
     const HOMU_PREFIX: &str = "Auto merge of #";
-    if let Some(s) = s.strip_prefix(BORS_PREFIX) {
+    if let Some(s) = s.strip_prefix(GITHUB_PREFIX) {
+        let s = if let Some(space) = s.find(' ') { &s[..space] } else { s };
         s.parse().ok()
     } else if let Some(s) = s.strip_prefix(HOMU_PREFIX) {
-        if let Some(space) = s.find(' ') {
-            s[..space].parse().ok()
-        } else {
-            None
-        }
+        if let Some(space) = s.find(' ') { s[..space].parse().ok() } else { None }
     } else {
         None
     }

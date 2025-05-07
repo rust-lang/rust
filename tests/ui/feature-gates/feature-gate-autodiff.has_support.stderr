@@ -1,0 +1,13 @@
+error: cannot find attribute `autodiff` in this scope
+  --> $DIR/feature-gate-autodiff.rs:9:3
+   |
+LL | #[autodiff(dfoo, Reverse)]
+   |   ^^^^^^^^
+   |
+help: consider importing this attribute macro
+   |
+LL + use std::autodiff::autodiff;
+   |
+
+error: aborting due to 1 previous error
+

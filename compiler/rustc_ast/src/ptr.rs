@@ -158,9 +158,9 @@ impl<T> From<Vec<T>> for P<[T]> {
     }
 }
 
-impl<T> Into<Vec<T>> for P<[T]> {
-    fn into(self) -> Vec<T> {
-        self.into_vec()
+impl<T> From<P<[T]>> for Vec<T> {
+    fn from(val: P<[T]>) -> Self {
+        val.into_vec()
     }
 }
 

@@ -2,19 +2,24 @@
 #![allow(internal_features)]
 #![rustc_variance_of_opaques]
 
-trait Captures<'a> {}
-impl<T> Captures<'_> for T {}
-
 trait Foo<'i> {
     fn implicit_capture_early<'a: 'a>() -> impl Sized {}
-    //~^ [o, *, *, o, o]
-    // Self, 'i, 'a, 'i_duplicated, 'a_duplicated
+    //~^ ERROR [Self: o, 'i: o, 'a: *, 'i: o, 'a: o]
 
-    fn explicit_capture_early<'a: 'a>() -> impl Sized + Captures<'a> {} //~ [o, *, *, o, o]
+    fn explicit_capture_early<'a: 'a>() -> impl Sized + use<'i, 'a, Self> {}
+    //~^ ERROR [Self: o, 'i: o, 'a: *, 'i: o, 'a: o]
 
-    fn implicit_capture_late<'a>(_: &'a ()) -> impl Sized {} //~ [o, *, o, o]
+    fn not_captured_early<'a: 'a>() -> impl Sized + use<'i, Self> {}
+    //~^ ERROR [Self: o, 'i: o, 'a: *, 'i: o]
 
-    fn explicit_capture_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {} //~ [o, *, o, o]
+    fn implicit_capture_late<'a>(_: &'a ()) -> impl Sized {}
+    //~^ ERROR [Self: o, 'i: o, 'i: o, 'a: o]
+
+    fn explicit_capture_late<'a>(_: &'a ()) -> impl Sized + use<'i, 'a, Self> {}
+    //~^ ERROR [Self: o, 'i: o, 'i: o, 'a: o]
+
+    fn not_captured_late<'a>(_: &'a ()) -> impl Sized + use<'i, Self> {}
+    //~^ ERROR [Self: o, 'i: o, 'i: o]
 }
 
 fn main() {}

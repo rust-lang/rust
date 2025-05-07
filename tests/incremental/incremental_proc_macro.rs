@@ -1,4 +1,4 @@
-//@ aux-build:incremental_proc_macro_aux.rs
+//@ proc-macro: incremental_proc_macro_aux.rs
 //@ revisions: cfail1 cfail2
 //@ build-pass (FIXME(62277): could be check-pass?)
 
@@ -12,5 +12,5 @@ extern crate incremental_proc_macro_aux;
 
 #[derive(IncrementalMacro)]
 pub struct Foo {
-    x: u32
+    _x: u32
 }

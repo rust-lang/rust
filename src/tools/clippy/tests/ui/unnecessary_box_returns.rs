@@ -3,7 +3,7 @@
 trait Bar {
     // lint
     fn baz(&self) -> Box<usize>;
-    //~^ ERROR: boxed return of the sized type `usize`
+    //~^ unnecessary_box_returns
 }
 
 pub struct Foo {}
@@ -17,7 +17,8 @@ impl Bar for Foo {
 
 impl Foo {
     fn baz(&self) -> Box<usize> {
-        //~^ ERROR: boxed return of the sized type `usize`
+        //~^ unnecessary_box_returns
+
         // lint
         Box::new(13)
     }
@@ -25,13 +26,15 @@ impl Foo {
 
 // lint
 fn bxed_usize() -> Box<usize> {
-    //~^ ERROR: boxed return of the sized type `usize`
+    //~^ unnecessary_box_returns
+
     Box::new(5)
 }
 
 // lint
 fn _bxed_foo() -> Box<Foo> {
-    //~^ ERROR: boxed return of the sized type `Foo`
+    //~^ unnecessary_box_returns
+
     Box::new(Foo {})
 }
 

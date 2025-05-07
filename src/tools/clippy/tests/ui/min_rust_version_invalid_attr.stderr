@@ -31,8 +31,8 @@ LL |         #![clippy::msrv = "1.0.0"]
 note: first definition found here
   --> tests/ui/min_rust_version_invalid_attr.rs:20:9
    |
-LL |         #![clippy::msrv = "1"]
-   |         ^^^^^^^^^^^^^^^^^^^^^^
+LL |         #![clippy::msrv = "1.0"]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

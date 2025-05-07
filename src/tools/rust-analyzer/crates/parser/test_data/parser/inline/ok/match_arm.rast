@@ -102,9 +102,9 @@ SOURCE_FILE
                 COMMA ","
               WHITESPACE "\n        "
               MATCH_ARM
-                PIPE "|"
-                WHITESPACE " "
                 OR_PAT
+                  PIPE "|"
+                  WHITESPACE " "
                   IDENT_PAT
                     NAME
                       IDENT "X"
@@ -132,11 +132,12 @@ SOURCE_FILE
                 COMMA ","
               WHITESPACE "\n        "
               MATCH_ARM
-                PIPE "|"
-                WHITESPACE " "
-                IDENT_PAT
-                  NAME
-                    IDENT "X"
+                OR_PAT
+                  PIPE "|"
+                  WHITESPACE " "
+                  IDENT_PAT
+                    NAME
+                      IDENT "X"
                 WHITESPACE " "
                 FAT_ARROW "=>"
                 WHITESPACE " "

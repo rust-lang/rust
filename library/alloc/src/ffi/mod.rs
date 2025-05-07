@@ -83,9 +83,9 @@
 #[doc(inline)]
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub use self::c_str::CString;
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub use self::c_str::{FromVecWithNulError, IntoStringError, NulError};
 
-#[unstable(feature = "c_str_module", issue = "112134")]
+#[stable(feature = "c_str_module", since = "CURRENT_RUSTC_VERSION")]
 pub mod c_str;

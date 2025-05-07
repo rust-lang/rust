@@ -1,15 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::get_parent_as_impl;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{deref_chain, get_adt_inherent_method, implements_trait, make_normalized_projection};
+use clippy_utils::{get_parent_as_impl, sym};
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -131,7 +129,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
             && trait_ref
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
-            && !in_external_macro(cx.sess(), item.span)
+            && !item.span.in_external_macro(cx.sess().source_map())
             && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let expected_method_name = match mtbl {
                 Mutability::Mut => sym::iter_mut,
@@ -142,8 +140,8 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 ty.peel_refs().is_slice() || get_adt_inherent_method(cx, ty, expected_method_name).is_some()
             })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
-                if item.ident.name == sym!(IntoIter) {
-                    Some(cx.tcx.hir().impl_item(item.id).expect_type().span)
+                if item.ident.name == sym::IntoIter {
+                    Some(cx.tcx.hir_impl_item(item.id).expect_type().span)
                 } else {
                     None
                 }
@@ -193,7 +191,7 @@ impl {self_ty_without_ref} {{
             _ => return,
         };
 
-        if !in_external_macro(cx.sess(), item.span)
+        if !item.span.in_external_macro(cx.sess().source_map())
             && let ImplItemKind::Fn(sig, _) = item.kind
             && let FnRetTy::Return(ret) = sig.decl.output
             && is_nameable_in_impl_trait(ret)
@@ -215,7 +213,7 @@ impl {self_ty_without_ref} {{
             && implements_trait(cx, ret_ty, iterator_did, &[])
             && let Some(iter_ty) = make_normalized_projection(
                 cx.tcx,
-                cx.param_env,
+                cx.typing_env(),
                 iterator_did,
                 sym::Item,
                 [ret_ty],
@@ -247,8 +245,8 @@ impl {self_ty_without_ref} {{
                     let sugg = format!(
                         "
 impl IntoIterator for {self_ty_snippet} {{
-    type IntoIter = {ret_ty};
     type Item = {iter_ty};
+    type IntoIter = {ret_ty};
     fn into_iter(self) -> Self::IntoIter {{
         self.iter()
     }}

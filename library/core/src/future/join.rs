@@ -1,10 +1,10 @@
 #![allow(unused_imports, unused_macros)] // items are used by the macro
 
 use crate::cell::UnsafeCell;
-use crate::future::{poll_fn, Future};
+use crate::future::{Future, poll_fn};
 use crate::mem;
 use crate::pin::Pin;
-use crate::task::{ready, Context, Poll};
+use crate::task::{Context, Poll, ready};
 
 /// Polls multiple futures simultaneously, returning a tuple
 /// of all results once complete.

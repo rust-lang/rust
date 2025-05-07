@@ -3,11 +3,11 @@ use std::env;
 use std::sync::Arc;
 use std::time::Instant;
 
-use gccjit::{CType, FunctionType, GlobalKind};
+use gccjit::{CType, Context, FunctionType, GlobalKind};
+use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
-use rustc_codegen_ssa::traits::DebugInfoMethods;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::traits::DebugInfoCodegenMethods;
 use rustc_middle::dep_graph;
 use rustc_middle::mir::mono::Linkage;
 #[cfg(feature = "master")]
@@ -15,18 +15,29 @@ use rustc_middle::mir::mono::Visibility;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::DebugInfo;
 use rustc_span::Symbol;
-use rustc_target::spec::PanicStrategy;
+#[cfg(feature = "master")]
+use rustc_target::spec::SymbolVisibility;
+use rustc_target::spec::{PanicStrategy, RelocModel};
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::{gcc_util, new_context, GccContext, LockedTargetInfo, SyncContext};
+use crate::{GccContext, LockedTargetInfo, SyncContext, gcc_util, new_context};
 
 #[cfg(feature = "master")]
-pub fn visibility_to_gcc(linkage: Visibility) -> gccjit::Visibility {
-    match linkage {
+pub fn visibility_to_gcc(visibility: Visibility) -> gccjit::Visibility {
+    match visibility {
         Visibility::Default => gccjit::Visibility::Default,
         Visibility::Hidden => gccjit::Visibility::Hidden,
         Visibility::Protected => gccjit::Visibility::Protected,
+    }
+}
+
+#[cfg(feature = "master")]
+pub fn symbol_visibility_to_gcc(visibility: SymbolVisibility) -> gccjit::Visibility {
+    match visibility {
+        SymbolVisibility::Hidden => gccjit::Visibility::Hidden,
+        SymbolVisibility::Protected => gccjit::Visibility::Protected,
+        SymbolVisibility::Interposable => gccjit::Visibility::Default,
     }
 }
 
@@ -38,9 +49,7 @@ pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
         Linkage::LinkOnceODR => unimplemented!(),
         Linkage::WeakAny => unimplemented!(),
         Linkage::WeakODR => unimplemented!(),
-        Linkage::Appending => unimplemented!(),
         Linkage::Internal => GlobalKind::Internal,
-        Linkage::Private => GlobalKind::Internal,
         Linkage::ExternalWeak => GlobalKind::Imported, // TODO(antoyo): should be weak linkage.
         Linkage::Common => unimplemented!(),
     }
@@ -55,9 +64,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
         Linkage::LinkOnceODR => unimplemented!(),
         Linkage::WeakAny => FunctionType::Exported, // FIXME(antoyo): should be similar to linkonce.
         Linkage::WeakODR => unimplemented!(),
-        Linkage::Appending => unimplemented!(),
         Linkage::Internal => FunctionType::Internal,
-        Linkage::Private => FunctionType::Internal,
         Linkage::ExternalWeak => unimplemented!(),
         Linkage::Common => unimplemented!(),
     }
@@ -128,10 +135,19 @@ pub fn compile_codegen_unit(
         // NOTE: Rust relies on LLVM doing wrapping on overflow.
         context.add_command_line_option("-fwrapv");
 
-        if tcx.sess.relocation_model() == rustc_target::spec::RelocModel::Static {
-            context.add_command_line_option("-mcmodel=kernel");
-            context.add_command_line_option("-fno-pie");
+        if let Some(model) = tcx.sess.code_model() {
+            use rustc_target::spec::CodeModel;
+
+            context.add_command_line_option(match model {
+                CodeModel::Tiny => "-mcmodel=tiny",
+                CodeModel::Small => "-mcmodel=small",
+                CodeModel::Kernel => "-mcmodel=kernel",
+                CodeModel::Medium => "-mcmodel=medium",
+                CodeModel::Large => "-mcmodel=large",
+            });
         }
+
+        add_pic_option(&context, tcx.sess.relocation_model());
 
         let target_cpu = gcc_util::target_cpu(tcx.sess);
         if target_cpu != "generic" {
@@ -188,12 +204,13 @@ pub fn compile_codegen_unit(
             let f32_type_supported = target_info.supports_target_dependent_type(CType::Float32);
             let f64_type_supported = target_info.supports_target_dependent_type(CType::Float64);
             let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
+            let u128_type_supported = target_info.supports_target_dependent_type(CType::UInt128t);
             // TODO: improve this to avoid passing that many arguments.
-            let cx = CodegenCx::new(
+            let mut cx = CodegenCx::new(
                 &context,
                 cgu,
                 tcx,
-                target_info.supports_128bit_int(),
+                u128_type_supported,
                 f16_type_supported,
                 f32_type_supported,
                 f64_type_supported,
@@ -206,8 +223,8 @@ pub fn compile_codegen_unit(
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
-            for &(mono_item, _) in &mono_items {
-                mono_item.define::<Builder<'_, '_, '_>>(&cx);
+            for &(mono_item, item_data) in &mono_items {
+                mono_item.define::<Builder<'_, '_, '_>>(&mut cx, item_data);
             }
 
             // If this codegen unit contains the main function, also create the
@@ -220,16 +237,37 @@ pub fn compile_codegen_unit(
             }
         }
 
-        ModuleCodegen {
-            name: cgu_name.to_string(),
-            module_llvm: GccContext {
+        ModuleCodegen::new_regular(
+            cgu_name.to_string(),
+            GccContext {
                 context: Arc::new(SyncContext::new(context)),
+                relocation_model: tcx.sess.relocation_model(),
                 should_combine_object_files: false,
                 temp_dir: None,
             },
-            kind: ModuleKind::Regular,
-        }
+        )
     }
 
     (module, cost)
+}
+
+pub fn add_pic_option<'gcc>(context: &Context<'gcc>, relocation_model: RelocModel) {
+    match relocation_model {
+        rustc_target::spec::RelocModel::Static => {
+            context.add_command_line_option("-fno-pie");
+            context.add_driver_option("-fno-pie");
+        }
+        rustc_target::spec::RelocModel::Pic => {
+            context.add_command_line_option("-fPIC");
+            // NOTE: we use both add_command_line_option and add_driver_option because the usage in
+            // this module (compile_codegen_unit) requires add_command_line_option while the usage
+            // in the back::write module (codegen) requires add_driver_option.
+            context.add_driver_option("-fPIC");
+        }
+        rustc_target::spec::RelocModel::Pie => {
+            context.add_command_line_option("-fPIE");
+            context.add_driver_option("-fPIE");
+        }
+        model => eprintln!("Unsupported relocation model: {:?}", model),
+    }
 }

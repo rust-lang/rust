@@ -5,22 +5,20 @@
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
-//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 //@ edition: 2021
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
-#![feature(control_flow_enum)]
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
+extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_smir::rustc_internal;
 use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::alloc::GlobalAlloc;
 use stable_mir::mir::mono::{Instance, InstanceKind, StaticDef};
@@ -221,7 +219,7 @@ fn get_item<'a>(
 fn main() {
     let path = "alloc_input.rs";
     generate_input(&path).unwrap();
-    let args = vec![
+    let args = &[
         "rustc".to_string(),
         "--edition=2021".to_string(),
         "--crate-name".to_string(),

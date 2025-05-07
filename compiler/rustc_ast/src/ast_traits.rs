@@ -6,12 +6,11 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::ptr::P;
-use crate::token::Nonterminal;
 use crate::tokenstream::LazyAttrTokenStream;
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
     FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
-    Ty, Variant, Visibility,
+    Ty, Variant, Visibility, WherePredicate,
 };
 
 /// A utility trait to reduce boilerplate.
@@ -79,6 +78,7 @@ impl_has_node_id!(
     Stmt,
     Ty,
     Variant,
+    WherePredicate,
 );
 
 impl<T: AstDeref<Target: HasNodeId>> HasNodeId for T {
@@ -127,7 +127,16 @@ macro_rules! impl_has_tokens_none {
 }
 
 impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Path, Ty, Visibility);
-impl_has_tokens_none!(Arm, ExprField, FieldDef, GenericParam, Param, PatField, Variant);
+impl_has_tokens_none!(
+    Arm,
+    ExprField,
+    FieldDef,
+    GenericParam,
+    Param,
+    PatField,
+    Variant,
+    WherePredicate
+);
 
 impl<T: AstDeref<Target: HasTokens>> HasTokens for T {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
@@ -153,7 +162,7 @@ impl HasTokens for StmtKind {
             StmtKind::Let(local) => local.tokens.as_ref(),
             StmtKind::Item(item) => item.tokens(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens(),
-            StmtKind::Empty => return None,
+            StmtKind::Empty => None,
             StmtKind::MacCall(mac) => mac.tokens.as_ref(),
         }
     }
@@ -162,7 +171,7 @@ impl HasTokens for StmtKind {
             StmtKind::Let(local) => Some(&mut local.tokens),
             StmtKind::Item(item) => item.tokens_mut(),
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr.tokens_mut(),
-            StmtKind::Empty => return None,
+            StmtKind::Empty => None,
             StmtKind::MacCall(mac) => Some(&mut mac.tokens),
         }
     }
@@ -193,35 +202,6 @@ impl HasTokens for Attribute {
                 panic!("Called tokens_mut on doc comment attr {kind:?}")
             }
         })
-    }
-}
-
-impl HasTokens for Nonterminal {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
-        match self {
-            Nonterminal::NtItem(item) => item.tokens(),
-            Nonterminal::NtStmt(stmt) => stmt.tokens(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens(),
-            Nonterminal::NtPat(pat) => pat.tokens(),
-            Nonterminal::NtTy(ty) => ty.tokens(),
-            Nonterminal::NtMeta(attr_item) => attr_item.tokens(),
-            Nonterminal::NtPath(path) => path.tokens(),
-            Nonterminal::NtVis(vis) => vis.tokens(),
-            Nonterminal::NtBlock(block) => block.tokens(),
-        }
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
-        match self {
-            Nonterminal::NtItem(item) => item.tokens_mut(),
-            Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
-            Nonterminal::NtPat(pat) => pat.tokens_mut(),
-            Nonterminal::NtTy(ty) => ty.tokens_mut(),
-            Nonterminal::NtMeta(attr_item) => attr_item.tokens_mut(),
-            Nonterminal::NtPath(path) => path.tokens_mut(),
-            Nonterminal::NtVis(vis) => vis.tokens_mut(),
-            Nonterminal::NtBlock(block) => block.tokens_mut(),
-        }
     }
 }
 
@@ -289,6 +269,7 @@ impl_has_attrs!(
     Param,
     PatField,
     Variant,
+    WherePredicate,
 );
 impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
 

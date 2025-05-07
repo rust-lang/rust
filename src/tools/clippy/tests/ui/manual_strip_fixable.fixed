@@ -1,0 +1,16 @@
+#![warn(clippy::manual_strip)]
+#![allow(clippy::uninlined_format_args)]
+
+fn main() {
+    let s = "abc";
+
+    if let Some(stripped) = s.strip_prefix("ab") {
+        //~^ ERROR: stripping a prefix manually
+        println!("{stripped}{}", stripped);
+    }
+
+    if let Some(stripped) = s.strip_suffix("bc") {
+        //~^ ERROR: stripping a suffix manually
+        println!("{stripped}{}", stripped);
+    }
+}

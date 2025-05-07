@@ -6,7 +6,6 @@ LL | | #![feature(rustc_attrs)]
 LL | |
 LL | | #[rustc_effective_visibility]
 ...  |
-LL | |
 LL | | fn main() {}
    | |____________^
 

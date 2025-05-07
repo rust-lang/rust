@@ -1,9 +1,13 @@
 use gccjit::{LValue, RValue, ToRValue, Type};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, MiscMethods, StaticMethods};
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
+use rustc_abi as abi;
+use rustc_abi::HasDataLayout;
+use rustc_abi::Primitive::Pointer;
+use rustc_codegen_ssa::traits::{
+    BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
+};
 use rustc_middle::mir::Mutability;
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_target::abi::{self, HasDataLayout, Pointer};
 
 use crate::consts::const_alloc_to_gcc;
 use crate::context::CodegenCx;
@@ -29,12 +33,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
-        if value.get_type() == self.bool_type.make_pointer() {
-            if let Some(pointee) = typ.get_pointee() {
-                if pointee.dyncast_vector().is_some() {
-                    panic!()
-                }
-            }
+        if value.get_type() == self.bool_type.make_pointer()
+            && let Some(pointee) = typ.get_pointee()
+            && pointee.dyncast_vector().is_some()
+        {
+            panic!()
         }
         // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
         // SIMD builtins require a constant value.
@@ -55,7 +58,7 @@ pub fn type_is_pointer(typ: Type<'_>) -> bool {
     typ.get_pointee().is_some()
 }
 
-impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn const_null(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
@@ -78,20 +81,12 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_undef(typ)
     }
 
-    fn const_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
-        self.gcc_int(typ, int)
-    }
-
-    fn const_uint(&self, typ: Type<'gcc>, int: u64) -> RValue<'gcc> {
-        self.gcc_uint(typ, int)
-    }
-
-    fn const_uint_big(&self, typ: Type<'gcc>, num: u128) -> RValue<'gcc> {
-        self.gcc_uint_big(typ, num)
-    }
-
     fn const_bool(&self, val: bool) -> RValue<'gcc> {
         self.const_uint(self.type_i1(), val as u64)
+    }
+
+    fn const_i8(&self, i: i8) -> RValue<'gcc> {
+        self.const_int(self.type_i8(), i as i64)
     }
 
     fn const_i16(&self, i: i16) -> RValue<'gcc> {
@@ -102,8 +97,12 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_int(self.type_i32(), i as i64)
     }
 
-    fn const_i8(&self, i: i8) -> RValue<'gcc> {
-        self.const_int(self.type_i8(), i as i64)
+    fn const_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
+        self.gcc_int(typ, int)
+    }
+
+    fn const_u8(&self, i: u8) -> RValue<'gcc> {
+        self.const_uint(self.type_u8(), i as u64)
     }
 
     fn const_u32(&self, i: u32) -> RValue<'gcc> {
@@ -128,8 +127,12 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.const_uint(self.usize_type, i)
     }
 
-    fn const_u8(&self, i: u8) -> RValue<'gcc> {
-        self.const_uint(self.type_u8(), i as u64)
+    fn const_uint(&self, typ: Type<'gcc>, int: u64) -> RValue<'gcc> {
+        self.gcc_uint(typ, int)
+    }
+
+    fn const_uint_big(&self, typ: Type<'gcc>, num: u128) -> RValue<'gcc> {
+        self.gcc_uint_big(typ, num)
     }
 
     fn const_real(&self, typ: Type<'gcc>, val: f64) -> RValue<'gcc> {
@@ -137,13 +140,12 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_str(&self, s: &str) -> (RValue<'gcc>, RValue<'gcc>) {
-        let str_global = *self
-            .const_str_cache
-            .borrow_mut()
-            .raw_entry_mut()
-            .from_key(s)
-            .or_insert_with(|| (s.to_owned(), self.global_string(s)))
-            .1;
+        let mut const_str_cache = self.const_str_cache.borrow_mut();
+        let str_global = const_str_cache.get(s).copied().unwrap_or_else(|| {
+            let g = self.global_string(s);
+            const_str_cache.insert(s.to_owned(), g);
+            g
+        });
         let len = s.len();
         let cs = self.const_ptrcast(
             str_global.get_address(None),
@@ -222,10 +224,15 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         value
                     }
                     GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance),
-                    GlobalAlloc::VTable(ty, trait_ref) => {
+                    GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
-                            .global_alloc(self.tcx.vtable_allocation((ty, trait_ref)))
+                            .global_alloc(self.tcx.vtable_allocation((
+                                ty,
+                                dyn_ty.principal().map(|principal| {
+                                    self.tcx.instantiate_bound_regions_with_erased(principal)
+                                }),
+                            )))
                             .unwrap_memory();
                         let init = const_alloc_to_gcc(self, alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
@@ -236,20 +243,20 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     }
                 };
                 let ptr_type = base_addr.get_type();
-                let base_addr = self.const_bitcast(base_addr, self.usize_type);
+                let base_addr = self.context.new_cast(None, base_addr, self.usize_type);
                 let offset =
                     self.context.new_rvalue_from_long(self.usize_type, offset.bytes() as i64);
-                let ptr = self.const_bitcast(base_addr + offset, ptr_type);
+                let ptr = self.context.new_cast(None, base_addr + offset, ptr_type);
                 if !matches!(layout.primitive(), Pointer(_)) {
                     self.const_bitcast(ptr.dereference(None).to_rvalue(), ty)
                 } else {
-                    self.const_bitcast(ptr, ty)
+                    self.context.new_cast(None, ptr, ty)
                 }
             }
         }
     }
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
         const_alloc_to_gcc(self, alloc)
     }
 

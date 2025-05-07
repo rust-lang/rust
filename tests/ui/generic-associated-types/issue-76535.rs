@@ -1,8 +1,3 @@
-//@ revisions: base extended
-
-#![cfg_attr(extended, feature(generic_associated_types_extended))]
-#![cfg_attr(extended, allow(incomplete_features))]
-
 pub trait SubTrait {}
 
 pub trait SuperTrait {
@@ -38,6 +33,6 @@ impl SuperTrait for SuperStruct {
 fn main() {
     let sub: Box<dyn SuperTrait<SubType = SubStruct>> = Box::new(SuperStruct::new(0));
       //~^ ERROR missing generics for associated type
-      //[base]~^^ ERROR the trait
-      //[base]~| ERROR the trait
+      //~^^ ERROR the trait
+      //~| ERROR the trait
 }

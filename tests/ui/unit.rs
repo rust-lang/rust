@@ -2,7 +2,6 @@
 
 #![allow(unused_assignments)]
 #![allow(unknown_lints)]
-//@ pretty-expanded FIXME #23616
 
 #![allow(unused_variables)]
 #![allow(dead_assignment)]

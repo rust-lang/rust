@@ -3,8 +3,8 @@
 //@ run-flags: --test-threads=1 --quiet
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=0
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
-//@ ignore-emscripten no threads support
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ needs-threads
 //@ needs-unwind
 
 #[test]

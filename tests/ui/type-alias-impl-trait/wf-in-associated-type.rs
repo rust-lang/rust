@@ -36,10 +36,10 @@ mod fail {
 
     impl<'a, T> Trait<'a, T> for () {
         type Opaque = impl Sized + 'a;
-        //[fail]~^ ERROR the parameter type `T` may not live long enough
-        //[fail]~| ERROR the parameter type `T` may not live long enough
         fn constrain_opaque(req: &'a T) -> Self::Opaque {
             req
+            //[fail]~^ ERROR the parameter type `T` may not live long enough
+            //[fail]~| ERROR the parameter type `T` may not live long enough
         }
     }
 }

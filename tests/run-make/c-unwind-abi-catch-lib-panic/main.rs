@@ -3,7 +3,7 @@
 //! This test triggers a panic in a Rust library that our foreign function invokes. This shows
 //! that we can unwind through the C code in that library, and catch the underlying panic.
 
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 fn main() {
     // Call `add_small_numbers`, passing arguments that will NOT trigger a panic.

@@ -1,6 +1,5 @@
-use crate::sync::atomic::AtomicU32;
 use crate::sync::atomic::Ordering::Relaxed;
-use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
+use crate::sys::futex::{Futex, futex_wait, futex_wake, futex_wake_all};
 use crate::sys::sync::Mutex;
 use crate::time::Duration;
 
@@ -8,13 +7,13 @@ pub struct Condvar {
     // The value of this atomic is simply incremented on every notification.
     // This is used by `.wait()` to not miss any notifications after
     // unlocking the mutex and before waiting for notifications.
-    futex: AtomicU32,
+    futex: Futex,
 }
 
 impl Condvar {
     #[inline]
     pub const fn new() -> Self {
-        Self { futex: AtomicU32::new(0) }
+        Self { futex: Futex::new(0) }
     }
 
     // All the memory orderings here are `Relaxed`,

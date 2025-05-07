@@ -68,7 +68,7 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
     }
 
     bb0: {
-        _3 = (*_2);
+        _3 = copy (*_2);
         _4 = &((*_3).0: usize);
         _5 = &((*_3).1: usize);
         _6 = &((*_3).2: usize);
@@ -78,11 +78,11 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         _8 = &_4;
         StorageLive(_10);
         StorageLive(_9);
-        _9 = _6;
+        _9 = copy _6;
         _10 = &_9;
-        _11 = ((*_3).0: usize);
-        _12 = ((*_3).2: usize);
-        _13 = Le(_11, _12);
+        _11 = copy ((*_3).0: usize);
+        _12 = copy ((*_3).2: usize);
+        _13 = Le(copy _11, copy _12);
         switchInt(move _13) -> [0: bb1, otherwise: bb2];
     }
 
@@ -102,12 +102,12 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         _14 = &_7;
         StorageLive(_16);
         StorageLive(_15);
-        _15 = _5;
+        _15 = copy _5;
         _16 = &_15;
         StorageLive(_17);
-        _17 = ((*_3).3: usize);
+        _17 = copy ((*_3).3: usize);
         StorageLive(_18);
-        _18 = ((*_3).1: usize);
+        _18 = copy ((*_3).1: usize);
         _19 = Le(move _17, move _18);
         StorageDead(_18);
         StorageDead(_17);
@@ -127,9 +127,9 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         _20 = &_6;
         StorageLive(_22);
         StorageLive(_21);
-        _21 = _4;
+        _21 = copy _4;
         _22 = &_21;
-        _23 = Le(_12, _11);
+        _23 = Le(copy _12, copy _11);
         switchInt(move _23) -> [0: bb5, otherwise: bb6];
     }
 
@@ -149,12 +149,12 @@ fn variant_a::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:7:25: 7:39}, _2
         _24 = &_5;
         StorageLive(_26);
         StorageLive(_25);
-        _25 = _7;
+        _25 = copy _7;
         _26 = &_25;
         StorageLive(_27);
-        _27 = ((*_3).1: usize);
+        _27 = copy ((*_3).1: usize);
         StorageLive(_28);
-        _28 = ((*_3).3: usize);
+        _28 = copy ((*_3).3: usize);
         _0 = Le(move _27, move _28);
         StorageDead(_28);
         StorageDead(_27);

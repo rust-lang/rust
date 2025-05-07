@@ -3,7 +3,7 @@
 These are tests designed to test decimal to float conversions (`dec2flt`) used
 by the standard library.
 
-It consistes of a collection of test generators that each generate a set of
+It consists of a collection of test generators that each generate a set of
 patterns intended to test a specific property. In addition, there are exhaustive
 tests (for <= `f32`) and fuzzers (for anything that can't be run exhaustively).
 

@@ -2,13 +2,14 @@
 
 use ide_db::SymbolKind;
 use itertools::Itertools;
-use syntax::{algo, ast::Ident, AstToken, Direction, NodeOrToken, SyntaxKind};
+use syntax::{AstToken, Direction, NodeOrToken, SyntaxKind, algo, ast::Ident};
 
-use crate::{completions::Completions, context::CompletionContext, CompletionItem};
+use crate::{CompletionItem, completions::Completions, context::CompletionContext};
 
 pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
     let add_completion = |item: &str| {
-        let mut completion = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), item);
+        let mut completion =
+            CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), item, ctx.edition);
         completion.insert_text(format!(r#""{item}""#));
         acc.add(completion.build(ctx.db));
     };
@@ -41,7 +42,12 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
             name => ctx.krate.potential_cfg(ctx.db).get_cfg_values(name).cloned().for_each(|s| {
                 let s = s.as_str();
                 let insert_text = format!(r#""{s}""#);
-                let mut item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
+                let mut item = CompletionItem::new(
+                    SymbolKind::BuiltinAttr,
+                    ctx.source_range(),
+                    s,
+                    ctx.edition,
+                );
                 item.insert_text(insert_text);
 
                 acc.add(item.build(ctx.db));
@@ -49,7 +55,8 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
         },
         None => ctx.krate.potential_cfg(ctx.db).get_cfg_keys().cloned().unique().for_each(|s| {
             let s = s.as_str();
-            let item = CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);
+            let item =
+                CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s, ctx.edition);
             acc.add(item.build(ctx.db));
         }),
     }

@@ -2,11 +2,11 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
+use rustc_abi::Size;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_target::abi::Size;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -57,13 +57,13 @@ impl_lint_pass!(LargeFuture => [LARGE_FUTURES]);
 impl<'tcx> LateLintPass<'tcx> for LargeFuture {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::Match(scrutinee, _, MatchSource::AwaitDesugar) = expr.kind
-            && let ExprKind::Call(func, [arg, ..]) = scrutinee.kind
+            && let ExprKind::Call(func, [arg]) = scrutinee.kind
             && let ExprKind::Path(QPath::LangItem(LangItem::IntoFutureIntoFuture, ..)) = func.kind
             && !expr.span.from_expansion()
             && let ty = cx.typeck_results().expr_ty(arg)
             && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
             && implements_trait(cx, ty, future_trait_def_id, &[])
-            && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
+            && let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty))
             && let size = layout.layout.size()
             && size >= Size::from_bytes(self.future_size_threshold)
         {

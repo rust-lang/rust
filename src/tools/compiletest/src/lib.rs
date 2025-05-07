@@ -1,16 +1,18 @@
 #![crate_name = "compiletest"]
-// The `test` crate is the only unstable feature
-// allowed here, just to share similar code.
-#![feature(test)]
-
-extern crate test;
+// Needed by the "new" test executor that does not depend on libtest.
+// FIXME(Zalathar): We should be able to get rid of `internal_output_capture`,
+// by having `runtest` manually capture all of its println-like output instead.
+// That would result in compiletest being written entirely in stable Rust!
+#![feature(internal_output_capture)]
 
 #[cfg(test)]
 mod tests;
 
 pub mod common;
 pub mod compute_diff;
+mod debuggers;
 pub mod errors;
+mod executor;
 pub mod header;
 mod json;
 mod raise_fd_limit;
@@ -20,53 +22,73 @@ pub mod util;
 
 use core::panic;
 use std::collections::HashSet;
-use std::ffi::{OsStr, OsString};
+use std::fmt::Write;
 use std::io::{self, ErrorKind};
-use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::{Arc, OnceLock};
 use std::time::SystemTime;
 use std::{env, fs, vec};
 
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
+use camino::{Utf8Path, Utf8PathBuf};
 use getopts::Options;
-use test::ColorConfig;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 use tracing::*;
 use walkdir::WalkDir;
 
-use self::header::{make_test_description, EarlyProps};
+use self::header::{EarlyProps, make_test_description};
 use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, Config, Debugger, Mode, PassMode,
-    TestPaths, UI_EXTENSIONS,
+    CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
+use crate::executor::{CollectedTest, ColorConfig, OutputFormat};
 use crate::header::HeadersCache;
 use crate::util::logv;
 
+/// Creates the `Config` instance for this invocation of compiletest.
+///
+/// The config mostly reflects command-line arguments, but there might also be
+/// some code here that inspects environment variables or even runs executables
+/// (e.g. when discovering debugger versions).
 pub fn parse_config(args: Vec<String>) -> Config {
+    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
+        eprintln!(
+            "WARNING: RUST_TEST_NOCAPTURE is not supported. Use the `--no-capture` flag instead."
+        );
+    }
+
     let mut opts = Options::new();
     opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
+        .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
+        .optopt(
+            "",
+            "stage0-rustc-path",
+            "path to rustc to use for compiling run-make recipes",
+            "PATH",
+        )
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
         .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
-        .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
-        .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
-        .reqopt("", "src-base", "directory to scan for test files", "PATH")
-        .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "src-root", "directory containing sources", "PATH")
+        .reqopt("", "src-test-suite-root", "directory containing test suite sources", "PATH")
+        .reqopt("", "build-root", "path to root build directory", "PATH")
+        .reqopt("", "build-test-suite-root", "path to test suite specific build directory", "PATH")
         .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
+        .reqopt("", "stage", "stage number under test", "N")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
             "mode",
             "which sort of compile tests to run",
-            "run-pass-valgrind | pretty | debug-info | codegen | rustdoc \
+            "pretty | debug-info | codegen | rustdoc \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
-            | js-doc-test | mir-opt | assembly | crashes",
+            | rustdoc-js | mir-opt | assembly | crashes",
         )
         .reqopt(
             "",
@@ -82,7 +104,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
-        .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
+        .optflag("", "has-enzyme", "run tests that require enzyme")
+        .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
+        .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
         .optmulti(
             "",
             "skip",
@@ -99,6 +123,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
+        .optflag(
+            "",
+            "rust-randomized-layout",
+            "set this when rustc/stdlib were compiled with randomized layouts",
+        )
         .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
@@ -106,10 +135,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "bless",
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
+        .optflag("", "fail-fast", "stop as soon as possible after any test fails")
         .optflag("", "quiet", "print one character per test instead of one line")
         .optopt("", "color", "coloring: auto, always, never", "WHEN")
         .optflag("", "json", "emit json output instead of plaintext output")
-        .optopt("", "logfile", "file to log test execution to", "FILE")
         .optopt("", "target", "the target to build for", "TARGET")
         .optopt("", "host", "the host to build for", "HOST")
         .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
@@ -143,12 +172,14 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "rustfix-coverage",
             "enable this to generate a Rustfix coverage file, which is saved in \
-            `./<build_base>/rustfix_missing_coverage.txt`",
+            `./<build_test_suite_root>/rustfix_missing_coverage.txt`",
         )
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
+        // FIXME: Temporarily retained so we can point users to `--no-capture`
         .optflag("", "nocapture", "")
-        .optflag("", "profiler-support", "is the profiler runtime enabled for this target")
+        .optflag("", "no-capture", "don't capture stdout/stderr of tests")
+        .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
         .optflag(
@@ -157,8 +188,27 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "run tests which rely on commit version being compiled into the binaries",
         )
         .optopt("", "edition", "default Rust edition", "EDITION")
-        .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
-        .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH");
+        .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
+        .reqopt(
+            "",
+            "git-merge-commit-email",
+            "email address used for finding merge commits",
+            "EMAIL",
+        )
+        .optopt(
+            "",
+            "compiletest-diff-tool",
+            "What custom diff tool to use for displaying compiletest tests.",
+            "COMMAND",
+        )
+        .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
+        .optflag("N", "no-new-executor", "disables the new test executor, and uses libtest instead")
+        .optopt(
+            "",
+            "debugger",
+            "only test a specific debugger in debuginfo tests",
+            "gdb | lldb | cdb",
+        );
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -180,28 +230,28 @@ pub fn parse_config(args: Vec<String>) -> Config {
         panic!()
     }
 
-    fn opt_path(m: &getopts::Matches, nm: &str) -> PathBuf {
+    fn make_absolute(path: Utf8PathBuf) -> Utf8PathBuf {
+        if path.is_relative() {
+            Utf8PathBuf::try_from(env::current_dir().unwrap()).unwrap().join(path)
+        } else {
+            path
+        }
+    }
+
+    fn opt_path(m: &getopts::Matches, nm: &str) -> Utf8PathBuf {
         match m.opt_str(nm) {
-            Some(s) => PathBuf::from(&s),
+            Some(s) => Utf8PathBuf::from(&s),
             None => panic!("no option (=path) found for {}", nm),
         }
     }
 
-    fn make_absolute(path: PathBuf) -> PathBuf {
-        if path.is_relative() { env::current_dir().unwrap().join(path) } else { path }
-    }
-
     let target = opt_str2(matches.opt_str("target"));
     let android_cross_path = opt_path(matches, "android-cross-path");
-    let (cdb, cdb_version) = analyze_cdb(matches.opt_str("cdb"), &target);
-    let (gdb, gdb_version, gdb_native_rust) =
-        analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
-    let (lldb_version, lldb_native_rust) = matches
-        .opt_str("lldb-version")
-        .as_deref()
-        .and_then(extract_lldb_version)
-        .map(|(v, b)| (Some(v), b))
-        .unwrap_or((None, false));
+    let (cdb, cdb_version) = debuggers::analyze_cdb(matches.opt_str("cdb"), &target);
+    let (gdb, gdb_version) =
+        debuggers::analyze_gdb(matches.opt_str("gdb"), &target, &android_cross_path);
+    let lldb_version =
+        matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
     let color = match matches.opt_str("color").as_deref() {
         Some("auto") | None => ColorConfig::AutoColor,
         Some("always") => ColorConfig::AlwaysColor,
@@ -209,39 +259,36 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+        matches.opt_str("llvm-version").as_deref().map(header::extract_llvm_version).or_else(
             || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
-    let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
-    let with_debug_assertions = matches.opt_present("with-debug-assertions");
+    let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
+    let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_tidy = if mode == Mode::Rustdoc {
+    let has_html_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
             .arg("--version")
             .stdout(Stdio::null())
             .status()
             .map_or(false, |status| status.success())
     } else {
-        // Avoid spawning an external command when we know tidy won't be used.
+        // Avoid spawning an external command when we know html-tidy won't be used.
         false
     };
+    let has_enzyme = matches.opt_present("has-enzyme");
     let filters = if mode == Mode::RunMake {
         matches
             .free
             .iter()
             .map(|f| {
-                let path = Path::new(f);
+                let path = Utf8Path::new(f);
                 let mut iter = path.iter().skip(1);
 
-                // We skip the test folder and check if the user passed `rmake.rs` or `Makefile`.
-                if iter
-                    .next()
-                    .is_some_and(|s| s == OsStr::new("rmake.rs") || s == OsStr::new("Makefile"))
-                    && iter.next().is_none()
-                {
-                    path.parent().unwrap().to_str().unwrap().to_string()
+                // We skip the test folder and check if the user passed `rmake.rs`.
+                if iter.next().is_some_and(|s| s == "rmake.rs") && iter.next().is_none() {
+                    path.parent().unwrap().to_string()
                 } else {
                     f.to_string()
                 }
@@ -250,30 +297,77 @@ pub fn parse_config(args: Vec<String>) -> Config {
     } else {
         matches.free.clone()
     };
+    let compare_mode = matches.opt_str("compare-mode").map(|s| {
+        s.parse().unwrap_or_else(|_| {
+            let variants: Vec<_> = CompareMode::STR_VARIANTS.iter().copied().collect();
+            panic!(
+                "`{s}` is not a valid value for `--compare-mode`, it should be one of: {}",
+                variants.join(", ")
+            );
+        })
+    });
+    if matches.opt_present("nocapture") {
+        panic!("`--nocapture` is deprecated; please use `--no-capture`");
+    }
+
+    let stage = match matches.opt_str("stage") {
+        Some(stage) => stage.parse::<u32>().expect("expected `--stage` to be an unsigned integer"),
+        None => panic!("`--stage` is required"),
+    };
+
+    let src_root = opt_path(matches, "src-root");
+    let src_test_suite_root = opt_path(matches, "src-test-suite-root");
+    assert!(
+        src_test_suite_root.starts_with(&src_root),
+        "`src-root` must be a parent of `src-test-suite-root`: `src-root`=`{}`, `src-test-suite-root` = `{}`",
+        src_root,
+        src_test_suite_root
+    );
+
+    let build_root = opt_path(matches, "build-root");
+    let build_test_suite_root = opt_path(matches, "build-test-suite-root");
+    assert!(build_test_suite_root.starts_with(&build_root));
+
     Config {
         bless: matches.opt_present("bless"),
+        fail_fast: matches.opt_present("fail-fast")
+            || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
+
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
-        rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
-        coverage_dump_path: matches.opt_str("coverage-dump-path").map(PathBuf::from),
+        cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),
+        stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(Utf8PathBuf::from),
+        rustdoc_path: matches.opt_str("rustdoc-path").map(Utf8PathBuf::from),
+        coverage_dump_path: matches.opt_str("coverage-dump-path").map(Utf8PathBuf::from),
         python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
         jsondoclint_path: matches.opt_str("jsondoclint-path"),
-        valgrind_path: matches.opt_str("valgrind-path"),
-        force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
-        llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
-        llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
-        src_base,
-        build_base: opt_path(matches, "build-base"),
+        llvm_filecheck: matches.opt_str("llvm-filecheck").map(Utf8PathBuf::from),
+        llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(Utf8PathBuf::from),
+
+        src_root,
+        src_test_suite_root,
+
+        build_root,
+        build_test_suite_root,
+
         sysroot_base: opt_path(matches, "sysroot-base"),
+
+        stage,
         stage_id: matches.opt_str("stage-id").unwrap(),
+
         mode,
         suite: matches.opt_str("suite").unwrap(),
-        debugger: None,
+        debugger: matches.opt_str("debugger").map(|debugger| {
+            debugger
+                .parse::<Debugger>()
+                .unwrap_or_else(|_| panic!("unknown `--debugger` option `{debugger}` given"))
+        }),
         run_ignored,
-        with_debug_assertions,
+        with_rustc_debug_assertions,
+        with_std_debug_assertions,
         filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
@@ -287,20 +381,18 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "never" => Some(false),
             _ => panic!("unknown `--run` option `{}` given", mode),
         }),
-        logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runner: matches.opt_str("runner"),
         host_rustcflags: matches.opt_strs("host-rustcflags"),
         target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
+        rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
         cdb_version,
         gdb,
         gdb_version,
-        gdb_native_rust,
         lldb_version,
-        lldb_native_rust,
         llvm_version,
         system_llvm: matches.opt_present("system-llvm"),
         android_cross_path,
@@ -313,18 +405,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
         verbose: matches.opt_present("verbose"),
         format: match (matches.opt_present("quiet"), matches.opt_present("json")) {
             (true, true) => panic!("--quiet and --json are incompatible"),
-            (true, false) => test::OutputFormat::Terse,
-            (false, true) => test::OutputFormat::Json,
-            (false, false) => test::OutputFormat::Pretty,
+            (true, false) => OutputFormat::Terse,
+            (false, true) => OutputFormat::Json,
+            (false, false) => OutputFormat::Pretty,
         },
         only_modified: matches.opt_present("only-modified"),
         color,
-        remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
-        compare_mode: matches
-            .opt_str("compare-mode")
-            .map(|s| s.parse().expect("invalid --compare-mode provided")),
+        remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
+        compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
-        has_tidy,
+        has_html_tidy,
+        has_enzyme,
         channel: matches.opt_str("channel").unwrap(),
         git_hash: matches.opt_present("git-hash"),
         edition: matches.opt_str("edition"),
@@ -343,25 +434,40 @@ pub fn parse_config(args: Vec<String>) -> Config {
         force_rerun: matches.opt_present("force-rerun"),
 
         target_cfgs: OnceLock::new(),
+        builtin_cfg_names: OnceLock::new(),
+        supported_crate_types: OnceLock::new(),
 
-        nocapture: matches.opt_present("nocapture"),
+        nocapture: matches.opt_present("no-capture"),
 
-        git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
+        git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
-        profiler_support: matches.opt_present("profiler-support"),
+        profiler_runtime: matches.opt_present("profiler-runtime"),
+
+        diff_command: matches.opt_str("compiletest-diff-tool"),
+
+        minicore_path: opt_path(matches, "minicore-path"),
     }
 }
 
 pub fn log_config(config: &Config) {
     let c = config;
     logv(c, "configuration:".to_string());
-    logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
-    logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
-    logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
+    logv(c, format!("compile_lib_path: {}", config.compile_lib_path));
+    logv(c, format!("run_lib_path: {}", config.run_lib_path));
+    logv(c, format!("rustc_path: {}", config.rustc_path));
+    logv(c, format!("cargo_path: {:?}", config.cargo_path));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
-    logv(c, format!("src_base: {:?}", config.src_base.display()));
-    logv(c, format!("build_base: {:?}", config.build_base.display()));
+
+    logv(c, format!("src_root: {}", config.src_root));
+    logv(c, format!("src_test_suite_root: {}", config.src_test_suite_root));
+
+    logv(c, format!("build_root: {}", config.build_root));
+    logv(c, format!("build_test_suite_root: {}", config.build_test_suite_root));
+
+    logv(c, format!("sysroot_base: {}", config.sysroot_base));
+
+    logv(c, format!("stage: {}", config.stage));
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
@@ -377,15 +483,16 @@ pub fn log_config(config: &Config) {
     logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
-    logv(c, format!("android-cross-path: {:?}", config.android_cross_path.display()));
-    logv(c, format!("adb_path: {:?}", config.adb_path));
-    logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
+    logv(c, format!("android-cross-path: {}", config.android_cross_path));
+    logv(c, format!("adb_path: {}", config.adb_path));
+    logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}", config.adb_device_status));
     logv(c, format!("ar: {}", config.ar));
     logv(c, format!("target-linker: {:?}", config.target_linker));
     logv(c, format!("host-linker: {:?}", config.host_linker));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("format: {:?}", config.format));
+    logv(c, format!("minicore_path: {}", config.minicore_path));
     logv(c, "\n".to_string());
 }
 
@@ -403,16 +510,17 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
     }
 }
 
+/// Called by `main` after the config has been parsed.
 pub fn run_tests(config: Arc<Config>) {
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.
     // It will be created later on.
     if config.rustfix_coverage {
-        let mut coverage_file_path = config.build_base.clone();
+        let mut coverage_file_path = config.build_test_suite_root.clone();
         coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
             if let Err(e) = fs::remove_file(&coverage_file_path) {
-                panic!("Could not delete {} due to {}", coverage_file_path.display(), e)
+                panic!("Could not delete {} due to {}", coverage_file_path, e)
             }
         }
     }
@@ -425,35 +533,52 @@ pub fn run_tests(config: Arc<Config>) {
     }
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
-    env::set_var("__COMPAT_LAYER", "RunAsInvoker");
+    //
+    // SAFETY: at this point we're still single-threaded.
+    unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
 
-    // Let tests know which target they're running as
-    env::set_var("TARGET", &config.target);
-
-    let opts = test_opts(&config);
+    // Let tests know which target they're running as.
+    //
+    // SAFETY: at this point we're still single-threaded.
+    unsafe { env::set_var("TARGET", &config.target) };
 
     let mut configs = Vec::new();
     if let Mode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
-            configs.extend(configure_cdb(&config));
-            configs.extend(configure_gdb(&config));
-            configs.extend(configure_lldb(&config));
+            match config.debugger {
+                Some(Debugger::Cdb) => configs.extend(debuggers::configure_cdb(&config)),
+                Some(Debugger::Gdb) => configs.extend(debuggers::configure_gdb(&config)),
+                Some(Debugger::Lldb) => configs.extend(debuggers::configure_lldb(&config)),
+                None => {
+                    configs.extend(debuggers::configure_cdb(&config));
+                    configs.extend(debuggers::configure_gdb(&config));
+                    configs.extend(debuggers::configure_lldb(&config));
+                }
+            }
         }
     } else {
         configs.push(config.clone());
     };
 
+    // Discover all of the tests in the test suite directory, and build a libtest
+    // structure for each test (or each revision of a multi-revision test).
     let mut tests = Vec::new();
     for c in configs {
-        let mut found_paths = HashSet::new();
-        make_tests(c, &mut tests, &mut found_paths);
-        check_overlapping_tests(&found_paths);
+        tests.extend(collect_and_make_tests(c));
     }
 
-    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
+    tests.sort_by(|a, b| Ord::cmp(&a.desc.name, &b.desc.name));
 
-    let res = test::run_tests_console(&opts, tests);
+    // Delegate to the executor to filter and run the big list of test structures
+    // created during test discovery. When the executor decides to run a test,
+    // it will return control to the rest of compiletest by calling `runtest::run`.
+    // FIXME(Zalathar): Once we're confident that we won't need to revert the
+    // removal of the libtest-based executor, remove this Result and other
+    // remnants of the old executor.
+    let res: io::Result<bool> = Ok(executor::run_tests(&config, tests));
+
+    // Check the outcome reported by libtest.
     match res {
         Ok(true) => {}
         Ok(false) => {
@@ -464,18 +589,22 @@ pub fn run_tests(config: Arc<Config>) {
             // easy to miss which tests failed, and as such fail to reproduce
             // the failure locally.
 
-            println!(
-                "Some tests failed in compiletest suite={}{} mode={} host={} target={}",
-                config.suite,
-                config
-                    .compare_mode
-                    .as_ref()
-                    .map(|c| format!(" compare_mode={:?}", c))
-                    .unwrap_or_default(),
-                config.mode,
-                config.host,
-                config.target
-            );
+            let mut msg = String::from("Some tests failed in compiletest");
+            write!(msg, " suite={}", config.suite).unwrap();
+
+            if let Some(compare_mode) = config.compare_mode.as_ref() {
+                write!(msg, " compare_mode={}", compare_mode).unwrap();
+            }
+
+            if let Some(pass_mode) = config.force_pass_mode.as_ref() {
+                write!(msg, " pass_mode={}", pass_mode).unwrap();
+            }
+
+            write!(msg, " mode={}", config.mode).unwrap();
+            write!(msg, " host={}", config.host).unwrap();
+            write!(msg, " target={}", config.target).unwrap();
+
+            println!("{msg}");
 
             std::process::exit(1);
         }
@@ -491,130 +620,77 @@ pub fn run_tests(config: Arc<Config>) {
     }
 }
 
-fn configure_cdb(config: &Config) -> Option<Arc<Config>> {
-    config.cdb.as_ref()?;
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.clone() }))
-}
-
-fn configure_gdb(config: &Config) -> Option<Arc<Config>> {
-    config.gdb_version?;
-
-    if config.matches_env("msvc") {
-        return None;
-    }
-
-    if config.remote_test_client.is_some() && !config.target.contains("android") {
-        println!(
-            "WARNING: debuginfo tests are not available when \
-             testing with remote"
-        );
-        return None;
-    }
-
-    if config.target.contains("android") {
-        println!(
-            "{} debug-info test uses tcp 5039 port.\
-             please reserve it",
-            config.target
-        );
-
-        // android debug-info test uses remote debugger so, we test 1 thread
-        // at once as they're all sharing the same TCP port to communicate
-        // over.
-        //
-        // we should figure out how to lift this restriction! (run them all
-        // on different ports allocated dynamically).
-        env::set_var("RUST_TEST_THREADS", "1");
-    }
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.clone() }))
-}
-
-fn configure_lldb(config: &Config) -> Option<Arc<Config>> {
-    config.lldb_python_dir.as_ref()?;
-
-    if let Some(350) = config.lldb_version {
-        println!(
-            "WARNING: The used version of LLDB (350) has a \
-             known issue that breaks debuginfo tests. See \
-             issue #32520 for more information. Skipping all \
-             LLDB-based tests!",
-        );
-        return None;
-    }
-
-    Some(Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.clone() }))
-}
-
-pub fn test_opts(config: &Config) -> test::TestOpts {
-    if env::var("RUST_TEST_NOCAPTURE").is_ok() {
-        eprintln!(
-            "WARNING: RUST_TEST_NOCAPTURE is no longer used. \
-                   Use the `--nocapture` flag instead."
-        );
-    }
-
-    test::TestOpts {
-        exclude_should_panic: false,
-        filters: config.filters.clone(),
-        filter_exact: config.filter_exact,
-        run_ignored: if config.run_ignored { test::RunIgnored::Yes } else { test::RunIgnored::No },
-        format: config.format,
-        logfile: config.logfile.clone(),
-        run_tests: true,
-        bench_benchmarks: true,
-        nocapture: config.nocapture,
-        color: config.color,
-        shuffle: false,
-        shuffle_seed: None,
-        test_threads: None,
-        skip: config.skip.clone(),
-        list: false,
-        options: test::Options::new(),
-        time_options: None,
-        force_run_in_process: false,
-        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
-    }
-}
-
-pub fn make_tests(
+/// Read-only context data used during test collection.
+struct TestCollectorCx {
     config: Arc<Config>,
-    tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut HashSet<PathBuf>,
-) {
-    debug!("making tests from {:?}", config.src_base.display());
-    let inputs = common_inputs_stamp(&config);
-    let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
-        panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
-    });
+    cache: HeadersCache,
+    common_inputs_stamp: Stamp,
+    modified_tests: Vec<Utf8PathBuf>,
+}
 
+/// Mutable state used during test collection.
+struct TestCollector {
+    tests: Vec<CollectedTest>,
+    found_path_stems: HashSet<Utf8PathBuf>,
+    poisoned: bool,
+}
+
+impl TestCollector {
+    fn new() -> Self {
+        TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false }
+    }
+
+    fn merge(&mut self, mut other: Self) {
+        self.tests.append(&mut other.tests);
+        self.found_path_stems.extend(other.found_path_stems);
+        self.poisoned |= other.poisoned;
+    }
+}
+
+/// Creates test structures for every test/revision in the test suite directory.
+///
+/// This always inspects _all_ test files in the suite (e.g. all 17k+ ui tests),
+/// regardless of whether any filters/tests were specified on the command-line,
+/// because filtering is handled later by libtest.
+pub(crate) fn collect_and_make_tests(config: Arc<Config>) -> Vec<CollectedTest> {
+    debug!("making tests from {}", config.src_test_suite_root);
+    let common_inputs_stamp = common_inputs_stamp(&config);
+    let modified_tests =
+        modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
+            panic!(
+                "modified_tests got error from dir: {}, error: {}",
+                config.src_test_suite_root, err
+            )
+        });
     let cache = HeadersCache::load(&config);
-    let mut poisoned = false;
-    collect_tests_from_dir(
-        config.clone(),
-        &cache,
-        &config.src_base,
-        &PathBuf::new(),
-        &inputs,
-        tests,
-        found_paths,
-        &modified_tests,
-        &mut poisoned,
-    )
-    .unwrap_or_else(|reason| {
-        panic!("Could not read tests from {}: {reason}", config.src_base.display())
-    });
+
+    let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
+    let collector = collect_tests_from_dir(&cx, &cx.config.src_test_suite_root, Utf8Path::new(""))
+        .unwrap_or_else(|reason| {
+            panic!("Could not read tests from {}: {reason}", cx.config.src_test_suite_root)
+        });
+
+    let TestCollector { tests, found_path_stems, poisoned } = collector;
 
     if poisoned {
         eprintln!();
         panic!("there are errors in tests");
     }
+
+    check_for_overlapping_test_paths(&found_path_stems);
+
+    tests
 }
 
-/// Returns a stamp constructed from input files common to all test cases.
+/// Returns the most recent last-modified timestamp from among the input files
+/// that are considered relevant to all tests (e.g. the compiler, std, and
+/// compiletest itself).
+///
+/// (Some of these inputs aren't actually relevant to _all_ tests, but they are
+/// common to some subset of tests, and are hopefully unlikely to be modified
+/// while working on other tests.)
 fn common_inputs_stamp(config: &Config) -> Stamp {
-    let rust_src_dir = config.find_rust_src_root().expect("Could not find Rust source root");
+    let src_root = &config.src_root;
 
     let mut stamp = Stamp::from_path(&config.rustc_path);
 
@@ -629,43 +705,60 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
-        let path = rust_src_dir.join(file);
+        let path = src_root.join(file);
         stamp.add_path(&path);
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/etc/natvis"));
+    stamp.add_dir(&src_root.join("src/etc/natvis"));
 
     stamp.add_dir(&config.run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         stamp.add_path(&rustdoc_path);
-        stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
+        stamp.add_path(&src_root.join("src/etc/htmldocck.py"));
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
+    // Re-run coverage tests if the `coverage-dump` tool was modified,
+    // because its output format might have changed.
+    if let Some(coverage_dump_path) = &config.coverage_dump_path {
+        stamp.add_path(coverage_dump_path)
+    }
+
+    stamp.add_dir(&src_root.join("src/tools/run-make-support"));
 
     // Compiletest itself.
-    stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));
+    stamp.add_dir(&src_root.join("src/tools/compiletest"));
 
     stamp
 }
 
-fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
+/// Returns a list of modified/untracked test files that should be run when
+/// the `--only-modified` flag is in use.
+///
+/// (Might be inaccurate in some cases.)
+fn modified_tests(config: &Config, dir: &Utf8Path) -> Result<Vec<Utf8PathBuf>, String> {
+    // If `--only-modified` wasn't passed, the list of modified tests won't be
+    // used for anything, so avoid some work and just return an empty list.
     if !config.only_modified {
         return Ok(vec![]);
     }
-    let files =
-        get_git_modified_files(&config.git_config(), Some(dir), &vec!["rs", "stderr", "fixed"])?
-            .unwrap_or(vec![]);
+
+    let files = get_git_modified_files(
+        &config.git_config(),
+        Some(dir.as_std_path()),
+        &vec!["rs", "stderr", "fixed"],
+    )?;
     // Add new test cases to the list, it will be convenient in daily development.
-    let untracked_files = get_git_untracked_files(&config.git_config(), None)?.unwrap_or(vec![]);
+    let untracked_files = get_git_untracked_files(Some(dir.as_std_path()))?.unwrap_or(vec![]);
 
     let all_paths = [&files[..], &untracked_files[..]].concat();
     let full_paths = {
-        let mut full_paths: Vec<PathBuf> = all_paths
+        let mut full_paths: Vec<Utf8PathBuf> = all_paths
             .into_iter()
-            .map(|f| PathBuf::from(f).with_extension("").with_extension("rs"))
-            .filter_map(|f| if Path::new(&f).exists() { f.canonicalize().ok() } else { None })
+            .map(|f| Utf8PathBuf::from(f).with_extension("").with_extension("rs"))
+            .filter_map(
+                |f| if Utf8Path::new(&f).exists() { f.canonicalize_utf8().ok() } else { None },
+            )
             .collect();
         full_paths.dedup();
         full_paths.sort_unstable();
@@ -674,36 +767,29 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(full_paths)
 }
 
+/// Recursively scans a directory to find test files and create test structures
+/// that will be handed over to libtest.
 fn collect_tests_from_dir(
-    config: Arc<Config>,
-    cache: &HeadersCache,
-    dir: &Path,
-    relative_dir_path: &Path,
-    inputs: &Stamp,
-    tests: &mut Vec<test::TestDescAndFn>,
-    found_paths: &mut HashSet<PathBuf>,
-    modified_tests: &Vec<PathBuf>,
-    poisoned: &mut bool,
-) -> io::Result<()> {
+    cx: &TestCollectorCx,
+    dir: &Utf8Path,
+    relative_dir_path: &Utf8Path,
+) -> io::Result<TestCollector> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
     if dir.join("compiletest-ignore-dir").exists() {
-        return Ok(());
+        return Ok(TestCollector::new());
     }
 
-    if config.mode == Mode::RunMake {
-        if dir.join("Makefile").exists() && dir.join("rmake.rs").exists() {
-            return Err(io::Error::other(
-                "run-make tests cannot have both `Makefile` and `rmake.rs`",
-            ));
-        }
-
-        if dir.join("Makefile").exists() || dir.join("rmake.rs").exists() {
+    // For run-make tests, a "test file" is actually a directory that contains an `rmake.rs`.
+    if cx.config.mode == Mode::RunMake {
+        let mut collector = TestCollector::new();
+        if dir.join("rmake.rs").exists() {
             let paths = TestPaths {
                 file: dir.to_path_buf(),
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
             };
-            tests.extend(make_test(config, cache, &paths, inputs, poisoned));
-            return Ok(());
+            make_test(cx, &mut collector, &paths);
+            // This directory is a test, so don't try to find other tests inside it.
+            return Ok(collector);
         }
     }
 
@@ -713,52 +799,58 @@ fn collect_tests_from_dir(
     // sequential loop because otherwise, if we do it in the
     // tests themselves, they race for the privilege of
     // creating the directories and sometimes fail randomly.
-    let build_dir = output_relative_path(&config, relative_dir_path);
+    let build_dir = output_relative_path(&cx.config, relative_dir_path);
     fs::create_dir_all(&build_dir).unwrap();
 
     // Add each `.rs` file as a test, and recurse further on any
-    // subdirectories we find, except for `aux` directories.
+    // subdirectories we find, except for `auxiliary` directories.
     // FIXME: this walks full tests tree, even if we have something to ignore
     // use walkdir/ignore like in tidy?
-    for file in fs::read_dir(dir)? {
-        let file = file?;
-        let file_path = file.path();
-        let file_name = file.file_name();
-        if is_test(&file_name) && (!config.only_modified || modified_tests.contains(&file_path)) {
-            debug!("found test file: {:?}", file_path.display());
-            let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
-            found_paths.insert(rel_test_path);
-            let paths =
-                TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
+    fs::read_dir(dir.as_std_path())?
+        .par_bridge()
+        .map(|file| {
+            let mut collector = TestCollector::new();
+            let file = file?;
+            let file_path = Utf8PathBuf::try_from(file.path()).unwrap();
+            let file_name = file_path.file_name().unwrap();
 
-            tests.extend(make_test(config.clone(), cache, &paths, inputs, poisoned))
-        } else if file_path.is_dir() {
-            let relative_file_path = relative_dir_path.join(file.file_name());
-            if &file_name != "auxiliary" {
-                debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(
-                    config.clone(),
-                    cache,
-                    &file_path,
-                    &relative_file_path,
-                    inputs,
-                    tests,
-                    found_paths,
-                    modified_tests,
-                    poisoned,
-                )?;
+            if is_test(file_name)
+                && (!cx.config.only_modified || cx.modified_tests.contains(&file_path))
+            {
+                // We found a test file, so create the corresponding libtest structures.
+                debug!(%file_path, "found test file");
+
+                // Record the stem of the test file, to check for overlaps later.
+                let rel_test_path = relative_dir_path.join(file_path.file_stem().unwrap());
+                collector.found_path_stems.insert(rel_test_path);
+
+                let paths =
+                    TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
+                make_test(cx, &mut collector, &paths);
+            } else if file_path.is_dir() {
+                // Recurse to find more tests in a subdirectory.
+                let relative_file_path = relative_dir_path.join(file_name);
+                if file_name != "auxiliary" {
+                    debug!(%file_path, "found directory");
+                    collector.merge(collect_tests_from_dir(cx, &file_path, &relative_file_path)?);
+                }
+            } else {
+                debug!(%file_path, "found other file/directory");
             }
-        } else {
-            debug!("found other file/directory: {:?}", file_path.display());
-        }
-    }
-    Ok(())
+            Ok(collector)
+        })
+        .reduce(
+            || Ok(TestCollector::new()),
+            |a, b| {
+                let mut a = a?;
+                a.merge(b?);
+                Ok(a)
+            },
+        )
 }
 
 /// Returns true if `file_name` looks like a proper test file name.
-pub fn is_test(file_name: &OsString) -> bool {
-    let file_name = file_name.to_str().unwrap();
-
+pub fn is_test(file_name: &str) -> bool {
     if !file_name.ends_with(".rs") {
         return false;
     }
@@ -768,69 +860,84 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-fn make_test(
-    config: Arc<Config>,
-    cache: &HeadersCache,
-    testpaths: &TestPaths,
-    inputs: &Stamp,
-    poisoned: &mut bool,
-) -> Vec<test::TestDescAndFn> {
-    let test_path = if config.mode == Mode::RunMake {
-        if testpaths.file.join("rmake.rs").exists() && testpaths.file.join("Makefile").exists() {
-            panic!("run-make tests cannot have both `rmake.rs` and `Makefile`");
-        }
-
-        if testpaths.file.join("rmake.rs").exists() {
-            // Parse directives in rmake.rs.
-            testpaths.file.join("rmake.rs")
-        } else {
-            // Parse directives in the Makefile.
-            testpaths.file.join("Makefile")
-        }
+/// For a single test file, creates one or more test structures (one per revision) that can be
+/// handed over to libtest to run, possibly in parallel.
+fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &TestPaths) {
+    // For run-make tests, each "test file" is actually a _directory_ containing an `rmake.rs`. But
+    // for the purposes of directive parsing, we want to look at that recipe file, not the directory
+    // itself.
+    let test_path = if cx.config.mode == Mode::RunMake {
+        testpaths.file.join("rmake.rs")
     } else {
-        PathBuf::from(&testpaths.file)
+        testpaths.file.clone()
     };
-    let early_props = EarlyProps::from_file(&config, &test_path);
 
-    // Incremental tests are special, they inherently cannot be run in parallel.
-    // `runtest::run` will be responsible for iterating over revisions.
-    let revisions = if early_props.revisions.is_empty() || config.mode == Mode::Incremental {
+    // Scan the test file to discover its revisions, if any.
+    let early_props = EarlyProps::from_file(&cx.config, &test_path);
+
+    // Normally we create one libtest structure per revision, with two exceptions:
+    // - If a test doesn't use revisions, create a dummy revision (None) so that
+    //   the test can still run.
+    // - Incremental tests inherently can't run their revisions in parallel, so
+    //   we treat them like non-revisioned tests here. Incremental revisions are
+    //   handled internally by `runtest::run` instead.
+    let revisions = if early_props.revisions.is_empty() || cx.config.mode == Mode::Incremental {
         vec![None]
     } else {
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
     };
 
-    revisions
-        .into_iter()
-        .map(|revision| {
-            let src_file =
-                std::fs::File::open(&test_path).expect("open test file to parse ignores");
-            let test_name = crate::make_test_name(&config, testpaths, revision);
-            let mut desc = make_test_description(
-                &config, cache, test_name, &test_path, src_file, revision, poisoned,
-            );
-            // Ignore tests that already run and are up to date with respect to inputs.
-            if !config.force_rerun {
-                desc.ignore |= is_up_to_date(&config, testpaths, &early_props, revision, inputs);
-            }
-            test::TestDescAndFn {
-                desc,
-                testfn: make_test_closure(config.clone(), testpaths, revision),
-            }
-        })
-        .collect()
+    // For each revision (or the sole dummy revision), create and append a
+    // `CollectedTest` that can be handed over to the test executor.
+    collector.tests.extend(revisions.into_iter().map(|revision| {
+        // Create a test name and description to hand over to libtest.
+        let src_file = fs::File::open(&test_path).expect("open test file to parse ignores");
+        let test_name = make_test_name(&cx.config, testpaths, revision);
+        // Create a libtest description for the test/revision.
+        // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
+        // because they need to set the libtest ignored flag.
+        let mut desc = make_test_description(
+            &cx.config,
+            &cx.cache,
+            test_name,
+            &test_path,
+            src_file,
+            revision,
+            &mut collector.poisoned,
+        );
+
+        // If a test's inputs haven't changed since the last time it ran,
+        // mark it as ignored so that libtest will skip it.
+        if !cx.config.force_rerun && is_up_to_date(cx, testpaths, &early_props, revision) {
+            desc.ignore = true;
+            // Keep this in sync with the "up-to-date" message detected by bootstrap.
+            desc.ignore_message = Some("up-to-date".into());
+        }
+
+        let config = Arc::clone(&cx.config);
+        let testpaths = testpaths.clone();
+        let revision = revision.map(str::to_owned);
+
+        CollectedTest { desc, config, testpaths, revision }
+    }));
 }
 
-fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
+/// The path of the `stamp` file that gets created or updated whenever a
+/// particular test completes successfully.
+fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Utf8PathBuf {
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+/// Returns a list of files that, if modified, would cause this test to no
+/// longer be up-to-date.
+///
+/// (Might be inaccurate in some cases.)
 fn files_related_to_test(
     config: &Config,
     testpaths: &TestPaths,
     props: &EarlyProps,
     revision: Option<&str>,
-) -> Vec<PathBuf> {
+) -> Vec<Utf8PathBuf> {
     let mut related = vec![];
 
     if testpaths.file.is_dir() {
@@ -838,14 +945,15 @@ fn files_related_to_test(
         for entry in WalkDir::new(&testpaths.file) {
             let path = entry.unwrap().into_path();
             if path.is_file() {
-                related.push(path);
+                related.push(Utf8PathBuf::try_from(path).unwrap());
             }
         }
     } else {
         related.push(testpaths.file.clone());
     }
 
-    for aux in &props.aux {
+    for aux in props.aux.all_aux_path_strings() {
+        // FIXME(Zalathar): Perform all `auxiliary` path resolution in one place.
         let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
         related.push(path);
     }
@@ -856,57 +964,78 @@ fn files_related_to_test(
         related.push(path);
     }
 
+    // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
+    related.push(config.src_root.join("tests").join("auxiliary").join("minicore.rs"));
+
     related
 }
 
+/// Checks whether a particular test/revision is "up-to-date", meaning that no
+/// relevant files/settings have changed since the last time the test succeeded.
+///
+/// (This is not very reliable in some circumstances, so the `--force-rerun`
+/// flag can be used to ignore up-to-date checking and always re-run tests.)
 fn is_up_to_date(
-    config: &Config,
+    cx: &TestCollectorCx,
     testpaths: &TestPaths,
     props: &EarlyProps,
     revision: Option<&str>,
-    inputs: &Stamp,
 ) -> bool {
-    let stamp_name = stamp(config, testpaths, revision);
-    // Check hash.
-    let contents = match fs::read_to_string(&stamp_name) {
+    let stamp_file_path = stamp_file_path(&cx.config, testpaths, revision);
+    // Check the config hash inside the stamp file.
+    let contents = match fs::read_to_string(&stamp_file_path) {
         Ok(f) => f,
         Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
+        // The test hasn't succeeded yet, so it is not up-to-date.
         Err(_) => return false,
     };
-    let expected_hash = runtest::compute_stamp_hash(config);
+    let expected_hash = runtest::compute_stamp_hash(&cx.config);
     if contents != expected_hash {
+        // Some part of compiletest configuration has changed since the test
+        // last succeeded, so it is not up-to-date.
         return false;
     }
 
-    // Check timestamps.
-    let mut inputs = inputs.clone();
-    for path in files_related_to_test(config, testpaths, props, revision) {
-        inputs.add_path(&path);
+    // Check the timestamp of the stamp file against the last modified time
+    // of all files known to be relevant to the test.
+    let mut inputs_stamp = cx.common_inputs_stamp.clone();
+    for path in files_related_to_test(&cx.config, testpaths, props, revision) {
+        inputs_stamp.add_path(&path);
     }
 
-    inputs < Stamp::from_path(&stamp_name)
+    // If no relevant files have been modified since the stamp file was last
+    // written, the test is up-to-date.
+    inputs_stamp < Stamp::from_path(&stamp_file_path)
 }
 
+/// The maximum of a set of file-modified timestamps.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Stamp {
     time: SystemTime,
 }
 
 impl Stamp {
-    fn from_path(path: &Path) -> Self {
+    /// Creates a timestamp holding the last-modified time of the specified file.
+    fn from_path(path: &Utf8Path) -> Self {
         let mut stamp = Stamp { time: SystemTime::UNIX_EPOCH };
         stamp.add_path(path);
         stamp
     }
 
-    fn add_path(&mut self, path: &Path) {
-        let modified = fs::metadata(path)
+    /// Updates this timestamp to the last-modified time of the specified file,
+    /// if it is later than the currently-stored timestamp.
+    fn add_path(&mut self, path: &Utf8Path) {
+        let modified = fs::metadata(path.as_std_path())
             .and_then(|metadata| metadata.modified())
             .unwrap_or(SystemTime::UNIX_EPOCH);
         self.time = self.time.max(modified);
     }
 
-    fn add_dir(&mut self, path: &Path) {
+    /// Updates this timestamp to the most recent last-modified time of all files
+    /// recursively contained in the given directory, if it is later than the
+    /// currently-stored timestamp.
+    fn add_dir(&mut self, path: &Utf8Path) {
+        let path = path.as_std_path();
         for entry in WalkDir::new(path) {
             let entry = entry.unwrap();
             if entry.file_type().is_file() {
@@ -921,15 +1050,10 @@ impl Stamp {
     }
 }
 
-fn make_test_name(
-    config: &Config,
-    testpaths: &TestPaths,
-    revision: Option<&str>,
-) -> test::TestName {
-    // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/tests/ui`
-    let root_directory = config.src_base.parent().unwrap().parent().unwrap();
-    let path = testpaths.file.strip_prefix(root_directory).unwrap();
+/// Creates a name for this test/revision that can be handed over to libtest.
+fn make_test_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> String {
+    // Print the name of the file, relative to the sources root.
+    let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),
         None => String::new(),
@@ -939,247 +1063,38 @@ fn make_test_name(
         None => String::new(),
     };
 
-    test::DynTestName(format!(
+    format!(
         "[{}{}{}] {}{}",
         config.mode,
         debugger,
         mode_suffix,
-        path.display(),
+        path,
         revision.map_or("".to_string(), |rev| format!("#{}", rev))
-    ))
-}
-
-fn make_test_closure(
-    config: Arc<Config>,
-    testpaths: &TestPaths,
-    revision: Option<&str>,
-) -> test::TestFn {
-    let config = config.clone();
-    let testpaths = testpaths.clone();
-    let revision = revision.map(str::to_owned);
-    test::DynTestFn(Box::new(move || {
-        runtest::run(config, &testpaths, revision.as_deref());
-        Ok(())
-    }))
-}
-
-/// Returns `true` if the given target is an Android target for the
-/// purposes of GDB testing.
-fn is_android_gdb_target(target: &str) -> bool {
-    matches!(
-        &target[..],
-        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android"
     )
 }
 
-/// Returns `true` if the given target is a MSVC target for the purposes of CDB testing.
-fn is_pc_windows_msvc_target(target: &str) -> bool {
-    target.ends_with("-pc-windows-msvc")
-}
-
-fn find_cdb(target: &str) -> Option<OsString> {
-    if !(cfg!(windows) && is_pc_windows_msvc_target(target)) {
-        return None;
-    }
-
-    let pf86 = env::var_os("ProgramFiles(x86)").or_else(|| env::var_os("ProgramFiles"))?;
-    let cdb_arch = if cfg!(target_arch = "x86") {
-        "x86"
-    } else if cfg!(target_arch = "x86_64") {
-        "x64"
-    } else if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else if cfg!(target_arch = "arm") {
-        "arm"
-    } else {
-        return None; // No compatible CDB.exe in the Windows 10 SDK
-    };
-
-    let mut path = PathBuf::new();
-    path.push(pf86);
-    path.push(r"Windows Kits\10\Debuggers"); // We could check 8.1 etc. too?
-    path.push(cdb_arch);
-    path.push(r"cdb.exe");
-
-    if !path.exists() {
-        return None;
-    }
-
-    Some(path.into_os_string())
-}
-
-/// Returns Path to CDB
-fn analyze_cdb(cdb: Option<String>, target: &str) -> (Option<OsString>, Option<[u16; 4]>) {
-    let cdb = cdb.map(OsString::from).or_else(|| find_cdb(target));
-
-    let mut version = None;
-    if let Some(cdb) = cdb.as_ref() {
-        if let Ok(output) = Command::new(cdb).arg("/version").output() {
-            if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-                version = extract_cdb_version(&first_line);
-            }
-        }
-    }
-
-    (cdb, version)
-}
-
-fn extract_cdb_version(full_version_line: &str) -> Option<[u16; 4]> {
-    // Example full_version_line: "cdb version 10.0.18362.1"
-    let version = full_version_line.rsplit(' ').next()?;
-    let mut components = version.split('.');
-    let major: u16 = components.next().unwrap().parse().unwrap();
-    let minor: u16 = components.next().unwrap().parse().unwrap();
-    let patch: u16 = components.next().unwrap_or("0").parse().unwrap();
-    let build: u16 = components.next().unwrap_or("0").parse().unwrap();
-    Some([major, minor, patch, build])
-}
-
-/// Returns (Path to GDB, GDB Version, GDB has Rust Support)
-fn analyze_gdb(
-    gdb: Option<String>,
-    target: &str,
-    android_cross_path: &PathBuf,
-) -> (Option<String>, Option<u32>, bool) {
-    #[cfg(not(windows))]
-    const GDB_FALLBACK: &str = "gdb";
-    #[cfg(windows)]
-    const GDB_FALLBACK: &str = "gdb.exe";
-
-    const MIN_GDB_WITH_RUST: u32 = 7011010;
-
-    let fallback_gdb = || {
-        if is_android_gdb_target(target) {
-            let mut gdb_path = match android_cross_path.to_str() {
-                Some(x) => x.to_owned(),
-                None => panic!("cannot find android cross path"),
-            };
-            gdb_path.push_str("/bin/gdb");
-            gdb_path
-        } else {
-            GDB_FALLBACK.to_owned()
-        }
-    };
-
-    let gdb = match gdb {
-        None => fallback_gdb(),
-        Some(ref s) if s.is_empty() => fallback_gdb(), // may be empty if configure found no gdb
-        Some(ref s) => s.to_owned(),
-    };
-
-    let mut version_line = None;
-    if let Ok(output) = Command::new(&gdb).arg("--version").output() {
-        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
-            version_line = Some(first_line.to_string());
-        }
-    }
-
-    let version = match version_line {
-        Some(line) => extract_gdb_version(&line),
-        None => return (None, None, false),
-    };
-
-    let gdb_native_rust = version.map_or(false, |v| v >= MIN_GDB_WITH_RUST);
-
-    (Some(gdb), version, gdb_native_rust)
-}
-
-fn extract_gdb_version(full_version_line: &str) -> Option<u32> {
-    let full_version_line = full_version_line.trim();
-
-    // GDB versions look like this: "major.minor.patch?.yyyymmdd?", with both
-    // of the ? sections being optional
-
-    // We will parse up to 3 digits for each component, ignoring the date
-
-    // We skip text in parentheses.  This avoids accidentally parsing
-    // the openSUSE version, which looks like:
-    //  GNU gdb (GDB; openSUSE Leap 15.0) 8.1
-    // This particular form is documented in the GNU coding standards:
-    // https://www.gnu.org/prep/standards/html_node/_002d_002dversion.html#g_t_002d_002dversion
-
-    let unbracketed_part = full_version_line.split('[').next().unwrap();
-    let mut splits = unbracketed_part.trim_end().rsplit(' ');
-    let version_string = splits.next().unwrap();
-
-    let mut splits = version_string.split('.');
-    let major = splits.next().unwrap();
-    let minor = splits.next().unwrap();
-    let patch = splits.next();
-
-    let major: u32 = major.parse().unwrap();
-    let (minor, patch): (u32, u32) = match minor.find(not_a_digit) {
-        None => {
-            let minor = minor.parse().unwrap();
-            let patch: u32 = match patch {
-                Some(patch) => match patch.find(not_a_digit) {
-                    None => patch.parse().unwrap(),
-                    Some(idx) if idx > 3 => 0,
-                    Some(idx) => patch[..idx].parse().unwrap(),
-                },
-                None => 0,
-            };
-            (minor, patch)
-        }
-        // There is no patch version after minor-date (e.g. "4-2012").
-        Some(idx) => {
-            let minor = minor[..idx].parse().unwrap();
-            (minor, 0)
-        }
-    };
-
-    Some(((major * 1000) + minor) * 1000 + patch)
-}
-
-/// Returns (LLDB version, LLDB is rust-enabled)
-fn extract_lldb_version(full_version_line: &str) -> Option<(u32, bool)> {
-    // Extract the major LLDB version from the given version string.
-    // LLDB version strings are different for Apple and non-Apple platforms.
-    // The Apple variant looks like this:
-    //
-    // LLDB-179.5 (older versions)
-    // lldb-300.2.51 (new versions)
-    //
-    // We are only interested in the major version number, so this function
-    // will return `Some(179)` and `Some(300)` respectively.
-    //
-    // Upstream versions look like:
-    // lldb version 6.0.1
-    //
-    // There doesn't seem to be a way to correlate the Apple version
-    // with the upstream version, and since the tests were originally
-    // written against Apple versions, we make a fake Apple version by
-    // multiplying the first number by 100.  This is a hack, but
-    // normally fine because the only non-Apple version we test is
-    // rust-enabled.
-
-    let full_version_line = full_version_line.trim();
-
-    if let Some(apple_ver) =
-        full_version_line.strip_prefix("LLDB-").or_else(|| full_version_line.strip_prefix("lldb-"))
-    {
-        if let Some(idx) = apple_ver.find(not_a_digit) {
-            let version: u32 = apple_ver[..idx].parse().unwrap();
-            return Some((version, full_version_line.contains("rust-enabled")));
-        }
-    } else if let Some(lldb_ver) = full_version_line.strip_prefix("lldb version ") {
-        if let Some(idx) = lldb_ver.find(not_a_digit) {
-            let version: u32 = lldb_ver[..idx].parse().ok()?;
-            return Some((version * 100, full_version_line.contains("rust-enabled")));
-        }
-    }
-    None
-}
-
-fn not_a_digit(c: char) -> bool {
-    !c.is_ascii_digit()
-}
-
-fn check_overlapping_tests(found_paths: &HashSet<PathBuf>) {
+/// Checks that test discovery didn't find any tests whose name stem is a prefix
+/// of some other tests's name.
+///
+/// For example, suppose the test suite contains these two test files:
+/// - `tests/rustdoc/primitive.rs`
+/// - `tests/rustdoc/primitive/no_std.rs`
+///
+/// The test runner might put the output from those tests in these directories:
+/// - `$build/test/rustdoc/primitive/`
+/// - `$build/test/rustdoc/primitive/no_std/`
+///
+/// Because one output path is a subdirectory of the other, the two tests might
+/// interfere with each other in unwanted ways, especially if the test runner
+/// decides to delete test output directories to clean them between runs.
+/// To avoid problems, we forbid test names from overlapping in this way.
+///
+/// See <https://github.com/rust-lang/rust/pull/109509> for more context.
+fn check_for_overlapping_test_paths(found_path_stems: &HashSet<Utf8PathBuf>) {
     let mut collisions = Vec::new();
-    for path in found_paths {
+    for path in found_path_stems {
         for ancestor in path.ancestors().skip(1) {
-            if found_paths.contains(ancestor) {
+            if found_path_stems.contains(ancestor) {
                 collisions.push((path, ancestor));
             }
         }
@@ -1188,7 +1103,7 @@ fn check_overlapping_tests(found_paths: &HashSet<PathBuf>) {
         collisions.sort();
         let collisions: String = collisions
             .into_iter()
-            .map(|(path, check_parent)| format!("test {path:?} clashes with {check_parent:?}\n"))
+            .map(|(path, check_parent)| format!("test {path} clashes with {check_parent}\n"))
             .collect();
         panic!(
             "{collisions}\n\

@@ -2,6 +2,7 @@
 
 mod test_lifetime_param {
     pub type Ty<'a> = impl Sized;
+    #[define_opaque(Ty)]
     fn defining(a: &str) -> Ty<'_> {
         a
     }
@@ -17,6 +18,7 @@ where
 
 mod test_higher_kinded_lifetime_param {
     pub type Ty<'a> = impl Sized + 'a;
+    #[define_opaque(Ty)]
     fn defining(a: &str) -> Ty<'_> {
         a
     }
@@ -40,6 +42,7 @@ mod test_higher_kinded_lifetime_param2 {
 
 mod test_type_param {
     pub type Ty<A> = impl Sized;
+    #[define_opaque(Ty)]
     fn defining<A>(s: A) -> Ty<A> {
         s
     }
@@ -54,13 +57,13 @@ where
 }
 
 mod test_implied_from_fn_sig {
-    mod foo {
-        pub type Opaque<T: 'static> = impl Sized;
-        fn defining<T: 'static>() -> Opaque<T> {}
-    }
+    pub type Opaque<T: 'static> = impl Sized;
+    #[define_opaque(Opaque)]
+    fn defining<T: 'static>() -> Opaque<T> {}
+
     fn assert_static<T: 'static>() {}
 
-    fn test<T>(_: foo::Opaque<T>) {
+    fn test<T>(_: Opaque<T>) {
         assert_static::<T>();
     }
 }

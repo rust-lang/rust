@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_must_use)]
 //@ needs-threads
-//@ pretty-expanded FIXME #23616
 
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
@@ -20,9 +19,7 @@ pub fn main() {
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
     let (tx, rx) = channel();
-    let t = thread::spawn(move|| {
-        start(&tx, 10)
-    });
+    let t = thread::spawn(move || start(&tx, 10));
     rx.recv();
     t.join();
 }

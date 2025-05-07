@@ -1,4 +1,4 @@
-//@ignore-target-windows: No posix_memalign on Windows
+//@ignore-target: windows # No posix_memalign on Windows
 
 use std::ptr;
 
