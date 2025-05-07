@@ -649,6 +649,10 @@ impl llvm::CallConv {
         match conv {
             CanonAbi::C | CanonAbi::Rust => llvm::CCallConv,
             CanonAbi::RustCold => llvm::PreserveMost,
+            // Functions with this calling convention can only be called from assembly, but it is
+            // possible to declare an `extern "custom"` block, so the backend still needs a calling
+            // convention for declaring foreign functions.
+            CanonAbi::Custom => llvm::CCallConv,
             CanonAbi::GpuKernel => {
                 if arch == "amdgpu" {
                     llvm::AmdgpuKernel

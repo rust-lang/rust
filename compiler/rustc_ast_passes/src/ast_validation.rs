@@ -18,6 +18,7 @@
 
 use std::mem;
 use std::ops::{Deref, DerefMut};
+use std::str::FromStr;
 
 use itertools::{Either, Itertools};
 use rustc_abi::ExternAbi;
@@ -81,6 +82,7 @@ struct AstValidator<'a> {
 
     /// Used to ban explicit safety on foreign items when the extern block is not marked as unsafe.
     extern_mod_safety: Option<Safety>,
+    extern_mod_abi: Option<ExternAbi>,
 
     lint_node_id: NodeId,
 
@@ -121,10 +123,17 @@ impl<'a> AstValidator<'a> {
         self.outer_trait_or_trait_impl = old;
     }
 
-    fn with_in_extern_mod(&mut self, extern_mod_safety: Safety, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.extern_mod_safety, Some(extern_mod_safety));
+    fn with_in_extern_mod(
+        &mut self,
+        extern_mod_safety: Safety,
+        abi: Option<ExternAbi>,
+        f: impl FnOnce(&mut Self),
+    ) {
+        let old_safety = mem::replace(&mut self.extern_mod_safety, Some(extern_mod_safety));
+        let old_abi = mem::replace(&mut self.extern_mod_abi, abi);
         f(self);
-        self.extern_mod_safety = old;
+        self.extern_mod_safety = old_safety;
+        self.extern_mod_abi = old_abi;
     }
 
     fn with_tilde_const(
@@ -367,6 +376,65 @@ impl<'a> AstValidator<'a> {
             if param.is_self() {
                 self.dcx().emit_err(errors::FnParamForbiddenSelf { span: param.span });
             }
+        }
+    }
+
+    /// An `extern "custom"` function must be unsafe, and must not have any parameters or return
+    /// type.
+    fn check_custom_abi(&self, ctxt: FnCtxt, ident: &Ident, sig: &FnSig) {
+        let dcx = self.dcx();
+
+        // An `extern "custom"` function must be unsafe.
+        match sig.header.safety {
+            Safety::Unsafe(_) => { /* all good */ }
+            Safety::Safe(safe_span) => {
+                let safe_span =
+                    self.sess.psess.source_map().span_until_non_whitespace(safe_span.to(sig.span));
+                dcx.emit_err(errors::AbiCustomSafeForeignFunction { span: sig.span, safe_span });
+            }
+            Safety::Default => match ctxt {
+                FnCtxt::Foreign => { /* all good */ }
+                FnCtxt::Free | FnCtxt::Assoc(_) => {
+                    self.dcx().emit_err(errors::AbiCustomSafeFunction {
+                        span: sig.span,
+                        unsafe_span: sig.span.shrink_to_lo(),
+                    });
+                }
+            },
+        }
+
+        // An `extern "custom"` function cannot be `async` and/or `gen`.
+        if let Some(coroutine_kind) = sig.header.coroutine_kind {
+            let coroutine_kind_span = self
+                .sess
+                .psess
+                .source_map()
+                .span_until_non_whitespace(coroutine_kind.span().to(sig.span));
+
+            self.dcx().emit_err(errors::AbiCustomCoroutine {
+                span: sig.span,
+                coroutine_kind_span,
+                coroutine_kind_str: coroutine_kind.as_str(),
+            });
+        }
+
+        // An `extern "custom"` function must not have any parameters or return type.
+        let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
+        if let FnRetTy::Ty(ref ret_ty) = sig.decl.output {
+            spans.push(ret_ty.span);
+        }
+
+        if !spans.is_empty() {
+            let header_span = sig.header.span().unwrap_or(sig.span.shrink_to_lo());
+            let suggestion_span = header_span.shrink_to_hi().to(sig.decl.output.span());
+            let padding = if header_span.is_empty() { "" } else { " " };
+
+            self.dcx().emit_err(errors::AbiCustomInvalidSignature {
+                spans,
+                symbol: ident.name,
+                suggestion_span,
+                padding,
+            });
         }
     }
 
@@ -1005,7 +1073,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if abi.is_none() {
                     self.handle_missing_abi(*extern_span, item.id);
                 }
-                self.with_in_extern_mod(*safety, |this| {
+
+                let extern_abi = abi.and_then(|abi| ExternAbi::from_str(abi.symbol.as_str()).ok());
+                self.with_in_extern_mod(*safety, extern_abi, |this| {
                     visit::walk_item(this, item);
                 });
                 self.extern_mod_span = old_item;
@@ -1145,6 +1215,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_fn_bodyless(*ident, body.as_deref());
                 self.check_foreign_fn_headerless(sig.header);
                 self.check_foreign_item_ascii_only(*ident);
+                if self.extern_mod_abi == Some(ExternAbi::Custom) {
+                    self.check_custom_abi(FnCtxt::Foreign, ident, sig);
+                }
             }
             ForeignItemKind::TyAlias(box TyAlias {
                 defaultness,
@@ -1350,6 +1423,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         if let Some(&FnHeader { safety, .. }) = fk.header() {
             self.check_item_safety(span, safety);
+        }
+
+        if let FnKind::Fn(ctxt, _, fun) = fk
+            && let Extern::Explicit(str_lit, _) = fun.sig.header.ext
+            && let Ok(ExternAbi::Custom) = ExternAbi::from_str(str_lit.symbol.as_str())
+        {
+            self.check_custom_abi(ctxt, &fun.ident, &fun.sig);
         }
 
         self.check_c_variadic_type(fk);
@@ -1703,6 +1783,7 @@ pub fn check_crate(
         outer_impl_trait_span: None,
         disallow_tilde_const: Some(TildeConstReason::Item),
         extern_mod_safety: None,
+        extern_mod_abi: None,
         lint_node_id: CRATE_NODE_ID,
         is_sdylib_interface,
         lint_buffer: lints,
