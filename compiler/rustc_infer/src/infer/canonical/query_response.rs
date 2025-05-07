@@ -457,7 +457,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // Create result arguments: if we found a value for a
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
-        let mut var_values = Vec::new();
+        let mut var_values = Vec::with_capacity(query_response.variables.len());
         for (index, info) in query_response.variables.iter().enumerate() {
             let value = if info.universe() != ty::UniverseIndex::ROOT {
                 // A variable from inside a binder of the query. While ideally these shouldn't
