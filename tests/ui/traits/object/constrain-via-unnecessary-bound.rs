@@ -13,7 +13,7 @@ pub trait Trait {
 }
 
 impl Other for dyn Trait {}
-// `dyn Trait<Assoc = ()>` is a different "nominal type" than `dyn Traiat`.
+// `dyn Trait<Assoc = ()>` is a different "nominal type" than `dyn Trait`.
 impl Other for dyn Trait<Assoc = ()> {}
 //~^ WARN unnecessary associated type bound for dyn-incompatible associated type
 
