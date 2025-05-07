@@ -367,6 +367,28 @@ fn file_lock_blocking_async() {
 }
 
 #[test]
+#[cfg(windows)]
+fn file_try_lock_async() {
+    const FILE_FLAG_OVERLAPPED: u32 = 0x40000000;
+
+    let tmpdir = tmpdir();
+    let filename = &tmpdir.join("file_try_lock_async.txt");
+    let f1 = check!(File::create(filename));
+    let f2 =
+        check!(OpenOptions::new().custom_flags(FILE_FLAG_OVERLAPPED).write(true).open(filename));
+
+    // Check that shared locks block exclusive locks
+    check!(f1.lock_shared());
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    check!(f1.unlock());
+
+    // Check that exclusive locks block all locks
+    check!(f1.lock());
+    assert_matches!(f2.try_lock(), Err(TryLockError::WouldBlock));
+    assert_matches!(f2.try_lock_shared(), Err(TryLockError::WouldBlock));
+}
+
+#[test]
 fn file_test_io_seek_shakedown() {
     //                   01234567890123
     let initial_msg = "qwer-asdf-zxcv";
