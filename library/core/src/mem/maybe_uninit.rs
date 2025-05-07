@@ -278,9 +278,13 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// may not be preserved in `MaybeUninit<U>`, and so `transmute(u)` may produce a `T` with
 /// uninitialized bytes in these positions. This is an active area of discussion, and this code
 /// may become sound in the future.
+
+/// If byte offsets exists at which `T`'s representation does not permit uninitialized bytes but
+/// `U`'s representation does (e.g. due to padding), then the bytes in `T` at these offsets may
+/// not be preserved in `u`, and so `transmute(u)` may produce a `T` with uninitialized bytes at
+/// these offsets. This is an active area of discussion, and this code may become sound in the future.
 ///
-/// Note that, so long as every byte position which is initialized in `T` is also initialized
-/// in `U`, then the preceding `identity` example *is* sound.
+/// Note that, so long as no such byte offsets exist, then the preceding `identity` example *is* sound.
 ///
 /// # Provenance
 ///
