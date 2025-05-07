@@ -259,6 +259,8 @@ declare_features! (
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120)),
+    // Allows using the `kl` and `widekl` target features and the associated intrinsics
+    (accepted, keylocker_x86, "CURRENT_RUSTC_VERSION", Some(134813)),
     /// Allows `'a: { break 'a; }`.
     (accepted, label_break_value, "1.65.0", Some(48594)),
     /// Allows `let...else` statements.
