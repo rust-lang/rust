@@ -5,7 +5,9 @@ LL |         42;
    |           - help: remove this semicolon
 ...
 LL |     println!("{}", x);
-   |                    ^ `()` cannot be formatted with the default formatter
+   |               --   ^ `()` cannot be formatted with the default formatter
+   |               |
+   |               required by a bound introduced by this call
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
@@ -17,7 +19,9 @@ LL |     let y = {};
    |             -- this empty block is missing a tail expression
 ...
 LL |     println!("{}", y);
-   |                    ^ `()` cannot be formatted with the default formatter
+   |               --   ^ `()` cannot be formatted with the default formatter
+   |               |
+   |               required by a bound introduced by this call
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
@@ -29,7 +33,9 @@ LL |         "hi";
    |             - help: remove this semicolon
 ...
 LL |     println!("{}", z);
-   |                    ^ `()` cannot be formatted with the default formatter
+   |               --   ^ `()` cannot be formatted with the default formatter
+   |               |
+   |               required by a bound introduced by this call
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
@@ -43,8 +49,10 @@ LL | |         S;
 LL | |     };
    | |_____- this block is missing a tail expression
 ...
-LL |       println!("{}", s);
-   |                      ^ `()` cannot be formatted with the default formatter
+LL |     println!("{}", s);
+   |               --   ^ `()` cannot be formatted with the default formatter
+   |               |
+   |               required by a bound introduced by this call
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead

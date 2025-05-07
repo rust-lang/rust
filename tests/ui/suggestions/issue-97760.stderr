@@ -1,5 +1,5 @@
 error[E0277]: `<impl IntoIterator as IntoIterator>::Item` doesn't implement `std::fmt::Display`
-  --> $DIR/issue-97760.rs:4:19
+  --> $DIR/issue-97760.rs:4:20
    |
 LL |         println!("{x}");
    |                   ^^^ `<impl IntoIterator as IntoIterator>::Item` cannot be formatted with the default formatter
