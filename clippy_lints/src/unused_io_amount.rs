@@ -226,7 +226,7 @@ fn is_unreachable_or_panic(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     if is_panic(cx, macro_call.def_id) {
         return !cx.tcx.hir_is_inside_const_context(expr.hir_id);
     }
-    matches!(cx.tcx.item_name(macro_call.def_id).as_str(), "unreachable")
+    cx.tcx.is_diagnostic_item(sym::unreachable_macro, macro_call.def_id)
 }
 
 fn unpack_call_chain<'a>(mut expr: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {

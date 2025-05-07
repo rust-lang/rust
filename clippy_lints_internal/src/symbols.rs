@@ -4,7 +4,7 @@ use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, Lit, Node, Pat, PatExprKind, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_lint_defs::declare_tool_lint;
 use rustc_middle::mir::ConstValue;
@@ -65,6 +65,39 @@ pub struct Symbols {
 
 impl_lint_pass!(Symbols => [INTERNING_LITERALS, SYMBOL_AS_STR]);
 
+impl Symbols {
+    fn lit_suggestion(&self, lit: &Lit) -> Option<(Span, String)> {
+        if let LitKind::Str(name, _) = lit.node {
+            let sugg = if let Some((prefix, name)) = self.symbol_map.get(&name.as_u32()) {
+                format!("{prefix}::{name}")
+            } else {
+                format!("sym::{}", name.as_str().replace(|ch: char| !ch.is_alphanumeric(), "_"))
+            };
+            Some((lit.span, sugg))
+        } else {
+            None
+        }
+    }
+
+    fn expr_suggestion(&self, expr: &Expr<'_>) -> Option<(Span, String)> {
+        if let ExprKind::Lit(lit) = expr.kind {
+            self.lit_suggestion(lit)
+        } else {
+            None
+        }
+    }
+
+    fn pat_suggestions(&self, pat: &Pat<'_>, suggestions: &mut Vec<(Span, String)>) {
+        pat.walk_always(|pat| {
+            if let PatKind::Expr(pat_expr) = pat.kind
+                && let PatExprKind::Lit { lit, .. } = pat_expr.kind
+            {
+                suggestions.extend(self.lit_suggestion(lit));
+            }
+        });
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for Symbols {
     fn check_crate(&mut self, cx: &LateContext<'_>) {
         let modules = [
@@ -75,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
         for (prefix, module) in modules {
             for def_id in module.get(cx) {
                 // When linting `clippy_utils` itself we can't use `module_children` as it's a local def id. It will
-                // still lint but the suggestion will say to add it to `sym.rs` even if it's already there
+                // still lint but the suggestion may suggest the incorrect name for symbols such as `sym::CRLF`
                 if def_id.is_local() {
                     continue;
                 }
@@ -98,8 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
         if let ExprKind::Call(func, [arg]) = &expr.kind
             && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind()
             && cx.tcx.is_diagnostic_item(sym::SymbolIntern, *def_id)
-            && let ExprKind::Lit(lit) = arg.kind
-            && let LitKind::Str(name, _) = lit.node
+            && let Some((_, sugg)) = self.expr_suggestion(arg)
         {
             span_lint_and_then(
                 cx,
@@ -107,48 +139,55 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
                 expr.span,
                 "interning a string literal",
                 |diag| {
-                    let (message, path) = suggestion(&mut self.symbol_map, name);
-                    diag.span_suggestion_verbose(expr.span, message, path, Applicability::MaybeIncorrect);
+                    diag.span_suggestion_verbose(
+                        expr.span,
+                        "use a preinterned symbol instead",
+                        sugg,
+                        Applicability::MaybeIncorrect,
+                    );
+                    diag.help("add the symbol to `clippy_utils/src/sym.rs` if needed");
                 },
             );
         }
 
-        if let ExprKind::Binary(_, lhs, rhs) = expr.kind {
-            check_binary(cx, lhs, rhs, &mut self.symbol_map);
-            check_binary(cx, rhs, lhs, &mut self.symbol_map);
-        }
-    }
-}
+        if let Some(as_str) = as_str_span(cx, expr)
+            && let Node::Expr(parent) = cx.tcx.parent_hir_node(expr.hir_id)
+        {
+            let mut suggestions = Vec::new();
 
-fn check_binary(
-    cx: &LateContext<'_>,
-    lhs: &Expr<'_>,
-    rhs: &Expr<'_>,
-    symbols: &mut FxHashMap<u32, (&'static str, Symbol)>,
-) {
-    if let Some(removal_span) = as_str_span(cx, lhs)
-        && let ExprKind::Lit(lit) = rhs.kind
-        && let LitKind::Str(name, _) = lit.node
-    {
-        span_lint_and_then(cx, SYMBOL_AS_STR, lhs.span, "converting a Symbol to a string", |diag| {
-            let (message, path) = suggestion(symbols, name);
-            diag.multipart_suggestion_verbose(
-                message,
-                vec![(removal_span, String::new()), (rhs.span, path)],
-                Applicability::MachineApplicable,
+            match parent.kind {
+                ExprKind::Binary(_, lhs, rhs) => {
+                    suggestions.extend(self.expr_suggestion(lhs));
+                    suggestions.extend(self.expr_suggestion(rhs));
+                },
+                ExprKind::Match(_, arms, _) => {
+                    for arm in arms {
+                        self.pat_suggestions(arm.pat, &mut suggestions);
+                    }
+                },
+                _ => {},
+            }
+
+            if suggestions.is_empty() {
+                return;
+            }
+
+            span_lint_and_then(
+                cx,
+                SYMBOL_AS_STR,
+                expr.span,
+                "converting a Symbol to a string",
+                |diag| {
+                    suggestions.push((as_str, String::new()));
+                    diag.multipart_suggestion(
+                        "use preinterned symbols instead",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                    diag.help("add the symbols to `clippy_utils/src/sym.rs` if needed");
+                },
             );
-        });
-    }
-}
-
-fn suggestion(symbols: &mut FxHashMap<u32, (&'static str, Symbol)>, name: Symbol) -> (&'static str, String) {
-    if let Some((prefix, name)) = symbols.get(&name.as_u32()) {
-        ("use the preinterned symbol", format!("{prefix}::{name}"))
-    } else {
-        (
-            "add the symbol to `clippy_utils/src/sym.rs` and use it",
-            format!("sym::{}", name.as_str().replace(|ch: char| !ch.is_alphanumeric(), "_")),
-        )
+        }
     }
 }
 
