@@ -63,8 +63,10 @@ pub struct LintStore {
 }
 
 impl LintStoreMarker for LintStore {
-    fn lint_groups(&self) -> Box<dyn Iterator<Item = (&'static str, Vec<LintId>, bool)> + '_> {
-        Box::new(self.get_lint_groups())
+    fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = rustc_session::LintGroup> + '_> {
+        Box::new(self.get_lint_groups().map(|(name, lints, is_externally_loaded)| {
+            rustc_session::LintGroup { name, lints, is_externally_loaded }
+        }))
     }
 }
 

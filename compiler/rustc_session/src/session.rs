@@ -141,7 +141,8 @@ pub struct CompilerIO {
 }
 
 pub trait LintStoreMarker: Any + DynSync + DynSend {
-    fn lint_groups(&self) -> Box<dyn Iterator<Item = (&'static str, Vec<LintId>, bool)> + '_>;
+    /// Provides a way to access lint groups without depending on `rustc_lint`
+    fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_>;
 }
 
 /// Represents the data associated with a compilation
@@ -241,6 +242,12 @@ impl CodegenUnits {
             CodegenUnits::Default(n) => n,
         }
     }
+}
+
+pub struct LintGroup {
+    pub name: &'static str,
+    pub lints: Vec<LintId>,
+    pub is_externally_loaded: bool,
 }
 
 impl Session {
@@ -600,9 +607,9 @@ impl Session {
         }
     }
 
-    pub fn lint_groups(&self) -> Box<dyn Iterator<Item = (&'static str, Vec<LintId>, bool)> + '_> {
+    pub fn lint_groups_iter(&self) -> Box<dyn Iterator<Item = LintGroup> + '_> {
         match self.lint_store {
-            Some(ref lint_store) => lint_store.lint_groups(),
+            Some(ref lint_store) => lint_store.lint_groups_iter(),
             None => Box::new(std::iter::empty()),
         }
     }
