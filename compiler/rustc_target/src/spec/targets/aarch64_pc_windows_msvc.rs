@@ -1,9 +1,14 @@
-use crate::spec::{Target, TargetMetadata, base};
+use crate::spec::{LinkerFlavor, Lld, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.max_atomic_width = Some(128);
     base.features = "+v8a,+neon,+fp-armv8".into();
+
+    // MSVC emits a warning about code that may trip "Cortex-A53 MPCore processor bug #843419" (see
+    // https://developer.arm.com/documentation/epm048406/latest) which is sometimes emitted by LLVM.
+    // Since Arm64 Windows 10+ isn't supported on that processor, it's safe to disable the warning.
+    base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["/arm64hazardfree"]);
 
     Target {
         llvm_target: "aarch64-pc-windows-msvc".into(),
