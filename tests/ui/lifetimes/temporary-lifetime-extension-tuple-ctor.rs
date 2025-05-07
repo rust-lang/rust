@@ -7,6 +7,17 @@ fn temp() -> String {
 #[derive(Debug)]
 struct X<'a>(&'a String);
 
+trait T<'a> {
+    const A: X<'a>;
+    const B: X<'a>;
+}
+
+impl<'a> T<'a> for X<'a> {
+    // Check both Self() and X() syntax:
+    const A: X<'a> = Self(&String::new());
+    const B: X<'a> = X(&String::new());
+}
+
 fn main() {
     let a = &temp();
     let b = Some(&temp());

@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/temporary-lifetime-extension-tuple-ctor.rs:23:19
+  --> $DIR/temporary-lifetime-extension-tuple-ctor.rs:34:19
    |
 LL |     let g = some(&temp());
    |                   ^^^^^^ - temporary value is freed at the end of this statement
