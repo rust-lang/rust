@@ -4,13 +4,13 @@ error: variable declared with type underscore
 LL |     let x: _ = 1;
    |     ^^^^^^^^^^^^^
    |
-help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:15:10
-   |
-LL |     let x: _ = 1;
-   |          ^^^
    = note: `-D clippy::let-with-type-underscore` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::let_with_type_underscore)]`
+help: remove the explicit type `_` declaration
+   |
+LL -     let x: _ = 1;
+LL +     let x = 1;
+   |
 
 error: variable declared with type underscore
   --> tests/ui/let_with_type_underscore.rs:17:5
@@ -19,10 +19,10 @@ LL |     let _: _ = 2;
    |     ^^^^^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:17:10
    |
-LL |     let _: _ = 2;
-   |          ^^^
+LL -     let _: _ = 2;
+LL +     let _ = 2;
+   |
 
 error: variable declared with type underscore
   --> tests/ui/let_with_type_underscore.rs:19:5
@@ -31,10 +31,10 @@ LL |     let x: _ = func();
    |     ^^^^^^^^^^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:19:10
    |
-LL |     let x: _ = func();
-   |          ^^^
+LL -     let x: _ = func();
+LL +     let x = func();
+   |
 
 error: variable declared with type underscore
   --> tests/ui/let_with_type_underscore.rs:21:5
@@ -43,10 +43,10 @@ LL |     let x: _;
    |     ^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:21:10
    |
-LL |     let x: _;
-   |          ^^^
+LL -     let x: _;
+LL +     let x;
+   |
 
 error: variable declared with type underscore
   --> tests/ui/let_with_type_underscore.rs:29:5
@@ -55,10 +55,10 @@ LL |     let x : _ = 1;
    |     ^^^^^^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:29:10
    |
-LL |     let x : _ = 1;
-   |          ^^^^
+LL -     let x : _ = 1;
+LL +     let x = 1;
+   |
 
 error: aborting due to 5 previous errors
 
