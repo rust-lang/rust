@@ -189,6 +189,7 @@
 // Target features:
 // tidy-alphabetical-start
 #![cfg_attr(bootstrap, feature(avx512_target_feature))]
+#![cfg_attr(bootstrap, feature(sha512_sm_x86))]
 #![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(hexagon_target_feature)]
@@ -199,7 +200,6 @@
 #![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
 #![feature(s390x_target_feature)]
-#![feature(sha512_sm_x86)]
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
