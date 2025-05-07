@@ -341,7 +341,7 @@ pub trait Interner:
 
     fn opaque_types_defined_by(self, defining_anchor: Self::LocalDefId) -> Self::LocalDefIds;
 
-    fn opaque_types_and_generators_defined_by(
+    fn opaque_types_and_coroutines_defined_by(
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds;

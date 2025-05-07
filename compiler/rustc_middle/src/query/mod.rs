@@ -387,7 +387,7 @@ rustc_queries! {
         }
     }
 
-    query stalled_generators_within(
+    query nested_bodies_within(
         key: LocalDefId
     ) -> &'tcx ty::List<LocalDefId> {
         desc {

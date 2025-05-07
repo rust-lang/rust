@@ -691,15 +691,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.opaque_types_defined_by(defining_anchor)
     }
 
-    fn opaque_types_and_generators_defined_by(
+    fn opaque_types_and_coroutines_defined_by(
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
         if self.next_trait_solver_globally() {
+            let coroutines_defined_by = self
+                .nested_bodies_within(defining_anchor)
+                .iter()
+                .filter(|def_id| self.is_coroutine(def_id.to_def_id()));
             self.mk_local_def_ids_from_iter(
-                self.opaque_types_defined_by(defining_anchor)
-                    .iter()
-                    .chain(self.stalled_generators_within(defining_anchor)),
+                self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
             )
         } else {
             self.opaque_types_defined_by(defining_anchor)
