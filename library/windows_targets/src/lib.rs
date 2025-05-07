@@ -34,6 +34,7 @@ pub macro link {
 }
 
 #[cfg(not(feature = "windows_raw_dylib"))]
+#[cfg(not(target_os = "cygwin"))] // Cygwin doesn't need these libs
 #[cfg_attr(target_vendor = "win7", link(name = "advapi32"))]
 #[link(name = "ntdll")]
 #[link(name = "userenv")]
