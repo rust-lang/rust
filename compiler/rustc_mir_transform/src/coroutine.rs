@@ -79,7 +79,9 @@ use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
     always_storage_live_locals,
 };
-use rustc_mir_dataflow::{Analysis, Results, ResultsVisitor};
+use rustc_mir_dataflow::{
+    Analysis, Results, ResultsCursor, ResultsVisitor, visit_reachable_results,
+};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::source_map::dummy_spanned;
 use rustc_span::symbol::sym;
@@ -680,18 +682,29 @@ fn locals_live_across_suspend_points<'tcx>(
         .iterate_to_fixpoint(tcx, body, None)
         .into_results_cursor(body);
 
-    // Calculate the MIR locals which have been previously
-    // borrowed (even if they are still active).
-    let borrowed_locals_results =
-        MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("coroutine"));
-
-    let mut borrowed_locals_cursor = borrowed_locals_results.clone().into_results_cursor(body);
+    // Calculate the MIR locals that have been previously borrowed (even if they are still active).
+    let borrowed_locals = MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("coroutine"));
+    let mut borrowed_locals_analysis1 = borrowed_locals.analysis;
+    let mut borrowed_locals_analysis2 = borrowed_locals_analysis1.clone(); // trivial
+    let borrowed_locals_cursor1 = ResultsCursor::new_borrowing(
+        body,
+        &mut borrowed_locals_analysis1,
+        &borrowed_locals.results,
+    );
+    let mut borrowed_locals_cursor2 = ResultsCursor::new_borrowing(
+        body,
+        &mut borrowed_locals_analysis2,
+        &borrowed_locals.results,
+    );
 
     // Calculate the MIR locals that we need to keep storage around for.
-    let mut requires_storage_results =
-        MaybeRequiresStorage::new(borrowed_locals_results.into_results_cursor(body))
-            .iterate_to_fixpoint(tcx, body, None);
-    let mut requires_storage_cursor = requires_storage_results.as_results_cursor(body);
+    let mut requires_storage =
+        MaybeRequiresStorage::new(borrowed_locals_cursor1).iterate_to_fixpoint(tcx, body, None);
+    let mut requires_storage_cursor = ResultsCursor::new_borrowing(
+        body,
+        &mut requires_storage.analysis,
+        &requires_storage.results,
+    );
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness =
@@ -720,8 +733,8 @@ fn locals_live_across_suspend_points<'tcx>(
                 // If a borrow is converted to a raw reference, we must also assume that it lives
                 // forever. Note that the final liveness is still bounded by the storage liveness
                 // of the local, which happens using the `intersect` operation below.
-                borrowed_locals_cursor.seek_before_primary_effect(loc);
-                live_locals.union(borrowed_locals_cursor.get());
+                borrowed_locals_cursor2.seek_before_primary_effect(loc);
+                live_locals.union(borrowed_locals_cursor2.get());
             }
 
             // Store the storage liveness for later use so we can restore the state
@@ -763,7 +776,8 @@ fn locals_live_across_suspend_points<'tcx>(
         body,
         &saved_locals,
         always_live_locals.clone(),
-        requires_storage_results,
+        &mut requires_storage.analysis,
+        &requires_storage.results,
     );
 
     LivenessInfo {
@@ -828,7 +842,8 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &'mir CoroutineSavedLocals,
     always_live_locals: DenseBitSet<Local>,
-    mut requires_storage: Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
+    analysis: &mut MaybeRequiresStorage<'mir, 'tcx>,
+    results: &Results<DenseBitSet<Local>>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -848,7 +863,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
         eligible_storage_live: DenseBitSet::new_empty(body.local_decls.len()),
     };
 
-    requires_storage.visit_reachable_with(body, &mut visitor);
+    visit_reachable_results(body, analysis, results, &mut visitor);
 
     let local_conflicts = visitor.local_conflicts;
 
@@ -891,7 +906,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
 {
     fn visit_after_early_statement_effect(
         &mut self,
-        _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
+        _analysis: &mut MaybeRequiresStorage<'a, 'tcx>,
         state: &DenseBitSet<Local>,
         _statement: &Statement<'tcx>,
         loc: Location,
@@ -901,7 +916,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _results: &mut Results<'tcx, MaybeRequiresStorage<'a, 'tcx>>,
+        _analysis: &mut MaybeRequiresStorage<'a, 'tcx>,
         state: &DenseBitSet<Local>,
         _terminator: &Terminator<'tcx>,
         loc: Location,
