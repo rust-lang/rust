@@ -786,7 +786,11 @@ impl Item {
                             // because it isn't public API.
                             None
                         }
-                        _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
+                        _ => Some({
+                            let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
+                            assert_eq!(s.pop(), Some('\n'));
+                            s
+                        }),
                     }
                 } else if attr.has_any_name(ALLOWED_ATTRIBUTES) {
                     Some(
