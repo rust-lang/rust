@@ -9,6 +9,7 @@ LL |     println!("{}", x);
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/binding-assigned-block-without-tail-expression.rs:15:20
@@ -21,6 +22,7 @@ LL |     println!("{}", y);
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/binding-assigned-block-without-tail-expression.rs:16:20
@@ -33,6 +35,7 @@ LL |     println!("{}", z);
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `()` doesn't implement `std::fmt::Display`
   --> $DIR/binding-assigned-block-without-tail-expression.rs:17:20
@@ -48,6 +51,7 @@ LL |       println!("{}", s);
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/binding-assigned-block-without-tail-expression.rs:18:18

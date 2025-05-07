@@ -1,11 +1,12 @@
 error: queries overflow the depth limit!
-  --> $DIR/recursive-const-in-impl.rs:11:14
+  --> $DIR/recursive-const-in-impl.rs:11:20
    |
 LL |     println!("{}", Thing::<i32>::X);
-   |              ^^^^
+   |                    ^^^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "14"]` attribute to your crate (`recursive_const_in_impl`)
    = note: query depth increased by 9 when simplifying constant for the type system `main::promoted[1]`
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 
