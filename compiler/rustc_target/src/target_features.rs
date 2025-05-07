@@ -455,9 +455,9 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdseed", Stable, &[]),
     ("rtm", Unstable(sym::rtm_target_feature), &[]),
     ("sha", Stable, &["sse2"]),
-    ("sha512", Unstable(sym::sha512_sm_x86), &["avx2"]),
-    ("sm3", Unstable(sym::sha512_sm_x86), &["avx"]),
-    ("sm4", Unstable(sym::sha512_sm_x86), &["avx2"]),
+    ("sha512", Stable, &["avx2"]),
+    ("sm3", Stable, &["avx"]),
+    ("sm4", Stable, &["avx2"]),
     // This cannot actually be toggled, the ABI always fixes it, so it'd make little sense to
     // stabilize. It must be in this list for the ABI check to be able to use it.
     ("soft-float", Stability::Unstable(sym::x87_target_feature), &[]),
