@@ -104,8 +104,23 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
-    fn clone_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.0.clone_opaque_types_for_query_response()
+    fn clone_opaque_types_lookup_table(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.0
+            .inner
+            .borrow_mut()
+            .opaque_types()
+            .iter_lookup_table()
+            .map(|(k, h)| (k, h.ty))
+            .collect()
+    }
+    fn clone_duplicate_opaque_types(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
+        self.0
+            .inner
+            .borrow_mut()
+            .opaque_types()
+            .iter_duplicate_entries()
+            .map(|(k, h)| (k, h.ty))
+            .collect()
     }
 
     fn make_deduplicated_outlives_constraints(
@@ -156,13 +171,25 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn register_hidden_type_in_storage(
         &self,
         opaque_type_key: ty::OpaqueTypeKey<'tcx>,
-        hidden_ty: <Self::Interner as rustc_type_ir::Interner>::Ty,
-        span: <Self::Interner as rustc_type_ir::Interner>::Span,
-    ) -> Option<<Self::Interner as rustc_type_ir::Interner>::Ty> {
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) -> Option<Ty<'tcx>> {
         self.0.register_hidden_type_in_storage(
             opaque_type_key,
             ty::OpaqueHiddenType { span, ty: hidden_ty },
         )
+    }
+    fn add_duplicate_opaque_type(
+        &self,
+        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        self.0
+            .inner
+            .borrow_mut()
+            .opaque_types()
+            .add_duplicate(opaque_type_key, ty::OpaqueHiddenType { span, ty: hidden_ty })
     }
 
     fn add_item_bounds_for_hidden_type(
