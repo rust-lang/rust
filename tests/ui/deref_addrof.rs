@@ -1,5 +1,3 @@
-//@aux-build:proc_macros.rs
-
 #![allow(
     dangerous_implicit_autorefs,
     clippy::explicit_auto_deref,
@@ -7,9 +5,6 @@
     clippy::useless_vec
 )]
 #![warn(clippy::deref_addrof)]
-
-extern crate proc_macros;
-use proc_macros::inline_macros;
 
 fn get_number() -> usize {
     10
@@ -61,21 +56,22 @@ fn main() {
     //~^ deref_addrof
     // do NOT lint for array as semantic differences with/out `*&`.
     let _arr = *&[0, 1, 2, 3, 4];
-}
 
-#[derive(Copy, Clone)]
-pub struct S;
-#[inline_macros]
-impl S {
-    pub fn f(&self) -> &Self {
-        inline!(*& $(@expr self))
-        //~^ deref_addrof
+    // Do not lint when text comes from macro
+    macro_rules! mac {
+        (dr) => {
+            *&0
+        };
+        (dr $e:expr) => {
+            *&$e
+        };
+        (r $e:expr) => {
+            &$e
+        };
     }
-    #[allow(unused_mut)] // mut will be unused, once the macro is fixed
-    pub fn f_mut(mut self) -> Self {
-        inline!(*&mut $(@expr self))
-        //~^ deref_addrof
-    }
+    let b = mac!(dr);
+    let b = mac!(dr a);
+    let b = *mac!(r a);
 }
 
 fn issue14386() {

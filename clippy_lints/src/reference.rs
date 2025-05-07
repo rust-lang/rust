@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::{SpanRangeExt, snippet_with_applicability};
+use clippy_utils::source::snippet;
+use clippy_utils::sugg::{Sugg, has_enclosing_paren};
 use clippy_utils::ty::adjust_derefs_manually_drop;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId, Mutability, Node, UnOp};
+use rustc_hir::{Expr, ExprKind, HirId, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -40,79 +40,43 @@ declare_lint_pass!(DerefAddrOf => [DEREF_ADDROF]);
 
 impl LateLintPass<'_> for DerefAddrOf {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Deref, deref_target) = e.kind
-            && let ExprKind::AddrOf(_, mutability, addrof_target) = deref_target.kind
+        if !e.span.from_expansion()
+            && let ExprKind::Unary(UnOp::Deref, deref_target) = e.kind
+            && !deref_target.span.from_expansion()
+            && let ExprKind::AddrOf(_, _, addrof_target) = deref_target.kind
             // NOTE(tesuji): `*&` forces rustc to const-promote the array to `.rodata` section.
             // See #12854 for details.
             && !matches!(addrof_target.kind, ExprKind::Array(_))
             && deref_target.span.eq_ctxt(e.span)
             && !addrof_target.span.from_expansion()
         {
+            let mut applicability = Applicability::MachineApplicable;
+            let mut sugg = || Sugg::hir_with_applicability(cx, addrof_target, "_", &mut applicability);
+
             // If this expression is an explicit `DerefMut` of a `ManuallyDrop` reached through a
             // union, we may remove the reference if we are at the point where the implicit
             // dereference would take place. Otherwise, we should not lint.
-            let keep_deref = match is_manually_drop_through_union(cx, e.hir_id, addrof_target) {
-                ManuallyDropThroughUnion::Directly => true,
+            let sugg = match is_manually_drop_through_union(cx, e.hir_id, addrof_target) {
+                ManuallyDropThroughUnion::Directly => sugg().deref(),
                 ManuallyDropThroughUnion::Indirect => return,
-                ManuallyDropThroughUnion::No => false,
+                ManuallyDropThroughUnion::No => sugg(),
             };
 
-            let mut applicability = Applicability::MachineApplicable;
-            let sugg = if e.span.from_expansion() {
-                if let Some(macro_source) = e.span.get_source_text(cx) {
-                    // Remove leading whitespace from the given span
-                    // e.g: ` $visitor` turns into `$visitor`
-                    let trim_leading_whitespaces = |span: Span| {
-                        span.get_source_text(cx)
-                            .and_then(|snip| {
-                                #[expect(clippy::cast_possible_truncation)]
-                                snip.find(|c: char| !c.is_whitespace())
-                                    .map(|pos| span.lo() + BytePos(pos as u32))
-                            })
-                            .map_or(span, |start_no_whitespace| e.span.with_lo(start_no_whitespace))
-                    };
-
-                    let mut generate_snippet = |pattern: &str| {
-                        #[expect(clippy::cast_possible_truncation)]
-                        macro_source.rfind(pattern).map(|pattern_pos| {
-                            let rpos = pattern_pos + pattern.len();
-                            let span_after_ref = e.span.with_lo(BytePos(e.span.lo().0 + rpos as u32));
-                            let span = trim_leading_whitespaces(span_after_ref);
-                            snippet_with_applicability(cx, span, "_", &mut applicability)
-                        })
-                    };
-
-                    if mutability == Mutability::Mut {
-                        generate_snippet("mut")
-                    } else {
-                        generate_snippet("&")
-                    }
-                } else {
-                    Some(snippet_with_applicability(cx, e.span, "_", &mut applicability))
-                }
+            let sugg = if has_enclosing_paren(snippet(cx, e.span, "")) {
+                sugg.maybe_paren()
             } else {
-                Some(snippet_with_applicability(
-                    cx,
-                    addrof_target.span,
-                    "_",
-                    &mut applicability,
-                ))
+                sugg
             };
-            if let Some(sugg) = sugg {
-                span_lint_and_sugg(
-                    cx,
-                    DEREF_ADDROF,
-                    e.span,
-                    "immediately dereferencing a reference",
-                    "try",
-                    if keep_deref {
-                        format!("(*{sugg})")
-                    } else {
-                        sugg.to_string()
-                    },
-                    applicability,
-                );
-            }
+
+            span_lint_and_sugg(
+                cx,
+                DEREF_ADDROF,
+                e.span,
+                "immediately dereferencing a reference",
+                "try",
+                sugg.to_string(),
+                applicability,
+            );
         }
     }
 }
