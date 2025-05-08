@@ -26,8 +26,10 @@ pub fn peach(x: u32) -> u32 {
 
 // CHECK: attributes [[PEACH_ATTRS]] = {
 // x64-linux-NOT: {{.*}}"frame-pointer"{{.*}}
-// aarch64-linux-NOT: {{.*}}"frame-pointer"{{.*}}
 // x64-apple-SAME: {{.*}}"frame-pointer"="all"
 // force-SAME: {{.*}}"frame-pointer"="all"
+//
+// AAPCS64 demands frame pointers:
+// aarch64-linux-SAME: {{.*}}"frame-pointer"="non-leaf"
 // aarch64-apple-SAME: {{.*}}"frame-pointer"="non-leaf"
 // CHECK-SAME: }
