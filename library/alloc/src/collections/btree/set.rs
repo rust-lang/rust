@@ -1109,7 +1109,7 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
         T: Ord,
         F: FnMut(&T) -> bool,
     {
-        self.extract_if(|v| !f(v)).for_each(drop);
+        self.extract_if(.., |v| !f(v)).for_each(drop);
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -1214,12 +1214,13 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 7]);
     /// ```
     #[unstable(feature = "btree_extract_if", issue = "70530")]
-    pub fn extract_if<'a, F>(&'a mut self, pred: F) -> ExtractIf<'a, T, F, A>
+    pub fn extract_if<'a, F, R>(&'a mut self, range: R, pred: F) -> ExtractIf<'a, T, R, F, A>
     where
         T: Ord,
+        R: RangeBounds<T>,
         F: 'a + FnMut(&T) -> bool,
     {
-        let (inner, alloc) = self.map.extract_if_inner();
+        let (inner, alloc) = self.map.extract_if_inner(range);
         ExtractIf { pred, inner, alloc }
     }
 
@@ -1554,17 +1555,18 @@ impl<'a, T, A: Allocator + Clone> IntoIterator for &'a BTreeSet<T, A> {
 pub struct ExtractIf<
     'a,
     T,
+    R,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + Clone = Global,
 > {
     pred: F,
-    inner: super::map::ExtractIfInner<'a, T, SetValZST>,
+    inner: super::map::ExtractIfInner<'a, T, SetValZST, R>,
     /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
 
 #[unstable(feature = "btree_extract_if", issue = "70530")]
-impl<T, F, A> fmt::Debug for ExtractIf<'_, T, F, A>
+impl<T, R, F, A> fmt::Debug for ExtractIf<'_, T, R, F, A>
 where
     T: fmt::Debug,
     A: Allocator + Clone,
@@ -1577,8 +1579,10 @@ where
 }
 
 #[unstable(feature = "btree_extract_if", issue = "70530")]
-impl<'a, T, F, A: Allocator + Clone> Iterator for ExtractIf<'_, T, F, A>
+impl<'a, T, R, F, A: Allocator + Clone> Iterator for ExtractIf<'_, T, R, F, A>
 where
+    T: PartialOrd,
+    R: RangeBounds<T>,
     F: 'a + FnMut(&T) -> bool,
 {
     type Item = T;
@@ -1595,7 +1599,13 @@ where
 }
 
 #[unstable(feature = "btree_extract_if", issue = "70530")]
-impl<T, F, A: Allocator + Clone> FusedIterator for ExtractIf<'_, T, F, A> where F: FnMut(&T) -> bool {}
+impl<T, R, F, A: Allocator + Clone> FusedIterator for ExtractIf<'_, T, R, F, A>
+where
+    T: PartialOrd,
+    R: RangeBounds<T>,
+    F: FnMut(&T) -> bool,
+{
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord, A: Allocator + Clone> Extend<T> for BTreeSet<T, A> {
