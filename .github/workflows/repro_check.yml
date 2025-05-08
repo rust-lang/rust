@@ -31,9 +31,6 @@ jobs:
             # Find source directory
             SOURCE_DIR="./rust"
 
-            # FIXME: Setting channel to nightly because only nightly builds succeed on CI
-            $SOURCE_DIR/configure --set rust.channel=nightly
-
             # Build rust till stage 2
             $SOURCE_DIR/x.py build --stage 2
 
