@@ -123,15 +123,15 @@ impl RawAttrs {
             (None, entries @ Some(_)) => Self { entries },
             (Some(entries), None) => Self { entries: Some(entries.clone()) },
             (Some(a), Some(b)) => {
-                let last_ast_index = a.slice.last().map_or(0, |it| it.id.ast_index() + 1) as u32;
+                let last_ast_index = a.slice.last().map_or(0, |it| it.id.ast_index() + 1);
                 let items = a
                     .slice
                     .iter()
                     .cloned()
                     .chain(b.slice.iter().map(|it| {
                         let mut it = it.clone();
-                        let id = it.id.ast_index() as u32 + last_ast_index;
-                        it.id = AttrId::new(id as usize, it.id.is_inner_attr());
+                        let id = it.id.ast_index() + last_ast_index;
+                        it.id = AttrId::new(id, it.id.is_inner_attr());
                         it
                     }))
                     .collect::<Vec<_>>();
@@ -175,24 +175,20 @@ pub struct AttrId {
 // FIXME: This only handles a single level of cfg_attr nesting
 // that is `#[cfg_attr(all(), cfg_attr(all(), cfg(any())))]` breaks again
 impl AttrId {
-    const INNER_ATTR_SET_BIT: usize = 1 << 31;
+    const INNER_ATTR_SET_BIT: u32 = 1 << 31;
 
     pub fn new(id: usize, is_inner: bool) -> Self {
-        Self {
-            id: if is_inner {
-                id | Self::INNER_ATTR_SET_BIT
-            } else {
-                id & !Self::INNER_ATTR_SET_BIT
-            } as u32,
-        }
+        assert!(id <= !Self::INNER_ATTR_SET_BIT as usize);
+        let id = id as u32;
+        Self { id: if is_inner { id | Self::INNER_ATTR_SET_BIT } else { id } }
     }
 
     pub fn ast_index(&self) -> usize {
-        self.id as usize & !Self::INNER_ATTR_SET_BIT
+        (self.id & !Self::INNER_ATTR_SET_BIT) as usize
     }
 
     pub fn is_inner_attr(&self) -> bool {
-        (self.id as usize) & Self::INNER_ATTR_SET_BIT != 0
+        self.id & Self::INNER_ATTR_SET_BIT != 0
     }
 }
 
