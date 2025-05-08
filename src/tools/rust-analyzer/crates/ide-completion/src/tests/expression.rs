@@ -2174,3 +2174,22 @@ fn bar() {
     "#,
     );
 }
+
+#[test]
+fn dbg_too_many_asterisks() {
+    check_edit(
+        "dbg",
+        r#"
+fn main() {
+    let x = &42;
+    let y = *x.$0;
+}
+    "#,
+        r#"
+fn main() {
+    let x = &42;
+    let y = dbg!(*x);
+}
+    "#,
+    );
+}
