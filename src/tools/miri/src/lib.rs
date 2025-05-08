@@ -9,7 +9,6 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(let_chains)]
 #![feature(strict_overflow_ops)]
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]
