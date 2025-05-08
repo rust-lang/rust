@@ -253,16 +253,18 @@ where
     }
 
     fn bail_with_ambiguity(&mut self, responses: &[CanonicalResponse<I>]) -> CanonicalResponse<I> {
-        debug_assert!(!responses.is_empty());
-        if let Certainty::Maybe(maybe_cause) =
-            responses.iter().fold(Certainty::AMBIGUOUS, |certainty, response| {
-                certainty.unify_with(response.value.certainty)
-            })
-        {
-            self.make_ambiguous_response_no_constraints(maybe_cause)
-        } else {
-            panic!("expected flounder response to be ambiguous")
-        }
+        debug_assert!(responses.len() > 1);
+        let maybe_cause = responses.iter().fold(MaybeCause::Ambiguity, |maybe_cause, response| {
+            // Pull down the certainty of `Certainty::Yes` to ambiguity when combining
+            // these responses, b/c we're combining more than one response and this we
+            // don't know which one applies.
+            let candidate = match response.value.certainty {
+                Certainty::Yes => MaybeCause::Ambiguity,
+                Certainty::Maybe(candidate) => candidate,
+            };
+            maybe_cause.or(candidate)
+        });
+        self.make_ambiguous_response_no_constraints(maybe_cause)
     }
 
     /// If we fail to merge responses we flounder and return overflow or ambiguity.
