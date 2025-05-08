@@ -114,6 +114,13 @@ impl DisambiguatorState {
         this.next.insert((def_id, data), index);
         this
     }
+
+    pub fn next(&mut self, parent: LocalDefId, data: DefPathData) -> u32 {
+        let next_disamb = self.next.entry((parent, data)).or_insert(0);
+        let disambiguator = *next_disamb;
+        *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+        disambiguator
+    }
 }
 
 /// The definition table containing node definitions.
@@ -394,12 +401,7 @@ impl Definitions {
         assert!(data != DefPathData::CrateRoot);
 
         // Find the next free disambiguator for this key.
-        let disambiguator = {
-            let next_disamb = disambiguator.next.entry((parent, data)).or_insert(0);
-            let disambiguator = *next_disamb;
-            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
-            disambiguator
-        };
+        let disambiguator = disambiguator.next(parent, data);
         let key = DefKey {
             parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
