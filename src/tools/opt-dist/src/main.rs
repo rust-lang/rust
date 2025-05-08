@@ -361,7 +361,10 @@ fn execute_pipeline(
 
 fn main() -> anyhow::Result<()> {
     // Make sure that we get backtraces for easier debugging in CI
-    std::env::set_var("RUST_BACKTRACE", "1");
+    unsafe {
+        // SAFETY: we are the only thread running at this point
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
 
     env_logger::builder()
         .filter_level(LevelFilter::Info)

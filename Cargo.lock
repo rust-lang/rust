@@ -2567,7 +2567,6 @@ dependencies = [
  "humansize",
  "humantime",
  "log",
- "serde",
  "serde_json",
  "sysinfo",
  "tabled",
