@@ -3928,7 +3928,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
     }
 }
 
-/// Returns the minimum of two `f16` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f16` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3941,7 +3941,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[rustc_intrinsic]
 pub const fn minnumf16(x: f16, y: f16) -> f16;
 
-/// Returns the minimum of two `f32` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f32` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3955,7 +3955,7 @@ pub const fn minnumf16(x: f16, y: f16) -> f16;
 #[rustc_intrinsic]
 pub const fn minnumf32(x: f32, y: f32) -> f32;
 
-/// Returns the minimum of two `f64` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f64` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3969,7 +3969,7 @@ pub const fn minnumf32(x: f32, y: f32) -> f32;
 #[rustc_intrinsic]
 pub const fn minnumf64(x: f64, y: f64) -> f64;
 
-/// Returns the minimum of two `f128` values.
+/// Returns the minimum (IEEE 754-2008 minNum) of two `f128` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3982,7 +3982,51 @@ pub const fn minnumf64(x: f64, y: f64) -> f64;
 #[rustc_intrinsic]
 pub const fn minnumf128(x: f128, y: f128) -> f128;
 
-/// Returns the maximum of two `f16` values.
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn minimumf16(x: f16, y: f16) -> f16;
+
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn minimumf32(x: f32, y: f32) -> f32;
+
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn minimumf64(x: f64, y: f64) -> f64;
+
+/// Returns the minimum (IEEE 754-2019 minimum) of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn minimumf128(x: f128, y: f128) -> f128;
+
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f16` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -3995,7 +4039,7 @@ pub const fn minnumf128(x: f128, y: f128) -> f128;
 #[rustc_intrinsic]
 pub const fn maxnumf16(x: f16, y: f16) -> f16;
 
-/// Returns the maximum of two `f32` values.
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f32` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -4009,7 +4053,7 @@ pub const fn maxnumf16(x: f16, y: f16) -> f16;
 #[rustc_intrinsic]
 pub const fn maxnumf32(x: f32, y: f32) -> f32;
 
-/// Returns the maximum of two `f64` values.
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f64` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -4023,7 +4067,7 @@ pub const fn maxnumf32(x: f32, y: f32) -> f32;
 #[rustc_intrinsic]
 pub const fn maxnumf64(x: f64, y: f64) -> f64;
 
-/// Returns the maximum of two `f128` values.
+/// Returns the maximum (IEEE 754-2008 maxNum) of two `f128` values.
 ///
 /// Note that, unlike most intrinsics, this is safe to call;
 /// it does not require an `unsafe` block.
@@ -4035,6 +4079,50 @@ pub const fn maxnumf64(x: f64, y: f64) -> f64;
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub const fn maxnumf128(x: f128, y: f128) -> f128;
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f16` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn maximumf16(x: f16, y: f16) -> f16;
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f32` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn maximumf32(x: f32, y: f32) -> f32;
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f64` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn maximumf64(x: f64, y: f64) -> f64;
+
+/// Returns the maximum (IEEE 754-2019 maximum) of two `f128` values.
+///
+/// Note that, unlike most intrinsics, this is safe to call;
+/// it does not require an `unsafe` block.
+/// Therefore, implementations must not require the user to uphold
+/// any safety invariants.
+#[rustc_nounwind]
+#[rustc_intrinsic]
+#[cfg(not(bootstrap))]
+pub const fn maximumf128(x: f128, y: f128) -> f128;
 
 /// Returns the absolute value of an `f16`.
 ///
