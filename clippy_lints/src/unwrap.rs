@@ -4,15 +4,15 @@ use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{higher, path_to_local, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
-use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegment, UnOp};
+use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, UnOp};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::declare_lint_pass;
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -111,7 +111,7 @@ struct UnwrapInfo<'tcx> {
     /// The check, like `x.is_ok()`
     check: &'tcx Expr<'tcx>,
     /// The check's name, like `is_ok`
-    check_name: &'tcx PathSegment<'tcx>,
+    check_name: Symbol,
     /// The branch where the check takes place, like `if x.is_ok() { .. }`
     branch: &'tcx Expr<'tcx>,
     /// Whether `is_some()` or `is_ok()` was called (as opposed to `is_err()` or `is_none()`).
@@ -133,12 +133,12 @@ fn collect_unwrap_info<'tcx>(
     invert: bool,
     is_entire_condition: bool,
 ) -> Vec<UnwrapInfo<'tcx>> {
-    fn is_relevant_option_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: &str) -> bool {
-        is_type_diagnostic_item(cx, ty, sym::Option) && ["is_some", "is_none"].contains(&method_name)
+    fn is_relevant_option_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
+        is_type_diagnostic_item(cx, ty, sym::Option) && matches!(method_name, sym::is_none | sym::is_some)
     }
 
-    fn is_relevant_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: &str) -> bool {
-        is_type_diagnostic_item(cx, ty, sym::Result) && ["is_ok", "is_err"].contains(&method_name)
+    fn is_relevant_result_call(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
+        is_type_diagnostic_item(cx, ty, sym::Result) && matches!(method_name, sym::is_err | sym::is_ok)
     }
 
     if let ExprKind::Binary(op, left, right) = &expr.kind {
@@ -155,14 +155,10 @@ fn collect_unwrap_info<'tcx>(
     } else if let ExprKind::MethodCall(method_name, receiver, [], _) = &expr.kind
         && let Some(local_id) = path_to_local(receiver)
         && let ty = cx.typeck_results().expr_ty(receiver)
-        && let name = method_name.ident.as_str()
+        && let name = method_name.ident.name
         && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name))
     {
-        let unwrappable = match name {
-            "is_some" | "is_ok" => true,
-            "is_err" | "is_none" => false,
-            _ => unreachable!(),
-        };
+        let unwrappable = matches!(name, sym::is_some | sym::is_ok);
         let safe_to_unwrap = unwrappable != invert;
         let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
             UnwrappableKind::Option
@@ -174,7 +170,7 @@ fn collect_unwrap_info<'tcx>(
             local_id,
             if_expr,
             check: expr,
-            check_name: method_name,
+            check_name: name,
             branch,
             safe_to_unwrap,
             kind,
@@ -332,8 +328,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
                         expr.span,
                         format!(
                             "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
-                            method_name.ident.name,
-                            unwrappable.check_name.ident.as_str(),
+                            method_name.ident.name, unwrappable.check_name,
                         ),
                         |diag| {
                             if is_entire_condition {
