@@ -18,7 +18,7 @@ use crate::traits::{self, Obligation, PredicateObligations};
 
 mod table;
 
-pub(crate) use table::{OpaqueTypeStorage, OpaqueTypeTable};
+pub use table::{OpaqueTypeStorage, OpaqueTypeStorageEntries, OpaqueTypeTable};
 
 impl<'tcx> InferCtxt<'tcx> {
     /// This is a backwards compatibility hack to prevent breaking changes from
