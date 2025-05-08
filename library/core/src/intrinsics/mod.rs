@@ -3989,9 +3989,19 @@ pub const fn minnumf128(x: f128, y: f128) -> f128;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn minimumf16(x: f16, y: f16) -> f16;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn minimumf16(x: f16, y: f16) -> f16 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
 
 /// Returns the minimum (IEEE 754-2019 minimum) of two `f32` values.
 ///
@@ -4000,9 +4010,19 @@ pub const fn minimumf16(x: f16, y: f16) -> f16;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn minimumf32(x: f32, y: f32) -> f32;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn minimumf32(x: f32, y: f32) -> f32 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
 
 /// Returns the minimum (IEEE 754-2019 minimum) of two `f64` values.
 ///
@@ -4011,9 +4031,19 @@ pub const fn minimumf32(x: f32, y: f32) -> f32;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn minimumf64(x: f64, y: f64) -> f64;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn minimumf64(x: f64, y: f64) -> f64 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
 
 /// Returns the minimum (IEEE 754-2019 minimum) of two `f128` values.
 ///
@@ -4022,9 +4052,19 @@ pub const fn minimumf64(x: f64, y: f64) -> f64;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn minimumf128(x: f128, y: f128) -> f128;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn minimumf128(x: f128, y: f128) -> f128 {
+    if x < y {
+        x
+    } else if y < x {
+        y
+    } else if x == y {
+        if x.is_sign_negative() && y.is_sign_positive() { x } else { y }
+    } else {
+        // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
+        x + y
+    }
+}
 
 /// Returns the maximum (IEEE 754-2008 maxNum) of two `f16` values.
 ///
@@ -4087,9 +4127,18 @@ pub const fn maxnumf128(x: f128, y: f128) -> f128;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn maximumf16(x: f16, y: f16) -> f16;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn maximumf16(x: f16, y: f16) -> f16 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
 
 /// Returns the maximum (IEEE 754-2019 maximum) of two `f32` values.
 ///
@@ -4098,9 +4147,18 @@ pub const fn maximumf16(x: f16, y: f16) -> f16;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn maximumf32(x: f32, y: f32) -> f32;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn maximumf32(x: f32, y: f32) -> f32 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
 
 /// Returns the maximum (IEEE 754-2019 maximum) of two `f64` values.
 ///
@@ -4109,9 +4167,18 @@ pub const fn maximumf32(x: f32, y: f32) -> f32;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn maximumf64(x: f64, y: f64) -> f64;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn maximumf64(x: f64, y: f64) -> f64 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
 
 /// Returns the maximum (IEEE 754-2019 maximum) of two `f128` values.
 ///
@@ -4120,9 +4187,18 @@ pub const fn maximumf64(x: f64, y: f64) -> f64;
 /// Therefore, implementations must not require the user to uphold
 /// any safety invariants.
 #[rustc_nounwind]
-#[rustc_intrinsic]
-#[cfg(not(bootstrap))]
-pub const fn maximumf128(x: f128, y: f128) -> f128;
+#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+pub const fn maximumf128(x: f128, y: f128) -> f128 {
+    if x > y {
+        x
+    } else if y > x {
+        y
+    } else if x == y {
+        if x.is_sign_positive() && y.is_sign_negative() { x } else { y }
+    } else {
+        x + y
+    }
+}
 
 /// Returns the absolute value of an `f16`.
 ///

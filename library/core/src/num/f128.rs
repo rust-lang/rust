@@ -755,25 +755,9 @@ impl f128 {
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn maximum(self, other: f128) -> f128 {
-        #[cfg(not(bootstrap))]
-        {
-            intrinsics::maximumf128(self, other)
-        }
-        #[cfg(bootstrap)]
-        {
-            if self > other {
-                self
-            } else if other > self {
-                other
-            } else if self == other {
-                if self.is_sign_positive() && other.is_sign_negative() { self } else { other }
-            } else {
-                self + other
-            }
-        }
+        intrinsics::maximumf128(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -804,26 +788,9 @@ impl f128 {
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
     // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
-    #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn minimum(self, other: f128) -> f128 {
-        #[cfg(not(bootstrap))]
-        {
-            intrinsics::minimumf128(self, other)
-        }
-        #[cfg(bootstrap)]
-        {
-            if self < other {
-                self
-            } else if other < self {
-                other
-            } else if self == other {
-                if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
-            } else {
-                // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-                self + other
-            }
-        }
+        intrinsics::minimumf128(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.
