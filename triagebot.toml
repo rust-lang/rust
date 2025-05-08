@@ -1161,7 +1161,6 @@ compiler = [
     "@BoxyUwU",
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@fee1-dead",
     "@fmease",
     "@jieyouxu",
@@ -1221,14 +1220,12 @@ incremental = [
 diagnostics = [
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@oli-obk",
     "@chenyukang",
 ]
 parser = [
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@nnethercote",
     "@petrochenkov",
     "@spastorino",
@@ -1236,7 +1233,6 @@ parser = [
 lexer = [
     "@nnethercote",
     "@petrochenkov",
-    "@estebank",
     "@chenyukang",
 ]
 arena = [
@@ -1268,7 +1264,6 @@ borrowck = [
 ]
 ast_lowering = [
     "@compiler-errors",
-    "@estebank",
     "@spastorino",
 ]
 debuginfo = [
