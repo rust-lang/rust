@@ -83,7 +83,7 @@ pub fn setup(
         SysrootConfig::NoStd
     } else {
         SysrootConfig::WithStd {
-            std_features: ["panic_unwind", "backtrace"].into_iter().map(Into::into).collect(),
+            std_features: ["panic-unwind", "backtrace"].into_iter().map(Into::into).collect(),
         }
     };
     let cargo_cmd = {
