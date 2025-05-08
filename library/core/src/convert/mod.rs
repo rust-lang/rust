@@ -597,6 +597,9 @@ pub trait From<T>: Sized {
 /// standard library. For more information on this, see the
 /// documentation for [`Into`].
 ///
+/// Prefer using [`TryInto`] over [`TryFrom`] when specifying trait bounds on a generic function
+/// to ensure that types that only implement [`TryInto`] can be used as well.
+///
 /// # Implementing `TryInto`
 ///
 /// This suffers the same restrictions and reasoning as implementing
@@ -635,6 +638,9 @@ pub trait TryInto<T>: Sized {
 /// calling `T::try_from()` on a value of type `T` is [`Infallible`].
 /// When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
 /// equivalent.
+///
+/// Prefer using [`TryInto`] over [`TryFrom`] when specifying trait bounds on a generic function
+/// to ensure that types that only implement [`TryInto`] can be used as well.
 ///
 /// `TryFrom<T>` can be implemented as follows:
 ///
