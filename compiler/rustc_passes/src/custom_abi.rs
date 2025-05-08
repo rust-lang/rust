@@ -1,16 +1,14 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{LocalDefId, LocalModDefId};
+use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, ExprKind, FnSig};
+use rustc_hir::{self as hir, ExprKind};
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{BytePos, sym};
+use rustc_span::sym;
 
-use crate::errors::{
-    AbiCustomCall, AbiCustomClothedFunction, AbiCustomSafeForeignFunction, AbiCustomSafeFunction,
-};
+use crate::errors::{AbiCustomCall, AbiCustomClothedFunction};
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_custom_abi, ..*providers };
@@ -25,24 +23,6 @@ fn check_mod_custom_abi(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     for def_id in items.definitions() {
         let def_kind = tcx.def_kind(def_id);
 
-        // An `extern "custom"` function cannot be marked as `safe`.
-        if let DefKind::ForeignMod = def_kind
-            && let hir::Node::Item(item) = tcx.hir_node_by_def_id(def_id)
-            && let hir::ItemKind::ForeignMod { abi: ExternAbi::Custom, items } = item.kind
-        {
-            for item in items {
-                let hir_id = item.id.hir_id();
-                if let hir::Node::ForeignItem(foreign_item) = tcx.hir_node(hir_id)
-                    && let hir::ForeignItemKind::Fn(sig, _, _) = foreign_item.kind
-                    && sig.header.is_safe()
-                {
-                    let len = "safe ".len() as u32;
-                    let safe_span = sig.span.shrink_to_lo().with_hi(sig.span.lo() + BytePos(len));
-                    tcx.dcx().emit_err(AbiCustomSafeForeignFunction { span: sig.span, safe_span });
-                }
-            }
-        }
-
         // An `extern "custom"` function cannot be a `const fn`, because `naked_asm!` cannot be
         // evaluated at compile time, and `extern` blocks cannot declare `const fn` functions.
         // Therefore, to find all calls to `extern "custom"` functions, it suffices to traverse
@@ -51,7 +31,7 @@ fn check_mod_custom_abi(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
             continue;
         }
 
-        let body = match tcx.hir_node_by_def_id(def_id) {
+        let (sig, body) = match tcx.hir_node_by_def_id(def_id) {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Fn { sig, body: body_id, .. },
                 ..
@@ -59,48 +39,26 @@ fn check_mod_custom_abi(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
             | hir::Node::ImplItem(hir::ImplItem {
                 kind: hir::ImplItemKind::Fn(sig, body_id),
                 ..
-            }) => {
-                check_signature(tcx, def_id, sig, true);
-                tcx.hir_body(*body_id)
-            }
-            hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, trait_fn),
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)),
                 ..
-            }) => match trait_fn {
-                hir::TraitFn::Required(_) => {
-                    check_signature(tcx, def_id, sig, false);
-                    continue;
-                }
-                hir::TraitFn::Provided(body_id) => {
-                    check_signature(tcx, def_id, sig, true);
-                    tcx.hir_body(*body_id)
-                }
-            },
+            }) => (sig, tcx.hir_body(*body_id)),
             _ => continue,
         };
 
+        if sig.header.abi == ExternAbi::Custom {
+            // Function definitions that use `extern "custom"` must be naked functions.
+            if !tcx.has_attr(def_id, sym::naked) {
+                tcx.dcx().emit_err(AbiCustomClothedFunction {
+                    span: sig.span,
+                    naked_span: sig.span.shrink_to_lo(),
+                });
+            }
+        }
+
         let mut visitor = CheckCustomAbi { tcx };
         visitor.visit_body(body);
-    }
-}
-
-fn check_signature<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, sig: &FnSig<'tcx>, has_body: bool) {
-    if sig.header.abi == ExternAbi::Custom {
-        // Function definitions that use `extern "custom"` must be naked functions.
-        if has_body && !tcx.has_attr(def_id, sym::naked) {
-            tcx.dcx().emit_err(AbiCustomClothedFunction {
-                span: sig.span,
-                naked_span: sig.span.shrink_to_lo(),
-            });
-        }
-
-        // Function definitions that use `extern "custom"` must unsafe.
-        if sig.header.is_safe() {
-            tcx.dcx().emit_err(AbiCustomSafeFunction {
-                span: sig.span,
-                unsafe_span: sig.span.shrink_to_lo(),
-            });
-        }
     }
 }
 

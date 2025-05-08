@@ -12,14 +12,6 @@ passes_abi_custom_clothed_function =
     functions with the `"custom"` ABI must be naked
     .suggestion = add the `#[unsafe(naked)]` attribute to this function
 
-passes_abi_custom_safe_foreign_function =
-    foreign functions with the `"custom"` ABI cannot be safe
-    .suggestion = remove the `safe` keyword from this definition
-
-passes_abi_custom_safe_function =
-    functions with the `"custom"` ABI must be unsafe
-    .suggestion = add the `unsafe` keyword this function definition
-
 passes_abi_invalid_attribute =
     `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
 passes_abi_ne =
