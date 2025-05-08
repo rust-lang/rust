@@ -1770,7 +1770,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         opt_self_ty: Option<Ty<'tcx>>,
         item_def_id: DefId,
-        trait_segment: &hir::PathSegment<'tcx>,
+        trait_segment: Option<&hir::PathSegment<'tcx>>,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Ty<'tcx> {
         match self.lower_qpath_shared(
@@ -1795,7 +1795,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         opt_self_ty: Option<Ty<'tcx>>,
         item_def_id: DefId,
-        trait_segment: &hir::PathSegment<'tcx>,
+        trait_segment: Option<&hir::PathSegment<'tcx>>,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Const<'tcx> {
         match self.lower_qpath_shared(
@@ -1820,7 +1820,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
         opt_self_ty: Option<Ty<'tcx>>,
         item_def_id: DefId,
-        trait_segment: &hir::PathSegment<'tcx>,
+        trait_segment: Option<&hir::PathSegment<'tcx>>,
         item_segment: &hir::PathSegment<'tcx>,
         assoc_tag: ty::AssocTag,
     ) -> Result<(DefId, GenericArgsRef<'tcx>), ErrorGuaranteed> {
@@ -1840,7 +1840,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(?self_ty);
 
         let trait_ref =
-            self.lower_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
+            self.lower_mono_trait_ref(span, trait_def_id, self_ty, trait_segment.unwrap(), false);
         debug!(?trait_ref);
 
         let item_args =
@@ -2196,16 +2196,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
             Res::Def(DefKind::AssocTy, def_id) => {
-                debug_assert!(path.segments.len() >= 2);
-                let _ = self.prohibit_generic_args(
-                    path.segments[..path.segments.len() - 2].iter(),
-                    GenericsArgsErrExtend::None,
-                );
+                let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
+                    let _ = self.prohibit_generic_args(modules.iter(), GenericsArgsErrExtend::None);
+                    Some(trait_)
+                } else {
+                    None
+                };
                 self.lower_qpath_ty(
                     span,
                     opt_self_ty,
                     def_id,
-                    &path.segments[path.segments.len() - 2],
+                    trait_segment,
                     path.segments.last().unwrap(),
                 )
             }
@@ -2413,16 +2414,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
             }
             Res::Def(DefKind::AssocConst, did) => {
-                debug_assert!(path.segments.len() >= 2);
-                let _ = self.prohibit_generic_args(
-                    path.segments[..path.segments.len() - 2].iter(),
-                    GenericsArgsErrExtend::None,
-                );
+                let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
+                    let _ = self.prohibit_generic_args(modules.iter(), GenericsArgsErrExtend::None);
+                    Some(trait_)
+                } else {
+                    None
+                };
                 self.lower_qpath_const(
                     span,
                     opt_self_ty,
                     did,
-                    &path.segments[path.segments.len() - 2],
+                    trait_segment,
                     path.segments.last().unwrap(),
                 )
             }

@@ -5,7 +5,7 @@ use rustc_middle::mir::{
 };
 
 use super::visitor::ResultsVisitor;
-use super::{Analysis, Effect, EffectIndex, Results};
+use super::{Analysis, Effect, EffectIndex};
 
 pub trait Direction {
     const IS_FORWARD: bool;
@@ -36,13 +36,13 @@ pub trait Direction {
         A: Analysis<'tcx>;
 
     /// Called by `ResultsVisitor` to recompute the analysis domain values for
-    /// all locations in a basic block (starting from the entry value stored
-    /// in `Results`) and to visit them with `vis`.
+    /// all locations in a basic block (starting from `entry_state` and to
+    /// visit them with `vis`.
     fn visit_results_in_block<'mir, 'tcx, A>(
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>;
@@ -211,28 +211,26 @@ impl Direction for Backward {
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>,
     {
-        state.clone_from(results.entry_set_for_block(block));
-
         vis.visit_block_end(state);
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_early_terminator_effect(state, term, loc);
-        vis.visit_after_early_terminator_effect(results, state, term, loc);
-        results.analysis.apply_primary_terminator_effect(state, term, loc);
-        vis.visit_after_primary_terminator_effect(results, state, term, loc);
+        analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(analysis, state, term, loc);
+        analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(analysis, state, term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_early_statement_effect(state, stmt, loc);
-            vis.visit_after_early_statement_effect(results, state, stmt, loc);
-            results.analysis.apply_primary_statement_effect(state, stmt, loc);
-            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
+            analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(analysis, state, stmt, loc);
+            analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(analysis, state, stmt, loc);
         }
 
         vis.visit_block_start(state);
@@ -393,29 +391,27 @@ impl Direction for Forward {
         state: &mut A::Domain,
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
-        results: &mut Results<'tcx, A>,
+        analysis: &mut A,
         vis: &mut impl ResultsVisitor<'tcx, A>,
     ) where
         A: Analysis<'tcx>,
     {
-        state.clone_from(results.entry_set_for_block(block));
-
         vis.visit_block_start(state);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
-            results.analysis.apply_early_statement_effect(state, stmt, loc);
-            vis.visit_after_early_statement_effect(results, state, stmt, loc);
-            results.analysis.apply_primary_statement_effect(state, stmt, loc);
-            vis.visit_after_primary_statement_effect(results, state, stmt, loc);
+            analysis.apply_early_statement_effect(state, stmt, loc);
+            vis.visit_after_early_statement_effect(analysis, state, stmt, loc);
+            analysis.apply_primary_statement_effect(state, stmt, loc);
+            vis.visit_after_primary_statement_effect(analysis, state, stmt, loc);
         }
 
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
-        results.analysis.apply_early_terminator_effect(state, term, loc);
-        vis.visit_after_early_terminator_effect(results, state, term, loc);
-        results.analysis.apply_primary_terminator_effect(state, term, loc);
-        vis.visit_after_primary_terminator_effect(results, state, term, loc);
+        analysis.apply_early_terminator_effect(state, term, loc);
+        vis.visit_after_early_terminator_effect(analysis, state, term, loc);
+        analysis.apply_primary_terminator_effect(state, term, loc);
+        vis.visit_after_primary_terminator_effect(analysis, state, term, loc);
 
         vis.visit_block_end(state);
     }

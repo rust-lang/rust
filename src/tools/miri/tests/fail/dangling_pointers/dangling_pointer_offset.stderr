@@ -1,8 +1,8 @@
-error: Undefined Behavior: out-of-bounds pointer arithmetic: ALLOC has been freed, so this pointer is dangling
+error: Undefined Behavior: in-bounds pointer arithmetic failed: ALLOC has been freed, so this pointer is dangling
   --> tests/fail/dangling_pointers/dangling_pointer_offset.rs:LL:CC
    |
 LL |     let x = unsafe { p.offset(42) };
-   |                      ^^^^^^^^^^^^ out-of-bounds pointer arithmetic: ALLOC has been freed, so this pointer is dangling
+   |                      ^^^^^^^^^^^^ in-bounds pointer arithmetic failed: ALLOC has been freed, so this pointer is dangling
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

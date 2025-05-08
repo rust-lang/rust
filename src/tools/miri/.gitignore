@@ -9,6 +9,9 @@ tex/*/out
 *.mm_profdata
 perf.data
 perf.data.old
-flamegraph.svg
+flamegraph*.svg
+rustc-ice*.txt
 tests/native-lib/libtestlib.so
 .auto-*
+
+/genmc/

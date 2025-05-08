@@ -9,13 +9,14 @@ use cfg::{CfgAtom, CfgDiff};
 use hir::Symbol;
 use ide::{
     AssistConfig, CallHierarchyConfig, CallableSnippets, CompletionConfig,
-    CompletionFieldsToResolve, DiagnosticsConfig, ExprFillDefaultMode, GenericParameterHints,
-    HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve,
-    InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind,
-    Snippet, SnippetScope, SourceRootId,
+    CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, HighlightConfig,
+    HighlightRelatedConfig, HoverConfig, HoverDocFormat, InlayFieldsToResolve, InlayHintsConfig,
+    JoinLinesConfig, MemoryLayoutHoverConfig, MemoryLayoutHoverRenderKind, Snippet, SnippetScope,
+    SourceRootId,
 };
 use ide_db::{
     SnippetCap,
+    assists::ExprFillDefaultMode,
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
 };
 use itertools::{Either, Itertools};
@@ -1182,7 +1183,7 @@ impl ConfigChange {
         source_root_map: Arc<FxHashMap<SourceRootId, SourceRootId>>,
     ) {
         assert!(self.source_map_change.is_none());
-        self.source_map_change = Some(source_root_map.clone());
+        self.source_map_change = Some(source_root_map);
     }
 }
 
@@ -1493,6 +1494,11 @@ impl Config {
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
             code_action_grouping: self.code_action_group(),
+            expr_fill_default: match self.assist_expressionFillDefault(source_root) {
+                ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
+                ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
+                ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
+            },
         }
     }
 
@@ -1577,6 +1583,7 @@ impl Config {
             expr_fill_default: match self.assist_expressionFillDefault(source_root) {
                 ExprFillDefaultDef::Todo => ExprFillDefaultMode::Todo,
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
+                ExprFillDefaultDef::Underscore => ExprFillDefaultMode::Underscore,
             },
             snippet_cap: self.snippet_cap(),
             insert_use: self.insert_use_config(source_root),
@@ -2527,6 +2534,7 @@ where
 enum ExprFillDefaultDef {
     Todo,
     Default,
+    Underscore,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

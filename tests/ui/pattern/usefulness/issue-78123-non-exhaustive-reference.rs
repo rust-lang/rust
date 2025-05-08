@@ -1,6 +1,5 @@
 enum A {}
     //~^ NOTE `A` defined here
-    //~| NOTE
 
 fn f(a: &A) {
     match a {}

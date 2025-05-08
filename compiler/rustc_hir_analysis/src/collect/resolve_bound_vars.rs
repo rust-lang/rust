@@ -14,6 +14,7 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
     self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
@@ -63,6 +64,7 @@ impl ResolvedArg {
 struct BoundVarContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     rbv: &'a mut ResolveBoundVars,
+    disambiguator: &'a mut DisambiguatorState,
     scope: ScopeRef<'a>,
 }
 
@@ -245,8 +247,12 @@ pub(crate) fn provide(providers: &mut Providers) {
 #[instrument(level = "debug", skip(tcx))]
 fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBoundVars {
     let mut rbv = ResolveBoundVars::default();
-    let mut visitor =
-        BoundVarContext { tcx, rbv: &mut rbv, scope: &Scope::Root { opt_parent_item: None } };
+    let mut visitor = BoundVarContext {
+        tcx,
+        rbv: &mut rbv,
+        scope: &Scope::Root { opt_parent_item: None },
+        disambiguator: &mut DisambiguatorState::new(),
+    };
     match tcx.hir_owner_node(local_def_id) {
         hir::OwnerNode::Item(item) => visitor.visit_item(item),
         hir::OwnerNode::ForeignItem(item) => visitor.visit_foreign_item(item),
@@ -515,9 +521,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
         let capture_all_in_scope_lifetimes = opaque_captures_all_in_scope_lifetimes(opaque);
         if capture_all_in_scope_lifetimes {
+            let tcx = self.tcx;
             let lifetime_ident = |def_id: LocalDefId| {
-                let name = self.tcx.item_name(def_id.to_def_id());
-                let span = self.tcx.def_span(def_id);
+                let name = tcx.item_name(def_id.to_def_id());
+                let span = tcx.def_span(def_id);
                 Ident::new(name, span)
             };
 
@@ -1091,8 +1098,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     where
         F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
     {
-        let BoundVarContext { tcx, rbv, .. } = self;
-        let mut this = BoundVarContext { tcx: *tcx, rbv, scope: &wrap_scope };
+        let BoundVarContext { tcx, rbv, disambiguator, .. } = self;
+        let mut this = BoundVarContext { tcx: *tcx, rbv, disambiguator, scope: &wrap_scope };
         let span = debug_span!("scope", scope = ?this.scope.debug_truncated());
         {
             let _enter = span.enter();
@@ -1446,7 +1453,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
     #[instrument(level = "trace", skip(self, opaque_capture_scopes), ret)]
     fn remap_opaque_captures(
-        &self,
+        &mut self,
         opaque_capture_scopes: &Vec<(LocalDefId, &RefCell<FxIndexMap<ResolvedArg, LocalDefId>>)>,
         mut lifetime: ResolvedArg,
         ident: Ident,
@@ -1462,8 +1469,17 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
-                let feed =
-                    self.tcx.create_def(opaque_def_id, Some(ident.name), DefKind::LifetimeParam);
+                // `opaque_def_id` is unique to the `BoundVarContext` pass which is executed once
+                // per `resolve_bound_vars` query. This is the only location that creates nested
+                // lifetime inside a opaque type. `<opaque_def_id>::LifetimeNs(..)` is thus unique
+                // to this query and duplicates within the query are handled by `self.disambiguator`.
+                let feed = self.tcx.create_def(
+                    opaque_def_id,
+                    Some(ident.name),
+                    DefKind::LifetimeParam,
+                    None,
+                    &mut self.disambiguator,
+                );
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
                 feed.def_id()

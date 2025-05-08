@@ -147,9 +147,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
                 let mut terminator =
                     self.basic_blocks[bb].terminator.take().expect("invalid terminator state");
 
-                for successor in terminator.successors_mut() {
-                    self.collapse_goto_chain(successor, &mut changed);
-                }
+                terminator
+                    .successors_mut(|successor| self.collapse_goto_chain(successor, &mut changed));
 
                 let mut inner_changed = true;
                 merged_blocks.clear();
@@ -375,9 +374,7 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     }
 
     for block in basic_blocks {
-        for target in block.terminator_mut().successors_mut() {
-            *target = replacements[target.index()];
-        }
+        block.terminator_mut().successors_mut(|target| *target = replacements[target.index()]);
     }
 }
 

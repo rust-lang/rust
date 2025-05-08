@@ -11,7 +11,7 @@ LL | #![deny(unused_unsafe)]
    |         ^^^^^^^^^^^^^
 
 error: unnecessary `unsafe` block
-  --> $DIR/issue-48131.rs:20:13
+  --> $DIR/issue-48131.rs:19:13
    |
 LL |             unsafe { /* unnecessary */ }
    |             ^^^^^^ unnecessary `unsafe` block

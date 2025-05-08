@@ -168,8 +168,6 @@ use crate::num::NonZero;
 use crate::path::Path;
 use crate::sys::pipe::{AnonPipe, read2};
 use crate::sys::process as imp;
-#[stable(feature = "command_access", since = "1.57.0")]
-pub use crate::sys_common::process::CommandEnvs;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{fmt, fs, str};
 
@@ -1073,7 +1071,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        let (status, stdout, stderr) = self.inner.output()?;
+        let (status, stdout, stderr) = imp::output(&mut self.inner)?;
         Ok(Output { status: ExitStatus(status), stdout, stderr })
     }
 
@@ -1174,7 +1172,7 @@ impl Command {
     /// ```
     #[stable(feature = "command_access", since = "1.57.0")]
     pub fn get_envs(&self) -> CommandEnvs<'_> {
-        self.inner.get_envs()
+        CommandEnvs { iter: self.inner.get_envs() }
     }
 
     /// Returns the working directory for the child process.
@@ -1261,6 +1259,48 @@ impl<'a> ExactSizeIterator for CommandArgs<'a> {
     }
     fn is_empty(&self) -> bool {
         self.inner.is_empty()
+    }
+}
+
+/// An iterator over the command environment variables.
+///
+/// This struct is created by
+/// [`Command::get_envs`][crate::process::Command::get_envs]. See its
+/// documentation for more.
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+#[stable(feature = "command_access", since = "1.57.0")]
+pub struct CommandEnvs<'a> {
+    iter: imp::CommandEnvs<'a>,
+}
+
+#[stable(feature = "command_access", since = "1.57.0")]
+impl<'a> Iterator for CommandEnvs<'a> {
+    type Item = (&'a OsStr, Option<&'a OsStr>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[stable(feature = "command_access", since = "1.57.0")]
+impl<'a> ExactSizeIterator for CommandEnvs<'a> {
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.iter.is_empty()
+    }
+}
+
+#[stable(feature = "command_access", since = "1.57.0")]
+impl<'a> fmt::Debug for CommandEnvs<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.iter.fmt(f)
     }
 }
 

@@ -8,6 +8,8 @@
 //@ compile-flags: --crate-type=lib
 //@ build-pass
 
+#![allow(dead_code)]
+
 pub trait P {
     type A;
 }

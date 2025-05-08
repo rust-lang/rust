@@ -77,7 +77,7 @@
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L160-L167)
 // and here.
 //
-// 4. W_SC ; R_SC case requires the SC load to ignore all but last store maked SC (stores not marked SC are not
+// 4. W_SC ; R_SC case requires the SC load to ignore all but last store marked SC (stores not marked SC are not
 // affected). But this rule is applied to all loads in ReadsFromSet from the paper (last two lines of code), not just SC load.
 // This is implemented correctly in tsan11
 // (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L295)
@@ -88,9 +88,11 @@ use std::collections::VecDeque;
 
 use rustc_data_structures::fx::FxHashMap;
 
+use super::AllocDataRaceHandler;
 use super::data_race::{GlobalState as DataRaceState, ThreadClockSet};
 use super::range_object_map::{AccessType, RangeObjectMap};
 use super::vector_clock::{VClock, VTimestamp, VectorIdx};
+use crate::concurrency::GlobalDataRaceHandler;
 use crate::*;
 
 pub type AllocState = StoreBufferAlloc;
@@ -459,8 +461,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
         if let (
-            crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
-            crate::MiriMachine { data_race: Some(global), threads, .. },
+            crate::AllocExtra {
+                data_race: AllocDataRaceHandler::Vclocks(_, Some(alloc_buffers)),
+                ..
+            },
+            crate::MiriMachine {
+                data_race: GlobalDataRaceHandler::Vclocks(global), threads, ..
+            },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
             if atomic == AtomicRwOrd::SeqCst {
@@ -484,9 +491,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<Scalar>> {
         let this = self.eval_context_ref();
         'fallback: {
-            if let Some(global) = &this.machine.data_race {
+            if let Some(global) = this.machine.data_race.as_vclocks_ref() {
                 let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
-                if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
+                if let Some(alloc_buffers) =
+                    this.get_alloc_extra(alloc_id)?.data_race.as_weak_memory_ref()
+                {
                     if atomic == AtomicReadOrd::SeqCst {
                         global.sc_read(&this.machine.threads);
                     }
@@ -534,8 +543,13 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr(), 0)?;
         if let (
-            crate::AllocExtra { weak_memory: Some(alloc_buffers), .. },
-            crate::MiriMachine { data_race: Some(global), threads, .. },
+            crate::AllocExtra {
+                data_race: AllocDataRaceHandler::Vclocks(_, Some(alloc_buffers)),
+                ..
+            },
+            crate::MiriMachine {
+                data_race: GlobalDataRaceHandler::Vclocks(global), threads, ..
+            },
         ) = this.get_alloc_extra_mut(alloc_id)?
         {
             if atomic == AtomicWriteOrd::SeqCst {
@@ -561,13 +575,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
 
-        if let Some(global) = &this.machine.data_race {
+        if let Some(global) = this.machine.data_race.as_vclocks_ref() {
             if atomic == AtomicReadOrd::SeqCst {
                 global.sc_read(&this.machine.threads);
             }
             let size = place.layout.size;
             let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
-            if let Some(alloc_buffers) = this.get_alloc_extra(alloc_id)?.weak_memory.as_ref() {
+            if let Some(alloc_buffers) =
+                this.get_alloc_extra(alloc_id)?.data_race.as_weak_memory_ref()
+            {
                 let Some(buffer) =
                     alloc_buffers.get_store_buffer(alloc_range(base_offset, size))?
                 else {

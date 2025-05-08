@@ -437,8 +437,8 @@ impl<'tcx> Terminator<'tcx> {
     }
 
     #[inline]
-    pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
-        self.kind.successors_mut()
+    pub fn successors_mut<'a>(&'a mut self, f: impl FnMut(&'a mut BasicBlock)) {
+        self.kind.successors_mut(f)
     }
 
     #[inline]
@@ -486,7 +486,6 @@ pub use helper::*;
 mod helper {
     use super::*;
     pub type Successors<'a> = impl DoubleEndedIterator<Item = BasicBlock> + 'a;
-    pub type SuccessorsMut<'a> = impl DoubleEndedIterator<Item = &'a mut BasicBlock> + 'a;
 
     impl SwitchTargets {
         /// Like [`SwitchTargets::target_for_value`], but returning the same type as
@@ -560,69 +559,63 @@ mod helper {
         }
 
         #[inline]
-        #[define_opaque(SuccessorsMut)]
-        pub fn successors_mut(&mut self) -> SuccessorsMut<'_> {
+        pub fn successors_mut<'a>(&'a mut self, mut f: impl FnMut(&'a mut BasicBlock)) {
             use self::TerminatorKind::*;
-            match *self {
-                // 3-successors for async drop: target, unwind, dropline (parent coroutine drop)
-                Drop {
-                    target: ref mut t,
-                    unwind: UnwindAction::Cleanup(ref mut u),
-                    drop: Some(ref mut d),
-                    ..
-                } => slice::from_mut(t).into_iter().chain(Some(u).into_iter().chain(Some(d))),
-                // 2-successors
-                Call {
-                    target: Some(ref mut t), unwind: UnwindAction::Cleanup(ref mut u), ..
+            match self {
+                Drop { target, unwind, drop, .. } => {
+                    f(target);
+                    if let UnwindAction::Cleanup(u) = unwind {
+                        f(u)
+                    }
+                    if let Some(d) = drop {
+                        f(d)
+                    }
                 }
-                | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
-                | Drop {
-                    target: ref mut t,
-                    unwind: UnwindAction::Cleanup(ref mut u),
-                    drop: None,
-                    ..
+                Call { target, unwind, .. } => {
+                    if let Some(target) = target {
+                        f(target);
+                    }
+                    if let UnwindAction::Cleanup(u) = unwind {
+                        f(u)
+                    }
                 }
-                | Drop { target: ref mut t, unwind: _, drop: Some(ref mut u), .. }
-                | Assert { target: ref mut t, unwind: UnwindAction::Cleanup(ref mut u), .. }
-                | FalseUnwind {
-                    real_target: ref mut t,
-                    unwind: UnwindAction::Cleanup(ref mut u),
-                } => slice::from_mut(t).into_iter().chain(Some(u).into_iter().chain(None)),
-                // single successor
-                Goto { target: ref mut t }
-                | Call { target: None, unwind: UnwindAction::Cleanup(ref mut t), .. }
-                | Call { target: Some(ref mut t), unwind: _, .. }
-                | Yield { resume: ref mut t, drop: None, .. }
-                | Drop { target: ref mut t, unwind: _, .. }
-                | Assert { target: ref mut t, unwind: _, .. }
-                | FalseUnwind { real_target: ref mut t, unwind: _ } => {
-                    slice::from_mut(t).into_iter().chain(None.into_iter().chain(None))
+                Yield { resume, drop, .. } => {
+                    f(resume);
+                    if let Some(d) = drop {
+                        f(d)
+                    }
                 }
-                // No successors
+                Assert { target, unwind, .. } | FalseUnwind { real_target: target, unwind } => {
+                    f(target);
+                    if let UnwindAction::Cleanup(u) = unwind {
+                        f(u)
+                    }
+                }
+                Goto { target } => {
+                    f(target);
+                }
                 UnwindResume
                 | UnwindTerminate(_)
                 | CoroutineDrop
                 | Return
                 | Unreachable
-                | TailCall { .. }
-                | Call { target: None, unwind: _, .. } => {
-                    (&mut []).into_iter().chain(None.into_iter().chain(None))
+                | TailCall { .. } => {}
+                InlineAsm { targets, unwind, .. } => {
+                    for target in targets {
+                        f(target);
+                    }
+                    if let UnwindAction::Cleanup(u) = unwind {
+                        f(u)
+                    }
                 }
-                // Multiple successors
-                InlineAsm { ref mut targets, unwind: UnwindAction::Cleanup(ref mut u), .. } => {
-                    targets.iter_mut().chain(Some(u).into_iter().chain(None))
+                SwitchInt { targets, .. } => {
+                    for target in &mut targets.targets {
+                        f(target);
+                    }
                 }
-                InlineAsm { ref mut targets, unwind: _, .. } => {
-                    targets.iter_mut().chain(None.into_iter().chain(None))
-                }
-                SwitchInt { ref mut targets, .. } => {
-                    targets.targets.iter_mut().chain(None.into_iter().chain(None))
-                }
-                // FalseEdge
-                FalseEdge { ref mut real_target, ref mut imaginary_target } => {
-                    slice::from_mut(real_target)
-                        .into_iter()
-                        .chain(Some(imaginary_target).into_iter().chain(None))
+                FalseEdge { real_target, imaginary_target } => {
+                    f(real_target);
+                    f(imaginary_target);
                 }
             }
         }

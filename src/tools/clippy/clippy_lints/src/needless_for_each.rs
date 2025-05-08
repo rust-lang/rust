@@ -3,12 +3,12 @@ use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{Block, BlockCheckMode, Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::is_trait_method;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::has_iter_method;
+use clippy_utils::{is_trait_method, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
                 iter_recv.kind,
                 ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Path(..)
             )
-            && method_name.ident.name.as_str() == "for_each"
+            && method_name.ident.name == sym::for_each
             && is_trait_method(cx, expr, sym::Iterator)
             // Checks the type of the `iter` method receiver is NOT a user defined type.
             && has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some()

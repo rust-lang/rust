@@ -1053,9 +1053,10 @@ fn link_natively(
                 strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-debug"])
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
-            (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_with_external_utility(sess, stripcmd, out_filename, &["-x"])
-            }
+            (
+                Strip::Symbols,
+                CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro | CrateType::Sdylib,
+            ) => strip_with_external_utility(sess, stripcmd, out_filename, &["-x"]),
             (Strip::Symbols, _) => {
                 strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-all"])
             }
@@ -1243,8 +1244,10 @@ fn add_sanitizer_libraries(
     // which should be linked to both executables and dynamic libraries.
     // Everywhere else the runtimes are currently distributed as static
     // libraries which should be linked to executables only.
-    if matches!(crate_type, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro)
-        && !(sess.target.is_like_darwin || sess.target.is_like_msvc)
+    if matches!(
+        crate_type,
+        CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro | CrateType::Sdylib
+    ) && !(sess.target.is_like_darwin || sess.target.is_like_msvc)
     {
         return;
     }
@@ -1938,6 +1941,7 @@ fn add_late_link_args(
     codegen_results: &CodegenResults,
 ) {
     let any_dynamic_crate = crate_type == CrateType::Dylib
+        || crate_type == CrateType::Sdylib
         || codegen_results.crate_info.dependency_formats.iter().any(|(ty, list)| {
             *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
         });

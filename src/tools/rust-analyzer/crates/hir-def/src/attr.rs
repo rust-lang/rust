@@ -1,6 +1,6 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
-use std::{borrow::Cow, hash::Hash, ops};
+use std::{borrow::Cow, convert::identity, hash::Hash, ops};
 
 use base_db::Crate;
 use cfg::{CfgExpr, CfgOptions};
@@ -8,6 +8,7 @@ use either::Either;
 use hir_expand::{
     HirFileId, InFile,
     attrs::{Attr, AttrId, RawAttrs, collect_attrs},
+    span_map::SpanMapRef,
 };
 use intern::{Symbol, sym};
 use la_arena::{ArenaMap, Idx, RawIdx};
@@ -45,8 +46,27 @@ impl Attrs {
         (**self).iter().find(|attr| attr.id == id)
     }
 
-    pub(crate) fn filter(db: &dyn DefDatabase, krate: Crate, raw_attrs: RawAttrs) -> Attrs {
-        Attrs(raw_attrs.filter(db, krate))
+    pub(crate) fn expand_cfg_attr(
+        db: &dyn DefDatabase,
+        krate: Crate,
+        raw_attrs: RawAttrs,
+    ) -> Attrs {
+        Attrs(raw_attrs.expand_cfg_attr(db, krate))
+    }
+
+    pub(crate) fn is_cfg_enabled_for(
+        db: &dyn DefDatabase,
+        owner: &dyn ast::HasAttrs,
+        span_map: SpanMapRef<'_>,
+        cfg_options: &CfgOptions,
+    ) -> Result<(), CfgExpr> {
+        RawAttrs::attrs_iter_expanded::<false>(db, owner, span_map, cfg_options)
+            .filter_map(|attr| attr.cfg())
+            .find_map(|cfg| match cfg_options.check(&cfg).is_none_or(identity) {
+                true => None,
+                false => Some(cfg),
+            })
+            .map_or(Ok(()), Err)
     }
 }
 
@@ -522,38 +542,41 @@ impl AttrsWithOwner {
                 GenericParamId::ConstParamId(it) => {
                     let src = it.parent().child_source(db);
                     // FIXME: We should be never getting `None` here.
-                    match src.value.get(it.local_id()) {
-                        Some(val) => RawAttrs::from_attrs_owner(
+                    return Attrs(match src.value.get(it.local_id()) {
+                        Some(val) => RawAttrs::new_expanded(
                             db,
-                            src.with_value(val),
+                            val,
                             db.span_map(src.file_id).as_ref(),
+                            def.krate(db).cfg_options(db),
                         ),
                         None => RawAttrs::EMPTY,
-                    }
+                    });
                 }
                 GenericParamId::TypeParamId(it) => {
                     let src = it.parent().child_source(db);
                     // FIXME: We should be never getting `None` here.
-                    match src.value.get(it.local_id()) {
-                        Some(val) => RawAttrs::from_attrs_owner(
+                    return Attrs(match src.value.get(it.local_id()) {
+                        Some(val) => RawAttrs::new_expanded(
                             db,
-                            src.with_value(val),
+                            val,
                             db.span_map(src.file_id).as_ref(),
+                            def.krate(db).cfg_options(db),
                         ),
                         None => RawAttrs::EMPTY,
-                    }
+                    });
                 }
                 GenericParamId::LifetimeParamId(it) => {
                     let src = it.parent.child_source(db);
                     // FIXME: We should be never getting `None` here.
-                    match src.value.get(it.local_id) {
-                        Some(val) => RawAttrs::from_attrs_owner(
+                    return Attrs(match src.value.get(it.local_id) {
+                        Some(val) => RawAttrs::new_expanded(
                             db,
-                            src.with_value(val),
+                            val,
                             db.span_map(src.file_id).as_ref(),
+                            def.krate(db).cfg_options(db),
                         ),
                         None => RawAttrs::EMPTY,
-                    }
+                    });
                 }
             },
             AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),
@@ -561,7 +584,7 @@ impl AttrsWithOwner {
             AttrDefId::UseId(it) => attrs_from_item_tree_loc(db, it),
         };
 
-        let attrs = raw_attrs.filter(db, def.krate(db));
+        let attrs = raw_attrs.expand_cfg_attr(db, def.krate(db));
         Attrs(attrs)
     }
 

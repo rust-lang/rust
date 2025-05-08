@@ -1,6 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::macros::root_macro_call_first_node;
+use clippy_utils::sym;
 use clippy_utils::visitors::is_local_used;
 use rustc_hir::{Body, Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -61,12 +62,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let contains_todo = |cx, body: &'_ Body<'_>| -> bool {
             clippy_utils::visitors::for_each_expr_without_closures(body.value, |e| {
-                if let Some(macro_call) = root_macro_call_first_node(cx, e) {
-                    if cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(())
-                    }
+                if let Some(macro_call) = root_macro_call_first_node(cx, e)
+                    && cx.tcx.is_diagnostic_item(sym::todo_macro, macro_call.def_id)
+                {
+                    ControlFlow::Break(())
                 } else {
                     ControlFlow::Continue(())
                 }

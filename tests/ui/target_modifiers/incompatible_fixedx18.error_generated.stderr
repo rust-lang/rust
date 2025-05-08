@@ -1,0 +1,13 @@
+error: mixing `-Zfixed-x18` will cause an ABI mismatch in crate `incompatible_fixedx18`
+  --> $DIR/incompatible_fixedx18.rs:12:1
+   |
+LL | #![feature(no_core)]
+   | ^
+   |
+   = help: the `-Zfixed-x18` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+   = note: unset `-Zfixed-x18` in this crate is incompatible with `-Zfixed-x18=` in dependency `fixed_x18`
+   = help: set `-Zfixed-x18=` in this crate or unset `-Zfixed-x18` in `fixed_x18`
+   = help: if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch=fixed-x18` to silence this error
+
+error: aborting due to 1 previous error
+

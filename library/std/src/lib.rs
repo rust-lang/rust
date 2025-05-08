@@ -301,6 +301,8 @@
 #![feature(formatting_options)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
+#![feature(iter_advance_by)]
+#![feature(iter_next_chunk)]
 #![feature(lang_items)]
 #![feature(let_chains)]
 #![feature(link_cfg)]
@@ -321,6 +323,7 @@
 #![feature(strict_provenance_lints)]
 #![feature(thread_local)]
 #![feature(try_blocks)]
+#![feature(try_trait_v2)]
 #![feature(type_alias_impl_trait)]
 // tidy-alphabetical-end
 //

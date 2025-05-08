@@ -244,9 +244,6 @@ struct BufEntry {
 // forgotten will trigger a panic in `drop`. (Closing a box more than once
 // isn't possible because `BoxMarker` doesn't implement `Copy` or `Clone`.)
 //
-// FIXME(nnethercote): the panic in `drop` is currently disabled because a few
-// places fail to close their boxes. It can be enabled once they are fixed.
-//
 // Note: it would be better to make open/close mismatching impossible and avoid
 // the need for this marker type altogether by having functions like
 // `with_ibox` that open a box, call a closure, and then close the box. That
@@ -261,8 +258,7 @@ impl !Copy for BoxMarker {}
 
 impl Drop for BoxMarker {
     fn drop(&mut self) {
-        // FIXME(nnethercote): enable once the bad cases are fixed
-        //panic!("BoxMarker not ended with `Printer::end()`");
+        panic!("BoxMarker not ended with `Printer::end()`");
     }
 }
 

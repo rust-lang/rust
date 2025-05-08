@@ -15,9 +15,9 @@ declare_lint! {
     ///
     /// ```rust
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
-    ///     &raw mut (*ptr)[..16]
-    ///     //             ^^^^^^ this calls `IndexMut::index_mut(&mut ..., ..16)`,
-    ///     //                    implicitly creating a reference
+    ///     unsafe { &raw mut (*ptr)[..16] }
+    ///     //                      ^^^^^^ this calls `IndexMut::index_mut(&mut ..., ..16)`,
+    ///     //                             implicitly creating a reference
     /// }
     /// ```
     ///
@@ -34,17 +34,17 @@ declare_lint! {
     ///
     /// ```rust
     /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
-    ///     &raw mut (&mut *ptr)[..16]
+    ///     unsafe { &raw mut (&mut *ptr)[..16] }
     /// }
     /// ```
     ///
     /// Otherwise try to find an alternative way to achive your goals using only raw pointers:
     ///
     /// ```rust
-    /// use std::slice;
+    /// use std::ptr;
     ///
-    /// unsafe fn fun(ptr: *mut [u8]) -> *mut [u8] {
-    ///     slice::from_raw_parts_mut(ptr.cast(), 16)
+    /// fn fun(ptr: *mut [u8]) -> *mut [u8] {
+    ///     ptr::slice_from_raw_parts_mut(ptr.cast(), 16)
     /// }
     /// ```
     pub DANGEROUS_IMPLICIT_AUTOREFS,
@@ -75,10 +75,9 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitAutorefs {
                 _ => return,
             },
             ExprKind::Index(base, _, _) => base,
-            ExprKind::MethodCall(_, inner, _, _)
-                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
-                    && cx.tcx.has_attr(def_id, sym::rustc_no_implicit_autorefs) =>
-            {
+            ExprKind::MethodCall(_, inner, _, _) => {
+                // PERF: Checking of `#[rustc_no_implicit_refs]` is deferred below
+                // because checking for attribute is a bit costly.
                 inner
             }
             ExprKind::Field(inner, _) => inner,
@@ -99,6 +98,14 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitAutorefs {
                 peel_place_mappers(inner).kind
             // 1. Deref of a raw pointer.
             && typeck.expr_ty(dereferenced).is_raw_ptr()
+            // PERF: 5. b. A method call annotated with `#[rustc_no_implicit_refs]`
+            && match expr.kind {
+                ExprKind::MethodCall(..) => matches!(
+                    cx.typeck_results().type_dependent_def_id(expr.hir_id),
+                    Some(def_id) if cx.tcx.has_attr(def_id, sym::rustc_no_implicit_autorefs)
+                ),
+                _ => true,
+            }
         {
             cx.emit_span_lint(
                 DANGEROUS_IMPLICIT_AUTOREFS,

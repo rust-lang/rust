@@ -816,7 +816,9 @@ impl<'a> Linker for GccLinker<'a> {
                 writeln!(f, "EXPORTS")?;
                 for symbol in symbols {
                     debug!("  _{symbol}");
-                    writeln!(f, "  {symbol}")?;
+                    // Quote the name in case it's reserved by linker in some way
+                    // (this accounts for names with dots in particular).
+                    writeln!(f, "  \"{symbol}\"")?;
                 }
             };
             if let Err(error) = res {
@@ -1815,7 +1817,7 @@ pub(crate) fn linked_symbols(
     crate_type: CrateType,
 ) -> Vec<(String, SymbolExportKind)> {
     match crate_type {
-        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib => (),
+        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib | CrateType::Sdylib => (),
         CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
             return Vec::new();
         }

@@ -387,7 +387,7 @@ rustc_queries! {
         }
     }
 
-    query stalled_generators_within(
+    query nested_bodies_within(
         key: LocalDefId
     ) -> &'tcx ty::List<LocalDefId> {
         desc {
@@ -2205,7 +2205,7 @@ rustc_queries! {
     query maybe_unused_trait_imports(_: ()) -> &'tcx FxIndexSet<LocalDefId> {
         desc { "fetching potentially unused trait imports" }
     }
-    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx UnordSet<Symbol> {
+    query names_imported_by_glob_use(def_id: LocalDefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "finding names imported by glob use for `{}`", tcx.def_path_str(def_id) }
     }
 
@@ -2236,6 +2236,16 @@ rustc_queries! {
 
     query trait_impls_in_crate(_: CrateNum) -> &'tcx [DefId] {
         desc { "fetching all trait impls in a crate" }
+        separate_provide_extern
+    }
+
+    query stable_order_of_exportable_impls(_: CrateNum) -> &'tcx FxIndexMap<DefId, usize> {
+        desc { "fetching the stable impl's order" }
+        separate_provide_extern
+    }
+
+    query exportable_items(_: CrateNum) -> &'tcx [DefId] {
+        desc { "fetching all exportable items in a crate" }
         separate_provide_extern
     }
 
@@ -2471,7 +2481,7 @@ rustc_queries! {
     query resolve_instance_raw(
         key: ty::PseudoCanonicalInput<'tcx, (DefId, GenericArgsRef<'tcx>)>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
-        desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
+        desc { "resolving instance `{}`", ty::Instance::new_raw(key.value.0, key.value.1) }
     }
 
     query reveal_opaque_types_in_bounds(key: ty::Clauses<'tcx>) -> ty::Clauses<'tcx> {

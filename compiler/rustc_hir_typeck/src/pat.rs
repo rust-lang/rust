@@ -177,16 +177,20 @@ enum PeelKind {
     /// Only peel reference types. This is used for explicit `deref!(_)` patterns, which dereference
     /// any number of `&`/`&mut` references, plus a single smart pointer.
     ExplicitDerefPat,
-    /// Implicitly peel any number of references, and if `deref_patterns` is enabled, smart pointer
-    /// ADTs. In order to peel only as much as necessary for the pattern to match, the `until_adt`
-    /// field contains the ADT def that the pattern is a constructor for, if applicable, so that we
-    /// don't peel it. See [`ResolvedPat`] for more information.
-    Implicit { until_adt: Option<DefId> },
+    /// Implicitly peel references, and if `deref_patterns` is enabled, smart pointer ADTs.
+    Implicit {
+        /// The ADT the pattern is a constructor for, if applicable, so that we don't peel it. See
+        /// [`ResolvedPat`] for more information.
+        until_adt: Option<DefId>,
+        /// The number of references at the head of the pattern's type, so we can leave that many
+        /// untouched. This is `1` for string literals, and `0` for most patterns.
+        pat_ref_layers: usize,
+    },
 }
 
 impl AdjustMode {
     const fn peel_until_adt(opt_adt_def: Option<DefId>) -> AdjustMode {
-        AdjustMode::Peel { kind: PeelKind::Implicit { until_adt: opt_adt_def } }
+        AdjustMode::Peel { kind: PeelKind::Implicit { until_adt: opt_adt_def, pat_ref_layers: 0 } }
     }
     const fn peel_all() -> AdjustMode {
         AdjustMode::peel_until_adt(None)
@@ -488,9 +492,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match pat.kind {
             // Peel off a `&` or `&mut` from the scrutinee type. See the examples in
             // `tests/ui/rfcs/rfc-2005-default-binding-mode`.
-            _ if let AdjustMode::Peel { .. } = adjust_mode
+            _ if let AdjustMode::Peel { kind: peel_kind } = adjust_mode
                 && pat.default_binding_modes
-                && let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() =>
+                && let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind()
+                && self.should_peel_ref(peel_kind, expected) =>
             {
                 debug!("inspecting {:?}", expected);
 
@@ -531,24 +536,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If `deref_patterns` is enabled, peel a smart pointer from the scrutinee type. See the
             // examples in `tests/ui/pattern/deref_patterns/`.
             _ if self.tcx.features().deref_patterns()
-                && let AdjustMode::Peel { kind: PeelKind::Implicit { until_adt } } = adjust_mode
+                && let AdjustMode::Peel { kind: peel_kind } = adjust_mode
                 && pat.default_binding_modes
-                // For simplicity, only apply overloaded derefs if `expected` is a known ADT.
-                // FIXME(deref_patterns): we'll get better diagnostics for users trying to
-                // implicitly deref generics if we allow them here, but primitives, tuples, and
-                // inference vars definitely should be stopped. Figure out what makes most sense.
-                && let ty::Adt(scrutinee_adt, _) = *expected.kind()
-                // Don't peel if the pattern type already matches the scrutinee. E.g., stop here if
-                // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
-                && until_adt != Some(scrutinee_adt.did())
-                // At this point, the pattern isn't able to match `expected` without peeling. Check
-                // that it implements `Deref` before assuming it's a smart pointer, to get a normal
-                // type error instead of a missing impl error if not. This only checks for `Deref`,
-                // not `DerefPure`: we require that too, but we want a trait error if it's missing.
-                && let Some(deref_trait) = self.tcx.lang_items().deref_trait()
-                && self
-                    .type_implements_trait(deref_trait, [expected], self.param_env)
-                    .may_apply() =>
+                && self.should_peel_smart_pointer(peel_kind, expected) =>
             {
                 debug!("scrutinee ty {expected:?} is a smart pointer, inserting overloaded deref");
                 // The scrutinee is a smart pointer; implicitly dereference it. This adds a
@@ -680,21 +670,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
             // All other literals result in non-reference types.
-            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}`.
-            //
-            // Call `resolve_vars_if_possible` here for inline const blocks.
-            PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
-                ty::Ref(..) => AdjustMode::Pass,
-                _ => {
-                    // Path patterns have already been handled, and inline const blocks currently
-                    // aren't possible to write, so any handling for them would be untested.
-                    if cfg!(debug_assertions)
-                        && self.tcx.features().deref_patterns()
-                        && !matches!(lt.kind, PatExprKind::Lit { .. })
-                    {
-                        span_bug!(lt.span, "FIXME(deref_patterns): adjust mode unimplemented for {:?}", lt.kind);
+            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}` unless
+            // `deref_patterns` is enabled.
+            PatKind::Expr(lt) => {
+                // Path patterns have already been handled, and inline const blocks currently
+                // aren't possible to write, so any handling for them would be untested.
+                if cfg!(debug_assertions)
+                    && self.tcx.features().deref_patterns()
+                    && !matches!(lt.kind, PatExprKind::Lit { .. })
+                {
+                    span_bug!(lt.span, "FIXME(deref_patterns): adjust mode unimplemented for {:?}", lt.kind);
+                }
+                // Call `resolve_vars_if_possible` here for inline const blocks.
+                let lit_ty = self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt));
+                // If `deref_patterns` is enabled, allow `if let "foo" = &&"foo" {}`.
+                if self.tcx.features().deref_patterns() {
+                    let mut peeled_ty = lit_ty;
+                    let mut pat_ref_layers = 0;
+                    while let ty::Ref(_, inner_ty, mutbl) = *peeled_ty.kind() {
+                        // We rely on references at the head of constants being immutable.
+                        debug_assert!(mutbl.is_not());
+                        pat_ref_layers += 1;
+                        peeled_ty = inner_ty;
                     }
-                    AdjustMode::peel_all()
+                    AdjustMode::Peel { kind: PeelKind::Implicit { until_adt: None, pat_ref_layers } }
+                } else {
+                    if lit_ty.is_ref() { AdjustMode::Pass } else { AdjustMode::peel_all() }
                 }
             },
 
@@ -717,6 +718,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::Or(_)
             // Like or-patterns, guard patterns just propogate to their subpatterns.
             | PatKind::Guard(..) => AdjustMode::Pass,
+        }
+    }
+
+    /// Assuming `expected` is a reference type, determine whether to peel it before matching.
+    fn should_peel_ref(&self, peel_kind: PeelKind, mut expected: Ty<'tcx>) -> bool {
+        debug_assert!(expected.is_ref());
+        let pat_ref_layers = match peel_kind {
+            PeelKind::ExplicitDerefPat => 0,
+            PeelKind::Implicit { pat_ref_layers, .. } => pat_ref_layers,
+        };
+
+        // Most patterns don't have reference types, so we'll want to peel all references from the
+        // scrutinee before matching. To optimize for the common case, return early.
+        if pat_ref_layers == 0 {
+            return true;
+        }
+        debug_assert!(
+            self.tcx.features().deref_patterns(),
+            "Peeling for patterns with reference types is gated by `deref_patterns`."
+        );
+
+        // If the pattern has as many or more layers of reference as the expected type, we can match
+        // without peeling more, unless we find a smart pointer or `&mut` that we also need to peel.
+        // We don't treat `&` and `&mut` as interchangeable, but by peeling `&mut`s before matching,
+        // we can still, e.g., match on a `&mut str` with a string literal pattern. This is because
+        // string literal patterns may be used where `str` is expected.
+        let mut expected_ref_layers = 0;
+        while let ty::Ref(_, inner_ty, mutbl) = *expected.kind() {
+            if mutbl.is_mut() {
+                // Mutable references can't be in the final value of constants, thus they can't be
+                // at the head of their types, thus we should always peel `&mut`.
+                return true;
+            }
+            expected_ref_layers += 1;
+            expected = inner_ty;
+        }
+        pat_ref_layers < expected_ref_layers || self.should_peel_smart_pointer(peel_kind, expected)
+    }
+
+    /// Determine whether `expected` is a smart pointer type that should be peeled before matching.
+    fn should_peel_smart_pointer(&self, peel_kind: PeelKind, expected: Ty<'tcx>) -> bool {
+        // Explicit `deref!(_)` patterns match against smart pointers; don't peel in that case.
+        if let PeelKind::Implicit { until_adt, .. } = peel_kind
+            // For simplicity, only apply overloaded derefs if `expected` is a known ADT.
+            // FIXME(deref_patterns): we'll get better diagnostics for users trying to
+            // implicitly deref generics if we allow them here, but primitives, tuples, and
+            // inference vars definitely should be stopped. Figure out what makes most sense.
+            && let ty::Adt(scrutinee_adt, _) = *expected.kind()
+            // Don't peel if the pattern type already matches the scrutinee. E.g., stop here if
+            // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
+            && until_adt != Some(scrutinee_adt.did())
+            // At this point, the pattern isn't able to match `expected` without peeling. Check
+            // that it implements `Deref` before assuming it's a smart pointer, to get a normal
+            // type error instead of a missing impl error if not. This only checks for `Deref`,
+            // not `DerefPure`: we require that too, but we want a trait error if it's missing.
+            && let Some(deref_trait) = self.tcx.lang_items().deref_trait()
+            && self.type_implements_trait(deref_trait, [expected], self.param_env).may_apply()
+        {
+            true
+        } else {
+            false
         }
     }
 

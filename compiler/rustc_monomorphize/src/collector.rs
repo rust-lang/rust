@@ -205,6 +205,7 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
+use std::cell::OnceCell;
 use std::path::PathBuf;
 
 use rustc_attr_parsing::InlineAttr;
@@ -348,6 +349,27 @@ impl<'tcx> Extend<Spanned<MonoItem<'tcx>>> for MonoItems<'tcx> {
     }
 }
 
+fn collect_items_root<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    starting_item: Spanned<MonoItem<'tcx>>,
+    state: &SharedState<'tcx>,
+    recursion_limit: Limit,
+) {
+    if !state.visited.lock_mut().insert(starting_item.node) {
+        // We've been here already, no need to search again.
+        return;
+    }
+    let mut recursion_depths = DefIdMap::default();
+    collect_items_rec(
+        tcx,
+        starting_item,
+        state,
+        &mut recursion_depths,
+        recursion_limit,
+        CollectionMode::UsedItems,
+    );
+}
+
 /// Collect all monomorphized items reachable from `starting_point`, and emit a note diagnostic if a
 /// post-monomorphization error is encountered during a collection step.
 ///
@@ -362,24 +384,6 @@ fn collect_items_rec<'tcx>(
     recursion_limit: Limit,
     mode: CollectionMode,
 ) {
-    if mode == CollectionMode::UsedItems {
-        if !state.visited.lock_mut().insert(starting_item.node) {
-            // We've been here already, no need to search again.
-            return;
-        }
-    } else {
-        if state.visited.lock().contains(&starting_item.node) {
-            // We've already done a *full* visit on this one, no need to do the "mention" visit.
-            return;
-        }
-        if !state.mentioned.lock_mut().insert(starting_item.node) {
-            // We've been here already, no need to search again.
-            return;
-        }
-        // There's some risk that we first do a 'mention' visit and then a full visit. But there's no
-        // harm in that, the mention visit will trigger all the queries and the results are cached.
-    }
-
     let mut used_items = MonoItems::new();
     let mut mentioned_items = MonoItems::new();
     let recursion_depth_reset;
@@ -536,6 +540,20 @@ fn collect_items_rec<'tcx>(
         state.usage_map.lock_mut().record_used(starting_item.node, &used_items);
     }
 
+    {
+        let mut visited = OnceCell::default();
+        if mode == CollectionMode::UsedItems {
+            used_items
+                .items
+                .retain(|k, _| visited.get_mut_or_init(|| state.visited.lock_mut()).insert(*k));
+        }
+
+        let mut mentioned = OnceCell::default();
+        mentioned_items.items.retain(|k, _| {
+            !visited.get_or_init(|| state.visited.lock()).contains(k)
+                && mentioned.get_mut_or_init(|| state.mentioned.lock_mut()).insert(*k)
+        });
+    }
     if mode == CollectionMode::MentionedItems {
         assert!(used_items.is_empty(), "'mentioned' collection should never encounter used items");
     } else {
@@ -913,7 +931,7 @@ fn visit_instance_use<'tcx>(
             // We explicitly skip this otherwise to ensure we get a linker error
             // if anyone tries to call this intrinsic and the codegen backend did not
             // override the implementation.
-            let instance = ty::Instance::new(instance.def_id(), instance.args);
+            let instance = ty::Instance::new_raw(instance.def_id(), instance.args);
             if tcx.should_codegen_locally(instance) {
                 output.push(create_fn_mono_item(tcx, instance, source));
             }
@@ -1502,7 +1520,7 @@ impl<'v> RootCollector<'_, 'v> {
                         ty::Closure(def_id, args)
                         | ty::Coroutine(def_id, args)
                         | ty::CoroutineClosure(def_id, args) => {
-                            Instance::new(def_id, self.tcx.erase_regions(args))
+                            Instance::new_raw(def_id, self.tcx.erase_regions(args))
                         }
                         _ => unreachable!(),
                     };
@@ -1689,15 +1707,7 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
     tcx.sess.time("monomorphization_collector_graph_walk", || {
         par_for_each_in(roots, |root| {
-            let mut recursion_depths = DefIdMap::default();
-            collect_items_rec(
-                tcx,
-                dummy_spanned(*root),
-                &state,
-                &mut recursion_depths,
-                recursion_limit,
-                CollectionMode::UsedItems,
-            );
+            collect_items_root(tcx, dummy_spanned(*root), &state, recursion_limit);
         });
     });
 
