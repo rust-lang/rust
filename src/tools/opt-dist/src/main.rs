@@ -280,9 +280,6 @@ fn execute_pipeline(
     // Here we build a PGO instrumented LLVM, reusing the previously PGO optimized rustc.
     // Then we use the instrumented LLVM to gather LLVM PGO profiles.
     let llvm_pgo_profile = timer.section("Stage 2 (LLVM PGO)", |stage| {
-        if 1 + 1 == 2 {
-            return Err(anyhow::anyhow!("disabled"));
-        }
         // Remove the previous, uninstrumented build of LLVM.
         clear_llvm_files(env)?;
 
@@ -305,7 +302,7 @@ fn execute_pipeline(
         clear_llvm_files(env)?;
 
         Ok(profile)
-    });
+    })?;
 
     let bolt_profiles = if env.use_bolt() {
         // Stage 3: Build BOLT instrumented LLVM
@@ -317,7 +314,7 @@ fn execute_pipeline(
             stage.section("Build PGO optimized LLVM", |stage| {
                 Bootstrap::build(env)
                     .with_llvm_bolt_ldflags()
-                    .llvm_pgo_optimize(&llvm_pgo_profile?)
+                    .llvm_pgo_optimize(&llvm_pgo_profile)
                     .avoid_rustc_rebuild()
                     .run(stage)
             })?;
@@ -369,6 +366,7 @@ fn execute_pipeline(
     };
 
     let mut dist = Bootstrap::dist(env, &dist_args)
+        .llvm_pgo_optimize(&llvm_pgo_profile)
         .rustc_pgo_optimize(&rustc_pgo_profile)
         .avoid_rustc_rebuild();
 
