@@ -2934,7 +2934,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 
     fn prepare_region_info<T>(&mut self, value: &ty::Binder<'tcx, T>)
     where
-        T: TypeVisitable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         struct RegionNameCollector<'tcx> {
             used_region_names: FxHashSet<Symbol>,
