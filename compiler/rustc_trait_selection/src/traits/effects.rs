@@ -24,7 +24,7 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
-    if matches!(selcx.infcx.typing_mode(), TypingMode::Coherence) {
+    if matches!(selcx.infcx.typing_mode(), TypingMode::Coherence | TypingMode::CheckObjectOverlap) {
         span_bug!(
             obligation.cause.span,
             "should not select host obligation in old solver in intercrate mode"

@@ -135,6 +135,7 @@ pub(super) fn needs_normalization<'tcx, T: TypeVisitable<TyCtxt<'tcx>>>(
     match infcx.typing_mode() {
         // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
         TypingMode::Coherence
+        | TypingMode::CheckObjectOverlap
         | TypingMode::Analysis { .. }
         | TypingMode::Borrowck { .. }
         | TypingMode::PostBorrowckAnalysis { .. } => flags.remove(ty::TypeFlags::HAS_TY_OPAQUE),
@@ -389,6 +390,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 match self.selcx.infcx.typing_mode() {
                     // FIXME(#132279): We likely want to reveal opaques during post borrowck analysis
                     TypingMode::Coherence
+                    | TypingMode::CheckObjectOverlap
                     | TypingMode::Analysis { .. }
                     | TypingMode::Borrowck { .. }
                     | TypingMode::PostBorrowckAnalysis { .. } => ty.super_fold_with(self),

@@ -178,6 +178,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             // get a result which isn't correct for all monomorphizations.
             match self.typing_mode() {
                 TypingMode::Coherence
+                | TypingMode::CheckObjectOverlap
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => false,

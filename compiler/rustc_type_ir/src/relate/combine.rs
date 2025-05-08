@@ -132,7 +132,7 @@ where
                 // equal to any other type. This is an
                 // extremely heavy hammer, but can be relaxed in a forwards-compatible
                 // way later.
-                TypingMode::Coherence => {
+                TypingMode::Coherence | TypingMode::CheckObjectOverlap => {
                     relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                     Ok(a)
                 }
@@ -141,6 +141,15 @@ where
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
             }
+        }
+
+        (ty::Dynamic(a_data, _, a_kind), ty::Dynamic(b_data, _, b_kind))
+            if a_data.principal_def_id() == b_data.principal_def_id()
+                && a_kind == b_kind
+                && matches!(infcx.typing_mode(), TypingMode::CheckObjectOverlap) =>
+        {
+            relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
+            Ok(a)
         }
 
         _ => structurally_relate_tys(relation, a, b),

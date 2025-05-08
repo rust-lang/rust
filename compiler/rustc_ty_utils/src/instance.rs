@@ -156,6 +156,7 @@ fn resolve_associated_item<'tcx>(
                 // get a result which isn't correct for all monomorphizations.
                 match typing_env.typing_mode {
                     ty::TypingMode::Coherence
+                    | ty::TypingMode::CheckObjectOverlap
                     | ty::TypingMode::Analysis { .. }
                     | ty::TypingMode::Borrowck { .. }
                     | ty::TypingMode::PostBorrowckAnalysis { .. } => false,

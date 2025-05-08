@@ -1004,8 +1004,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
-            && obligation.is_global()
+        if !matches!(
+            self.infcx.typing_mode(),
+            TypingMode::Coherence | TypingMode::CheckObjectOverlap
+        ) && obligation.is_global()
             && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
         {
             // If a param env has no global bounds, global obligations do not
@@ -1449,7 +1451,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         let obligation = &stack.obligation;
         match self.infcx.typing_mode() {
-            TypingMode::Coherence => {}
+            TypingMode::Coherence | TypingMode::CheckObjectOverlap => {}
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
@@ -1488,7 +1490,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // the master cache. Since coherence executes pretty quickly,
             // it's not worth going to more trouble to increase the
             // hit-rate, I don't think.
-            TypingMode::Coherence => false,
+            TypingMode::Coherence | TypingMode::CheckObjectOverlap => false,
             // Avoid using the global cache when we're defining opaque types
             // as their hidden type may impact the result of candidate selection.
             //
@@ -2509,7 +2511,10 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         nested_obligations.extend(obligations);
 
         if impl_trait_header.polarity == ty::ImplPolarity::Reservation
-            && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
+            && !matches!(
+                self.infcx.typing_mode(),
+                TypingMode::Coherence | TypingMode::CheckObjectOverlap
+            )
         {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());

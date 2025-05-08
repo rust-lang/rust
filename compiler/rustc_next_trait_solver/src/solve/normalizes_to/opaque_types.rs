@@ -23,7 +23,7 @@ where
         let expected = goal.predicate.term.as_type().expect("no such thing as an opaque const");
 
         match self.typing_mode() {
-            TypingMode::Coherence => {
+            TypingMode::Coherence | TypingMode::CheckObjectOverlap => {
                 // An impossible opaque type bound is the only way this goal will fail
                 // e.g. assigning `impl Copy := NotCopy`
                 self.add_item_bounds_for_hidden_type(

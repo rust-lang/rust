@@ -87,7 +87,9 @@ impl<'tcx> InferCtxt<'tcx> {
         let process = |a: Ty<'tcx>, b: Ty<'tcx>| match *a.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) if def_id.is_local() => {
                 let def_id = def_id.expect_local();
-                if let ty::TypingMode::Coherence = self.typing_mode() {
+                if let ty::TypingMode::Coherence | ty::TypingMode::CheckObjectOverlap =
+                    self.typing_mode()
+                {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
@@ -226,7 +228,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
         match self.typing_mode() {
-            ty::TypingMode::Coherence => {
+            ty::TypingMode::Coherence | ty::TypingMode::CheckObjectOverlap => {
                 // During intercrate we do not define opaque types but instead always
                 // force ambiguity unless the hidden type is known to not implement
                 // our trait.
