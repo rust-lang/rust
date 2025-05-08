@@ -83,7 +83,7 @@ impl MinInt for i256 {
     };
     const MAX: Self = Self {
         lo: u128::MAX,
-        hi: u128::MAX << 1,
+        hi: u128::MAX >> 1,
     };
 }
 
