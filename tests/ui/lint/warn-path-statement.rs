@@ -14,4 +14,12 @@ fn main() {
 
     let z = (Droppy,);
     z; //~ ERROR path statement drops value
+
+    macro_rules! foo {
+        ($e:expr) => {
+            $e;
+        };
+    }
+
+    foo!(x);
 }
