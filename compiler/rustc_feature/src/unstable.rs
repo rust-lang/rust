@@ -355,7 +355,7 @@ declare_features! (
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
     /// Allows `extern "custom" fn()`.
-    (unstable, abi_custom, "CURRENT_RUSTC_VERSION", Some(140566)),
+    (unstable, abi_custom, "CURRENT_RUSTC_VERSION", Some(140829)),
     /// Allows `extern "gpu-kernel" fn()`.
     (unstable, abi_gpu_kernel, "1.86.0", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.

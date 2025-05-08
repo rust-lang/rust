@@ -48,7 +48,7 @@ error[E0658]: the extern "custom" ABI is experimental and subject to change
 LL | unsafe extern "custom" fn f7() {
    |               ^^^^^^^^
    |
-   = note: see issue #140566 <https://github.com/rust-lang/rust/issues/140566> for more information
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
    = help: add `#![feature(abi_custom)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -58,7 +58,7 @@ error[E0658]: the extern "custom" ABI is experimental and subject to change
 LL |     extern "custom" fn m7();
    |            ^^^^^^^^
    |
-   = note: see issue #140566 <https://github.com/rust-lang/rust/issues/140566> for more information
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
    = help: add `#![feature(abi_custom)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -68,7 +68,7 @@ error[E0658]: the extern "custom" ABI is experimental and subject to change
 LL |     extern "custom" fn dm7() {
    |            ^^^^^^^^
    |
-   = note: see issue #140566 <https://github.com/rust-lang/rust/issues/140566> for more information
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
    = help: add `#![feature(abi_custom)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -78,7 +78,7 @@ error[E0658]: the extern "custom" ABI is experimental and subject to change
 LL |     extern "custom" fn m7() {
    |            ^^^^^^^^
    |
-   = note: see issue #140566 <https://github.com/rust-lang/rust/issues/140566> for more information
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
    = help: add `#![feature(abi_custom)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -88,7 +88,7 @@ error[E0658]: the extern "custom" ABI is experimental and subject to change
 LL |     extern "custom" fn im7() {
    |            ^^^^^^^^
    |
-   = note: see issue #140566 <https://github.com/rust-lang/rust/issues/140566> for more information
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
    = help: add `#![feature(abi_custom)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -98,7 +98,7 @@ error[E0658]: the extern "custom" ABI is experimental and subject to change
 LL | type A7 = extern "custom" fn();
    |                  ^^^^^^^^
    |
-   = note: see issue #140566 <https://github.com/rust-lang/rust/issues/140566> for more information
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
    = help: add `#![feature(abi_custom)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
@@ -108,7 +108,7 @@ error[E0658]: the extern "custom" ABI is experimental and subject to change
 LL | extern "custom" {}
    |        ^^^^^^^^
    |
-   = note: see issue #140566 <https://github.com/rust-lang/rust/issues/140566> for more information
+   = note: see issue #140829 <https://github.com/rust-lang/rust/issues/140829> for more information
    = help: add `#![feature(abi_custom)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
