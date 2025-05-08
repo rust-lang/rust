@@ -4,7 +4,7 @@ error: functions with the `"custom"` ABI must be unsafe
 LL | extern "custom" fn must_be_unsafe(a: i64) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add the `unsafe` keyword to function definition
+help: add the `unsafe` keyword to this definition
    |
 LL | unsafe extern "custom" fn must_be_unsafe(a: i64) -> i64 {
    | ++++++
@@ -93,7 +93,7 @@ error: functions with the `"custom"` ABI must be unsafe
 LL |     extern "custom" fn negate(a: i64) -> i64;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add the `unsafe` keyword to function definition
+help: add the `unsafe` keyword to this definition
    |
 LL |     unsafe extern "custom" fn negate(a: i64) -> i64;
    |     ++++++
@@ -117,7 +117,7 @@ error: functions with the `"custom"` ABI must be unsafe
 LL |     extern "custom" fn negate(a: i64) -> i64 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: add the `unsafe` keyword to function definition
+help: add the `unsafe` keyword to this definition
    |
 LL |     unsafe extern "custom" fn negate(a: i64) -> i64 {
    |     ++++++

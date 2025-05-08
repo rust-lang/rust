@@ -9,7 +9,7 @@ ast_passes_abi_custom_safe_foreign_function =
 
 ast_passes_abi_custom_safe_function =
     functions with the `"custom"` ABI must be unsafe
-    .suggestion = add the `unsafe` keyword to function definition
+    .suggestion = add the `unsafe` keyword to this definition
 
 ast_passes_assoc_const_without_body =
     associated constant in `impl` without body
