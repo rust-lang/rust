@@ -42,27 +42,17 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, loop_blo
     }
 }
 
-/// Returns `true` if expr contains a single break expression without a label or eub-expression.
+/// Returns `true` if expr contains a single break expression without a label or sub-expression,
+/// possibly embedded in blocks.
 fn is_simple_break_expr(e: &Expr<'_>) -> bool {
-    matches!(peel_blocks(e).kind, ExprKind::Break(dest, None) if dest.label.is_none())
-}
-
-/// Removes any blocks containing only a single expression.
-fn peel_blocks<'tcx>(e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if let ExprKind::Block(b, _) = e.kind {
         match (b.stmts, b.expr) {
-            ([s], None) => {
-                if let StmtKind::Expr(e) | StmtKind::Semi(e) = s.kind {
-                    peel_blocks(e)
-                } else {
-                    e
-                }
-            },
-            ([], Some(e)) => peel_blocks(e),
-            _ => e,
+            ([s], None) => matches!(s.kind, StmtKind::Expr(e) | StmtKind::Semi(e) if is_simple_break_expr(e)),
+            ([], Some(e)) => is_simple_break_expr(e),
+            _ => false,
         }
     } else {
-        e
+        matches!(e.kind, ExprKind::Break(dest, None) if dest.label.is_none())
     }
 }
 
