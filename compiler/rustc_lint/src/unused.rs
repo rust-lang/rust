@@ -14,10 +14,10 @@ use rustc_span::{BytePos, Span, Symbol, kw, sym};
 use tracing::instrument;
 
 use crate::lints::{
-    PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
-    UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion,
-    UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
-    UnusedResult,
+    PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, PathStatementNoEffectSub,
+    UnusedAllocationDiag, UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef,
+    UnusedDefSuggestion, UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp,
+    UnusedOpSuggestion, UnusedResult,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Lint, LintContext};
 
@@ -568,7 +568,13 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                     };
                     cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementDrop { sub })
                 } else {
-                    cx.emit_span_lint(PATH_STATEMENTS, s.span, PathStatementNoEffect);
+                    cx.emit_span_lint(
+                        PATH_STATEMENTS,
+                        s.span,
+                        PathStatementNoEffect {
+                            sub: PathStatementNoEffectSub::Suggestion { span: s.span },
+                        },
+                    );
                 }
             }
         }

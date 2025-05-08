@@ -2077,7 +2077,19 @@ pub(crate) enum PathStatementDropSub {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_path_statement_no_effect)]
-pub(crate) struct PathStatementNoEffect;
+pub(crate) struct PathStatementNoEffect {
+    #[subdiagnostic]
+    pub sub: PathStatementNoEffectSub,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum PathStatementNoEffectSub {
+    #[suggestion(lint_suggestion, code = "", applicability = "machine-applicable")]
+    Suggestion {
+        #[primary_span]
+        span: Span,
+    },
+}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_unused_delim)]
