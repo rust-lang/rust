@@ -26,6 +26,10 @@ edition).
 Not all Rust editions have corresponding changes to the Rust style. For
 instance, Rust 2015, Rust 2018, and Rust 2021 all use the same style edition.
 
+## Rust next style edition
+
+- Never break within a nullary function call `func()` or a unit literal `()`.
+
 ## Rust 2024 style edition
 
 This style guide describes the Rust 2024 style edition. The Rust 2024 style
