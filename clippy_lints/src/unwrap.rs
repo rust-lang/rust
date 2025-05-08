@@ -180,12 +180,12 @@ fn collect_unwrap_info<'tcx>(
     Vec::new()
 }
 
-/// A HIR visitor delegate that checks if a local variable of type `Option<_>` is mutated,
-/// *except* for if `Option::as_mut` is called.
+/// A HIR visitor delegate that checks if a local variable of type `Option` or `Result` is mutated,
+/// *except* for if `.as_mut()` is called.
 /// The reason for why we allow that one specifically is that `.as_mut()` cannot change
-/// the option to `None`, and that is important because this lint relies on the fact that
+/// the variant, and that is important because this lint relies on the fact that
 /// `is_some` + `unwrap` is equivalent to `if let Some(..) = ..`, which it would not be if
-/// the option is changed to None between `is_some` and `unwrap`.
+/// the option is changed to None between `is_some` and `unwrap`, ditto for `Result`.
 /// (And also `.as_mut()` is a somewhat common method that is still worth linting on.)
 struct MutationVisitor<'tcx> {
     is_mutated: bool,
@@ -194,13 +194,13 @@ struct MutationVisitor<'tcx> {
 }
 
 /// Checks if the parent of the expression pointed at by the given `HirId` is a call to
-/// `Option::as_mut`.
+/// `.as_mut()`.
 ///
 /// Used by the mutation visitor to specifically allow `.as_mut()` calls.
 /// In particular, the `HirId` that the visitor receives is the id of the local expression
 /// (i.e. the `x` in `x.as_mut()`), and that is the reason for why we care about its parent
 /// expression: that will be where the actual method call is.
-fn is_option_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
+fn is_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
     if let Node::Expr(mutating_expr) = tcx.parent_hir_node(expr_id)
         && let ExprKind::MethodCall(path, _, [], _) = mutating_expr.kind
     {
@@ -214,7 +214,7 @@ impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
     fn borrow(&mut self, cat: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if let ty::BorrowKind::Mutable = bk
             && is_potentially_local_place(self.local_id, &cat.place)
-            && !is_option_as_mut_use(self.tcx, diag_expr_id)
+            && !is_as_mut_use(self.tcx, diag_expr_id)
         {
             self.is_mutated = true;
         }
@@ -272,12 +272,10 @@ enum AsRefKind {
 /// If it isn't, the expression itself is returned.
 fn consume_option_as_ref<'tcx>(expr: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, Option<AsRefKind>) {
     if let ExprKind::MethodCall(path, recv, [], _) = expr.kind {
-        if path.ident.name == sym::as_ref {
-            (recv, Some(AsRefKind::AsRef))
-        } else if path.ident.name == sym::as_mut {
-            (recv, Some(AsRefKind::AsMut))
-        } else {
-            (expr, None)
+        match path.ident.name {
+            sym::as_ref => (recv, Some(AsRefKind::AsRef)),
+            sym::as_mut => (recv, Some(AsRefKind::AsMut)),
+            _ => (expr, None),
         }
     } else {
         (expr, None)
