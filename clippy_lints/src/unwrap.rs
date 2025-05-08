@@ -224,8 +224,10 @@ impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
         }
     }
 
-    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {
-        self.is_mutated = true;
+    fn mutate(&mut self, cat: &PlaceWithHirId<'tcx>, _: HirId) {
+        if is_potentially_local_place(self.local_id, &cat.place) {
+            self.is_mutated = true;
+        }
     }
 
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
