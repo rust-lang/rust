@@ -1,5 +1,4 @@
 //@ compile-flags: --error-format=human --color=always
-//@ error-pattern: missing lifetime specifier
 
 fn short(foo_bar: &Vec<&i32>) -> &i32 {
     &12
@@ -17,3 +16,5 @@ fn long2(
     &12
 }
 fn main() {}
+
+//~? RAW missing lifetime specifier

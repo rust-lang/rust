@@ -702,6 +702,7 @@
 //!   - `ui/consts/const_in_pattern`
 //!   - `ui/rfc-2008-non-exhaustive`
 //!   - `ui/half-open-range-patterns`
+//!   - `ui/pattern/deref-patterns`
 //!   - probably many others
 //!
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
@@ -866,7 +867,8 @@ impl PlaceValidity {
     /// inside `&` and union fields where validity is reset to `MaybeInvalid`.
     fn specialize<Cx: PatCx>(self, ctor: &Constructor<Cx>) -> Self {
         // We preserve validity except when we go inside a reference or a union field.
-        if matches!(ctor, Constructor::Ref | Constructor::UnionField) {
+        if matches!(ctor, Constructor::Ref | Constructor::DerefPattern(_) | Constructor::UnionField)
+        {
             // Validity of `x: &T` does not imply validity of `*x: T`.
             MaybeInvalid
         } else {

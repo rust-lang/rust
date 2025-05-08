@@ -19,19 +19,25 @@ where
         goal: Goal<I, ty::NormalizesTo<I>>,
     ) -> QueryResult<I> {
         let cx = self.cx();
-        let free_ty = goal.predicate.alias;
+        let free_alias = goal.predicate.alias;
 
         // Check where clauses
         self.add_goals(
             GoalSource::Misc,
-            cx.predicates_of(free_ty.def_id)
-                .iter_instantiated(cx, free_ty.args)
+            cx.predicates_of(free_alias.def_id)
+                .iter_instantiated(cx, free_alias.args)
                 .map(|pred| goal.with(cx, pred)),
         );
 
-        let actual = cx.type_of(free_ty.def_id).instantiate(cx, free_ty.args);
-        self.instantiate_normalizes_to_term(goal, actual.into());
+        let actual = if free_alias.kind(cx).is_type() {
+            cx.type_of(free_alias.def_id).instantiate(cx, free_alias.args)
+        } else {
+            // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
+            // this should instead return that.
+            panic!("normalizing free const aliases in the type system is unsupported");
+        };
 
+        self.instantiate_normalizes_to_term(goal, actual.into());
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 }

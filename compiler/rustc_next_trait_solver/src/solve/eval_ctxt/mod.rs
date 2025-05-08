@@ -14,7 +14,7 @@ use rustc_type_ir::{
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,
 };
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use super::has_only_region_constraints;
 use crate::coherence;
@@ -361,7 +361,20 @@ where
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
             let prev = ecx.delegate.register_hidden_type_in_storage(key, ty, ecx.origin_span);
-            assert_eq!(prev, None);
+            // It may be possible that two entries in the opaque type storage end up
+            // with the same key after resolving contained inference variables.
+            //
+            // We could put them in the duplicate list but don't have to. The opaques we
+            // encounter here are already tracked in the caller, so there's no need to
+            // also store them here. We'd take them out when computing the query response
+            // and then discard them, as they're already present in the input.
+            //
+            // Ideally we'd drop duplicate opaque type definitions when computing
+            // the canonical input. This is more annoying to implement and may cause a
+            // perf regression, so we do it inside of the query for now.
+            if let Some(prev) = prev {
+                debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_type_storage`");
+            }
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -1065,14 +1078,17 @@ where
         &mut self,
         key: ty::OpaqueTypeKey<I>,
     ) -> Option<(ty::OpaqueTypeKey<I>, I::Ty)> {
-        let mut matching =
-            self.delegate.clone_opaque_types_for_query_response().into_iter().filter(
-                |(candidate_key, _)| {
-                    candidate_key.def_id == key.def_id
-                        && DeepRejectCtxt::relate_rigid_rigid(self.cx())
-                            .args_may_unify(candidate_key.args, key.args)
-                },
-            );
+        // We shouldn't have any duplicate entries when using
+        // this function during `TypingMode::Analysis`.
+        let duplicate_entries = self.delegate.clone_duplicate_opaque_types();
+        assert!(duplicate_entries.is_empty(), "unexpected duplicates: {duplicate_entries:?}");
+        let mut matching = self.delegate.clone_opaque_types_lookup_table().into_iter().filter(
+            |(candidate_key, _)| {
+                candidate_key.def_id == key.def_id
+                    && DeepRejectCtxt::relate_rigid_rigid(self.cx())
+                        .args_may_unify(candidate_key.args, key.args)
+            },
+        );
         let first = matching.next();
         let second = matching.next();
         assert_eq!(second, None);

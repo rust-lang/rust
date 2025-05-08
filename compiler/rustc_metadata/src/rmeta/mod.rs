@@ -280,6 +280,8 @@ pub(crate) struct CrateRoot {
     tables: LazyTables,
     debugger_visualizers: LazyArray<DebuggerVisualizerFile>,
 
+    exportable_items: LazyArray<DefIndex>,
+    stable_order_of_exportable_impls: LazyArray<(DefIndex, usize)>,
     exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
 
     syntax_contexts: SyntaxContextTable,

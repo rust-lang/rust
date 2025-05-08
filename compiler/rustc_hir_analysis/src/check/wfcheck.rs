@@ -76,6 +76,36 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         )
     }
 
+    /// Convenience function to *deeply* normalize during wfcheck. In the old solver,
+    /// this just dispatches to [`WfCheckingCtxt::normalize`], but in the new solver
+    /// this calls `deeply_normalize` and reports errors if they are encountered.
+    ///
+    /// This function should be called in favor of `normalize` in cases where we will
+    /// then check the well-formedness of the type, since we only use the normalized
+    /// signature types for implied bounds when checking regions.
+    // FIXME(-Znext-solver): This should be removed when we compute implied outlives
+    // bounds using the unnormalized signature of the function we're checking.
+    fn deeply_normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if self.infcx.next_trait_solver() {
+            match self.ocx.deeply_normalize(
+                &ObligationCause::new(span, self.body_def_id, ObligationCauseCode::WellFormed(loc)),
+                self.param_env,
+                value.clone(),
+            ) {
+                Ok(value) => value,
+                Err(errors) => {
+                    self.infcx.err_ctxt().report_fulfillment_errors(errors);
+                    value
+                }
+            }
+        } else {
+            self.normalize(span, loc, value)
+        }
+    }
+
     fn register_wf_obligation(&self, span: Span, loc: Option<WellFormedLoc>, term: ty::Term<'tcx>) {
         let cause = traits::ObligationCause::new(
             span,
@@ -297,7 +327,8 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         {
             let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
                 let ty = tcx.type_of(def_id).instantiate_identity();
-                let item_ty = wfcx.normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
+                let item_ty =
+                    wfcx.deeply_normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
                 wfcx.register_wf_obligation(
                     hir_ty.span,
                     Some(WellFormedLoc::Ty(def_id)),
@@ -1073,7 +1104,7 @@ fn check_associated_item(
         match item.kind {
             ty::AssocKind::Const { .. } => {
                 let ty = tcx.type_of(item.def_id).instantiate_identity();
-                let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
+                let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
                 check_sized_if_body(
                     wfcx,
@@ -1102,7 +1133,7 @@ fn check_associated_item(
                 }
                 if item.defaultness(tcx).has_value() {
                     let ty = tcx.type_of(item.def_id).instantiate_identity();
-                    let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
+                    let ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
                 Ok(())
@@ -1149,7 +1180,7 @@ fn check_type_defn<'tcx>(
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
                     tcx.hir_node_by_def_id(field_id).expect_field();
-                let ty = wfcx.normalize(
+                let ty = wfcx.deeply_normalize(
                     hir_ty.span,
                     None,
                     tcx.type_of(field.did).instantiate_identity(),
@@ -1310,7 +1341,7 @@ fn check_item_type(
 
     enter_wf_checking_ctxt(tcx, ty_span, item_id, |wfcx| {
         let ty = tcx.type_of(item_id).instantiate_identity();
-        let item_ty = wfcx.normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
+        let item_ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(item_id)), ty);
 
         let forbid_unsized = match unsized_handling {
             UnsizedHandling::Forbid => true,
@@ -1375,7 +1406,7 @@ fn check_impl<'tcx>(
                 // other `Foo` impls are incoherent.
                 tcx.ensure_ok().coherent_trait(trait_ref.def_id)?;
                 let trait_span = hir_trait_ref.path.span;
-                let trait_ref = wfcx.normalize(
+                let trait_ref = wfcx.deeply_normalize(
                     trait_span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     trait_ref,
@@ -1435,7 +1466,7 @@ fn check_impl<'tcx>(
             }
             None => {
                 let self_ty = tcx.type_of(item.owner_id).instantiate_identity();
-                let self_ty = wfcx.normalize(
+                let self_ty = wfcx.deeply_normalize(
                     item.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
                     self_ty,
@@ -1640,7 +1671,7 @@ fn check_fn_or_method<'tcx>(
 
     sig.inputs_and_output =
         tcx.mk_type_list_from_iter(sig.inputs_and_output.iter().enumerate().map(|(idx, ty)| {
-            wfcx.normalize(
+            wfcx.deeply_normalize(
                 arg_span(idx),
                 Some(WellFormedLoc::Param {
                     function: def_id,

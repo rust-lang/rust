@@ -1282,7 +1282,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                     intrinsic.name,
                 );
             }
-            return Err(Instance::new(instance.def_id(), instance.args));
+            return Err(Instance::new_raw(instance.def_id(), instance.args));
         }
     }
 

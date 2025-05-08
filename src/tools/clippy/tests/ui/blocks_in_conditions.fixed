@@ -4,7 +4,6 @@
 #![allow(
     unused,
     unnecessary_transmutes,
-    clippy::let_and_return,
     clippy::needless_if,
     clippy::missing_transmute_annotations
 )]

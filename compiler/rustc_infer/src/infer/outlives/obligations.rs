@@ -63,11 +63,11 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::NoSolution;
+use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
     TypeFoldable as _, TypeVisitableExt,
 };
-use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 

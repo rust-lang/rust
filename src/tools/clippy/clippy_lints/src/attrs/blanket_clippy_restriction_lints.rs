@@ -1,17 +1,15 @@
 use super::BLANKET_CLIPPY_RESTRICTION_LINTS;
 use super::utils::extract_clippy_lint;
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
+use clippy_utils::sym;
 use rustc_ast::MetaItemInner;
 use rustc_lint::{EarlyContext, Level, LintContext};
+use rustc_span::DUMMY_SP;
 use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, sym};
 
 pub(super) fn check(cx: &EarlyContext<'_>, name: Symbol, items: &[MetaItemInner]) {
     for lint in items {
-        if let Some(lint_name) = extract_clippy_lint(lint)
-            && lint_name.as_str() == "restriction"
-            && name != sym::allow
-        {
+        if name != sym::allow && extract_clippy_lint(lint) == Some(sym::restriction) {
             span_lint_and_help(
                 cx,
                 BLANKET_CLIPPY_RESTRICTION_LINTS,

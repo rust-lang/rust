@@ -17,12 +17,12 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use std::io::Write;
 use std::collections::HashSet;
-use stable_mir::CrateDef;
-use stable_mir::*;
-use stable_mir::ty::*;
+use std::io::Write;
 use std::ops::ControlFlow;
+
+use stable_mir::ty::*;
+use stable_mir::{CrateDef, *};
 
 const CRATE_NAME: &str = "crate_assoc_items";
 
@@ -45,30 +45,30 @@ fn test_assoc_items() -> ControlFlow<()> {
     let local_impls = local_crate.trait_impls();
     let local_traits = local_crate.trait_decls();
 
-    let trait_assoc_item_defs: Vec<AssocDef> = local_traits[0].associated_items()
-        .iter().map(|assoc_item| assoc_item.def_id).collect();
+    let trait_assoc_item_defs: Vec<AssocDef> =
+        local_traits[0].associated_items().iter().map(|assoc_item| assoc_item.def_id).collect();
     check_items(
         &trait_assoc_item_defs,
         &[
-            "ATrait::{anon_assoc#0}",
+            "ATrait::rpitit::{anon_assoc#0}",
             "ATrait::rpitit",
             "ATrait::Assoc",
             "ATrait::assoc_fn_no_self",
             "ATrait::assoc_fn_has_self",
-        ]
+        ],
     );
 
-    let impl_assoc_item_defs: Vec<AssocDef> = local_impls[0].associated_items()
-        .iter().map(|assoc_item| assoc_item.def_id).collect();
+    let impl_assoc_item_defs: Vec<AssocDef> =
+        local_impls[0].associated_items().iter().map(|assoc_item| assoc_item.def_id).collect();
     check_items(
         &impl_assoc_item_defs,
         &[
-            "<AStruct as ATrait>::{anon_assoc#0}",
+            "<AStruct as ATrait>::rpitit::{anon_assoc#0}",
             "<AStruct as ATrait>::rpitit",
             "<AStruct as ATrait>::Assoc",
             "<AStruct as ATrait>::assoc_fn_no_self",
             "<AStruct as ATrait>::assoc_fn_has_self",
-        ]
+        ],
     );
 
     ControlFlow::Continue(())

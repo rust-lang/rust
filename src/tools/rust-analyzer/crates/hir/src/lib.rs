@@ -53,7 +53,6 @@ use hir_def::{
         generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     },
     item_tree::{AttrOwner, FieldParent, ImportAlias, ItemTreeFieldId, ItemTreeNode},
-    lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
     per_ns::PerNs,
@@ -137,7 +136,6 @@ pub use {
             HirFileRange, InFile, InFileWrapper, InMacroFile, InRealFile, MacroFilePosition,
             MacroFileRange,
         },
-        hygiene::{SyntaxContextExt, marks_rev},
         inert_attr_macro::AttributeTemplate,
         mod_path::{ModPath, PathKind, tool_path},
         name::Name,
@@ -781,7 +779,7 @@ impl Module {
             let drop_maybe_dangle = (|| {
                 // FIXME: This can be simplified a lot by exposing hir-ty's utils.rs::Generics helper
                 let trait_ = trait_?;
-                let drop_trait = db.lang_item(self.krate().into(), LangItem::Drop)?.as_trait()?;
+                let drop_trait = LangItem::Drop.resolve_trait(db, self.krate().into())?;
                 if drop_trait != trait_.into() {
                     return None;
                 }
@@ -2388,14 +2386,11 @@ impl Function {
         }
 
         let Some(impl_traits) = self.ret_type(db).as_impl_traits(db) else { return false };
-        let Some(future_trait_id) =
-            db.lang_item(self.ty(db).env.krate, LangItem::Future).and_then(|t| t.as_trait())
+        let Some(future_trait_id) = LangItem::Future.resolve_trait(db, self.ty(db).env.krate)
         else {
             return false;
         };
-        let Some(sized_trait_id) =
-            db.lang_item(self.ty(db).env.krate, LangItem::Sized).and_then(|t| t.as_trait())
-        else {
+        let Some(sized_trait_id) = LangItem::Sized.resolve_trait(db, self.ty(db).env.krate) else {
             return false;
         };
 
@@ -2861,9 +2856,7 @@ pub struct Trait {
 
 impl Trait {
     pub fn lang(db: &dyn HirDatabase, krate: Crate, name: &Name) -> Option<Trait> {
-        db.lang_item(krate.into(), LangItem::from_name(name)?)
-            .and_then(LangItemTarget::as_trait)
-            .map(Into::into)
+        LangItem::from_name(name)?.resolve_trait(db, krate.into()).map(Into::into)
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -3692,24 +3685,16 @@ impl GenericDef {
         }
 
         let source_map = match def {
-            GenericDefId::AdtId(AdtId::EnumId(it)) => {
-                db.enum_signature_with_source_map(it).1.clone()
-            }
-            GenericDefId::AdtId(AdtId::StructId(it)) => {
-                db.struct_signature_with_source_map(it).1.clone()
-            }
-            GenericDefId::AdtId(AdtId::UnionId(it)) => {
-                db.union_signature_with_source_map(it).1.clone()
-            }
+            GenericDefId::AdtId(AdtId::EnumId(it)) => db.enum_signature_with_source_map(it).1,
+            GenericDefId::AdtId(AdtId::StructId(it)) => db.struct_signature_with_source_map(it).1,
+            GenericDefId::AdtId(AdtId::UnionId(it)) => db.union_signature_with_source_map(it).1,
             GenericDefId::ConstId(_) => return,
-            GenericDefId::FunctionId(it) => db.function_signature_with_source_map(it).1.clone(),
-            GenericDefId::ImplId(it) => db.impl_signature_with_source_map(it).1.clone(),
+            GenericDefId::FunctionId(it) => db.function_signature_with_source_map(it).1,
+            GenericDefId::ImplId(it) => db.impl_signature_with_source_map(it).1,
             GenericDefId::StaticId(_) => return,
-            GenericDefId::TraitAliasId(it) => {
-                db.trait_alias_signature_with_source_map(it).1.clone()
-            }
-            GenericDefId::TraitId(it) => db.trait_signature_with_source_map(it).1.clone(),
-            GenericDefId::TypeAliasId(it) => db.type_alias_signature_with_source_map(it).1.clone(),
+            GenericDefId::TraitAliasId(it) => db.trait_alias_signature_with_source_map(it).1,
+            GenericDefId::TraitId(it) => db.trait_signature_with_source_map(it).1,
+            GenericDefId::TypeAliasId(it) => db.type_alias_signature_with_source_map(it).1,
         };
 
         expr_store_diagnostics(db, acc, &source_map);
@@ -3809,7 +3794,7 @@ impl GenericSubstitution {
         container_params
             .chain(self_params)
             .filter_map(|(ty, name)| {
-                Some((name?.symbol().clone(), Type { ty: ty.clone(), env: self.env.clone() }))
+                Some((name?.symbol().clone(), Type { ty, env: self.env.clone() }))
             })
             .collect()
     }
@@ -4989,18 +4974,14 @@ impl Type {
     /// `std::future::Future` and returns the `Output` associated type.
     /// This function is used in `.await` syntax completion.
     pub fn into_future_output(&self, db: &dyn HirDatabase) -> Option<Type> {
-        let trait_ = db
-            .lang_item(self.env.krate, LangItem::IntoFutureIntoFuture)
-            .and_then(|it| {
-                let into_future_fn = it.as_function()?;
+        let trait_ = LangItem::IntoFutureIntoFuture
+            .resolve_function(db, self.env.krate)
+            .and_then(|into_future_fn| {
                 let assoc_item = as_assoc_item(db, AssocItem::Function, into_future_fn)?;
                 let into_future_trait = assoc_item.container_or_implemented_trait(db)?;
                 Some(into_future_trait.id)
             })
-            .or_else(|| {
-                let future_trait = db.lang_item(self.env.krate, LangItem::Future)?;
-                future_trait.as_trait()
-            })?;
+            .or_else(|| LangItem::Future.resolve_trait(db, self.env.krate))?;
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
@@ -5015,14 +4996,13 @@ impl Type {
 
     /// This does **not** resolve `IntoFuture`, only `Future`.
     pub fn future_output(self, db: &dyn HirDatabase) -> Option<Type> {
-        let future_output =
-            db.lang_item(self.env.krate, LangItem::FutureOutput)?.as_type_alias()?;
+        let future_output = LangItem::FutureOutput.resolve_type_alias(db, self.env.krate)?;
         self.normalize_trait_assoc_type(db, &[], future_output.into())
     }
 
     /// This does **not** resolve `IntoIterator`, only `Iterator`.
     pub fn iterator_item(self, db: &dyn HirDatabase) -> Option<Type> {
-        let iterator_trait = db.lang_item(self.env.krate, LangItem::Iterator)?.as_trait()?;
+        let iterator_trait = LangItem::Iterator.resolve_trait(db, self.env.krate)?;
         let iterator_item = db
             .trait_items(iterator_trait)
             .associated_type_by_name(&Name::new_symbol_root(sym::Item))?;
@@ -5030,9 +5010,7 @@ impl Type {
     }
 
     pub fn impls_iterator(self, db: &dyn HirDatabase) -> bool {
-        let Some(iterator_trait) =
-            db.lang_item(self.env.krate, LangItem::Iterator).and_then(|it| it.as_trait())
-        else {
+        let Some(iterator_trait) = LangItem::Iterator.resolve_trait(db, self.env.krate) else {
             return false;
         };
         let canonical_ty =
@@ -5042,12 +5020,13 @@ impl Type {
 
     /// Resolves the projection `<Self as IntoIterator>::IntoIter` and returns the resulting type
     pub fn into_iterator_iter(self, db: &dyn HirDatabase) -> Option<Type> {
-        let trait_ = db.lang_item(self.env.krate, LangItem::IntoIterIntoIter).and_then(|it| {
-            let into_iter_fn = it.as_function()?;
-            let assoc_item = as_assoc_item(db, AssocItem::Function, into_iter_fn)?;
-            let into_iter_trait = assoc_item.container_or_implemented_trait(db)?;
-            Some(into_iter_trait.id)
-        })?;
+        let trait_ = LangItem::IntoIterIntoIter.resolve_function(db, self.env.krate).and_then(
+            |into_iter_fn| {
+                let assoc_item = as_assoc_item(db, AssocItem::Function, into_iter_fn)?;
+                let into_iter_trait = assoc_item.container_or_implemented_trait(db)?;
+                Some(into_iter_trait.id)
+            },
+        )?;
 
         let canonical_ty =
             Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
@@ -5133,10 +5112,8 @@ impl Type {
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
-        let lang_item = db.lang_item(self.env.krate, LangItem::Copy);
-        let copy_trait = match lang_item {
-            Some(LangItemTarget::Trait(it)) => it,
-            _ => return false,
+        let Some(copy_trait) = LangItem::Copy.resolve_trait(db, self.env.krate) else {
+            return false;
         };
         self.impls_trait(db, copy_trait.into(), &[])
     }

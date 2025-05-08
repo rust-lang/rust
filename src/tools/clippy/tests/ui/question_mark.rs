@@ -371,6 +371,11 @@ fn pattern() -> Result<(), PatternedError> {
     res
 }
 
+fn expect_expr(a: Option<usize>) -> Option<usize> {
+    #[expect(clippy::needless_question_mark)]
+    Some(a?)
+}
+
 fn main() {}
 
 // `?` is not the same as `return None;` if inside of a try block

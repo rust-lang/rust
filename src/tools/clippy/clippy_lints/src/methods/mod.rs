@@ -4370,11 +4370,10 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    ///
-    /// Detect functions that end with `Option::and_then` or `Result::and_then`, and suggest using a question mark (`?`) instead.
+    /// Detect functions that end with `Option::and_then` or `Result::and_then`, and suggest using
+    /// the `?` operator instead.
     ///
     /// ### Why is this bad?
-    ///
     /// The `and_then` method is used to chain a computation that returns an `Option` or a `Result`.
     /// This can be replaced with the `?` operator, which is more concise and idiomatic.
     ///

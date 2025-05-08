@@ -16,7 +16,7 @@ use crate::fn_mod::foo;
 //~^ wildcard_imports
 use crate::mod_mod::inner_mod;
 //~^ wildcard_imports
-use crate::multi_fn_mod::{multi_bar, multi_foo, multi_inner_mod};
+use crate::multi_fn_mod::{multi_foo, multi_bar, multi_inner_mod};
 //~^ wildcard_imports
 #[macro_use]
 use crate::struct_mod::{A, inner_struct_mod};
@@ -26,7 +26,7 @@ use crate::struct_mod::{A, inner_struct_mod};
 use wildcard_imports_helper::inner::inner_for_self_import;
 use wildcard_imports_helper::inner::inner_for_self_import::inner_extern_bar;
 //~^ wildcard_imports
-use wildcard_imports_helper::{ExternA, extern_foo};
+use wildcard_imports_helper::{extern_foo, ExternA};
 //~^ wildcard_imports
 
 use std::io::prelude::*;
@@ -138,7 +138,7 @@ mod in_fn_test {
     fn test_extern() {
         use wildcard_imports_helper::inner::inner_for_self_import::{self, inner_extern_foo};
         //~^ wildcard_imports
-        use wildcard_imports_helper::{ExternA, extern_foo};
+        use wildcard_imports_helper::{extern_foo, ExternA};
         //~^ wildcard_imports
 
         inner_for_self_import::inner_extern_foo();
@@ -160,7 +160,7 @@ mod in_fn_test {
     }
 
     fn test_extern_reexported() {
-        use wildcard_imports_helper::{ExternExportedEnum, ExternExportedStruct, extern_exported};
+        use wildcard_imports_helper::{extern_exported, ExternExportedStruct, ExternExportedEnum};
         //~^ wildcard_imports
 
         extern_exported();
@@ -190,7 +190,7 @@ mod in_fn_test {
 }
 
 fn test_reexported() {
-    use crate::in_fn_test::{ExportedEnum, ExportedStruct, exported};
+    use crate::in_fn_test::{exported, ExportedStruct, ExportedEnum};
     //~^ wildcard_imports
 
     exported();

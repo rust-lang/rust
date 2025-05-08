@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     db::ExpandDatabase,
-    hygiene::{SyntaxContextExt, Transparency, marks_rev},
+    hygiene::Transparency,
     name::{AsName, Name},
     tt,
 };
@@ -340,7 +340,7 @@ pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContext) -> O
     // definitions actually produced by `macro` and `macro` definitions produced by
     // `macro_rules!`, but at least such configurations are not stable yet.
     ctxt = ctxt.normalize_to_macro_rules(db);
-    let mut iter = marks_rev(ctxt, db).peekable();
+    let mut iter = ctxt.marks_rev(db).peekable();
     let mut result_mark = None;
     // Find the last opaque mark from the end if it exists.
     while let Some(&(mark, Transparency::Opaque)) = iter.peek() {

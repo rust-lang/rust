@@ -148,7 +148,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
-            let CrateSource { dylib, rlib, rmeta } = data.source();
+            let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
             if let Some(dylib) = dylib {
                 writeln!(fmt, "  dylib: {}", dylib.0.display())?;
             }
@@ -157,6 +157,9 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             }
             if let Some(rmeta) = rmeta {
                 writeln!(fmt, "   rmeta: {}", rmeta.0.display())?;
+            }
+            if let Some(sdylib_interface) = sdylib_interface {
+                writeln!(fmt, "   sdylib interface: {}", sdylib_interface.0.display())?;
             }
         }
         Ok(())

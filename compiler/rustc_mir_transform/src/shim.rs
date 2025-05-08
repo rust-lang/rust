@@ -298,10 +298,9 @@ fn local_decls_for_sig<'tcx>(
 fn dropee_emit_retag<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    dropee_ptr: Place<'tcx>,
+    mut dropee_ptr: Place<'tcx>,
     span: Span,
 ) -> Place<'tcx> {
-    let mut dropee_ptr = dropee_ptr;
     if tcx.sess.opts.unstable_opts.mir_emit_retag {
         let source_info = SourceInfo::outermost(span);
         // We want to treat the function argument as if it was passed by `&mut`. As such, we
@@ -365,8 +364,8 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
     // The first argument (index 0), but add 1 for the return value.
-    let mut dropee_ptr = Place::from(Local::new(1 + 0));
-    dropee_ptr = dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
+    let dropee_ptr = Place::from(Local::new(1 + 0));
+    let dropee_ptr = dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
 
     if ty.is_some() {
         let patch = {

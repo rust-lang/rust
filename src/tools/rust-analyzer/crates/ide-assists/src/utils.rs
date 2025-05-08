@@ -8,6 +8,7 @@ use hir::{
 };
 use ide_db::{
     RootDatabase,
+    assists::ExprFillDefaultMode,
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
@@ -27,7 +28,10 @@ use syntax::{
     ted,
 };
 
-use crate::assist_context::{AssistContext, SourceChangeBuilder};
+use crate::{
+    AssistConfig,
+    assist_context::{AssistContext, SourceChangeBuilder},
+};
 
 mod gen_trait_fn_body;
 pub(crate) mod ref_field_expr;
@@ -174,6 +178,7 @@ pub fn filter_assoc_items(
 /// inserted.
 pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
+    config: &AssistConfig,
     original_items: &[InFile<ast::AssocItem>],
     trait_: hir::Trait,
     impl_: &ast::Impl,
@@ -219,7 +224,14 @@ pub fn add_trait_assoc_items_to_impl(
         match &item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
                 let body = AstNodeEdit::indent(
-                    &make::block_expr(None, Some(make::ext::expr_todo())),
+                    &make::block_expr(
+                        None,
+                        Some(match config.expr_fill_default {
+                            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                            ExprFillDefaultMode::Default => make::ext::expr_todo(),
+                        }),
+                    ),
                     new_indent_level,
                 );
                 ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())

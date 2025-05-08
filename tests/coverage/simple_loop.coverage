@@ -2,14 +2,14 @@
    LL|       |
    LL|       |#[rustfmt::skip]
    LL|      1|fn main() {
-   LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
-   LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
-   LL|      1|    // dependent conditions.
+   LL|       |    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|       |    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|       |    // dependent conditions.
    LL|      1|    let is_true = std::env::args().len() == 1;
-   LL|      1|
+   LL|       |
    LL|      1|    let mut countdown = 0;
-   LL|      1|
-   LL|      1|    if
+   LL|       |
+   LL|       |    if
    LL|      1|        is_true
    LL|      1|    {
    LL|      1|        countdown

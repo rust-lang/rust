@@ -2954,12 +2954,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
 
-        let name = if borrow_span.in_external_macro(self.infcx.tcx.sess.source_map()) {
-            // Don't name local variables in external macros.
-            "value".to_string()
-        } else {
-            format!("`{name}`")
-        };
+        let name = format!("`{name}`");
 
         let mut err = self.path_does_not_live_long_enough(borrow_span, &name);
 

@@ -92,7 +92,7 @@ use hir::{
 };
 use ide_db::{
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
-    assists::{Assist, AssistId, AssistResolveStrategy},
+    assists::{Assist, AssistId, AssistResolveStrategy, ExprFillDefaultMode},
     base_db::{ReleaseChannel, RootQueryDb as _},
     generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
@@ -216,17 +216,6 @@ impl Diagnostic {
     fn with_unused(mut self, unused: bool) -> Diagnostic {
         self.unused = unused;
         self
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ExprFillDefaultMode {
-    Todo,
-    Default,
-}
-impl Default for ExprFillDefaultMode {
-    fn default() -> Self {
-        Self::Todo
     }
 }
 

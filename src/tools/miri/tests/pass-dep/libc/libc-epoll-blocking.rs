@@ -1,6 +1,6 @@
 //@only-target: linux android illumos
 // test_epoll_block_then_unblock and test_epoll_race depend on a deterministic schedule.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 
 use std::convert::TryInto;
 use std::thread;

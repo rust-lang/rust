@@ -48,9 +48,13 @@ where
                     })
                 })
             }
-            ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
+            ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
+                self.normalize_inherent_associated_term(goal)
+            }
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
-            ty::AliasTermKind::FreeTy => self.normalize_free_alias(goal),
+            ty::AliasTermKind::FreeTy | ty::AliasTermKind::FreeConst => {
+                self.normalize_free_alias(goal)
+            }
             ty::AliasTermKind::UnevaluatedConst => self.normalize_anon_const(goal),
         }
     }
@@ -333,6 +337,8 @@ where
                     cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
                 }
                 ty::AliasTermKind::ProjectionConst => {
+                    // FIXME(mgca): once const items are actual aliases defined as equal to type system consts
+                    // this should instead return that.
                     if cx.features().associated_const_equality() {
                         panic!("associated const projection is not supported yet")
                     } else {

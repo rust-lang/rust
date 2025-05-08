@@ -392,3 +392,31 @@ impl Step for CyclicStep {
         builder.ensure(CyclicStep { n: self.n.saturating_sub(1) })
     }
 }
+
+/// Step to manually run the coverage-dump tool (`./x run coverage-dump`).
+///
+/// The coverage-dump tool is an internal detail of coverage tests, so this run
+/// step is only needed when testing coverage-dump manually.
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+pub struct CoverageDump;
+
+impl Step for CoverageDump {
+    type Output = ();
+
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/coverage-dump")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self {});
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let mut cmd = builder.tool_cmd(Tool::CoverageDump);
+        cmd.args(&builder.config.free_args);
+        cmd.run(builder);
+    }
+}

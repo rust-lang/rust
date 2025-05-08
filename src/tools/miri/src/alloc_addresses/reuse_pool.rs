@@ -20,7 +20,7 @@ pub struct ReusePool {
     /// allocations as address-size pairs, the list must be sorted by the size and then the thread ID.
     ///
     /// Each of these maps has at most MAX_POOL_SIZE elements, and since alignment is limited to
-    /// less than 64 different possible value, that bounds the overall size of the pool.
+    /// less than 64 different possible values, that bounds the overall size of the pool.
     ///
     /// We also store the ID and the data-race clock of the thread that donated this pool element,
     /// to ensure synchronization with the thread that picks up this address.
@@ -33,6 +33,15 @@ impl ReusePool {
             address_reuse_rate: config.address_reuse_rate,
             address_reuse_cross_thread_rate: config.address_reuse_cross_thread_rate,
             pool: vec![],
+        }
+    }
+
+    /// Call this when we are using up a lot of the address space: if memory reuse is enabled at all,
+    /// this will bump the intra-thread reuse rate to 100% so that we can keep running this program as
+    /// long as possible.
+    pub fn address_space_shortage(&mut self) {
+        if self.address_reuse_rate > 0.0 {
+            self.address_reuse_rate = 1.0;
         }
     }
 
@@ -55,9 +64,7 @@ impl ReusePool {
         clock: impl FnOnce() -> VClock,
     ) {
         // Let's see if we even want to remember this address.
-        // We don't remember stack addresses: there's a lot of them (so the perf impact is big),
-        // and we only want to reuse stack slots within the same thread or else we'll add a lot of
-        // undesired synchronization.
+        // We don't remember stack addresses since there's so many of them (so the perf impact is big).
         if kind == MemoryKind::Stack || !rng.random_bool(self.address_reuse_rate) {
             return;
         }

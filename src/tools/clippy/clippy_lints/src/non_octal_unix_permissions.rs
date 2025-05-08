@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SpanRangeExt, snippet_with_applicability};
+use clippy_utils::sym;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -43,12 +43,12 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
         match &expr.kind {
             ExprKind::MethodCall(path, func, [param], _) => {
                 if let Some(adt) = cx.typeck_results().expr_ty(func).peel_refs().ty_adt_def()
-                    && ((path.ident.name.as_str() == "mode"
+                    && ((path.ident.name == sym::mode
                         && matches!(
                             cx.tcx.get_diagnostic_name(adt.did()),
                             Some(sym::FsOpenOptions | sym::DirBuilder)
                         ))
-                        || (path.ident.name.as_str() == "set_mode"
+                        || (path.ident.name == sym::set_mode
                             && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did())))
                     && let ExprKind::Lit(_) = param.kind
                     && param.span.eq_ctxt(expr.span)

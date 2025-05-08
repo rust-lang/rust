@@ -763,8 +763,6 @@ pub const fn cold_path() {
 ///
 /// Distribute values evenly between two buckets:
 /// ```
-/// #![feature(select_unpredictable)]
-///
 /// use std::hash::BuildHasher;
 /// use std::hint;
 ///
@@ -780,7 +778,7 @@ pub const fn cold_path() {
 /// # assert_eq!(bucket_one.len() + bucket_two.len(), 1);
 /// ```
 #[inline(always)]
-#[unstable(feature = "select_unpredictable", issue = "133962")]
+#[stable(feature = "select_unpredictable", since = "CURRENT_RUSTC_VERSION")]
 pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
     // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
     // Change this to use ManuallyDrop instead.

@@ -262,11 +262,21 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         Ok(None) => return,
         Err(error) => {
             eprintln!("{error}");
+            // Since some files in the temporary folder are still owned and alive, we need
+            // to manually remove the folder.
+            let _ = std::fs::remove_dir_all(temp_dir.path());
             std::process::exit(1);
         }
     };
 
-    run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
+    run_tests(
+        opts,
+        &rustdoc_options,
+        &unused_extern_reports,
+        standalone_tests,
+        mergeable_tests,
+        Some(temp_dir),
+    );
 
     let compiling_test_count = compiling_test_count.load(Ordering::SeqCst);
 
@@ -316,6 +326,8 @@ pub(crate) fn run_tests(
     unused_extern_reports: &Arc<Mutex<Vec<UnusedExterns>>>,
     mut standalone_tests: Vec<test::TestDescAndFn>,
     mergeable_tests: FxIndexMap<Edition, Vec<(DocTestBuilder, ScrapedDocTest)>>,
+    // We pass this argument so we can drop it manually before using `exit`.
+    mut temp_dir: Option<TempDir>,
 ) {
     let mut test_args = Vec::with_capacity(rustdoc_options.test_args.len() + 1);
     test_args.insert(0, "rustdoctest".to_string());
@@ -382,9 +394,14 @@ pub(crate) fn run_tests(
     // `running 0 tests...`.
     if ran_edition_tests == 0 || !standalone_tests.is_empty() {
         standalone_tests.sort_by(|a, b| a.desc.name.as_slice().cmp(b.desc.name.as_slice()));
-        test::test_main(&test_args, standalone_tests, None);
+        test::test_main_with_exit_callback(&test_args, standalone_tests, None, || {
+            // We ensure temp dir destructor is called.
+            std::mem::drop(temp_dir.take());
+        });
     }
     if nb_errors != 0 {
+        // We ensure temp dir destructor is called.
+        std::mem::drop(temp_dir);
         // libtest::ERROR_EXIT_CODE is not public but it's the same value.
         std::process::exit(101);
     }
@@ -450,7 +467,7 @@ enum TestFailure {
 }
 
 enum DirState {
-    Temp(tempfile::TempDir),
+    Temp(TempDir),
     Perm(PathBuf),
 }
 

@@ -38,10 +38,11 @@
 // also affected by `RUSTC_BOOTSTRAP`.
 //@[force_stable] rustc-env:RUSTC_BOOTSTRAP=-1
 //@[force_stable] compile-flags: -Z unstable-options
-//@[force_stable] regex-error-pattern: error: the option `Z` is only accepted on the nightly compiler
 
 #![crate_type = "lib"]
 
 // Note: `rustc_attrs` is a perma-unstable internal feature that is unlikely to change, which is
 // used as a proxy to check `RUSTC_BOOTSTRAP` versus stability checking logic.
 #![feature(rustc_attrs)]
+
+//[force_stable]~? RAW the option `Z` is only accepted on the nightly compiler
