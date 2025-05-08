@@ -1046,7 +1046,7 @@ impl Step for Lld {
                     ldflags.push_all(format!("/libpath:{}", clang_rt_dir.display()));
                 }
             } else {
-                ldflags.push_all("-L/opt/homebrew/Cellar/llvm/20.1.2/lib/clang/20/lib/darwin/lib -lclang_rt.profile_osx");
+                ldflags.push_all("-L/opt/homebrew/Cellar/llvm/20.1.2/lib/clang/20/lib/darwin -lclang_rt.profile_osx");
             }
 
         }

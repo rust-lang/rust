@@ -1397,7 +1397,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
             }
         } else  {
 
-            llvm_linker_flags.push_str("-L/opt/homebrew/Cellar/llvm/20.1.2/lib/clang/20/lib/darwin/lib -lclang_rt.profile_osx");
+            llvm_linker_flags.push_str("-L/opt/homebrew/Cellar/llvm/20.1.2/lib/clang/20/lib/darwin -lclang_rt.profile_osx");
 
         }
 
