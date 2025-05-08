@@ -2094,6 +2094,15 @@ impl<T> Default for Option<T> {
     }
 }
 
+#[stable(feature = "option_ref_default", since = "CURRENT_RUSTC_VERSION")]
+impl<'a, T> Default for &'a Option<T> {
+    /// Returns `&None`
+    #[inline]
+    fn default() -> &'a Option<T> {
+        &None
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for Option<T> {
     type Item = T;
