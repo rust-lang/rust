@@ -1863,7 +1863,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         //
         // Our handling of where-bounds is generally fairly messy but necessary for backwards
         // compatibility, see #50825 for why we need to handle global where-bounds like this.
-        let is_global = |c: ty::PolyTraitPredicate<'tcx>| c.is_global() && !c.has_bound_vars();
+        let is_global = |c: ty::PolyTraitPredicate<'tcx>| {
+            c.is_global() && !c.skip_binder().has_escaping_bound_vars()
+        };
         let param_candidates = candidates
             .iter()
             .filter_map(|c| if let ParamCandidate(p) = c.candidate { Some(p) } else { None });
