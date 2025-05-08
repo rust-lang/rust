@@ -217,6 +217,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .use_bolt(false)
                 .run_tests(false)
                 .skipped_tests(vec![])
+                .fast_try_build(is_fast_try_build)
                 .build()?;
 
             (env, shared.build_args)
