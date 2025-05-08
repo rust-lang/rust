@@ -132,12 +132,14 @@ where
                     (Certainty::Yes, NestedNormalizationGoals(goals))
                 }
                 _ => {
-                    let certainty = shallow_certainty.unify_with(goals_certainty);
+                    let certainty = shallow_certainty.and(goals_certainty);
                     (certainty, NestedNormalizationGoals::empty())
                 }
             };
 
-        if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
+        if let Certainty::Maybe(cause @ MaybeCause::Overflow { keep_constraints: false, .. }) =
+            certainty
+        {
             // If we have overflow, it's probable that we're substituting a type
             // into itself infinitely and any partial substitutions in the query
             // response are probably not useful anyways, so just return an empty
@@ -193,6 +195,7 @@ where
                     debug!(?num_non_region_vars, "too many inference variables -> overflow");
                     return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
                         suggest_increasing_limit: true,
+                        keep_constraints: false,
                     }));
                 }
             }
