@@ -36,39 +36,38 @@ where
         self.def_id()
     }
 
-    fn probe_and_match_goal_against_assumption(
+    fn fast_reject_assumption(
         ecx: &mut EvalCtxt<'_, D>,
-        source: rustc_type_ir::solve::CandidateSource<I>,
         goal: Goal<I, Self>,
-        assumption: <I as Interner>::Clause,
-        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
-    ) -> Result<Candidate<I>, NoSolution> {
+        assumption: I::Clause,
+    ) -> Result<(), NoSolution> {
         if let Some(host_clause) = assumption.as_host_effect_clause() {
             if host_clause.def_id() == goal.predicate.def_id()
                 && host_clause.constness().satisfies(goal.predicate.constness)
             {
-                if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
+                if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
                     host_clause.skip_binder().trait_ref.args,
                 ) {
-                    return Err(NoSolution);
+                    return Ok(());
                 }
-
-                ecx.probe_trait_candidate(source).enter(|ecx| {
-                    let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
-                    ecx.eq(
-                        goal.param_env,
-                        goal.predicate.trait_ref,
-                        assumption_trait_pred.trait_ref,
-                    )?;
-                    then(ecx)
-                })
-            } else {
-                Err(NoSolution)
             }
-        } else {
-            Err(NoSolution)
         }
+
+        Err(NoSolution)
+    }
+
+    fn match_assumption(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        assumption: I::Clause,
+    ) -> Result<(), NoSolution> {
+        let host_clause = assumption.as_host_effect_clause().unwrap();
+
+        let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
+        ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
+
+        Ok(())
     }
 
     /// Register additional assumptions for aliases corresponding to `~const` item bounds.
@@ -124,7 +123,7 @@ where
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
-        impl_def_id: <I as Interner>::DefId,
+        impl_def_id: I::DefId,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
 
@@ -178,7 +177,7 @@ where
 
     fn consider_error_guaranteed_candidate(
         ecx: &mut EvalCtxt<'_, D>,
-        _guar: <I as Interner>::ErrorGuaranteed,
+        _guar: I::ErrorGuaranteed,
     ) -> Result<Candidate<I>, NoSolution> {
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))

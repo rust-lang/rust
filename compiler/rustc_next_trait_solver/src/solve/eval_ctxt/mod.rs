@@ -1000,6 +1000,14 @@ where
         self.delegate.resolve_vars_if_possible(value)
     }
 
+    pub(super) fn eager_resolve_region(&self, r: I::Region) -> I::Region {
+        if let ty::ReVar(vid) = r.kind() {
+            self.delegate.opportunistic_resolve_lt_var(vid)
+        } else {
+            r
+        }
+    }
+
     pub(super) fn fresh_args_for_item(&mut self, def_id: I::DefId) -> I::GenericArgs {
         let args = self.delegate.fresh_args_for_item(def_id);
         for arg in args.iter() {
