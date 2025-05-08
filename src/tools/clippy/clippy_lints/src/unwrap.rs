@@ -208,7 +208,7 @@ fn is_option_as_mut_use(tcx: TyCtxt<'_>, expr_id: HirId) -> bool {
     if let Node::Expr(mutating_expr) = tcx.parent_hir_node(expr_id)
         && let ExprKind::MethodCall(path, _, [], _) = mutating_expr.kind
     {
-        path.ident.name.as_str() == "as_mut"
+        path.ident.name == sym::as_mut
     } else {
         false
     }
@@ -278,7 +278,7 @@ fn consume_option_as_ref<'tcx>(expr: &'tcx Expr<'tcx>) -> (&'tcx Expr<'tcx>, Opt
     if let ExprKind::MethodCall(path, recv, [], _) = expr.kind {
         if path.ident.name == sym::as_ref {
             (recv, Some(AsRefKind::AsRef))
-        } else if path.ident.name.as_str() == "as_mut" {
+        } else if path.ident.name == sym::as_mut {
             (recv, Some(AsRefKind::AsMut))
         } else {
             (expr, None)

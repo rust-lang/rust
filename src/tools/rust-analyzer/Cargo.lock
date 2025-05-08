@@ -85,6 +85,7 @@ dependencies = [
  "query-group-macro",
  "rustc-hash 2.1.1",
  "salsa",
+ "salsa-macros",
  "semver",
  "span",
  "syntax",
@@ -630,6 +631,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "rustc_apfloat",
  "salsa",
+ "salsa-macros",
  "smallvec",
  "span",
  "stdx",
@@ -660,6 +662,7 @@ dependencies = [
  "query-group-macro",
  "rustc-hash 2.1.1",
  "salsa",
+ "salsa-macros",
  "smallvec",
  "span",
  "stdx",
@@ -700,6 +703,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "rustc_apfloat",
  "salsa",
+ "salsa-macros",
  "scoped-tls",
  "smallvec",
  "span",
@@ -936,6 +940,7 @@ dependencies = [
  "rayon",
  "rustc-hash 2.1.1",
  "salsa",
+ "salsa-macros",
  "span",
  "stdx",
  "syntax",
@@ -1729,6 +1734,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "salsa",
+ "salsa-macros",
  "syn",
 ]
 
@@ -2033,9 +2039,9 @@ checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
 name = "salsa"
-version = "0.20.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1be22155f8d9732518b2db2bf379fe6f0b2375e76b08b7c8fe6c1b887d548c24"
+checksum = "6f80d5cf3c3fcab2cef898012f242a670477a1baa609267376af9cb4409026c5"
 dependencies = [
  "boxcar",
  "crossbeam-queue",
@@ -2056,15 +2062,15 @@ dependencies = [
 
 [[package]]
 name = "salsa-macro-rules"
-version = "0.20.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f55a7ef0a84e336f7c5f0332d81727f5629fe042d2aa556c75307afebc9f78a5"
+checksum = "05303d72606fbf2b9c9523cda2039bb8ecb00304027a3cd7e52b02a65c7d9185"
 
 [[package]]
 name = "salsa-macros"
-version = "0.20.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d0e88a9c0c0d231a63f83dcd1a2c5e5d11044fac4b65bc9ad3b68ab48b0a0ab"
+checksum = "eb2f0e2a30c65cb3cd63440c491dde68d9af7e1be2b77832ac7057141107db50"
 dependencies = [
  "heck",
  "proc-macro2",

@@ -110,6 +110,7 @@ impl<'a> State<'a> {
                 }
                 self.print_attr_item(&unparsed, unparsed.span);
                 self.word("]");
+                self.hardbreak()
             }
             hir::Attribute::Parsed(AttributeKind::DocComment { style, kind, comment, .. }) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
@@ -183,7 +184,7 @@ impl<'a> State<'a> {
             Node::Ty(a) => self.print_type(a),
             Node::AssocItemConstraint(a) => self.print_assoc_item_constraint(a),
             Node::TraitRef(a) => self.print_trait_ref(a),
-            Node::OpaqueTy(o) => self.print_opaque_ty(o),
+            Node::OpaqueTy(_) => panic!("cannot print Node::OpaqueTy"),
             Node::Pat(a) => self.print_pat(a),
             Node::TyPat(a) => self.print_ty_pat(a),
             Node::PatField(a) => self.print_patfield(a),
@@ -654,10 +655,11 @@ impl<'a> State<'a> {
                 self.bclose(item.span, cb);
             }
             hir::ItemKind::GlobalAsm { asm, .. } => {
-                // FIXME(nnethercote): `ib` is unclosed
-                let (cb, _ib) = self.head("global_asm!");
+                let (cb, ib) = self.head("global_asm!");
                 self.print_inline_asm(asm);
-                self.end(cb)
+                self.word(";");
+                self.end(cb);
+                self.end(ib);
             }
             hir::ItemKind::TyAlias(ident, ty, generics) => {
                 let (cb, ib) = self.head("type");
@@ -762,14 +764,6 @@ impl<'a> State<'a> {
 
     fn print_trait_ref(&mut self, t: &hir::TraitRef<'_>) {
         self.print_path(t.path, false);
-    }
-
-    fn print_opaque_ty(&mut self, o: &hir::OpaqueTy<'_>) {
-        // FIXME(nnethercote): `cb` and `ib` are unclosed
-        let (_cb, _ib) = self.head("opaque");
-        self.word("{");
-        self.print_bounds("impl", o.bounds);
-        self.word("}");
     }
 
     fn print_formal_generic_params(&mut self, generic_params: &[hir::GenericParam<'_>]) {
@@ -1509,7 +1503,7 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::DropTemps(init) => {
                 // Print `{`:
-                let cb = self.cbox(INDENT_UNIT);
+                let cb = self.cbox(0);
                 let ib = self.ibox(0);
                 self.bopen(ib);
 
@@ -1532,16 +1526,18 @@ impl<'a> State<'a> {
                 self.print_if(test, blk, elseopt);
             }
             hir::ExprKind::Loop(blk, opt_label, _, _) => {
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 if let Some(label) = opt_label {
                     self.print_ident(label.ident);
                     self.word_space(":");
                 }
-                let (cb, ib) = self.head("loop");
+                self.word_nbsp("loop");
                 self.print_block(blk, cb, ib);
             }
             hir::ExprKind::Match(expr, arms, _) => {
-                let cb = self.cbox(INDENT_UNIT);
-                let ib = self.ibox(INDENT_UNIT);
+                let cb = self.cbox(0);
+                let ib = self.ibox(0);
                 self.word_nbsp("match");
                 self.print_expr_as_cond(expr);
                 self.space();
@@ -1572,15 +1568,6 @@ impl<'a> State<'a> {
 
                 // This is a bare expression.
                 self.ann.nested(self, Nested::Body(body));
-                // FIXME(nnethercote): this is bogus
-                let fake_ib = BoxMarker;
-                self.end(fake_ib);
-
-                // A box will be closed by `print_expr`, but we didn't want an overall
-                // wrapper so we closed the corresponding opening. so create an
-                // empty box to satisfy the close.
-                // FIXME(nnethercote): this is bogus, and `print_expr` is missing
-                let _ib = self.ibox(0);
             }
             hir::ExprKind::Block(blk, opt_label) => {
                 if let Some(label) = opt_label {

@@ -196,7 +196,9 @@ fn destructure_pat(
             let fields = field_names.iter().map(|(old_name, new_name)| {
                 // Use shorthand syntax if possible
                 if old_name == new_name && !is_mut {
-                    make.record_pat_field_shorthand(make.name_ref(old_name))
+                    make.record_pat_field_shorthand(
+                        make.ident_pat(false, false, make.name(old_name)).into(),
+                    )
                 } else {
                     make.record_pat_field(
                         make.name_ref(old_name),

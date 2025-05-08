@@ -4,6 +4,7 @@ use hir::{
 };
 use ide_db::{
     FileId, FxHashMap, FxHashSet, RootDatabase, SnippetCap,
+    assists::ExprFillDefaultMode,
     defs::{Definition, NameRefClass},
     famous_defs::FamousDefs,
     helpers::is_editable_crate,
@@ -46,7 +47,7 @@ use crate::{
 //     bar("", baz());
 // }
 //
-// fn bar(arg: &str, baz: Baz) ${0:-> _} {
+// fn bar(arg: &'static str, baz: Baz) ${0:-> _} {
 //     todo!()
 // }
 //
@@ -276,7 +277,11 @@ impl FunctionBuilder {
                 target_module,
                 &mut necessary_generic_params,
             );
-            let placeholder_expr = make::ext::expr_todo();
+            let placeholder_expr = match ctx.config.expr_fill_default {
+                ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+                ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+                ExprFillDefaultMode::Default => make::ext::expr_todo(),
+            };
             fn_body = make::block_expr(vec![], Some(placeholder_expr));
         };
 
@@ -331,7 +336,11 @@ impl FunctionBuilder {
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
 
-        let placeholder_expr = make::ext::expr_todo();
+        let placeholder_expr = match ctx.config.expr_fill_default {
+            ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+            ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+            ExprFillDefaultMode::Default => make::ext::expr_todo(),
+        };
         let fn_body = make::block_expr(vec![], Some(placeholder_expr));
 
         Some(Self {
@@ -383,14 +392,14 @@ impl FunctionBuilder {
                 // Focus the return type if there is one
                 match ret_type {
                     Some(ret_type) => {
-                        edit.add_placeholder_snippet(cap, ret_type.clone());
+                        edit.add_placeholder_snippet(cap, ret_type);
                     }
                     None => {
-                        edit.add_placeholder_snippet(cap, tail_expr.clone());
+                        edit.add_placeholder_snippet(cap, tail_expr);
                     }
                 }
             } else {
-                edit.add_placeholder_snippet(cap, tail_expr.clone());
+                edit.add_placeholder_snippet(cap, tail_expr);
             }
         }
 
@@ -444,7 +453,11 @@ fn make_fn_body_as_new_function(
     let adt_info = adt_info.as_ref()?;
 
     let path_self = make::ext::ident_path("Self");
-    let placeholder_expr = make::ext::expr_todo();
+    let placeholder_expr = match ctx.config.expr_fill_default {
+        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
+        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
+        ExprFillDefaultMode::Default => make::ext::expr_todo(),
+    };
     let tail_expr = if let Some(strukt) = adt_info.adt.as_struct() {
         match strukt.kind(ctx.db()) {
             StructKind::Record => {
@@ -1505,7 +1518,7 @@ fn foo() {
     bar("bar")
 }
 
-fn bar(arg: &str) {
+fn bar(arg: &'static str) {
     ${0:todo!()}
 }
 "#,
@@ -2122,7 +2135,7 @@ fn foo() {
     bar(baz(), baz(), "foo", "bar")
 }
 
-fn bar(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) {
+fn bar(baz_1: Baz, baz_2: Baz, arg_1: &'static str, arg_2: &'static str) {
     ${0:todo!()}
 }
 "#,
@@ -3090,7 +3103,7 @@ pub struct Foo {
     field_2: String,
 }
 impl Foo {
-    fn new(baz_1: Baz, baz_2: Baz, arg_1: &str, arg_2: &str) -> Self {
+    fn new(baz_1: Baz, baz_2: Baz, arg_1: &'static str, arg_2: &'static str) -> Self {
         ${0:Self { field_1: todo!(), field_2: todo!() }}
     }
 }

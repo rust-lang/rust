@@ -135,7 +135,7 @@ impl fmt::Debug for CompletionItem {
                 },
                 CompletionItemRefMode::Dereference => "*",
             };
-            s.field("ref_match", &format!("{}@{offset:?}", prefix));
+            s.field("ref_match", &format!("{prefix}@{offset:?}"));
         }
         if self.trigger_call_info {
             s.field("trigger_call_info", &true);

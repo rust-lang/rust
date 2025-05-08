@@ -5,7 +5,7 @@ use std::sync::Arc;
 use rustc_ast::{LitKind, MetaItemKind, token};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::jobserver;
+use rustc_data_structures::jobserver::{self, Proxy};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::registry::Registry;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed};
@@ -40,7 +40,12 @@ pub struct Compiler {
     pub sess: Session,
     pub codegen_backend: Box<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
+
+    /// A reference to the current `GlobalCtxt` which we pass on to `GlobalCtxt`.
     pub(crate) current_gcx: CurrentGcx,
+
+    /// A jobserver reference which we pass on to `GlobalCtxt`.
+    pub(crate) jobserver_proxy: Arc<Proxy>,
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
@@ -415,7 +420,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         config.opts.unstable_opts.threads,
         &config.extra_symbols,
         SourceMapInputs { file_loader, path_mapping, hash_kind, checksum_hash_kind },
-        |current_gcx| {
+        |current_gcx, jobserver_proxy| {
             // The previous `early_dcx` can't be reused here because it doesn't
             // impl `Send`. Creating a new one is fine.
             let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
@@ -511,6 +516,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 codegen_backend,
                 override_queries: config.override_queries,
                 current_gcx,
+                jobserver_proxy,
             };
 
             // There are two paths out of `f`.

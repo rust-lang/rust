@@ -7,7 +7,6 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::errors::{Error, ErrorKind};
-use crate::runtest::ProcRes;
 
 #[derive(Deserialize)]
 struct Diagnostic {
@@ -140,28 +139,19 @@ pub fn extract_rendered(output: &str) -> String {
         .collect()
 }
 
-pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {
+pub fn parse_output(file_name: &str, output: &str) -> Vec<Error> {
     let mut errors = Vec::new();
     for line in output.lines() {
-        // The compiler sometimes intermingles non-JSON stuff into the
-        // output.  This hack just skips over such lines. Yuck.
-        if line.starts_with('{') {
-            match serde_json::from_str::<Diagnostic>(line) {
-                Ok(diagnostic) => push_actual_errors(&mut errors, &diagnostic, &[], file_name),
-                Err(error) => {
-                    // Ignore the future compat report message - this is handled
-                    // by `extract_rendered`
-                    if serde_json::from_str::<FutureIncompatReport>(line).is_err() {
-                        proc_res.fatal(
-                        Some(&format!(
-                            "failed to decode compiler output as json: `{}`\nline: {}\noutput: {}",
-                            error, line, output
-                        )),
-                        || (),
-                    );
-                    }
-                }
-            }
+        // Compiler can emit non-json lines in non-`--error-format=json` modes,
+        // and in some situations even in json mode.
+        match serde_json::from_str::<Diagnostic>(line) {
+            Ok(diagnostic) => push_actual_errors(&mut errors, &diagnostic, &[], file_name),
+            Err(_) => errors.push(Error {
+                line_num: None,
+                kind: ErrorKind::Raw,
+                msg: line.to_string(),
+                require_annotation: false,
+            }),
         }
     }
     errors
@@ -180,8 +170,6 @@ fn push_actual_errors(
         .map(|span| (span.is_primary, span.first_callsite_in_file(file_name)))
         .filter(|(_, span)| Path::new(&span.file_name) == Path::new(&file_name))
         .collect();
-
-    let spans_in_this_file: Vec<_> = spans_info_in_this_file.iter().map(|(_, span)| span).collect();
 
     let primary_spans: Vec<_> = spans_info_in_this_file
         .iter()
@@ -280,7 +268,9 @@ fn push_actual_errors(
                     line_num: Some(span.line_start + index),
                     kind: ErrorKind::Suggestion,
                     msg: line.to_string(),
-                    require_annotation: true,
+                    // Empty suggestions (suggestions to remove something) are common
+                    // and annotating them in source is not useful.
+                    require_annotation: !line.is_empty(),
                 });
             }
         }
@@ -294,13 +284,16 @@ fn push_actual_errors(
     }
 
     // Add notes for any labels that appear in the message.
-    for span in spans_in_this_file.iter().filter(|span| span.label.is_some()) {
-        errors.push(Error {
-            line_num: Some(span.line_start),
-            kind: ErrorKind::Note,
-            msg: span.label.clone().unwrap(),
-            require_annotation: true,
-        });
+    for (_, span) in spans_info_in_this_file {
+        if let Some(label) = &span.label {
+            errors.push(Error {
+                line_num: Some(span.line_start),
+                kind: ErrorKind::Note,
+                msg: label.clone(),
+                // Empty labels (only underlining spans) are common and do not need annotations.
+                require_annotation: !label.is_empty(),
+            });
+        }
     }
 
     // Flatten out the children.

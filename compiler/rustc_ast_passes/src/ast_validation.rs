@@ -82,6 +82,10 @@ struct AstValidator<'a> {
     /// Used to ban explicit safety on foreign items when the extern block is not marked as unsafe.
     extern_mod_safety: Option<Safety>,
 
+    lint_node_id: NodeId,
+
+    is_sdylib_interface: bool,
+
     lint_buffer: &'a mut LintBuffer,
 }
 
@@ -826,7 +830,7 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_attribute(&mut self, attr: &Attribute) {
-        validate_attr::check_attr(&self.sess.psess, attr);
+        validate_attr::check_attr(&self.sess.psess, attr, self.lint_node_id);
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -838,6 +842,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if item.attrs.iter().any(|attr| attr.is_proc_macro_attr()) {
             self.has_proc_macro_decls = true;
         }
+
+        let previous_lint_node_id = mem::replace(&mut self.lint_node_id, item.id);
 
         if let Some(ident) = item.kind.ident()
             && attr::contains_name(&item.attrs, sym::no_mangle)
@@ -948,7 +954,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(item.span, *defaultness);
 
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
-                if body.is_none() && !is_intrinsic {
+                if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1128,6 +1134,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             _ => visit::walk_item(self, item),
         }
+
+        self.lint_node_id = previous_lint_node_id;
     }
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
@@ -1435,7 +1443,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
-                    if body.is_none() {
+                    if body.is_none() && !self.is_sdylib_interface {
                         self.dcx().emit_err(errors::AssocFnWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),
@@ -1683,6 +1691,7 @@ pub fn check_crate(
     sess: &Session,
     features: &Features,
     krate: &Crate,
+    is_sdylib_interface: bool,
     lints: &mut LintBuffer,
 ) -> bool {
     let mut validator = AstValidator {
@@ -1694,6 +1703,8 @@ pub fn check_crate(
         outer_impl_trait_span: None,
         disallow_tilde_const: Some(TildeConstReason::Item),
         extern_mod_safety: None,
+        lint_node_id: CRATE_NODE_ID,
+        is_sdylib_interface,
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);

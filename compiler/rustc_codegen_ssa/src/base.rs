@@ -457,7 +457,13 @@ where
                 rustc_hir::InlineAsmOperand::SymFn { expr } => {
                     let ty = cx.tcx().typeck(item_id.owner_id).expr_ty(expr);
                     let instance = match ty.kind() {
-                        &ty::FnDef(def_id, args) => Instance::new(def_id, args),
+                        &ty::FnDef(def_id, args) => Instance::expect_resolve(
+                            cx.tcx(),
+                            ty::TypingEnv::fully_monomorphized(),
+                            def_id,
+                            args,
+                            expr.span,
+                        ),
                         _ => span_bug!(*op_sp, "asm sym is not a function"),
                     };
 
@@ -1092,7 +1098,7 @@ impl CrateInfo {
         }
 
         let embed_visualizers = tcx.crate_types().iter().any(|&crate_type| match crate_type {
-            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib | CrateType::Sdylib => {
                 // These are crate types for which we invoke the linker and can embed
                 // NatVis visualizers.
                 true

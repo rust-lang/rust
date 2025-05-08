@@ -124,7 +124,7 @@ pub fn dyn_compatibility_of_trait_query(
 
 fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> bool {
     let krate = def.module(db).krate();
-    let Some(sized) = db.lang_item(krate, LangItem::Sized).and_then(|l| l.as_trait()) else {
+    let Some(sized) = LangItem::Sized.resolve_trait(db, krate) else {
         return false;
     };
 
@@ -491,8 +491,8 @@ fn receiver_is_dispatchable(
 
     let krate = func.module(db).krate();
     let traits = (
-        db.lang_item(krate, LangItem::Unsize).and_then(|it| it.as_trait()),
-        db.lang_item(krate, LangItem::DispatchFromDyn).and_then(|it| it.as_trait()),
+        LangItem::Unsize.resolve_trait(db, krate),
+        LangItem::DispatchFromDyn.resolve_trait(db, krate),
     );
     let (Some(unsize_did), Some(dispatch_from_dyn_did)) = traits else {
         return false;
@@ -515,7 +515,7 @@ fn receiver_is_dispatchable(
         trait_id: to_chalk_trait_id(trait_),
         substitution: Substitution::from_iter(
             Interner,
-            std::iter::once(unsized_self_ty.clone().cast(Interner))
+            std::iter::once(unsized_self_ty.cast(Interner))
                 .chain(placeholder_subst.iter(Interner).skip(1).cloned()),
         ),
     });

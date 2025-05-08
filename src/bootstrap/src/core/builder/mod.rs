@@ -961,6 +961,7 @@ impl<'a> Builder<'a> {
                 check::RunMakeSupport,
                 check::Compiletest,
                 check::FeaturesStatusDump,
+                check::CoverageDump,
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
@@ -1114,6 +1115,7 @@ impl<'a> Builder<'a> {
                 run::UnicodeTableGenerator,
                 run::FeaturesStatusDump,
                 run::CyclicStep,
+                run::CoverageDump,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1534,7 +1536,7 @@ impl<'a> Builder<'a> {
             let out = step.clone().run(self);
             let dur = start.elapsed();
             let deps = self.time_spent_on_dependencies.replace(parent + dur);
-            (out, dur - deps)
+            (out, dur.saturating_sub(deps))
         };
 
         if self.config.print_step_timings && !self.config.dry_run() {

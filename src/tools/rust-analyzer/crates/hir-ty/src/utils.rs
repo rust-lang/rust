@@ -36,8 +36,7 @@ use crate::{
 pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: Crate) -> impl Iterator<Item = TraitId> + '_ {
     [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce]
         .into_iter()
-        .filter_map(move |lang| db.lang_item(krate, lang))
-        .flat_map(|it| it.as_trait())
+        .filter_map(move |lang| lang.resolve_trait(db, krate))
 }
 
 /// Returns an iterator over the direct super traits (including the trait itself).

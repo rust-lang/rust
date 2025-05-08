@@ -114,8 +114,16 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         memory_kind: MemoryKind,
     ) -> InterpResult<'tcx, u64> {
         let this = self.eval_context_ref();
-        let mut rng = this.machine.rng.borrow_mut();
         let info = this.get_alloc_info(alloc_id);
+
+        // Miri's address assignment leaks state across thread boundaries, which is incompatible
+        // with GenMC execution. So we instead let GenMC assign addresses to allocations.
+        if let Some(genmc_ctx) = this.machine.data_race.as_genmc_ref() {
+            let addr = genmc_ctx.handle_alloc(&this.machine, info.size, info.align, memory_kind)?;
+            return interp_ok(addr);
+        }
+
+        let mut rng = this.machine.rng.borrow_mut();
         // This is either called immediately after allocation (and then cached), or when
         // adjusting `tcx` pointers (which never get freed). So assert that we are looking
         // at a live allocation. This also ensures that we never re-assign an address to an
@@ -196,6 +204,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Even if `Size` didn't overflow, we might still have filled up the address space.
             if global_state.next_base_addr > this.target_usize_max() {
                 throw_exhaust!(AddressSpaceFull);
+            }
+            // If we filled up more than half the address space, start aggressively reusing
+            // addresses to avoid running out.
+            if global_state.next_base_addr > u64::try_from(this.target_isize_max()).unwrap() {
+                global_state.reuse.address_space_shortage();
             }
 
             interp_ok(base_addr)
@@ -490,7 +503,7 @@ impl<'tcx> MiriMachine<'tcx> {
         // Also remember this address for future reuse.
         let thread = self.threads.active_thread();
         global_state.reuse.add_addr(rng, addr, size, align, kind, thread, || {
-            if let Some(data_race) = &self.data_race {
+            if let Some(data_race) = self.data_race.as_vclocks_ref() {
                 data_race.release_clock(&self.threads, |clock| clock.clone())
             } else {
                 VClock::default()

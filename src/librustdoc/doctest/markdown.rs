@@ -116,6 +116,7 @@ pub(crate) fn test(input: &Input, options: Options) -> Result<(), String> {
         &Arc::new(Mutex::new(Vec::new())),
         standalone_tests,
         mergeable_tests,
+        None,
     );
     Ok(())
 }

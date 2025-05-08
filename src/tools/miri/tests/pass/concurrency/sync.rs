@@ -1,7 +1,7 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
 // We use `yield` to test specific interleavings, so disable automatic preemption.
-//@compile-flags: -Zmiri-disable-isolation -Zmiri-strict-provenance -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-deterministic-concurrency
 
 use std::sync::{Arc, Barrier, Condvar, Mutex, Once, RwLock};
 use std::thread;

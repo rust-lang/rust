@@ -21,7 +21,7 @@ LL |             *y = 1;
 help: the accessed tag <TAG> was created here
   --> tests/fail/tree_borrows/reserved/cell-protected-write.rs:LL:CC
    |
-LL |         let y = (&mut *n).get();
+LL |         let y = (&mut *n) as *mut UnsafeCell<_> as *mut _;
    |                 ^^^^^^^^^
 help: the protected tag <TAG> was created here, in the initial state Reserved
   --> tests/fail/tree_borrows/reserved/cell-protected-write.rs:LL:CC

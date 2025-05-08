@@ -451,7 +451,7 @@ mod tests {
         assert_eq!(x.len(), 1);
         match x.into_iter().next().unwrap() {
             MonikerResult::Local { enclosing_moniker } => {
-                panic!("Unexpected local enclosed in {:?}", enclosing_moniker);
+                panic!("Unexpected local enclosed in {enclosing_moniker:?}");
             }
             MonikerResult::Moniker(x) => {
                 assert_eq!(identifier, x.identifier.to_string());

@@ -292,7 +292,10 @@ pub enum ExprKind<'tcx> {
     If {
         if_then_scope: region::Scope,
         cond: ExprId,
+        /// `then` is always `ExprKind::Block`.
         then: ExprId,
+        /// If present, the `else_opt` expr is always `ExprKind::Block` (for
+        /// `else`) or `ExprKind::If` (for `else if`).
         else_opt: Option<ExprId>,
     },
     /// A function call. Method calls and overloaded operators are converted to plain function calls.

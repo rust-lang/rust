@@ -1,4 +1,8 @@
-//@ compile-flags: -C no-prepopulate-passes -Copt-level=0
+//@ revisions: OPT0 OPT0_S390X
+//@ [OPT0] ignore-s390x
+//@ [OPT0_S390X] only-s390x
+//@ [OPT0] compile-flags: -C no-prepopulate-passes -Copt-level=0
+//@ [OPT0_S390X] compile-flags: -C no-prepopulate-passes -Copt-level=0 -C target-cpu=z13
 
 // This test checks that constants of SIMD type are passed as immediate vectors.
 // We ensure that both vector representations (struct with fields and struct wrapping array) work.

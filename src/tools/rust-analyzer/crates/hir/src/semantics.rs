@@ -25,7 +25,6 @@ use hir_expand::{
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, InRealFile},
-    hygiene::SyntaxContextExt as _,
     inert_attr_macro::find_builtin_attr_idx,
     mod_path::{ModPath, PathKind},
     name::AsName,
@@ -927,7 +926,7 @@ impl<'db> SemanticsImpl<'db> {
         token: InRealFile<SyntaxToken>,
         mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContext) -> ControlFlow<T>,
     ) -> Option<T> {
-        self.descend_into_macros_impl(token.clone(), &mut cb)
+        self.descend_into_macros_impl(token, &mut cb)
     }
 
     /// Descends the token into expansions, returning the tokens that matches the input
@@ -959,17 +958,13 @@ impl<'db> SemanticsImpl<'db> {
         let text = token.text();
         let kind = token.kind();
         if let Ok(token) = self.wrap_token_infile(token.clone()).into_real_file() {
-            self.descend_into_macros_breakable(
-                token.clone(),
-                |InFile { value, file_id: _ }, _ctx| {
-                    let mapped_kind = value.kind();
-                    let any_ident_match =
-                        || kind.is_any_identifier() && value.kind().is_any_identifier();
-                    let matches =
-                        (kind == mapped_kind || any_ident_match()) && text == value.text();
-                    if matches { ControlFlow::Break(value) } else { ControlFlow::Continue(()) }
-                },
-            )
+            self.descend_into_macros_breakable(token, |InFile { value, file_id: _ }, _ctx| {
+                let mapped_kind = value.kind();
+                let any_ident_match =
+                    || kind.is_any_identifier() && value.kind().is_any_identifier();
+                let matches = (kind == mapped_kind || any_ident_match()) && text == value.text();
+                if matches { ControlFlow::Break(value) } else { ControlFlow::Continue(()) }
+            })
         } else {
             None
         }

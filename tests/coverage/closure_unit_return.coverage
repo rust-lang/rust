@@ -6,6 +6,7 @@
    LL|       |
    LL|      1|fn explicit_unit() {
    LL|      1|    let closure = || {
+                                   ^0
    LL|      0|        ();
    LL|      0|    };
    LL|       |
@@ -15,11 +16,12 @@
    LL|       |
    LL|      1|fn implicit_unit() {
    LL|      1|    let closure = || {
+                                   ^0
    LL|      0|        ();
    LL|      0|    };
    LL|       |
    LL|      1|    drop(closure);
-   LL|      1|    // implicit return of `()`
+   LL|       |    // implicit return of `()`
    LL|      1|}
    LL|       |
    LL|       |#[coverage(off)]

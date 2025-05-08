@@ -491,7 +491,15 @@ fn resolve_async_drop_poll<'tcx>(mut cor_ty: Ty<'tcx>) -> Instance<'tcx> {
 }
 
 impl<'tcx> Instance<'tcx> {
-    pub fn new(def_id: DefId, args: GenericArgsRef<'tcx>) -> Instance<'tcx> {
+    /// Creates a new [`InstanceKind::Item`] from the `def_id` and `args`.
+    ///
+    /// Note that this item corresponds to the body of `def_id` directly, which
+    /// likely does not make sense for trait items which need to be resolved to an
+    /// implementation, and which may not even have a body themselves. Usages of
+    /// this function should probably use [`Instance::expect_resolve`], or if run
+    /// in a polymorphic environment or within a lint (that may encounter ambiguity)
+    /// [`Instance::try_resolve`] instead.
+    pub fn new_raw(def_id: DefId, args: GenericArgsRef<'tcx>) -> Instance<'tcx> {
         assert!(
             !args.has_escaping_bound_vars(),
             "args of instance {def_id:?} has escaping bound vars: {args:?}"
@@ -510,7 +518,7 @@ impl<'tcx> Instance<'tcx> {
             }
         });
 
-        Instance::new(def_id, args)
+        Instance::new_raw(def_id, args)
     }
 
     #[inline]
@@ -603,7 +611,7 @@ impl<'tcx> Instance<'tcx> {
                 let type_length = type_length(args);
                 if !tcx.type_length_limit().value_within_limit(type_length) {
                     let (shrunk, written_to_path) =
-                        shrunk_instance_name(tcx, Instance::new(def_id, args));
+                        shrunk_instance_name(tcx, Instance::new_raw(def_id, args));
                     let mut path = PathBuf::new();
                     let was_written = if let Some(path2) = written_to_path {
                         path = path2;
@@ -773,7 +781,7 @@ impl<'tcx> Instance<'tcx> {
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, args),
-            _ => Instance::new(def_id, args),
+            _ => Instance::new_raw(def_id, args),
         }
     }
 
@@ -899,7 +907,7 @@ impl<'tcx> Instance<'tcx> {
             // This is important for `Iterator`'s combinators, but also useful for
             // adding future default methods to `Future`, for instance.
             debug_assert!(tcx.defaultness(trait_item_id).has_value());
-            Some(Instance::new(trait_item_id, rcvr_args))
+            Some(Instance::new_raw(trait_item_id, rcvr_args))
         }
     }
 

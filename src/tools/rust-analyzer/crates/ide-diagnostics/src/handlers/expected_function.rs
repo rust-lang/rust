@@ -31,7 +31,7 @@ fn foo() {
     x();
  // ^^^ error: expected function, found i32
     ""();
- // ^^^^ error: expected function, found &str
+ // ^^^^ error: expected function, found &'static str
     foo();
 }
 "#,

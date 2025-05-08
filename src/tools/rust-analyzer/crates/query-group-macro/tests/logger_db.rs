@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-#[salsa::db]
+#[salsa_macros::db]
 #[derive(Default, Clone)]
 pub(crate) struct LoggerDb {
     storage: salsa::Storage<Self>,
@@ -12,7 +12,7 @@ struct Logger {
     logs: Arc<Mutex<Vec<String>>>,
 }
 
-#[salsa::db]
+#[salsa_macros::db]
 impl salsa::Database for LoggerDb {
     fn salsa_event(&self, event: &dyn Fn() -> salsa::Event) {
         let event = event();
@@ -40,7 +40,7 @@ impl LoggerDb {
     /// it is meant to be run from outside any tracked functions.
     pub(crate) fn assert_logs(&self, expected: expect_test::Expect) {
         let logs = std::mem::take(&mut *self.logger.logs.lock().unwrap());
-        expected.assert_eq(&format!("{:#?}", logs));
+        expected.assert_eq(&format!("{logs:#?}"));
     }
 }
 

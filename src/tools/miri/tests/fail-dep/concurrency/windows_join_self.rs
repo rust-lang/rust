@@ -1,6 +1,6 @@
 //@only-target: windows # Uses win32 api functions
 // We are making scheduler assumptions here.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@error-in-other-file: deadlock
 
 // On windows, a thread joining itself is not UB, but it will deadlock.

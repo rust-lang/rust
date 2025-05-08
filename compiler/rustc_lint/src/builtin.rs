@@ -976,6 +976,9 @@ declare_lint! {
     /// ```rust
     /// #[unsafe(no_mangle)]
     /// fn foo<T>(t: T) {}
+    ///
+    /// #[unsafe(export_name = "bar")]
+    /// fn bar<T>(t: T) {}
     /// ```
     ///
     /// {{produces}}
@@ -983,10 +986,11 @@ declare_lint! {
     /// ### Explanation
     ///
     /// A function with generics must have its symbol mangled to accommodate
-    /// the generic parameter. The [`no_mangle` attribute] has no effect in
-    /// this situation, and should be removed.
+    /// the generic parameter. The [`no_mangle`] and [`export_name`] attributes
+    /// have no effect in this situation, and should be removed.
     ///
-    /// [`no_mangle` attribute]: https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute
+    /// [`no_mangle`]: https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute
+    /// [`export_name`]: https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute
     NO_MANGLE_GENERIC_ITEMS,
     Warn,
     "generic items must be mangled"
@@ -997,7 +1001,7 @@ declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GEN
 impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         let attrs = cx.tcx.hir_attrs(it.hir_id());
-        let check_no_mangle_on_generic_fn = |no_mangle_attr: &hir::Attribute,
+        let check_no_mangle_on_generic_fn = |attr: &hir::Attribute,
                                              impl_generics: Option<&hir::Generics<'_>>,
                                              generics: &hir::Generics<'_>,
                                              span| {
@@ -1010,7 +1014,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         cx.emit_span_lint(
                             NO_MANGLE_GENERIC_ITEMS,
                             span,
-                            BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span() },
+                            BuiltinNoMangleGeneric { suggestion: attr.span() },
                         );
                         break;
                     }
@@ -1019,8 +1023,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
         };
         match it.kind {
             hir::ItemKind::Fn { generics, .. } => {
-                if let Some(no_mangle_attr) = attr::find_by_name(attrs, sym::no_mangle) {
-                    check_no_mangle_on_generic_fn(no_mangle_attr, None, generics, it.span);
+                if let Some(attr) = attr::find_by_name(attrs, sym::export_name)
+                    .or_else(|| attr::find_by_name(attrs, sym::no_mangle))
+                {
+                    check_no_mangle_on_generic_fn(attr, None, generics, it.span);
                 }
             }
             hir::ItemKind::Const(..) => {
@@ -1048,11 +1054,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
             hir::ItemKind::Impl(hir::Impl { generics, items, .. }) => {
                 for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
-                        if let Some(no_mangle_attr) =
-                            attr::find_by_name(cx.tcx.hir_attrs(it.id.hir_id()), sym::no_mangle)
+                        let attrs = cx.tcx.hir_attrs(it.id.hir_id());
+                        if let Some(attr) = attr::find_by_name(attrs, sym::export_name)
+                            .or_else(|| attr::find_by_name(attrs, sym::no_mangle))
                         {
                             check_no_mangle_on_generic_fn(
-                                no_mangle_attr,
+                                attr,
                                 Some(generics),
                                 cx.tcx.hir_get_generics(it.id.owner_id.def_id).unwrap(),
                                 it.span,

@@ -297,6 +297,19 @@ parse_forgot_paren = perhaps you forgot parentheses?
 parse_found_expr_would_be_stmt = expected expression, found `{$token}`
     .label = expected expression
 
+parse_frontmatter_extra_characters_after_close = extra characters after frontmatter close are not allowed
+parse_frontmatter_invalid_close_preceding_whitespace = invalid preceding whitespace for frontmatter close
+    .note = frontmatter close should not be preceded by whitespace
+parse_frontmatter_invalid_infostring = invalid infostring for frontmatter
+    .note = frontmatter infostrings must be a single identifier immediately following the opening
+parse_frontmatter_invalid_opening_preceding_whitespace = invalid preceding whitespace for frontmatter opening
+    .note = frontmatter opening should not be preceded by whitespace
+parse_frontmatter_length_mismatch = frontmatter close does not match the opening
+    .label_opening = the opening here has {$len_opening} dashes...
+    .label_close = ...while the close has {$len_close} dashes
+parse_frontmatter_unclosed = unclosed frontmatter
+    .note = frontmatter opening here was not closed
+
 parse_function_body_equals_expr = function body cannot be `= expression;`
     .suggestion = surround the expression with `{"{"}` and `{"}"}` instead of `=` and `;`
 
@@ -701,6 +714,16 @@ parse_parenthesized_lifetime_suggestion = remove the parentheses
 
 parse_path_double_colon = path separator must be a double colon
     .suggestion = use a double colon instead
+
+
+parse_path_found_attribute_in_params = `Trait(...)` syntax does not support attributes in parameters
+    .suggestion = remove the attributes
+
+parse_path_found_c_variadic_params = `Trait(...)` syntax does not support c_variadic parameters
+    .suggestion = remove the `...`
+
+parse_path_found_named_params = `Trait(...)` syntax does not support named parameters
+    .suggestion = remove the parameter name
 
 parse_pattern_method_param_without_body = patterns aren't allowed in methods without bodies
     .suggestion = give this argument a name or use an underscore to ignore it

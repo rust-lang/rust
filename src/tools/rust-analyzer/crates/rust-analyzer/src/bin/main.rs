@@ -182,10 +182,8 @@ fn with_extra_thread(
     thread_intent: stdx::thread::ThreadIntent,
     f: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
 ) -> anyhow::Result<()> {
-    let handle = stdx::thread::Builder::new(thread_intent)
-        .name(thread_name.into())
-        .stack_size(STACK_SIZE)
-        .spawn(f)?;
+    let handle =
+        stdx::thread::Builder::new(thread_intent, thread_name).stack_size(STACK_SIZE).spawn(f)?;
 
     handle.join()?;
 
