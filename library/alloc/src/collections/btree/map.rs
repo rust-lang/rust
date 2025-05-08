@@ -1397,7 +1397,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         }
     }
 
-    /// Creates an iterator that visits all elements (key-value pairs) in
+    /// Creates an iterator that visits elements (key-value pairs) in the specified range in
     /// ascending key order and uses a closure to determine if an element
     /// should be removed.
     ///
@@ -1423,10 +1423,16 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
-    /// let evens: BTreeMap<_, _> = map.extract_if(|k, _v| k % 2 == 0).collect();
+    /// let evens: BTreeMap<_, _> = map.extract_if(.., |k, _v| k % 2 == 0).collect();
     /// let odds = map;
     /// assert_eq!(evens.keys().copied().collect::<Vec<_>>(), [0, 2, 4, 6]);
     /// assert_eq!(odds.keys().copied().collect::<Vec<_>>(), [1, 3, 5, 7]);
+    ///
+    /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
+    /// let low: BTreeMap<_, _> = map.extract_if(0..4, |_k, _v| true).collect();
+    /// let high = map;
+    /// assert_eq!(low.keys().copied().collect::<Vec<_>>(), [0, 1, 2, 3]);
+    /// assert_eq!(high.keys().copied().collect::<Vec<_>>(), [4, 5, 6, 7]);
     /// ```
     #[unstable(feature = "btree_extract_if", issue = "70530")]
     pub fn extract_if<F, R>(&mut self, range: R, pred: F) -> ExtractIf<'_, K, V, R, F, A>
