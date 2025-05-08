@@ -1116,6 +1116,7 @@ impl<'a> Builder<'a> {
                 run::FeaturesStatusDump,
                 run::CyclicStep,
                 run::CoverageDump,
+                run::Rustfmt,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
