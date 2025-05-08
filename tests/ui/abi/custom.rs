@@ -47,6 +47,15 @@ trait BitwiseNot {
 
 impl BitwiseNot for Thing {}
 
+#[unsafe(naked)]
+unsafe extern "C" fn const_generic<const N: u64>() {
+    naked_asm!(
+        "mov rax, {}",
+        "ret",
+        const N,
+    );
+}
+
 pub fn main() {
     let mut x: u64 = 21;
     unsafe { asm!("call {}", sym double, inout("rax") x) };
@@ -71,4 +80,12 @@ pub fn main() {
     }
 
     assert_eq!(caller(double, 2), 4);
+
+    let x: u64;
+    unsafe { asm!("call {}", sym const_generic::<42>, out("rax") x) };
+    assert_eq!(x, 42);
+
+    let x: u64;
+    unsafe { asm!("call {}", sym const_generic::<84>, out("rax") x) };
+    assert_eq!(x, 84);
 }

@@ -88,6 +88,9 @@ impl<'tcx> Visitor<'tcx> for CheckCustomAbi<'tcx> {
                 }
             }
 
+            // Because `extern "custom"` functions don't accept any parameter, and functions are
+            // only methods when some variation on `self` is their first argument, methods cannot
+            // use `extern "custom"` in a valid program.
             ExprKind::MethodCall(_, receiver, _, span) => {
                 let opt_def_id = self
                     .tcx
@@ -99,6 +102,7 @@ impl<'tcx> Visitor<'tcx> for CheckCustomAbi<'tcx> {
                     (span, sig.abi)
                 })
             }
+
             _ => None,
         };
 
