@@ -7,6 +7,16 @@ LL | struct MultipleNonZst(u8, u8);
    | |                     this field has non-zero size or requires alignment
    | needs at most one field with non-trivial size or alignment, but has 2
 
+error: hi
+  --> $DIR/repr-transparent.rs:29:1
+   |
+LL | trait Mirror { type It: ?Sized; }
+   | ------------ built-in `dyn Mirror<It = _>` implementation for this trait
+LL | impl<T: ?Sized> Mirror for T { type It = Self; }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
   --> $DIR/repr-transparent.rs:32:1
    |
@@ -98,7 +108,7 @@ LL |     u: u32,
 LL |     s: i32
    |     ------ this field has non-zero size or requires alignment
 
-error: aborting due to 11 previous errors
+error: aborting due to 12 previous errors
 
 Some errors have detailed explanations: E0084, E0690, E0731.
 For more information about an error, try `rustc --explain E0084`.

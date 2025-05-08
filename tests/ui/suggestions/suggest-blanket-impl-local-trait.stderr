@@ -62,6 +62,17 @@ LL - impl<E> GenericTrait<E> for LocalTraitOne {}
 LL + impl<E, T: LocalTraitOne> GenericTrait<E> for T {}
    |
 
+error: hi
+  --> $DIR/suggest-blanket-impl-local-trait.rs:13:1
+   |
+LL | trait LocalTraitTwo { }
+   | ------------------- built-in `dyn LocalTraitTwo` implementation for this trait
+...
+LL | impl LocalTraitTwo for LocalTraitOne {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0782]: expected a type, found a trait
   --> $DIR/suggest-blanket-impl-local-trait.rs:18:23
    |
@@ -73,6 +84,15 @@ help: you can add the `dyn` keyword if you want a trait object
 LL | impl fmt::Display for dyn LocalTraitOne {
    |                       +++
 
+error: hi
+  --> $DIR/suggest-blanket-impl-local-trait.rs:18:1
+   |
+LL | impl fmt::Display for LocalTraitOne {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+   |
+   = note: built-in `dyn std::fmt::Display` implementation for this trait
+
 error[E0782]: expected a type, found a trait
   --> $DIR/suggest-blanket-impl-local-trait.rs:26:23
    |
@@ -83,6 +103,42 @@ help: you can add the `dyn` keyword if you want a trait object
    |
 LL | impl fmt::Display for dyn LocalTraitTwo + Send {
    |                       +++
+
+error: hi
+  --> $DIR/suggest-blanket-impl-local-trait.rs:26:1
+   |
+LL | impl fmt::Display for LocalTraitTwo + Send {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
+   |
+   = note: built-in `dyn std::fmt::Display` implementation for this trait
+
+error: hi
+  --> $DIR/suggest-blanket-impl-local-trait.rs:34:1
+   |
+LL | trait LocalTraitOne { }
+   | ------------------- built-in `dyn LocalTraitOne` implementation for this trait
+...
+LL | impl LocalTraitOne for fmt::Display {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: hi
+  --> $DIR/suggest-blanket-impl-local-trait.rs:40:1
+   |
+LL | trait LocalTraitOne { }
+   | ------------------- built-in `dyn LocalTraitOne` implementation for this trait
+...
+LL | impl LocalTraitOne for fmt::Display + Send {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: hi
+  --> $DIR/suggest-blanket-impl-local-trait.rs:46:1
+   |
+LL | trait GenericTrait<T> {}
+   | --------------------- built-in `dyn GenericTrait<_>` implementation for this trait
+...
+LL | impl<E> GenericTrait<E> for LocalTraitOne {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
 
 error[E0782]: expected a type, found a trait
   --> $DIR/suggest-blanket-impl-local-trait.rs:53:35
@@ -100,6 +156,15 @@ LL - impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
 LL + impl<T, E, U: GenericTrait<T>> GenericTraitTwo<E> for U {}
    |
 
-error: aborting due to 7 previous errors
+error: hi
+  --> $DIR/suggest-blanket-impl-local-trait.rs:53:1
+   |
+LL | trait GenericTraitTwo<T> {}
+   | ------------------------ built-in `dyn GenericTraitTwo<_>` implementation for this trait
+LL |
+LL | impl<T, E> GenericTraitTwo<E> for GenericTrait<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0782`.

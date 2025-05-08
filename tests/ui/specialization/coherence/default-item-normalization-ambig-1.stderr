@@ -8,6 +8,17 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
+error: hi
+  --> $DIR/default-item-normalization-ambig-1.rs:19:1
+   |
+LL | trait Y {
+   | ------- built-in `dyn Y` implementation for this trait
+...
+LL | impl Y for <() as X>::U {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0119]: conflicting implementations of trait `Y` for type `<() as X>::U`
   --> $DIR/default-item-normalization-ambig-1.rs:20:1
    |
@@ -16,6 +27,15 @@ LL | impl Y for <() as X>::U {}
 LL | impl Y for <i32 as X>::U {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<() as X>::U`
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: hi
+  --> $DIR/default-item-normalization-ambig-1.rs:20:1
+   |
+LL | trait Y {
+   | ------- built-in `dyn Y` implementation for this trait
+...
+LL | impl Y for <i32 as X>::U {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0119`.

@@ -1,3 +1,14 @@
+error: hi
+  --> $DIR/wf-normalization-sized.rs:15:1
+   |
+LL | trait WellUnformed {
+   | ------------------ built-in `dyn WellUnformed<RequestNormalize = _>` implementation for this trait
+...
+LL | impl<T: ?Sized> WellUnformed for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0277]: the size for values of type `[[[[[u8]]]]]` cannot be known at compilation time
   --> $DIR/wf-normalization-sized.rs:19:11
    |
@@ -17,6 +28,6 @@ LL | const _: <Vec<str> as WellUnformed>::RequestNormalize = ();
 note: required by an implicit `Sized` bound in `Vec`
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

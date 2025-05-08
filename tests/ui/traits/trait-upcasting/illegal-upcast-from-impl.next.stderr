@@ -1,3 +1,14 @@
+error: hi
+  --> $DIR/illegal-upcast-from-impl.rs:11:1
+   |
+LL | trait Super {
+   | ----------- built-in `dyn Super<Assoc = _>` implementation for this trait
+...
+LL | impl<T: ?Sized> Super for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0308]: mismatched types
   --> $DIR/illegal-upcast-from-impl.rs:15:66
    |
@@ -9,6 +20,6 @@ LL | fn illegal(x: &dyn Sub<Assoc = ()>) -> &dyn Super<Assoc = i32> { x }
    = note: expected reference `&dyn Super<Assoc = i32>`
               found reference `&dyn Sub<Assoc = ()>`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

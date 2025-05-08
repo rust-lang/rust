@@ -7,6 +7,17 @@ LL | #![feature(unsized_locals, unsized_fn_params)]
    = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
+error: hi
+  --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:73:5
+   |
+LL |     pub trait NuisanceFoo {
+   |     --------------------- built-in `dyn NuisanceFoo` implementation for this trait
+...
+LL |     impl<T: ?Sized> NuisanceFoo for T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:89:24
    |
@@ -84,7 +95,7 @@ LL |     let _seetype: () = z;
    |                   |
    |                   expected due to this
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 7 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0034, E0308.
 For more information about an error, try `rustc --explain E0034`.

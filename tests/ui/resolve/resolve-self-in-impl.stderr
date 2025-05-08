@@ -28,6 +28,26 @@ LL | trait Tr<T = u8> {
    | ^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
+error: hi
+  --> $DIR/resolve-self-in-impl.rs:14:1
+   |
+LL | trait Tr<T = u8> {
+   | ---------------- built-in `dyn Tr<{type error}, A = _>` implementation for this trait
+...
+LL | impl Tr for Self {}
+   | ^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: hi
+  --> $DIR/resolve-self-in-impl.rs:15:1
+   |
+LL | trait Tr<T = u8> {
+   | ---------------- built-in `dyn Tr<{type error}, A = _>` implementation for this trait
+...
+LL | impl Tr for S<Self> {}
+   | ^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
 error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:16:6
    |
@@ -52,6 +72,6 @@ LL | impl (Self, Self) {}
    |
    = note: replace `Self` with a different type
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

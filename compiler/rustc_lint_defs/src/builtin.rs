@@ -37,6 +37,7 @@ declare_lint_pass! {
         DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
         DUPLICATE_MACRO_ATTRIBUTES,
+        DYN_OVERLAP,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
         ELIDED_NAMED_LIFETIMES,
@@ -5066,4 +5067,15 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
     };
+}
+
+declare_lint! {
+    /// The `dyn_overlap` lint is one of the lints of all time.
+    ///
+    /// ### Uwu
+    ///
+    /// Owo
+    pub DYN_OVERLAP,
+    Forbid,
+    "owo",
 }

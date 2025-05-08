@@ -171,6 +171,7 @@ pub fn provide(providers: &mut Providers) {
         inherit_sig_for_delegation_item: delegation::inherit_sig_for_delegation_item,
         enforce_impl_non_lifetime_params_are_constrained:
             impl_wf_check::enforce_impl_non_lifetime_params_are_constrained,
+        lint_object_blanket_impl: impl_wf_check::lint_object_blanket_impl,
         ..*providers
     };
 }

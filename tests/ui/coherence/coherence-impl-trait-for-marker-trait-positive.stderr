@@ -58,6 +58,16 @@ error[E0321]: cross-crate traits with a default impl, like `Send`, can only be i
 LL | unsafe impl Send for dyn Object + Marker2 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
+error: hi
+  --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:32:1
+   |
+LL | auto trait Marker3 {}
+   | ------------------ built-in `dyn Marker3` implementation for this trait
+LL | impl<T: ?Sized> Marker3 for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0321]: traits with a default impl, like `Marker3`, cannot be implemented for generic type `T`
   --> $DIR/coherence-impl-trait-for-marker-trait-positive.rs:32:1
    |
@@ -66,7 +76,7 @@ LL | impl<T: ?Sized> Marker3 for T {}
    |
    = note: a trait object implements `Marker3` if and only if `Marker3` is one of the trait object's trait bounds
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0117, E0321, E0371.
 For more information about an error, try `rustc --explain E0117`.

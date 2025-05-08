@@ -1,3 +1,14 @@
+error: hi
+  --> $DIR/lint-ctypes-fn.rs:12:1
+   |
+LL | trait Mirror { type It: ?Sized; }
+   | ------------ built-in `dyn Mirror<It = _>` implementation for this trait
+LL |
+LL | impl<T: ?Sized> Mirror for T { type It = Self; }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error: `extern` fn uses type `[u32]`, which is not FFI-safe
   --> $DIR/lint-ctypes-fn.rs:70:33
    |
@@ -184,5 +195,5 @@ LL | pub extern "C" fn used_generic5<T>() -> Vec<T> {
    = help: consider adding a `#[repr(C)]` or `#[repr(transparent)]` attribute to this struct
    = note: this struct has unspecified layout
 
-error: aborting due to 20 previous errors
+error: aborting due to 21 previous errors
 

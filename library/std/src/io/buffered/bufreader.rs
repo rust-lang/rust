@@ -579,7 +579,7 @@ impl<R: ?Sized + Seek> Seek for BufReader<R> {
     }
 }
 
-impl<T: ?Sized> SizeHint for BufReader<T> {
+impl<T> SizeHint for BufReader<T> {
     #[inline]
     fn lower_bound(&self) -> usize {
         SizeHint::lower_bound(self.get_ref()) + self.buffer().len()

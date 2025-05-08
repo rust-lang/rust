@@ -1,3 +1,14 @@
+error: hi
+  --> $DIR/with-self-in-projection-output-bad.rs:27:1
+   |
+LL | trait ConstI32 {
+   | -------------- built-in `dyn ConstI32<Out = _>` implementation for this trait
+...
+LL | impl<T: ?Sized> ConstI32 for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0191]: the value of the associated type `Output` in `Base` must be specified
   --> $DIR/with-self-in-projection-output-bad.rs:45:21
    |
@@ -16,6 +27,6 @@ LL |     type Output;
 LL |     let _y: Box<dyn NormalizableHelper<Target=i32>> = Box::new(2u32);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: specify the associated type: `NormalizableHelper<Target=i32, Output = Type>`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0191`.
