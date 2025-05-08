@@ -2,6 +2,7 @@
 
 pub(super) mod structural_traits;
 
+use std::cell::Cell;
 use std::ops::ControlFlow;
 
 use derive_where::derive_where;
@@ -118,25 +119,23 @@ where
         Self::fast_reject_assumption(ecx, goal, assumption)?;
 
         // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
-        // check whether the candidate is global.
-        ecx.probe(|candidate: &Result<Candidate<I>, NoSolution>| match candidate {
-            Ok(candidate) => inspect::ProbeKind::TraitCandidate {
-                source: candidate.source,
-                result: Ok(candidate.result),
-            },
-            Err(NoSolution) => inspect::ProbeKind::TraitCandidate {
-                source: CandidateSource::ParamEnv(ParamEnvSource::Global),
-                result: Err(NoSolution),
-            },
+        // check whether the candidate is global while considering normalization.
+        //
+        // We need to write into `source` inside of `match_assumption`, but need to access it
+        // in `probe` even if the candidate does not apply before we get there. We handle this
+        // by using a `Cell` here. We only ever write into it inside of `match_assumption`.
+        let source = Cell::new(CandidateSource::ParamEnv(ParamEnvSource::Global));
+        ecx.probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
+            source: source.get(),
+            result: *result,
         })
         .enter(|ecx| {
-            let mut source = CandidateSource::ParamEnv(ParamEnvSource::Global);
-            let result = Self::match_assumption(ecx, goal, assumption, |ecx| {
-                source = ecx.characterize_param_env_assumption(goal.param_env, assumption)?;
+            Self::match_assumption(ecx, goal, assumption, |ecx| {
+                source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
                 ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            })?;
-            Ok(Candidate { source, result })
+            })
         })
+        .map(|result| Candidate { source: source.get(), result })
     }
 
     /// Try equating an assumption predicate against a goal's predicate. If it
