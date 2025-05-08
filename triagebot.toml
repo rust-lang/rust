@@ -13,7 +13,7 @@ allow-unauthenticated = [
 
 [note]
 
-[canonicalize-issue-links]
+[issue-links]
 
 # Prevents mentions in commits to avoid users being spammed
 [no-mentions]
