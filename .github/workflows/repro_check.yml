@@ -6,7 +6,7 @@
 name: Reproducibility check
 
 on:
-  push:
+  pull_request:
     branches:
       - master
 
