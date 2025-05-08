@@ -2126,3 +2126,51 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn call_parens_with_newline() {
+    check_edit(
+        "foo",
+        r#"
+fn foo(v: i32) {}
+
+fn bar() {
+    foo$0
+    ()
+}
+    "#,
+        r#"
+fn foo(v: i32) {}
+
+fn bar() {
+    foo(${1:v});$0
+    ()
+}
+    "#,
+    );
+    check_edit(
+        "foo",
+        r#"
+struct Foo;
+impl Foo {
+    fn foo(&self, v: i32) {}
+}
+
+fn bar() {
+    Foo.foo$0
+    ()
+}
+    "#,
+        r#"
+struct Foo;
+impl Foo {
+    fn foo(&self, v: i32) {}
+}
+
+fn bar() {
+    Foo.foo(${1:v});$0
+    ()
+}
+    "#,
+    );
+}
