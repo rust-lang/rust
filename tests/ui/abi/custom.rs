@@ -8,7 +8,7 @@
 use std::arch::{asm, global_asm, naked_asm};
 
 #[unsafe(naked)]
-unsafe extern "custom" fn double(a: u64) -> u64 {
+unsafe extern "custom" fn double() {
     naked_asm!("add rax, rax", "ret");
 }
 
@@ -25,7 +25,7 @@ global_asm!(
 );
 
 unsafe extern "custom" {
-    fn increment(a: u64) -> u64;
+    fn increment();
 }
 
 #[repr(transparent)]
@@ -33,14 +33,14 @@ struct Thing(u64);
 
 impl Thing {
     #[unsafe(naked)]
-    unsafe extern "custom" fn is_even(self) -> bool {
+    unsafe extern "custom" fn is_even() {
         naked_asm!("test al, 1", "sete al", "ret");
     }
 }
 
 trait BitwiseNot {
     #[unsafe(naked)]
-    unsafe extern "custom" fn bitwise_not(a: u64) -> u64 {
+    unsafe extern "custom" fn bitwise_not() {
         naked_asm!("not rax", "ret");
     }
 }
@@ -65,7 +65,7 @@ pub fn main() {
     assert_eq!(x, !42);
 
     // Create and call in `asm!` an `extern "custom"` function pointer.
-    fn caller(f: unsafe extern "custom" fn(u64) -> u64, mut x: u64) -> u64 {
+    fn caller(f: unsafe extern "custom" fn(), mut x: u64) -> u64 {
         unsafe { asm!("call {}", in(reg) f, inout("rax") x) };
         x
     }
