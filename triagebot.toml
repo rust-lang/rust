@@ -1001,7 +1001,15 @@ message = "This PR changes how GCC is built. Consider updating src/bootstrap/dow
 message = "This PR changes a file inside `tests/crashes`. If a crash was fixed, please move into the corresponding `ui` subdir and add 'Fixes #<issueNr>' to the PR description to autoclose the issue upon merge."
 
 [mentions."tests/rustdoc-json"]
-cc = ["@aDotInTheVoid"]
+message = """
+These commits modify `test/rustdoc-json`.
+rustdoc-json is a **public** (but unstable) interface.
+
+Please ensure that if you've changed the output:
+- It's intentional.
+- The `FORMAT_VERSION` in `src/librustdoc-json-types` is bumped if necessary.
+"""
+cc = ["@aDotInTheVoid", "@obi1kenobi"]
 
 [mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
 message = "Changes to the code generated for builtin derived traits."
@@ -1161,7 +1169,6 @@ compiler = [
     "@BoxyUwU",
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@fee1-dead",
     "@fmease",
     "@jieyouxu",
@@ -1221,14 +1228,12 @@ incremental = [
 diagnostics = [
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@oli-obk",
     "@chenyukang",
 ]
 parser = [
     "@compiler-errors",
     "@davidtwco",
-    "@estebank",
     "@nnethercote",
     "@petrochenkov",
     "@spastorino",
@@ -1236,7 +1241,6 @@ parser = [
 lexer = [
     "@nnethercote",
     "@petrochenkov",
-    "@estebank",
     "@chenyukang",
 ]
 arena = [
@@ -1268,7 +1272,6 @@ borrowck = [
 ]
 ast_lowering = [
     "@compiler-errors",
-    "@estebank",
     "@spastorino",
 ]
 debuginfo = [

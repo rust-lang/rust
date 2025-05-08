@@ -23,8 +23,7 @@ use crate::solve::inspect::{self, ProofTreeBuilder};
 use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind, GoalSource,
-    HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
-    QueryResult,
+    HasChanged, NestedNormalizationGoals, NoSolution, QueryInput, QueryResult,
 };
 
 pub(super) mod canonical;
@@ -99,8 +98,6 @@ where
     current_goal_kind: CurrentGoalKind,
     pub(super) var_values: CanonicalVarValues<I>,
 
-    predefined_opaques_in_body: I::PredefinedOpaques,
-
     /// The highest universe index nameable by the caller.
     ///
     /// When we enter a new binder inside of the query we create new universes
@@ -111,6 +108,10 @@ where
     /// if we have a coinductive cycle and because that's the only way we can return
     /// new placeholders to the caller.
     pub(super) max_input_universe: ty::UniverseIndex,
+    /// The opaque types from the canonical input. We only need to return opaque types
+    /// which have been added to the storage while evaluating this goal.
+    pub(super) initial_opaque_types_storage_num_entries:
+        <D::Infcx as InferCtxtLike>::OpaqueTypeStorageEntries,
 
     pub(super) search_graph: &'a mut SearchGraph<D>,
 
@@ -305,10 +306,8 @@ where
 
             // Only relevant when canonicalizing the response,
             // which we don't do within this evaluation context.
-            predefined_opaques_in_body: delegate
-                .cx()
-                .mk_predefined_opaques_in_body(PredefinedOpaquesData::default()),
             max_input_universe: ty::UniverseIndex::ROOT,
+            initial_opaque_types_storage_num_entries: Default::default(),
             variables: Default::default(),
             var_values: CanonicalVarValues::dummy(),
             current_goal_kind: CurrentGoalKind::Misc,
@@ -342,25 +341,10 @@ where
         canonical_goal_evaluation: &mut ProofTreeBuilder<D>,
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
-        let (ref delegate, input, var_values) =
-            SolverDelegate::build_with_canonical(cx, &canonical_input);
-
-        let mut ecx = EvalCtxt {
-            delegate,
-            variables: canonical_input.canonical.variables,
-            var_values,
-            current_goal_kind: CurrentGoalKind::from_query_input(cx, input),
-            predefined_opaques_in_body: input.predefined_opaques_in_body,
-            max_input_universe: canonical_input.canonical.max_universe,
-            search_graph,
-            nested_goals: Default::default(),
-            origin_span: I::Span::dummy(),
-            tainted: Ok(()),
-            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
-        };
+        let (ref delegate, input, var_values) = D::build_with_canonical(cx, &canonical_input);
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            let prev = ecx.delegate.register_hidden_type_in_storage(key, ty, ecx.origin_span);
+            let prev = delegate.register_hidden_type_in_storage(key, ty, I::Span::dummy());
             // It may be possible that two entries in the opaque type storage end up
             // with the same key after resolving contained inference variables.
             //
@@ -373,13 +357,24 @@ where
             // the canonical input. This is more annoying to implement and may cause a
             // perf regression, so we do it inside of the query for now.
             if let Some(prev) = prev {
-                debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_type_storage`");
+                debug!(?key, ?ty, ?prev, "ignore duplicate in `opaque_types_storage`");
             }
         }
 
-        if !ecx.nested_goals.is_empty() {
-            panic!("prepopulating opaque types shouldn't add goals: {:?}", ecx.nested_goals);
-        }
+        let initial_opaque_types_storage_num_entries = delegate.opaque_types_storage_num_entries();
+        let mut ecx = EvalCtxt {
+            delegate,
+            variables: canonical_input.canonical.variables,
+            var_values,
+            current_goal_kind: CurrentGoalKind::from_query_input(cx, input),
+            max_input_universe: canonical_input.canonical.max_universe,
+            initial_opaque_types_storage_num_entries,
+            search_graph,
+            nested_goals: Default::default(),
+            origin_span: I::Span::dummy(),
+            tainted: Ok(()),
+            inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
+        };
 
         let result = f(&mut ecx, input.goal);
         ecx.inspect.probe_final_state(ecx.delegate, ecx.max_input_universe);
@@ -666,7 +661,7 @@ where
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
                         self.nested_goals.push((source, with_resolved_vars));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
             } else {
@@ -680,7 +675,7 @@ where
                     Certainty::Yes => {}
                     Certainty::Maybe(_) => {
                         self.nested_goals.push((source, goal));
-                        unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
+                        unchanged_certainty = unchanged_certainty.map(|c| c.and(certainty));
                     }
                 }
             }
@@ -998,6 +993,14 @@ where
         T: TypeFoldable<I>,
     {
         self.delegate.resolve_vars_if_possible(value)
+    }
+
+    pub(super) fn eager_resolve_region(&self, r: I::Region) -> I::Region {
+        if let ty::ReVar(vid) = r.kind() {
+            self.delegate.opportunistic_resolve_lt_var(vid)
+        } else {
+            r
+        }
     }
 
     pub(super) fn fresh_args_for_item(&mut self, def_id: I::DefId) -> I::GenericArgs {
