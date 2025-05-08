@@ -952,27 +952,19 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // If we need a panic runtime, we try to find an existing one here. At
         // the same time we perform some general validation of the DAG we've got
         // going such as ensuring everything has a compatible panic strategy.
-        let desired_strategy = self.sess.panic_strategy();
-        let mut runtime_found = false;
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs, sym::needs_panic_runtime);
-
         for (_cnum, data) in self.cstore.iter_crate_data() {
-            needs_panic_runtime = needs_panic_runtime || data.needs_panic_runtime();
-            if data.is_panic_runtime() {
-                runtime_found = runtime_found || data.dep_kind() == CrateDepKind::Explicit;
-            }
+            needs_panic_runtime |= data.needs_panic_runtime();
         }
 
-        // If an explicitly linked and matching panic runtime was found, or if
-        // we just don't need one at all, then we're done here and there's
-        // nothing else to do.
-        if !needs_panic_runtime || runtime_found {
+        // If we just don't need a panic runtime at all, then we're done here
+        // and there's nothing else to do.
+        if !needs_panic_runtime {
             return;
         }
 
-        // By this point we know that we (a) need a panic runtime and (b) no
-        // panic runtime was explicitly linked. Here we just load an appropriate
-        // default runtime for our panic strategy.
+        // By this point we know that we need a panic runtime. Here we just load
+        // an appropriate default runtime for our panic strategy.
         //
         // We may resolve to an already loaded crate (as the crate may not have
         // been explicitly linked prior to this), but this is fine.
@@ -980,6 +972,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // Also note that we have yet to perform validation of the crate graph
         // in terms of everyone has a compatible panic runtime format, that's
         // performed later as part of the `dependency_format` module.
+        let desired_strategy = self.sess.panic_strategy();
         let name = match desired_strategy {
             PanicStrategy::Unwind => sym::panic_unwind,
             PanicStrategy::Abort => sym::panic_abort,
