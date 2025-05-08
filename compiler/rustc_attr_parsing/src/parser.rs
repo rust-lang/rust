@@ -78,8 +78,8 @@ impl<'a> PathParser<'a> {
         (self.len() == 1).then(|| **self.segments().next().as_ref().unwrap())
     }
 
-    pub fn word_or_empty(&self) -> Ident {
-        self.word().unwrap_or_else(Ident::empty)
+    pub fn word_sym(&self) -> Option<Symbol> {
+        self.word().map(|ident| ident.name)
     }
 
     /// Asserts that this MetaItem is some specific word.
@@ -284,11 +284,6 @@ impl<'a> MetaItemParser<'a> {
         Some(self.word()?.0)
     }
 
-    /// Like [`word`](Self::word), but returns an empty symbol instead of None
-    pub fn word_or_empty_without_args(&self) -> Ident {
-        self.word_or_empty().0
-    }
-
     /// Asserts that this MetaItem starts with a word, or single segment path.
     ///
     /// Some examples:
@@ -298,12 +293,6 @@ impl<'a> MetaItemParser<'a> {
     pub fn word(&self) -> Option<(Ident, &ArgParser<'a>)> {
         let (path, args) = self.deconstruct();
         Some((path.word()?, args))
-    }
-
-    /// Like [`word`](Self::word), but returns an empty symbol instead of None
-    pub fn word_or_empty(&self) -> (Ident, &ArgParser<'a>) {
-        let (path, args) = self.deconstruct();
-        (path.word().unwrap_or(Ident::empty()), args)
     }
 
     /// Asserts that this MetaItem starts with some specific word.
