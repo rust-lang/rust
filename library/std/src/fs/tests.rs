@@ -730,6 +730,10 @@ fn recursive_mkdir_empty() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn recursive_rmdir() {
     let tmpdir = tmpdir();
     let d1 = tmpdir.join("d1");
@@ -749,6 +753,10 @@ fn recursive_rmdir() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn recursive_rmdir_of_symlink() {
     // test we do not recursively delete a symlink but only dirs.
     let tmpdir = tmpdir();
@@ -1533,6 +1541,10 @@ fn file_open_not_found() {
 }
 
 #[test]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn create_dir_all_with_junctions() {
     let tmpdir = tmpdir();
     let target = tmpdir.join("target");
@@ -2011,6 +2023,10 @@ fn test_rename_symlink() {
 
 #[test]
 #[cfg(windows)]
+#[cfg_attr(
+    all(windows, target_arch = "aarch64"),
+    ignore = "SymLinks not enabled on Arm64 Windows runners https://github.com/actions/partner-runner-images/issues/94"
+)]
 fn test_rename_junction() {
     let tmpdir = tmpdir();
     let original = tmpdir.join("original");
