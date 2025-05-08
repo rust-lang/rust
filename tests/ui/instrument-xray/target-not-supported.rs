@@ -1,7 +1,7 @@
 // Verifies that `-Z instrument-xray` cannot be used with unsupported targets,
 //
 //@ needs-llvm-components: x86
-//@ compile-flags: -Z instrument-xray --target x86_64-apple-darwin
+//@ compile-flags: -Z instrument-xray --target x86_64-pc-windows-msvc
 
 #![feature(no_core)]
 #![no_core]
