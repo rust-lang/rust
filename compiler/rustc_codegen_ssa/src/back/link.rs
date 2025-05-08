@@ -1369,8 +1369,29 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                             "cc"
                         }
                     }
-                    LinkerFlavor::Gnu(_, Lld::Yes)
-                    | LinkerFlavor::Darwin(_, Lld::Yes)
+                    LinkerFlavor::Gnu(_, Lld::Yes) => {
+                        // Here, we're asked to use lld without a linker driver, so we'll check
+                        // whether the self-contained linker is enabled on the CLI or explicitly by
+                        // the target, to launch `rust-lld` instead of the system `lld`.
+                        let self_contained_cli = &sess.opts.cg.link_self_contained;
+                        let self_contained_target = match sess.target.link_self_contained {
+                            LinkSelfContainedDefault::WithComponents(components) => {
+                                components.is_linker_enabled()
+                            }
+                            _ => {
+                                // We don't try to infer whether the self-contained linker component
+                                // is enabled: on some targets (mingw), the component inference
+                                // actually uses the linker to compute whether self-contained
+                                // linking is enabled, but we're computing the linker to use here.
+                                false
+                            }
+                        };
+                        let self_contained_linker = (self_contained_cli.is_linker_enabled()
+                            || self_contained_target)
+                            && !self_contained_cli.is_linker_disabled();
+                        if self_contained_linker { "rust-lld" } else { "lld" }
+                    }
+                    LinkerFlavor::Darwin(_, Lld::Yes)
                     | LinkerFlavor::WasmLld(..)
                     | LinkerFlavor::Msvc(Lld::Yes) => "lld",
                     LinkerFlavor::Gnu(..) | LinkerFlavor::Darwin(..) | LinkerFlavor::Unix(..) => {
