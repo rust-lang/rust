@@ -968,6 +968,30 @@ mod test_extract_if {
         map.check();
     }
 
+    #[test]
+    fn consumed_removing_some() {
+        let pairs = (0..3).map(|i| (i, i));
+        let map = BTreeMap::from_iter(pairs);
+        for x in 0..3 {
+            for y in 0..3 {
+                let mut map = map.clone();
+                assert!(map.extract_if(x..y, |_, _| true).eq((x..y).map(|i| (i, i))));
+                for i in 0..3 {
+                    assert_ne!(map.contains_key(&i), (x..y).contains(&i));
+                }
+            }
+        }
+        for x in 0..3 {
+            for y in 0..2 {
+                let mut map = map.clone();
+                assert!(map.extract_if(x..=y, |_, _| true).eq((x..=y).map(|i| (i, i))));
+                for i in 0..3 {
+                    assert_ne!(map.contains_key(&i), (x..=y).contains(&i));
+                }
+            }
+        }
+    }
+
     // Explicitly consumes the iterator and modifies values through it.
     #[test]
     fn mutating_and_keeping() {
