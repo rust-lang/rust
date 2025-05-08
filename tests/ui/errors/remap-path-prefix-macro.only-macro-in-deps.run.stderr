@@ -1,0 +1,3 @@
+[$DIR/remap-path-prefix-macro.rs:LL:COL] file::my_file!() = "$DIR/remap-path-prefix-macro.rs"
+[$DIR/remap-path-prefix-macro.rs:LL:COL] file::file() = "remapped/errors/auxiliary/file-macro.rs"
+[$DIR/remap-path-prefix-macro.rs:LL:COL] file!() = "$DIR/remap-path-prefix-macro.rs"
