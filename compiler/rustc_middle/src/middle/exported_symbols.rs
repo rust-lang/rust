@@ -35,7 +35,10 @@ pub enum SymbolExportKind {
 pub struct SymbolExportInfo {
     pub level: SymbolExportLevel,
     pub kind: SymbolExportKind,
+    /// Was the symbol marked as `#[used(compiler)]` or `#[used(linker)]`?
     pub used: bool,
+    /// Was the symbol marked as `#[rustc_std_internal_symbol]`?
+    pub rustc_std_internal_symbol: bool,
 }
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
