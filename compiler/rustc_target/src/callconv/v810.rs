@@ -1,4 +1,4 @@
-use crate::abi::call::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, FnAbi};
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.fields.count() > 2 || ret.layout.size.bits() > 64 {
@@ -9,6 +9,9 @@ fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
 }
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+    if !arg.layout.is_sized() {
+        return;
+    }
     if arg.layout.fields.count() > 4 || arg.layout.size.bits() > 128 {
         arg.make_indirect();
     } else {
@@ -16,7 +19,7 @@ fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
     if !fn_abi.ret.is_ignore() {
         classify_ret(&mut fn_abi.ret);
     }

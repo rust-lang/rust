@@ -1,6 +1,6 @@
 use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, Target, TargetMetadata, TargetOptions};
 
-pub fn target() -> Target {
+pub(crate) fn target() -> Target {
     let base = opts();
     Target {
         llvm_target: "v810-unknown-vb".into(),
