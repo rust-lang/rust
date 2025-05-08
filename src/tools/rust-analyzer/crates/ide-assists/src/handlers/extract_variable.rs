@@ -631,7 +631,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    const $0HELLO: &str = "hello";
+    const $0HELLO: &'static str = "hello";
 }
 "#,
             "Extract into constant",
@@ -726,7 +726,7 @@ fn main() {
 "#,
             r#"
 fn main() {
-    static $0HELLO: &str = "hello";
+    static $0HELLO: &'static str = "hello";
 }
 "#,
             "Extract into static",
@@ -2528,13 +2528,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let entry = Entry($0"Hello"$0);
 }
 "#,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let $0hello = "Hello";
     let entry = Entry(hello);
@@ -2546,13 +2546,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let entry = Entry($0"Hello"$0);
 }
 "#,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     const $0HELLO: &str = "Hello";
     let entry = Entry(HELLO);
@@ -2564,13 +2564,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     let entry = Entry($0"Hello"$0);
 }
 "#,
             r#"
-struct Entry(&str);
+struct Entry<'a>(&'a str);
 fn foo() {
     static $0HELLO: &str = "Hello";
     let entry = Entry(HELLO);
@@ -2587,13 +2587,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let entry = Entry { message: $0"Hello"$0 };
 }
 "#,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let $0message = "Hello";
     let entry = Entry { message };
@@ -2605,13 +2605,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let entry = Entry { message: $0"Hello"$0 };
 }
 "#,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     const $0HELLO: &str = "Hello";
     let entry = Entry { message: HELLO };
@@ -2623,13 +2623,13 @@ fn foo() {
         check_assist_by_label(
             extract_variable,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     let entry = Entry { message: $0"Hello"$0 };
 }
 "#,
             r#"
-struct Entry { message: &str }
+struct Entry<'a> { message: &'a str }
 fn foo() {
     static $0HELLO: &str = "Hello";
     let entry = Entry { message: HELLO };

@@ -35,12 +35,12 @@ fn test_stable_mir() -> ControlFlow<()> {
 fn test_tool(items: &CrateItems) {
     let rustfmt_fn = *get_item(&items, "do_not_format").unwrap();
     let rustfmt_attrs = rustfmt_fn.tool_attrs(&["rustfmt".to_string(), "skip".to_string()]);
-    assert_eq!(rustfmt_attrs[0].as_str(), "#[rustfmt::skip]");
+    assert_eq!(rustfmt_attrs[0].as_str(), "#[rustfmt::skip]\n");
 
     let clippy_fn = *get_item(&items, "complex_fn").unwrap();
     let clippy_attrs = clippy_fn.tool_attrs(&["clippy".to_string(),
                                                "cyclomatic_complexity".to_string()]);
-    assert_eq!(clippy_attrs[0].as_str(), "#[clippy::cyclomatic_complexity = \"100\"]");
+    assert_eq!(clippy_attrs[0].as_str(), "#[clippy::cyclomatic_complexity = \"100\"]\n");
 }
 
 fn get_item<'a>(

@@ -33,4 +33,23 @@ fn main() {
     if let b"test" = *b"this array is too long" {}
     //~^ ERROR mismatched types
     //~| NOTE expected an array with a size of 22, found one with a size of 4
+
+    // Test matching on `&mut T`: we peel the `&mut` before applying the usual special cases.
+    // No special cases apply to `()`, so the "found" type is the type of the literal.
+    if let b"test" = &mut () {}
+    //~^ ERROR mismatched types
+    //~| NOTE expected `()`, found `&[u8; 4]`
+
+    // If the pointee is an array or slice, the usual special cases will apply to the "found" type:
+    if let b"test" = &mut [] as &mut [i8] {}
+    //~^ ERROR mismatched type
+    //~| NOTE expected `[i8]`, found `[u8]`
+
+    if let b"test" = &mut [()] {}
+    //~^ ERROR mismatched types
+    //~| NOTE expected `[(); 1]`, found `[u8; 4]`
+
+    if let b"test" = &mut *b"this array is too long" {}
+    //~^ ERROR mismatched type
+    //~| NOTE expected an array with a size of 22, found one with a size of 4
 }

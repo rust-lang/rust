@@ -351,7 +351,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         kind = "static_mem"
                     )
                 }
-                None => err_ub!(PointerUseAfterFree(alloc_id, CheckInAllocMsg::MemoryAccessTest)),
+                None => err_ub!(PointerUseAfterFree(alloc_id, CheckInAllocMsg::MemoryAccess)),
             })
             .into();
         };
@@ -414,10 +414,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self,
             ptr,
             size,
-            CheckInAllocMsg::MemoryAccessTest,
+            CheckInAllocMsg::MemoryAccess,
             |this, alloc_id, offset, prov| {
-                let (size, align) = this
-                    .get_live_alloc_size_and_align(alloc_id, CheckInAllocMsg::MemoryAccessTest)?;
+                let (size, align) =
+                    this.get_live_alloc_size_and_align(alloc_id, CheckInAllocMsg::MemoryAccess)?;
                 interp_ok((size, align, (alloc_id, offset, prov)))
             },
         )
@@ -613,7 +613,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             Some(GlobalAlloc::Function { .. }) => throw_ub!(DerefFunctionPointer(id)),
             Some(GlobalAlloc::VTable(..)) => throw_ub!(DerefVTablePointer(id)),
-            None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccessTest)),
+            None => throw_ub!(PointerUseAfterFree(id, CheckInAllocMsg::MemoryAccess)),
             Some(GlobalAlloc::Static(def_id)) => {
                 assert!(self.tcx.is_static(def_id));
                 // Thread-local statics do not have a constant address. They *must* be accessed via
@@ -707,7 +707,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self,
             ptr,
             size_i64,
-            CheckInAllocMsg::MemoryAccessTest,
+            CheckInAllocMsg::MemoryAccess,
             |this, alloc_id, offset, prov| {
                 let alloc = this.get_alloc_raw(alloc_id)?;
                 interp_ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc)))
@@ -809,7 +809,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self,
             ptr,
             size_i64,
-            CheckInAllocMsg::MemoryAccessTest,
+            CheckInAllocMsg::MemoryAccess,
             |this, alloc_id, offset, prov| {
                 let (alloc, machine) = this.get_alloc_raw_mut(alloc_id)?;
                 interp_ok((alloc.size(), alloc.align, (alloc_id, offset, prov, alloc, machine)))
@@ -1615,7 +1615,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 err_ub!(DanglingIntPointer {
                     addr: offset,
                     inbounds_size: size,
-                    msg: CheckInAllocMsg::InboundsTest
+                    msg: CheckInAllocMsg::Dereferenceable
                 })
             })
             .into()

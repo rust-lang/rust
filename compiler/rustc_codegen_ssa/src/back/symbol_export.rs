@@ -29,7 +29,7 @@ fn crate_export_threshold(crate_type: CrateType) -> SymbolExportLevel {
         CrateType::Executable | CrateType::Staticlib | CrateType::ProcMacro | CrateType::Cdylib => {
             SymbolExportLevel::C
         }
-        CrateType::Rlib | CrateType::Dylib => SymbolExportLevel::Rust,
+        CrateType::Rlib | CrateType::Dylib | CrateType::Sdylib => SymbolExportLevel::Rust,
     }
 }
 
@@ -45,7 +45,7 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
 }
 
 fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<SymbolExportInfo> {
-    if !tcx.sess.opts.output_types.should_codegen() {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
         return Default::default();
     }
 
@@ -164,11 +164,11 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
-fn exported_symbols_provider_local(
-    tcx: TyCtxt<'_>,
+fn exported_symbols_provider_local<'tcx>(
+    tcx: TyCtxt<'tcx>,
     _: LocalCrate,
-) -> &[(ExportedSymbol<'_>, SymbolExportInfo)] {
-    if !tcx.sess.opts.output_types.should_codegen() {
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+    if !tcx.sess.opts.output_types.should_codegen() && !tcx.is_sdylib_interface_build() {
         return &[];
     }
 
@@ -321,6 +321,38 @@ fn exported_symbols_provider_local(
 
         let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
+        // Do not export symbols that cannot be instantiated by downstream crates.
+        let reachable_set = tcx.reachable_set(());
+        let is_local_to_current_crate = |ty: Ty<'_>| {
+            let no_refs = ty.peel_refs();
+            let root_def_id = match no_refs.kind() {
+                ty::Closure(closure, _) => *closure,
+                ty::FnDef(def_id, _) => *def_id,
+                ty::Coroutine(def_id, _) => *def_id,
+                ty::CoroutineClosure(def_id, _) => *def_id,
+                ty::CoroutineWitness(def_id, _) => *def_id,
+                _ => return false,
+            };
+            let Some(root_def_id) = root_def_id.as_local() else {
+                return false;
+            };
+
+            let is_local = !reachable_set.contains(&root_def_id);
+            is_local
+        };
+
+        let is_instantiable_downstream =
+            |did: Option<DefId>, generic_args: GenericArgsRef<'tcx>| {
+                generic_args
+                    .types()
+                    .chain(did.into_iter().map(move |did| tcx.type_of(did).skip_binder()))
+                    .all(move |arg| {
+                        arg.walk().all(|ty| {
+                            ty.as_type().map_or(true, |ty| !is_local_to_current_crate(ty))
+                        })
+                    })
+            };
+
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
@@ -349,7 +381,12 @@ fn exported_symbols_provider_local(
 
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
-                    if args.non_erasable_generics().next().is_some() {
+                    let has_generics = args.non_erasable_generics().next().is_some();
+
+                    let should_export =
+                        has_generics && is_instantiable_downstream(Some(def), &args);
+
+                    if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
@@ -364,14 +401,24 @@ fn exported_symbols_provider_local(
                 MonoItem::Fn(Instance { def: InstanceKind::DropGlue(_, Some(ty)), args }) => {
                     // A little sanity-check
                     assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
-                    symbols.push((
-                        ExportedSymbol::DropGlue(ty),
-                        SymbolExportInfo {
-                            level: SymbolExportLevel::Rust,
-                            kind: SymbolExportKind::Text,
-                            used: false,
-                        },
-                    ));
+
+                    // Drop glue did is always going to be non-local outside of libcore, thus we don't need to check it's locality (which includes invoking `type_of` query).
+                    let should_export = match ty.kind() {
+                        ty::Adt(_, args) => is_instantiable_downstream(None, args),
+                        ty::Closure(_, args) => is_instantiable_downstream(None, args),
+                        _ => true,
+                    };
+
+                    if should_export {
+                        symbols.push((
+                            ExportedSymbol::DropGlue(ty),
+                            SymbolExportInfo {
+                                level: SymbolExportLevel::Rust,
+                                kind: SymbolExportKind::Text,
+                                used: false,
+                            },
+                        ));
+                    }
                 }
                 MonoItem::Fn(Instance {
                     def: InstanceKind::AsyncDropGlueCtorShim(_, ty),
@@ -565,7 +612,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
         ExportedSymbol::Generic(def_id, args) => {
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
-                Instance::new(def_id, args),
+                Instance::new_raw(def_id, args),
                 instantiating_crate,
             )
         }
@@ -613,7 +660,7 @@ fn calling_convention_for_symbol<'tcx>(
             None
         }
         ExportedSymbol::NonGeneric(def_id) => Some(Instance::mono(tcx, def_id)),
-        ExportedSymbol::Generic(def_id, args) => Some(Instance::new(def_id, args)),
+        ExportedSymbol::Generic(def_id, args) => Some(Instance::new_raw(def_id, args)),
         // DropGlue always use the Rust calling convention and thus follow the target's default
         // symbol decoration scheme.
         ExportedSymbol::DropGlue(..) => None,

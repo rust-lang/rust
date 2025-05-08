@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::{has_non_owning_mutable_access, implements_trait};
-use clippy_utils::{is_mutable, is_trait_method, path_to_local};
+use clippy_utils::{is_mutable, is_trait_method, path_to_local, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Instance;
-use rustc_span::{Span, sym};
+use rustc_span::Span;
 
 use super::DOUBLE_ENDED_ITERATOR_LAST;
 
@@ -24,7 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
         && let Ok(Some(fn_def)) = Instance::try_resolve(cx.tcx, cx.typing_env(), id, args)
         // find the provided definition of Iterator::last
         && let Some(item) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && let Some(last_def) = cx.tcx.provided_trait_methods(item).find(|m| m.name().as_str() == "last")
+        && let Some(last_def) = cx.tcx.provided_trait_methods(item).find(|m| m.name() == sym::last)
         // if the resolved method is the same as the provided definition
         && fn_def.def_id() == last_def.def_id
         && let self_ty = cx.typeck_results().expr_ty(self_expr)

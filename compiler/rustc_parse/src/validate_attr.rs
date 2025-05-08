@@ -3,7 +3,8 @@
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
-    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
+    self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, NodeId,
+    Safety,
 };
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeSafety, AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -15,21 +16,19 @@ use rustc_span::{Span, Symbol, sym};
 
 use crate::{errors, parse_in};
 
-pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
+pub fn check_attr(psess: &ParseSess, attr: &Attribute, id: NodeId) {
     if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
     {
         return;
     }
 
-    let attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
-    let attr_item = attr.get_normal_item();
+    let builtin_attr_info = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
 
-    // All non-builtin attributes are considered safe
-    let safety = attr_info.map(|x| x.safety).unwrap_or(AttributeSafety::Normal);
-    check_attribute_safety(psess, safety, attr);
+    let builtin_attr_safety = builtin_attr_info.map(|x| x.safety);
+    check_attribute_safety(psess, builtin_attr_safety, attr, id);
 
     // Check input tokens for built-in and key-value attributes.
-    match attr_info {
+    match builtin_attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some(BuiltinAttribute { name, template, .. }) if *name != sym::rustc_dummy => {
             match parse_meta(psess, attr) {
@@ -43,6 +42,7 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
             }
         }
         _ => {
+            let attr_item = attr.get_normal_item();
             if let AttrArgs::Eq { .. } = attr_item.args {
                 // All key-value attributes are restricted to meta-item syntax.
                 match parse_meta(psess, attr) {
@@ -154,11 +154,23 @@ fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaIte
     }
 }
 
-pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: &Attribute) {
+pub fn check_attribute_safety(
+    psess: &ParseSess,
+    builtin_attr_safety: Option<AttributeSafety>,
+    attr: &Attribute,
+    id: NodeId,
+) {
     let attr_item = attr.get_normal_item();
+    match (builtin_attr_safety, attr_item.unsafety) {
+        // - Unsafe builtin attribute
+        // - User wrote `#[unsafe(..)]`, which is permitted on any edition
+        (Some(AttributeSafety::Unsafe { .. }), Safety::Unsafe(..)) => {
+            // OK
+        }
 
-    if let AttributeSafety::Unsafe { unsafe_since } = safety {
-        if let ast::Safety::Default = attr_item.unsafety {
+        // - Unsafe builtin attribute
+        // - User did not write `#[unsafe(..)]`
+        (Some(AttributeSafety::Unsafe { unsafe_since }), Safety::Default) => {
             let path_span = attr_item.path.span;
 
             // If the `attr_item`'s span is not from a macro, then just suggest
@@ -185,7 +197,7 @@ pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: 
                 psess.buffer_lint(
                     UNSAFE_ATTR_OUTSIDE_UNSAFE,
                     path_span,
-                    ast::CRATE_NODE_ID,
+                    id,
                     BuiltinLintDiag::UnsafeAttrOutsideUnsafe {
                         attribute_name_span: path_span,
                         sugg_spans: (diag_span.shrink_to_lo(), diag_span.shrink_to_hi()),
@@ -193,11 +205,38 @@ pub fn check_attribute_safety(psess: &ParseSess, safety: AttributeSafety, attr: 
                 );
             }
         }
-    } else if let Safety::Unsafe(unsafe_span) = attr_item.unsafety {
-        psess.dcx().emit_err(errors::InvalidAttrUnsafe {
-            span: unsafe_span,
-            name: attr_item.path.clone(),
-        });
+
+        // - Normal builtin attribute, or any non-builtin attribute
+        // - All non-builtin attributes are currently considered safe; writing `#[unsafe(..)]` is
+        //   not permitted on non-builtin attributes or normal builtin attributes
+        (Some(AttributeSafety::Normal) | None, Safety::Unsafe(unsafe_span)) => {
+            psess.dcx().emit_err(errors::InvalidAttrUnsafe {
+                span: unsafe_span,
+                name: attr_item.path.clone(),
+            });
+        }
+
+        // - Normal builtin attribute
+        // - No explicit `#[unsafe(..)]` written.
+        (Some(AttributeSafety::Normal), Safety::Default) => {
+            // OK
+        }
+
+        // - Non-builtin attribute
+        // - No explicit `#[unsafe(..)]` written.
+        (None, Safety::Default) => {
+            // OK
+        }
+
+        (
+            Some(AttributeSafety::Unsafe { .. } | AttributeSafety::Normal) | None,
+            Safety::Safe(..),
+        ) => {
+            psess.dcx().span_delayed_bug(
+                attr_item.span(),
+                "`check_attribute_safety` does not expect `Safety::Safe` on attributes",
+            );
+        }
     }
 }
 

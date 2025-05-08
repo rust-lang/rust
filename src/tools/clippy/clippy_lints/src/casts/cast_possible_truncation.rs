@@ -1,9 +1,9 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
+use clippy_utils::{expr_or_init, sym};
 use rustc_abi::IntegerType;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
@@ -73,7 +73,7 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
             nbits
         },
         ExprKind::MethodCall(method, _value, [], _) => {
-            if method.ident.name.as_str() == "signum" {
+            if method.ident.name == sym::signum {
                 0 // do not lint if cast comes from a `signum` function
             } else {
                 nbits

@@ -12,17 +12,6 @@ fn foo<N>(_x: N) {}
 //~| NOTE function defined here
 //~| NOTE function defined here
 //~| NOTE function defined here
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
-//~| NOTE
 
 fn main() {
     foo::<u32>(42_usize);

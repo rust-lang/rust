@@ -38,6 +38,7 @@ use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::DisambiguatorState;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{
@@ -50,9 +51,17 @@ use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
-pub use rustc_type_ir::data_structures::DelayedSet;
+pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
+#[allow(
+    hidden_glob_reexports,
+    rustc::usage_of_type_ir_inherent,
+    rustc::non_glob_import_of_type_ir_inherent
+)]
+use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
+#[allow(hidden_glob_reexports, unused_imports)]
+use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
@@ -173,7 +182,7 @@ pub struct ResolverGlobalCtxt {
     pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
-    pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
+    pub glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
     pub main_def: Option<MainDefinition>,
     pub trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,
     /// A list of proc macro LocalDefIds, written out in the order in which
@@ -208,6 +217,8 @@ pub struct ResolverAstLowering {
     pub next_node_id: ast::NodeId,
 
     pub node_id_to_def_id: NodeMap<LocalDefId>,
+
+    pub disambiguator: DisambiguatorState,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// List functions and methods for which lifetime elision was successful.
@@ -298,7 +309,10 @@ impl Visibility {
                 } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
                     "pub(self)".to_string()
                 } else {
-                    format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
+                    format!(
+                        "pub(in crate{})",
+                        tcx.def_path(restricted_id.to_def_id()).to_string_no_crate_verbose()
+                    )
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
@@ -1929,13 +1943,17 @@ impl<'tcx> TyCtxt<'tcx> {
             if arg_cor_ty.is_coroutine() {
                 let span = self.def_span(def_id);
                 let source_info = SourceInfo::outermost(span);
+                // Even minimal, empty coroutine has 3 states (RESERVED_VARIANTS),
+                // so variant_fields and variant_source_info should have 3 elements.
                 let variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
                     iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+                let variant_source_info: IndexVec<VariantIdx, SourceInfo> =
+                    iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
                 let proxy_layout = CoroutineLayout {
                     field_tys: [].into(),
                     field_names: [].into(),
                     variant_fields,
-                    variant_source_info: [source_info].into(),
+                    variant_source_info,
                     storage_conflicts: BitMatrix::new(0, 0),
                 };
                 return Some(self.arena.alloc(proxy_layout));
@@ -1976,6 +1994,10 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         None
+    }
+
+    pub fn is_exportable(self, def_id: DefId) -> bool {
+        self.exportable_items(def_id.krate).contains(&def_id)
     }
 
     /// Check if the given `DefId` is `#\[automatically_derived\]`, *and*

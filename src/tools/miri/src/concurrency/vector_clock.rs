@@ -40,8 +40,8 @@ impl From<u32> for VectorIdx {
     }
 }
 
-/// The size of the vector-clock to store inline
-/// clock vectors larger than this will be stored on the heap
+/// The size of the vector clock to store inline.
+/// Clock vectors larger than this will be stored on the heap.
 const SMALL_VECTOR: usize = 4;
 
 /// The time-stamps recorded in the data-race detector consist of both
@@ -136,7 +136,7 @@ impl Ord for VTimestamp {
 pub struct VClock(SmallVec<[VTimestamp; SMALL_VECTOR]>);
 
 impl VClock {
-    /// Create a new vector-clock containing all zeros except
+    /// Create a new vector clock containing all zeros except
     /// for a value at the given index
     pub(super) fn new_with_index(index: VectorIdx, timestamp: VTimestamp) -> VClock {
         if timestamp.time() == 0 {
@@ -185,8 +185,8 @@ impl VClock {
         }
     }
 
-    // Join the two vector-clocks together, this
-    // sets each vector-element to the maximum value
+    // Join the two vector clocks together, this
+    // sets each vector element to the maximum value
     // of that element in either of the two source elements.
     pub fn join(&mut self, other: &Self) {
         let rhs_slice = other.as_slice();

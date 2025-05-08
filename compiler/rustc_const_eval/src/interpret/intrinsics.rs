@@ -348,7 +348,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Check that the memory between them is dereferenceable at all, starting from the
                 // origin pointer: `dist` is `a - b`, so it is based on `b`.
-                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)
+                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::Dereferenceable)
                     .map_err_kind(|_| {
                         // This could mean they point to different allocations, or they point to the same allocation
                         // but not the entire range between the pointers is in-bounds.
@@ -372,7 +372,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_ptr_access_signed(
                     a,
                     dist.checked_neg().unwrap(), // i64::MIN is impossible as no allocation can be that large
-                    CheckInAllocMsg::OffsetFromTest,
+                    CheckInAllocMsg::Dereferenceable,
                 )
                 .map_err_kind(|_| {
                     // Make the error more specific.
@@ -651,7 +651,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         offset_bytes: i64,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         // The offset must be in bounds starting from `ptr`.
-        self.check_ptr_access_signed(ptr, offset_bytes, CheckInAllocMsg::PointerArithmeticTest)?;
+        self.check_ptr_access_signed(
+            ptr,
+            offset_bytes,
+            CheckInAllocMsg::InboundsPointerArithmetic,
+        )?;
         // This also implies that there is no overflow, so we are done.
         interp_ok(ptr.wrapping_signed_offset(offset_bytes, self))
     }

@@ -4,7 +4,7 @@ use crate::grammar::attributes::ATTRIBUTE_FIRST;
 
 use super::*;
 
-pub(super) use atom::{LITERAL_FIRST, literal};
+pub(super) use atom::{EXPR_RECOVERY_SET, LITERAL_FIRST, literal};
 pub(crate) use atom::{block_expr, match_arm_list};
 
 #[derive(PartialEq, Eq)]

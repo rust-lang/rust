@@ -5,7 +5,7 @@
 //@ compile-flags: --crate-type=lib
 //@ failure-status: 101
 //@ dont-check-compiler-stderr
-//@ error-pattern: encountered critical edge in `Call` terminator
+
 #![feature(custom_mir, core_intrinsics)]
 use core::intrinsics::mir::*;
 
@@ -29,3 +29,5 @@ pub fn f(a: u32) -> u32 {
         }
     }
 }
+
+//~? RAW encountered critical edge in `Call` terminator

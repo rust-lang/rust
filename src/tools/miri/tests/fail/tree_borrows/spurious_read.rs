@@ -1,8 +1,8 @@
 // We ensure a deterministic execution.
 // Note that we are *also* using barriers: the barriers enforce the
-// specific interleaving of operations that we want, but only the preemption
-// rate guarantees that the error message is also deterministic.
-//@compile-flags: -Zmiri-preemption-rate=0
+// specific interleaving of operations that we want, but we need to disable
+// preemption to ensure that the error message is also deterministic.
+//@compile-flags: -Zmiri-deterministic-concurrency
 //@compile-flags: -Zmiri-tree-borrows
 
 use std::sync::{Arc, Barrier};

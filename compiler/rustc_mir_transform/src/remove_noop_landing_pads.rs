@@ -58,13 +58,13 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
                 }
             }
 
-            for target in body[bb].terminator_mut().successors_mut() {
+            body[bb].terminator_mut().successors_mut(|target| {
                 if *target != resume_block && nop_landing_pads.contains(*target) {
                     debug!("    folding noop jump to {:?} to resume block", target);
                     *target = resume_block;
                     jumps_folded += 1;
                 }
-            }
+            });
 
             let is_nop_landing_pad = self.is_nop_landing_pad(bb, body, &nop_landing_pads);
             if is_nop_landing_pad {

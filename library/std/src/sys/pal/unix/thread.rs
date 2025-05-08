@@ -22,23 +22,6 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 256 * 1024;
 #[cfg(any(target_os = "espidf", target_os = "nuttx"))]
 pub const DEFAULT_MIN_STACK_SIZE: usize = 0; // 0 indicates that the stack size configured in the ESP-IDF/NuttX menuconfig system should be used
 
-#[cfg(target_os = "fuchsia")]
-mod zircon {
-    type zx_handle_t = u32;
-    type zx_status_t = i32;
-    pub const ZX_PROP_NAME: u32 = 3;
-
-    unsafe extern "C" {
-        pub fn zx_object_set_property(
-            handle: zx_handle_t,
-            property: u32,
-            value: *const libc::c_void,
-            value_size: libc::size_t,
-        ) -> zx_status_t;
-        pub fn zx_thread_self() -> zx_handle_t;
-    }
-}
-
 pub struct Thread {
     id: libc::pthread_t,
 }
@@ -216,7 +199,7 @@ impl Thread {
 
     #[cfg(target_os = "fuchsia")]
     pub fn set_name(name: &CStr) {
-        use self::zircon::*;
+        use super::fuchsia::*;
         unsafe {
             zx_object_set_property(
                 zx_thread_self(),

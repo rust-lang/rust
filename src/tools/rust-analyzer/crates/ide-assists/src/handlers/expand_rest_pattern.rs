@@ -56,7 +56,12 @@ fn expand_record_rest_pattern(
             let new_field_list = make.record_pat_field_list(old_field_list.fields(), None);
             for (f, _) in missing_fields.iter() {
                 let field = make.record_pat_field_shorthand(
-                    make.name_ref(&f.name(ctx.sema.db).display_no_db(edition).to_smolstr()),
+                    make.ident_pat(
+                        false,
+                        false,
+                        make.name(&f.name(ctx.sema.db).display_no_db(edition).to_smolstr()),
+                    )
+                    .into(),
                 );
                 new_field_list.add_field(field);
             }

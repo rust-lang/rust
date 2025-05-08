@@ -65,6 +65,7 @@ harness = false
 
 [features]
 default = ["stack-cache"]
+genmc = []
 stack-cache = []
 stack-cache-consistency-check = ["stack-cache"]
 

@@ -47,12 +47,13 @@ mod reverse_sccs;
 
 pub(crate) mod values;
 
-pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex, RegionTracker>;
+pub(crate) type ConstraintSccs = Sccs<RegionVid, ConstraintSccIndex>;
+pub(crate) type AnnotatedSccs = (ConstraintSccs, IndexVec<ConstraintSccIndex, RegionTracker>);
 
 /// An annotation for region graph SCCs that tracks
-/// the values of its elements.
+/// the values of its elements. This annotates a single SCC.
 #[derive(Copy, Debug, Clone)]
-pub struct RegionTracker {
+pub(crate) struct RegionTracker {
     /// The largest universe of a placeholder reached from this SCC.
     /// This includes placeholders within this SCC.
     max_placeholder_universe_reached: UniverseIndex,
@@ -95,6 +96,32 @@ impl scc::Annotation for RegionTracker {
         self.merge_min_max_seen(&other);
         self
     }
+}
+
+/// A Visitor for SCC annotation construction.
+pub(crate) struct SccAnnotations<'d, 'tcx, A: scc::Annotation> {
+    pub(crate) scc_to_annotation: IndexVec<ConstraintSccIndex, A>,
+    definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>,
+}
+
+impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
+    pub(crate) fn new(definitions: &'d IndexVec<RegionVid, RegionDefinition<'tcx>>) -> Self {
+        Self { scc_to_annotation: IndexVec::new(), definitions }
+    }
+}
+
+impl scc::Annotations<RegionVid> for SccAnnotations<'_, '_, RegionTracker> {
+    fn new(&self, element: RegionVid) -> RegionTracker {
+        RegionTracker::new(element, &self.definitions[element])
+    }
+
+    fn annotate_scc(&mut self, scc: ConstraintSccIndex, annotation: RegionTracker) {
+        let idx = self.scc_to_annotation.push(annotation);
+        assert!(idx == scc);
+    }
+
+    type Ann = RegionTracker;
+    type SccIdx = ConstraintSccIndex;
 }
 
 impl RegionTracker {
@@ -165,6 +192,8 @@ pub struct RegionInferenceContext<'tcx> {
     /// graph. We have an edge from SCC A to SCC B if `A: B`. Used to
     /// compute the values of each region.
     constraint_sccs: ConstraintSccs,
+
+    scc_annotations: IndexVec<ConstraintSccIndex, RegionTracker>,
 
     /// Reverse of the SCC constraint graph --  i.e., an edge `A -> B` exists if
     /// `B: A`. This is used to compute the universal regions that are required
@@ -446,7 +475,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let definitions = create_definitions(infcx, &universal_regions);
 
-        let constraint_sccs =
+        let (constraint_sccs, scc_annotations) =
             outlives_constraints.add_outlives_static(&universal_regions, &definitions);
         let constraints = Frozen::freeze(outlives_constraints);
         let constraint_graph = Frozen::freeze(constraints.graph(definitions.len()));
@@ -472,6 +501,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             constraints,
             constraint_graph,
             constraint_sccs,
+            scc_annotations,
             rev_scc_graph: None,
             member_constraints,
             member_constraints_applied: Vec::new(),
@@ -798,7 +828,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // If the member region lives in a higher universe, we currently choose
         // the most conservative option by leaving it unchanged.
-        if !self.constraint_sccs().annotation(scc).min_universe().is_root() {
+        if !self.scc_universe(scc).is_root() {
             return;
         }
 
@@ -874,8 +904,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// in `scc_a`. Used during constraint propagation, and only once
     /// the value of `scc_b` has been computed.
     fn universe_compatible(&self, scc_b: ConstraintSccIndex, scc_a: ConstraintSccIndex) -> bool {
-        let a_annotation = self.constraint_sccs().annotation(scc_a);
-        let b_annotation = self.constraint_sccs().annotation(scc_b);
+        let a_annotation = self.scc_annotations[scc_a];
+        let b_annotation = self.scc_annotations[scc_b];
         let a_universe = a_annotation.min_universe();
 
         // If scc_b's declared universe is a subset of
@@ -991,7 +1021,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "lower_bound = {:?} r_scc={:?} universe={:?}",
             lower_bound,
             r_scc,
-            self.constraint_sccs.annotation(r_scc).min_universe()
+            self.scc_universe(r_scc)
         );
         // If the type test requires that `T: 'a` where `'a` is a
         // placeholder from another universe, that effectively requires
@@ -1472,7 +1502,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// The minimum universe of any variable reachable from this
     /// SCC, inside or outside of it.
     fn scc_universe(&self, scc: ConstraintSccIndex) -> UniverseIndex {
-        self.constraint_sccs().annotation(scc).min_universe()
+        self.scc_annotations[scc].min_universe()
     }
 
     /// Checks the final value for the free region `fr` to see if it
@@ -2216,7 +2246,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// they *must* be equal (though not having the same repr does not
     /// mean they are unequal).
     fn scc_representative(&self, scc: ConstraintSccIndex) -> RegionVid {
-        self.constraint_sccs.annotation(scc).representative
+        self.scc_annotations[scc].representative
     }
 
     pub(crate) fn liveness_constraints(&self) -> &LivenessValues {

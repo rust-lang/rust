@@ -728,9 +728,9 @@ fn print_debug_subtree<S: fmt::Debug>(
     };
 
     write!(f, "{align}SUBTREE {delim} ",)?;
-    write!(f, "{:#?}", open)?;
+    write!(f, "{open:#?}")?;
     write!(f, " ")?;
-    write!(f, "{:#?}", close)?;
+    write!(f, "{close:#?}")?;
     for child in iter {
         writeln!(f)?;
         print_debug_token(f, level + 1, child)?;
@@ -855,7 +855,7 @@ impl<S> fmt::Display for Literal<S> {
             }
         }?;
         if let Some(suffix) = &self.suffix {
-            write!(f, "{}", suffix)?;
+            write!(f, "{suffix}")?;
         }
         Ok(())
     }

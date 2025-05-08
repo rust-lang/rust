@@ -9,7 +9,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId,
+    AssistConfig, AssistId,
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::{
         DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
@@ -128,8 +128,14 @@ fn add_assist(
     acc.add(AssistId::refactor("replace_derive_with_manual_impl"), label, target, |builder| {
         let insert_after = ted::Position::after(builder.make_mut(adt.clone()).syntax());
         let impl_is_unsafe = trait_.map(|s| s.is_unsafe(ctx.db())).unwrap_or(false);
-        let impl_def_with_items =
-            impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, replace_trait_path);
+        let impl_def_with_items = impl_def_from_trait(
+            &ctx.sema,
+            ctx.config,
+            adt,
+            &annotated_name,
+            trait_,
+            replace_trait_path,
+        );
         update_attribute(builder, old_derives, old_tree, old_trait_path, attr);
 
         let trait_path = make::ty_path(replace_trait_path.clone());
@@ -217,6 +223,7 @@ fn add_assist(
 
 fn impl_def_from_trait(
     sema: &hir::Semantics<'_, ide_db::RootDatabase>,
+    config: &AssistConfig,
     adt: &ast::Adt,
     annotated_name: &ast::Name,
     trait_: Option<hir::Trait>,
@@ -241,7 +248,7 @@ fn impl_def_from_trait(
     let impl_def = generate_trait_impl(adt, make::ty_path(trait_path.clone()));
 
     let first_assoc_item =
-        add_trait_assoc_items_to_impl(sema, &trait_items, trait_, &impl_def, &target_scope);
+        add_trait_assoc_items_to_impl(sema, config, &trait_items, trait_, &impl_def, &target_scope);
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {

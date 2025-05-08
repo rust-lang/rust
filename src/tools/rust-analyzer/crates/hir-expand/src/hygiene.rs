@@ -22,7 +22,7 @@
 // FIXME: Move this into the span crate? Not quite possible today as that depends on `MacroCallLoc`
 // which contains a bunch of unrelated things
 
-use std::{convert::identity, iter};
+use std::convert::identity;
 
 use span::{Edition, MacroCallId, Span, SyntaxContext};
 
@@ -140,62 +140,4 @@ fn apply_mark_internal(
         |_| opaque,
         |_| opaque_and_semitransparent,
     )
-}
-
-pub trait SyntaxContextExt {
-    fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> span::SyntaxContext;
-    fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> span::SyntaxContext;
-    fn parent_ctxt(self, db: &dyn ExpandDatabase) -> span::SyntaxContext;
-    fn remove_mark(&mut self, db: &dyn ExpandDatabase)
-    -> (Option<span::MacroCallId>, Transparency);
-    fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<span::MacroCallId>, Transparency);
-    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(span::MacroCallId, Transparency)>;
-    fn is_opaque(self, db: &dyn ExpandDatabase) -> bool;
-}
-
-impl SyntaxContextExt for SyntaxContext {
-    fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> span::SyntaxContext {
-        self.opaque_and_semitransparent(db)
-    }
-    fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> span::SyntaxContext {
-        self.opaque(db)
-    }
-    fn parent_ctxt(self, db: &dyn ExpandDatabase) -> span::SyntaxContext {
-        self.parent(db)
-    }
-    fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<span::MacroCallId>, Transparency) {
-        let data = self;
-        (data.outer_expn(db), data.outer_transparency(db))
-    }
-    fn remove_mark(
-        &mut self,
-        db: &dyn ExpandDatabase,
-    ) -> (Option<span::MacroCallId>, Transparency) {
-        let data = *self;
-        *self = data.parent(db);
-        (data.outer_expn(db), data.outer_transparency(db))
-    }
-    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(span::MacroCallId, Transparency)> {
-        let mut marks = marks_rev(self, db).collect::<Vec<_>>();
-        marks.reverse();
-        marks
-    }
-    fn is_opaque(self, db: &dyn ExpandDatabase) -> bool {
-        !self.is_root() && self.outer_transparency(db).is_opaque()
-    }
-}
-
-// FIXME: Make this a SyntaxContextExt method once we have RPIT
-pub fn marks_rev(
-    ctxt: SyntaxContext,
-    db: &dyn ExpandDatabase,
-) -> impl Iterator<Item = (span::MacroCallId, Transparency)> + '_ {
-    iter::successors(Some(ctxt), move |&mark| Some(mark.parent_ctxt(db)))
-        .take_while(|&it| !it.is_root())
-        .map(|ctx| {
-            let mark = ctx.outer_mark(db);
-            // We stop before taking the root expansion, as such we cannot encounter a `None` outer
-            // expansion, as only the ROOT has it.
-            (mark.0.unwrap(), mark.1)
-        })
 }

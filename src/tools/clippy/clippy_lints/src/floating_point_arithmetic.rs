@@ -3,7 +3,7 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
     eq_expr_value, get_parent_expr, higher, is_in_const_context, is_inherent_method_call, is_no_std_crate,
-    numeric_literal, peel_blocks, sugg,
+    numeric_literal, peel_blocks, sugg, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
@@ -435,7 +435,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
         rhs,
     ) = expr.kind
         && let ExprKind::MethodCall(path, self_arg, [], _) = &lhs.kind
-        && path.ident.name.as_str() == "exp"
+        && path.ident.name == sym::exp
         && cx.typeck_results().expr_ty(lhs).is_floating_point()
         && let Some(value) = ConstEvalCtxt::new(cx).eval(rhs)
         && (F32(1.0) == value || F64(1.0) == value)

@@ -98,6 +98,15 @@ const SECONDARY_TEST_BENCH_BENCHMARKS_VAR: &str = "__RUST_TEST_BENCH_BENCHMARKS"
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Options>) {
+    test_main_with_exit_callback(args, tests, options, || {})
+}
+
+pub fn test_main_with_exit_callback<F: FnOnce()>(
+    args: &[String],
+    tests: Vec<TestDescAndFn>,
+    options: Option<Options>,
+    exit_callback: F,
+) {
     let mut opts = match cli::parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => {
@@ -151,6 +160,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
         let res = console::run_tests_console(&opts, tests);
         // Prevent Valgrind from reporting reachable blocks in users' unit tests.
         drop(panic::take_hook());
+        exit_callback();
         match res {
             Ok(true) => {}
             Ok(false) => process::exit(ERROR_EXIT_CODE),

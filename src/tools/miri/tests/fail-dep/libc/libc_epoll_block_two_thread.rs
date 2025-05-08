@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-deterministic-concurrency
 //~^ERROR: deadlocked
 //~^^ERROR: deadlocked
 //@only-target: linux android illumos

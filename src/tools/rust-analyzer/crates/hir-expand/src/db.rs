@@ -18,10 +18,7 @@ use crate::{
     cfg_process,
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
-    hygiene::{
-        SyntaxContextExt as _, span_with_call_site_ctxt, span_with_def_site_ctxt,
-        span_with_mixed_site_ctxt,
-    },
+    hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt},
     proc_macro::{CrateProcMacros, CustomProcMacroExpander, ProcMacros},
     span_map::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
     tt,
@@ -147,7 +144,7 @@ pub trait ExpandDatabase: RootQueryDb {
     fn syntax_context(&self, file: HirFileId, edition: Edition) -> SyntaxContext;
 }
 
-#[salsa::interned(no_lifetime, id = span::SyntaxContext)]
+#[salsa_macros::interned(no_lifetime, id = span::SyntaxContext)]
 pub struct SyntaxContextWrapper {
     pub data: SyntaxContext,
 }
@@ -752,8 +749,7 @@ fn check_tt_count(tt: &tt::TopSubtree) -> Result<(), ExpandResult<()>> {
             err: Some(ExpandError::other(
                 tt.delimiter.open,
                 format!(
-                    "macro invocation exceeds token limit: produced {} tokens, limit is {}",
-                    count, TOKEN_LIMIT,
+                    "macro invocation exceeds token limit: produced {count} tokens, limit is {TOKEN_LIMIT}",
                 ),
             )),
         })

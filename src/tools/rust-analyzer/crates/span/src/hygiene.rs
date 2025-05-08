@@ -94,16 +94,11 @@ const _: () = {
         }
     }
     impl zalsa_struct_::Configuration for SyntaxContext {
+        const LOCATION: salsa::plumbing::Location =
+            salsa::plumbing::Location { file: file!(), line: line!() };
         const DEBUG_NAME: &'static str = "SyntaxContextData";
         type Fields<'a> = SyntaxContextData;
         type Struct<'a> = SyntaxContext;
-        fn struct_from_id<'db>(id: salsa::Id) -> Self::Struct<'db> {
-            SyntaxContext::from_salsa_id(id)
-        }
-        fn deref_struct(s: Self::Struct<'_>) -> salsa::Id {
-            s.as_salsa_id()
-                .expect("`SyntaxContext::deref_structs()` called on a root `SyntaxContext`")
-        }
     }
     impl SyntaxContext {
         pub fn ingredient<Db>(db: &Db) -> &zalsa_struct_::IngredientImpl<Self>
@@ -308,7 +303,7 @@ impl SyntaxContext {
 }
 
 #[cfg(feature = "salsa")]
-impl SyntaxContext {
+impl<'db> SyntaxContext {
     const MAX_ID: u32 = salsa::Id::MAX_U32 - 1;
 
     #[inline]
@@ -339,6 +334,60 @@ impl SyntaxContext {
     fn from_salsa_id(id: salsa::Id) -> Self {
         // SAFETY: This comes from a Salsa ID.
         unsafe { Self::from_u32(id.as_u32()) }
+    }
+
+    #[inline]
+    pub fn outer_mark(
+        self,
+        db: &'db dyn salsa::Database,
+    ) -> (Option<crate::MacroCallId>, Transparency) {
+        (self.outer_expn(db), self.outer_transparency(db))
+    }
+
+    #[inline]
+    pub fn normalize_to_macros_2_0(self, db: &'db dyn salsa::Database) -> SyntaxContext {
+        self.opaque(db)
+    }
+
+    #[inline]
+    pub fn normalize_to_macro_rules(self, db: &'db dyn salsa::Database) -> SyntaxContext {
+        self.opaque_and_semitransparent(db)
+    }
+
+    pub fn is_opaque(self, db: &'db dyn salsa::Database) -> bool {
+        !self.is_root() && self.outer_transparency(db).is_opaque()
+    }
+
+    pub fn remove_mark(
+        &mut self,
+        db: &'db dyn salsa::Database,
+    ) -> (Option<crate::MacroCallId>, Transparency) {
+        let data = *self;
+        *self = data.parent(db);
+        (data.outer_expn(db), data.outer_transparency(db))
+    }
+
+    pub fn marks(
+        self,
+        db: &'db dyn salsa::Database,
+    ) -> impl Iterator<Item = (crate::MacroCallId, Transparency)> {
+        let mut marks = self.marks_rev(db).collect::<Vec<_>>();
+        marks.reverse();
+        marks.into_iter()
+    }
+
+    pub fn marks_rev(
+        self,
+        db: &'db dyn salsa::Database,
+    ) -> impl Iterator<Item = (crate::MacroCallId, Transparency)> {
+        std::iter::successors(Some(self), move |&mark| Some(mark.parent(db)))
+            .take_while(|&it| !it.is_root())
+            .map(|ctx| {
+                let mark = ctx.outer_mark(db);
+                // We stop before taking the root expansion, as such we cannot encounter a `None` outer
+                // expansion, as only the ROOT has it.
+                (mark.0.unwrap(), mark.1)
+            })
     }
 }
 #[cfg(not(feature = "salsa"))]

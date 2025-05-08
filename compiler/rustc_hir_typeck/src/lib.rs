@@ -46,7 +46,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -190,9 +189,6 @@ fn typeck_with_inspect<'tcx>(
 
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
-
-        // Gather locals in statics (because of block expressions).
-        GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         fcx.check_expr_coercible_to_type(body.value, expected_type, None);
 

@@ -309,7 +309,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
         let task = move || -> std::result::Result<(), Cancelled> {
             if invocation_strategy_once {
                 let saved_file = vfs_path.as_path().map(|p| p.to_owned());
-                world.flycheck[0].restart_workspace(saved_file.clone());
+                world.flycheck[0].restart_workspace(saved_file);
             }
 
             let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {

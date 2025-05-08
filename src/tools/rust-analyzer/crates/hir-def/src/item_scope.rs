@@ -167,7 +167,7 @@ pub struct ItemScope {
     // the resolutions of the imports of this scope
     use_imports_types: FxHashMap<ImportOrExternCrate, ImportOrDef>,
     use_imports_values: FxHashMap<ImportOrGlob, ImportOrDef>,
-    use_imports_macros: FxHashMap<ImportOrGlob, ImportOrDef>,
+    use_imports_macros: FxHashMap<ImportOrExternCrate, ImportOrDef>,
 
     use_decls: Vec<UseId>,
     extern_crate_decls: Vec<ExternCrateId>,
@@ -242,7 +242,7 @@ impl ItemScope {
         self.types.iter().map(|(n, &i)| (n, i))
     }
 
-    pub fn macros(&self) -> impl Iterator<Item = (&Name, Item<MacroId, ImportOrGlob>)> + '_ {
+    pub fn macros(&self) -> impl Iterator<Item = (&Name, Item<MacroId, ImportOrExternCrate>)> + '_ {
         self.macros.iter().map(|(n, &i)| (n, i))
     }
 
@@ -250,9 +250,9 @@ impl ItemScope {
         self.use_imports_types
             .keys()
             .copied()
+            .chain(self.use_imports_macros.keys().copied())
             .filter_map(ImportOrExternCrate::import_or_glob)
             .chain(self.use_imports_values.keys().copied())
-            .chain(self.use_imports_macros.keys().copied())
             .filter_map(ImportOrGlob::into_import)
             .sorted()
             .dedup()
@@ -263,7 +263,7 @@ impl ItemScope {
 
         let mut def_map;
         let mut scope = self;
-        while let Some(&m) = scope.use_imports_macros.get(&ImportOrGlob::Import(import)) {
+        while let Some(&m) = scope.use_imports_macros.get(&ImportOrExternCrate::Import(import)) {
             match m {
                 ImportOrDef::Import(i) => {
                     let module_id = i.use_.lookup(db).container;
@@ -682,7 +682,6 @@ impl ItemScope {
                         }
                         _ => _ = glob_imports.macros.remove(&lookup),
                     }
-                    let import = import.and_then(ImportOrExternCrate::import_or_glob);
                     let prev = std::mem::replace(&mut fld.import, import);
                     if let Some(import) = import {
                         self.use_imports_macros.insert(
@@ -698,7 +697,6 @@ impl ItemScope {
                 {
                     if glob_imports.macros.remove(&lookup) {
                         cov_mark::hit!(import_shadowed);
-                        let import = import.and_then(ImportOrExternCrate::import_or_glob);
                         let prev = std::mem::replace(&mut fld.import, import);
                         if let Some(import) = import {
                             self.use_imports_macros.insert(
@@ -783,8 +781,9 @@ impl ItemScope {
             if let Some(Item { import, .. }) = def.macros {
                 buf.push_str(" m");
                 match import {
-                    Some(ImportOrGlob::Import(_)) => buf.push('i'),
-                    Some(ImportOrGlob::Glob(_)) => buf.push('g'),
+                    Some(ImportOrExternCrate::Import(_)) => buf.push('i'),
+                    Some(ImportOrExternCrate::Glob(_)) => buf.push('g'),
+                    Some(ImportOrExternCrate::ExternCrate(_)) => buf.push('e'),
                     None => (),
                 }
             }
@@ -893,9 +892,7 @@ impl PerNs {
             ModuleDefId::TraitAliasId(_) => PerNs::types(def, v, import),
             ModuleDefId::TypeAliasId(_) => PerNs::types(def, v, import),
             ModuleDefId::BuiltinType(_) => PerNs::types(def, v, import),
-            ModuleDefId::MacroId(mac) => {
-                PerNs::macros(mac, v, import.and_then(ImportOrExternCrate::import_or_glob))
-            }
+            ModuleDefId::MacroId(mac) => PerNs::macros(mac, v, import),
         }
     }
 }

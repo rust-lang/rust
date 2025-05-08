@@ -156,7 +156,7 @@ target | std | notes
 [`arm64ec-pc-windows-msvc`](platform-support/arm64ec-pc-windows-msvc.md) | ✓ | Arm64EC Windows MSVC
 [`armebv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian
 [`armebv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, Big Endian, hardfloat
-`armv5te-unknown-linux-gnueabi` | ✓ | Armv5TE Linux (kernel 4.4, glibc 2.23)
+[`armv5te-unknown-linux-gnueabi`](platform-support/armv5te-unknown-linux-gnueabi.md) | ✓ | Armv5TE Linux (kernel 4.4, glibc 2.23)
 `armv5te-unknown-linux-musleabi` | ✓ | Armv5TE Linux with musl 1.2.3
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | Armv7-A Android
 `armv7-unknown-linux-gnueabi` | ✓ | Armv7-A Linux (kernel 4.15, glibc 2.27)

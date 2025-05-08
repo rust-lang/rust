@@ -56,7 +56,10 @@ where
         &self,
         goal: Goal<I, T>,
     ) -> (Vec<I::GenericArg>, CanonicalInput<I, T>) {
-        let opaque_types = self.delegate.clone_opaque_types_for_query_response();
+        // We only care about one entry per `OpaqueTypeKey` here,
+        // so we only canonicalize the lookup table and ignore
+        // duplicate entries.
+        let opaque_types = self.delegate.clone_opaque_types_lookup_table();
         let (goal, opaque_types) =
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
@@ -241,19 +244,21 @@ where
             Default::default()
         };
 
-        ExternalConstraintsData {
-            region_constraints,
-            opaque_types: self
-                .delegate
-                .clone_opaque_types_for_query_response()
-                .into_iter()
-                // Only return *newly defined* opaque types.
-                .filter(|(a, _)| {
-                    self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
-                })
-                .collect(),
-            normalization_nested_goals,
-        }
+        // We only return *newly defined* opaque types from canonical queries.
+        //
+        // Constraints for any existing opaque types are already tracked by changes
+        // to the `var_values`.
+        let opaque_types = self
+            .delegate
+            .clone_opaque_types_lookup_table()
+            .into_iter()
+            .filter(|(a, _)| {
+                self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
+            })
+            .chain(self.delegate.clone_duplicate_opaque_types())
+            .collect();
+
+        ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals }
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -432,7 +437,16 @@ where
     fn register_new_opaque_types(&mut self, opaque_types: &[(ty::OpaqueTypeKey<I>, I::Ty)]) {
         for &(key, ty) in opaque_types {
             let prev = self.delegate.register_hidden_type_in_storage(key, ty, self.origin_span);
-            assert_eq!(prev, None);
+            // We eagerly resolve inference variables when computing the query response.
+            // This can cause previously distinct opaque type keys to now be structurally equal.
+            //
+            // To handle this, we store any duplicate entries in a separate list to check them
+            // at the end of typeck/borrowck. We could alternatively eagerly equate the hidden
+            // types here. However, doing so is difficult as it may result in nested goals and
+            // any errors may make it harder to track the control flow for diagnostics.
+            if let Some(prev) = prev {
+                self.delegate.add_duplicate_opaque_type(key, prev, self.origin_span);
+            }
         }
     }
 }

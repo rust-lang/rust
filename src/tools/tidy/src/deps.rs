@@ -175,6 +175,9 @@ const EXCEPTIONS_RUSTC_PERF: ExceptionList = &[
 
 const EXCEPTIONS_RUSTBOOK: ExceptionList = &[
     // tidy-alphabetical-start
+    ("cssparser", "MPL-2.0"),
+    ("cssparser-macros", "MPL-2.0"),
+    ("dtoa-short", "MPL-2.0"),
     ("mdbook", "MPL-2.0"),
     ("ryu", "Apache-2.0 OR BSL-1.0"),
     // tidy-alphabetical-end
@@ -459,7 +462,6 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "addr2line",
     "adler2",
-    "allocator-api2",
     "cc",
     "cfg-if",
     "compiler_builtins",
@@ -473,8 +475,6 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "memchr",
     "miniz_oxide",
     "object",
-    "proc-macro2",
-    "quote",
     "r-efi",
     "r-efi-alloc",
     "rand",
@@ -483,8 +483,6 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rustc-demangle",
     "rustc-literal-escaper",
     "shlex",
-    "syn",
-    "unicode-ident",
     "unicode-width",
     "unwinding",
     "wasi",
@@ -498,8 +496,6 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
-    "zerocopy",
-    "zerocopy-derive",
     // tidy-alphabetical-end
 ];
 

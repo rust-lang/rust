@@ -1,6 +1,5 @@
 //@ only-linux
 //@ compile-flags: --error-format=human --color=always
-//@ error-pattern: the trait bound
 
 trait Foo<T>: Bar<T> {}
 
@@ -18,3 +17,5 @@ fn foo() -> impl Foo<i32> {
 }
 
 fn main() {}
+
+//~? RAW the trait bound

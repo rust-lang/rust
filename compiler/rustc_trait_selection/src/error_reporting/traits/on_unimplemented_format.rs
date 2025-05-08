@@ -1,11 +1,12 @@
 use std::fmt;
+use std::ops::Range;
 
 use errors::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::print::TraitRefPrintSugared;
 use rustc_parse_format::{
-    Alignment, Argument, Count, FormatSpec, InnerSpan, ParseError, ParseMode, Parser,
-    Piece as RpfPiece, Position,
+    Alignment, Argument, Count, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece,
+    Position,
 };
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::def_id::DefId;
@@ -173,7 +174,7 @@ impl FormatString {
                     pieces.push(Piece::Lit(lit.into()));
                 }
                 RpfPiece::NextArgument(arg) => {
-                    warn_on_format_spec(arg.format, &mut warnings, span);
+                    warn_on_format_spec(arg.format.clone(), &mut warnings, span);
                     let arg = parse_arg(&arg, ctx, &mut warnings, span);
                     pieces.push(Piece::Arg(arg));
                 }
@@ -233,7 +234,7 @@ fn parse_arg<'tcx>(
     | Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }) = ctx;
     let trait_name = tcx.item_ident(*trait_def_id);
     let generics = tcx.generics_of(trait_def_id);
-    let span = slice_span(input_span, arg.position_span);
+    let span = slice_span(input_span, arg.position_span.clone());
 
     match arg.position {
         // Something like "hello {name}"
@@ -335,14 +336,12 @@ fn warn_on_format_spec(spec: FormatSpec<'_>, warnings: &mut Vec<FormatWarning>, 
     }
 }
 
-/// Helper function because `Span` and `rustc_parse_format::InnerSpan` don't know about each other
-fn slice_span(input: Span, inner: InnerSpan) -> Span {
-    let InnerSpan { start, end } = inner;
+fn slice_span(input: Span, range: Range<usize>) -> Span {
     let span = input.data();
 
     Span::new(
-        span.lo + BytePos::from_usize(start),
-        span.lo + BytePos::from_usize(end),
+        span.lo + BytePos::from_usize(range.start),
+        span.lo + BytePos::from_usize(range.end),
         span.ctxt,
         span.parent,
     )

@@ -1,14 +1,14 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::{is_none_arm, msrvs, peel_hir_expr_refs};
+use clippy_utils::{is_none_arm, msrvs, peel_hir_expr_refs, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Pat, PatKind, QPath, is_range_literal};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -76,7 +76,7 @@ impl LateLintPass<'_> for ManualOptionAsSlice {
                 }
             },
             ExprKind::MethodCall(seg, callee, [], _) => {
-                if seg.ident.name.as_str() == "unwrap_or_default" {
+                if seg.ident.name == sym::unwrap_or_default {
                     check_map(cx, callee, span, self.msrv);
                 }
             },

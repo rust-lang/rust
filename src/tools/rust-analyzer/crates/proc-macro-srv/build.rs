@@ -12,5 +12,5 @@ fn main() {
     let version_string = std::str::from_utf8(&output.stdout[..])
         .expect("rustc --version output must be UTF-8")
         .trim();
-    println!("cargo::rustc-env=RUSTC_VERSION={}", version_string);
+    println!("cargo::rustc-env=RUSTC_VERSION={version_string}");
 }

@@ -224,7 +224,7 @@ impl ExprCollector<'_> {
 
                     curarg = parser.curarg;
 
-                    let to_span = |inner_span: rustc_parse_format::InnerSpan| {
+                    let to_span = |inner_span: std::ops::Range<usize>| {
                         is_direct_literal.then(|| {
                             TextRange::new(
                                 inner_span.start.try_into().unwrap(),
