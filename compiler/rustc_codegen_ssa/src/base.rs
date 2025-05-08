@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast as ast;
-use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
+use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_attr_data_structures::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -1056,26 +1056,6 @@ impl CrateInfo {
                         .collect::<Vec<_>>();
                     symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
                     linked_symbols.extend(symbols);
-                    if tcx.allocator_kind(()).is_some() {
-                        // At least one crate needs a global allocator. This crate may be placed
-                        // after the crate that defines it in the linker order, in which case some
-                        // linkers return an error. By adding the global allocator shim methods to
-                        // the linked_symbols list, linking the generated symbols.o will ensure that
-                        // circular dependencies involving the global allocator don't lead to linker
-                        // errors.
-                        linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
-                            (
-                                add_prefix(
-                                    mangle_internal_symbol(
-                                        tcx,
-                                        global_fn_name(method.name).as_str(),
-                                    ),
-                                    SymbolExportKind::Text,
-                                ),
-                                SymbolExportKind::Text,
-                            )
-                        }));
-                    }
                 });
         }
 
