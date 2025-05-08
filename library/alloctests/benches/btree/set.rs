@@ -69,7 +69,7 @@ pub fn clone_100_and_clear(b: &mut Bencher) {
 #[bench]
 pub fn clone_100_and_drain_all(b: &mut Bencher) {
     let src = slim_set(100);
-    b.iter(|| src.clone().extract_if(|_| true).count())
+    b.iter(|| src.clone().extract_if(.., |_| true).count())
 }
 
 #[bench]
@@ -77,7 +77,7 @@ pub fn clone_100_and_drain_half(b: &mut Bencher) {
     let src = slim_set(100);
     b.iter(|| {
         let mut set = src.clone();
-        assert_eq!(set.extract_if(|i| i % 2 == 0).count(), 100 / 2);
+        assert_eq!(set.extract_if(.., |i| i % 2 == 0).count(), 100 / 2);
         assert_eq!(set.len(), 100 / 2);
     })
 }
@@ -140,7 +140,7 @@ pub fn clone_10k_and_clear(b: &mut Bencher) {
 #[bench]
 pub fn clone_10k_and_drain_all(b: &mut Bencher) {
     let src = slim_set(10_000);
-    b.iter(|| src.clone().extract_if(|_| true).count())
+    b.iter(|| src.clone().extract_if(.., |_| true).count())
 }
 
 #[bench]
@@ -148,7 +148,7 @@ pub fn clone_10k_and_drain_half(b: &mut Bencher) {
     let src = slim_set(10_000);
     b.iter(|| {
         let mut set = src.clone();
-        assert_eq!(set.extract_if(|i| i % 2 == 0).count(), 10_000 / 2);
+        assert_eq!(set.extract_if(.., |i| i % 2 == 0).count(), 10_000 / 2);
         assert_eq!(set.len(), 10_000 / 2);
     })
 }
