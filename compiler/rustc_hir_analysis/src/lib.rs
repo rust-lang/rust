@@ -223,10 +223,6 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             }
             _ => (),
         }
-    });
-
-    tcx.par_hir_body_owners(|item_def_id| {
-        let def_kind = tcx.def_kind(item_def_id);
         // Skip `AnonConst`s because we feed their `type_of`.
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);
