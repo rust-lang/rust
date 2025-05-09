@@ -2,14 +2,14 @@
 
 // rdtsc is an existing LLVM intrinsic
 #[export_name = "llvm.x86.rdtsc"]
-//~^ ERROR: exported symbol name must not start with "llvm."
+//~^ ERROR: exported symbol name must not start with `llvm.`
 pub unsafe fn foo(a: u8) -> u8 {
     2 * a
 }
 
 // qwerty is not a real llvm intrinsic
 #[export_name = "llvm.x86.qwerty"]
-//~^ ERROR: exported symbol name must not start with "llvm."
+//~^ ERROR: exported symbol name must not start with `llvm.`
 pub unsafe fn bar(a: u8) -> u8 {
     2 * a
 }
