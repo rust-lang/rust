@@ -252,22 +252,21 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER
             }
             sym::export_name => {
-                if let Some(s) = attr.value_str() {
-                    if s.as_str().contains('\0') {
+                if let Some(exported_name) = attr.value_str() {
+                    let value_span = attr.value_span().expect("attibute has value but not a span");
+                    if exported_name.as_str().contains('\0') {
                         // `#[export_name = ...]` will be converted to a null-terminated string,
                         // so it may not contain any null characters.
-                        tcx.dcx().emit_err(errors::NullOnExport { span: attr.span() });
+                        tcx.dcx().emit_err(errors::NullOnExport { span: value_span });
                     }
-                    if s.as_str().starts_with("llvm.") {
+                    if exported_name.as_str().starts_with("llvm.") {
                         // Symbols starting with "llvm." are reserved by LLVM
                         // trying to define those would produce invalid IR.
                         // LLVM complain about those *if* we enable LLVM verification checks
                         // but we often don't enable them by default due to perf reasons.
-                        tcx.dcx().emit_err(errors::ExportNameLLVMIntrinsic {
-                            span: attr.value_span().expect("attibute has value but not a span"),
-                        });
+                        tcx.dcx().emit_err(errors::ExportNameLLVMIntrinsic { span: value_span });
                     }
-                    codegen_fn_attrs.export_name = Some(s);
+                    codegen_fn_attrs.export_name = Some(exported_name);
                     mixed_export_name_no_mangle_lint_state.track_export_name(attr.span());
                 }
             }

@@ -15,10 +15,10 @@ LL | #[export_name = "llvm.x86.qwerty"]
    = note: symbols starting with "llvm." are reserved for LLVM intrinsics and cannot be defined in user code
 
 error[E0648]: `export_name` may not contain null characters
-  --> $DIR/export_name-checks.rs:17:1
+  --> $DIR/export_name-checks.rs:17:15
    |
 LL | #[export_name="ab\0cd"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^
 
 error: aborting due to 3 previous errors
 
