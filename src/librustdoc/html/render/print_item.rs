@@ -1287,15 +1287,15 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                         is_non_exhaustive: *is_non_exhaustive,
                         def_id: enum_def_id,
                     }
-                    .render_into(cx, it, false, w)?;
+                    .render_into(cx, it, true, w)?;
                 }
                 clean::TypeAliasInnerType::Union { fields } => {
-                    ItemUnion { cx, it, fields, generics: &t.generics, document_union: false }
+                    ItemUnion { cx, it, fields, generics: &t.generics, is_type_alias: true }
                         .render_into(w)?;
                 }
                 clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
                     DisplayStruct { ctor_kind: *ctor_kind, generics: &t.generics, fields }
-                        .render_into(cx, it, false, w)?;
+                        .render_into(cx, it, true, w)?;
                 }
             }
         } else {
@@ -1416,7 +1416,7 @@ item_template!(
         it: &'a clean::Item,
         fields: &'a [clean::Item],
         generics: &'a clean::Generics,
-        document_union: bool,
+        is_type_alias: bool,
     },
     methods = [document, document_type_layout, render_attributes_in_pre, render_assoc_items]
 );
@@ -1453,7 +1453,7 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
 
 fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt::Display {
     fmt::from_fn(|w| {
-        ItemUnion { cx, it, fields: &s.fields, generics: &s.generics, document_union: true }
+        ItemUnion { cx, it, fields: &s.fields, generics: &s.generics, is_type_alias: false }
             .render_into(w)
             .unwrap();
         Ok(())
@@ -1494,7 +1494,7 @@ impl<'a> DisplayEnum<'a> {
         self,
         cx: &Context<'_>,
         it: &clean::Item,
-        document_enum: bool,
+        is_type_alias: bool,
         w: &mut W,
     ) -> fmt::Result {
         let variants_count = self.variants.iter().filter(|i| !i.is_stripped()).count();
@@ -1521,7 +1521,7 @@ impl<'a> DisplayEnum<'a> {
             )
         })?;
 
-        if document_enum {
+        if !is_type_alias {
             write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
         }
 
@@ -1546,7 +1546,7 @@ fn item_enum(cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) -> impl fmt::D
             is_non_exhaustive: it.is_non_exhaustive(),
             def_id: it.def_id().unwrap(),
         }
-        .render_into(cx, it, true, w)
+        .render_into(cx, it, false, w)
     })
 }
 
@@ -1945,7 +1945,7 @@ impl<'a> DisplayStruct<'a> {
         self,
         cx: &Context<'_>,
         it: &clean::Item,
-        document_struct: bool,
+        is_type_alias: bool,
         w: &mut W,
     ) -> fmt::Result {
         wrap_item(w, |w| {
@@ -1957,7 +1957,7 @@ impl<'a> DisplayStruct<'a> {
             )
         })?;
 
-        if document_struct {
+        if !is_type_alias {
             write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
         }
 
@@ -1975,7 +1975,7 @@ impl<'a> DisplayStruct<'a> {
 fn item_struct(cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) -> impl fmt::Display {
     fmt::from_fn(|w| {
         DisplayStruct { ctor_kind: s.ctor_kind, generics: &s.generics, fields: s.fields.as_slice() }
-            .render_into(cx, it, true, w)
+            .render_into(cx, it, false, w)
     })
 }
 
