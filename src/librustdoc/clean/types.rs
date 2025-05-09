@@ -610,6 +610,9 @@ impl Item {
             UnionItem(ref union_) => Some(union_.has_stripped_entries()),
             EnumItem(ref enum_) => Some(enum_.has_stripped_entries()),
             VariantItem(ref v) => v.has_stripped_entries(),
+            TypeAliasItem(ref type_alias) => {
+                type_alias.inner_type.as_ref().and_then(|t| t.has_stripped_entries())
+            }
             _ => None,
         }
     }
@@ -2343,6 +2346,16 @@ pub(crate) enum TypeAliasInnerType {
     Enum { variants: IndexVec<VariantIdx, Item>, is_non_exhaustive: bool },
     Union { fields: Vec<Item> },
     Struct { ctor_kind: Option<CtorKind>, fields: Vec<Item> },
+}
+
+impl TypeAliasInnerType {
+    fn has_stripped_entries(&self) -> Option<bool> {
+        Some(match self {
+            Self::Enum { variants, .. } => variants.iter().any(|v| v.is_stripped()),
+            Self::Union { fields } => fields.iter().any(|f| f.is_stripped()),
+            Self::Struct { fields, .. } => fields.iter().any(|f| f.is_stripped()),
+        })
+    }
 }
 
 #[derive(Clone, Debug)]
