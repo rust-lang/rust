@@ -2352,7 +2352,7 @@ impl Ident {
     #[inline]
     /// Constructs a new identifier from a symbol and a span.
     pub fn new(name: Symbol, span: Span) -> Ident {
-        assert_ne!(name, kw::Empty);
+        debug_assert_ne!(name, kw::Empty);
         Ident { name, span }
     }
 
