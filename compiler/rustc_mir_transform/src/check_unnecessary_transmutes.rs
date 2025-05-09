@@ -71,8 +71,6 @@ impl<'a, 'tcx> UnnecessaryTransmuteChecker<'a, 'tcx> {
             (Uint(_), Float(ty)) => err(format!("{}::from_bits({arg})", ty.name_str())),
             // bool → { x8 }
             (Bool, Int(..) | Uint(..)) => err(format!("({arg}) as {}", fn_sig.output())),
-            // u8 → bool
-            (Uint(_), Bool) => err(format!("({arg} == 1)")),
             _ => return None,
         })
     }
