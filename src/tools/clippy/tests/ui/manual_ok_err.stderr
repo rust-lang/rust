@@ -94,7 +94,7 @@ LL | |     };
    | |_____^ help: replace with: `(-S).ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:132:12
+  --> tests/ui/manual_ok_err.rs:137:12
    |
 LL |       } else if let Ok(n) = "1".parse::<u8>() {
    |  ____________^
