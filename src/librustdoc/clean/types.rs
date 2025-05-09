@@ -774,7 +774,7 @@ impl Item {
                     match attr {
                         hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
                             // rustdoc-json stores this in `Item::deprecation`, so we
-                            // don't want it it `Item::attrs`.
+                            // don't want it in `Item::attrs`.
                             None
                         }
                         rustc_hir::Attribute::Parsed(rustc_attr_parsing::AttributeKind::Repr(
