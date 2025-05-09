@@ -153,6 +153,7 @@ mod handlers {
     mod flip_comma;
     mod flip_or_pattern;
     mod flip_trait_bound;
+    mod generate_blanket_trait_impl;
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
@@ -290,6 +291,7 @@ mod handlers {
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
             generate_delegate_trait::generate_delegate_trait,
+            generate_blanket_trait_impl::generate_blanket_trait_impl,
             generate_derive::generate_derive,
             generate_documentation_template::generate_doc_example,
             generate_documentation_template::generate_documentation_template,
