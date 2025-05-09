@@ -46,7 +46,7 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
 /// Given an executable called `name`, return the filename for the
 /// executable for a particular target.
 pub fn exe(name: &str, target: &str) -> String {
-    if target.contains("windows") || target.contains("cygwin") {
+    if target.contains("windows") {
         format!("{name}.exe")
     } else if target.contains("uefi") {
         format!("{name}.efi")
