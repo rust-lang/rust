@@ -541,12 +541,12 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // in the handling of `.init_array` (the static constructor list) in versions of
                 // the gold linker (prior to the one released with binutils 2.36).
                 //
-                // That said, we only ever emit these when compiling for ELF targets, unless
-                // `#[used(compiler)]` is explicitly requested. This is to avoid similar breakage
-                // on other targets, in particular MachO targets have *their* static constructor
-                // lists broken if `llvm.compiler.used` is emitted rather than `llvm.used`. However,
-                // that check happens when assigning the `CodegenFnAttrFlags` in
-                // `rustc_hir_analysis`, so we don't need to take care of it here.
+                // That said, we only ever emit these when `#[used(compiler)]` is explicitly
+                // requested. This is to avoid similar breakage on other targets, in particular
+                // MachO targets have *their* static constructor lists broken if `llvm.compiler.used`
+                // is emitted rather than `llvm.used`. However, that check happens when assigning
+                // the `CodegenFnAttrFlags` in the `codegen_fn_attrs` query, so we don't need to
+                // take care of it here.
                 self.add_compiler_used_global(g);
             }
             if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
