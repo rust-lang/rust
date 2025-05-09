@@ -1,4 +1,4 @@
-error: top-level or-patterns are not allowed in function parameters
+error: function parameters require top-level or-patterns in parentheses
   --> $DIR/remove-leading-vert.rs:11:14
    |
 LL |     fn fun1( | A: E) {}

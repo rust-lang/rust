@@ -65,7 +65,7 @@ fn parse(x: Void) {
     let res: Result<bool, Void> = Ok(false);
     let Ok(_) = res;
     let Ok(_) | Err(!) = &res; // Disallowed; see #82048.
-    //~^ ERROR top-level or-patterns are not allowed in `let` bindings
+    //~^ ERROR `let` bindings require top-level or-patterns in parentheses
     let (Ok(_) | Err(!)) = &res;
     let (Ok(_) | Err(&!)) = res.as_ref();
 
