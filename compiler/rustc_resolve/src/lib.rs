@@ -2157,13 +2157,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
         parent_scope: ParentScope<'ra>,
     ) -> Option<Res> {
-        let mut segments =
-            Vec::from_iter(path_str.split("::").map(Ident::from_str).map(Segment::from_ident));
-        if let Some(segment) = segments.first_mut() {
-            if segment.ident.name == kw::Empty {
-                segment.ident.name = kw::PathRoot;
-            }
-        }
+        let segments: Result<Vec<_>, ()> = path_str
+            .split("::")
+            .enumerate()
+            .map(|(i, s)| {
+                let sym = if s.is_empty() {
+                    if i == 0 {
+                        // For a path like `::a::b`, use `kw::PathRoot` as the leading segment.
+                        kw::PathRoot
+                    } else {
+                        return Err(()); // occurs in cases like `String::`
+                    }
+                } else {
+                    Symbol::intern(s)
+                };
+                Ok(Segment::from_ident(Ident::with_dummy_span(sym)))
+            })
+            .collect();
+        let Ok(segments) = segments else { return None };
 
         match self.maybe_resolve_path(&segments, Some(ns), &parent_scope, None) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),

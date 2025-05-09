@@ -2342,6 +2342,9 @@ pub const STDLIB_STABLE_CRATES: &[Symbol] = &[sym::std, sym::core, sym::alloc, s
 
 #[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
 pub struct Ident {
+    // `name` should never be the empty symbol. If you are considering that,
+    // you are probably conflating "empty identifer with "no identifier" and
+    // you should use `Option<Ident>` instead.
     pub name: Symbol,
     pub span: Span,
 }
@@ -2349,28 +2352,21 @@ pub struct Ident {
 impl Ident {
     #[inline]
     /// Constructs a new identifier from a symbol and a span.
-    pub const fn new(name: Symbol, span: Span) -> Ident {
+    pub fn new(name: Symbol, span: Span) -> Ident {
+        assert_ne!(name, kw::Empty);
         Ident { name, span }
     }
 
     /// Constructs a new identifier with a dummy span.
     #[inline]
-    pub const fn with_dummy_span(name: Symbol) -> Ident {
+    pub fn with_dummy_span(name: Symbol) -> Ident {
         Ident::new(name, DUMMY_SP)
     }
 
-    /// This is best avoided, because it blurs the lines between "empty
-    /// identifier" and "no identifier". Using `Option<Ident>` is preferable,
-    /// where possible, because that is unambiguous.
-    #[inline]
-    pub fn empty() -> Ident {
-        Ident::with_dummy_span(kw::Empty)
-    }
-
     // For dummy identifiers that are never used and absolutely must be
-    // present, it's better to use `Ident::dummy` than `Ident::Empty`, because
-    // it's clearer that it's intended as a dummy value, and more likely to be
-    // detected if it accidentally does get used.
+    // present. Note that this does *not* use the empty symbol; `sym::dummy`
+    // makes it clear that it's intended as a dummy value, and is more likely
+    // to be detected if it accidentally does get used.
     #[inline]
     pub fn dummy() -> Ident {
         Ident::with_dummy_span(sym::dummy)
