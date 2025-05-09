@@ -1304,7 +1304,6 @@ impl<'a> DiagCtxtHandle<'a> {
         self.create_almost_fatal(fatal).emit()
     }
 
-    // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_err(self, msg: impl Into<DiagMessage>) -> Diag<'a> {
