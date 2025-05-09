@@ -105,16 +105,26 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     }
 
     fn assign(&mut self, span: Span, nid: HirId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
+        // We evaluate expressions twice occasionally in diagnostics for better
+        // type information or because it needs type information out-of-order.
+        // In order to not ICE and not lead to knock-on ambiguity errors, if we
+        // try to re-assign a type to a local, then just take out the previous
+        // type and delay a bug.
+        if let Some(&local) = self.fcx.locals.borrow_mut().get(&nid) {
+            self.fcx.dcx().span_delayed_bug(span, "evaluated expression more than once");
+            return local;
+        }
+
         match ty_opt {
             None => {
                 // Infer the variable's type.
                 let var_ty = self.fcx.next_ty_var(span);
-                assert_eq!(self.fcx.locals.borrow_mut().insert(nid, var_ty), None);
+                self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }
             Some(typ) => {
                 // Take type that the user specified.
-                assert_eq!(self.fcx.locals.borrow_mut().insert(nid, typ), None);
+                self.fcx.locals.borrow_mut().insert(nid, typ);
                 typ
             }
         }
