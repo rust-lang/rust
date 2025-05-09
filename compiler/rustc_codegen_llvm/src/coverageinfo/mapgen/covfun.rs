@@ -106,6 +106,16 @@ fn fill_region_tables<'tcx>(
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
+    // If this function is unused, replace all counters with zero.
+    let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
+        let term = if covfun.is_used {
+            ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
+        } else {
+            CovTerm::Zero
+        };
+        ffi::Counter::from_term(term)
+    };
+
     // Currently a function's mappings must all be in the same file, so use the
     // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
@@ -137,16 +147,6 @@ fn fill_region_tables<'tcx>(
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.
     for &Mapping { ref kind, span } in &fn_cov_info.mappings {
-        // If this function is unused, replace all counters with zero.
-        let counter_for_bcb = |bcb: BasicCoverageBlock| -> ffi::Counter {
-            let term = if covfun.is_used {
-                ids_info.term_for_bcb[bcb].expect("every BCB in a mapping was given a term")
-            } else {
-                CovTerm::Zero
-            };
-            ffi::Counter::from_term(term)
-        };
-
         let Some(coords) = make_coords(span) else { continue };
         let cov_span = coords.make_coverage_span(local_file_id);
 
