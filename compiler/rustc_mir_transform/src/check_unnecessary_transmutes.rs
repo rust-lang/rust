@@ -1,3 +1,4 @@
+use rustc_hir::def::DefKind::*;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{Body, Location, Operand, Terminator, TerminatorKind};
 use rustc_middle::ty::*;
@@ -29,6 +30,7 @@ impl<'a, 'tcx> UnnecessaryTransmuteChecker<'a, 'tcx> {
         function: &Operand<'tcx>,
         arg: String,
         span: Span,
+        is_in_const: bool,
     ) -> Option<Error> {
         let fn_sig = function.ty(self.body, self.tcx).fn_sig(self.tcx).skip_binder();
         let [input] = fn_sig.inputs() else { return None };
@@ -69,9 +71,15 @@ impl<'a, 'tcx> UnnecessaryTransmuteChecker<'a, 'tcx> {
             (Float(ty), Uint(..)) => err(format!("{}::to_bits({arg})", ty.name_str())),
             // uNN → fNN
             (Uint(_), Float(ty)) => err(format!("{}::from_bits({arg})", ty.name_str())),
-            // bool → { x8 }
-            (Bool, Int(..) | Uint(..)) => err(format!("({arg}) as {}", fn_sig.output())),
+            // bool → { x8 } in const context
+            // is it possible to know when the parentheses arent necessary?
+            (Bool, Int(..) | Uint(..)) if is_in_const => {
+                err(format!("({arg}) as {}", fn_sig.output()))
+            }
+            // " using `x8::from`
+            (Bool, Int(..) | Uint(..)) => err(format!("{}::from({arg})", fn_sig.output())),
             // u8 → bool
+            // also want to fix parentheses, maybe
             (Uint(_), Bool) => err(format!("({arg} == 1)")),
             _ => return None,
         })
@@ -88,7 +96,18 @@ impl<'tcx> Visitor<'tcx> for UnnecessaryTransmuteChecker<'_, 'tcx> {
             && self.tcx.is_intrinsic(func_def_id, sym::transmute)
             && let span = self.body.source_info(location).span
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(arg)
-            && let Some(lint) = self.is_unnecessary_transmute(func, snippet, span)
+            && let def_id = self.body.source.def_id()
+            && let Some(lint) = self.is_unnecessary_transmute(
+                func,
+                snippet,
+                span,
+                self.tcx.is_const_fn(def_id)
+                    || self.tcx.is_conditionally_const(def_id)
+                    || matches!(
+                        self.tcx.def_kind(def_id),
+                        AnonConst | Const | Static { .. } | AssocConst | InlineConst
+                    ),
+            )
             && let Some(hir_id) = terminator.source_info.scope.lint_root(&self.body.source_scopes)
         {
             self.tcx.emit_node_span_lint(UNNECESSARY_TRANSMUTES, hir_id, span, lint);
