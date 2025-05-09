@@ -2,8 +2,7 @@ use std::cell::LazyCell;
 use std::ops::ControlFlow;
 
 use rustc_abi::FieldIdx;
-use rustc_attr_parsing::AttributeKind;
-use rustc_attr_parsing::ReprAttr::ReprPacked;
+use rustc_attr_data_structures::ReprAttr::ReprPacked;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
@@ -31,7 +30,7 @@ use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument};
 use ty::TypingMode;
-use {rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
 use super::*;
@@ -1154,7 +1153,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
     let repr = def.repr();
     if repr.packed() {
         if let Some(reprs) =
-            attr::find_attr!(tcx.get_all_attrs(def.did()), AttributeKind::Repr(r) => r)
+            attrs::find_attr!(tcx.get_all_attrs(def.did()), attrs::AttributeKind::Repr(r) => r)
         {
             for (r, _) in reprs {
                 if let ReprPacked(pack) = r
@@ -1371,9 +1370,9 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     def.destructor(tcx); // force the destructor to be evaluated
 
     if def.variants().is_empty() {
-        attr::find_attr!(
+        attrs::find_attr!(
             tcx.get_all_attrs(def_id),
-            AttributeKind::Repr(rs) => {
+            attrs::AttributeKind::Repr(rs) => {
                 struct_span_code_err!(
                     tcx.dcx(),
                     rs.first().unwrap().1,
