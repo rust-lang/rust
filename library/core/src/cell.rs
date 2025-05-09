@@ -495,7 +495,7 @@ impl<T> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "move_cell", since = "1.17.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
     #[rustc_confusables("swap")]
     pub const fn replace(&self, val: T) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
@@ -537,7 +537,7 @@ impl<T: Copy> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
     pub const fn get(&self) -> T {
         // SAFETY: This can cause data races if called from a separate thread,
         // but `Cell` is `!Sync` so this won't happen.
@@ -556,7 +556,7 @@ impl<T: Copy> Cell<T> {
     /// assert_eq!(c.get(), 6);
     /// ```
     #[inline]
-    #[stable(feature = "cell_update", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "cell_update", since = "1.88.0")]
     pub fn update(&self, f: impl FnOnce(T) -> T) {
         let old = self.get();
         self.set(f(old));
@@ -608,7 +608,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
     pub const fn get_mut(&mut self) -> &mut T {
         self.value.get_mut()
     }
@@ -628,7 +628,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "as_cell", since = "1.37.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
     pub const fn from_mut(t: &mut T) -> &Cell<T> {
         // SAFETY: `&mut` ensures unique access.
         unsafe { &*(t as *mut T as *const Cell<T>) }
@@ -686,7 +686,7 @@ impl<T> Cell<[T]> {
     /// assert_eq!(slice_cell.len(), 3);
     /// ```
     #[stable(feature = "as_cell", since = "1.37.0")]
-    #[rustc_const_stable(feature = "const_cell", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_cell", since = "1.88.0")]
     pub const fn as_slice_of_cells(&self) -> &[Cell<T>] {
         // SAFETY: `Cell<T>` has the same memory layout as `T`.
         unsafe { &*(self as *const Cell<[T]> as *const [Cell<T>]) }
