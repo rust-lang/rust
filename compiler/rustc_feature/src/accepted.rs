@@ -96,7 +96,7 @@ declare_features! (
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(<true/false>)]`.
-    (accepted, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
+    (accepted, cfg_boolean_literals, "1.88.0", Some(131204)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
@@ -301,7 +301,7 @@ declare_features! (
     /// For example, you can write `Foo(a, ref b)` where `a` is by-move and `b` is by-ref.
     (accepted, move_ref_pattern, "1.49.0", Some(68354)),
     /// Allows using `#[naked]` on functions.
-    (accepted, naked_functions, "CURRENT_RUSTC_VERSION", Some(90957)),
+    (accepted, naked_functions, "1.88.0", Some(90957)),
     /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
     (accepted, native_link_modifiers, "1.61.0", Some(81490)),
     /// Allows specifying the bundle link modifier

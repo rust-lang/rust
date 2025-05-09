@@ -143,7 +143,7 @@ declare_features! (
     (removed, infer_static_outlives_requirements, "1.63.0", Some(54185),
      Some("removed as it caused some confusion and discussion was inactive for years")),
     /// Allow anonymous constants from an inline `const` block in pattern position
-    (removed, inline_const_pat, "CURRENT_RUSTC_VERSION", Some(76001),
+    (removed, inline_const_pat, "1.88.0", Some(76001),
      Some("removed due to implementation concerns as it requires significant refactorings")),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.46.0", Some(72219), Some("superseded by `generic_const_exprs`")),

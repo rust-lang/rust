@@ -87,5 +87,5 @@ pub use self::c_str::CString;
 #[stable(feature = "alloc_c_string", since = "1.64.0")]
 pub use self::c_str::{FromVecWithNulError, IntoStringError, NulError};
 
-#[stable(feature = "c_str_module", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;

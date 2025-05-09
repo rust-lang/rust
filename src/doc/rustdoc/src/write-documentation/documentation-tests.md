@@ -462,7 +462,7 @@ struct Foo;
 ```
 
 In older versions, this will be ignored on all targets, but starting with
-version CURRENT_RUSTC_VERSION, `ignore-x86_64` will override `ignore`.
+version 1.88.0, `ignore-x86_64` will override `ignore`.
 
 ### Custom CSS classes for code blocks
 
