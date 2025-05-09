@@ -70,9 +70,6 @@ Stabilized APIs
 - [`impl From<PipeWriter> for OwnedFd`](https://doc.rust-lang.org/nightly/std/os/fd/struct.OwnedFd.html#impl-From%3CPipeWriter%3E-for-OwnedFd)
 - [`Box<MaybeUninit<T>>::write`](https://doc.rust-lang.org/nightly/std/boxed/struct.Box.html#method.write)
 - [`impl TryFrom<Vec<u8>> for String`](https://doc.rust-lang.org/nightly/std/string/struct.String.html#impl-TryFrom%3CVec%3Cu8%3E%3E-for-String)
-
-These APIs are now stable in const contexts:
-
 - [`<*const T>::offset_from_unsigned`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.offset_from_unsigned)
 - [`<*const T>::byte_offset_from_unsigned`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.byte_offset_from_unsigned)
 - [`<*mut T>::offset_from_unsigned`](https://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.offset_from_unsigned-1)
@@ -81,17 +78,21 @@ These APIs are now stable in const contexts:
 - [`NonNull::byte_offset_from_unsigned`](https://doc.rust-lang.org/nightly/std/ptr/struct.NonNull.html#method.byte_offset_from_unsigned)
 - [`<uN>::cast_signed`](https://doc.rust-lang.org/nightly/std/primitive.usize.html#method.cast_signed)
 - [`NonZero::<uN>::cast_signed`](https://doc.rust-lang.org/nightly/std/num/struct.NonZero.html#method.cast_signed-5).
-- [`<iN>::cast_signed`](https://doc.rust-lang.org/nightly/std/primitive.isize.html#method.cast_signed).
+- [`<iN>::cast_unsigned`](https://doc.rust-lang.org/nightly/std/primitive.isize.html#method.cast_unsigned).
 - [`NonZero::<iN>::cast_unsigned`](https://doc.rust-lang.org/nightly/std/num/struct.NonZero.html#method.cast_unsigned-5).
 - [`<uN>::is_multiple_of`](https://doc.rust-lang.org/nightly/std/primitive.usize.html#method.is_multiple_of)
 - [`<uN>::unbounded_shl`](https://doc.rust-lang.org/nightly/std/primitive.usize.html#method.unbounded_shl)
 - [`<uN>::unbounded_shr`](https://doc.rust-lang.org/nightly/std/primitive.usize.html#method.unbounded_shr)
 - [`<iN>::unbounded_shl`](https://doc.rust-lang.org/nightly/std/primitive.isize.html#method.unbounded_shl)
 - [`<iN>::unbounded_shr`](https://doc.rust-lang.org/nightly/std/primitive.isize.html#method.unbounded_shr)
+- [`<iN>::midpoint`](https://doc.rust-lang.org/nightly/std/primitive.isize.html#method.midpoint)
 - [`<str>::from_utf8`](https://doc.rust-lang.org/nightly/std/primitive.str.html#method.from_utf8)
 - [`<str>::from_utf8_mut`](https://doc.rust-lang.org/nightly/std/primitive.str.html#method.from_utf8_mut)
 - [`<str>::from_utf8_unchecked`](https://doc.rust-lang.org/nightly/std/primitive.str.html#method.from_utf8_unchecked)
 - [`<str>::from_utf8_unchecked_mut`](https://doc.rust-lang.org/nightly/std/primitive.str.html#method.from_utf8_unchecked_mut)
+
+These APIs are now stable in const contexts:
+
 - [`core::str::from_utf8_mut`](https://doc.rust-lang.org/nightly/std/str/fn.from_utf8_mut.html)
 - [`<[T]>::copy_from_slice`](https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.copy_from_slice)
 - [`SocketAddr::set_ip`](https://doc.rust-lang.org/nightly/std/net/enum.SocketAddr.html#method.set_ip)
@@ -104,7 +105,6 @@ These APIs are now stable in const contexts:
 - [`SocketAddrV6::set_scope_id`](https://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_scope_id)
 - [`char::is_digit`](https://doc.rust-lang.org/nightly/std/primitive.char.html#method.is_digit)
 - [`char::is_whitespace`](https://doc.rust-lang.org/nightly/std/primitive.char.html#method.is_whitespace)
-- [`<iN>::midpoint`](https://doc.rust-lang.org/std/primitive.isize.html#method.midpoint)
 - [`<[[T; N]]>::as_flattened`](https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.as_flattened)
 - [`<[[T; N]]>::as_flattened_mut`](https://doc.rust-lang.org/nightly/std/primitive.slice.html#method.as_flattened_mut) 
 - [`String::into_bytes`](https://doc.rust-lang.org/nightly/std/string/struct.String.html#method.into_bytes)
