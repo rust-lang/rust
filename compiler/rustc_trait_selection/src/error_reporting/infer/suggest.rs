@@ -8,9 +8,7 @@ use rustc_errors::{Applicability, Diag};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{MatchSource, Node};
-use rustc_middle::traits::{
-    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-};
+use rustc_middle::traits::{MatchExpressionArmCause, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self as ty, GenericArgKind, IsSuggestable, Ty, TypeVisitableExt};
@@ -196,8 +194,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (Some(exp), Some(found)) if self.same_type_modulo_infer(exp, found) => match cause
                 .code()
             {
-                ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
-                    let then_span = self.find_block_span_from_hir_id(*then_id);
+                ObligationCauseCode::IfExpression { expr_id, .. } => {
+                    let hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::If(_, then_expr, _), ..
+                    }) = self.tcx.hir_node(*expr_id)
+                    else {
+                        return;
+                    };
+                    let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
                     Some(ConsiderAddingAwait::BothFuturesSugg {
                         first: then_span.shrink_to_hi(),
                         second: exp_span.shrink_to_hi(),
@@ -232,8 +236,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         span: then_span.shrink_to_hi(),
                     })
                 }
-                ObligationCauseCode::IfExpression(box IfExpressionCause { then_id, .. }) => {
-                    let then_span = self.find_block_span_from_hir_id(*then_id);
+                ObligationCauseCode::IfExpression { expr_id, .. } => {
+                    let hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::If(_, then_expr, _), ..
+                    }) = self.tcx.hir_node(*expr_id)
+                    else {
+                        return;
+                    };
+                    let then_span = self.find_block_span_from_hir_id(then_expr.hir_id);
                     Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
