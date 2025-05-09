@@ -6,15 +6,18 @@
 // this diagnostics information should be located.
 // See https://github.com/rust-lang/rust/pull/51946
 
-//@ ignore-windows
-//@ ignore-apple
-// Reason: this feature only works when the output object format is ELF.
-// This won't be the case on Windows/OSX - for example, OSX produces a Mach-O binary.
+//@ only-elf
 
-use run_make_support::{llvm_readobj, rustc};
+use run_make_support::{llvm_readobj, rustc, target};
 
 fn main() {
-    rustc().opt_level("3").arg("-Zemit-stack-sizes").emit("obj").input("foo.rs").run();
+    rustc()
+        .target(target())
+        .opt_level("3")
+        .arg("-Zemit-stack-sizes")
+        .emit("obj")
+        .input("foo.rs")
+        .run();
     llvm_readobj()
         .arg("--section-headers")
         .input("foo.o")

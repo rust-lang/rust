@@ -3,10 +3,11 @@
 // ensures the output of rustdoc's help menu is as expected.
 // See https://github.com/rust-lang/rust/issues/88756
 
-use run_make_support::{diff, rustdoc};
+use run_make_support::{bare_rustdoc, diff};
 
 fn main() {
-    let out = rustdoc().run().stdout_utf8();
+    // Use `bare_rustdoc` to ensure no `--target` is set.
+    let out = bare_rustdoc().run().stdout_utf8();
     diff()
         .expected_file("output-default.stdout")
         .actual_text("actual", out)

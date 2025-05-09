@@ -4,6 +4,9 @@
 // being added to these function declarations.
 // See https://github.com/rust-lang/rust/pull/113716
 
+// FIXME: LLVM IR looks different, e.g. `declare void @foo()` was not found against `wasm32-waspi1`)
+//@ ignore-cross-compile (FileCheck can fail on cross-compiled targets, see FIXME above)
+
 use run_make_support::{llvm_filecheck, rfs, rustc};
 
 fn main() {

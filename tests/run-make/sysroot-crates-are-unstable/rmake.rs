@@ -31,7 +31,6 @@ fn check_crate_is_unstable(cr: &Crate) {
     // Trying to use this crate from a user program should fail.
     let output = rustc()
         .crate_type("rlib")
-        .target(target())
         .extern_(name, path)
         .input("-")
         .stdin_buf(format!("extern crate {name};"))

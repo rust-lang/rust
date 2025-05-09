@@ -9,6 +9,9 @@
 //
 // This is regression test for https://github.com/rust-lang/rust/issues/67276.
 
+//@ needs-crate-type: dylib
+//@ needs-dynamic-linking
+
 use run_make_support::rustc;
 
 fn main() {

@@ -4,6 +4,8 @@
 // are exported, and that generics are only shown if explicitly requested.
 // See https://github.com/rust-lang/rust/issues/37530
 
+//@ needs-crate-type: cdylib, dylib, proc-macro
+
 use run_make_support::object::read::Object;
 use run_make_support::{bin_name, dynamic_lib_name, is_msvc, object, regex, rfs, rustc};
 
