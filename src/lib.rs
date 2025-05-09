@@ -16,7 +16,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(rustc_private, decl_macro, never_type, trusted_len, let_chains)]
+#![feature(rustc_private, decl_macro, never_type, trusted_len)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
@@ -454,7 +454,7 @@ impl WriteBackendMethods for GccCodegenBackend {
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_gccjit
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     #[cfg(feature = "master")]
     let info = {

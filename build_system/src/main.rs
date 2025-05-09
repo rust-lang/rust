@@ -60,7 +60,9 @@ pub enum Command {
 
 fn main() {
     if env::var("RUST_BACKTRACE").is_err() {
-        env::set_var("RUST_BACKTRACE", "1");
+        unsafe {
+            env::set_var("RUST_BACKTRACE", "1");
+        }
     }
 
     let command = match env::args().nth(1).as_deref() {
