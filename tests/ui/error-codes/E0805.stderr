@@ -1,0 +1,29 @@
+error: free function without a body
+  --> $DIR/E0805.rs:4:1
+   |
+LL | fn x();
+   | ^^^^^^-
+   |       |
+   |       help: provide a definition for the function: `{ <body> }`
+
+error: cannot find attribute `foo` in this scope
+  --> $DIR/E0805.rs:6:3
+   |
+LL | #[foo]
+   |   ^^^
+
+error: cannot find attribute `eii` in this scope
+  --> $DIR/E0805.rs:3:3
+   |
+LL | #[eii(foo)]
+   |   ^^^
+
+error[E0635]: unknown feature `eii`
+  --> $DIR/E0805.rs:1:12
+   |
+LL | #![feature(eii)]
+   |            ^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0635`.

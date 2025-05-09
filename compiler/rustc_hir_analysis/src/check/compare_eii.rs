@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, E0050, E0053, struct_span_code_err};
+use rustc_errors::{Applicability, E0805, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnSig, HirId, ItemKind};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
@@ -182,7 +182,7 @@ fn compare_number_of_method_arguments<'tcx>(
         let mut err = struct_span_code_err!(
             tcx.dcx(),
             impl_span,
-            E0050, // FIXME(jdonszelmann): new error code
+            E0805,
             "`{external_impl_name}` has {} but #[{eii_name}] requires it to have {}",
             potentially_plural_count(external_impl_number_args, "parameter"),
             declaration_number_args
@@ -279,7 +279,6 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     if let Err(terr) = result {
         debug!(?external_impl_sig, ?declaration_sig, ?terr, "sub_types failed");
 
-        // TODO: nice error
         let emitted = report_eii_mismatch(
             infcx,
             cause,
@@ -330,7 +329,7 @@ fn report_eii_mismatch<'tcx>(
     let mut diag = struct_span_code_err!(
         tcx.dcx(),
         impl_err_span,
-        E0053, // TODO: new error code
+        E0805,
         "function `{}` has a type that is incompatible with the declaration of `#[{eii_name}]`",
         external_impl_name
     );

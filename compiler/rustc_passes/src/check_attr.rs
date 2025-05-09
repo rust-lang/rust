@@ -131,7 +131,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // no checks needed
                 }
                 Attribute::Parsed(AttributeKind::EiiMangleExtern { .. }) => {
-                    // TODO: checks?
+                    // FIXME: mangle extern should be removed
                 }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
                     .check_allow_internal_unstable(
@@ -304,8 +304,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::lang
                             | sym::needs_allocator
                             | sym::default_lib_allocator
-                            | sym::custom_mir
-                            | sym::eii_macro_for, // TODO: remove
+                            | sym::custom_mir,
                             ..
                         ] => {}
                         [name, ..] => {
