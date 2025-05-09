@@ -172,12 +172,9 @@ impl MutVisitor for CfgEval<'_> {
         Some(expr)
     }
 
-    fn flat_map_generic_param(
-        &mut self,
-        param: ast::GenericParam,
-    ) -> SmallVec<[ast::GenericParam; 1]> {
+    fn filter_map_generic_param(&mut self, param: ast::GenericParam) -> Option<ast::GenericParam> {
         let param = configure!(self, param);
-        mut_visit::walk_flat_map_generic_param(self, param)
+        mut_visit::walk_filter_map_generic_param(self, param)
     }
 
     fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
@@ -207,33 +204,33 @@ impl MutVisitor for CfgEval<'_> {
         mut_visit::walk_flat_map_foreign_item(self, foreign_item)
     }
 
-    fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
+    fn filter_map_arm(&mut self, arm: ast::Arm) -> Option<ast::Arm> {
         let arm = configure!(self, arm);
-        mut_visit::walk_flat_map_arm(self, arm)
+        mut_visit::walk_filter_map_arm(self, arm)
     }
 
-    fn flat_map_expr_field(&mut self, field: ast::ExprField) -> SmallVec<[ast::ExprField; 1]> {
+    fn filter_map_expr_field(&mut self, field: ast::ExprField) -> Option<ast::ExprField> {
         let field = configure!(self, field);
-        mut_visit::walk_flat_map_expr_field(self, field)
+        mut_visit::walk_filter_map_expr_field(self, field)
     }
 
-    fn flat_map_pat_field(&mut self, fp: ast::PatField) -> SmallVec<[ast::PatField; 1]> {
+    fn filter_map_pat_field(&mut self, fp: ast::PatField) -> Option<ast::PatField> {
         let fp = configure!(self, fp);
-        mut_visit::walk_flat_map_pat_field(self, fp)
+        mut_visit::walk_filter_map_pat_field(self, fp)
     }
 
-    fn flat_map_param(&mut self, p: ast::Param) -> SmallVec<[ast::Param; 1]> {
+    fn filter_map_param(&mut self, p: ast::Param) -> Option<ast::Param> {
         let p = configure!(self, p);
-        mut_visit::walk_flat_map_param(self, p)
+        mut_visit::walk_filter_map_param(self, p)
     }
 
-    fn flat_map_field_def(&mut self, sf: ast::FieldDef) -> SmallVec<[ast::FieldDef; 1]> {
+    fn filter_map_field_def(&mut self, sf: ast::FieldDef) -> Option<ast::FieldDef> {
         let sf = configure!(self, sf);
-        mut_visit::walk_flat_map_field_def(self, sf)
+        mut_visit::walk_filter_map_field_def(self, sf)
     }
 
-    fn flat_map_variant(&mut self, variant: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
+    fn filter_map_variant(&mut self, variant: ast::Variant) -> Option<ast::Variant> {
         let variant = configure!(self, variant);
-        mut_visit::walk_flat_map_variant(self, variant)
+        mut_visit::walk_filter_map_variant(self, variant)
     }
 }

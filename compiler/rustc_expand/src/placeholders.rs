@@ -124,7 +124,7 @@ pub(crate) fn placeholder(
             });
             ast::Stmt { id, span, kind: ast::StmtKind::MacCall(mac) }
         }]),
-        AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
+        AstFragmentKind::Arm => AstFragment::Arm(Some(ast::Arm {
             attrs: Default::default(),
             body: Some(expr_placeholder()),
             guard: None,
@@ -132,8 +132,8 @@ pub(crate) fn placeholder(
             pat: pat(),
             span,
             is_placeholder: true,
-        }]),
-        AstFragmentKind::ExprFields => AstFragment::ExprFields(smallvec![ast::ExprField {
+        })),
+        AstFragmentKind::ExprField => AstFragment::ExprField(Some(ast::ExprField {
             attrs: Default::default(),
             expr: expr_placeholder(),
             id,
@@ -141,8 +141,8 @@ pub(crate) fn placeholder(
             is_shorthand: false,
             span,
             is_placeholder: true,
-        }]),
-        AstFragmentKind::PatFields => AstFragment::PatFields(smallvec![ast::PatField {
+        })),
+        AstFragmentKind::PatField => AstFragment::PatField(Some(ast::PatField {
             attrs: Default::default(),
             id,
             ident,
@@ -150,27 +150,25 @@ pub(crate) fn placeholder(
             pat: pat(),
             span,
             is_placeholder: true,
-        }]),
-        AstFragmentKind::GenericParams => AstFragment::GenericParams(smallvec![{
-            ast::GenericParam {
-                attrs: Default::default(),
-                bounds: Default::default(),
-                id,
-                ident,
-                is_placeholder: true,
-                kind: ast::GenericParamKind::Lifetime,
-                colon_span: None,
-            }
-        }]),
-        AstFragmentKind::Params => AstFragment::Params(smallvec![ast::Param {
+        })),
+        AstFragmentKind::GenericParam => AstFragment::GenericParam(Some(ast::GenericParam {
+            attrs: Default::default(),
+            bounds: Default::default(),
+            id,
+            ident,
+            is_placeholder: true,
+            kind: ast::GenericParamKind::Lifetime,
+            colon_span: None,
+        })),
+        AstFragmentKind::Param => AstFragment::Param(Some(ast::Param {
             attrs: Default::default(),
             id,
             pat: pat(),
             span,
             ty: ty(),
             is_placeholder: true,
-        }]),
-        AstFragmentKind::FieldDefs => AstFragment::FieldDefs(smallvec![ast::FieldDef {
+        })),
+        AstFragmentKind::FieldDef => AstFragment::FieldDef(Some(ast::FieldDef {
             attrs: Default::default(),
             id,
             ident: None,
@@ -180,12 +178,12 @@ pub(crate) fn placeholder(
             is_placeholder: true,
             safety: Safety::Default,
             default: None,
-        }]),
-        AstFragmentKind::Variants => AstFragment::Variants(smallvec![ast::Variant {
+        })),
+        AstFragmentKind::Variant => AstFragment::Variant(Some(ast::Variant {
             attrs: Default::default(),
             data: ast::VariantData::Struct {
                 fields: Default::default(),
-                recovered: ast::Recovered::No
+                recovered: ast::Recovered::No,
             },
             disr_expr: None,
             id,
@@ -193,20 +191,18 @@ pub(crate) fn placeholder(
             span,
             vis,
             is_placeholder: true,
-        }]),
-        AstFragmentKind::WherePredicates => {
-            AstFragment::WherePredicates(smallvec![ast::WherePredicate {
-                attrs: Default::default(),
-                id,
-                span,
-                kind: ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
-                    bound_generic_params: Default::default(),
-                    bounded_ty: ty(),
-                    bounds: Default::default(),
-                }),
-                is_placeholder: true,
-            }])
-        }
+        })),
+        AstFragmentKind::WherePredicate => AstFragment::WherePredicate(Some(ast::WherePredicate {
+            attrs: Default::default(),
+            id,
+            span,
+            kind: ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+                bound_generic_params: Default::default(),
+                bounded_ty: ty(),
+                bounds: Default::default(),
+            }),
+            is_placeholder: true,
+        })),
     }
 }
 
@@ -227,73 +223,70 @@ impl PlaceholderExpander {
 }
 
 impl MutVisitor for PlaceholderExpander {
-    fn flat_map_arm(&mut self, arm: ast::Arm) -> SmallVec<[ast::Arm; 1]> {
+    fn filter_map_arm(&mut self, arm: ast::Arm) -> Option<ast::Arm> {
         if arm.is_placeholder {
-            self.remove(arm.id).make_arms()
+            self.remove(arm.id).make_arm()
         } else {
-            walk_flat_map_arm(self, arm)
+            walk_filter_map_arm(self, arm)
         }
     }
 
-    fn flat_map_expr_field(&mut self, field: ast::ExprField) -> SmallVec<[ast::ExprField; 1]> {
+    fn filter_map_expr_field(&mut self, field: ast::ExprField) -> Option<ast::ExprField> {
         if field.is_placeholder {
-            self.remove(field.id).make_expr_fields()
+            self.remove(field.id).make_expr_field()
         } else {
-            walk_flat_map_expr_field(self, field)
+            walk_filter_map_expr_field(self, field)
         }
     }
 
-    fn flat_map_pat_field(&mut self, fp: ast::PatField) -> SmallVec<[ast::PatField; 1]> {
+    fn filter_map_pat_field(&mut self, fp: ast::PatField) -> Option<ast::PatField> {
         if fp.is_placeholder {
-            self.remove(fp.id).make_pat_fields()
+            self.remove(fp.id).make_pat_field()
         } else {
-            walk_flat_map_pat_field(self, fp)
+            walk_filter_map_pat_field(self, fp)
         }
     }
 
-    fn flat_map_generic_param(
-        &mut self,
-        param: ast::GenericParam,
-    ) -> SmallVec<[ast::GenericParam; 1]> {
+    fn filter_map_generic_param(&mut self, param: ast::GenericParam) -> Option<ast::GenericParam> {
         if param.is_placeholder {
-            self.remove(param.id).make_generic_params()
+            self.remove(param.id).make_generic_param()
         } else {
-            walk_flat_map_generic_param(self, param)
+            walk_filter_map_generic_param(self, param)
         }
     }
 
-    fn flat_map_param(&mut self, p: ast::Param) -> SmallVec<[ast::Param; 1]> {
+    fn filter_map_param(&mut self, p: ast::Param) -> Option<ast::Param> {
         if p.is_placeholder {
-            self.remove(p.id).make_params()
+            self.remove(p.id).make_param()
         } else {
-            walk_flat_map_param(self, p)
+            walk_filter_map_param(self, p)
         }
     }
 
-    fn flat_map_field_def(&mut self, sf: ast::FieldDef) -> SmallVec<[ast::FieldDef; 1]> {
+    fn filter_map_field_def(&mut self, sf: ast::FieldDef) -> Option<ast::FieldDef> {
         if sf.is_placeholder {
-            self.remove(sf.id).make_field_defs()
+            self.remove(sf.id).make_field_def()
         } else {
-            walk_flat_map_field_def(self, sf)
+            walk_filter_map_field_def(self, sf)
         }
     }
 
-    fn flat_map_variant(&mut self, variant: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
+    fn filter_map_variant(&mut self, variant: ast::Variant) -> Option<ast::Variant> {
         if variant.is_placeholder {
-            self.remove(variant.id).make_variants()
+            self.remove(variant.id).make_variant()
         } else {
-            walk_flat_map_variant(self, variant)
+            walk_filter_map_variant(self, variant)
         }
     }
 
-    fn flat_map_where_predicate(
+    fn filter_map_where_predicate(
         &mut self,
         predicate: ast::WherePredicate,
-    ) -> SmallVec<[ast::WherePredicate; 1]> {
+    ) -> Option<ast::WherePredicate> {
         if predicate.is_placeholder {
-            self.remove(predicate.id).make_where_predicates()
+            self.remove(predicate.id).make_where_predicate()
         } else {
-            walk_flat_map_where_predicate(self, predicate)
+            walk_filter_map_where_predicate(self, predicate)
         }
     }
 
