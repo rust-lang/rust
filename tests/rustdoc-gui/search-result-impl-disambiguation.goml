@@ -12,6 +12,7 @@ write-into: (".search-input", "ZyxwvutMethodDisambiguation -> bool")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 // Check the disambiguated link.
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
@@ -34,6 +35,7 @@ write-into: (".search-input", "ZyxwvutMethodDisambiguation, usize -> usize")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 // Check the disambiguated link.
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
@@ -51,6 +53,7 @@ assert: "section:target"
 // impl block's disambiguator is also acted upon.
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=MultiImplBlockStruct->bool"
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
     "href": "../lib2/another_mod/struct.MultiImplBlockStruct.html#impl-MultiImplBlockStruct/method.second_fn"
@@ -60,6 +63,7 @@ wait-for: "details:has(summary > #impl-MultiImplBlockStruct-1) > div section[id=
 
 go-to: "file://" + |DOC_PATH| + "/lib2/index.html?search=MultiImplBlockStruct->u32"
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-count: ("a.result-method", 1)
 assert-attribute: ("a.result-method", {
     "href": "../lib2/another_mod/struct.MultiImplBlockStruct.html#impl-MultiImplBlockTrait-for-MultiImplBlockStruct/method.second_fn"

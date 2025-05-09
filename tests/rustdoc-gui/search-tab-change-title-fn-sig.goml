@@ -8,6 +8,7 @@ write-into: (".search-input", "Foo")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 assert-text: ("#search-tabs > button:nth-of-type(1)", "In Names", STARTS_WITH)
 assert: "input.search-input:focus"
@@ -32,6 +33,7 @@ write-into: (".search-input", "-> String")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
 assert: "input.search-input:focus"
@@ -55,6 +57,7 @@ write-into: (".search-input", "-> Something")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
 
@@ -65,6 +68,7 @@ write-into: (".search-input", "usize,pattern")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Parameters", STARTS_WITH)
 
@@ -76,5 +80,6 @@ write-into: (".search-input", "pattern -> str")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
+wait-for-false: "#search-tabs .count.loading"
 assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Signatures", STARTS_WITH)

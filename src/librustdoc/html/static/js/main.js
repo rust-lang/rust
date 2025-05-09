@@ -408,8 +408,23 @@ function preLoadCss(cssUrl) {
                 if (!searchLoaded) {
                     searchLoaded = true;
                     // @ts-expect-error
-                    loadScript(getVar("static-root-path") + getVar("search-js"), sendSearchForm);
-                    loadScript(resourcePath("search-index", ".js"), sendSearchForm);
+                    window.rr_ = data => {
+                        // @ts-expect-error
+                        window.searchIndex = data;
+                    };
+                    if (!window.StringdexOnload) {
+                        window.StringdexOnload = [];
+                    }
+                    window.StringdexOnload.push(() => {
+                        loadScript(
+                            // @ts-expect-error
+                            getVar("static-root-path") + getVar("search-js"),
+                            sendSearchForm,
+                        );
+                    });
+                    // @ts-expect-error
+                    loadScript(getVar("static-root-path") + getVar("stringdex-js"), sendSearchForm);
+                    loadScript(resourcePath("search.index/root", ".js"), sendSearchForm);
                 }
             }
 

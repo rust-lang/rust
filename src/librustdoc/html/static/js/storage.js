@@ -7,6 +7,7 @@
 
 /**
  * @import * as rustdoc from "./rustdoc.d.ts";
+ * @import * as stringdex from "./stringdex.d.ts";
  */
 
 const builtinThemes = ["light", "dark", "ayu"];
@@ -172,7 +173,7 @@ function updateLocalStorage(name, value) {
         } else {
             window.localStorage.setItem("rustdoc-" + name, value);
         }
-    } catch (e) {
+    } catch {
         // localStorage is not accessible, do nothing
     }
 }
@@ -189,7 +190,7 @@ function updateLocalStorage(name, value) {
 function getCurrentValue(name) {
     try {
         return window.localStorage.getItem("rustdoc-" + name);
-    } catch (e) {
+    } catch {
         return null;
     }
 }
