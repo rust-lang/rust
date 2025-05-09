@@ -759,6 +759,7 @@ define_Conf! {
         same_item_push,
         seek_from_current,
         seek_rewind,
+        to_digit_is_some,
         transmute_ptr_to_ref,
         tuple_array_conversions,
         type_repetition_in_bounds,

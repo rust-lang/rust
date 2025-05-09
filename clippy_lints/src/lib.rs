@@ -746,7 +746,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(unused_self::UnusedSelf::new(conf)));
     store.register_late_pass(|_| Box::new(mutable_debug_assertion::DebugAssertWithMutCall));
     store.register_late_pass(|_| Box::new(exit::Exit));
-    store.register_late_pass(|_| Box::new(to_digit_is_some::ToDigitIsSome));
+    store.register_late_pass(move |_| Box::new(to_digit_is_some::ToDigitIsSome::new(conf)));
     store.register_late_pass(move |_| Box::new(large_stack_arrays::LargeStackArrays::new(conf)));
     store.register_late_pass(move |_| Box::new(large_const_arrays::LargeConstArrays::new(conf)));
     store.register_late_pass(|_| Box::new(floating_point_arithmetic::FloatingPointArithmetic));

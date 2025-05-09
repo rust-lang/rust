@@ -23,7 +23,7 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,88,0 { LET_CHAINS }
-    1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT }
+    1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT }
     1,85,0 { UINT_FLOAT_MIDPOINT }
     1,84,0 { CONST_OPTION_AS_SLICE, MANUAL_DANGLING_PTR }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
