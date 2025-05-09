@@ -775,12 +775,6 @@ passes_unexportable_type_in_interface = {$desc} with `#[export_stable]` attribut
 
 passes_unexportable_type_repr = types with unstable layout are not exportable
 
-passes_undefined_naked_function_abi =
-    Rust ABI is unsupported in naked functions
-
-passes_unknown_external_lang_item =
-    unknown external lang item: `{$lang_item}`
-
 passes_unknown_feature =
     unknown feature `{$feature}`
 

@@ -258,7 +258,7 @@ pub(crate) struct CrateRoot {
     panic_in_drop_strategy: PanicStrategy,
     edition: Edition,
 
-    // TODO: these booleans can be replaced by the entries in `externally_implementable_items`
+    // FIXME(jdonszelmann): these booleans can be replaced by the entries in `externally_implementable_items`
     has_global_allocator: bool,
     has_alloc_error_handler: bool,
     has_default_lib_allocator: bool,

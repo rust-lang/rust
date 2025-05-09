@@ -189,8 +189,8 @@ pub(crate) fn get_externally_implementable_item_impls<'tcx>(
             CRATE_DEF_ID,
             Some(Symbol::intern(&format!("EII shim for {decl_did:?}"))),
             DefKind::Fn,
-        None,
-        &mut DisambiguatorState::new(),
+            None,
+            &mut DisambiguatorState::new(),
         );
 
         let extern_item_did = decl.eii_extern_item;

@@ -1555,7 +1555,7 @@ impl<'v> RootCollector<'_, 'v> {
 
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
-                        // TODO: EII might remove this:
+                        // FIXME(jdonszelmann): EII might remove this:
                         || cfa
                             .flags
                             .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)

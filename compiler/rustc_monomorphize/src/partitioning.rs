@@ -773,8 +773,6 @@ fn mono_item_linkage_and_visibility<'tcx>(
     // libraries. And shared libraries may later be linked together, both implementing the EII.
     // This conflicting implementations may show up. We want to ignore this and just link em
     // together anyway. LLVM ensures the last one is the one that's chosen
-    // TODO: this isn't the problem if they both decided to choose either the default or the
-    // same explicit impl but if their view on it differs it is a problem!
     if let MonoItem::Fn(Instance { def: InstanceKind::EiiShim { weak_linkage, .. }, .. }) =
         mono_item
     {
@@ -951,7 +949,7 @@ fn mono_item_visibility<'tcx>(
         //   LLVM internalize them as this decision is left up to the linker to
         //   omit them, so prevent them from being internalized.
         let attrs = tcx.codegen_fn_attrs(def_id);
-        // TODO: EII might replace this
+        // FIXME(jdonszelmann): EII might replace this
         if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             *can_be_internalized = false;
         }

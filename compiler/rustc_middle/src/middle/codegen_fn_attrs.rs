@@ -108,7 +108,7 @@ bitflags::bitflags! {
         /// `#[no_mangle]`: an indicator that the function's name should be the same
         /// as its symbol.
         const NO_MANGLE                 = 1 << 5;
-        // TODO: EIIs can replace this, most likely
+        // FIXME(jdonszelmann): EIIs can replace this, most likely
         /// `#[rustc_std_internal_symbol]`: an indicator that this symbol is a
         /// "weird symbol" for the standard library in that it has slightly
         /// different linkage, visibility, and reachability rules.
