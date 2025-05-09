@@ -815,67 +815,7 @@ impl Item {
 
     /// Returns a `#[repr(...)]` representation.
     pub(crate) fn repr(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Option<String> {
-        use rustc_abi::IntegerType;
-
-        let def_id = self.def_id()?;
-        if !matches!(self.type_(), ItemType::Struct | ItemType::Enum | ItemType::Union) {
-            return None;
-        }
-        let adt = tcx.adt_def(def_id);
-        let repr = adt.repr();
-        let mut out = Vec::new();
-        if repr.c() {
-            out.push("C");
-        }
-        if repr.transparent() {
-            // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
-            // field is public in case all fields are 1-ZST fields.
-            let render_transparent = is_json
-                || cache.document_private
-                || adt
-                    .all_fields()
-                    .find(|field| {
-                        let ty = field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
-                        tcx.layout_of(
-                            ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty),
-                        )
-                        .is_ok_and(|layout| !layout.is_1zst())
-                    })
-                    .map_or_else(
-                        || adt.all_fields().any(|field| field.vis.is_public()),
-                        |field| field.vis.is_public(),
-                    );
-
-            if render_transparent {
-                out.push("transparent");
-            }
-        }
-        if repr.simd() {
-            out.push("simd");
-        }
-        let pack_s;
-        if let Some(pack) = repr.pack {
-            pack_s = format!("packed({})", pack.bytes());
-            out.push(&pack_s);
-        }
-        let align_s;
-        if let Some(align) = repr.align {
-            align_s = format!("align({})", align.bytes());
-            out.push(&align_s);
-        }
-        let int_s;
-        if let Some(int) = repr.int {
-            int_s = match int {
-                IntegerType::Pointer(is_signed) => {
-                    format!("{}size", if is_signed { 'i' } else { 'u' })
-                }
-                IntegerType::Fixed(size, is_signed) => {
-                    format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
-                }
-            };
-            out.push(&int_s);
-        }
-        if !out.is_empty() { Some(format!("#[repr({})]", out.join(", "))) } else { None }
+        repr_attributes(tcx, cache, self.def_id()?, self.type_(), is_json)
     }
 
     pub fn is_doc_hidden(&self) -> bool {
@@ -885,6 +825,73 @@ impl Item {
     pub fn def_id(&self) -> Option<DefId> {
         self.item_id.as_def_id()
     }
+}
+
+pub(crate) fn repr_attributes(
+    tcx: TyCtxt<'_>,
+    cache: &Cache,
+    def_id: DefId,
+    item_type: ItemType,
+    is_json: bool,
+) -> Option<String> {
+    use rustc_abi::IntegerType;
+
+    if !matches!(item_type, ItemType::Struct | ItemType::Enum | ItemType::Union) {
+        return None;
+    }
+    let adt = tcx.adt_def(def_id);
+    let repr = adt.repr();
+    let mut out = Vec::new();
+    if repr.c() {
+        out.push("C");
+    }
+    if repr.transparent() {
+        // Render `repr(transparent)` iff the non-1-ZST field is public or at least one
+        // field is public in case all fields are 1-ZST fields.
+        let render_transparent = cache.document_private
+            || is_json
+            || adt
+                .all_fields()
+                .find(|field| {
+                    let ty = field.ty(tcx, ty::GenericArgs::identity_for_item(tcx, field.did));
+                    tcx.layout_of(ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(ty))
+                        .is_ok_and(|layout| !layout.is_1zst())
+                })
+                .map_or_else(
+                    || adt.all_fields().any(|field| field.vis.is_public()),
+                    |field| field.vis.is_public(),
+                );
+
+        if render_transparent {
+            out.push("transparent");
+        }
+    }
+    if repr.simd() {
+        out.push("simd");
+    }
+    let pack_s;
+    if let Some(pack) = repr.pack {
+        pack_s = format!("packed({})", pack.bytes());
+        out.push(&pack_s);
+    }
+    let align_s;
+    if let Some(align) = repr.align {
+        align_s = format!("align({})", align.bytes());
+        out.push(&align_s);
+    }
+    let int_s;
+    if let Some(int) = repr.int {
+        int_s = match int {
+            IntegerType::Pointer(is_signed) => {
+                format!("{}size", if is_signed { 'i' } else { 'u' })
+            }
+            IntegerType::Fixed(size, is_signed) => {
+                format!("{}{}", if is_signed { 'i' } else { 'u' }, size.size().bytes() * 8)
+            }
+        };
+        out.push(&int_s);
+    }
+    if !out.is_empty() { Some(format!("#[repr({})]", out.join(", "))) } else { None }
 }
 
 #[derive(Clone, Debug)]
