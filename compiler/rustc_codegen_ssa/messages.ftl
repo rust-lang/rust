@@ -52,6 +52,9 @@ codegen_ssa_expected_one_argument = expected one argument
 
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
+codegen_ssa_export_name_llvm_intrinsic = exported symbol name must not start with "llvm."
+    .note = symbols starting with "llvm." are reserved for LLVM intrinsics and cannot be defined in user code
+
 codegen_ssa_extern_funcs_not_found = some `extern` functions couldn't be found; some native libraries may need to be installed or have their path specified
 
 codegen_ssa_extract_bundled_libs_archive_member = failed to get data from archive member '{$rlib}': {$error}

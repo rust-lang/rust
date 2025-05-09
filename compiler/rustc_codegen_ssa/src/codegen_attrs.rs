@@ -258,6 +258,15 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         // so it may not contain any null characters.
                         tcx.dcx().emit_err(errors::NullOnExport { span: attr.span() });
                     }
+                    if s.as_str().starts_with("llvm.") {
+                        // Symbols starting with "llvm." are reserved by LLVM
+                        // trying to define those would produce invalid IR.
+                        // LLVM complain about those *if* we enable LLVM verification checks
+                        // but we often don't enable them by default due to perf reasons.
+                        tcx.dcx().emit_err(errors::ExportNameLLVMIntrinsic {
+                            span: attr.value_span().expect("attibute has value but not a span"),
+                        });
+                    }
                     codegen_fn_attrs.export_name = Some(s);
                     mixed_export_name_no_mangle_lint_state.track_export_name(attr.span());
                 }

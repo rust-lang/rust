@@ -148,6 +148,14 @@ pub(crate) struct NullOnExport {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_export_name_llvm_intrinsic)]
+#[note]
+pub(crate) struct ExportNameLLVMIntrinsic {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
 pub(crate) struct UnsuportedInstructionSet {
     #[primary_span]

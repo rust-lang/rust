@@ -1,0 +1,25 @@
+error: exported symbol name must not start with "llvm."
+  --> $DIR/export_name-checks.rs:4:17
+   |
+LL | #[export_name = "llvm.x86.rdtsc"]
+   |                 ^^^^^^^^^^^^^^^^
+   |
+   = note: symbols starting with "llvm." are reserved for LLVM intrinsics and cannot be defined in user code
+
+error: exported symbol name must not start with "llvm."
+  --> $DIR/export_name-checks.rs:11:17
+   |
+LL | #[export_name = "llvm.x86.qwerty"]
+   |                 ^^^^^^^^^^^^^^^^^
+   |
+   = note: symbols starting with "llvm." are reserved for LLVM intrinsics and cannot be defined in user code
+
+error[E0648]: `export_name` may not contain null characters
+  --> $DIR/export_name-checks.rs:17:1
+   |
+LL | #[export_name="ab\0cd"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0648`.
