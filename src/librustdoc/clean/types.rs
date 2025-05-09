@@ -2107,7 +2107,7 @@ impl Enum {
         self.variants.iter().any(|f| f.is_stripped())
     }
 
-    pub(crate) fn variants(&self) -> impl Iterator<Item = &Item> {
+    pub(crate) fn non_stripped_variants(&self) -> impl Iterator<Item = &Item> {
         self.variants.iter().filter(|v| !v.is_stripped())
     }
 }

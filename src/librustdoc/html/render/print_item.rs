@@ -1535,7 +1535,7 @@ fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Displa
 
 fn item_enum(cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) -> impl fmt::Display {
     fmt::from_fn(|w| {
-        let count_variants = e.variants().count();
+        let count_variants = e.non_stripped_variants().count();
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, cx);
             write!(
