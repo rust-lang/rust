@@ -1,5 +1,5 @@
 error: lint `clippy::almost_complete_letter_range` has been renamed to `clippy::almost_complete_range`
-  --> tests/ui/rename.rs:66:9
+  --> tests/ui/rename.rs:67:9
    |
 LL | #![warn(clippy::almost_complete_letter_range)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::almost_complete_range`
@@ -8,412 +8,436 @@ LL | #![warn(clippy::almost_complete_letter_range)]
    = help: to override `-D warnings` add `#[allow(renamed_and_removed_lints)]`
 
 error: lint `clippy::blacklisted_name` has been renamed to `clippy::disallowed_names`
-  --> tests/ui/rename.rs:67:9
+  --> tests/ui/rename.rs:68:9
    |
 LL | #![warn(clippy::blacklisted_name)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::disallowed_names`
 
 error: lint `clippy::block_in_if_condition_expr` has been renamed to `clippy::blocks_in_conditions`
-  --> tests/ui/rename.rs:68:9
+  --> tests/ui/rename.rs:69:9
    |
 LL | #![warn(clippy::block_in_if_condition_expr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::blocks_in_conditions`
 
 error: lint `clippy::block_in_if_condition_stmt` has been renamed to `clippy::blocks_in_conditions`
-  --> tests/ui/rename.rs:69:9
+  --> tests/ui/rename.rs:70:9
    |
 LL | #![warn(clippy::block_in_if_condition_stmt)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::blocks_in_conditions`
 
 error: lint `clippy::blocks_in_if_conditions` has been renamed to `clippy::blocks_in_conditions`
-  --> tests/ui/rename.rs:70:9
+  --> tests/ui/rename.rs:71:9
    |
 LL | #![warn(clippy::blocks_in_if_conditions)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::blocks_in_conditions`
 
 error: lint `clippy::box_vec` has been renamed to `clippy::box_collection`
-  --> tests/ui/rename.rs:71:9
+  --> tests/ui/rename.rs:72:9
    |
 LL | #![warn(clippy::box_vec)]
    |         ^^^^^^^^^^^^^^^ help: use the new name: `clippy::box_collection`
 
 error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
-  --> tests/ui/rename.rs:72:9
+  --> tests/ui/rename.rs:73:9
    |
 LL | #![warn(clippy::const_static_lifetime)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
 
 error: lint `clippy::cyclomatic_complexity` has been renamed to `clippy::cognitive_complexity`
-  --> tests/ui/rename.rs:73:9
+  --> tests/ui/rename.rs:74:9
    |
 LL | #![warn(clippy::cyclomatic_complexity)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::cognitive_complexity`
 
 error: lint `clippy::derive_hash_xor_eq` has been renamed to `clippy::derived_hash_with_manual_eq`
-  --> tests/ui/rename.rs:74:9
+  --> tests/ui/rename.rs:75:9
    |
 LL | #![warn(clippy::derive_hash_xor_eq)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::derived_hash_with_manual_eq`
 
 error: lint `clippy::disallowed_method` has been renamed to `clippy::disallowed_methods`
-  --> tests/ui/rename.rs:75:9
+  --> tests/ui/rename.rs:76:9
    |
 LL | #![warn(clippy::disallowed_method)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::disallowed_methods`
 
 error: lint `clippy::disallowed_type` has been renamed to `clippy::disallowed_types`
-  --> tests/ui/rename.rs:76:9
+  --> tests/ui/rename.rs:77:9
    |
 LL | #![warn(clippy::disallowed_type)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::disallowed_types`
 
 error: lint `clippy::eval_order_dependence` has been renamed to `clippy::mixed_read_write_in_expression`
-  --> tests/ui/rename.rs:77:9
+  --> tests/ui/rename.rs:78:9
    |
 LL | #![warn(clippy::eval_order_dependence)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::mixed_read_write_in_expression`
 
 error: lint `clippy::find_map` has been renamed to `clippy::manual_find_map`
-  --> tests/ui/rename.rs:78:9
+  --> tests/ui/rename.rs:79:9
    |
 LL | #![warn(clippy::find_map)]
    |         ^^^^^^^^^^^^^^^^ help: use the new name: `clippy::manual_find_map`
 
 error: lint `clippy::filter_map` has been renamed to `clippy::manual_filter_map`
-  --> tests/ui/rename.rs:79:9
+  --> tests/ui/rename.rs:80:9
    |
 LL | #![warn(clippy::filter_map)]
    |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::manual_filter_map`
 
 error: lint `clippy::fn_address_comparisons` has been renamed to `unpredictable_function_pointer_comparisons`
-  --> tests/ui/rename.rs:80:9
+  --> tests/ui/rename.rs:81:9
    |
 LL | #![warn(clippy::fn_address_comparisons)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unpredictable_function_pointer_comparisons`
 
 error: lint `clippy::identity_conversion` has been renamed to `clippy::useless_conversion`
-  --> tests/ui/rename.rs:81:9
+  --> tests/ui/rename.rs:82:9
    |
 LL | #![warn(clippy::identity_conversion)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::useless_conversion`
 
 error: lint `clippy::if_let_redundant_pattern_matching` has been renamed to `clippy::redundant_pattern_matching`
-  --> tests/ui/rename.rs:82:9
+  --> tests/ui/rename.rs:83:9
    |
 LL | #![warn(clippy::if_let_redundant_pattern_matching)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_pattern_matching`
 
 error: lint `clippy::if_let_some_result` has been renamed to `clippy::match_result_ok`
-  --> tests/ui/rename.rs:83:9
+  --> tests/ui/rename.rs:84:9
    |
 LL | #![warn(clippy::if_let_some_result)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::match_result_ok`
 
 error: lint `clippy::incorrect_clone_impl_on_copy_type` has been renamed to `clippy::non_canonical_clone_impl`
-  --> tests/ui/rename.rs:84:9
+  --> tests/ui/rename.rs:85:9
    |
 LL | #![warn(clippy::incorrect_clone_impl_on_copy_type)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::non_canonical_clone_impl`
 
 error: lint `clippy::incorrect_partial_ord_impl_on_ord_type` has been renamed to `clippy::non_canonical_partial_ord_impl`
-  --> tests/ui/rename.rs:85:9
+  --> tests/ui/rename.rs:86:9
    |
 LL | #![warn(clippy::incorrect_partial_ord_impl_on_ord_type)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::non_canonical_partial_ord_impl`
 
 error: lint `clippy::integer_arithmetic` has been renamed to `clippy::arithmetic_side_effects`
-  --> tests/ui/rename.rs:86:9
+  --> tests/ui/rename.rs:87:9
    |
 LL | #![warn(clippy::integer_arithmetic)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::arithmetic_side_effects`
 
 error: lint `clippy::logic_bug` has been renamed to `clippy::overly_complex_bool_expr`
-  --> tests/ui/rename.rs:87:9
+  --> tests/ui/rename.rs:88:9
    |
 LL | #![warn(clippy::logic_bug)]
    |         ^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::overly_complex_bool_expr`
 
 error: lint `clippy::new_without_default_derive` has been renamed to `clippy::new_without_default`
-  --> tests/ui/rename.rs:88:9
+  --> tests/ui/rename.rs:89:9
    |
 LL | #![warn(clippy::new_without_default_derive)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
 
 error: lint `clippy::option_and_then_some` has been renamed to `clippy::bind_instead_of_map`
-  --> tests/ui/rename.rs:89:9
+  --> tests/ui/rename.rs:90:9
    |
 LL | #![warn(clippy::option_and_then_some)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::bind_instead_of_map`
 
 error: lint `clippy::option_expect_used` has been renamed to `clippy::expect_used`
-  --> tests/ui/rename.rs:90:9
+  --> tests/ui/rename.rs:91:9
    |
 LL | #![warn(clippy::option_expect_used)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::expect_used`
 
 error: lint `clippy::option_map_unwrap_or` has been renamed to `clippy::map_unwrap_or`
-  --> tests/ui/rename.rs:91:9
+  --> tests/ui/rename.rs:92:9
    |
 LL | #![warn(clippy::option_map_unwrap_or)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::map_unwrap_or`
 
 error: lint `clippy::option_map_unwrap_or_else` has been renamed to `clippy::map_unwrap_or`
-  --> tests/ui/rename.rs:92:9
+  --> tests/ui/rename.rs:93:9
    |
 LL | #![warn(clippy::option_map_unwrap_or_else)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::map_unwrap_or`
 
 error: lint `clippy::option_unwrap_used` has been renamed to `clippy::unwrap_used`
-  --> tests/ui/rename.rs:93:9
+  --> tests/ui/rename.rs:94:9
    |
 LL | #![warn(clippy::option_unwrap_used)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::unwrap_used`
 
 error: lint `clippy::overflow_check_conditional` has been renamed to `clippy::panicking_overflow_checks`
-  --> tests/ui/rename.rs:94:9
+  --> tests/ui/rename.rs:95:9
    |
 LL | #![warn(clippy::overflow_check_conditional)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::panicking_overflow_checks`
 
 error: lint `clippy::ref_in_deref` has been renamed to `clippy::needless_borrow`
-  --> tests/ui/rename.rs:95:9
+  --> tests/ui/rename.rs:96:9
    |
 LL | #![warn(clippy::ref_in_deref)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::needless_borrow`
 
 error: lint `clippy::result_expect_used` has been renamed to `clippy::expect_used`
-  --> tests/ui/rename.rs:96:9
+  --> tests/ui/rename.rs:97:9
    |
 LL | #![warn(clippy::result_expect_used)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::expect_used`
 
 error: lint `clippy::result_map_unwrap_or_else` has been renamed to `clippy::map_unwrap_or`
-  --> tests/ui/rename.rs:97:9
+  --> tests/ui/rename.rs:98:9
    |
 LL | #![warn(clippy::result_map_unwrap_or_else)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::map_unwrap_or`
 
 error: lint `clippy::result_unwrap_used` has been renamed to `clippy::unwrap_used`
-  --> tests/ui/rename.rs:98:9
+  --> tests/ui/rename.rs:99:9
    |
 LL | #![warn(clippy::result_unwrap_used)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::unwrap_used`
 
 error: lint `clippy::single_char_push_str` has been renamed to `clippy::single_char_add_str`
-  --> tests/ui/rename.rs:99:9
+  --> tests/ui/rename.rs:100:9
    |
 LL | #![warn(clippy::single_char_push_str)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::single_char_add_str`
 
 error: lint `clippy::stutter` has been renamed to `clippy::module_name_repetitions`
-  --> tests/ui/rename.rs:100:9
+  --> tests/ui/rename.rs:101:9
    |
 LL | #![warn(clippy::stutter)]
    |         ^^^^^^^^^^^^^^^ help: use the new name: `clippy::module_name_repetitions`
 
 error: lint `clippy::thread_local_initializer_can_be_made_const` has been renamed to `clippy::missing_const_for_thread_local`
-  --> tests/ui/rename.rs:101:9
+  --> tests/ui/rename.rs:102:9
    |
 LL | #![warn(clippy::thread_local_initializer_can_be_made_const)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::missing_const_for_thread_local`
 
 error: lint `clippy::to_string_in_display` has been renamed to `clippy::recursive_format_impl`
-  --> tests/ui/rename.rs:102:9
+  --> tests/ui/rename.rs:103:9
    |
 LL | #![warn(clippy::to_string_in_display)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::recursive_format_impl`
 
 error: lint `clippy::unwrap_or_else_default` has been renamed to `clippy::unwrap_or_default`
-  --> tests/ui/rename.rs:103:9
+  --> tests/ui/rename.rs:104:9
    |
 LL | #![warn(clippy::unwrap_or_else_default)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::unwrap_or_default`
 
 error: lint `clippy::zero_width_space` has been renamed to `clippy::invisible_characters`
-  --> tests/ui/rename.rs:104:9
+  --> tests/ui/rename.rs:105:9
    |
 LL | #![warn(clippy::zero_width_space)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::invisible_characters`
 
 error: lint `clippy::cast_ref_to_mut` has been renamed to `invalid_reference_casting`
-  --> tests/ui/rename.rs:105:9
+  --> tests/ui/rename.rs:106:9
    |
 LL | #![warn(clippy::cast_ref_to_mut)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_reference_casting`
 
 error: lint `clippy::clone_double_ref` has been renamed to `suspicious_double_ref_op`
-  --> tests/ui/rename.rs:106:9
+  --> tests/ui/rename.rs:107:9
    |
 LL | #![warn(clippy::clone_double_ref)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `suspicious_double_ref_op`
 
 error: lint `clippy::cmp_nan` has been renamed to `invalid_nan_comparisons`
-  --> tests/ui/rename.rs:107:9
+  --> tests/ui/rename.rs:108:9
    |
 LL | #![warn(clippy::cmp_nan)]
    |         ^^^^^^^^^^^^^^^ help: use the new name: `invalid_nan_comparisons`
 
 error: lint `clippy::invalid_null_ptr_usage` has been renamed to `invalid_null_arguments`
-  --> tests/ui/rename.rs:108:9
+  --> tests/ui/rename.rs:109:9
    |
 LL | #![warn(clippy::invalid_null_ptr_usage)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_null_arguments`
 
 error: lint `clippy::double_neg` has been renamed to `double_negations`
-  --> tests/ui/rename.rs:109:9
+  --> tests/ui/rename.rs:110:9
    |
 LL | #![warn(clippy::double_neg)]
    |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `double_negations`
 
 error: lint `clippy::drop_bounds` has been renamed to `drop_bounds`
-  --> tests/ui/rename.rs:110:9
+  --> tests/ui/rename.rs:111:9
    |
 LL | #![warn(clippy::drop_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `drop_bounds`
 
 error: lint `clippy::drop_copy` has been renamed to `dropping_copy_types`
-  --> tests/ui/rename.rs:111:9
+  --> tests/ui/rename.rs:112:9
    |
 LL | #![warn(clippy::drop_copy)]
    |         ^^^^^^^^^^^^^^^^^ help: use the new name: `dropping_copy_types`
 
 error: lint `clippy::drop_ref` has been renamed to `dropping_references`
-  --> tests/ui/rename.rs:112:9
+  --> tests/ui/rename.rs:113:9
    |
 LL | #![warn(clippy::drop_ref)]
    |         ^^^^^^^^^^^^^^^^ help: use the new name: `dropping_references`
 
 error: lint `clippy::fn_null_check` has been renamed to `useless_ptr_null_checks`
-  --> tests/ui/rename.rs:113:9
+  --> tests/ui/rename.rs:114:9
    |
 LL | #![warn(clippy::fn_null_check)]
    |         ^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `useless_ptr_null_checks`
 
 error: lint `clippy::for_loop_over_option` has been renamed to `for_loops_over_fallibles`
-  --> tests/ui/rename.rs:114:9
+  --> tests/ui/rename.rs:115:9
    |
 LL | #![warn(clippy::for_loop_over_option)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `for_loops_over_fallibles`
 
 error: lint `clippy::for_loop_over_result` has been renamed to `for_loops_over_fallibles`
-  --> tests/ui/rename.rs:115:9
+  --> tests/ui/rename.rs:116:9
    |
 LL | #![warn(clippy::for_loop_over_result)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `for_loops_over_fallibles`
 
 error: lint `clippy::for_loops_over_fallibles` has been renamed to `for_loops_over_fallibles`
-  --> tests/ui/rename.rs:116:9
+  --> tests/ui/rename.rs:117:9
    |
 LL | #![warn(clippy::for_loops_over_fallibles)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `for_loops_over_fallibles`
 
 error: lint `clippy::forget_copy` has been renamed to `forgetting_copy_types`
-  --> tests/ui/rename.rs:117:9
+  --> tests/ui/rename.rs:118:9
    |
 LL | #![warn(clippy::forget_copy)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_copy_types`
 
 error: lint `clippy::forget_ref` has been renamed to `forgetting_references`
-  --> tests/ui/rename.rs:118:9
+  --> tests/ui/rename.rs:119:9
    |
 LL | #![warn(clippy::forget_ref)]
    |         ^^^^^^^^^^^^^^^^^^ help: use the new name: `forgetting_references`
 
 error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
-  --> tests/ui/rename.rs:119:9
+  --> tests/ui/rename.rs:120:9
    |
 LL | #![warn(clippy::into_iter_on_array)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `array_into_iter`
 
 error: lint `clippy::invalid_atomic_ordering` has been renamed to `invalid_atomic_ordering`
-  --> tests/ui/rename.rs:120:9
+  --> tests/ui/rename.rs:121:9
    |
 LL | #![warn(clippy::invalid_atomic_ordering)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_atomic_ordering`
 
 error: lint `clippy::invalid_ref` has been renamed to `invalid_value`
-  --> tests/ui/rename.rs:121:9
+  --> tests/ui/rename.rs:122:9
    |
 LL | #![warn(clippy::invalid_ref)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_value`
 
 error: lint `clippy::invalid_utf8_in_unchecked` has been renamed to `invalid_from_utf8_unchecked`
-  --> tests/ui/rename.rs:122:9
+  --> tests/ui/rename.rs:123:9
    |
 LL | #![warn(clippy::invalid_utf8_in_unchecked)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_from_utf8_unchecked`
 
 error: lint `clippy::let_underscore_drop` has been renamed to `let_underscore_drop`
-  --> tests/ui/rename.rs:123:9
+  --> tests/ui/rename.rs:124:9
    |
 LL | #![warn(clippy::let_underscore_drop)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `let_underscore_drop`
 
 error: lint `clippy::maybe_misused_cfg` has been renamed to `unexpected_cfgs`
-  --> tests/ui/rename.rs:124:9
+  --> tests/ui/rename.rs:125:9
    |
 LL | #![warn(clippy::maybe_misused_cfg)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unexpected_cfgs`
 
 error: lint `clippy::mem_discriminant_non_enum` has been renamed to `enum_intrinsics_non_enums`
-  --> tests/ui/rename.rs:125:9
+  --> tests/ui/rename.rs:126:9
    |
 LL | #![warn(clippy::mem_discriminant_non_enum)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `enum_intrinsics_non_enums`
 
 error: lint `clippy::mismatched_target_os` has been renamed to `unexpected_cfgs`
-  --> tests/ui/rename.rs:126:9
+  --> tests/ui/rename.rs:127:9
    |
 LL | #![warn(clippy::mismatched_target_os)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unexpected_cfgs`
 
 error: lint `clippy::panic_params` has been renamed to `non_fmt_panics`
-  --> tests/ui/rename.rs:127:9
+  --> tests/ui/rename.rs:128:9
    |
 LL | #![warn(clippy::panic_params)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panics`
 
 error: lint `clippy::positional_named_format_parameters` has been renamed to `named_arguments_used_positionally`
-  --> tests/ui/rename.rs:128:9
+  --> tests/ui/rename.rs:129:9
    |
 LL | #![warn(clippy::positional_named_format_parameters)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `named_arguments_used_positionally`
 
 error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `dangling_pointers_from_temporaries`
-  --> tests/ui/rename.rs:129:9
+  --> tests/ui/rename.rs:130:9
    |
 LL | #![warn(clippy::temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `dangling_pointers_from_temporaries`
 
 error: lint `clippy::undropped_manually_drops` has been renamed to `undropped_manually_drops`
-  --> tests/ui/rename.rs:130:9
+  --> tests/ui/rename.rs:131:9
    |
 LL | #![warn(clippy::undropped_manually_drops)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `undropped_manually_drops`
 
 error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
-  --> tests/ui/rename.rs:131:9
+  --> tests/ui/rename.rs:132:9
    |
 LL | #![warn(clippy::unknown_clippy_lints)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unknown_lints`
 
 error: lint `clippy::unused_label` has been renamed to `unused_labels`
-  --> tests/ui/rename.rs:132:9
+  --> tests/ui/rename.rs:133:9
    |
 LL | #![warn(clippy::unused_label)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unused_labels`
 
 error: lint `clippy::vtable_address_comparisons` has been renamed to `ambiguous_wide_pointer_comparisons`
-  --> tests/ui/rename.rs:133:9
+  --> tests/ui/rename.rs:134:9
    |
 LL | #![warn(clippy::vtable_address_comparisons)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `ambiguous_wide_pointer_comparisons`
 
 error: lint `clippy::reverse_range_loop` has been renamed to `clippy::reversed_empty_ranges`
-  --> tests/ui/rename.rs:134:9
+  --> tests/ui/rename.rs:135:9
    |
 LL | #![warn(clippy::reverse_range_loop)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::reversed_empty_ranges`
 
-error: aborting due to 69 previous errors
+error: lint `clippy::transmute_int_to_float` has been renamed to `unnecessary_transmutes`
+  --> tests/ui/rename.rs:136:9
+   |
+LL | #![warn(clippy::transmute_int_to_float)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unnecessary_transmutes`
+
+error: lint `clippy::transmute_int_to_char` has been renamed to `unnecessary_transmutes`
+  --> tests/ui/rename.rs:137:9
+   |
+LL | #![warn(clippy::transmute_int_to_char)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unnecessary_transmutes`
+
+error: lint `clippy::transmute_float_to_int` has been renamed to `unnecessary_transmutes`
+  --> tests/ui/rename.rs:138:9
+   |
+LL | #![warn(clippy::transmute_float_to_int)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unnecessary_transmutes`
+
+error: lint `clippy::transmute_num_to_bytes` has been renamed to `unnecessary_transmutes`
+  --> tests/ui/rename.rs:139:9
+   |
+LL | #![warn(clippy::transmute_num_to_bytes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unnecessary_transmutes`
+
+error: aborting due to 73 previous errors
 
