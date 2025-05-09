@@ -49,6 +49,10 @@ fn main() {
         //~^ ERROR
         let y: char = char::from_u32_unchecked(y);
         //~^ ERROR
+        let y: i32 = u32::from('🐱').cast_signed();
+        //~^ ERROR
+        let y: char = char::from_u32_unchecked(i32::cast_unsigned(y));
+        //~^ ERROR
 
         let x: u16 = i16::cast_unsigned(8i16);
         //~^ ERROR
@@ -70,6 +74,11 @@ fn main() {
         let y: f64 = f64::from_bits(3u64);
         //~^ ERROR
         let y: u64 = f64::to_bits(2.0);
+        //~^ ERROR
+
+        let y: f64 = f64::from_bits(i64::cast_unsigned(1i64));
+        //~^ ERROR
+        let y: i64 = f64::to_bits(1f64).cast_signed();
         //~^ ERROR
 
         let z: bool = (1u8 == 1);
