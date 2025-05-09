@@ -1576,7 +1576,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::replace`]: crate::ptr::replace()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
-    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "1.88.0")]
     #[inline(always)]
     pub const unsafe fn replace(self, src: T) -> T
     where
@@ -2159,7 +2159,7 @@ impl<T: ?Sized> PartialOrd for *mut T {
     }
 }
 
-#[stable(feature = "raw_ptr_default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "raw_ptr_default", since = "1.88.0")]
 impl<T: ?Sized + Thin> Default for *mut T {
     /// Returns the default value of [`null_mut()`][crate::ptr::null_mut].
     fn default() -> Self {
