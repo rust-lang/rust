@@ -20,7 +20,7 @@ use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_rightside, render_stability_since_raw,
+    render_impl, render_repr_attributes_in_code, render_rightside, render_stability_since_raw,
     render_stability_since_raw_with_extra, write_section_heading,
 };
 use crate::clean;
@@ -1290,12 +1290,30 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                     .render_into(cx, it, true, w)?;
                 }
                 clean::TypeAliasInnerType::Union { fields } => {
-                    ItemUnion { cx, it, fields, generics: &t.generics, is_type_alias: true }
-                        .render_into(w)?;
+                    let ty = cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity();
+                    let union_def_id = ty.ty_adt_def().unwrap().did();
+
+                    ItemUnion {
+                        cx,
+                        it,
+                        fields,
+                        generics: &t.generics,
+                        is_type_alias: true,
+                        def_id: union_def_id,
+                    }
+                    .render_into(w)?;
                 }
                 clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
-                    DisplayStruct { ctor_kind: *ctor_kind, generics: &t.generics, fields }
-                        .render_into(cx, it, true, w)?;
+                    let ty = cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity();
+                    let struct_def_id = ty.ty_adt_def().unwrap().did();
+
+                    DisplayStruct {
+                        ctor_kind: *ctor_kind,
+                        generics: &t.generics,
+                        fields,
+                        def_id: struct_def_id,
+                    }
+                    .render_into(cx, it, true, w)?;
                 }
             }
         } else {
@@ -1417,8 +1435,9 @@ item_template!(
         fields: &'a [clean::Item],
         generics: &'a clean::Generics,
         is_type_alias: bool,
+        def_id: DefId,
     },
-    methods = [document, document_type_layout, render_attributes_in_pre, render_assoc_items]
+    methods = [document, document_type_layout, render_assoc_items]
 );
 
 impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
@@ -1449,13 +1468,41 @@ impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
             })
             .peekable()
     }
+
+    fn render_attributes_in_pre(&self) -> impl fmt::Display {
+        fmt::from_fn(move |f| {
+            if !self.is_type_alias {
+                for a in self.it.attributes_and_repr(self.cx.tcx(), self.cx.cache(), false) {
+                    writeln!(f, "{a}")?;
+                }
+            } else {
+                // For now we only render `repr` attributes for type aliases.
+                if let Some(repr) = clean::repr_attributes(
+                    self.cx.tcx(),
+                    self.cx.cache(),
+                    self.def_id,
+                    ItemType::Union,
+                ) {
+                    writeln!(f, "{repr}")?;
+                };
+            }
+            Ok(())
+        })
+    }
 }
 
 fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt::Display {
     fmt::from_fn(|w| {
-        ItemUnion { cx, it, fields: &s.fields, generics: &s.generics, is_type_alias: false }
-            .render_into(w)
-            .unwrap();
+        ItemUnion {
+            cx,
+            it,
+            fields: &s.fields,
+            generics: &s.generics,
+            is_type_alias: false,
+            def_id: it.def_id().unwrap(),
+        }
+        .render_into(w)
+        .unwrap();
         Ok(())
     })
 }
@@ -1502,7 +1549,12 @@ impl<'a> DisplayEnum<'a> {
         let has_stripped_entries = variants_len != variants_count;
 
         wrap_item(w, |w| {
-            render_attributes_in_code(w, it, cx);
+            if !is_type_alias {
+                render_attributes_in_code(w, it, cx);
+            } else {
+                // For now we only render `repr` attributes for type aliases.
+                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Enum);
+            }
             write!(
                 w,
                 "{}enum {}{}{}",
@@ -1521,19 +1573,22 @@ impl<'a> DisplayEnum<'a> {
             )
         })?;
 
-        if !is_type_alias {
+        let def_id = it.item_id.expect_def_id();
+        let layout_def_id = if !is_type_alias {
             write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
-        }
+            def_id
+        } else {
+            self.def_id
+        };
 
         if variants_count != 0 {
             write!(w, "{}", item_variants(cx, it, self.variants, self.def_id))?;
         }
-        let def_id = it.item_id.expect_def_id();
         write!(
             w,
             "{}{}",
             render_assoc_items(cx, it, def_id, AssocItemRender::All),
-            document_type_layout(cx, def_id)
+            document_type_layout(cx, layout_def_id)
         )
     }
 }
@@ -1938,6 +1993,7 @@ struct DisplayStruct<'a> {
     ctor_kind: Option<CtorKind>,
     generics: &'a clean::Generics,
     fields: &'a [clean::Item],
+    def_id: DefId,
 }
 
 impl<'a> DisplayStruct<'a> {
@@ -1949,7 +2005,12 @@ impl<'a> DisplayStruct<'a> {
         w: &mut W,
     ) -> fmt::Result {
         wrap_item(w, |w| {
-            render_attributes_in_code(w, it, cx);
+            if !is_type_alias {
+                render_attributes_in_code(w, it, cx);
+            } else {
+                // For now we only render `repr` attributes for type aliases.
+                render_repr_attributes_in_code(w, cx, self.def_id, ItemType::Struct);
+            }
             write!(
                 w,
                 "{}",
@@ -1974,8 +2035,13 @@ impl<'a> DisplayStruct<'a> {
 
 fn item_struct(cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) -> impl fmt::Display {
     fmt::from_fn(|w| {
-        DisplayStruct { ctor_kind: s.ctor_kind, generics: &s.generics, fields: s.fields.as_slice() }
-            .render_into(cx, it, false, w)
+        DisplayStruct {
+            ctor_kind: s.ctor_kind,
+            generics: &s.generics,
+            fields: s.fields.as_slice(),
+            def_id: it.def_id().unwrap(),
+        }
+        .render_into(cx, it, false, w)
     })
 }
 
