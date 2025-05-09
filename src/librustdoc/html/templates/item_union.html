@@ -2,7 +2,7 @@
     {{ self.render_attributes_in_pre()|safe }}
     {{ self.render_union()|safe }}
 </code></pre>
-{% if self.document_union %}
+{% if !self.is_type_alias %}
     {{ self.document()|safe }}
 {% endif %}
 {% if self.fields_iter().peek().is_some() %}
