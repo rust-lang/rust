@@ -1,7 +1,9 @@
 use rustc_ast::ptr::P;
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::{DUMMY_NODE_ID, EIIImpl, EIIMacroFor, ItemKind, ast, token, tokenstream};
+use rustc_ast::{
+    DUMMY_NODE_ID, EIIImpl, EIIMacroFor, ItemKind, Stmt, StmtKind, ast, token, tokenstream,
+};
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
@@ -53,7 +55,13 @@ fn eii_(
 ) -> Vec<Annotatable> {
     let span = ecx.with_def_site_ctxt(span);
 
-    let Annotatable::Item(item) = item else {
+    let (item, stmt) = if let Annotatable::Item(item) = item {
+        (item, false)
+    } else if let Annotatable::Stmt(ref stmt) = item
+        && let StmtKind::Item(ref item) = stmt.kind
+    {
+        (item.clone(), true)
+    } else {
         ecx.dcx()
             .emit_err(EIIMacroExpectedFunction { span, name: path_to_string(&meta_item.path) });
         return vec![item];
@@ -106,7 +114,7 @@ fn eii_(
             is_default: true, // important!
         });
 
-        return_items.push(Annotatable::Item(P(ast::Item {
+        return_items.push(P(ast::Item {
             attrs: ThinVec::new(),
             id: ast::DUMMY_NODE_ID,
             span,
@@ -128,7 +136,7 @@ fn eii_(
                             stmts: thin_vec![ast::Stmt {
                                 id: DUMMY_NODE_ID,
                                 kind: ast::StmtKind::Item(P(ast::Item {
-                                    attrs: thin_vec![], // TODO: re-add some original attrs
+                                    attrs: thin_vec![], // FIXME: re-add some original attrs
                                     id: DUMMY_NODE_ID,
                                     span: item_span,
                                     vis: ast::Visibility {
@@ -155,7 +163,7 @@ fn eii_(
                 define_opaque: None,
             })),
             tokens: None,
-        })))
+        }))
     }
 
     let decl_span = span.to(func.sig.span);
@@ -199,7 +207,7 @@ fn eii_(
         style: ast::AttrStyle::Outer,
         span,
     });
-    let extern_block = Annotatable::Item(P(ast::Item {
+    let extern_block = P(ast::Item {
         attrs: ast::AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
         span,
@@ -218,7 +226,7 @@ fn eii_(
             })]),
         }),
         tokens: None,
-    }));
+    });
 
     let mut macro_attrs = attrs.clone();
     macro_attrs.push(
@@ -246,7 +254,7 @@ fn eii_(
         },
     );
 
-    let macro_def = Annotatable::Item(P(ast::Item {
+    let macro_def = P(ast::Item {
         attrs: macro_attrs,
         id: ast::DUMMY_NODE_ID,
         span,
@@ -286,12 +294,21 @@ fn eii_(
             },
         ),
         tokens: None,
-    }));
+    });
 
     return_items.push(extern_block);
     return_items.push(macro_def);
 
-    return_items
+    if stmt {
+        return_items
+            .into_iter()
+            .map(|i| {
+                Annotatable::Stmt(P(Stmt { id: DUMMY_NODE_ID, kind: StmtKind::Item(i), span }))
+            })
+            .collect()
+    } else {
+        return_items.into_iter().map(|i| Annotatable::Item(i)).collect()
+    }
 }
 
 use crate::errors::{
@@ -305,10 +322,17 @@ pub(crate) fn eii_macro_for(
     meta_item: &ast::MetaItem,
     mut item: Annotatable,
 ) -> Vec<Annotatable> {
-    let Annotatable::Item(i) = &mut item else {
+    let i = if let Annotatable::Item(ref mut item) = item {
+        item
+    } else if let Annotatable::Stmt(ref mut stmt) = item
+        && let StmtKind::Item(ref mut item) = stmt.kind
+    {
+        item
+    } else {
         ecx.dcx().emit_err(EIIMacroForExpectedMacro { span });
         return vec![item];
     };
+
     let ItemKind::MacroDef(_, d) = &mut i.kind else {
         ecx.dcx().emit_err(EIIMacroForExpectedMacro { span });
         return vec![item];
@@ -353,7 +377,13 @@ pub(crate) fn eii_macro(
     meta_item: &ast::MetaItem,
     mut item: Annotatable,
 ) -> Vec<Annotatable> {
-    let Annotatable::Item(i) = &mut item else {
+    let i = if let Annotatable::Item(ref mut item) = item {
+        item
+    } else if let Annotatable::Stmt(ref mut stmt) = item
+        && let StmtKind::Item(ref mut item) = stmt.kind
+    {
+        item
+    } else {
         ecx.dcx()
             .emit_err(EIIMacroExpectedFunction { span, name: path_to_string(&meta_item.path) });
         return vec![item];

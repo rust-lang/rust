@@ -576,7 +576,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_path_simple_eii(&mut self, id: NodeId, path: &Path) -> Option<DefId> {
-        let res = self.resolver.get_partial_res(id).unwrap();
+        let res = self.resolver.get_partial_res(id)?;
         let Some(did) = res.expect_full_res().opt_def_id() else {
             self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
             return None;

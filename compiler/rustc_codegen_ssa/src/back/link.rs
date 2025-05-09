@@ -1988,7 +1988,6 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor
 /// used in any sections, so the linker will therefore pick relevant rlibs for linking, but
 /// unused `#[no_mangle]` or `#[used]` can still be discard by GC sections.
 ///
-// TODO: does EII solves this?
 /// There's a few internal crates in the standard library (aka libcore and
 /// libstd) which actually have a circular dependence upon one another. This
 /// currently arises through "weak lang items" where libcore requires things
