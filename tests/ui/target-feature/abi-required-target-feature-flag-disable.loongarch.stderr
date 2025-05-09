@@ -3,9 +3,5 @@ warning: target feature `d` must be enabled to ensure that the ABI of the curren
    = note: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
 
-warning: unstable feature specified for `-Ctarget-feature`: `d`
-   |
-   = note: this feature is not stably supported; its behavior can change in the future
-
-warning: 2 warnings emitted
+warning: 1 warning emitted
 
