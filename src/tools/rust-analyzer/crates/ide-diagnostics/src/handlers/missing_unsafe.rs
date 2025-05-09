@@ -23,6 +23,7 @@ pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsaf
         format!("{operation} is unsafe and requires an unsafe function or block"),
         d.node.map(|it| it.into()),
     )
+    .stable()
     .with_fixes(fixes(ctx, d))
 }
 
