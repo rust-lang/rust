@@ -1760,12 +1760,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if is_match {
             let generics = self.tcx().generics_of(obligation.predicate.def_id);
-            // FIXME(generic-associated-types): Addresses aggressive inference in #92917.
+            // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
             // If this type is a GAT, and of the GAT args resolve to something new,
             // that means that we must have newly inferred something about the GAT.
             // We should give up in that case.
-            // FIXME(generic-associated-types): This only detects one layer of inference,
-            // which is probably not what we actually want, but fixing it causes some ambiguity:
+            //
+            // This only detects one layer of inference, which is probably not what we actually
+            // want, but fixing it causes some ambiguity:
             // <https://github.com/rust-lang/rust/issues/125196>.
             if !generics.is_own_empty()
                 && obligation.predicate.args[generics.parent_count..].iter().any(|&p| {

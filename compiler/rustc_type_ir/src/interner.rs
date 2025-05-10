@@ -290,6 +290,7 @@ pub trait Interner:
         self_ty: Self::Ty,
         f: impl FnMut(Self::DefId),
     );
+    fn for_each_blanket_impl(self, trait_def_id: Self::DefId, f: impl FnMut(Self::DefId));
 
     fn has_item_definition(self, def_id: Self::DefId) -> bool;
 

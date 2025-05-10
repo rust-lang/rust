@@ -589,7 +589,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
         }
 
-        let trait_impls = tcx.trait_impls_of(trait_def_id);
+        #[allow(rustc::usage_of_type_ir_traits)]
+        self.for_each_blanket_impl(trait_def_id, f)
+    }
+    fn for_each_blanket_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
+        let trait_impls = self.trait_impls_of(trait_def_id);
         for &impl_def_id in trait_impls.blanket_impls() {
             f(impl_def_id);
         }
@@ -3333,16 +3337,11 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn next_trait_solver_globally(self) -> bool {
-        self.sess.opts.unstable_opts.next_solver.globally
+        self.sess.opts.unstable_opts.next_solver.globally && !self.features().generic_const_exprs()
     }
 
     pub fn next_trait_solver_in_coherence(self) -> bool {
         self.sess.opts.unstable_opts.next_solver.coherence
-    }
-
-    #[allow(rustc::bad_opt_access)]
-    pub fn use_typing_mode_borrowck(self) -> bool {
-        self.next_trait_solver_globally() || self.sess.opts.unstable_opts.typing_mode_borrowck
     }
 
     pub fn is_impl_trait_in_trait(self, def_id: DefId) -> bool {

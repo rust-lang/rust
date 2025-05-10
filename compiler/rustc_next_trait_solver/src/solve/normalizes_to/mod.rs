@@ -129,7 +129,40 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<(), NoSolution> {
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
+        let cx = ecx.cx();
+        // FIXME(generic_associated_types): Addresses aggressive inference in #92917.
+        //
+        // If this type is a GAT with currently unconstrained arguments, we do not
+        // want to normalize it via a candidate which only applies for a specific
+        // instantiation. We could otherwise keep the GAT as rigid and succeed this way.
+        // See tests/ui/generic-associated-types/no-incomplete-gat-arg-inference.rs.
+        //
+        // This only avoids normalization if the GAT arguments are fully unconstrained.
+        // This is quite arbitrary but fixing it causes some ambiguity, see #125196.
+        match goal.predicate.alias.kind(cx) {
+            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                for arg in goal.predicate.alias.own_args(cx).iter() {
+                    let Some(term) = arg.as_term() else {
+                        continue;
+                    };
+                    let term = ecx.structurally_normalize_term(goal.param_env, term)?;
+                    if term.is_infer() {
+                        return ecx.evaluate_added_goals_and_make_canonical_response(
+                            Certainty::AMBIGUOUS,
+                        );
+                    }
+                }
+            }
+            ty::AliasTermKind::OpaqueTy
+            | ty::AliasTermKind::InherentTy
+            | ty::AliasTermKind::InherentConst
+            | ty::AliasTermKind::FreeTy
+            | ty::AliasTermKind::FreeConst
+            | ty::AliasTermKind::UnevaluatedConst => {}
+        }
+
         let projection_pred = assumption.as_projection_clause().unwrap();
 
         let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
@@ -139,7 +172,6 @@ where
 
         // Add GAT where clauses from the trait's definition
         // FIXME: We don't need these, since these are the type's own WF obligations.
-        let cx = ecx.cx();
         ecx.add_goals(
             GoalSource::AliasWellFormed,
             cx.own_predicates_of(goal.predicate.def_id())
@@ -147,7 +179,7 @@ where
                 .map(|pred| goal.with(cx, pred)),
         );
 
-        Ok(())
+        then(ecx)
     }
 
     fn consider_additional_alias_assumptions(

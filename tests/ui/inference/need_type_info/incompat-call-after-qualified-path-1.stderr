@@ -2,7 +2,7 @@ error[E0282]: type annotations needed
   --> $DIR/incompat-call-after-qualified-path-1.rs:25:6
    |
 LL |   f(|a, b| a.cmp(b));
-   |      ^     - type must be known at this point
+   |      ^       --- type must be known at this point
    |
 help: consider giving this closure parameter an explicit type
    |

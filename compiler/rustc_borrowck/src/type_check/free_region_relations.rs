@@ -17,7 +17,7 @@ use type_op::TypeOpOutput;
 use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
 use crate::universal_regions::UniversalRegions;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct UniversalRegionRelations<'tcx> {
     pub(crate) universal_regions: UniversalRegions<'tcx>,
 
@@ -154,13 +154,6 @@ impl UniversalRegionRelations<'_> {
     /// This will only ever be true for universally quantified regions.
     pub(crate) fn outlives(&self, fr1: RegionVid, fr2: RegionVid) -> bool {
         self.outlives.contains(fr1, fr2)
-    }
-
-    /// Returns `true` if fr1 is known to equal fr2.
-    ///
-    /// This will only ever be true for universally quantified regions.
-    pub(crate) fn equal(&self, fr1: RegionVid, fr2: RegionVid) -> bool {
-        self.outlives.contains(fr1, fr2) && self.outlives.contains(fr2, fr1)
     }
 
     /// Returns a vector of free regions `x` such that `fr1: x` is
