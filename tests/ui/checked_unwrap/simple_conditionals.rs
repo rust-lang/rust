@@ -240,6 +240,39 @@ fn issue14725() {
     }
 }
 
+fn issue14763(x: Option<String>, r: Result<(), ()>) {
+    _ = || {
+        if x.is_some() {
+            _ = x.unwrap();
+            //~^ unnecessary_unwrap
+        } else {
+            _ = x.unwrap();
+            //~^ panicking_unwrap
+        }
+    };
+    _ = || {
+        if r.is_ok() {
+            _ = r.as_ref().unwrap();
+            //~^ unnecessary_unwrap
+        } else {
+            _ = r.as_ref().unwrap();
+            //~^ panicking_unwrap
+        }
+    };
+}
+
+const ISSUE14763: fn(Option<String>) = |x| {
+    _ = || {
+        if x.is_some() {
+            _ = x.unwrap();
+            //~^ unnecessary_unwrap
+        } else {
+            _ = x.unwrap();
+            //~^ panicking_unwrap
+        }
+    }
+};
+
 fn check_expect() {
     let x = Some(());
     if x.is_some() {

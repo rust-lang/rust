@@ -292,6 +292,10 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
         if expr.span.in_external_macro(self.cx.tcx.sess.source_map()) {
             return;
         }
+        // Skip checking inside closures since they are visited through `Unwrap::check_fn()` already.
+        if matches!(expr.kind, ExprKind::Closure(_)) {
+            return;
+        }
         if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr) {
             walk_expr(self, cond);
             self.visit_branch(expr, cond, then, false);
