@@ -299,6 +299,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 }
                 from_target_feature_attr(
                     tcx,
+                    did,
                     attr,
                     rust_target_features,
                     &mut codegen_fn_attrs.target_features,
