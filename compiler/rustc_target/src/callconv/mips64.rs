@@ -2,9 +2,7 @@ use rustc_abi::{
     BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
 };
 
-use crate::callconv::{
-    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode, Uniform,
-};
+use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
@@ -140,16 +138,7 @@ where
 
     // Extract first 8 chunks as the prefix
     let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
-    arg.cast_to(CastTarget {
-        prefix,
-        rest: Uniform::new(Reg::i64(), rest_size),
-        attrs: ArgAttributes {
-            regular: ArgAttribute::default(),
-            arg_ext: ArgExtension::None,
-            pointee_size: Size::ZERO,
-            pointee_align: None,
-        },
-    });
+    arg.cast_to(CastTarget::prefixed(prefix, Uniform::new(Reg::i64(), rest_size)));
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)

@@ -197,6 +197,17 @@ impl ArgAttributes {
     }
 }
 
+impl From<ArgAttribute> for ArgAttributes {
+    fn from(value: ArgAttribute) -> Self {
+        Self {
+            regular: value,
+            arg_ext: ArgExtension::None,
+            pointee_size: Size::ZERO,
+            pointee_align: None,
+        }
+    }
+}
+
 /// An argument passed entirely registers with the
 /// same kind (e.g., HFA / HVA on PPC64 and AArch64).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
@@ -251,6 +262,9 @@ impl Uniform {
 #[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
+    /// The offset of `rest` from the start of the value. Currently only implemented for a `Reg`
+    /// pair created by the `offset_pair` method.
+    pub rest_offset: Option<Size>,
     pub rest: Uniform,
     pub attrs: ArgAttributes,
 }
@@ -263,42 +277,45 @@ impl From<Reg> for CastTarget {
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        CastTarget {
-            prefix: [None; 8],
-            rest: uniform,
-            attrs: ArgAttributes {
-                regular: ArgAttribute::default(),
-                arg_ext: ArgExtension::None,
-                pointee_size: Size::ZERO,
-                pointee_align: None,
-            },
-        }
+        Self::prefixed([None; 8], uniform)
     }
 }
 
 impl CastTarget {
-    pub fn pair(a: Reg, b: Reg) -> CastTarget {
-        CastTarget {
+    pub fn prefixed(prefix: [Option<Reg>; 8], rest: Uniform) -> Self {
+        Self { prefix, rest_offset: None, rest, attrs: ArgAttributes::new() }
+    }
+
+    pub fn offset_pair(a: Reg, offset_from_start: Size, b: Reg) -> Self {
+        Self {
             prefix: [Some(a), None, None, None, None, None, None, None],
-            rest: Uniform::from(b),
-            attrs: ArgAttributes {
-                regular: ArgAttribute::default(),
-                arg_ext: ArgExtension::None,
-                pointee_size: Size::ZERO,
-                pointee_align: None,
-            },
+            rest_offset: Some(offset_from_start),
+            rest: b.into(),
+            attrs: ArgAttributes::new(),
         }
+    }
+
+    pub fn with_attrs(mut self, attrs: ArgAttributes) -> Self {
+        self.attrs = attrs;
+        self
+    }
+
+    pub fn pair(a: Reg, b: Reg) -> CastTarget {
+        Self::prefixed([Some(a), None, None, None, None, None, None, None], Uniform::from(b))
     }
 
     /// When you only access the range containing valid data, you can use this unaligned size;
     /// otherwise, use the safer `size` method.
     pub fn unaligned_size<C: HasDataLayout>(&self, _cx: &C) -> Size {
         // Prefix arguments are passed in specific designated registers
-        let prefix_size = self
-            .prefix
-            .iter()
-            .filter_map(|x| x.map(|reg| reg.size))
-            .fold(Size::ZERO, |acc, size| acc + size);
+        let prefix_size = if let Some(offset_from_start) = self.rest_offset {
+            offset_from_start
+        } else {
+            self.prefix
+                .iter()
+                .filter_map(|x| x.map(|reg| reg.size))
+                .fold(Size::ZERO, |acc, size| acc + size)
+        };
         // Remaining arguments are passed in chunks of the unit size
         let rest_size =
             self.rest.unit.size * self.rest.total.bytes().div_ceil(self.rest.unit.size.bytes());
@@ -322,9 +339,22 @@ impl CastTarget {
     /// Checks if these two `CastTarget` are equal enough to be considered "the same for all
     /// function call ABIs".
     pub fn eq_abi(&self, other: &Self) -> bool {
-        let CastTarget { prefix: prefix_l, rest: rest_l, attrs: attrs_l } = self;
-        let CastTarget { prefix: prefix_r, rest: rest_r, attrs: attrs_r } = other;
-        prefix_l == prefix_r && rest_l == rest_r && attrs_l.eq_abi(attrs_r)
+        let CastTarget {
+            prefix: prefix_l,
+            rest_offset: rest_offset_l,
+            rest: rest_l,
+            attrs: attrs_l,
+        } = self;
+        let CastTarget {
+            prefix: prefix_r,
+            rest_offset: rest_offset_r,
+            rest: rest_r,
+            attrs: attrs_r,
+        } = other;
+        prefix_l == prefix_r
+            && rest_offset_l == rest_offset_r
+            && rest_l == rest_r
+            && attrs_l.eq_abi(attrs_r)
     }
 }
 
