@@ -2986,7 +2986,7 @@ impl<T> [T] {
         self.binary_search_by(|k| f(k).cmp(b))
     }
 
-    /// Sorts the slice **without** preserving the initial order of equal elements.
+    /// Sorts the slice in ascending order **without** preserving the initial order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
@@ -3047,8 +3047,8 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut T::lt);
     }
 
-    /// Sorts the slice with a comparison function, **without** preserving the initial order of
-    /// equal elements.
+    /// Sorts the slice in ascending order with a comparison function, **without** preserving the
+    /// initial order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
@@ -3102,8 +3102,8 @@ impl<T> [T] {
         sort::unstable::sort(self, &mut |a, b| compare(a, b) == Ordering::Less);
     }
 
-    /// Sorts the slice with a key extraction function, **without** preserving the initial order of
-    /// equal elements.
+    /// Sorts the slice in ascending order with a key extraction function, **without** preserving
+    /// the initial order of equal elements.
     ///
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
