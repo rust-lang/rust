@@ -7,9 +7,9 @@ Binders can wrap an arbitrary Rust type `T`, not just a `Ty`.
 So, how do we implement the `instantiate` methods on the `Early/Binder` types?
 
 The answer is a couple of traits:
-[`TypeFoldable`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFoldable.html)
+[`TypeFoldable`]
 and
-[`TypeFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html).
+[`TypeFolder`].
 
 - `TypeFoldable` is implemented by types that embed type information. It allows you to recursively
   process the contents of the `TypeFoldable` and do stuff to them.
@@ -17,7 +17,7 @@ and
   `TypeFoldable`.
 
 For example, the `TypeFolder` trait has a method
-[`fold_ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html#method.fold_ty)
+[`fold_ty`]
 that takes a type as input and returns a new type as a result. `TypeFoldable` invokes the
 `TypeFolder` `fold_foo` methods on itself, giving the `TypeFolder` access to its contents (the
 types, regions, etc that are contained within).
@@ -36,7 +36,7 @@ So to reiterate:
 - `TypeFoldable`  is a trait that is implemented by things that embed types.
 
 In the case of `subst`, we can see that it is implemented as a `TypeFolder`:
-[`ArgFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/binder/struct.ArgFolder.html).
+[`ArgFolder`].
 Looking at its implementation, we see where the actual substitutions are happening.
 
 However, you might also notice that the implementation calls this `super_fold_with` method. What is
@@ -91,17 +91,25 @@ things. We only want to do something when we reach a type. That means there may 
 implementations. Such implementations of `TypeFoldable` tend to be pretty tedious to write by hand.
 For this reason, there is a `derive` macro that allows you to `#![derive(TypeFoldable)]`. It is
 defined
-[here](https://github.com/rust-lang/rust/blob/master/compiler/rustc_macros/src/type_foldable.rs).
+[here].
 
 **`subst`** In the case of substitutions the [actual
-folder](https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L440-L451)
+folder]
 is going to be doing the indexing we’ve already mentioned. There we define a `Folder` and call
 `fold_with` on the `TypeFoldable` to process yourself.  Then
-[fold_ty](https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L512-L536)
+[fold_ty]
 the method that process each type it looks for a `ty::Param` and for those it replaces it for
 something from the list of substitutions, otherwise recursively process the type.  To replace it,
 calls
-[ty_for_param](https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L552-L587)
+[ty_for_param]
 and all that does is index into the list of substitutions with the index of the `Param`.
 
 [a previous chapter]: ty_module/instantiating_binders.md
+[`TypeFoldable`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFoldable.html
+[`TypeFolder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html
+[`fold_ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html#method.fold_ty
+[`ArgFolder`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/binder/struct.ArgFolder.html
+[here]: https://github.com/rust-lang/rust/blob/master/compiler/rustc_macros/src/type_foldable.rs
+[actual folder]: https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L440-L451
+[fold_ty]: https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L512-L536
+[ty_for_param]: https://github.com/rust-lang/rust/blob/75ff3110ac6d8a0259023b83fd20d7ab295f8dd6/src/librustc_middle/ty/subst.rs#L552-L587
