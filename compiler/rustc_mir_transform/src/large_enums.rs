@@ -4,7 +4,6 @@ use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
-use rustc_session::Session;
 
 use crate::patch::MirPatch;
 
@@ -29,11 +28,11 @@ pub(super) struct EnumSizeOpt {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for EnumSizeOpt {
-    fn is_enabled(&self, sess: &Session) -> bool {
+    fn is_enabled(&self, tcx: TyCtxt<'tcx>) -> bool {
         // There are some differences in behavior on wasm and ARM that are not properly
         // understood, so we conservatively treat this optimization as unsound:
         // https://github.com/rust-lang/rust/pull/85158#issuecomment-1101836457
-        sess.opts.unstable_opts.unsound_mir_opts || sess.mir_opt_level() >= 3
+        tcx.sess.opts.unstable_opts.unsound_mir_opts || tcx.sess.mir_opt_level() >= 3
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

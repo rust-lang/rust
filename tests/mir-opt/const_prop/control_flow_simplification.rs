@@ -1,7 +1,7 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //@ test-mir-pass: GVN
-//@ compile-flags: -Zmir-opt-level=1
+//@ compile-flags: -Zmir-opt-level=1 -Zmir-enable-passes=-CopyProp-partial
 
 trait NeedsDrop: Sized {
     const NEEDS: bool = std::mem::needs_drop::<Self>();
