@@ -103,10 +103,20 @@ fn get_simple_intrinsic<'ll>(
         sym::minnumf64 => "llvm.minnum.f64",
         sym::minnumf128 => "llvm.minnum.f128",
 
+        sym::minimumf16 => "llvm.minimum.f16",
+        sym::minimumf32 => "llvm.minimum.f32",
+        sym::minimumf64 => "llvm.minimum.f64",
+        sym::minimumf128 => "llvm.minimum.f128",
+
         sym::maxnumf16 => "llvm.maxnum.f16",
         sym::maxnumf32 => "llvm.maxnum.f32",
         sym::maxnumf64 => "llvm.maxnum.f64",
         sym::maxnumf128 => "llvm.maxnum.f128",
+
+        sym::maximumf16 => "llvm.maximum.f16",
+        sym::maximumf32 => "llvm.maximum.f32",
+        sym::maximumf64 => "llvm.maximum.f64",
+        sym::maximumf128 => "llvm.maximum.f128",
 
         sym::copysignf16 => "llvm.copysign.f16",
         sym::copysignf32 => "llvm.copysign.f32",
