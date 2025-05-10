@@ -27,6 +27,10 @@ impl<'tcx> Visitor<'tcx> for NestedBodiesVisitor<'tcx> {
             self.visit_body(body);
         }
     }
+
+    fn visit_pat(&mut self, _: &'tcx hir::Pat<'tcx>) {}
+
+    fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx, hir::AmbigArg>) {}
 }
 
 pub(super) fn provide(providers: &mut Providers) {
