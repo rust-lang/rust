@@ -3,7 +3,7 @@ use std::{fmt, io};
 
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::ty::Ty;
@@ -169,4 +169,27 @@ pub(crate) struct TypeLengthLimit {
     pub was_written: bool,
     pub path: PathBuf,
     pub type_length: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_forbidden_target_feature_attr)]
+pub struct ForbiddenTargetFeatureAttr<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub feature: &'a str,
+    pub reason: &'a str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(middle_aarch64_softfloat_neon)]
+pub(crate) struct Aarch64SoftfloatNeon;
+
+#[derive(Diagnostic)]
+#[diag(middle_target_feature_safe_trait)]
+pub(crate) struct TargetFeatureSafeTrait {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(middle_label_def)]
+    pub def: Span,
 }

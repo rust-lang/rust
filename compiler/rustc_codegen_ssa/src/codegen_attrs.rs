@@ -16,6 +16,7 @@ use rustc_middle::middle::codegen_fn_attrs::{
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
+use rustc_middle::target_features::{check_target_feature_trait_unsafe, from_target_feature_attr};
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::{Session, lint};
@@ -24,7 +25,6 @@ use rustc_target::spec::SanitizerSet;
 use tracing::debug;
 
 use crate::errors;
-use crate::target_features::{check_target_feature_trait_unsafe, from_target_feature_attr};
 
 fn linkage_by_name(tcx: TyCtxt<'_>, def_id: LocalDefId, name: &str) -> Linkage {
     use rustc_middle::mir::mono::Linkage::*;

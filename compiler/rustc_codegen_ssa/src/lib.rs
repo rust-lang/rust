@@ -58,7 +58,6 @@ pub mod meth;
 pub mod mir;
 pub mod mono_item;
 pub mod size_of_val;
-pub mod target_features;
 pub mod traits;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -273,7 +272,6 @@ pub enum CodegenErrors {
 pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide(providers);
-    crate::target_features::provide(providers);
     crate::codegen_attrs::provide(providers);
     providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
 }

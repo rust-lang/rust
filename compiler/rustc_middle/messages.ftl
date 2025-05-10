@@ -1,3 +1,5 @@
+middle_aarch64_softfloat_neon = enabling the `neon` target feature on the current target is unsound due to ABI issues
+
 middle_assert_async_resume_after_drop = `async fn` resumed after async drop
 
 middle_assert_async_resume_after_panic = `async fn` resumed after panicking
@@ -78,6 +80,9 @@ middle_erroneous_constant = erroneous constant encountered
 middle_failed_writing_file =
     failed to write file {$path}: {$error}"
 
+middle_forbidden_target_feature_attr =
+    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
+
 middle_layout_cycle =
     a cycle occurred during layout computation
 
@@ -111,6 +116,10 @@ middle_requires_lang_item = requires `{$name}` lang_item
 middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute
+
+middle_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
+    .label = cannot be applied to safe trait method
+    .label_def = not an `unsafe` function
 
 middle_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
 

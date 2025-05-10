@@ -1,7 +1,5 @@
 codegen_ssa_L4Bender_exporting_symbols_unimplemented = exporting symbols not implemented yet for L4Bender
 
-codegen_ssa_aarch64_softfloat_neon = enabling the `neon` target feature on the current target is unsound due to ABI issues
-
 codegen_ssa_add_native_library = failed to add native library {$library_path}: {$error}
 
 codegen_ssa_aix_strip_not_used = using host's `strip` binary to cross-compile to AIX which is not guaranteed to work
@@ -69,9 +67,6 @@ codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
-
-codegen_ssa_forbidden_target_feature_attr =
-    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
 
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
@@ -277,10 +272,6 @@ codegen_ssa_symbol_file_write_failure = failed to write symbols file: {$error}
 
 codegen_ssa_target_feature_disable_or_enable =
     the target features {$features} must all be either enabled or disabled together
-
-codegen_ssa_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
-    .label = cannot be applied to safe trait method
-    .label_def = not an `unsafe` function
 
 codegen_ssa_thorin_decompress_data = failed to decompress compressed section
 

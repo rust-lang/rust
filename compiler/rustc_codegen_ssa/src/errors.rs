@@ -1183,25 +1183,6 @@ pub(crate) struct InvalidLinkOrdinalFormat {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_target_feature_safe_trait)]
-pub(crate) struct TargetFeatureSafeTrait {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(codegen_ssa_label_def)]
-    pub def: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_forbidden_target_feature_attr)]
-pub struct ForbiddenTargetFeatureAttr<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub feature: &'a str,
-    pub reason: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_failed_to_get_layout)]
 pub struct FailedToGetLayout<'tcx> {
     #[primary_span]
@@ -1316,7 +1297,3 @@ pub(crate) struct XcrunSdkPathWarning {
     pub sdk_name: &'static str,
     pub stderr: String,
 }
-
-#[derive(LintDiagnostic)]
-#[diag(codegen_ssa_aarch64_softfloat_neon)]
-pub(crate) struct Aarch64SoftfloatNeon;

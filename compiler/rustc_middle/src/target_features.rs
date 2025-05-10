@@ -1,3 +1,4 @@
+//! Shared utilities for dealing with target features that haven't (yet) found a better home.
 use rustc_attr_data_structures::InstructionSetAttr;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -5,19 +6,19 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
-use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
-use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
+use rustc_lint_defs::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::target_features::{self, Stability};
 
-use crate::errors;
+use crate::error;
+use crate::middle::codegen_fn_attrs::TargetFeature;
+use crate::query::Providers;
+use crate::ty::TyCtxt;
 
 /// Compute the enabled target features from the `#[target_feature]` function attribute.
 /// Enabled target features are added to `target_features`.
-pub(crate) fn from_target_feature_attr(
+pub fn from_target_feature_attr(
     tcx: TyCtxt<'_>,
     did: LocalDefId,
     attr: &hir::Attribute,
@@ -67,7 +68,7 @@ pub(crate) fn from_target_feature_attr(
             // Only allow target features whose feature gates have been enabled
             // and which are permitted to be toggled.
             if let Err(reason) = stability.toggle_allowed() {
-                tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                tcx.dcx().emit_err(error::ForbiddenTargetFeatureAttr {
                     span: item.span(),
                     feature,
                     reason,
@@ -101,10 +102,10 @@ pub(crate) fn from_target_feature_attr(
                                     AARCH64_SOFTFLOAT_NEON,
                                     tcx.local_def_id_to_hir_id(did),
                                     item.span(),
-                                    errors::Aarch64SoftfloatNeon,
+                                    error::Aarch64SoftfloatNeon,
                                 );
                             } else {
-                                tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                                tcx.dcx().emit_err(error::ForbiddenTargetFeatureAttr {
                                     span: item.span(),
                                     feature: name.as_str(),
                                     reason: "this feature is incompatible with the target ABI",
@@ -143,14 +144,12 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
 
 /// Checks the function annotated with `#[target_feature]` is not a safe
 /// trait method implementation, reporting an error if it is.
-pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
+pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
         if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
-            tcx.dcx().emit_err(errors::TargetFeatureSafeTrait {
-                span: attr_span,
-                def: tcx.def_span(id),
-            });
+            tcx.dcx()
+                .emit_err(error::TargetFeatureSafeTrait { span: attr_span, def: tcx.def_span(id) });
         }
     }
 }
