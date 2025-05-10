@@ -1593,10 +1593,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let build = builder.build.build;
             compiler = builder.compiler(compiler.stage - 1, build);
             let test_stage = compiler.stage + 1;
-            (test_stage, format!("stage{}-{}", test_stage, build))
+            (test_stage, format!("stage{test_stage}-{build}"))
         } else {
             let stage = compiler.stage;
-            (stage, format!("stage{}-{}", stage, target))
+            (stage, format!("stage{stage}-{target}"))
         };
 
         if suite.ends_with("fulldeps") {
