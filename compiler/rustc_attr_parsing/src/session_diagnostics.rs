@@ -1,8 +1,10 @@
-use std::num::IntErrorKind;
+use std::num::{IntErrorKind, ParseIntError};
 
 use rustc_ast as ast;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
+};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -14,6 +16,22 @@ pub(crate) enum UnsupportedLiteralReason {
     CfgBoolean,
     DeprecatedString,
     DeprecatedKvPair,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_apple_version_invalid)]
+pub(crate) struct AppleVersionInvalid {
+    #[primary_span]
+    pub span: Span,
+    pub error: ParseIntError,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_apple_version_unnecessarily_low)]
+pub(crate) struct AppleVersionUnnecessarilyLow {
+    #[primary_span]
+    pub span: Span,
+    pub os_min: String,
 }
 
 #[derive(Diagnostic)]
@@ -387,6 +405,20 @@ pub(crate) struct DeprecatedItemSuggestion {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_expected_platform_and_version_literals)]
+pub(crate) struct ExpectedPlatformAndVersionLiterals {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_expected_platform_literal)]
+pub(crate) struct ExpectedPlatformLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_expected_single_version_literal)]
 pub(crate) struct ExpectedSingleVersionLiteral {
     #[primary_span]
@@ -430,6 +462,14 @@ pub(crate) struct InvalidSince {
 pub(crate) struct SoftNoArgs {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unknown_platform_literal)]
+pub(crate) struct UnknownPlatformLiteral {
+    #[primary_span]
+    pub span: Span,
+    pub possibilities: DiagSymbolList,
 }
 
 #[derive(Diagnostic)]
