@@ -235,8 +235,6 @@ LL |     <u8 as Dr>::X;
    |     ^^^^^^^^^^^^-
    |                 |
    |                 help: an associated function with a similar name exists: `Z`
-   |
-   = note: can't use a type alias as a constructor
 
 error[E0575]: expected associated type, found associated function `Dr::Z`
   --> $DIR/ufcs-partially-resolved.rs:54:12
