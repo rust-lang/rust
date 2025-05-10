@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::iter;
 
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir::def::{DefKind, Res};
@@ -356,61 +356,14 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     if !(impl_sig, trait_sig).references_error() {
-        // Select obligations to make progress on inference before processing
-        // the wf obligation below.
-        // FIXME(-Znext-solver): Not needed when the hack below is removed.
-        let errors = ocx.select_where_possible();
-        if !errors.is_empty() {
-            let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
-            return Err(reported);
-        }
-
-        // See #108544. Annoying, we can end up in cases where, because of winnowing,
-        // we pick param env candidates over a more general impl, leading to more
-        // stricter lifetime requirements than we would otherwise need. This can
-        // trigger the lint. Instead, let's only consider type outlives and
-        // region outlives obligations.
-        //
-        // FIXME(-Znext-solver): Try removing this hack again once the new
-        // solver is stable. We should just be able to register a WF pred for
-        // the fn sig.
-        let mut wf_args: smallvec::SmallVec<[_; 4]> =
-            unnormalized_impl_sig.inputs_and_output.iter().map(|ty| ty.into()).collect();
-        // Annoyingly, asking for the WF predicates of an array (with an unevaluated const (only?))
-        // will give back the well-formed predicate of the same array.
-        let mut wf_args_seen: FxHashSet<_> = wf_args.iter().copied().collect();
-        while let Some(term) = wf_args.pop() {
-            let Some(obligations) = rustc_trait_selection::traits::wf::obligations(
-                infcx,
-                param_env,
-                impl_m_def_id,
-                0,
-                term,
-                impl_m_span,
-            ) else {
-                continue;
-            };
-            for obligation in obligations {
-                debug!(?obligation);
-                match obligation.predicate.kind().skip_binder() {
-                    // We need to register Projection oblgiations too, because we may end up with
-                    // an implied `X::Item: 'a`, which gets desugared into `X::Item = ?0`, `?0: 'a`.
-                    // If we only register the region outlives obligation, this leads to an unconstrained var.
-                    // See `implied_bounds_entailment_alias_var.rs` test.
-                    ty::PredicateKind::Clause(
-                        ty::ClauseKind::RegionOutlives(..)
-                        | ty::ClauseKind::TypeOutlives(..)
-                        | ty::ClauseKind::Projection(..),
-                    ) => ocx.register_obligation(obligation),
-                    ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => {
-                        if wf_args_seen.insert(term) {
-                            wf_args.push(term)
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
+        ocx.register_obligation(traits::Obligation::new(
+            infcx.tcx,
+            cause,
+            param_env,
+            ty::ClauseKind::WellFormed(
+                Ty::new_fn_ptr(tcx, ty::Binder::dummy(unnormalized_impl_sig)).into(),
+            ),
+        ));
     }
 
     // Check that all obligations are satisfied by the implementation's
