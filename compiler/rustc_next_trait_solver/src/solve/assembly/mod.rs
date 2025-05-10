@@ -2,6 +2,7 @@
 
 pub(super) mod structural_traits;
 
+use std::cell::Cell;
 use std::ops::ControlFlow;
 
 use derive_where::derive_where;
@@ -117,24 +118,24 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         Self::fast_reject_assumption(ecx, goal, assumption)?;
 
-        ecx.probe(|candidate: &Result<Candidate<I>, NoSolution>| match candidate {
-            Ok(candidate) => inspect::ProbeKind::TraitCandidate {
-                source: candidate.source,
-                result: Ok(candidate.result),
-            },
-            Err(NoSolution) => inspect::ProbeKind::TraitCandidate {
-                source: CandidateSource::ParamEnv(ParamEnvSource::Global),
-                result: Err(NoSolution),
-            },
+        // Dealing with `ParamEnv` candidates is a bit of a mess as we need to lazily
+        // check whether the candidate is global while considering normalization.
+        //
+        // We need to write into `source` inside of `match_assumption`, but need to access it
+        // in `probe` even if the candidate does not apply before we get there. We handle this
+        // by using a `Cell` here. We only ever write into it inside of `match_assumption`.
+        let source = Cell::new(CandidateSource::ParamEnv(ParamEnvSource::Global));
+        ecx.probe(|result: &QueryResult<I>| inspect::ProbeKind::TraitCandidate {
+            source: source.get(),
+            result: *result,
         })
         .enter(|ecx| {
-            Self::match_assumption(ecx, goal, assumption)?;
-            let source = ecx.characterize_param_env_assumption(goal.param_env, assumption)?;
-            Ok(Candidate {
-                source,
-                result: ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)?,
+            Self::match_assumption(ecx, goal, assumption, |ecx| {
+                source.set(ecx.characterize_param_env_assumption(goal.param_env, assumption)?);
+                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             })
         })
+        .map(|result| Candidate { source: source.get(), result })
     }
 
     /// Try equating an assumption predicate against a goal's predicate. If it
@@ -150,10 +151,8 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         Self::fast_reject_assumption(ecx, goal, assumption)?;
 
-        ecx.probe_trait_candidate(source).enter(|ecx| {
-            Self::match_assumption(ecx, goal, assumption)?;
-            then(ecx)
-        })
+        ecx.probe_trait_candidate(source)
+            .enter(|ecx| Self::match_assumption(ecx, goal, assumption, then))
     }
 
     /// Try to reject the assumption based off of simple heuristics, such as [`ty::ClauseKind`]
@@ -169,7 +168,8 @@ where
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
         assumption: I::Clause,
-    ) -> Result<(), NoSolution>;
+        then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I>;
 
     fn consider_impl_candidate(
         ecx: &mut EvalCtxt<'_, D>,

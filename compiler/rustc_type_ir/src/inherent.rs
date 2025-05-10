@@ -298,6 +298,14 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + From<I::Region>
     + From<I::Const>
 {
+    fn as_term(&self) -> Option<I::Term> {
+        match self.kind() {
+            ty::GenericArgKind::Lifetime(_) => None,
+            ty::GenericArgKind::Type(ty) => Some(ty.into()),
+            ty::GenericArgKind::Const(ct) => Some(ct.into()),
+        }
+    }
+
     fn as_type(&self) -> Option<I::Ty> {
         if let ty::GenericArgKind::Type(ty) = self.kind() { Some(ty) } else { None }
     }

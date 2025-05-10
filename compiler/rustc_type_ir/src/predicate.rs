@@ -682,6 +682,13 @@ impl<I: Interner> AliasTerm<I> {
     pub fn trait_ref(self, interner: I) -> TraitRef<I> {
         self.trait_ref_and_own_args(interner).0
     }
+
+    /// Extract the own args from this projection.
+    /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
+    /// then this function would return the slice `['a]` as the own args.
+    pub fn own_args(self, interner: I) -> I::GenericArgsSlice {
+        self.trait_ref_and_own_args(interner).1
+    }
 }
 
 /// The following methods work only with inherent associated term projections.
