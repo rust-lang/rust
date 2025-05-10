@@ -35,17 +35,22 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypingMode, fold_regions};
+use rustc_middle::ty::{
+    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt, TypingMode, fold_regions,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::ObligationCtxt;
+use rustc_trait_selection::traits::{FulfillmentError, ObligationCtxt};
 use tracing::{debug, instrument};
 
 use crate::errors;
 use crate::hir_ty_lowering::errors::assoc_tag_str;
-use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
+use crate::hir_ty_lowering::{
+    FeedConstTy, HirTyLowerer, InherentAssocCandidate, RegionInferReason,
+};
 
 pub(crate) mod dump;
 mod generics_of;
@@ -442,6 +447,96 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         assoc_ident: Ident,
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_ident))
+    }
+
+    fn select_inherent_assoc_candidates(
+        &self,
+        span: Span,
+        self_ty: Ty<'tcx>,
+        candidates: &Vec<InherentAssocCandidate>,
+    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>) {
+        // This is all rather hacky. We attempt to unify impl headers against this self ty
+        // (even though we aren't really in a position to do so) as users of IATs in signatures
+        // are unable to explicitly disambiguate which impl to use other than by specifying the
+        // self type.
+
+        struct ReplaceAliasesWithInfer<'tcx, 'a>(&'a InferCtxt<'tcx>);
+
+        impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAliasesWithInfer<'tcx, '_> {
+            fn cx(&self) -> TyCtxt<'tcx> {
+                self.0.tcx
+            }
+
+            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+                if let ty::Alias(_, _) = ty.kind() {
+                    return self.0.next_ty_var(DUMMY_SP);
+                }
+
+                ty.super_fold_with(self)
+            }
+
+            fn fold_const(&mut self, ct: Const<'tcx>) -> Const<'tcx> {
+                if let ty::ConstKind::Unevaluated(_) = ct.kind() {
+                    return self.0.next_const_var(DUMMY_SP);
+                }
+
+                ct.super_fold_with(self)
+            }
+        }
+
+        assert!(!self_ty.has_infer());
+        let infcx =
+            self.tcx().infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
+
+        // We replace all the aliases in the self type with infer vars to avoid filtering out
+        // candidates that only differ in how normalized alias is. This shouldn't be necessary
+        // under the new solver which emits alias relate goals instead of expecting inputs to
+        // already be fully normalized. FIXME(-Znext-solver)
+        //
+        // We don't just call the normal normalization routine here as we can't provide the
+        // correct `ParamEnv` and it seems dubious to invoke arbitrary trait solving under
+        // the wrong `ParamEnv`.
+        let self_ty = ReplaceAliasesWithInfer(&infcx).fold_ty(self_ty);
+
+        let mut universes = if self_ty.has_escaping_bound_vars() {
+            vec![None; self_ty.outer_exclusive_binder().as_usize()]
+        } else {
+            vec![]
+        };
+
+        let candidates = rustc_trait_selection::traits::with_replaced_escaping_bound_vars(
+            &infcx,
+            &mut universes,
+            self_ty,
+            |self_ty| {
+                infcx.probe(|_| {
+                    candidates
+                        .into_iter()
+                        .filter(|&&InherentAssocCandidate { impl_, .. }| {
+                            let impl_ty = self
+                                .tcx()
+                                .type_of(impl_)
+                                .instantiate(self.tcx(), infcx.fresh_args_for_item(span, impl_));
+                            // See comment on doing this operation for `self_ty`
+                            let impl_ty = ReplaceAliasesWithInfer(&infcx).fold_ty(impl_ty);
+
+                            use rustc_trait_selection::infer::DefineOpaqueTypes;
+                            infcx
+                                // Using an empty `ParamEnv` is pretty weird but we don't actually
+                                // do anything with any of the returned obligations so it doesn't
+                                // matter too much. Building the correct `ParamEnv` would also result
+                                // in undesirable query cycles.
+                                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                                .eq(DefineOpaqueTypes::No, self_ty, impl_ty)
+                                .is_ok()
+                        })
+                        .cloned()
+                        .collect()
+                })
+            },
+        );
+
+        (candidates, vec![])
     }
 
     fn lower_assoc_shared(
