@@ -124,19 +124,19 @@ impl Step for Miri {
             std::process::exit(1);
         }
 
-        // This compiler runs on the host, we'll just use it for the target.
-        let target_compiler = builder.compiler(stage, host);
-        let host_compiler = tool::get_tool_rustc_compiler(builder, target_compiler);
+        let compiler = builder.compiler(stage, target);
+        let miri_build = builder.ensure(tool::Miri { compiler, target });
 
         // Get a target sysroot for Miri.
-        let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
+        let miri_sysroot =
+            test::Miri::build_miri_sysroot(builder, miri_build.target_compiler, target);
 
         // # Run miri.
         // Running it via `cargo run` as that figures out the right dylib path.
         // add_rustc_lib_path does not add the path that contains librustc_driver-<...>.so.
         let mut miri = tool::prepare_tool_cargo(
             builder,
-            host_compiler,
+            miri_build.build_compiler,
             Mode::ToolRustc,
             host,
             Kind::Run,
