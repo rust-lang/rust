@@ -93,6 +93,7 @@ mod variance;
 
 pub use errors::NoVariantNamed;
 use rustc_abi::ExternAbi;
+use rustc_data_structures::sync::par_for_each_in;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::middle;
@@ -178,6 +179,9 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
+    // Run dependencies of type checking before entering the loops below
+    tcx.ensure_done().inferred_outlives_crate(());
+
     tcx.sess.time("coherence_checking", || {
         // When discarding query call results, use an explicit type to indicate
         // what we are intending to discard, to help future type-based refactoring.
@@ -187,9 +191,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             let _: R = tcx.ensure_ok().check_mod_type_wf(module);
         });
 
-        for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
-            let _: R = tcx.ensure_ok().coherent_trait(trait_def_id);
-        }
+        par_for_each_in(tcx.all_local_trait_impls(()), |(trait_def_id, _)| {
+            let _: R = tcx.ensure_ok().coherent_trait(*trait_def_id);
+        });
+
         // these queries are executed for side-effects (error reporting):
         let _: R = tcx.ensure_ok().crate_inherent_impls_validity_check(());
         let _: R = tcx.ensure_ok().crate_inherent_impls_overlap_check(());
