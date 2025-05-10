@@ -761,6 +761,7 @@ bidirectional_lang_item_map! {
     Poll,
     Sized,
     TransmuteTrait,
+    TrivialClone,
     Tuple,
     Unpin,
     Unsize,

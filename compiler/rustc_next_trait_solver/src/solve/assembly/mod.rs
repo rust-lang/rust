@@ -467,9 +467,11 @@ where
         } else {
             match cx.as_lang_item(trait_def_id) {
                 Some(TraitSolverLangItem::Sized) => G::consider_builtin_sized_candidate(self, goal),
-                Some(TraitSolverLangItem::Copy | TraitSolverLangItem::Clone) => {
-                    G::consider_builtin_copy_clone_candidate(self, goal)
-                }
+                Some(
+                    TraitSolverLangItem::Copy
+                    | TraitSolverLangItem::Clone
+                    | TraitSolverLangItem::TrivialClone,
+                ) => G::consider_builtin_copy_clone_candidate(self, goal),
                 Some(TraitSolverLangItem::Fn) => {
                     G::consider_builtin_fn_trait_candidates(self, goal, ty::ClosureKind::Fn)
                 }
