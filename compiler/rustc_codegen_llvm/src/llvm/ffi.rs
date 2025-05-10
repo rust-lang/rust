@@ -1970,6 +1970,7 @@ unsafe extern "C" {
         PointerVal: &'a Value,
         Name: *const c_char,
         Order: AtomicOrdering,
+        isVolatile: bool,
     ) -> &'a Value;
 
     pub(crate) fn LLVMRustBuildAtomicStore<'a>(
@@ -1977,6 +1978,7 @@ unsafe extern "C" {
         Val: &'a Value,
         Ptr: &'a Value,
         Order: AtomicOrdering,
+        isVolatile: bool,
     ) -> &'a Value;
 
     pub(crate) fn LLVMRustTimeTraceProfilerInitialize();
