@@ -480,6 +480,7 @@ define_tables! {
     doc_link_traits_in_scope: Table<DefIndex, LazyArray<DefId>>,
     assumed_wf_types_for_rpitit: Table<DefIndex, LazyArray<(Ty<'static>, Span)>>,
     opaque_ty_origin: Table<DefIndex, LazyValue<hir::OpaqueTyOrigin<DefId>>>,
+    anon_const_kind: Table<DefIndex, LazyValue<ty::AnonConstKind>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]

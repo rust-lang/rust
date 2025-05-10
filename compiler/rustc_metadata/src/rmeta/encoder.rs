@@ -1569,6 +1569,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         <- tcx.explicit_implied_const_bounds(def_id).skip_binder());
                 }
             }
+            if let DefKind::AnonConst = def_kind {
+                record!(self.tables.anon_const_kind[def_id] <- self.tcx.anon_const_kind(def_id));
+            }
             if tcx.impl_method_has_trait_impl_trait_tys(def_id)
                 && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
