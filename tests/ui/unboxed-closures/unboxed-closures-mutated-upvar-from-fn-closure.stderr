@@ -4,12 +4,16 @@ error[E0594]: cannot assign to `counter`, as it is a captured variable in a `Fn`
 LL | fn call<F>(f: F) where F : Fn() {
    |               - change this to accept `FnMut` instead of `Fn`
 ...
+LL |     let mut counter = 0;
+   |         ----------- `counter` declared here, outside the closure
 LL |     call(|| {
    |     ---- -- in this closure
    |     |
    |     expects `Fn` instead of `FnMut`
 LL |         counter += 1;
    |         ^^^^^^^^^^^^ cannot assign
+   |
+   = help: consider using `std::sync::atomic::AtomicI32` instead, which allows for multiple threads to access and modify the value
 
 error: aborting due to 1 previous error
 
