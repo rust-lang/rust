@@ -3391,6 +3391,7 @@ pub const fn contract_checks() -> bool {
 // doesn't honor `#[allow_internal_unstable]`, so for the const feature gate we use the user-facing
 // `contracts` feature rather than the perma-unstable `contracts_internals`
 #[rustc_const_unstable(feature = "contracts", issue = "128044")]
+#[miri::intrinsic_fallback_is_spec]
 #[lang = "contract_check_requires"]
 #[rustc_intrinsic]
 pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
@@ -3419,6 +3420,7 @@ pub const fn contract_check_requires<C: Fn() -> bool + Copy>(cond: C) {
 // `contracts` feature rather than the perma-unstable `contracts_internals`.
 // Const-checking doesn't honor allow_internal_unstable logic used by contract expansion.
 #[rustc_const_unstable(feature = "contracts", issue = "128044")]
+#[miri::intrinsic_fallback_is_spec]
 #[lang = "contract_check_ensures"]
 #[rustc_intrinsic]
 pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, ret: Ret) -> Ret {
@@ -3440,6 +3442,7 @@ pub const fn contract_check_ensures<C: Fn(&Ret) -> bool + Copy, Ret>(cond: C, re
 /// This is the old version of contract_check_ensures kept here for bootstrap only.
 #[cfg(bootstrap)]
 #[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
+#[miri::intrinsic_fallback_is_spec]
 #[rustc_intrinsic]
 pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
     if contract_checks() && !cond(ret) {

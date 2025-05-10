@@ -20,6 +20,6 @@ fn main() {
     // CHECK: debug a => [[a:_.*]];
     // We may check other inlined functions as well...
 
-    // CHECK: {{_.*}} = const Box::<[bool]>(
+    // CHECK: {{_.*}} = {{(const )?}}Box::<[bool]>(
     let a: A = A { foo: Box::default() };
 }
