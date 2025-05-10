@@ -1,18 +1,17 @@
 use tracing::debug;
 
-use crate::query::Providers;
 use crate::ty::{
     self, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 
-pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { erase_regions_ty, ..*providers };
-}
-
 fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    // N.B., use `super_fold_with` here. If we used `fold_with`, it
-    // could invoke the `erase_regions_ty` query recursively.
-    ty.super_fold_with(&mut RegionEraserVisitor { tcx })
+    if let Some(erased) = tcx.erased_ty_cache.lock().get(&ty) {
+        *erased
+    } else {
+        let erased = ty.super_fold_with(&mut RegionEraserVisitor { tcx });
+        tcx.erased_ty_cache.lock().insert(ty, erased);
+        erased
+    }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -46,10 +45,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RegionEraserVisitor<'tcx> {
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if !ty.has_type_flags(TypeFlags::HAS_BINDER_VARS | TypeFlags::HAS_FREE_REGIONS) {
             ty
-        } else if ty.has_infer() {
-            ty.super_fold_with(self)
         } else {
-            self.tcx.erase_regions_ty(ty)
+            erase_regions_ty(self.tcx, ty)
         }
     }
 
