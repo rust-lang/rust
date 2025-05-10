@@ -34,4 +34,7 @@ fn main() {
         //~^ ERROR using `values_mut` can result in unstable query results
         *val = *val + 10;
     }
+
+    FxHashMap::<u32, i32>::default().extend(x);
+    //~^ ERROR using `into_iter` can result in unstable query results
 }
