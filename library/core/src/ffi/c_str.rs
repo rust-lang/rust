@@ -169,6 +169,15 @@ impl fmt::Debug for CStr {
     }
 }
 
+/// Behaves as if `self` were first lossily converted to a `str`, with
+/// invalid UTF-8 presented as the Unicode replacement character: �.
+#[stable(feature = "cstr_display", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Display for CStr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(crate::bstr::ByteStr::from_bytes(self.to_bytes()), f)
+    }
+}
+
 #[stable(feature = "cstr_default", since = "1.10.0")]
 impl Default for &CStr {
     #[inline]
