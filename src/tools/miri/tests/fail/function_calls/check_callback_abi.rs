@@ -9,7 +9,7 @@ fn main() {
         // Make sure we check the ABI when Miri itself invokes a function
         // as part of a shim implementation.
         std::intrinsics::catch_unwind(
-            //~^ ERROR: calling a function with calling convention C using calling convention Rust
+            //~^ ERROR: calling a function with calling convention "C" using calling convention "Rust"
             std::mem::transmute::<extern "C" fn(*mut u8), _>(try_fn),
             std::ptr::null_mut(),
             |_, _| unreachable!(),

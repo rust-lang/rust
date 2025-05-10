@@ -932,12 +932,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         self.read_c_str_with_char_size(ptr, wchar_t.size, wchar_t.align.abi)
     }
 
-    /// Check that the ABI is what we expect.
-    fn check_abi<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
+    /// Check that the calling convention is what we expect.
+    fn check_callconv<'a>(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, exp_abi: Conv) -> InterpResult<'a, ()> {
         if fn_abi.conv != exp_abi {
             throw_ub_format!(
-                "calling a function with ABI {:?} using caller ABI {:?}",
-                exp_abi,
+                "calling a function with calling convention {exp_abi} using caller calling convention {}",
                 fn_abi.conv
             );
         }
@@ -973,7 +972,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         exp_abi: Conv,
         link_name: Symbol,
     ) -> InterpResult<'tcx, ()> {
-        self.check_abi(abi, exp_abi)?;
+        self.check_callconv(abi, exp_abi)?;
         if let Some((body, instance)) = self.eval_context_mut().lookup_exported_symbol(link_name)? {
             // If compiler-builtins is providing the symbol, then don't treat it as a clash.
             // We'll use our built-in implementation in `emulate_foreign_item_inner` for increased
