@@ -35,7 +35,7 @@ pub(crate) fn validate_cmse_abi<'tcx>(
                     _ => tcx.hir_span(hir_id),
                 };
                 struct_span_code_err!(
-                    tcx.dcx(),
+                    dcx,
                     span,
                     E0781,
                     "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"

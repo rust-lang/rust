@@ -4,9 +4,9 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
+use rustc_hir::AmbigArg;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{AmbigArg, HirId};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
@@ -309,7 +309,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     false => "`?Sized`",
                 };
                 // There was a `?Trait` bound, but it was neither `?Sized` nor `experimental_default_bounds`.
-                tcx.dcx().span_err(
+                self.dcx().span_err(
                     unbound.span,
                     format!(
                         "relaxing a default bound only does something for {}; \
@@ -675,7 +675,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 // Good error for `where Trait::method(..): Send`.
                 let Some(self_ty) = opt_self_ty else {
-                    let guar = self.error_missing_qpath_self_ty(
+                    let guar = self.report_missing_self_ty_for_resolved_path(
                         trait_def_id,
                         hir_ty.span,
                         item_segment,
@@ -713,120 +713,51 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
-            hir::QPath::TypeRelative(qself, item_segment)
-                if item_segment.args.is_some_and(|args| {
+            hir::QPath::TypeRelative(hir_self_ty, segment)
+                if segment.args.is_some_and(|args| {
                     matches!(args.parenthesized, hir::GenericArgsParentheses::ReturnTypeNotation)
                 }) =>
             {
-                match self
-                    .resolve_type_relative_return_type_notation(
-                        qself,
-                        item_segment,
-                        hir_ty.hir_id,
-                        hir_ty.span,
-                    )
-                    .and_then(|(candidate, item_def_id)| {
-                        self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span)
-                    }) {
+                let self_ty = self.lower_ty(hir_self_ty);
+                let (item_def_id, bound) = match self.resolve_type_relative_path(
+                    self_ty,
+                    hir_self_ty,
+                    ty::AssocTag::Fn,
+                    segment,
+                    hir_ty.hir_id,
+                    hir_ty.span,
+                    None,
+                ) {
+                    Ok(result) => result,
+                    Err(guar) => return Ty::new_error(tcx, guar),
+                };
+
+                // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`,
+                // which may happen via a higher-ranked where clause or supertrait.
+                // This is the same restrictions as associated types; even though we could
+                // support it, it just makes things a lot more difficult to support in
+                // `resolve_bound_vars`, since we'd need to introduce those as elided
+                // bound vars on the where clause too.
+                if bound.has_bound_vars() {
+                    return Ty::new_error(
+                        tcx,
+                        self.dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
+                            span: hir_ty.span,
+                            inferred_sugg: Some(hir_ty.span.with_hi(segment.ident.span.lo())),
+                            bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder()),
+                            mpart_sugg: None,
+                            what: tcx.def_descr(item_def_id),
+                        }),
+                    );
+                }
+
+                match self.lower_return_type_notation_ty(bound, item_def_id, hir_ty.span) {
                     Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
             _ => self.lower_ty(hir_ty),
         }
-    }
-
-    /// Perform type-dependent lookup for a *method* for return type notation.
-    /// This generally mirrors `<dyn HirTyLowerer>::lower_assoc_path`.
-    fn resolve_type_relative_return_type_notation(
-        &self,
-        qself: &'tcx hir::Ty<'tcx>,
-        item_segment: &'tcx hir::PathSegment<'tcx>,
-        qpath_hir_id: HirId,
-        span: Span,
-    ) -> Result<(ty::PolyTraitRef<'tcx>, DefId), ErrorGuaranteed> {
-        let tcx = self.tcx();
-        let qself_ty = self.lower_ty(qself);
-        let assoc_ident = item_segment.ident;
-        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
-            path.res
-        } else {
-            Res::Err
-        };
-
-        let bound = match (qself_ty.kind(), qself_res) {
-            (_, Res::SelfTyAlias { alias_to: impl_def_id, is_trait_impl: true, .. }) => {
-                // `Self` in an impl of a trait -- we have a concrete self type and a
-                // trait reference.
-                let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
-                    // A cycle error occurred, most likely.
-                    self.dcx().span_bug(span, "expected cycle error");
-                };
-
-                self.probe_single_bound_for_assoc_item(
-                    || {
-                        traits::supertraits(
-                            tcx,
-                            ty::Binder::dummy(trait_ref.instantiate_identity()),
-                        )
-                    },
-                    AssocItemQSelf::SelfTyAlias,
-                    ty::AssocTag::Fn,
-                    assoc_ident,
-                    span,
-                    None,
-                )?
-            }
-            (
-                &ty::Param(_),
-                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
-            ) => self.probe_single_ty_param_bound_for_assoc_item(
-                param_did.expect_local(),
-                qself.span,
-                ty::AssocTag::Fn,
-                assoc_ident,
-                span,
-            )?,
-            _ => {
-                if let Err(reported) = qself_ty.error_reported() {
-                    return Err(reported);
-                } else {
-                    // FIXME(return_type_notation): Provide some structured suggestion here.
-                    let err = struct_span_code_err!(
-                        self.dcx(),
-                        span,
-                        E0223,
-                        "ambiguous associated function"
-                    );
-                    return Err(err.emit());
-                }
-            }
-        };
-
-        // Don't let `T::method` resolve to some `for<'a> <T as Tr<'a>>::method`,
-        // which may happen via a higher-ranked where clause or supertrait.
-        // This is the same restrictions as associated types; even though we could
-        // support it, it just makes things a lot more difficult to support in
-        // `resolve_bound_vars`, since we'd need to introduce those as elided
-        // bound vars on the where clause too.
-        if bound.has_bound_vars() {
-            return Err(self.tcx().dcx().emit_err(
-                errors::AssociatedItemTraitUninferredGenericParams {
-                    span,
-                    inferred_sugg: Some(span.with_hi(item_segment.ident.span.lo())),
-                    bound: format!("{}::", tcx.anonymize_bound_vars(bound).skip_binder(),),
-                    mpart_sugg: None,
-                    what: "function",
-                },
-            ));
-        }
-
-        let trait_def_id = bound.def_id();
-        let assoc_ty = self
-            .probe_assoc_item(assoc_ident, ty::AssocTag::Fn, qpath_hir_id, span, trait_def_id)
-            .expect("failed to find associated type");
-
-        Ok((bound, assoc_ty.def_id))
     }
 
     /// Do the common parts of lowering an RTN type. This involves extending the
