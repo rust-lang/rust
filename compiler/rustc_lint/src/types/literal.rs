@@ -5,7 +5,7 @@ use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::{bug, ty};
 use rustc_span::Span;
-use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 use crate::LateContext;
 use crate::context::LintContext;
@@ -131,18 +131,18 @@ fn report_bin_hex_error(
     cx: &LateContext<'_>,
     hir_id: HirId,
     span: Span,
-    ty: attr::IntType,
+    ty: attrs::IntType,
     size: Size,
     repr_str: String,
     val: u128,
     negative: bool,
 ) {
     let (t, actually) = match ty {
-        attr::IntType::SignedInt(t) => {
+        attrs::IntType::SignedInt(t) => {
             let actually = if negative { -(size.sign_extend(val)) } else { size.sign_extend(val) };
             (t.name_str(), actually.to_string())
         }
-        attr::IntType::UnsignedInt(t) => {
+        attrs::IntType::UnsignedInt(t) => {
             let actually = size.truncate(val);
             (t.name_str(), actually.to_string())
         }
@@ -264,7 +264,7 @@ fn lint_int_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attr::IntType::SignedInt(ty::ast_int_ty(t)),
+                attrs::IntType::SignedInt(ty::ast_int_ty(t)),
                 Integer::from_int_ty(cx, t).size(),
                 repr_str,
                 v,
@@ -336,7 +336,7 @@ fn lint_uint_literal<'tcx>(
                 cx,
                 hir_id,
                 span,
-                attr::IntType::UnsignedInt(ty::ast_uint_ty(t)),
+                attrs::IntType::UnsignedInt(ty::ast_uint_ty(t)),
                 Integer::from_uint_ty(cx, t).size(),
                 repr_str,
                 lit_val,

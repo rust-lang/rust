@@ -4,13 +4,12 @@
 //! has interior mutability or needs to be dropped, as well as the visitor that emits errors when
 //! it finds operations that are invalid in a certain context.
 
-use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_errors::DiagCtxtHandle;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, PolyFnSig, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::Symbol;
+use {rustc_attr_data_structures as attrs, rustc_hir as hir};
 
 pub use self::qualifs::Qualif;
 
@@ -83,7 +82,7 @@ pub fn rustc_allow_const_fn_unstable(
 ) -> bool {
     let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(def_id));
 
-    find_attr!(attrs, AttributeKind::AllowConstFnUnstable(syms) if syms.contains(&feature_gate))
+    attrs::find_attr!(attrs, attrs::AttributeKind::AllowConstFnUnstable(syms) if syms.contains(&feature_gate))
 }
 
 /// Returns `true` if the given `def_id` (trait or function) is "safe to expose on stable".

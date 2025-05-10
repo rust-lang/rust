@@ -1,4 +1,4 @@
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_data_structures::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::visit::Visitor;
