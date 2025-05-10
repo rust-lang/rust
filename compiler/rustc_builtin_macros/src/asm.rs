@@ -18,7 +18,22 @@ use {rustc_ast as ast, rustc_parse_format as parse};
 use crate::errors;
 use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
-pub struct AsmArgs {
+/// An argument to one of the `asm!` macros. The argument is syntactically valid, but is otherwise
+/// not validated at all.
+pub struct RawAsmArg {
+    pub kind: RawAsmArgKind,
+    pub span: Span,
+}
+
+pub enum RawAsmArgKind {
+    Template(P<ast::Expr>),
+    Operand(Option<Symbol>, ast::InlineAsmOperand),
+    Options(Vec<(Symbol, ast::InlineAsmOptions, Span, Span)>),
+    ClobberAbi(Vec<(Symbol, Span)>),
+}
+
+/// Validated assembly arguments, ready for macro expansion.
+struct AsmArgs {
     pub templates: Vec<P<ast::Expr>>,
     pub operands: Vec<(ast::InlineAsmOperand, Span)>,
     named_args: FxIndexMap<Symbol, usize>,
@@ -59,41 +74,98 @@ fn eat_operand_keyword<'a>(
     }
 }
 
-fn parse_args<'a>(
-    ecx: &ExtCtxt<'a>,
-    sp: Span,
-    tts: TokenStream,
+fn parse_asm_operand<'a>(
+    p: &mut Parser<'a>,
     asm_macro: AsmMacro,
-) -> PResult<'a, AsmArgs> {
-    let mut p = ecx.new_parser_from_tts(tts);
-    parse_asm_args(&mut p, sp, asm_macro)
+) -> PResult<'a, Option<ast::InlineAsmOperand>> {
+    let dcx = p.dcx();
+
+    Ok(Some(if eat_operand_keyword(p, exp!(In), asm_macro)? {
+        let reg = parse_reg(p)?;
+        if p.eat_keyword(exp!(Underscore)) {
+            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            return Err(err);
+        }
+        let expr = p.parse_expr()?;
+        ast::InlineAsmOperand::In { reg, expr }
+    } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
+        let reg = parse_reg(p)?;
+        let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+        ast::InlineAsmOperand::Out { reg, expr, late: false }
+    } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
+        let reg = parse_reg(p)?;
+        let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+        ast::InlineAsmOperand::Out { reg, expr, late: true }
+    } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
+        let reg = parse_reg(p)?;
+        if p.eat_keyword(exp!(Underscore)) {
+            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            return Err(err);
+        }
+        let expr = p.parse_expr()?;
+        if p.eat(exp!(FatArrow)) {
+            let out_expr =
+                if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+            ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: false }
+        } else {
+            ast::InlineAsmOperand::InOut { reg, expr, late: false }
+        }
+    } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
+        let reg = parse_reg(p)?;
+        if p.eat_keyword(exp!(Underscore)) {
+            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            return Err(err);
+        }
+        let expr = p.parse_expr()?;
+        if p.eat(exp!(FatArrow)) {
+            let out_expr =
+                if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
+            ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: true }
+        } else {
+            ast::InlineAsmOperand::InOut { reg, expr, late: true }
+        }
+    } else if eat_operand_keyword(p, exp!(Label), asm_macro)? {
+        let block = p.parse_block()?;
+        ast::InlineAsmOperand::Label { block }
+    } else if p.eat_keyword(exp!(Const)) {
+        let anon_const = p.parse_expr_anon_const()?;
+        ast::InlineAsmOperand::Const { anon_const }
+    } else if p.eat_keyword(exp!(Sym)) {
+        let expr = p.parse_expr()?;
+        let ast::ExprKind::Path(qself, path) = &expr.kind else {
+            let err = dcx.create_err(errors::AsmSymNoPath { span: expr.span });
+            return Err(err);
+        };
+        let sym =
+            ast::InlineAsmSym { id: ast::DUMMY_NODE_ID, qself: qself.clone(), path: path.clone() };
+        ast::InlineAsmOperand::Sym { sym }
+    } else {
+        return Ok(None);
+    }))
 }
 
-// Primarily public for rustfmt consumption.
-// Internal consumers should continue to leverage `expand_asm`/`expand__global_asm`
-pub fn parse_asm_args<'a>(
+// Public for rustfmt.
+pub fn parse_raw_asm_args<'a>(
     p: &mut Parser<'a>,
     sp: Span,
     asm_macro: AsmMacro,
-) -> PResult<'a, AsmArgs> {
+) -> PResult<'a, Vec<RawAsmArg>> {
     let dcx = p.dcx();
 
     if p.token == token::Eof {
         return Err(dcx.create_err(errors::AsmRequiresTemplate { span: sp }));
     }
 
+    let mut args = Vec::new();
+
     let first_template = p.parse_expr()?;
-    let mut args = AsmArgs {
-        templates: vec![first_template],
-        operands: vec![],
-        named_args: Default::default(),
-        reg_args: Default::default(),
-        clobber_abis: Vec::new(),
-        options: ast::InlineAsmOptions::empty(),
-        options_spans: vec![],
-    };
+    args.push(RawAsmArg {
+        span: first_template.span,
+        kind: RawAsmArgKind::Template(first_template),
+    });
 
     let mut allow_templates = true;
+
     while p.token != token::Eof {
         if !p.eat(exp!(Comma)) {
             if allow_templates {
@@ -104,27 +176,39 @@ pub fn parse_asm_args<'a>(
                 return Err(p.expect(exp!(Comma)).err().unwrap());
             }
         }
+
+        // Accept trailing commas.
         if p.token == token::Eof {
             break;
-        } // accept trailing commas
-
-        // Parse clobber_abi
-        if p.eat_keyword(exp!(ClobberAbi)) {
-            parse_clobber_abi(p, &mut args)?;
-            allow_templates = false;
-            continue;
-        }
-
-        // Parse options
-        if p.eat_keyword(exp!(Options)) {
-            parse_options(p, &mut args, asm_macro)?;
-            allow_templates = false;
-            continue;
         }
 
         let span_start = p.token.span;
 
-        // Parse operand names
+        // Parse `clobber_abi`.
+        if p.eat_keyword(exp!(ClobberAbi)) {
+            allow_templates = false;
+
+            args.push(RawAsmArg {
+                kind: RawAsmArgKind::ClobberAbi(parse_clobber_abi(p)?),
+                span: span_start.to(p.prev_token.span),
+            });
+
+            continue;
+        }
+
+        // Parse `options`.
+        if p.eat_keyword(exp!(Options)) {
+            allow_templates = false;
+
+            args.push(RawAsmArg {
+                kind: RawAsmArgKind::Options(parse_options(p, asm_macro)?),
+                span: span_start.to(p.prev_token.span),
+            });
+
+            continue;
+        }
+
+        // Parse operand names.
         let name = if p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq) {
             let (ident, _) = p.token.ident().unwrap();
             p.bump();
@@ -135,69 +219,13 @@ pub fn parse_asm_args<'a>(
             None
         };
 
-        let mut explicit_reg = false;
-        let op = if eat_operand_keyword(p, exp!(In), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
-            if p.eat_keyword(exp!(Underscore)) {
-                let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
-                return Err(err);
-            }
-            let expr = p.parse_expr()?;
-            ast::InlineAsmOperand::In { reg, expr }
-        } else if eat_operand_keyword(p, exp!(Out), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
-            let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::Out { reg, expr, late: false }
-        } else if eat_operand_keyword(p, exp!(Lateout), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
-            let expr = if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-            ast::InlineAsmOperand::Out { reg, expr, late: true }
-        } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
-            if p.eat_keyword(exp!(Underscore)) {
-                let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
-                return Err(err);
-            }
-            let expr = p.parse_expr()?;
-            if p.eat(exp!(FatArrow)) {
-                let out_expr =
-                    if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-                ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: false }
-            } else {
-                ast::InlineAsmOperand::InOut { reg, expr, late: false }
-            }
-        } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
-            let reg = parse_reg(p, &mut explicit_reg)?;
-            if p.eat_keyword(exp!(Underscore)) {
-                let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
-                return Err(err);
-            }
-            let expr = p.parse_expr()?;
-            if p.eat(exp!(FatArrow)) {
-                let out_expr =
-                    if p.eat_keyword(exp!(Underscore)) { None } else { Some(p.parse_expr()?) };
-                ast::InlineAsmOperand::SplitInOut { reg, in_expr: expr, out_expr, late: true }
-            } else {
-                ast::InlineAsmOperand::InOut { reg, expr, late: true }
-            }
-        } else if eat_operand_keyword(p, exp!(Label), asm_macro)? {
-            let block = p.parse_block()?;
-            ast::InlineAsmOperand::Label { block }
-        } else if p.eat_keyword(exp!(Const)) {
-            let anon_const = p.parse_expr_anon_const()?;
-            ast::InlineAsmOperand::Const { anon_const }
-        } else if p.eat_keyword(exp!(Sym)) {
-            let expr = p.parse_expr()?;
-            let ast::ExprKind::Path(qself, path) = &expr.kind else {
-                let err = dcx.create_err(errors::AsmSymNoPath { span: expr.span });
-                return Err(err);
-            };
-            let sym = ast::InlineAsmSym {
-                id: ast::DUMMY_NODE_ID,
-                qself: qself.clone(),
-                path: path.clone(),
-            };
-            ast::InlineAsmOperand::Sym { sym }
+        if let Some(op) = parse_asm_operand(p, asm_macro)? {
+            allow_templates = false;
+
+            args.push(RawAsmArg {
+                span: span_start.to(p.prev_token.span),
+                kind: RawAsmArgKind::Operand(name, op),
+            });
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other
@@ -217,36 +245,135 @@ pub fn parse_asm_args<'a>(
                     return Err(err);
                 }
             }
-            args.templates.push(template);
-            continue;
+
+            args.push(RawAsmArg { span: template.span, kind: RawAsmArgKind::Template(template) });
         } else {
             p.unexpected_any()?
-        };
+        }
+    }
 
-        allow_templates = false;
-        let span = span_start.to(p.prev_token.span);
-        let slot = args.operands.len();
-        args.operands.push((op, span));
+    Ok(args)
+}
 
-        // Validate the order of named, positional & explicit register operands and
-        // clobber_abi/options. We do this at the end once we have the full span
-        // of the argument available.
-        if explicit_reg {
-            if name.is_some() {
-                dcx.emit_err(errors::AsmExplicitRegisterName { span });
+fn parse_args<'a>(
+    ecx: &ExtCtxt<'a>,
+    sp: Span,
+    tts: TokenStream,
+    asm_macro: AsmMacro,
+) -> PResult<'a, AsmArgs> {
+    let raw_args = parse_raw_asm_args(&mut ecx.new_parser_from_tts(tts), sp, asm_macro)?;
+    validate_raw_asm_args(ecx, asm_macro, raw_args)
+}
+
+fn validate_raw_asm_args<'a>(
+    ecx: &ExtCtxt<'a>,
+    asm_macro: AsmMacro,
+    raw_args: Vec<RawAsmArg>,
+) -> PResult<'a, AsmArgs> {
+    let dcx = ecx.dcx();
+
+    let mut args = AsmArgs {
+        templates: vec![],
+        operands: vec![],
+        named_args: Default::default(),
+        reg_args: Default::default(),
+        clobber_abis: Vec::new(),
+        options: ast::InlineAsmOptions::empty(),
+        options_spans: vec![],
+    };
+
+    let mut allow_templates = true;
+
+    for arg in raw_args {
+        match arg.kind {
+            RawAsmArgKind::Template(template) => {
+                // The error for the first template is delayed.
+                if !allow_templates {
+                    match template.kind {
+                        ast::ExprKind::Lit(token_lit)
+                            if matches!(
+                                token_lit.kind,
+                                token::LitKind::Str | token::LitKind::StrRaw(_)
+                            ) => {}
+                        ast::ExprKind::MacCall(..) => {}
+                        _ => {
+                            let err = dcx.create_err(errors::AsmExpectedOther {
+                                span: template.span,
+                                is_inline_asm: matches!(asm_macro, AsmMacro::Asm),
+                            });
+                            return Err(err);
+                        }
+                    }
+                }
+
+                args.templates.push(template);
             }
-            args.reg_args.insert(slot);
-        } else if let Some(name) = name {
-            if let Some(&prev) = args.named_args.get(&name) {
-                dcx.emit_err(errors::AsmDuplicateArg { span, name, prev: args.operands[prev].1 });
-                continue;
-            }
-            args.named_args.insert(name, slot);
-        } else if !args.named_args.is_empty() || !args.reg_args.is_empty() {
-            let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
-            let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
+            RawAsmArgKind::Operand(name, op) => {
+                allow_templates = false;
 
-            dcx.emit_err(errors::AsmPositionalAfter { span, named, explicit });
+                let explicit_reg = matches!(op.reg(), Some(ast::InlineAsmRegOrRegClass::Reg(_)));
+                let span = arg.span;
+                let slot = args.operands.len();
+                args.operands.push((op, span));
+
+                // Validate the order of named, positional & explicit register operands and
+                // clobber_abi/options. We do this at the end once we have the full span
+                // of the argument available.
+
+                if explicit_reg {
+                    if name.is_some() {
+                        dcx.emit_err(errors::AsmExplicitRegisterName { span });
+                    }
+                    args.reg_args.insert(slot);
+                } else if let Some(name) = name {
+                    if let Some(&prev) = args.named_args.get(&name) {
+                        dcx.emit_err(errors::AsmDuplicateArg {
+                            span,
+                            name,
+                            prev: args.operands[prev].1,
+                        });
+                        continue;
+                    }
+                    args.named_args.insert(name, slot);
+                } else if !args.named_args.is_empty() || !args.reg_args.is_empty() {
+                    let named = args.named_args.values().map(|p| args.operands[*p].1).collect();
+                    let explicit = args.reg_args.iter().map(|p| args.operands[p].1).collect();
+
+                    dcx.emit_err(errors::AsmPositionalAfter { span, named, explicit });
+                }
+            }
+            RawAsmArgKind::Options(new_options) => {
+                allow_templates = false;
+
+                for (symbol, option, span, full_span) in new_options {
+                    if !asm_macro.is_supported_option(option) {
+                        // Tool-only output.
+                        dcx.emit_err(errors::AsmUnsupportedOption {
+                            span,
+                            symbol,
+                            full_span,
+                            macro_name: asm_macro.macro_name(),
+                        });
+                    } else if args.options.contains(option) {
+                        // Tool-only output.
+                        dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+                    } else {
+                        args.options |= option;
+                    }
+                }
+
+                args.options_spans.push(arg.span);
+            }
+            RawAsmArgKind::ClobberAbi(new_abis) => {
+                allow_templates = false;
+
+                match &new_abis[..] {
+                    // This should have errored above during parsing.
+                    [] => unreachable!(),
+                    [(abi, _span)] => args.clobber_abis.push((*abi, arg.span)),
+                    _ => args.clobber_abis.extend(new_abis),
+                }
+            }
         }
     }
 
@@ -336,60 +463,13 @@ pub fn parse_asm_args<'a>(
     Ok(args)
 }
 
-/// Report a duplicate option error.
-///
-/// This function must be called immediately after the option token is parsed.
-/// Otherwise, the suggestion will be incorrect.
-fn err_duplicate_option(p: &Parser<'_>, symbol: Symbol, span: Span) {
-    // Tool-only output
-    let full_span = if p.token == token::Comma { span.to(p.token.span) } else { span };
-    p.dcx().emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
-}
-
-/// Report an invalid option error.
-///
-/// This function must be called immediately after the option token is parsed.
-/// Otherwise, the suggestion will be incorrect.
-fn err_unsupported_option(p: &Parser<'_>, asm_macro: AsmMacro, symbol: Symbol, span: Span) {
-    // Tool-only output
-    let full_span = if p.token == token::Comma { span.to(p.token.span) } else { span };
-    p.dcx().emit_err(errors::AsmUnsupportedOption {
-        span,
-        symbol,
-        full_span,
-        macro_name: asm_macro.macro_name(),
-    });
-}
-
-/// Try to set the provided option in the provided `AsmArgs`.
-/// If it is already set, report a duplicate option error.
-///
-/// This function must be called immediately after the option token is parsed.
-/// Otherwise, the error will not point to the correct spot.
-fn try_set_option<'a>(
-    p: &Parser<'a>,
-    args: &mut AsmArgs,
-    asm_macro: AsmMacro,
-    symbol: Symbol,
-    option: ast::InlineAsmOptions,
-) {
-    if !asm_macro.is_supported_option(option) {
-        err_unsupported_option(p, asm_macro, symbol, p.prev_token.span);
-    } else if args.options.contains(option) {
-        err_duplicate_option(p, symbol, p.prev_token.span);
-    } else {
-        args.options |= option;
-    }
-}
-
 fn parse_options<'a>(
     p: &mut Parser<'a>,
-    args: &mut AsmArgs,
     asm_macro: AsmMacro,
-) -> PResult<'a, ()> {
-    let span_start = p.prev_token.span;
-
+) -> PResult<'a, Vec<(Symbol, ast::InlineAsmOptions, Span, Span)>> {
     p.expect(exp!(OpenParen))?;
+
+    let mut options = Vec::new();
 
     while !p.eat(exp!(CloseParen)) {
         const OPTIONS: [(ExpKeywordPair, ast::InlineAsmOptions); ast::InlineAsmOptions::COUNT] = [
@@ -406,6 +486,7 @@ fn parse_options<'a>(
 
         'blk: {
             for (exp, option) in OPTIONS {
+                // Gives a more accurate list of expected next tokens.
                 let kw_matched = if asm_macro.is_supported_option(option) {
                     p.eat_keyword(exp)
                 } else {
@@ -413,30 +494,29 @@ fn parse_options<'a>(
                 };
 
                 if kw_matched {
-                    try_set_option(p, args, asm_macro, exp.kw, option);
+                    let span = p.prev_token.span;
+                    let full_span =
+                        if p.token == token::Comma { span.to(p.token.span) } else { span };
+
+                    options.push((exp.kw, option, span, full_span));
                     break 'blk;
                 }
             }
 
-            return p.unexpected();
+            return p.unexpected_any();
         }
 
-        // Allow trailing commas
+        // Allow trailing commas.
         if p.eat(exp!(CloseParen)) {
             break;
         }
         p.expect(exp!(Comma))?;
     }
 
-    let new_span = span_start.to(p.prev_token.span);
-    args.options_spans.push(new_span);
-
-    Ok(())
+    Ok(options)
 }
 
-fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, ()> {
-    let span_start = p.prev_token.span;
-
+fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>> {
     p.expect(exp!(OpenParen))?;
 
     if p.eat(exp!(CloseParen)) {
@@ -462,31 +542,14 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
         p.expect(exp!(Comma))?;
     }
 
-    let full_span = span_start.to(p.prev_token.span);
-
-    match &new_abis[..] {
-        // should have errored above during parsing
-        [] => unreachable!(),
-        [(abi, _span)] => args.clobber_abis.push((*abi, full_span)),
-        abis => {
-            for (abi, span) in abis {
-                args.clobber_abis.push((*abi, *span));
-            }
-        }
-    }
-
-    Ok(())
+    Ok(new_abis)
 }
 
-fn parse_reg<'a>(
-    p: &mut Parser<'a>,
-    explicit_reg: &mut bool,
-) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
+fn parse_reg<'a>(p: &mut Parser<'a>) -> PResult<'a, ast::InlineAsmRegOrRegClass> {
     p.expect(exp!(OpenParen))?;
     let result = match p.token.uninterpolate().kind {
         token::Ident(name, IdentIsRaw::No) => ast::InlineAsmRegOrRegClass::RegClass(name),
         token::Literal(token::Lit { kind: token::LitKind::Str, symbol, suffix: _ }) => {
-            *explicit_reg = true;
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }
         _ => {
