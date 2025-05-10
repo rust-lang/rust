@@ -7,7 +7,7 @@ LL |         unsafe { mem::zeroed() }
    = warning: this changes meaning in Rust 2024 and in a future release in all editions!
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
-   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` on by default
+   = note: `#[deny(never_type_fallback_flowing_into_unsafe)]` (part of `#[deny(rust_2024_compatibility)]`) on by default
 help: use `()` annotations to avoid fallback changes
    |
 LL |         unsafe { mem::zeroed::<()>() }

@@ -4,7 +4,7 @@ warning: trait `Baz` is never used
 LL | trait Baz: Foo<3> {}
    |       ^^^
    |
-   = note: `#[warn(dead_code)]` on by default
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 warning: trait `Boz` is never used
   --> $DIR/dyn-supertraits.rs:26:7
