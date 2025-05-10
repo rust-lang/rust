@@ -1,0 +1,47 @@
+error: Undefined Behavior: write access through <TAG> at ALLOC[OFFSET] is forbidden
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |             *x = 1;
+   |             ^^^^^^ write access through <TAG> at ALLOC[OFFSET] is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> has state Frozen which forbids this child write access
+help: the accessed tag <TAG> was created here, in the initial state Reserved
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL | /         core::future::poll_fn(move |_| {
+LL | |             *x = 1;
+LL | |             Poll::<()>::Pending
+LL | |         })
+LL | |         .await
+   | |______________^
+help: the accessed tag <TAG> later transitioned to Active due to a child write access at offsets [OFFSET]
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |             *x = 1;
+   |             ^^^^^^
+   = help: this transition corresponds to the first write to a 2-phase borrowed mutable reference
+help: the accessed tag <TAG> later transitioned to Frozen due to a reborrow (acting as a foreign read access) at offsets [OFFSET]
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |     let _: Pin<&_> = f.as_ref(); // Or: `f.as_mut().into_ref()`.
+   |                      ^^^^^^^^^^
+   = help: this transition corresponds to a loss of write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside closure at tests/fail/async-shared-mutable.rs:LL:CC
+   = note: inside `<std::future::PollFn<{closure@tests/fail/async-shared-mutable.rs:LL:CC}> as std::future::Future>::poll` at RUSTLIB/core/src/future/poll_fn.rs:LL:CC
+note: inside closure
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |         .await
+   |          ^^^^^
+note: inside `main`
+  --> tests/fail/async-shared-mutable.rs:LL:CC
+   |
+LL |     assert_eq!(f.as_mut().poll(&mut cx), Poll::Pending);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 1 previous error
+
