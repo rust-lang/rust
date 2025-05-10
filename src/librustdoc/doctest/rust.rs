@@ -1,5 +1,6 @@
 //! Doctest functionality used only for doctests in `.rs` source files.
 
+use std::cell::Cell;
 use std::env;
 use std::sync::Arc;
 
@@ -47,13 +48,33 @@ impl RustCollector {
 
 impl DocTestVisitor for RustCollector {
     fn visit_test(&mut self, test: String, config: LangString, rel_line: MdRelLine) {
-        let line = self.get_base_line() + rel_line.offset();
+        let base_line = self.get_base_line();
+        let line = base_line + rel_line.offset();
+        let count = Cell::new(base_line);
+        let span = if line > base_line {
+            match self.source_map.span_extend_while(self.position, |c| {
+                if c == '\n' {
+                    let count_v = count.get();
+                    count.set(count_v + 1);
+                    if count_v >= line {
+                        return false;
+                    }
+                }
+                true
+            }) {
+                Ok(sp) => self.source_map.span_extend_to_line(sp.shrink_to_hi()),
+                _ => self.position,
+            }
+        } else {
+            self.position
+        };
         self.tests.push(ScrapedDocTest::new(
             self.get_filename(),
             line,
             self.cur_path.clone(),
             config,
             test,
+            span,
         ));
     }
 
