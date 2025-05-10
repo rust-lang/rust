@@ -2,8 +2,6 @@
 name = "date-check"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 glob = "0.3"
 regex = "1"
