@@ -1,3 +1,7 @@
+#![feature(f16)]
+#![cfg_attr(not(bootstrap), feature(cfg_target_has_reliable_f16_f128))]
+#![cfg_attr(not(bootstrap), expect(internal_features))] // reliable_f16_f128
+
 mod traits;
 mod ui;
 mod validate;
@@ -114,6 +118,10 @@ pub fn register_tests(cfg: &Config) -> Vec<TestInfo> {
     let mut tests = Vec::new();
 
     // Register normal generators for all floats.
+
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
+    register_float::<f16>(&mut tests, cfg);
     register_float::<f32>(&mut tests, cfg);
     register_float::<f64>(&mut tests, cfg);
 

@@ -38,6 +38,9 @@ fn test_max_pow10_no_more_than() {
 fn shortest_sanity_test() {
     f64_shortest_sanity_test(format_shortest);
     f32_shortest_sanity_test(format_shortest);
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
+    f16_shortest_sanity_test(format_shortest);
     more_shortest_sanity_test(format_shortest);
 }
 
@@ -50,6 +53,9 @@ fn exact_sanity_test() {
         f64_exact_sanity_test(format_exact);
     }
     f32_exact_sanity_test(format_exact);
+    #[cfg(not(bootstrap))]
+    #[cfg(target_has_reliable_f16)]
+    f16_exact_sanity_test(format_exact);
 }
 
 #[test]

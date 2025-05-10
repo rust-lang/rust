@@ -1280,7 +1280,7 @@ impl Step for TestFloatParse {
             path: "src/etc/test-float-parse",
             source_type: SourceType::InTree,
             extra_features: Vec::new(),
-            allow_features: "",
+            allow_features: "f16",
             cargo_args: Vec::new(),
             artifact_kind: ToolArtifactKind::Binary,
         })

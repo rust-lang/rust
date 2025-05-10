@@ -171,8 +171,26 @@ macro_rules! from_str_float_impl {
         }
     };
 }
+
+#[cfg(not(bootstrap))]
+#[cfg(target_has_reliable_f16)]
+from_str_float_impl!(f16);
 from_str_float_impl!(f32);
 from_str_float_impl!(f64);
+
+// FIXME(f16_f128): A fallback is used when the backend+target does not support f16 well, in order
+// to avoid ICEs.
+
+// After the bootstrap bump this should be: `#[cfg(not(target_has_reliable_f16))`
+#[cfg(any(bootstrap, all(not(bootstrap), not(target_has_reliable_f16))))]
+impl FromStr for f16 {
+    type Err = ParseFloatError;
+
+    #[inline]
+    fn from_str(_src: &str) -> Result<Self, ParseFloatError> {
+        unimplemented!("requires target_has_reliable_f16")
+    }
+}
 
 /// An error which can be returned when parsing a float.
 ///
