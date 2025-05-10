@@ -12,20 +12,27 @@
     fundamental,
     marker_trait_attr,
     const_trait_impl,
-    const_destruct
+    const_destruct,
 )]
 #![allow(internal_features, incomplete_features)]
 #![no_std]
 #![no_core]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
+
 #[lang = "copy"]
 pub trait Copy {}
 
 impl Copy for bool {}
 impl Copy for u8 {}
-impl<T: ?Sized> Copy for &T {}
+impl<T: PointeeSized> Copy for &T {}
 
 #[lang = "add"]
 #[const_trait]
@@ -106,17 +113,17 @@ pub trait Tuple {}
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
 
-impl<T: ?Sized> LegacyReceiver for &T {}
+impl<T: PointeeSized> LegacyReceiver for &T {}
 
-impl<T: ?Sized> LegacyReceiver for &mut T {}
+impl<T: PointeeSized> LegacyReceiver for &mut T {}
 
 #[lang = "receiver"]
 pub trait Receiver {
     #[lang = "receiver_target"]
-    type Target: ?Sized;
+    type Target: MetaSized;
 }
 
-impl<T: Deref + ?Sized> Receiver for T {
+impl<T: Deref + MetaSized> Receiver for T {
     type Target = <T as Deref>::Target;
 }
 
@@ -162,15 +169,15 @@ fn panic_fmt() {}
 
 #[lang = "index"]
 #[const_trait]
-pub trait Index<Idx: ?Sized> {
-    type Output: ?Sized;
+pub trait Index<Idx: PointeeSized> {
+    type Output: MetaSized;
 
     fn index(&self, index: Idx) -> &Self::Output;
 }
 
 #[const_trait]
-pub unsafe trait SliceIndex<T: ?Sized> {
-    type Output: ?Sized;
+pub unsafe trait SliceIndex<T: PointeeSized> {
+    type Output: MetaSized;
     fn index(self, slice: &T) -> &Self::Output;
 }
 
@@ -199,23 +206,23 @@ where
 }
 
 #[lang = "unsize"]
-pub trait Unsize<T: ?Sized> {}
+pub trait Unsize<T: PointeeSized>: PointeeSized {}
 
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> {}
+pub trait CoerceUnsized<T: PointeeSized> {}
 
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "deref"]
 #[const_trait]
 pub trait Deref {
     #[lang = "deref_target"]
-    type Target: ?Sized;
+    type Target: MetaSized;
 
     fn deref(&self) -> &Self::Target;
 }
 
-impl<T: ?Sized> const Deref for &T {
+impl<T: MetaSized> const Deref for &T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -223,7 +230,7 @@ impl<T: ?Sized> const Deref for &T {
     }
 }
 
-impl<T: ?Sized> const Deref for &mut T {
+impl<T: MetaSized> const Deref for &mut T {
     type Target = T;
 
     fn deref(&self) -> &T {
@@ -307,14 +314,14 @@ fn from_str(s: &str) -> Result<bool, ()> {
 
 #[lang = "eq"]
 #[const_trait]
-pub trait PartialEq<Rhs: ?Sized = Self> {
+pub trait PartialEq<Rhs: PointeeSized = Self>: PointeeSized {
     fn eq(&self, other: &Rhs) -> bool;
     fn ne(&self, other: &Rhs) -> bool {
         !self.eq(other)
     }
 }
 
-impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
+impl<A: PointeeSized, B: PointeeSized> const PartialEq<&B> for &A
 where
     A: ~const PartialEq<B>,
 {
@@ -357,7 +364,7 @@ impl<P> Pin<P> {
     }
 }
 
-impl<'a, T: ?Sized> Pin<&'a T> {
+impl<'a, T: PointeeSized> Pin<&'a T> {
     const fn get_ref(self) -> &'a T {
         self.pointer
     }
@@ -372,7 +379,7 @@ impl<P: Deref> Pin<P> {
     }
 }
 
-impl<'a, T: ?Sized> Pin<&'a mut T> {
+impl<'a, T: PointeeSized> Pin<&'a mut T> {
     const unsafe fn get_unchecked_mut(self) -> &'a mut T {
         self.pointer
     }
@@ -418,7 +425,7 @@ impl<T: Clone> Clone for RefCell<T> {
     }
 }
 
-struct RefCell<T: ?Sized> {
+struct RefCell<T: PointeeSized> {
     borrow: UnsafeCell<()>,
     value: UnsafeCell<T>,
 }
@@ -427,7 +434,7 @@ impl<T> RefCell<T> {
         loop {}
     }
 }
-impl<T: ?Sized> RefCell<T> {
+impl<T: PointeeSized> RefCell<T> {
     fn borrow(&self) -> Ref<'_, T> {
         loop {}
     }
@@ -435,16 +442,16 @@ impl<T: ?Sized> RefCell<T> {
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
-struct UnsafeCell<T: ?Sized> {
+struct UnsafeCell<T: PointeeSized> {
     value: T,
 }
 
-struct Ref<'b, T: ?Sized + 'b> {
+struct Ref<'b, T: PointeeSized + 'b> {
     value: *const T,
     borrow: &'b UnsafeCell<()>,
 }
 
-impl<T: ?Sized> Deref for Ref<'_, T> {
+impl<T: MetaSized> Deref for Ref<'_, T> {
     type Target = T;
 
     #[inline]

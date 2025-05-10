@@ -47,6 +47,7 @@ LL | type D<N: ?Sized> = ();
    |        ^ unused type parameter
    |
    = help: consider removing `N` or referring to it in the body of the type alias
+   = help: if you intended `N` to be a const parameter, use `const N: /* Type */` instead
 
 error: aborting due to 6 previous errors
 

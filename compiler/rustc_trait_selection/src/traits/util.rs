@@ -4,10 +4,12 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::PolyTraitObligation;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, PolyTraitPredicate, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
@@ -507,19 +509,72 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
 }
 
 pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tcx>) -> bool {
-    // Proving `Sized` very often on "obviously sized" types like `&T`, accounts for about 60%
-    // percentage of the predicates we have to prove. No need to canonicalize and all that for
-    // such cases.
+    // Proving `Sized`/`MetaSized`/`PointeeSized`, very often on "obviously sized" types like
+    // `&T`, accounts for about 60% percentage of the predicates we have to prove. No need to
+    // canonicalize and all that for such cases.
     if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
         predicate.kind().skip_binder()
     {
-        if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized)
-            && trait_ref.self_ty().is_trivially_sized(tcx)
-        {
+        let sizedness = if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
+            SizedTraitKind::Sized
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+            SizedTraitKind::MetaSized
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::PointeeSized) {
+            SizedTraitKind::PointeeSized
+        } else {
+            return false;
+        };
+
+        if trait_ref.self_ty().has_trivial_sizedness(tcx, sizedness) {
             debug!("fast path -- trivial sizedness");
             return true;
         }
     }
 
     false
+}
+
+/// To improve performance, sizedness traits are not elaborated and so special-casing is required
+/// in the trait solver to find a `Sized` candidate for a `MetaSized` obligation. Returns the
+/// predicate to used in the candidate for such a `obligation`, given `candidates`.
+pub(crate) fn unelaborated_sizedness_candidate<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: &PolyTraitObligation<'tcx>,
+    candidates: impl IntoIterator<Item = PolyTraitPredicate<'tcx>>,
+) -> Option<PolyTraitPredicate<'tcx>> {
+    use crate::infer::InferCtxtExt;
+    if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized) {
+        return None;
+    }
+
+    let has = candidates.into_iter().any(|c| {
+        if !infcx.tcx.is_lang_item(c.def_id(), LangItem::Sized) {
+            return false;
+        }
+
+        let expected_self_ty = obligation.self_ty();
+        let found_self_ty = c.self_ty();
+        obligation.predicate.polarity() == c.polarity()
+            && expected_self_ty.bound_vars() == found_self_ty.bound_vars()
+            && {
+                let expected_self_ty =
+                    infcx.tcx.instantiate_bound_regions_with_erased(expected_self_ty);
+                let found_self_ty = infcx.tcx.instantiate_bound_regions_with_erased(found_self_ty);
+                infcx.can_eq(obligation.param_env, expected_self_ty, found_self_ty)
+            }
+    });
+
+    if has { Some(obligation.predicate) } else { None }
+}
+
+/// See `unelaborated_sizedness_candidate`, but uses `Obligation::param_env` as `candidates`.
+pub(crate) fn unelaborated_sizedness_candidate_from_obligation<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: &PolyTraitObligation<'tcx>,
+) -> Option<PolyTraitPredicate<'tcx>> {
+    unelaborated_sizedness_candidate(
+        infcx,
+        obligation,
+        obligation.param_env.caller_bounds().iter().filter_map(|c| c.as_trait_clause()),
+    )
 }

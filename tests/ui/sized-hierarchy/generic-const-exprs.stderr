@@ -1,0 +1,31 @@
+error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = error: internal compiler error: Encountered anon const with inference variable args but no error reported
+   |
+   = note: delayed at compiler/rustc_trait_selection/src/traits/mod.rs:596:27 - disabled backtrace
+   = query stack during panic:
+end of query stack

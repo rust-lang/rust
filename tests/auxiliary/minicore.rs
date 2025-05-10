@@ -39,13 +39,19 @@ macro_rules! impl_marker_trait {
     }
 }
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
-impl<T: ?Sized> LegacyReceiver for &T {}
-impl<T: ?Sized> LegacyReceiver for &mut T {}
+impl<T: PointeeSized> LegacyReceiver for &T {}
+impl<T: PointeeSized> LegacyReceiver for &mut T {}
 
 #[lang = "copy"]
 pub trait Copy: Sized {}
@@ -67,14 +73,14 @@ impl_marker_trait!(
         f16, f32, f64, f128,
     ]
 );
-impl<'a, T: ?Sized> Copy for &'a T {}
-impl<T: ?Sized> Copy for *const T {}
-impl<T: ?Sized> Copy for *mut T {}
+impl<'a, T: PointeeSized> Copy for &'a T {}
+impl<T: PointeeSized> Copy for *const T {}
+impl<T: PointeeSized> Copy for *mut T {}
 impl<T: Copy, const N: usize> Copy for [T; N] {}
 
 #[lang = "phantom_data"]
-pub struct PhantomData<T: ?Sized>;
-impl<T: ?Sized> Copy for PhantomData<T> {}
+pub struct PhantomData<T: PointeeSized>;
+impl<T: PointeeSized> Copy for PhantomData<T> {}
 
 pub enum Option<T> {
     None,
@@ -90,17 +96,17 @@ impl<T: Copy, E: Copy> Copy for Result<T, E> {}
 
 #[lang = "manually_drop"]
 #[repr(transparent)]
-pub struct ManuallyDrop<T: ?Sized> {
+pub struct ManuallyDrop<T: PointeeSized> {
     value: T,
 }
-impl<T: Copy + ?Sized> Copy for ManuallyDrop<T> {}
+impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
 
 #[lang = "unsafe_cell"]
 #[repr(transparent)]
-pub struct UnsafeCell<T: ?Sized> {
+pub struct UnsafeCell<T: PointeeSized> {
     value: T,
 }
-impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
+impl<T: PointeeSized> !Freeze for UnsafeCell<T> {}
 
 #[lang = "tuple_trait"]
 pub trait Tuple {}
@@ -176,15 +182,15 @@ pub trait Fn<Args: Tuple>: FnMut<Args> {
 #[lang = "dispatch_from_dyn"]
 trait DispatchFromDyn<T> {}
 
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: PointeeSized + Unsize<U>, U: PointeeSized> DispatchFromDyn<&'a U> for &'a T {}
 
 #[lang = "unsize"]
-trait Unsize<T: ?Sized> {}
+trait Unsize<T: PointeeSized>: PointeeSized {}
 
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> {}
+pub trait CoerceUnsized<T: PointeeSized> {}
 
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "drop"]
 trait Drop {
