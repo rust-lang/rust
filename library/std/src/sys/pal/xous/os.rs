@@ -62,14 +62,6 @@ mod c_compat {
         }
         exit(unsafe { main() });
     }
-
-    // This function is needed by the panic runtime. The symbol is named in
-    // pre-link args for the target specification, so keep that in sync.
-    #[unsafe(no_mangle)]
-    // NB. used by both libunwind and libpanic_abort
-    pub extern "C" fn __rust_abort() -> ! {
-        exit(101);
-    }
 }
 
 pub fn errno() -> i32 {

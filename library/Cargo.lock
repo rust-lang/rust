@@ -196,7 +196,6 @@ name = "panic_abort"
 version = "0.0.0"
 dependencies = [
  "alloc",
- "cfg-if",
  "compiler_builtins",
  "core",
  "libc",

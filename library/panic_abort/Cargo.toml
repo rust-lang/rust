@@ -12,10 +12,11 @@ bench = false
 doc = false
 
 [dependencies]
-alloc = { path = "../alloc" }
-cfg-if = { version = "1.0", features = ['rustc-dep-of-std'] }
 core = { path = "../core" }
 compiler_builtins = "0.1.0"
 
-[target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
+[target.'cfg(target_os = "android")'.dependencies]
 libc = { version = "0.2", default-features = false }
+
+[target.'cfg(any(target_os = "android", target_os = "zkvm"))'.dependencies]
+alloc = { path = "../alloc" }
