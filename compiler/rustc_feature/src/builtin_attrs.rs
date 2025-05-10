@@ -494,7 +494,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(NameValueStr: "windows|console"), FutureWarnFollowing,
         EncodeCrossCrate::No
     ),
-    ungated!(panic_handler, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes), // RFC 2070
 
     // Code generation:
     ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing, EncodeCrossCrate::No),
@@ -1071,6 +1070,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_force_inline] forces a free function to be inlined"
+    ),
+    gated!(
+        // Used in resolve:
+        eii_mangle_extern, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes, eii_internals, "`#[eii_mangle_extern]` is for use by rustc only",
     ),
 
     // ==========================================================================

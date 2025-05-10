@@ -217,6 +217,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::eii::EiiMapping;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::mono::{CollectionMode, InstantiationMode, MonoItem};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
@@ -964,7 +965,8 @@ fn visit_instance_use<'tcx>(
         | ty::InstanceKind::Item(..)
         | ty::InstanceKind::FnPtrShim(..)
         | ty::InstanceKind::CloneShim(..)
-        | ty::InstanceKind::FnPtrAddrShim(..) => {
+        | ty::InstanceKind::FnPtrAddrShim(..)
+        | ty::InstanceKind::EiiShim { .. } => {
             output.push(create_fn_mono_item(tcx, instance, source));
         }
     }
@@ -1406,6 +1408,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
         }
 
         collector.push_extra_entry_roots();
+        collector.push_extra_eii_roots();
     }
 
     // We can only codegen items that are instantiable - items all of
@@ -1548,11 +1551,12 @@ impl<'v> RootCollector<'_, 'v> {
                     !matches!(self.tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
                 }
                 MonoItemCollectionStrategy::Lazy => {
+                    let cfa = self.tcx.codegen_fn_attrs(def_id);
+
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)
                         || self.tcx.is_reachable_non_generic(def_id)
-                        || self
-                            .tcx
-                            .codegen_fn_attrs(def_id)
+                        // FIXME(jdonszelmann): EII might remove this:
+                        || cfa
                             .flags
                             .contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
                 }
@@ -1605,6 +1609,28 @@ impl<'v> RootCollector<'_, 'v> {
         );
 
         self.output.push(create_fn_mono_item(self.tcx, start_instance, DUMMY_SP));
+    }
+
+    /// For each externally implementable item, we should generate an alias MonoItem that
+    /// determines what implementation is called. This could be a default implementation.
+    fn push_extra_eii_roots(&mut self) {
+        for (shim_did, &EiiMapping { extern_item, chosen_impl, weak_linkage, .. }) in
+            self.tcx.get_externally_implementable_item_impls(())
+        {
+            self.output.push(create_fn_mono_item(
+                self.tcx,
+                ty::Instance {
+                    def: ty::InstanceKind::EiiShim {
+                        def_id: (*shim_did).into(),
+                        extern_item,
+                        chosen_impl,
+                        weak_linkage,
+                    },
+                    args: ty::GenericArgs::empty(),
+                },
+                DUMMY_SP,
+            ));
+        }
     }
 }
 

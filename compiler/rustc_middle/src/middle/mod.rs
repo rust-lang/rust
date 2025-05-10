@@ -30,6 +30,7 @@ pub mod lib_features {
         }
     }
 }
+pub mod eii;
 pub mod privacy;
 pub mod region;
 pub mod resolve_bound_vars;

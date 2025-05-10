@@ -238,10 +238,7 @@ trait_selection_oc_cant_coerce_force_inline =
 trait_selection_oc_cant_coerce_intrinsic = cannot coerce intrinsics to function pointers
 trait_selection_oc_closure_selfref = closure/coroutine type that references itself
 trait_selection_oc_const_compat = const not compatible with trait
-trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->
-        [panic_impl] `#[panic_handler]`
-        *[lang_item_name] lang item `{$lang_item_name}`
-    } function has wrong type
+trait_selection_oc_fn_lang_correct_type = lang item `{$lang_item_name}` function has wrong type
 trait_selection_oc_fn_main_correct_type = `main` function has wrong type
 trait_selection_oc_generic = mismatched types
 

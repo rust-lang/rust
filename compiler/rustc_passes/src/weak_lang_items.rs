@@ -9,9 +9,7 @@ use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{
-    MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd, UnknownExternLangItem,
-};
+use crate::errors::{MissingLangItem, PanicUnwindWithoutStd};
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// lang items required by this crate, but not defined yet.
@@ -33,17 +31,16 @@ pub(crate) fn check_crate(
         items.missing.push(LangItem::EhCatchTypeinfo);
     }
 
-    visit::Visitor::visit_crate(&mut WeakLangItemVisitor { tcx, items }, krate);
+    visit::Visitor::visit_crate(&mut WeakLangItemVisitor { items }, krate);
 
     verify(tcx, items);
 }
 
-struct WeakLangItemVisitor<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct WeakLangItemVisitor<'a> {
     items: &'a mut lang_items::LanguageItems,
 }
 
-impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_, '_> {
+impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_> {
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
         if let Some((lang_item, _)) = lang_items::extract(&i.attrs) {
             if let Some(item) = LangItem::from_name(lang_item)
@@ -52,8 +49,6 @@ impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_, '_> {
                 if self.items.get(item).is_none() {
                     self.items.missing.push(item);
                 }
-            } else {
-                self.tcx.dcx().emit_err(UnknownExternLangItem { span: i.span, lang_item });
             }
         }
     }
@@ -84,9 +79,7 @@ fn verify(tcx: TyCtxt<'_>, items: &lang_items::LanguageItems) {
 
     for &item in WEAK_LANG_ITEMS.iter() {
         if missing.contains(&item) && required(tcx, item) && items.get(item).is_none() {
-            if item == LangItem::PanicImpl {
-                tcx.dcx().emit_err(MissingPanicHandler);
-            } else if item == LangItem::EhPersonality {
+            if item == LangItem::EhPersonality {
                 tcx.dcx().emit_err(PanicUnwindWithoutStd);
             } else {
                 tcx.dcx().emit_err(MissingLangItem { name: item.name() });

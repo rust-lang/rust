@@ -181,6 +181,15 @@ impl<'tcx> MonoItem<'tcx> {
             return opt_incr_drop_glue_mode(tcx, ty);
         }
 
+        // Eii shims are only generated in the final crate because we need to resolve defaults.
+        // Specifically, only when making the final crate we know whether there was an explicit
+        // implementation given *somewhere* and if not we then have to decide whether there is
+        // a default which we need to insert. That default needs to be shared between all
+        // dependencies; hence globally shared.
+        if let InstanceKind::EiiShim { .. } = instance.def {
+            return InstantiationMode::GloballyShared { may_conflict: false };
+        }
+
         // We need to ensure that we do not decide the InstantiationMode of an exported symbol is
         // LocalCopy. Since exported symbols are computed based on the output of
         // cross_crate_inlinable, we are beholden to our previous decisions.
@@ -374,7 +383,7 @@ pub struct MonoItemData {
 /// Specifies the linkage type for a `MonoItem`.
 ///
 /// See <https://llvm.org/docs/LangRef.html#linkage-types> for more details about these variants.
-#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, TyEncodable, TyDecodable, HashStable, Eq, Hash)]
 pub enum Linkage {
     External,
     AvailableExternally,
@@ -532,7 +541,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceKind::FnPtrAddrShim(..)
                             | InstanceKind::AsyncDropGlue(..)
                             | InstanceKind::FutureDropPollShim(..)
-                            | InstanceKind::AsyncDropGlueCtorShim(..) => None,
+                            | InstanceKind::AsyncDropGlueCtorShim(..)
+                            | InstanceKind::EiiShim { .. } => None,
                         }
                     }
                     MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),

@@ -109,7 +109,7 @@ impl Target {
             ItemKind::Static { .. } => Target::Static,
             ItemKind::Const(..) => Target::Const,
             ItemKind::Fn { .. } => Target::Fn,
-            ItemKind::Macro(..) => Target::MacroDef,
+            ItemKind::Macro { .. } => Target::MacroDef,
             ItemKind::Mod(..) => Target::Mod,
             ItemKind::ForeignMod { .. } => Target::ForeignMod,
             ItemKind::GlobalAsm { .. } => Target::GlobalAsm,

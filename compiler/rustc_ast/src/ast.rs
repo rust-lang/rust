@@ -1951,6 +1951,15 @@ pub struct MacroDef {
     pub body: P<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
+
+    pub eii_macro_for: Option<EIIMacroFor>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+pub struct EIIMacroFor {
+    pub extern_item_path: Path,
+    pub impl_unsafe: bool,
+    pub span: Span,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
@@ -3578,6 +3587,19 @@ pub struct Fn {
     pub contract: Option<P<FnContract>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<P<Block>>,
+
+    /// This fn implements some EII, pointed to by the `path`
+    pub eii_impl: ThinVec<EIIImpl>,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct EIIImpl {
+    pub node_id: NodeId,
+    pub eii_macro_path: Path,
+    pub impl_safety: Safety,
+    pub span: Span,
+    pub inner_span: Span,
+    pub is_default: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3927,7 +3949,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

@@ -151,12 +151,10 @@ impl<CTX> HashStable<CTX> for LangItem {
 }
 
 /// Extracts the first `lang = "$name"` out of a list of attributes.
-/// The `#[panic_handler]` attribute is also extracted out when found.
 pub fn extract(attrs: &[impl AttributeExt]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| {
         Some(match attr {
             _ if attr.has_name(sym::lang) => (attr.value_str()?, attr.span()),
-            _ if attr.has_name(sym::panic_handler) => (sym::panic_impl, attr.span()),
             _ => return None,
         })
     })
@@ -287,6 +285,10 @@ language_item_table! {
     PanicMisalignedPointerDereference, sym::panic_misaligned_pointer_dereference, panic_misaligned_pointer_dereference_fn, Target::Fn, GenericRequirement::Exact(0);
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
+    /// Note: used to mark an extern item but now marks an externally implementable item. This means
+    /// that the PanicImpl used to be marked to be specially treated in the compiler, while it now
+    /// is only marked so we can check if it exists. There's no other reason for this lang item
+    /// anymore.
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
     PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     PanicInCleanup,          sym::panic_in_cleanup,    panic_in_cleanup,           Target::Fn,             GenericRequirement::Exact(0);

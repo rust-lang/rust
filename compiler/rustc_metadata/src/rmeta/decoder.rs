@@ -782,10 +782,9 @@ impl MetadataBlob {
                     )?;
                     writeln!(
                         out,
-                        "has_global_allocator {} has_alloc_error_handler {} has_panic_handler {} has_default_lib_allocator {}",
+                        "has_global_allocator {} has_alloc_error_handler {} has_default_lib_allocator {}",
                         root.has_global_allocator,
                         root.has_alloc_error_handler,
-                        root.has_panic_handler,
                         root.has_default_lib_allocator
                     )?;
                     writeln!(
@@ -1473,6 +1472,13 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.foreign_modules.decode((self, sess))
     }
 
+    fn get_externally_implementable_items(
+        self,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = (DefId, (EIIDecl, Vec<(DefId, EIIImpl)>))> {
+        self.root.externally_implementable_items.decode((self, sess))
+    }
+
     fn get_dylib_dependency_formats<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,
@@ -1513,7 +1519,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let macro_rules = self.root.tables.is_macro_rules.get(self, id);
                 let body =
                     self.root.tables.macro_definition.get(self, id).unwrap().decode((self, sess));
-                ast::MacroDef { macro_rules, body: ast::ptr::P(body) }
+                ast::MacroDef { macro_rules, body: ast::ptr::P(body), eii_macro_for: None }
             }
             _ => bug!(),
         }

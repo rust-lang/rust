@@ -855,18 +855,6 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_unknown_external_lang_item, code = E0264)]
-pub(crate) struct UnknownExternLangItem {
-    #[primary_span]
-    pub span: Span,
-    pub lang_item: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_missing_panic_handler)]
-pub(crate) struct MissingPanicHandler;
-
-#[derive(Diagnostic)]
 #[diag(passes_panic_unwind_without_std)]
 #[help]
 #[note]
@@ -881,8 +869,8 @@ pub(crate) struct MissingLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_lang_item_fn_with_track_caller)]
-pub(crate) struct LangItemWithTrackCaller {
+#[diag(passes_eii_fn_with_track_caller)]
+pub(crate) struct EiiWithTrackCaller {
     #[primary_span]
     pub attr_span: Span,
     pub name: Symbol,
@@ -891,8 +879,8 @@ pub(crate) struct LangItemWithTrackCaller {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_lang_item_fn_with_target_feature)]
-pub(crate) struct LangItemWithTargetFeature {
+#[diag(passes_eii_fn_with_target_feature)]
+pub(crate) struct EiiWithTargetFeature {
     #[primary_span]
     pub attr_span: Span,
     pub name: Symbol,
@@ -1972,4 +1960,71 @@ pub(crate) enum UnexportableItem<'a> {
         vis_note: Span,
         field_name: &'a str,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_impl_not_function)]
+pub(crate) struct EIIImplNotFunction {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_impl_requires_unsafe)]
+pub(crate) struct EIIImplRequiresUnsafe {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub suggestion: EIIImplRequiresUnsafeSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    passes_eii_impl_requires_unsafe_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct EIIImplRequiresUnsafeSuggestion {
+    #[suggestion_part(code = "unsafe(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_without_impl)]
+pub(crate) struct EiiWithoutImpl {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub name: Symbol,
+
+    pub current_crate_name: Symbol,
+    pub decl_crate_name: Symbol,
+    #[help]
+    pub help: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_duplicate_eii_impls)]
+pub(crate) struct DuplicateEiiImpls {
+    pub name: Symbol,
+
+    #[primary_span]
+    #[label(passes_first)]
+    pub first_span: Span,
+    pub first_crate: Symbol,
+
+    #[label(passes_second)]
+    pub second_span: Span,
+    pub second_crate: Symbol,
+
+    #[note]
+    pub additional_crates: Option<()>,
+
+    pub num_additional_crates: usize,
+    pub additional_crate_names: String,
+
+    #[help]
+    pub help: (),
 }

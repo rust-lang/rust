@@ -39,6 +39,8 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
                 // If the function itself is not annotated with `const`, it may still be a `const fn`
                 // if it resides in a const trait impl.
                 parent_impl_or_trait_constness(tcx, def_id)
+            } else if tcx.get_externally_implementable_item_impls(()).contains_key(&def_id) {
+                hir::Constness::NotConst
             } else {
                 tcx.dcx().span_bug(
                     tcx.def_span(def_id),

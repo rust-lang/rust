@@ -114,6 +114,64 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
             receiver_by_ref,
         } => build_construct_coroutine_by_move_shim(tcx, coroutine_closure_def_id, receiver_by_ref),
 
+        e @ ty::InstanceKind::EiiShim { def_id: _, extern_item, chosen_impl, weak_linkage: _ } => {
+            let source = MirSource::from_instance(e);
+
+            // get the signature for the new function this shim is creating
+            let shim_fn_sig = tcx.fn_sig(extern_item).instantiate_identity();
+            let shim_fn_sig = tcx.instantiate_bound_regions_with_erased(shim_fn_sig);
+
+            let span = tcx.def_span(chosen_impl);
+            let source_info = SourceInfo::outermost(span);
+
+            // we want to generate a call to this function
+            let args = ty::GenericArgs::identity_for_item(tcx, chosen_impl);
+            let chosen_fn_ty = Ty::new_fn_def(tcx, chosen_impl, args);
+
+            let func = Operand::Constant(Box::new(ConstOperand {
+                span,
+                user_ty: None,
+                const_: Const::zero_sized(chosen_fn_ty),
+            }));
+
+            // println!("generating EII shim for extern item {extern_item:?} and impl {chosen_impl:?}");
+
+            let locals = local_decls_for_sig(&shim_fn_sig, span);
+            let mut blocks = IndexVec::new();
+
+            let return_block = BasicBlock::new(1);
+            blocks.push(BasicBlockData {
+                statements: vec![],
+                terminator: Some(Terminator {
+                    source_info,
+                    kind: TerminatorKind::Call {
+                        func,
+                        args: locals
+                            .iter_enumerated()
+                            .map(|i| i.0)
+                            .skip(1)
+                            .map(|local| Spanned { node: Operand::Move(Place::from(local)), span })
+                            .collect::<Vec<_>>()
+                            .into_boxed_slice(),
+                        fn_span: span,
+                        destination: Place::return_place(),
+                        target: Some(return_block),
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::Misc,
+                    },
+                }),
+                is_cleanup: false,
+            });
+
+            blocks.push(BasicBlockData {
+                statements: vec![],
+                terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+                is_cleanup: false,
+            });
+
+            new_body(source, blocks, locals, shim_fn_sig.inputs().len(), span)
+        }
+
         ty::InstanceKind::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?

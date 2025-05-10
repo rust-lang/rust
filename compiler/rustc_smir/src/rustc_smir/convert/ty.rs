@@ -816,6 +816,7 @@ impl<'tcx> Stable<'tcx> for ty::Instance<'tcx> {
             | ty::InstanceKind::FnPtrShim(..)
             | ty::InstanceKind::FutureDropPollShim(..)
             | ty::InstanceKind::AsyncDropGlue(..)
+            | ty::InstanceKind::EiiShim { .. }
             | ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
                 stable_mir::mir::mono::InstanceKind::Shim
             }

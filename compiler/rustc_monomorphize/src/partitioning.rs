@@ -115,7 +115,7 @@ use rustc_middle::mir::mono::{
     MonoItemPartitions, Visibility,
 };
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, InstanceKind, TyCtxt};
+use rustc_middle::ty::{self, Instance, InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::CodegenUnits;
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
@@ -633,6 +633,14 @@ fn characteristic_def_id_of_mono_item<'tcx>(
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceKind::Item(def) => def,
+                // EII shims have a characteristic defid.
+                // But it's not their own, its the one of the extern item it is implementing.
+                ty::InstanceKind::EiiShim {
+                    def_id: _,
+                    extern_item,
+                    chosen_impl: _,
+                    weak_linkage: _,
+                } => extern_item,
                 ty::InstanceKind::VTableShim(..)
                 | ty::InstanceKind::ReifyShim(..)
                 | ty::InstanceKind::FnPtrShim(..)
@@ -752,6 +760,7 @@ fn mono_item_linkage_and_visibility<'tcx>(
     if let Some(explicit_linkage) = mono_item.explicit_linkage(tcx) {
         return (explicit_linkage, Visibility::Default);
     }
+
     let vis = mono_item_visibility(
         tcx,
         mono_item,
@@ -759,7 +768,18 @@ fn mono_item_linkage_and_visibility<'tcx>(
         can_export_generics,
         always_export_generics,
     );
-    (Linkage::External, vis)
+
+    // The check for EII implementations and their defaults is also done in shared and static
+    // libraries. And shared libraries may later be linked together, both implementing the EII.
+    // This conflicting implementations may show up. We want to ignore this and just link em
+    // together anyway. LLVM ensures the last one is the one that's chosen
+    if let MonoItem::Fn(Instance { def: InstanceKind::EiiShim { weak_linkage, .. }, .. }) =
+        mono_item
+    {
+        if *weak_linkage { (Linkage::WeakAny, vis) } else { (Linkage::External, vis) }
+    } else {
+        (Linkage::External, vis)
+    }
 }
 
 type CguNameCache = UnordMap<(DefId, bool), Symbol>;
@@ -801,6 +821,15 @@ fn mono_item_visibility<'tcx>(
         | InstanceKind::FutureDropPollShim(def_id, _, _)
         | InstanceKind::AsyncDropGlue(def_id, _)
         | InstanceKind::AsyncDropGlueCtorShim(def_id, _) => def_id,
+
+        InstanceKind::EiiShim { .. } => {
+            *can_be_internalized = false;
+            // Out of the three visibilities, only Default makes symbols visible outside the current
+            // DSO. For EIIs this is explicitly the intended visibilty. If another DSO is refering
+            // to an extern item, the implementation may be generated downstream. That symbol does
+            // have to be visible to the linker!
+            return Visibility::Default;
+        }
 
         // We match the visibility of statics here
         InstanceKind::ThreadLocalShim(def_id) => {
@@ -920,6 +949,7 @@ fn mono_item_visibility<'tcx>(
         //   LLVM internalize them as this decision is left up to the linker to
         //   omit them, so prevent them from being internalized.
         let attrs = tcx.codegen_fn_attrs(def_id);
+        // FIXME(jdonszelmann): EII might replace this
         if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
             *can_be_internalized = false;
         }

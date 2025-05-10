@@ -4113,8 +4113,7 @@ impl<'hir> Item<'hir> {
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
 
-        expect_macro, (Ident, &ast::MacroDef, MacroKind),
-            ItemKind::Macro(ident, def, mk), (*ident, def, *mk);
+        expect_macro, (Ident, &ast::MacroDef, MacroKind), ItemKind::Macro(ident, def, mk), (*ident, def, *mk);
 
         expect_mod, (Ident, &'hir Mod<'hir>), ItemKind::Mod(ident, m), (*ident, m);
 

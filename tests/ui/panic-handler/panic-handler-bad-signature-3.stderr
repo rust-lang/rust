@@ -1,12 +1,14 @@
-error[E0308]: `#[panic_handler]` function has wrong type
+error[E0050]: `panic` has 0 parameters but #[panic_handler] requires it to have 1
   --> $DIR/panic-handler-bad-signature-3.rs:9:1
    |
+LL | #[panic_handler]
+   | ---------------- required because of this attribute
 LL | fn panic() -> ! {
-   | ^^^^^^^^^^^^^^^ incorrect number of function parameters
+   | ^^^^^^^^^^^^^^^ expected 1 parameter, found 0
+  --> $SRC_DIR/core/src/panic.rs:LL:COL
    |
-   = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> _`
-              found signature `fn() -> _`
+   = note: requires 1 parameter
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0050`.

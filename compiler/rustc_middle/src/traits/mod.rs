@@ -309,6 +309,13 @@ pub enum ObligationCauseCode<'tcx> {
         kind: ty::AssocKind,
     },
 
+    /// Error derived when checking an impl item is compatible with
+    /// its corresponding trait item's definition
+    CompareEII {
+        external_impl: LocalDefId,
+        declaration: DefId,
+    },
+
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
         impl_item_def_id: LocalDefId,

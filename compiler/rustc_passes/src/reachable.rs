@@ -23,6 +23,7 @@
 //! considering here as at that point, everything is monomorphic.
 
 use hir::def_id::LocalDefIdSet;
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -178,13 +179,26 @@ impl<'tcx> ReachableContext<'tcx> {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
-            let codegen_attrs = if self.tcx.def_kind(search_item).has_codegen_attrs() {
+            let def_kind = self.tcx.def_kind(search_item);
+
+            let codegen_attrs = if def_kind.has_codegen_attrs() {
                 self.tcx.codegen_fn_attrs(search_item)
             } else {
                 CodegenFnAttrs::EMPTY
             };
             let is_extern = codegen_attrs.contains_extern_indicator();
-            if is_extern {
+
+            // Keep all implementation bodies for EIIs. Sometimes we can only decide in the final
+            // crate whether we do or don't need to codegen them so it'd be a shame if they got
+            // filtered out here already.
+            let eii_impl =
+                find_attr!(self.tcx.get_all_attrs(search_item), AttributeKind::EiiImpl(_))
+                    || self
+                        .tcx
+                        .get_externally_implementable_item_impls(())
+                        .contains_key(&search_item);
+
+            if is_extern || eii_impl {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
@@ -235,7 +249,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     hir::ItemKind::ExternCrate(..)
                     | hir::ItemKind::Use(..)
                     | hir::ItemKind::TyAlias(..)
-                    | hir::ItemKind::Macro(..)
+                    | hir::ItemKind::Macro { .. }
                     | hir::ItemKind::Mod(..)
                     | hir::ItemKind::ForeignMod { .. }
                     | hir::ItemKind::Impl { .. }
@@ -381,20 +395,12 @@ impl<'tcx> DefIdVisitor<'tcx> for ReachableContext<'tcx> {
     }
 }
 
-fn check_item<'tcx>(
+fn check_trait_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::ItemId,
     worklist: &mut Vec<LocalDefId>,
     effective_visibilities: &privacy::EffectiveVisibilities,
 ) {
-    if has_custom_linkage(tcx, id.owner_id.def_id) {
-        worklist.push(id.owner_id.def_id);
-    }
-
-    if !matches!(tcx.def_kind(id.owner_id), DefKind::Impl { of_trait: true }) {
-        return;
-    }
-
     // We need only trait impls here, not inherent impls, and only non-exported ones
     if effective_visibilities.is_reachable(id.owner_id.def_id) {
         return;
@@ -413,6 +419,29 @@ fn check_item<'tcx>(
 
     worklist
         .extend(tcx.provided_trait_methods(trait_def_id).map(|assoc| assoc.def_id.expect_local()));
+}
+
+fn check_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    id: hir::ItemId,
+    worklist: &mut Vec<LocalDefId>,
+    effective_visibilities: &privacy::EffectiveVisibilities,
+) {
+    if has_custom_linkage(tcx, id.owner_id.def_id) {
+        worklist.push(id.owner_id.def_id);
+    }
+
+    match tcx.def_kind(id.owner_id) {
+        DefKind::Impl { of_trait: true } => {
+            check_trait_item(tcx, id, worklist, effective_visibilities)
+        }
+        DefKind::Fn => {
+            if find_attr!(tcx.get_all_attrs(id.owner_id.def_id), AttributeKind::EiiImpl(_)) {
+                worklist.push(id.owner_id.def_id);
+            }
+        }
+        _ => {}
+    }
 }
 
 fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
@@ -466,6 +495,12 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
             reachable_context.worklist.push(def_id);
         }
     }
+
+    // make sure eii shims are also kept
+    for shim_did in tcx.get_externally_implementable_item_impls(()).keys() {
+        reachable_context.worklist.push(*shim_did);
+    }
+
     {
         // As explained above, we have to mark all functions called from reachable
         // `item_might_be_inlined` items as reachable. The issue is, when those functions are
@@ -477,6 +512,9 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
         // trait is a lang item.
         // (But if you implement this, don't forget to take into account that vtables can also
         // make trait methods reachable!)
+        //
+        // Pretty much the same logic holds for EII implementations. We don't know what crate might
+        // call them so we must mark them all as used.
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.free_items() {

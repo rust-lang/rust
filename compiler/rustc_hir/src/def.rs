@@ -448,7 +448,7 @@ pub enum Res<Id = hir::HirId> {
         // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
         forbid_generic: bool,
 
-        /// Is this within an `impl Foo for bar`?
+        /// Is this within an `impl Foo for bar`?:
         is_trait_impl: bool,
     },
 

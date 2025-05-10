@@ -946,6 +946,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         parallel!(
             {
                 sess.time("looking_for_entry_point", || tcx.ensure_ok().entry_fn(()));
+                sess.time("check_externally_implementable_items", || {
+                    tcx.ensure_ok().get_externally_implementable_item_impls(())
+                });
 
                 sess.time("looking_for_derive_registrar", || {
                     tcx.ensure_ok().proc_macro_decls_static(())

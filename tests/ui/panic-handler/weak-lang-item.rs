@@ -9,5 +9,5 @@ extern crate weak_lang_items;
 
 fn main() {}
 
-//~? ERROR `#[panic_handler]` function required, but not found
+//~? ERROR `#[panic_handler]` required, but not found
 //~? ERROR unwinding panics are not supported without std

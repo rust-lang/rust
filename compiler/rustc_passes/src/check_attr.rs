@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
-use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
+use rustc_attr_parsing::{AttributeKind, EIIDecl, EIIImpl, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -124,6 +124,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::Stability { span, .. }
                     | AttributeKind::ConstStability { span, .. },
                 ) => self.check_stability_promotable(*span, target),
+                Attribute::Parsed(AttributeKind::EiiImpl(impls)) => {
+                    self.check_eii_impl(hir_id, impls, span, target)
+                }
+                Attribute::Parsed(AttributeKind::EiiMacroFor { .. }) => {
+                    // no checks needed
+                }
+                Attribute::Parsed(AttributeKind::EiiMangleExtern { .. }) => {
+                    // FIXME: mangle extern should be removed
+                }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
                     .check_allow_internal_unstable(
                         hir_id,
@@ -290,7 +299,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::deprecated_safe // FIXME(deprecated_safe)
                             // internal
                             | sym::prelude_import
-                            | sym::panic_handler
                             | sym::allow_internal_unsafe
                             | sym::fundamental
                             | sym::lang
@@ -470,6 +478,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     attr.span(),
                     errors::InlineIgnoredForExported {},
                 );
+            }
+        }
+    }
+
+    fn check_eii_impl(
+        &self,
+        _hir_id: HirId,
+        impls: &[EIIImpl],
+        _target_span: Span,
+        target: Target,
+    ) {
+        for EIIImpl { span, inner_span, eii_macro, impl_marked_unsafe, is_default: _ } in impls {
+            match target {
+                Target::Fn => {}
+                _ => {
+                    self.dcx().emit_err(errors::EIIImplNotFunction { span: *span });
+                }
+            }
+
+            if find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiMacroFor(EIIDecl { impl_unsafe, .. }) if *impl_unsafe)
+                && !impl_marked_unsafe
+            {
+                self.dcx().emit_err(errors::EIIImplRequiresUnsafe {
+                    span: *span,
+                    name: self.tcx.item_name(*eii_macro),
+                    suggestion: errors::EIIImplRequiresUnsafeSuggestion {
+                        left: inner_span.shrink_to_lo(),
+                        right: inner_span.shrink_to_hi(),
+                    },
+                });
             }
         }
     }
@@ -763,11 +801,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
-                    self.dcx().emit_err(errors::LangItemWithTrackCaller {
+                    self.dcx().emit_err(errors::EiiWithTrackCaller {
                         attr_span,
                         name: lang_item,
                         sig_span: sig.span,
                     });
+                }
+
+                if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpl(impls) => impls) {
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                    for i in impls {
+                        self.dcx().emit_err(errors::EiiWithTrackCaller {
+                            attr_span,
+                            name: self.tcx.item_name(i.eii_macro),
+                            sig_span: sig.span,
+                        });
+                    }
                 }
             }
             Target::Method(..) | Target::ForeignFn | Target::Closure => {}
@@ -872,11 +921,22 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 {
                     let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
 
-                    self.dcx().emit_err(errors::LangItemWithTargetFeature {
+                    self.dcx().emit_err(errors::EiiWithTargetFeature {
                         attr_span: attr.span(),
                         name: lang_item,
                         sig_span: sig.span,
                     });
+                }
+
+                if let Some(impls) = find_attr!(attrs, AttributeKind::EiiImpl(impls) => impls) {
+                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
+                    for i in impls {
+                        self.dcx().emit_err(errors::EiiWithTargetFeature {
+                            attr_span: attr.span(),
+                            name: self.tcx.item_name(i.eii_macro),
+                            sig_span: sig.span,
+                        });
+                    }
                 }
             }
             // FIXME: #[target_feature] was previously erroneously allowed on statements and some
@@ -2680,9 +2740,9 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
-        if let ItemKind::Macro(_, macro_def, _) = item.kind {
+        if let ItemKind::Macro(_, ast_macro_def, _) = item.kind {
             let def_id = item.owner_id.to_def_id();
-            if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
+            if ast_macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
             }
         }

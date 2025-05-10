@@ -14,6 +14,7 @@ use std::sync::Arc;
 use rustc_arena::TypedArena;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_attr_data_structures::{EIIDecl, EIIImpl};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -51,6 +52,7 @@ use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
+use crate::middle::eii::EiiMap;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use crate::middle::lib_features::LibFeatures;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -1113,6 +1115,10 @@ rustc_queries! {
         desc { |tcx| "checking loops in {}", describe_as_module(key, tcx) }
     }
 
+    query get_externally_implementable_item_impls(_: ()) -> &'tcx EiiMap {
+        desc { "check externally implementable items" }
+    }
+
     query check_mod_naked_functions(key: LocalModDefId) {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
@@ -1731,11 +1737,6 @@ rustc_queries! {
         desc { "checking if the crate has_alloc_error_handler" }
         separate_provide_extern
     }
-    query has_panic_handler(_: CrateNum) -> bool {
-        fatal_cycle
-        desc { "checking if the crate has_panic_handler" }
-        separate_provide_extern
-    }
     query is_profiler_runtime(_: CrateNum) -> bool {
         fatal_cycle
         desc { "checking if a crate is `#![profiler_runtime]`" }
@@ -1904,6 +1905,13 @@ rustc_queries! {
     query foreign_modules(_: CrateNum) -> &'tcx FxIndexMap<DefId, ForeignModule> {
         arena_cache
         desc { "looking up the foreign modules of a linked crate" }
+        separate_provide_extern
+    }
+
+    /// Returns a list of all `externally implementable items` crate.
+    query externally_implementable_items(_: CrateNum) -> &'tcx FxIndexMap<DefId, (EIIDecl, FxIndexMap<DefId, EIIImpl>)> {
+        arena_cache
+        desc { "looking up the externally implementable items of a crate" }
         separate_provide_extern
     }
 

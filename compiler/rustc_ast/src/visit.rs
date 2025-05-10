@@ -47,7 +47,6 @@ pub enum BoundKind {
     /// Trait bounds in trait object type.
     /// E.g., `dyn Bound1 + Bound2 + Bound3`.
     TraitObject,
-
     /// Super traits of a trait.
     /// E.g., `trait A: B`
     SuperTraits,
@@ -479,7 +478,12 @@ impl WalkItemKind for ItemKind {
             ItemKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
             ItemKind::MacroDef(ident, ts) => {
                 try_visit!(visitor.visit_ident(ident));
-                try_visit!(visitor.visit_mac_def(ts, id))
+                try_visit!(visitor.visit_mac_def(ts, id));
+                if let Some(EIIMacroFor { extern_item_path, impl_unsafe: _, span: _ }) =
+                    &ts.eii_macro_for
+                {
+                    try_visit!(visitor.visit_path(extern_item_path, id));
+                }
             }
             ItemKind::Delegation(box Delegation {
                 id,
@@ -953,10 +957,16 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
                 contract,
                 body,
                 define_opaque,
+                eii_impl,
             },
         ) => {
             // Visibility is visited as a part of the item.
             try_visit!(visitor.visit_ident(ident));
+
+            for EIIImpl { node_id, eii_macro_path, .. } in eii_impl {
+                try_visit!(visitor.visit_path(eii_macro_path, *node_id));
+            }
+
             try_visit!(visitor.visit_fn_header(header));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(decl));

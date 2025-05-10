@@ -16,6 +16,14 @@ pub use self::panic_info::PanicMessage;
 pub use self::unwind_safe::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 use crate::any::Any;
 
+/// Core expects some crate to provide a function annotated with `#[panic_handler]` with this
+/// signature. This annotated function will be called when a panic occurs.
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(bootstrap))]
+#[eii(panic_handler)]
+#[lang = "panic_impl"]
+pub(crate) fn panic_impl(info: &PanicInfo<'_>) -> !;
+
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 #[allow_internal_unstable(panic_internals, const_format_args)]
