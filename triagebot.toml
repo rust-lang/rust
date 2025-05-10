@@ -611,7 +611,7 @@ message_on_remove = "Issue #{number}'s prioritization request has been removed."
 message_on_close = "Issue #{number} has been closed while requested for prioritization."
 message_on_reopen = "Issue #{number} has been reopened."
 
-[notify-zulip."beta-nominated"]
+[notify-zulip."beta-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
 topic = "beta-nominated: #{number}"
@@ -632,7 +632,7 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
-[notify-zulip."beta-accepted"]
+[notify-zulip."beta-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
 # Put it in the same thread as beta-nominated.
@@ -642,7 +642,7 @@ message_on_remove = "PR #{number}'s beta-acceptance has been **removed**."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
-[notify-zulip."stable-nominated"]
+[notify-zulip."stable-nominated".rustdoc]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
 topic = "stable-nominated: #{number}"
@@ -664,7 +664,7 @@ message_on_remove = "PR #{number}'s stable-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
-[notify-zulip."stable-accepted"]
+[notify-zulip."stable-accepted".rustdoc]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
 # Put it in the same thread as stable-nominated.
