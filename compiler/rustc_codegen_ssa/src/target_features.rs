@@ -1,5 +1,5 @@
 use rustc_attr_data_structures::InstructionSetAttr;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -8,11 +8,12 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_middle::middle::codegen_fn_attrs::TargetFeature;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::Session;
 use rustc_session::features::StabilityExt;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::target_features::{self, Stability};
+use rustc_target::target_features::{self, RUSTC_SPECIAL_FEATURES, Stability};
 
 use crate::errors;
 
@@ -154,6 +155,100 @@ pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId,
             });
         }
     }
+}
+
+/// Utility function for a codegen backend to compute `cfg(target_feature)`, or more specifically,
+/// to populate `sess.unstable_target_features` and `sess.target_features` (these are the first and
+/// 2nd component of the return value, respectively).
+///
+/// `target_feature_flag` is the value of `-Ctarget-feature` (giving the caller a chance to override it).
+/// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is enabled
+/// in the "base" target machine, i.e., without applying `-Ctarget-feature`.
+///
+/// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
+pub fn cfg_target_feature(
+    sess: &Session,
+    target_feature_flag: &str,
+    mut is_feature_enabled: impl FnMut(&str) -> bool,
+) -> (Vec<Symbol>, Vec<Symbol>) {
+    // Compute which of the known target features are enabled in the 'base' target machine. We only
+    // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
+    let mut features: FxHashSet<Symbol> = sess
+        .target
+        .rust_target_features()
+        .iter()
+        .filter(|(feature, _, _)| {
+            // Skip checking special features, those are not known to the backend.
+            if RUSTC_SPECIAL_FEATURES.contains(feature) {
+                return true;
+            }
+            is_feature_enabled(feature)
+        })
+        .map(|(feature, _, _)| Symbol::intern(feature))
+        .collect();
+
+    // Add enabled and remove disabled features.
+    for (enabled, feature) in
+        target_feature_flag.split(',').filter_map(|s| match s.chars().next() {
+            Some('+') => Some((true, Symbol::intern(&s[1..]))),
+            Some('-') => Some((false, Symbol::intern(&s[1..]))),
+            _ => None,
+        })
+    {
+        if enabled {
+            // Also add all transitively implied features.
+
+            // We don't care about the order in `features` since the only thing we use it for is the
+            // `features.contains` below.
+            #[allow(rustc::potential_query_instability)]
+            features.extend(
+                sess.target
+                    .implied_target_features(feature.as_str())
+                    .iter()
+                    .map(|s| Symbol::intern(s)),
+            );
+        } else {
+            // Remove transitively reverse-implied features.
+
+            // We don't care about the order in `features` since the only thing we use it for is the
+            // `features.contains` below.
+            #[allow(rustc::potential_query_instability)]
+            features.retain(|f| {
+                if sess.target.implied_target_features(f.as_str()).contains(&feature.as_str()) {
+                    // If `f` if implies `feature`, then `!feature` implies `!f`, so we have to
+                    // remove `f`. (This is the standard logical contraposition principle.)
+                    false
+                } else {
+                    // We can keep `f`.
+                    true
+                }
+            });
+        }
+    }
+
+    // Filter enabled features based on feature gates.
+    let f = |allow_unstable| {
+        sess.target
+            .rust_target_features()
+            .iter()
+            .filter_map(|(feature, gate, _)| {
+                // The `allow_unstable` set is used by rustc internally to determine which target
+                // features are truly available, so we want to return even perma-unstable
+                // "forbidden" features.
+                if allow_unstable
+                    || (gate.in_cfg()
+                        && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+                {
+                    Some(Symbol::intern(feature))
+                } else {
+                    None
+                }
+            })
+            .filter(|feature| features.contains(&feature))
+            .collect()
+    };
+
+    (f(true), f(false))
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
