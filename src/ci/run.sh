@@ -2,6 +2,29 @@
 
 set -e
 
+# Change ownership of the given path to the user if the filesystem is writable
+change_ownership_if_writable() {
+    local path=$1
+    local owner="user:user"
+    local current_owner
+    current_owner=$(stat -f "%Su:%Sg" "$path" 2>/dev/null)
+
+    local test_file="$path/.write_test"
+    echo "Testing if $path is writable by $owner"
+    # Test if filesystem is writable by attempting to touch a temporary file
+    if touch "$test_file" 2>/dev/null; then
+        # We wrote the file just for testing. We can remove it now.
+        rm "$test_file"
+        if [ "$current_owner" != "$owner" ]; then
+            echo "Changing ownership of $path to $owner"
+            chown -R $owner "$path"
+        fi
+    else
+        echo "$path is read-only, skipping ownership change"
+    fi
+    echo "Ownership of $path is $current_owner"
+}
+
 if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
@@ -15,6 +38,12 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
+
+    # Give ownership of necessary directories to the user
+    change_ownership_if_writable .
+    mkdir -p /cargo
+    change_ownership_if_writable /cargo
+    change_ownership_if_writable /checkout
 
     # Ensure that runners are able to execute git commands in the worktree,
     # overriding the typical git protections. In our docker container we're running

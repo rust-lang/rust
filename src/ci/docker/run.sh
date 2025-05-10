@@ -296,16 +296,20 @@ else
   args="$args --volume $objdir:/checkout/obj"
   args="$args --volume $HOME/.cargo:/cargo"
   args="$args --volume /tmp/toolstate:/tmp/toolstate"
+fi
 
-  id=$(id -u)
-  if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
-    # Rootless podman creates a separate user namespace, where an inner
-    # LOCAL_USER_ID will map to a different subuid range on the host.
-    # The "keep-id" mode maps the current UID directly into the container.
-    args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
-  else
-    args="$args --env LOCAL_USER_ID=$id"
-  fi
+id=$(id -u)
+if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
+  # Rootless podman creates a separate user namespace, where an inner
+  # LOCAL_USER_ID will map to a different subuid range on the host.
+  # The "keep-id" mode maps the current UID directly into the container.
+  args="$args --env NO_CHANGE_USER=1 --userns=keep-id"
+elif [[ "$id" != 0 ]]; then
+  args="$args --env LOCAL_USER_ID=$id"
+else
+  # We're running as root.
+  # We set the user id to `1001` instead of `0` to avoid running the container as root.
+  args="$args --env LOCAL_USER_ID=1001"
 fi
 
 if [ "$dev" = "1" ]
