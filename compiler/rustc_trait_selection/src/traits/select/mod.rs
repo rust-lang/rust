@@ -1241,7 +1241,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                 self.infcx.tcx.trait_is_coinductive(data.def_id())
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => true,
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                // FIXME(generic_const_exprs): GCE needs well-formedness predicates to be
+                // coinductive, but GCE is on the way out anyways, so this should eventually
+                // be replaced with `false`.
+                self.infcx.tcx.features().generic_const_exprs()
+            }
             _ => false,
         })
     }
