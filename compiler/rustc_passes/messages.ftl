@@ -4,6 +4,14 @@
 -passes_see_issue =
     see issue #{$issue} <https://github.com/rust-lang/rust/issues/{$issue}> for more information
 
+passes_abi_custom_call =
+    functions with the `"custom"` ABI cannot be called
+    .note = an `extern "custom"` function can only be called from within inline assembly
+
+passes_abi_custom_clothed_function =
+    functions with the `"custom"` ABI must be naked
+    .suggestion = add the `#[unsafe(naked)]` attribute to this function
+
 passes_abi_invalid_attribute =
     `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
 passes_abi_ne =
