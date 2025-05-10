@@ -1,6 +1,5 @@
 [package]
 name = "date-check"
-version = "0.1.0"
 authors = ["Noah Lev <camelidcamel@gmail.com>"]
 edition = "2021"
 
