@@ -117,8 +117,8 @@ pub fn check(build: &mut Build) {
                     eprintln!(
                         "\nYour system's libstdc++ version is too old for the `llvm.download-ci-llvm` option."
                     );
-                    eprintln!("Current version detected: '{}'", version);
-                    eprintln!("Minimum required version: '{}'", LIBSTDCXX_MIN_VERSION_THRESHOLD);
+                    eprintln!("Current version detected: '{version}'");
+                    eprintln!("Minimum required version: '{LIBSTDCXX_MIN_VERSION_THRESHOLD}'");
                     eprintln!(
                         "Consider upgrading libstdc++ or disabling the `llvm.download-ci-llvm` option."
                     );
