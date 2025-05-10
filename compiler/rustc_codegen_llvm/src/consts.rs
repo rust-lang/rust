@@ -191,7 +191,12 @@ fn check_and_apply_linkage<'ll, 'tcx>(
                 let fn_sig = sig.with(*header);
 
                 let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
-                cx.declare_fn(sym, &fn_abi, None)
+                cx.declare_fn(
+                    sym,
+                    &fn_abi,
+                    None,
+                    rustc_codegen_ssa::base::is_llvm_intrinsic(cx.tcx, def_id),
+                )
             } else {
                 cx.declare_global(sym, cx.type_i8())
             }

@@ -4,7 +4,7 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
-use rustc_codegen_ssa::common;
+use rustc_codegen_ssa::{base, common};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
@@ -36,6 +36,8 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         llfn
     } else {
         let instance_def_id = instance.def_id();
+        let is_llvm_intrinsic = base::is_llvm_intrinsic(tcx, instance_def_id);
+
         let llfn = if tcx.sess.target.arch == "x86"
             && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
@@ -53,6 +55,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
                 ),
                 fn_abi,
                 Some(instance),
+                is_llvm_intrinsic,
             );
 
             // Fix for https://github.com/rust-lang/rust/issues/104453
@@ -69,7 +72,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             llvm::set_dllimport_storage_class(llfn);
             llfn
         } else {
-            cx.declare_fn(sym, fn_abi, Some(instance))
+            cx.declare_fn(sym, fn_abi, Some(instance), is_llvm_intrinsic)
         };
         debug!("get_fn: not casting pointer!");
 

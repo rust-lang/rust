@@ -786,7 +786,7 @@ pub fn all_rust_features() -> impl Iterator<Item = (&'static str, Stability)> {
 // certain size to have their "proper" ABI on each architecture.
 // Note that they must be kept sorted by vector size.
 const X86_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[(128, "sse"), (256, "avx"), (512, "avx512f")]; // FIXME: might need changes for AVX10.
+    &[(128, "sse"), (256, "avx"), (512, "avx512f"), (8192, "amx-tile")];
 const AARCH64_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "neon")];
 
 // We might want to add "helium" too.
