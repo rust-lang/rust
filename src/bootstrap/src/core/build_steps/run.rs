@@ -133,8 +133,10 @@ impl Step for Miri {
         }
 
         // This compiler runs on the host, we'll just use it for the target.
-        let target_compiler = builder.compiler(stage, host);
-        let host_compiler = tool::get_tool_rustc_compiler(builder, target_compiler);
+        let target_compiler = builder.compiler(stage, target);
+        let miri_build = builder.ensure(tool::Miri { compiler: target_compiler, target });
+        // Rustc tools are off by one stage, so use the build compiler to run miri.
+        let host_compiler = miri_build.build_compiler;
 
         // Get a target sysroot for Miri.
         let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
