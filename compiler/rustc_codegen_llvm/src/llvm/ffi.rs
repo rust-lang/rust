@@ -1014,8 +1014,12 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
     pub(crate) fn LLVMSetDataLayout(M: &Module, Triple: *const c_char);
 
-    /// See Module::setModuleInlineAsm.
-    pub(crate) fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
+    /// Append inline assembly to a module. See `Module::appendModuleInlineAsm`.
+    pub(crate) fn LLVMAppendModuleInlineAsm(
+        M: &Module,
+        Asm: *const c_uchar, // See "PTR_LEN_STR".
+        Len: size_t,
+    );
 
     /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
     pub(crate) fn LLVMGetInlineAsm<'ll>(

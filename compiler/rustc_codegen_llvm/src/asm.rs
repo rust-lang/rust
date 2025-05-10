@@ -435,13 +435,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             template_str.push_str("\n.att_syntax\n");
         }
 
-        unsafe {
-            llvm::LLVMAppendModuleInlineAsm(
-                self.llmod,
-                template_str.as_c_char_ptr(),
-                template_str.len(),
-            );
-        }
+        llvm::append_module_inline_asm(self.llmod, template_str.as_bytes());
     }
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
