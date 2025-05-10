@@ -74,15 +74,6 @@ pub mod simd;
 #[cfg(all(target_has_atomic = "8", target_has_atomic = "32", target_has_atomic = "ptr"))]
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
-#[stable(feature = "drop_in_place", since = "1.8.0")]
-#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
-#[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
-#[inline]
-pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
-    // SAFETY: see `ptr::drop_in_place`
-    unsafe { crate::ptr::drop_in_place(to_drop) }
-}
-
 // N.B., these intrinsics take raw pointers because they mutate aliased
 // memory, which is not valid for either `&` or `&mut`.
 
