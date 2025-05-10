@@ -12,8 +12,9 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{BodyId, Mutability};
+use rustc_hir::{BodyId, HirId, Mutability};
 use rustc_index::IndexVec;
+use rustc_lint_defs::{BuiltinLintDiag, Lint};
 use rustc_metadata::rendered_const;
 use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::SimplifiedType;
@@ -477,7 +478,12 @@ impl Item {
             name,
             kind,
             Attributes::from_hir(hir_attrs),
-            extract_cfg_from_attrs(hir_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(
+                hir_attrs.iter(),
+                cx.tcx,
+                def_id.as_local().map(|did| cx.tcx.local_def_id_to_hir_id(did)),
+                &cx.cache.hidden_cfg,
+            ),
         )
     }
 
@@ -1033,6 +1039,7 @@ pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
 pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> + Clone>(
     attrs: I,
     tcx: TyCtxt<'_>,
+    hir_id: Option<HirId>,
     hidden_cfg: &FxHashSet<Cfg>,
 ) -> Option<Arc<Cfg>> {
     let doc_cfg_active = tcx.features().doc_cfg();
@@ -1056,6 +1063,32 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
             .peekable();
         if doc_cfg.peek().is_some() && doc_cfg_active {
             let sess = tcx.sess;
+
+            struct RustdocCfgMatchesLintEmitter<'a>(TyCtxt<'a>, Option<HirId>);
+
+            impl<'a> rustc_attr_parsing::CfgMatchesLintEmitter for RustdocCfgMatchesLintEmitter<'a> {
+                fn emit_span_lint(
+                    &self,
+                    sess: &Session,
+                    lint: &'static Lint,
+                    sp: rustc_span::Span,
+                    builtin_diag: BuiltinLintDiag,
+                ) {
+                    if let Some(hir_id) = self.1 {
+                        self.0.node_span_lint(lint, hir_id, sp, |diag| {
+                            rustc_lint::decorate_builtin_lint(
+                                sess,
+                                Some(self.0),
+                                builtin_diag,
+                                diag,
+                            )
+                        });
+                    } else {
+                        // No HIR id. Probably in another crate. Don't lint.
+                    }
+                }
+            }
+
             doc_cfg.fold(Cfg::True, |mut cfg, item| {
                 if let Some(cfg_mi) =
                     item.meta_item().and_then(|item| rustc_expand::config::parse_cfg(item, sess))
@@ -1064,7 +1097,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                     rustc_attr_parsing::cfg_matches(
                         cfg_mi,
                         tcx.sess,
-                        rustc_ast::CRATE_NODE_ID,
+                        RustdocCfgMatchesLintEmitter(tcx, hir_id),
                         Some(tcx.features()),
                     );
                     match Cfg::parse(cfg_mi) {
