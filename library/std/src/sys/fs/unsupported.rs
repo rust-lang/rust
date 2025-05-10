@@ -1,6 +1,5 @@
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::fs::TryLockError;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
@@ -207,11 +206,11 @@ impl File {
         self.0
     }
 
-    pub fn try_lock(&self) -> Result<(), TryLockError> {
+    pub fn try_lock(&self) -> io::Result<()> {
         self.0
     }
 
-    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
+    pub fn try_lock_shared(&self) -> io::Result<()> {
         self.0
     }
 

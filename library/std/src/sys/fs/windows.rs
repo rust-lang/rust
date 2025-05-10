@@ -3,7 +3,6 @@
 use crate::alloc::{Layout, alloc, dealloc};
 use crate::borrow::Cow;
 use crate::ffi::{OsStr, OsString, c_void};
-use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit, offset_of};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
@@ -400,8 +399,8 @@ impl File {
         self.acquire_lock(0)
     }
 
-    pub fn try_lock(&self) -> Result<(), TryLockError> {
-        let result = cvt(unsafe {
+    pub fn try_lock(&self) -> io::Result<()> {
+        cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
                 self.handle.as_raw_handle(),
@@ -411,22 +410,13 @@ impl File {
                 u32::MAX,
                 &mut overlapped,
             )
-        });
+        })?;
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
-                Err(TryLockError::WouldBlock)
-            }
-            Err(err) => Err(TryLockError::Error(err)),
-        }
+        Ok(())
     }
 
-    pub fn try_lock_shared(&self) -> Result<(), TryLockError> {
-        let result = cvt(unsafe {
+    pub fn try_lock_shared(&self) -> io::Result<()> {
+        cvt(unsafe {
             let mut overlapped = mem::zeroed();
             c::LockFileEx(
                 self.handle.as_raw_handle(),
@@ -436,18 +426,9 @@ impl File {
                 u32::MAX,
                 &mut overlapped,
             )
-        });
+        })?;
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(err)
-                if err.raw_os_error() == Some(c::ERROR_IO_PENDING as i32)
-                    || err.raw_os_error() == Some(c::ERROR_LOCK_VIOLATION as i32) =>
-            {
-                Err(TryLockError::WouldBlock)
-            }
-            Err(err) => Err(TryLockError::Error(err)),
-        }
+        Ok(())
     }
 
     pub fn unlock(&self) -> io::Result<()> {
