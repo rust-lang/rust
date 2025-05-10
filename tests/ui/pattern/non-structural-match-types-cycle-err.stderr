@@ -36,11 +36,6 @@ note: ...which requires promoting constants in MIR for `defines`...
    |
 LL | fn defines() {
    | ^^^^^^^^^^^^
-note: ...which requires checking if `defines` contains FFI-unwind calls...
-  --> $DIR/non-structural-match-types-cycle-err.rs:17:1
-   |
-LL | fn defines() {
-   | ^^^^^^^^^^^^
 note: ...which requires building MIR for `defines`...
   --> $DIR/non-structural-match-types-cycle-err.rs:17:1
    |

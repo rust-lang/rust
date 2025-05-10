@@ -19,11 +19,6 @@ note: ...which requires promoting constants in MIR for `foo`...
    |
 LL | fn foo() -> impl Sized {
    | ^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires checking if `foo` contains FFI-unwind calls...
-  --> $DIR/in-defining-scope.rs:6:1
-   |
-LL | fn foo() -> impl Sized {
-   | ^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires building MIR for `foo`...
   --> $DIR/in-defining-scope.rs:6:1
    |

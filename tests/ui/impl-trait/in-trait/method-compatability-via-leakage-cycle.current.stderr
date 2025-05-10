@@ -25,11 +25,6 @@ note: ...which requires promoting constants in MIR for `<impl at $DIR/method-com
    |
 LL |     fn foo(b: bool) -> impl Sized {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which requires checking if `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo` contains FFI-unwind calls...
-  --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
-   |
-LL |     fn foo(b: bool) -> impl Sized {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires building MIR for `<impl at $DIR/method-compatability-via-leakage-cycle.rs:17:1: 17:19>::foo`...
   --> $DIR/method-compatability-via-leakage-cycle.rs:21:5
    |

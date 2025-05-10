@@ -102,6 +102,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::PreciseCapturingArgKind<Symbol, Symbol>,
     rustc_index::bit_set::DenseBitSet<u32>,
     rustc_index::bit_set::FiniteBitSet<u32>,
+    rustc_middle::mir::MirFlags,
     rustc_session::cstore::ForeignModule,
     rustc_session::cstore::LinkagePreference,
     rustc_session::cstore::NativeLib,
