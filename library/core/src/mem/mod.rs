@@ -1377,7 +1377,7 @@ impl<T> SizedTypeProperties for T {}
 /// [`offset_of_slice`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-slice.html
 #[stable(feature = "offset_of", since = "1.77.0")]
 #[allow_internal_unstable(builtin_syntax)]
-pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
+pub macro offset_of($container:ty, $($fields:expr)+ $(,)?) {
     // The `{}` is for better error messages
-    {builtin # offset_of($Container, $($fields)+)}
+    {builtin # offset_of($container, $($fields)+)}
 }
