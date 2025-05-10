@@ -1,3 +1,4 @@
+<!-- date-check: may 2024 -->
 # `TypeFoldable` and `TypeFolder`
 
 In [a previous chapter], we discussed instantiating binders.
