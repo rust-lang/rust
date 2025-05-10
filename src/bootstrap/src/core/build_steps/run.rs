@@ -118,7 +118,15 @@ impl Step for Miri {
     fn run(self, builder: &Builder<'_>) {
         let host = builder.build.build;
         let target = self.target;
-        let stage = builder.top_stage;
+
+        // `x run` uses stage 0 by default but miri does not work well with stage 0.
+        // Change the stage to 1 if it's not set explicitly.
+        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
+            builder.top_stage
+        } else {
+            1
+        };
+
         if stage == 0 {
             eprintln!("miri cannot be run at stage 0");
             std::process::exit(1);
