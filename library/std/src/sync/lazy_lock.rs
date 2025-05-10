@@ -1,7 +1,7 @@
 use super::poison::once::ExclusiveState;
 use crate::cell::UnsafeCell;
 use crate::mem::ManuallyDrop;
-use crate::ops::Deref;
+use crate::ops::{Deref, DerefMut};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::sync::Once;
 use crate::{fmt, ptr};
@@ -310,6 +310,14 @@ impl<T, F: FnOnce() -> T> Deref for LazyLock<T, F> {
     #[inline]
     fn deref(&self) -> &T {
         LazyLock::force(self)
+    }
+}
+
+#[stable(feature = "lazy_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+impl<T, F: FnOnce() -> T> DerefMut for LazyLock<T, F> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        LazyLock::force_mut(self)
     }
 }
 

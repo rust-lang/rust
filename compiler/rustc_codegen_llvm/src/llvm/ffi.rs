@@ -415,6 +415,7 @@ impl AtomicRmwBinOp {
 pub(crate) enum AtomicOrdering {
     #[allow(dead_code)]
     NotAtomic = 0,
+    #[allow(dead_code)]
     Unordered = 1,
     Monotonic = 2,
     // Consume = 3,  // Not specified yet.
@@ -428,7 +429,6 @@ impl AtomicOrdering {
     pub(crate) fn from_generic(ao: rustc_codegen_ssa::common::AtomicOrdering) -> Self {
         use rustc_codegen_ssa::common::AtomicOrdering as Common;
         match ao {
-            Common::Unordered => Self::Unordered,
             Common::Relaxed => Self::Monotonic,
             Common::Acquire => Self::Acquire,
             Common::Release => Self::Release,

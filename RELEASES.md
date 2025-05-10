@@ -6,7 +6,7 @@ Version 1.87.0 (2025-05-15)
 Language
 --------
 - [Stabilize `asm_goto` feature](https://github.com/rust-lang/rust/pull/133870)
-- [Allow parsing open beginning ranges (`..EXPR`) after unary operators `!`, `~`, `-`, and `*`}](https://github.com/rust-lang/rust/pull/134900).
+- [Allow parsing open beginning ranges (`..EXPR`) after unary operators `!`, `-`, and `*`](https://github.com/rust-lang/rust/pull/134900).
 - [Don't require method impls for methods with `Self: Sized` bounds in `impl`s for unsized types](https://github.com/rust-lang/rust/pull/135480)
 - [Stabilize `feature(precise_capturing_in_traits)` allowing `use<...>` bounds on return position `impl Trait` in `trait`s](https://github.com/rust-lang/rust/pull/138128)
 
