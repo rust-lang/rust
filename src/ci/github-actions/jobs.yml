@@ -425,7 +425,7 @@ auto:
 
   - name: dist-aarch64-apple
     env:
-      SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      SCRIPT: ./x.py build --set rust.debug=true opt-dist && PGO_HOST=aarch64-apple-darwin ./build/aarch64-apple-darwin/stage0-tools-bin/opt-dist mac-ci -- python3 x.py dist bootstrap --include-default-paths
       RUST_CONFIGURE_ARGS: >-
         --enable-full-tools
         --enable-sanitizers
