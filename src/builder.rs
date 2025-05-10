@@ -568,11 +568,28 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) {
         let mut gcc_cases = vec![];
         let typ = self.val_ty(value);
-        for (on_val, dest) in cases {
-            let on_val = self.const_uint_big(typ, on_val);
-            gcc_cases.push(self.context.new_case(on_val, on_val, dest));
+        // FIXME(FractalFir): This is a workaround for a libgccjit limitation.
+        // Currently, libgccjit can't directly create 128 bit integers.
+        // Since switch cases must be values, and casts are not constant, we can't use 128 bit switch cases.
+        // In such a case, we will simply fall back to an if-ladder.
+        // This *may* be slower than a native switch, but a slow working solution is better than none at all.
+        if typ.is_i128(self) || typ.is_u128(self) {
+            for (on_val, dest) in cases {
+                let on_val = self.const_uint_big(typ, on_val);
+                let is_case =
+                    self.context.new_comparison(self.location, ComparisonOp::Equals, value, on_val);
+                let next_block = self.current_func().new_block("case");
+                self.block.end_with_conditional(self.location, is_case, dest, next_block);
+                self.block = next_block;
+            }
+            self.block.end_with_jump(self.location, default_block);
+        } else {
+            for (on_val, dest) in cases {
+                let on_val = self.const_uint_big(typ, on_val);
+                gcc_cases.push(self.context.new_case(on_val, on_val, dest));
+            }
+            self.block.end_with_switch(self.location, value, default_block, &gcc_cases);
         }
-        self.block.end_with_switch(self.location, value, default_block, &gcc_cases);
     }
 
     #[cfg(feature = "master")]
