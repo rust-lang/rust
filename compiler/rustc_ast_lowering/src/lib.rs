@@ -2085,6 +2085,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
+    /// Assumes mgca feature is enabled.
+    fn try_lower_as_const_path(&mut self, expr: &Expr) -> Option<&'hir hir::ConstArg<'hir>> {
+        let ExprKind::Path(qself, path) = &expr.kind else { return None };
+        let qpath = self.lower_qpath(
+            expr.id,
+            qself,
+            path,
+            ParamMode::Optional,
+            AllowReturnTypeNotation::No,
+            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+            None,
+        );
+        let ct_kind = hir::ConstArgKind::Path(qpath);
+        Some(self.arena.alloc(hir::ConstArg { hir_id: self.next_id(), kind: ct_kind }))
+    }
+
     /// Used when lowering a type argument that turned out to actually be a const argument.
     ///
     /// Only use for that purpose since otherwise it will create a duplicate def.

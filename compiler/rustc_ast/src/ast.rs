@@ -3618,6 +3618,11 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: P<Ty>,
+    /// A [`NodeId`] that can be used for the body of the const, independently of the ID
+    /// of the body's root expression.
+    // HACK(mgca): this is potentially temporary, tbd, in order to create defs for const bodies.
+    // FIXME(mgca): maybe merge this with expr since their Options should be in sync
+    pub body_id: Option<NodeId>,
     pub expr: Option<P<Expr>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
