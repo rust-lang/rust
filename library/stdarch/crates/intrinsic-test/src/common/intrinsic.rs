@@ -1,6 +1,14 @@
 use crate::common::argument::ArgumentList;
 use crate::common::indentation::Indentation;
 use crate::common::intrinsic_helpers::IntrinsicTypeDefinition;
+use itertools::Itertools;
+
+use super::argument::Argument;
+use super::gen_c::generate_c_program;
+use super::gen_rust::generate_rust_program;
+
+// The number of times each intrinsic will be called.
+const PASSES: u32 = 20;
 
 /// An intrinsic
 #[derive(Debug, PartialEq, Clone)]
@@ -83,6 +91,134 @@ where
             intrinsic_call = self.name(),
             const = constraints,
             args = self.arguments().as_call_param_rust(),
+        )
+    }
+
+    fn gen_code_c(
+        &self,
+        indentation: Indentation,
+        constraints: &[&Argument<T>],
+        name: String,
+        target: &str,
+    ) -> String {
+        if let Some((current, constraints)) = constraints.split_last() {
+            let range = current
+                .constraint
+                .iter()
+                .map(|c| c.to_range())
+                .flat_map(|r| r.into_iter());
+
+            let body_indentation = indentation.nested();
+            range
+                .map(|i| {
+                    format!(
+                        "{indentation}{{\n\
+                            {body_indentation}{ty} {name} = {val};\n\
+                            {pass}\n\
+                        {indentation}}}",
+                        name = current.name,
+                        ty = current.ty.c_type(),
+                        val = i,
+                        pass = self.gen_code_c(
+                            body_indentation,
+                            constraints,
+                            format!("{name}-{i}"),
+                            target,
+                        )
+                    )
+                })
+                .join("\n")
+        } else {
+            self.generate_loop_c(indentation, &name, PASSES, target)
+        }
+    }
+
+    fn generate_c_program(
+        &self,
+        header_files: &[&str],
+        target: &str,
+        notices: &str,
+        arch_specific_definitions: &[&str],
+    ) -> String {
+        let arguments = self.arguments();
+        let constraints = arguments
+            .iter()
+            .filter(|&i| i.has_constraint())
+            .collect_vec();
+
+        let indentation = Indentation::default();
+        generate_c_program(
+            notices,
+            header_files,
+            "aarch64",
+            arch_specific_definitions,
+            self.arguments()
+                .gen_arglists_c(indentation, PASSES)
+                .as_str(),
+            self.gen_code_c(
+                indentation.nested(),
+                constraints.as_slice(),
+                Default::default(),
+                target,
+            )
+            .as_str(),
+        )
+    }
+
+    fn gen_code_rust(
+        &self,
+        indentation: Indentation,
+        constraints: &[&Argument<T>],
+        name: String,
+    ) -> String {
+        if let Some((current, constraints)) = constraints.split_last() {
+            let range = current
+                .constraint
+                .iter()
+                .map(|c| c.to_range())
+                .flat_map(|r| r.into_iter());
+
+            let body_indentation = indentation.nested();
+            range
+                .map(|i| {
+                    format!(
+                        "{indentation}{{\n\
+                            {body_indentation}const {name}: {ty} = {val};\n\
+                            {pass}\n\
+                        {indentation}}}",
+                        name = current.name,
+                        ty = current.ty.rust_type(),
+                        val = i,
+                        pass = self.gen_code_rust(
+                            body_indentation,
+                            constraints,
+                            format!("{name}-{i}")
+                        )
+                    )
+                })
+                .join("\n")
+        } else {
+            self.generate_loop_rust(indentation, &name, PASSES)
+        }
+    }
+
+    fn generate_rust_program(&self, target: &str, notice: &str, cfg: &str) -> String {
+        let arguments = self.arguments();
+        let constraints = arguments
+            .iter()
+            .filter(|i| i.has_constraint())
+            .collect_vec();
+
+        let indentation = Indentation::default();
+        generate_rust_program(
+            notice,
+            cfg,
+            target,
+            self.arguments()
+                .gen_arglists_rust(indentation.nested(), PASSES)
+                .as_str(),
+            self.gen_code_rust(indentation.nested(), &constraints, Default::default())
+                .as_str(),
         )
     }
 }

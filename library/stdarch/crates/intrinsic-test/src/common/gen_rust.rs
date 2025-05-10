@@ -29,7 +29,7 @@ fn main() {{
 }
 
 pub fn compile_rust(
-    binaries: &[&str],
+    binaries: Vec<String>,
     toolchain: Option<&str>,
     target: &str,
     linker: Option<&str>,

@@ -1,16 +1,19 @@
+mod compile;
 mod config;
-mod functions;
 mod intrinsic;
 mod json_parser;
 mod types;
 
+use crate::arm::compile::compile_c_arm;
 use crate::arm::intrinsic::ArmIntrinsicType;
 use crate::common::SupportedArchitectureTest;
 use crate::common::cli::ProcessedCli;
 use crate::common::compare::compare_outputs;
-use crate::common::intrinsic::Intrinsic;
+use crate::common::gen_rust::compile_rust;
+use crate::common::intrinsic::{Intrinsic, IntrinsicDefinition};
 use crate::common::intrinsic_helpers::{BaseIntrinsicTypeDefinition, TypeKind};
-use functions::{build_c, build_rust};
+use crate::common::write_file::{write_c_testfiles, write_rust_testfiles};
+use config::{AARCH_CONFIGURATIONS, POLY128_OSTREAM_DEF, build_notices};
 use json_parser::get_neon_intrinsics;
 
 pub struct ArmArchitectureTest {
@@ -48,21 +51,50 @@ impl SupportedArchitectureTest for ArmArchitectureTest {
     }
 
     fn build_c_file(&self) -> bool {
-        build_c(
-            &self.intrinsics,
-            self.cli_options.cpp_compiler.as_deref(),
-            &self.cli_options.target,
-            self.cli_options.cxx_toolchain_dir.as_deref(),
-        )
+        let compiler = self.cli_options.cpp_compiler.as_deref();
+        let target = &self.cli_options.target;
+        let cxx_toolchain_dir = self.cli_options.cxx_toolchain_dir.as_deref();
+
+        let intrinsics_name_list = write_c_testfiles(
+            &self
+                .intrinsics
+                .iter()
+                .map(|i| i as &dyn IntrinsicDefinition<_>)
+                .collect::<Vec<_>>(),
+            target,
+            &["arm_neon.h", "arm_acle.h", "arm_fp16.h"],
+            &build_notices("// "),
+            &[POLY128_OSTREAM_DEF],
+        );
+
+        match compiler {
+            None => true,
+            Some(compiler) => {
+                compile_c_arm(&intrinsics_name_list, compiler, target, cxx_toolchain_dir)
+            }
+        }
     }
 
     fn build_rust_file(&self) -> bool {
-        build_rust(
-            &self.intrinsics,
-            self.cli_options.toolchain.as_deref(),
-            &self.cli_options.target,
-            self.cli_options.linker.as_deref(),
-        )
+        let final_target = if self.cli_options.target.contains("v7") {
+            "arm"
+        } else {
+            "aarch64"
+        };
+        let target = &self.cli_options.target;
+        let toolchain = self.cli_options.toolchain.as_deref();
+        let linker = self.cli_options.linker.as_deref();
+        let intrinsics_name_list = write_rust_testfiles(
+            self.intrinsics
+                .iter()
+                .map(|i| i as &dyn IntrinsicDefinition<_>)
+                .collect::<Vec<_>>(),
+            final_target,
+            &build_notices("// "),
+            AARCH_CONFIGURATIONS,
+        );
+
+        compile_rust(intrinsics_name_list, toolchain, target, linker)
     }
 
     fn compare_outputs(&self) -> bool {
