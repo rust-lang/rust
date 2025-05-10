@@ -170,3 +170,22 @@ pub(crate) struct TypeLengthLimit {
     pub path: PathBuf,
     pub type_length: usize,
 }
+
+#[derive(Diagnostic)]
+#[diag(middle_forbidden_target_feature_attr)]
+pub struct ForbiddenTargetFeatureAttr<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub feature: &'a str,
+    pub reason: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(middle_target_feature_safe_trait)]
+pub(crate) struct TargetFeatureSafeTrait {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[label(middle_label_def)]
+    pub def: Span,
+}

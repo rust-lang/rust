@@ -68,9 +68,6 @@ codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
-codegen_ssa_forbidden_target_feature_attr =
-    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
-
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
 codegen_ssa_ignoring_output = ignoring -o because multiple .{$extension} files were produced
@@ -275,10 +272,6 @@ codegen_ssa_symbol_file_write_failure = failed to write symbols file: {$error}
 
 codegen_ssa_target_feature_disable_or_enable =
     the target features {$features} must all be either enabled or disabled together
-
-codegen_ssa_target_feature_safe_trait = `#[target_feature(..)]` cannot be applied to safe trait method
-    .label = cannot be applied to safe trait method
-    .label_def = not an `unsafe` function
 
 codegen_ssa_thorin_decompress_data = failed to decompress compressed section
 
