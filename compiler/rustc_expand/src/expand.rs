@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -1117,7 +1116,6 @@ enum AddSemicolon {
 /// of functionality used by `InvocationCollector`.
 trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     type OutputTy = SmallVec<[Self; 1]>;
-    type AttrsTy: Deref<Target = [ast::Attribute]> = ast::AttrVec;
     type ItemKind = ItemKind;
     const KIND: AstFragmentKind;
     fn to_annotatable(self) -> Annotatable;
@@ -1134,7 +1132,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     fn is_mac_call(&self) -> bool {
         false
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         unreachable!()
     }
     fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
@@ -1189,7 +1187,7 @@ impl InvocationCollectorNode for P<ast::Item> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             ItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1345,7 +1343,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitItemTag>
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
@@ -1386,7 +1384,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
@@ -1427,7 +1425,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitImplItem
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let item = self.wrapped.into_inner();
         match item.kind {
             AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
@@ -1465,7 +1463,7 @@ impl InvocationCollectorNode for P<ast::ForeignItem> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ForeignItemKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             ForeignItemKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1579,7 +1577,6 @@ impl InvocationCollectorNode for ast::Arm {
 }
 
 impl InvocationCollectorNode for ast::Stmt {
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Stmt(P(self))
@@ -1599,7 +1596,7 @@ impl InvocationCollectorNode for ast::Stmt {
             StmtKind::Let(..) | StmtKind::Empty => false,
         }
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         // We pull macro invocations (both attributes and fn-like macro calls) out of their
         // `StmtKind`s and treat them as statement macro invocations, not as items or expressions.
         let (add_semicolon, mac, attrs) = match self.kind {
@@ -1693,7 +1690,7 @@ impl InvocationCollectorNode for P<ast::Ty> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ast::TyKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             TyKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
@@ -1717,7 +1714,7 @@ impl InvocationCollectorNode for P<ast::Pat> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, PatKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             PatKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
@@ -1728,7 +1725,6 @@ impl InvocationCollectorNode for P<ast::Pat> {
 
 impl InvocationCollectorNode for P<ast::Expr> {
     type OutputTy = P<ast::Expr>;
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::Expr;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Expr(self)
@@ -1745,7 +1741,7 @@ impl InvocationCollectorNode for P<ast::Expr> {
     fn is_mac_call(&self) -> bool {
         matches!(self.kind, ExprKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.into_inner();
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1757,7 +1753,6 @@ impl InvocationCollectorNode for P<ast::Expr> {
 struct OptExprTag;
 impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
     type OutputTy = Option<P<ast::Expr>>;
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::OptExpr;
     fn to_annotatable(self) -> Annotatable {
         Annotatable::Expr(self.wrapped)
@@ -1772,7 +1767,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.wrapped.into_inner();
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
@@ -1794,7 +1789,6 @@ impl DummyAstNode for MethodReceiverTag {
 }
 impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
     type OutputTy = Self;
-    type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
     fn descr() -> &'static str {
         "an expression"
@@ -1811,7 +1805,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag>
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
     }
-    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+    fn take_mac_call(self) -> (P<ast::MacCall>, ast::AttrVec, AddSemicolon) {
         let node = self.wrapped.into_inner();
         match node.kind {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
