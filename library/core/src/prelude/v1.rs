@@ -59,7 +59,6 @@ pub use crate::hash::macros::Hash;
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
-#[cfg_attr(bootstrap, allow(deprecated_in_future))]
 #[doc(no_inline)]
 pub use crate::{
     assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,

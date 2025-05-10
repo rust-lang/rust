@@ -20,7 +20,7 @@ pub use self::c_str::FromBytesUntilNulError;
 pub use self::c_str::FromBytesWithNulError;
 use crate::fmt;
 
-#[stable(feature = "c_str_module", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;
 
 #[unstable(

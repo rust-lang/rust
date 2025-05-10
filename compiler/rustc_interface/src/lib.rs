@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(decl_macro)]
 #![feature(file_buffered)]
 #![feature(iter_intersperse)]

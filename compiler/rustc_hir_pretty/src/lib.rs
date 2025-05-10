@@ -2,7 +2,6 @@
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

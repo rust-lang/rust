@@ -782,7 +782,7 @@ pub const fn cold_path() {
 /// # assert_eq!(bucket_one.len() + bucket_two.len(), 1);
 /// ```
 #[inline(always)]
-#[stable(feature = "select_unpredictable", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "select_unpredictable", since = "1.88.0")]
 pub fn select_unpredictable<T>(condition: bool, true_val: T, false_val: T) -> T {
     // FIXME(https://github.com/rust-lang/unsafe-code-guidelines/issues/245):
     // Change this to use ManuallyDrop instead.

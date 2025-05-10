@@ -19,14 +19,6 @@ pub struct Placeholder {
     pub width: Count,
 }
 
-#[cfg(bootstrap)]
-impl Placeholder {
-    #[inline]
-    pub const fn new(position: usize, flags: u32, precision: Count, width: Count) -> Self {
-        Self { position, flags, precision, width }
-    }
-}
-
 /// Used by [width](https://doc.rust-lang.org/std/fmt/#width)
 /// and [precision](https://doc.rust-lang.org/std/fmt/#precision) specifiers.
 #[lang = "format_count"]

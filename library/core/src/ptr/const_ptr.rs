@@ -1741,7 +1741,7 @@ impl<T: ?Sized> PartialOrd for *const T {
     }
 }
 
-#[stable(feature = "raw_ptr_default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "raw_ptr_default", since = "1.88.0")]
 impl<T: ?Sized + Thin> Default for *const T {
     /// Returns the default value of [`null()`][crate::ptr::null].
     fn default() -> Self {

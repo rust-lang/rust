@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(let_chains))]
 #![feature(array_windows)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
