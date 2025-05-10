@@ -2501,6 +2501,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                 doc_visible,
                                 note: None,
                                 via_import: false,
+                                is_stable: true,
                             },
                         ));
                     } else {
