@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-#![deny(improper_ctypes)]
+#![deny(improper_ctypes, improper_ctype_definitions)]
 
 pub trait Baz {}
 
@@ -12,13 +12,13 @@ fn assign() -> Qux {
     3
 }
 
-#[repr(transparent)]
-pub struct A {
+#[repr(C)]
+pub struct A { //~ ERROR: `repr(C)` type uses type `Qux`
     x: Qux,
 }
 
 extern "C" {
-    pub fn lint_me() -> A; //~ ERROR: uses type `Qux`
+    pub fn lint_me() -> A; //~ ERROR: `extern` block uses type `A`
 }
 
 fn main() {}

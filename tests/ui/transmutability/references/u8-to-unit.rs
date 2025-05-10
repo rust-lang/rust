@@ -18,6 +18,7 @@ mod assert {
 }
 
 fn main() {
+    #[allow(improper_ctype_definitions)]
     #[repr(C)] struct Unit;
     assert::is_maybe_transmutable::<&'static u8, &'static Unit>();
 }

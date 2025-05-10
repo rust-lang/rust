@@ -25,6 +25,7 @@ pub struct int8x16_t(pub(crate) [i8; 16]);
 impl Copy for int8x16_t {}
 
 #[repr(C)]
+#[allow(improper_ctype_definitions)]
 pub struct int8x16x4_t(pub int8x16_t, pub int8x16_t, pub int8x16_t, pub int8x16_t);
 impl Copy for int8x16x4_t {}
 
