@@ -115,7 +115,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub(super) fn complain_about_assoc_item_not_found<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        qself: AssocItemQSelf,
+        qself: AssocItemQSelf<'tcx>,
         assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,

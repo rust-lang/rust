@@ -37,6 +37,7 @@ use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
+use rustc_middle::ty::typeck_results::{HasTypeDependentDefs, TypeDependentDef};
 use rustc_middle::ty::{
     self, AssocTag, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, ParamEnv, Ty,
     TyCtxt, TypeVisitableExt, TypingMode, Upcast, fold_regions,
@@ -105,7 +106,7 @@ pub enum RegionInferReason<'a> {
 /// the [`rustc_middle::ty`] representation.
 ///
 /// This trait used to be called `AstConv`.
-pub trait HirTyLowerer<'tcx> {
+pub trait HirTyLowerer<'tcx>: HasTypeDependentDefs {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
     fn dcx(&self) -> DiagCtxtHandle<'_>;
@@ -190,6 +191,9 @@ pub trait HirTyLowerer<'tcx> {
     /// Record the lowered type of a HIR node in this context.
     fn record_ty(&self, hir_id: HirId, ty: Ty<'tcx>, span: Span);
 
+    /// Record the resolution of a HIR node corresponding to a type-dependent definition in this context.
+    fn record_res(&self, hir_id: hir::HirId, result: TypeDependentDef);
+
     /// The inference context of the lowering context if applicable.
     fn infcx(&self) -> Option<&InferCtxt<'tcx>>;
 
@@ -208,18 +212,20 @@ pub trait HirTyLowerer<'tcx> {
 /// The "qualified self" of an associated item path.
 ///
 /// For diagnostic purposes only.
-enum AssocItemQSelf {
+enum AssocItemQSelf<'tcx> {
     Trait(DefId),
     TyParam(LocalDefId, Span),
     SelfTyAlias,
+    AssocTy(Ty<'tcx>),
 }
 
-impl AssocItemQSelf {
-    fn to_string(&self, tcx: TyCtxt<'_>) -> String {
+impl<'tcx> AssocItemQSelf<'tcx> {
+    fn to_string(&self, tcx: TyCtxt<'tcx>) -> String {
         match *self {
             Self::Trait(def_id) => tcx.def_path_str(def_id),
             Self::TyParam(def_id, _) => tcx.hir_ty_param_name(def_id).to_string(),
             Self::SelfTyAlias => kw::SelfUpper.to_string(),
+            Self::AssocTy(ty) => ty.to_string(),
         }
     }
 }
@@ -1010,8 +1016,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn probe_single_bound_for_assoc_item<I>(
         &self,
         all_candidates: impl Fn() -> I,
-        qself: AssocItemQSelf,
-        assoc_tag: AssocTag,
+        qself: AssocItemQSelf<'tcx>,
+        assoc_tag: ty::AssocTag,
         assoc_ident: Ident,
         span: Span,
         constraint: Option<&hir::AssocItemConstraint<'tcx>>,
@@ -1151,6 +1157,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// [type-relative]: hir::QPath::TypeRelative
     /// [#22519]: https://github.com/rust-lang/rust/issues/22519
     /// [iat]: https://github.com/rust-lang/rust/issues/8995#issuecomment-1569208403
+    // FIXME(fmease): Update docs
     //
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
     // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
@@ -1231,8 +1238,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         mode: LowerAssocMode,
     ) -> Result<LoweredAssoc<'tcx>, ErrorGuaranteed> {
         debug!(%qself_ty, ?assoc_segment.ident);
-        let tcx = self.tcx();
+        let result =
+            self.lower_assoc_path_inner(hir_ref_id, span, qself_ty, qself, assoc_segment, mode);
+        self.record_res(
+            hir_ref_id,
+            result.map(|assoc| match assoc {
+                LoweredAssoc::Term(def_id, _) => (self.tcx().def_kind(def_id), def_id),
+                LoweredAssoc::Variant { .. } => todo!(), // FIXME: Properly handle
+            }),
+        );
+        result
+    }
 
+    fn lower_assoc_path_inner(
+        &self,
+        hir_ref_id: HirId,
+        span: Span,
+        qself_ty: Ty<'tcx>,
+        qself: &'tcx hir::Ty<'tcx>,
+        assoc_segment: &'tcx hir::PathSegment<'tcx>,
+        mode: LowerAssocMode,
+    ) -> Result<LoweredAssoc<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx();
         let assoc_ident = assoc_segment.ident;
 
         // Check if we have an enum variant or an inherent associated type.
@@ -1273,10 +1300,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        let qself_res = if let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = &qself.kind {
-            path.res
-        } else {
-            Res::Err
+        let qself_res = match &qself.kind {
+            hir::TyKind::Path(qpath) => self.qpath_res(qpath, qself.hir_id),
+            _ => Res::Err,
         };
 
         // Find the type of the associated item, and the trait where the associated
@@ -1305,15 +1331,38 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 )?
             }
             (
-                &ty::Param(_),
-                Res::SelfTyParam { trait_: param_did } | Res::Def(DefKind::TyParam, param_did),
+                ty::Param(_),
+                Res::SelfTyParam { trait_: param_def_id }
+                | Res::Def(DefKind::TyParam, param_def_id),
             ) => self.probe_single_ty_param_bound_for_assoc_item(
-                param_did.expect_local(),
+                param_def_id.expect_local(),
                 qself.span,
                 mode.assoc_tag(),
                 assoc_ident,
                 span,
             )?,
+            (ty::Alias(ty::Projection, alias_ty), Res::Def(DefKind::AssocTy, _)) => {
+                // FIXME: Utilizing `item_bounds` for this is cycle-prone.
+                let predicates = tcx.item_bounds(alias_ty.def_id).instantiate(tcx, alias_ty.args);
+
+                self.probe_single_bound_for_assoc_item(
+                    || {
+                        let trait_refs = predicates.iter().filter_map(|pred| {
+                            pred.as_trait_clause().map(|t| t.map_bound(|t| t.trait_ref))
+                        });
+                        traits::transitive_bounds_that_define_assoc_item(
+                            tcx,
+                            trait_refs,
+                            assoc_ident,
+                        )
+                    },
+                    AssocItemQSelf::AssocTy(qself_ty),
+                    mode.assoc_tag(),
+                    assoc_ident,
+                    span,
+                    None,
+                )?
+            }
             _ => {
                 let kind_str = assoc_tag_str(mode.assoc_tag());
                 let reported = if variant_resolution.is_some() {
@@ -1466,6 +1515,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
             });
         }
+
         Ok(result)
     }
 
