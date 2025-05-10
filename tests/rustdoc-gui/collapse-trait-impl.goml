@@ -13,7 +13,7 @@ click: "summary:has(#trait-impl-link-in-summary) > .impl"
 assert-window-property: ({"pageYOffset": "0"})
 
 // But links should still work
-click: "#trait-impl-link-in-summary"
+click: "summary:has(#trait-impl-link-in-summary) a:has(#trait-impl-link-in-summary)"
 assert-window-property-false: ({"pageYOffset": "0"})
 
 // As well as clicks on elements within links
