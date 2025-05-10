@@ -251,11 +251,6 @@ lint_duplicate_macro_attribute =
 
 lint_duplicate_matcher_binding = duplicate matcher binding
 
-lint_elided_named_lifetime = elided lifetime has a name
-    .label_elided = this elided lifetime gets resolved as `{$name}`
-    .label_named = lifetime `{$name}` declared here
-    .suggestion = consider specifying it explicitly
-
 lint_enum_intrinsics_mem_discriminant =
     the return value of `mem::discriminant` is unspecified when called with a non-enum type
     .note = the argument to `discriminant` should be a reference to an enum, but it was passed a reference to a `{$ty_param}`, which is not an enum
@@ -511,6 +506,28 @@ lint_map_unit_fn = `Iterator::map` call that discard the iterator's values
 lint_metavariable_still_repeating = variable `{$name}` is still repeating at this depth
 
 lint_metavariable_wrong_operator = meta-variable repeats with different Kleene operator
+
+lint_mismatched_lifetime_syntaxes =
+    lifetime flowing from input to output with different syntax
+    .label_mismatched_lifetime_syntaxes_inputs =
+        {$n_inputs ->
+            [one] this lifetime flows
+            *[other] these lifetimes flow
+        } to the output
+    .label_mismatched_lifetime_syntaxes_outputs =
+        the elided {$n_outputs ->
+            [one] lifetime gets
+            *[other] lifetimes get
+        } resolved as `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_explicit =
+    one option is to consistently use `{$lifetime_name}`
+
+lint_mismatched_lifetime_syntaxes_suggestion_implicit =
+    one option is to consistently hide the lifetime
+
+lint_mismatched_lifetime_syntaxes_suggestion_mixed =
+    one option is to hide the lifetime for references and use the anonymous lifetime for paths
 
 lint_missing_fragment_specifier = missing fragment specifier
 

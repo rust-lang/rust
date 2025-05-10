@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-103582-hint-for-missing-lifetime-bound-on-trait-object-using-type-alias.rs:32:9
+  --> $DIR/issue-103582-hint-for-missing-lifetime-bound-on-trait-object-using-type-alias.rs:33:9
    |
 LL |     pub fn get(&self, i: usize) -> BoxedGreeter {
    |                - let's call the lifetime of this reference `'1`
