@@ -18,7 +18,7 @@ use tracing::debug;
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
 
-mod diagnostics;
+pub(super) mod diagnostics;
 
 macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
@@ -40,7 +40,7 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
             self.context.opt_span_lint(lint_id.lint, span, |diag| {
-                diagnostics::decorate_lint(self.context.sess(), self.tcx, diagnostic, diag);
+                diagnostics::decorate_builtin_lint(self.context.sess(), self.tcx, diagnostic, diag);
             });
         }
     }
