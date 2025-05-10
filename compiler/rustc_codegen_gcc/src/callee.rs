@@ -106,7 +106,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
                 // This is a monomorphization of a generic function.
                 if !(cx.tcx.sess.opts.share_generics()
                     || tcx.codegen_fn_attrs(instance_def_id).inline
-                        == rustc_attr_parsing::InlineAttr::Never)
+                        == rustc_attr_data_structures::InlineAttr::Never)
                 {
                     // When not sharing generics, all instances are in the same
                     // crate and have hidden visibility.

@@ -15,7 +15,7 @@ use std::slice;
 
 use itertools::Either;
 use rustc_abi::ExternAbi;
-use rustc_attr_parsing::{ConstStability, StabilityLevel, StableSince};
+use rustc_attr_data_structures::{ConstStability, StabilityLevel, StableSince};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
