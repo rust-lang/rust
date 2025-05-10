@@ -28,6 +28,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<ty::Instance<'tcx>>> {
         let this = self.eval_context_mut();
 
+        // Force use of fallback body, if available.
+        if this.machine.force_intrinsic_fallback
+            && !this.tcx.intrinsic(instance.def_id()).unwrap().must_be_overridden
+        {
+            return interp_ok(Some(ty::Instance {
+                def: ty::InstanceKind::Item(instance.def_id()),
+                args: instance.args,
+            }));
+        }
+
         // See if the core engine can handle this intrinsic.
         if this.eval_intrinsic(instance, args, dest, ret)? {
             return interp_ok(None);

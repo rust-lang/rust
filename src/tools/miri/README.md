@@ -393,6 +393,9 @@ to Miri failing to detect cases of undefined behavior in a program.
   disables the randomization of the next thread to be picked, instead fixing a round-robin schedule.
   Note however that other aspects of Miri's concurrency behavior are still randomize; use
   `-Zmiri-deterministic-concurrency` to disable them all.
+* `-Zmiri-force-intrinsic-fallback` forces the use of the "fallback" body for all intrinsics that
+  have one. This is useful to test the fallback bodies, but should not be used otherwise. It is
+  **unsound** since the fallback body might not be checking for all UB.
 * `-Zmiri-native-lib=<path to a shared object file>` is an experimental flag for providing support
   for calling native functions from inside the interpreter via FFI. The flag is supported only on
   Unix systems. Functions not provided by that file are still executed via the usual Miri shims.

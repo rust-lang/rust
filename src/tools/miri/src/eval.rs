@@ -165,6 +165,8 @@ pub struct MiriConfig {
     pub address_reuse_cross_thread_rate: f64,
     /// Round Robin scheduling with no preemption.
     pub fixed_scheduling: bool,
+    /// Always prefer the intrinsic fallback body over the native Miri implementation.
+    pub force_intrinsic_fallback: bool,
 }
 
 impl Default for MiriConfig {
@@ -203,6 +205,7 @@ impl Default for MiriConfig {
             address_reuse_rate: 0.5,
             address_reuse_cross_thread_rate: 0.1,
             fixed_scheduling: false,
+            force_intrinsic_fallback: false,
         }
     }
 }

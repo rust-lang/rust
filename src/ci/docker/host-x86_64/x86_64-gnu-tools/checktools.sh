@@ -40,6 +40,14 @@ if [ -z "${PR_CI_JOB:-}" ]; then
 else
     python3 "$X_PY" test --stage 2 src/tools/miri src/tools/miri/cargo-miri
 fi
+# We re-run the test suite for a chance to find bugs in the intrinsic fallback bodies and in MIR
+# optimizations. This can miss UB, so we only run the "pass" tests. We need to enable debug
+# assertions as `-O` disables them but some tests rely on them. We also set a cfg flag so tests can
+# adjust their expectations if needed. This can change the output of the tests so we ignore that,
+# we only ensure that all assertions still pass.
+MIRIFLAGS="-Zmiri-force-intrinsic-fallback --cfg force_intrinsic_fallback -O -Zmir-opt-level=4 -Cdebug-assertions=yes" \
+  MIRI_SKIP_UI_CHECKS=1 \
+  python3 "$X_PY" test --stage 2 src/tools/miri -- tests/{pass,panic}
 # We natively run this script on x86_64-unknown-linux-gnu and x86_64-pc-windows-msvc.
 # Also cover some other targets via cross-testing, in particular all tier 1 targets.
 case $HOST_TARGET in
