@@ -1,6 +1,3 @@
-#![feature(repr128)]
-#![allow(incomplete_features)]
-
 extern crate proc_macro;
 
 use proc_macro::{Delimiter, Group, Ident, Span, TokenStream, TokenTree};
