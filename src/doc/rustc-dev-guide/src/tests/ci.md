@@ -135,12 +135,16 @@ There are several use-cases for try builds:
 - Run a specific CI job (e.g. Windows tests) on a PR, to quickly test if it
   passes the test suite executed by that job.
 
-You can select which CI jobs will
-be executed in the try build by adding lines containing `try-job:
-<job pattern>` to the PR description. All such specified jobs will be executed
-in the try build once the `@bors try` command is used on the PR. If no try
-jobs are specified in this way, the jobs defined in the `try` section of
-[`jobs.yml`] will be executed by default.
+By default, if you send a comment with `@bors try`, the jobs defined in the `try` section of
+[`jobs.yml`] will be executed. We call this mode a "fast try build". Such a try build
+will not execute any tests, and it will allow compilation warnings. It is useful when you want to
+get an optimized toolchain as fast as possible, for a crater run or performance benchmarks,
+even if it might not be working fully correctly.
+
+If you want to run a custom CI job in a try build and make sure that it passes all tests and does
+not produce any compilation warnings, you can select CI jobs to be executed by adding lines
+containing `try-job: <job pattern>` to the PR description. All such specified jobs will be executed
+in the try build once the `@bors try` command is used on the PR.
 
 Each pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
 for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build. When using

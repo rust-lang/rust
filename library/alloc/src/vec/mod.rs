@@ -3659,28 +3659,34 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
     /// or the iteration short-circuits, then the remaining elements will be retained.
-    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
+    /// Use [`retain_mut`] with a negated predicate if you do not need the returned iterator.
     ///
-    /// [`retain`]: Vec::retain
+    /// [`retain_mut`]: Vec::retain_mut
     ///
     /// Using this method is equivalent to the following code:
     ///
     /// ```
-    /// # use std::cmp::min;
-    /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
-    /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
-    /// # let range = 1..4;
+    /// # let some_predicate = |x: &mut i32| { *x % 2 == 1 };
+    /// # let mut vec = vec![0, 1, 2, 3, 4, 5, 6];
+    /// # let mut vec2 = vec.clone();
+    /// # let range = 1..5;
     /// let mut i = range.start;
-    /// while i < min(vec.len(), range.end) {
+    /// let end_items = vec.len() - range.end;
+    /// # let mut extracted = vec![];
+    ///
+    /// while i < vec.len() - end_items {
     ///     if some_predicate(&mut vec[i]) {
     ///         let val = vec.remove(i);
+    /// #         extracted.push(val);
     ///         // your code here
     ///     } else {
     ///         i += 1;
     ///     }
     /// }
     ///
-    /// # assert_eq!(vec, vec![1, 4, 5]);
+    /// # let extracted2: Vec<_> = vec2.extract_if(range, some_predicate).collect();
+    /// # assert_eq!(vec, vec2);
+    /// # assert_eq!(extracted, extracted2);
     /// ```
     ///
     /// But `extract_if` is easier to use. `extract_if` is also more efficient,

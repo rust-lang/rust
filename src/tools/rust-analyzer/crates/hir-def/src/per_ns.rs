@@ -37,7 +37,8 @@ pub struct Item<Def, Import = ImportId> {
 
 pub type TypesItem = Item<ModuleDefId, ImportOrExternCrate>;
 pub type ValuesItem = Item<ModuleDefId, ImportOrGlob>;
-pub type MacrosItem = Item<MacroId, ImportOrGlob>;
+// May be Externcrate for `[macro_use]`'d macros
+pub type MacrosItem = Item<MacroId, ImportOrExternCrate>;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
 pub struct PerNs {
@@ -84,7 +85,7 @@ impl PerNs {
         }
     }
 
-    pub fn macros(def: MacroId, vis: Visibility, import: Option<ImportOrGlob>) -> PerNs {
+    pub fn macros(def: MacroId, vis: Visibility, import: Option<ImportOrExternCrate>) -> PerNs {
         PerNs { types: None, values: None, macros: Some(Item { def, vis, import }) }
     }
 
@@ -116,7 +117,7 @@ impl PerNs {
         self.macros.map(|it| it.def)
     }
 
-    pub fn take_macros_import(self) -> Option<(MacroId, Option<ImportOrGlob>)> {
+    pub fn take_macros_import(self) -> Option<(MacroId, Option<ImportOrExternCrate>)> {
         self.macros.map(|it| (it.def, it.import))
     }
 
@@ -158,9 +159,6 @@ impl PerNs {
                 self.values
                     .map(|it| (ItemInNs::Values(it.def), it.import.map(ImportOrExternCrate::from))),
             )
-            .chain(
-                self.macros
-                    .map(|it| (ItemInNs::Macros(it.def), it.import.map(ImportOrExternCrate::from))),
-            )
+            .chain(self.macros.map(|it| (ItemInNs::Macros(it.def), it.import)))
     }
 }

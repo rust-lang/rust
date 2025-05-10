@@ -781,22 +781,6 @@ pub(crate) struct CannotGlobImportAllCrates {
     pub(crate) span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag(resolve_items_in_traits_are_not_importable)]
-pub(crate) struct ItemsInTraitsAreNotImportable {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(resolve_is_not_directly_importable, code = E0253)]
-pub(crate) struct IsNotDirectlyImportable {
-    #[primary_span]
-    #[label]
-    pub(crate) span: Span,
-    pub(crate) target: Ident,
-}
-
 #[derive(Subdiagnostic)]
 #[suggestion(
     resolve_unexpected_res_change_ty_to_const_param_sugg,

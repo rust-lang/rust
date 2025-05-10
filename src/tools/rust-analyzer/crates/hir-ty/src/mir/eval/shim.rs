@@ -6,7 +6,6 @@ use std::cmp::{self, Ordering};
 use chalk_ir::TyKind;
 use hir_def::{
     builtin_type::{BuiltinInt, BuiltinUint},
-    lang_item::LangItemTarget,
     resolver::HasResolver,
 };
 use hir_expand::name::Name;
@@ -156,8 +155,8 @@ impl Evaluator<'_> {
         if let Some(LangItem::PanicFmt) = self.db.lang_attr(def.into()) {
             let resolver = self.db.crate_def_map(self.crate_id).crate_root().resolver(self.db);
 
-            let Some(hir_def::lang_item::LangItemTarget::Function(const_panic_fmt)) =
-                self.db.lang_item(resolver.krate(), LangItem::ConstPanicFmt)
+            let Some(const_panic_fmt) =
+                LangItem::ConstPanicFmt.resolve_function(self.db, resolver.krate())
             else {
                 not_supported!("const_panic_fmt lang item not found or not a function");
             };
@@ -1257,12 +1256,12 @@ impl Evaluator<'_> {
                     let addr = tuple.interval.addr.offset(offset);
                     args.push(IntervalAndTy::new(addr, field, self, locals)?);
                 }
-                if let Some(target) = self.db.lang_item(self.crate_id, LangItem::FnOnce) {
-                    if let Some(def) = target.as_trait().and_then(|it| {
-                        self.db
-                            .trait_items(it)
-                            .method_by_name(&Name::new_symbol_root(sym::call_once))
-                    }) {
+                if let Some(target) = LangItem::FnOnce.resolve_trait(self.db, self.crate_id) {
+                    if let Some(def) = self
+                        .db
+                        .trait_items(target)
+                        .method_by_name(&Name::new_symbol_root(sym::call_once))
+                    {
                         self.exec_fn_trait(
                             def,
                             &args,
@@ -1376,9 +1375,7 @@ impl Evaluator<'_> {
                         }
                     }
                 }
-                if let Some(LangItemTarget::EnumId(e)) =
-                    self.db.lang_item(self.crate_id, LangItem::Ordering)
-                {
+                if let Some(e) = LangItem::Ordering.resolve_enum(self.db, self.crate_id) {
                     let ty = self.db.ty(e.into());
                     let r = self
                         .compute_discriminant(ty.skip_binders().clone(), &[result as i8 as u8])?;

@@ -199,8 +199,19 @@ fn pattern_single_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     }
 }
 
-const PAT_RECOVERY_SET: TokenSet =
-    TokenSet::new(&[T![let], T![if], T![while], T![loop], T![match], T![')'], T![,], T![=]]);
+const PAT_RECOVERY_SET: TokenSet = TokenSet::new(&[
+    T![let],
+    T![if],
+    T![while],
+    T![loop],
+    T![match],
+    T![')'],
+    T![']'],
+    T!['}'],
+    T![,],
+    T![=],
+    T![&],
+]);
 
 fn atom_pat(p: &mut Parser<'_>, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let m = match p.current() {

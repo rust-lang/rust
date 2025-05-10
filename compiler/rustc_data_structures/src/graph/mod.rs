@@ -1,8 +1,8 @@
 use rustc_index::Idx;
 
 pub mod dominators;
-pub mod implementation;
 pub mod iterate;
+pub mod linked_graph;
 mod reference;
 pub mod reversed;
 pub mod scc;

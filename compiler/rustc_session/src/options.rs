@@ -2113,6 +2113,8 @@ options! {
         "emit noalias metadata for box (default: yes)"),
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
+    build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
+        "whether the stable interface is being built"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],
@@ -2208,7 +2210,7 @@ options! {
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \
         (default: no)"),
-    fixed_x18: bool = (false, parse_bool, [TRACKED],
+    fixed_x18: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
         "make the x18 register reserved on AArch64 (default: no)"),
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \

@@ -80,7 +80,7 @@ impl<'a> dot::Labeller<'a, Crate, Edge<'a>> for DotCrateGraph<'_> {
 
     fn node_id(&'a self, n: &Crate) -> Id<'a> {
         let id = n.as_id().as_u32();
-        Id::new(format!("_{:?}", id)).unwrap()
+        Id::new(format!("_{id:?}")).unwrap()
     }
 
     fn node_shape(&'a self, _node: &Crate) -> Option<LabelText<'a>> {

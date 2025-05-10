@@ -10,7 +10,7 @@
 
 mod tests {
     #[cfg_attr(not(cfail1), test)]
-    fn test() {
+    fn _test() {
     }
 }
 

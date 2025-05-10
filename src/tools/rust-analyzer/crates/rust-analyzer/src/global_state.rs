@@ -511,7 +511,7 @@ impl GlobalState {
 
                 self.fetch_workspaces_queue.request_op(
                     format!("workspace vfs file change: {path}"),
-                    FetchWorkspaceRequest { path: Some(path.to_owned()), force_crate_graph_reload },
+                    FetchWorkspaceRequest { path: Some(path), force_crate_graph_reload },
                 );
             }
         }

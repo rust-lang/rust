@@ -353,7 +353,7 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Local { repo: None, name: None },
                 true,
-                proc_macro_cwd.clone(),
+                proc_macro_cwd,
                 crate_ws_data,
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));

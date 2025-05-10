@@ -2,7 +2,8 @@
 //@ pretty-mode:hir
 //@ pp-exact:hir-delegation.pp
 
-#![allow(incomplete_features)]#![feature(fn_delegation)]
+#![allow(incomplete_features)]
+#![feature(fn_delegation)]
 #[prelude_import]
 use ::std::prelude::rust_2015::*;
 #[macro_use]

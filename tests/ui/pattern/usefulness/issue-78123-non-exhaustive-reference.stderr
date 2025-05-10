@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `&A` is non-empty
-  --> $DIR/issue-78123-non-exhaustive-reference.rs:6:11
+  --> $DIR/issue-78123-non-exhaustive-reference.rs:5:11
    |
 LL |     match a {}
    |           ^

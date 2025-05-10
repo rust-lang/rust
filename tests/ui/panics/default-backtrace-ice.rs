@@ -1,8 +1,5 @@
 //@ unset-rustc-env:RUST_BACKTRACE
 //@ compile-flags:-Z treat-err-as-bug=1
-//@ error-pattern:stack backtrace:
-// Verify this is a full backtrace, not a short backtrace.
-//@ error-pattern:__rust_begin_short_backtrace
 //@ failure-status:101
 //@ ignore-msvc
 //@ normalize-stderr: "note: .*" -> ""
@@ -21,3 +18,7 @@
 // aren't reliable.
 
 fn main() { missing_ident; } //~ ERROR cannot find value `missing_ident` in this scope
+
+//~? RAW stack backtrace:
+// Verify this is a full backtrace, not a short backtrace.
+//~? RAW __rust_begin_short_backtrace

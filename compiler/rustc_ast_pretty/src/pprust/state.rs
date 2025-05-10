@@ -221,6 +221,7 @@ pub struct State<'a> {
     pub s: pp::Printer,
     comments: Option<Comments<'a>>,
     ann: &'a (dyn PpAnn + 'a),
+    is_sdylib_interface: bool,
 }
 
 const INDENT_UNIT: isize = 4;
@@ -237,9 +238,36 @@ pub fn print_crate<'a>(
     edition: Edition,
     g: &AttrIdGenerator,
 ) -> String {
-    let mut s =
-        State { s: pp::Printer::new(), comments: Some(Comments::new(sm, filename, input)), ann };
+    let mut s = State {
+        s: pp::Printer::new(),
+        comments: Some(Comments::new(sm, filename, input)),
+        ann,
+        is_sdylib_interface: false,
+    };
 
+    print_crate_inner(&mut s, krate, is_expanded, edition, g);
+    s.s.eof()
+}
+
+pub fn print_crate_as_interface(
+    krate: &ast::Crate,
+    edition: Edition,
+    g: &AttrIdGenerator,
+) -> String {
+    let mut s =
+        State { s: pp::Printer::new(), comments: None, ann: &NoAnn, is_sdylib_interface: true };
+
+    print_crate_inner(&mut s, krate, false, edition, g);
+    s.s.eof()
+}
+
+fn print_crate_inner<'a>(
+    s: &mut State<'a>,
+    krate: &ast::Crate,
+    is_expanded: bool,
+    edition: Edition,
+    g: &AttrIdGenerator,
+) {
     // We need to print shebang before anything else
     // otherwise the resulting code will not compile
     // and shebang will be useless.
@@ -282,8 +310,7 @@ pub fn print_crate<'a>(
         s.print_item(item);
     }
     s.print_remaining_comments();
-    s.ann.post(&mut s, AnnNode::Crate(krate));
-    s.s.eof()
+    s.ann.post(s, AnnNode::Crate(krate));
 }
 
 /// Should two consecutive tokens be printed with a space between them?
@@ -1111,7 +1138,7 @@ impl<'a> PrintState<'a> for State<'a> {
 
 impl<'a> State<'a> {
     pub fn new() -> State<'a> {
-        State { s: pp::Printer::new(), comments: None, ann: &NoAnn }
+        State { s: pp::Printer::new(), comments: None, ann: &NoAnn, is_sdylib_interface: false }
     }
 
     fn commasep_cmnt<T, F, G>(&mut self, b: Breaks, elts: &[T], mut op: F, mut get_span: G)

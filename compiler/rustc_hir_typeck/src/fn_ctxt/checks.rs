@@ -37,8 +37,8 @@ use crate::method::probe::IsSuggestion;
 use crate::method::probe::Mode::MethodCall;
 use crate::method::probe::ProbeScope::TraitsInScope;
 use crate::{
-    BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy, Needs, TupleArgumentsFlag, errors,
-    struct_span_code_err,
+    BreakableCtxt, Diverges, Expectation, FnCtxt, GatherLocalsVisitor, LoweredTy, Needs,
+    TupleArgumentsFlag, errors, struct_span_code_err,
 };
 
 rustc_index::newtype_index! {
@@ -1765,6 +1765,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Type check a `let` statement.
     fn check_decl_local(&self, local: &'tcx hir::LetStmt<'tcx>) {
+        GatherLocalsVisitor::gather_from_local(self, local);
+
         let ty = self.check_decl(local.into());
         self.write_ty(local.hir_id, ty);
         if local.pat.is_never_pattern() {

@@ -27,6 +27,7 @@ pub(crate) fn target() -> Target {
             abi: "abi64".into(),
             endian: Endian::Big,
             mcount: "_mcount".into(),
+            llvm_abiname: "n64".into(),
             ..base
         },
     }

@@ -14,7 +14,7 @@ rust-version.workspace = true
 [dependencies]
 either.workspace = true
 itertools.workspace = true
-rowan = "=0.15.15"
+rowan.workspace = true
 rustc-hash.workspace = true
 rustc-literal-escaper.workspace = true
 smol_str.workspace = true

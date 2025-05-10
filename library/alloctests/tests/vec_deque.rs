@@ -1688,6 +1688,40 @@ fn truncate_leak() {
 
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn truncate_front_leak() {
+    static mut DROPS: i32 = 0;
+
+    struct D(bool);
+
+    impl Drop for D {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+
+            if self.0 {
+                panic!("panic in `drop`");
+            }
+        }
+    }
+
+    let mut q = VecDeque::new();
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_back(D(false));
+    q.push_front(D(true));
+    q.push_front(D(false));
+    q.push_front(D(false));
+
+    catch_unwind(AssertUnwindSafe(|| q.truncate_front(1))).ok();
+
+    assert_eq!(unsafe { DROPS }, 7);
+}
+
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_drain_leak() {
     static mut DROPS: i32 = 0;
 
@@ -1862,4 +1896,39 @@ fn test_collect_from_into_iter_keeps_allocation() {
         assert_eq!(v.as_slices(), ([9].as_slice(), [8, 7, 2, 3, 4, 5, 6].as_slice()));
         assert_eq!(v.capacity(), 13);
     }
+}
+
+#[test]
+fn test_truncate_front() {
+    let mut v = VecDeque::with_capacity(13);
+    v.extend(0..7);
+    assert_eq!(v.as_slices(), ([0, 1, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+    v.truncate_front(10);
+    assert_eq!(v.len(), 7);
+    assert_eq!(v.as_slices(), ([0, 1, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+    v.truncate_front(7);
+    assert_eq!(v.len(), 7);
+    assert_eq!(v.as_slices(), ([0, 1, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+    v.truncate_front(3);
+    assert_eq!(v.as_slices(), ([4, 5, 6].as_slice(), [].as_slice()));
+    assert_eq!(v.len(), 3);
+    v.truncate_front(0);
+    assert_eq!(v.as_slices(), ([].as_slice(), [].as_slice()));
+    assert_eq!(v.len(), 0);
+
+    v.clear();
+    v.extend(0..7);
+    assert_eq!(v.as_slices(), ([0, 1, 2, 3, 4, 5, 6].as_slice(), [].as_slice()));
+    v.push_front(9);
+    v.push_front(8);
+    v.push_front(7);
+    assert_eq!(v.as_slices(), ([7, 8, 9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
+    v.truncate_front(12);
+    assert_eq!(v.as_slices(), ([7, 8, 9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
+    v.truncate_front(10);
+    assert_eq!(v.as_slices(), ([7, 8, 9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
+    v.truncate_front(8);
+    assert_eq!(v.as_slices(), ([9].as_slice(), [0, 1, 2, 3, 4, 5, 6].as_slice()));
+    v.truncate_front(5);
+    assert_eq!(v.as_slices(), ([2, 3, 4, 5, 6].as_slice(), [].as_slice()));
 }

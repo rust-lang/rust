@@ -277,6 +277,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::cfg_attr
                             | sym::cfg_trace
                             | sym::cfg_attr_trace
+                            | sym::export_stable // handled in `check_export`
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
@@ -683,7 +684,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                     }
 
-                    if !other_attr.has_any_name(ALLOW_LIST) {
+                    if !other_attr.has_any_name(ALLOW_LIST)
+                        && !matches!(other_attr.path().as_slice(), [sym::rustfmt, ..])
+                    {
                         let path = other_attr.path();
                         let path: Vec<_> = path.iter().map(|s| s.as_str()).collect();
                         let other_attr_name = path.join("::");

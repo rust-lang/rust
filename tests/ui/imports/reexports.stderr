@@ -62,7 +62,7 @@ warning: glob import doesn't reexport anything with visibility `pub` because no 
 LL |         pub use super::*;
    |                 ^^^^^^^^
    |
-note: the most public imported item is `pub(a)`
+note: the most public imported item is `pub(in crate::a)`
   --> $DIR/reexports.rs:11:17
    |
 LL |         pub use super::*;

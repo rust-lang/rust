@@ -29,13 +29,12 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
-use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
 };
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::Definitions;
+use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, Attribute, HirId, Node, TraitCandidate};
@@ -243,10 +242,18 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
                     ty::AliasTermKind::ProjectionTy
                 }
             }
+            DefKind::AssocConst => {
+                if let DefKind::Impl { of_trait: false } = self.def_kind(self.parent(alias.def_id))
+                {
+                    ty::AliasTermKind::InherentConst
+                } else {
+                    ty::AliasTermKind::ProjectionConst
+                }
+            }
             DefKind::OpaqueTy => ty::AliasTermKind::OpaqueTy,
             DefKind::TyAlias => ty::AliasTermKind::FreeTy,
-            DefKind::AssocConst => ty::AliasTermKind::ProjectionConst,
-            DefKind::AnonConst | DefKind::Const | DefKind::Ctor(_, CtorKind::Const) => {
+            DefKind::Const => ty::AliasTermKind::FreeConst,
+            DefKind::AnonConst | DefKind::Ctor(_, CtorKind::Const) => {
                 ty::AliasTermKind::UnevaluatedConst
             }
             kind => bug!("unexpected DefKind in AliasTy: {kind:?}"),
@@ -684,15 +691,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.opaque_types_defined_by(defining_anchor)
     }
 
-    fn opaque_types_and_generators_defined_by(
+    fn opaque_types_and_coroutines_defined_by(
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
         if self.next_trait_solver_globally() {
+            let coroutines_defined_by = self
+                .nested_bodies_within(defining_anchor)
+                .iter()
+                .filter(|def_id| self.is_coroutine(def_id.to_def_id()));
             self.mk_local_def_ids_from_iter(
-                self.opaque_types_defined_by(defining_anchor)
-                    .iter()
-                    .chain(self.stalled_generators_within(defining_anchor)),
+                self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
             )
         } else {
             self.opaque_types_defined_by(defining_anchor)
@@ -1820,9 +1829,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.crate_types()
             .iter()
             .map(|ty| match *ty {
-                CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => {
-                    MetadataKind::None
-                }
+                CrateType::Executable
+                | CrateType::Staticlib
+                | CrateType::Cdylib
+                | CrateType::Sdylib => MetadataKind::None,
                 CrateType::Rlib => MetadataKind::Uncompressed,
                 CrateType::Dylib | CrateType::ProcMacro => MetadataKind::Compressed,
             })
@@ -1969,8 +1979,11 @@ impl<'tcx> TyCtxtAt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
+        override_def_path_data: Option<DefPathData>,
+        disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let feed = self.tcx.create_def(parent, name, def_kind);
+        let feed =
+            self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
 
         feed.def_span(self.span);
         feed
@@ -1984,8 +1997,10 @@ impl<'tcx> TyCtxt<'tcx> {
         parent: LocalDefId,
         name: Option<Symbol>,
         def_kind: DefKind,
+        override_def_path_data: Option<DefPathData>,
+        disambiguator: &mut DisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
-        let data = def_kind.def_path_data(name);
+        let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.
         // These very tables are relied on by the incr. comp. engine to decode DepNodes and to
         // decode the on-disk cache.
@@ -1995,12 +2010,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // - has been created by this call to `create_def`.
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
-        //
-        // This call also writes to the value of the `source_span` query.
-        // This is fine because:
-        // - that query is `eval_always` so we won't miss its result changing;
-        // - this write will have happened before that query is called.
-        let def_id = self.untracked.definitions.write().create_def(parent, data);
+        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
 
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.
@@ -2125,7 +2135,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 CrateType::Executable
                 | CrateType::Staticlib
                 | CrateType::ProcMacro
-                | CrateType::Cdylib => false,
+                | CrateType::Cdylib
+                | CrateType::Sdylib => false,
 
                 // FIXME rust-lang/rust#64319, rust-lang/rust#64872:
                 // We want to block export of generics from dylibs,
@@ -2413,6 +2424,8 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
                 for shard in tcx.interners.type_.lock_shards() {
+                    // It seems that ordering doesn't affect anything here.
+                    #[allow(rustc::potential_query_instability)]
                     let types = shard.iter();
                     for &(InternedInSet(t), ()) in types {
                         let variant = match t.internee {
@@ -3307,6 +3320,10 @@ impl<'tcx> TyCtxt<'tcx> {
             && self.impl_trait_header(def_id).unwrap().constness == hir::Constness::Const
     }
 
+    pub fn is_sdylib_interface_build(self) -> bool {
+        self.sess.opts.unstable_opts.build_sdylib_interface
+    }
+
     pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
         match self.def_kind(def_id) {
             DefKind::Fn | DefKind::AssocFn => {}
@@ -3399,9 +3416,7 @@ pub fn provide(providers: &mut Providers) {
     providers.maybe_unused_trait_imports =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
     providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(UnordSet::from(
-            tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default(),
-        ))
+        tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
     };
 
     providers.extern_mod_stmt_cnum =

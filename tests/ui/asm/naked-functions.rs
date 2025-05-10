@@ -231,3 +231,9 @@ pub extern "C" fn compatible_linkage() {
 pub extern "C" fn rustc_std_internal_symbol() {
     naked_asm!("", options(raw));
 }
+
+#[rustfmt::skip]
+#[unsafe(naked)]
+pub extern "C" fn rustfmt_skip() {
+    naked_asm!("", options(raw));
+}

@@ -24,10 +24,6 @@ impl<'tcx, OP> TypeVisitor<TyCtxt<'tcx>> for FreeRegionsVisitor<'tcx, OP>
 where
     OP: FnMut(ty::Region<'tcx>),
 {
-    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(&mut self, t: &ty::Binder<'tcx, T>) {
-        t.super_visit_with(self);
-    }
-
     fn visit_region(&mut self, r: ty::Region<'tcx>) {
         match r.kind() {
             // ignore bound regions, keep visiting

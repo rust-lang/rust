@@ -1516,6 +1516,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 } else {
                     expr.span.with_hi(expr.span.lo() + BytePos(1))
                 };
+
+                match self.tcx.sess.source_map().span_to_snippet(span) {
+                    Ok(snippet) if snippet.starts_with("&") => {}
+                    _ => break 'outer,
+                }
+
                 suggestions.push((span, String::new()));
 
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {

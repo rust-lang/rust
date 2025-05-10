@@ -827,9 +827,9 @@ impl InferenceContext<'_> {
                     }
                     let assoc = self.resolve_ops_index_output();
                     self.resolve_associated_type_with_params(
-                        self_ty.clone(),
+                        self_ty,
                         assoc,
-                        &[index_ty.clone().cast(Interner)],
+                        &[index_ty.cast(Interner)],
                     )
                 } else {
                     self.err_ty()

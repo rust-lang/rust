@@ -104,10 +104,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
-    fn clone_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
-        self.0.clone_opaque_types_for_query_response()
-    }
-
     fn make_deduplicated_outlives_constraints(
         &self,
     ) -> Vec<ty::OutlivesPredicate<'tcx, ty::GenericArg<'tcx>>> {
@@ -153,18 +149,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.instantiate_canonical_var(span, cv_info, universe_map)
     }
 
-    fn register_hidden_type_in_storage(
-        &self,
-        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
-        hidden_ty: <Self::Interner as ty::Interner>::Ty,
-        span: <Self::Interner as ty::Interner>::Span,
-    ) -> Option<<Self::Interner as ty::Interner>::Ty> {
-        self.0.register_hidden_type_in_storage(
-            opaque_type_key,
-            ty::OpaqueHiddenType { span, ty: hidden_ty },
-        )
-    }
-
     fn add_item_bounds_for_hidden_type(
         &self,
         def_id: DefId,
@@ -174,10 +158,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
         self.0.add_item_bounds_for_hidden_type(def_id, args, param_env, hidden_ty, goals);
-    }
-
-    fn reset_opaque_types(&self) {
-        let _ = self.take_opaque_types();
     }
 
     fn fetch_eligible_assoc_item(

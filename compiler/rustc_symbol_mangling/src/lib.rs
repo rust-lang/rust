@@ -92,6 +92,7 @@
 #![cfg_attr(bootstrap, feature(let_chains))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(assert_matches)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
@@ -104,6 +105,7 @@ use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::config::SymbolManglingVersion;
 use tracing::debug;
 
+mod export;
 mod hashed;
 mod legacy;
 mod v0;
@@ -296,12 +298,21 @@ fn compute_symbol_name<'tcx>(
         tcx.symbol_mangling_version(mangling_version_crate)
     };
 
-    let symbol = match mangling_version {
-        SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
-        SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate),
-        SymbolManglingVersion::Hashed => hashed::mangle(tcx, instance, instantiating_crate, || {
-            v0::mangle(tcx, instance, instantiating_crate)
-        }),
+    let symbol = match tcx.is_exportable(def_id) {
+        true => format!(
+            "{}.{}",
+            v0::mangle(tcx, instance, instantiating_crate, true),
+            export::compute_hash_of_export_fn(tcx, instance)
+        ),
+        false => match mangling_version {
+            SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
+            SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, false),
+            SymbolManglingVersion::Hashed => {
+                hashed::mangle(tcx, instance, instantiating_crate, || {
+                    v0::mangle(tcx, instance, instantiating_crate, false)
+                })
+            }
+        },
     };
 
     debug_assert!(

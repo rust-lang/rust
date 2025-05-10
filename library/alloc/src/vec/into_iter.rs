@@ -259,6 +259,11 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     }
 
     #[inline]
+    fn last(mut self) -> Option<T> {
+        self.next_back()
+    }
+
+    #[inline]
     fn next_chunk<const N: usize>(&mut self) -> Result<[T; N], core::array::IntoIter<T, N>> {
         let mut raw_ary = [const { MaybeUninit::uninit() }; N];
 
