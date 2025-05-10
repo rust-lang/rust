@@ -746,15 +746,7 @@ impl f16 {
     // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn maximum(self, other: f16) -> f16 {
-        if self > other {
-            self
-        } else if other > self {
-            other
-        } else if self == other {
-            if self.is_sign_positive() && other.is_sign_negative() { self } else { other }
-        } else {
-            self + other
-        }
+        intrinsics::maximumf16(self, other)
     }
 
     /// Returns the minimum of the two numbers, propagating NaN.
@@ -786,16 +778,7 @@ impl f16 {
     // #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn minimum(self, other: f16) -> f16 {
-        if self < other {
-            self
-        } else if other < self {
-            other
-        } else if self == other {
-            if self.is_sign_negative() && other.is_sign_positive() { self } else { other }
-        } else {
-            // At least one input is NaN. Use `+` to perform NaN propagation and quieting.
-            self + other
-        }
+        intrinsics::minimumf16(self, other)
     }
 
     /// Calculates the midpoint (average) between `self` and `rhs`.
