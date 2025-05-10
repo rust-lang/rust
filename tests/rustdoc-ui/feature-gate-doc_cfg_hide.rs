@@ -1,5 +1,6 @@
-#![doc(cfg_hide(test))]
-//~^ ERROR `#[doc(cfg_hide)]` is experimental
+// FIXME: Remove this file once feature is removed
+
+#![doc(cfg_hide(test))] //~ ERROR
 
 #[cfg(not(test))]
 pub fn public_fn() {}
