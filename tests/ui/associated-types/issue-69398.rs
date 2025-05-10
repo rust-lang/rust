@@ -1,4 +1,5 @@
 //@ check-pass
+#![feature(trivial_bounds)]
 
 pub trait Foo {
     type Bar;

@@ -1,6 +1,6 @@
 //@ revisions: quiet verbose
 //@ [verbose]compile-flags: -Zverbose-internals
-
+#![feature(trivial_bounds)]
 #![allow(unused_parens)]
 
 trait Foo {
