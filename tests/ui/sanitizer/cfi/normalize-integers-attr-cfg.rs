@@ -4,6 +4,7 @@
 //@ needs-sanitizer-cfi
 //@ check-pass
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-normalize-integers
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer,sanitizer-cfi-normalize-integers
 
 #![feature(cfg_sanitizer_cfi)]
 

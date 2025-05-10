@@ -5,6 +5,7 @@
 //@ needs-sanitizer-leak
 //@ revisions: ASAN LSAN
 //@       compile-flags: -Copt-level=3 -Zmir-opt-level=4 -Ctarget-feature=-crt-static
+//@       compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@[ASAN] compile-flags: -Zsanitizer=address
 //@[LSAN] compile-flags: -Zsanitizer=leak
 

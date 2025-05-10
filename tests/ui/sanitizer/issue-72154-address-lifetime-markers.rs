@@ -8,6 +8,7 @@
 //@ ignore-cross-compile
 //
 //@ compile-flags: -Copt-level=0 -Zsanitizer=address
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@ run-pass
 
 pub struct Wrap {

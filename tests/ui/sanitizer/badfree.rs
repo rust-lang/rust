@@ -3,6 +3,7 @@
 //@ ignore-cross-compile
 //
 //@ compile-flags: -Z sanitizer=address -O
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //
 //@ run-fail
 //@ regex-error-pattern: AddressSanitizer: (SEGV|attempting free on address which was not malloc)
