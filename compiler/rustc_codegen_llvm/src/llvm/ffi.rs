@@ -1,7 +1,7 @@
 //! Bindings to the LLVM-C API (`LLVM*`), and to our own `extern "C"` wrapper
 //! functions around the unstable LLVM C++ API (`LLVMRust*`).
 //!
-//! ## Passing pointer/length strings as `*const c_uchar`
+//! ## Passing pointer/length strings as `*const c_uchar` (PTR_LEN_STR)
 //!
 //! Normally it's a good idea for Rust-side bindings to match the corresponding
 //! C-side function declarations as closely as possible. But when passing `&str`
@@ -1766,7 +1766,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMDIBuilderCreateNameSpace<'ll>(
         Builder: &DIBuilder<'ll>,
         ParentScope: Option<&'ll Metadata>,
-        Name: *const c_uchar,
+        Name: *const c_uchar, // See "PTR_LEN_STR".
         NameLen: size_t,
         ExportSymbols: llvm::Bool,
     ) -> &'ll Metadata;
