@@ -4,7 +4,7 @@ In [a previous chapter], we discussed instantiating binders.
 This involves looking at everything inside of a `Early(Binder)`
 to find any usages of the bound vars in order to replace them.
 Binders can wrap an arbitrary Rust type `T`, not just a `Ty`.
-So, how do we implement the `instantiate` methods on the `Early/Binder` types.
+So, how do we implement the `instantiate` methods on the `Early/Binder` types?
 
 The answer is a couple of traits:
 [`TypeFoldable`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFoldable.html)
