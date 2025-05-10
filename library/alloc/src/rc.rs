@@ -4159,3 +4159,106 @@ impl<T: ?Sized, A: Allocator> Drop for UniqueRcUninit<T, A> {
         }
     }
 }
+
+/// An uninitialized Rc that allows deferred construction whilst exposing weak pointers before
+/// being constructed.
+///
+/// Weak pointers will return `None` on `upgrade` as long as [RcUninit::init] has not been called.
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+#[cfg(not(no_global_oom_handling))]
+pub struct RcUninit<
+    T,
+    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+> {
+    ptr: NonNull<RcInner<T>>,
+    weak: Weak<T, A>,
+}
+
+impl<T> RcUninit<T> {
+    /// Creates new RcUninit.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn new() -> Self {
+        let ptr = unsafe {
+            Rc::allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| Global.allocate(layout),
+                <*mut u8>::cast,
+            )
+        };
+
+        let ptr = NonNull::new(ptr).unwrap();
+        unsafe { (*ptr.as_ptr()).weak.set(2); };
+
+        Self {
+            ptr,
+            weak: Weak {
+                ptr,
+                alloc: Global,
+            },
+        }
+    }
+}
+
+impl<T, A: Allocator + Clone> RcUninit<T, A> {
+    /// Creates new RcUninit.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn new_in(alloc: A) -> Self {
+        let ptr = unsafe {
+            Rc::allocate_for_layout(
+                Layout::new::<T>(),
+                |layout| alloc.allocate(layout),
+                <*mut u8>::cast,
+            )
+        };
+
+        let ptr = NonNull::new(ptr).unwrap();
+        unsafe { (*ptr.as_ptr()).weak.set(2); };
+
+        Self {
+            ptr,
+            weak: Weak {
+                ptr,
+                alloc,
+            },
+        }
+    }
+
+    /// Get a weak reference.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn weak(&self) -> &Weak<T, A> {
+        &self.weak
+    }
+
+    /// Write a value and return Rc.
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
+    pub fn init(self, value: T) -> Rc<T, A> {
+        unsafe {
+            let ptr = self.weak.ptr.as_ptr();
+            ptr::write(&raw mut (*ptr).value, value);
+        }
+
+        let ptr = self.ptr;
+        let alloc = self.weak.alloc.clone();
+        mem::forget(self);
+
+        Rc {
+            ptr,
+            phantom: PhantomData,
+            alloc,
+        }
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T> fmt::Debug for RcUninit<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(RcUninit)")
+    }
+}
+
+#[unstable(feature = "unique_rc_arc", issue = "112566")]
+impl<T, A: Allocator> Drop for RcUninit<T, A> {
+    fn drop(&mut self) {
+        unsafe { Rc::from_inner(self.ptr) };
+    }
+}

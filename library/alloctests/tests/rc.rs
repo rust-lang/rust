@@ -2,7 +2,7 @@ use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::iter::TrustedLen;
 use std::mem;
-use std::rc::{Rc, UniqueRc, Weak};
+use std::rc::{Rc, RcUninit, UniqueRc, Weak};
 
 #[test]
 fn uninhabited() {
@@ -921,4 +921,27 @@ fn test_unique_rc_unsizing_coercion() {
     rc[0] = 123;
     let rc: Rc<[u8]> = UniqueRc::into_rc(rc);
     assert_eq!(*rc, [123, 0, 0]);
+}
+
+#[test]
+fn test_rc_uninit() {
+    RcUninit::<()>::new();
+    RcUninit::<i32>::new();
+    RcUninit::<String>::new();
+}
+
+#[test]
+fn test_rc_uninit_init() {
+    let x: RcUninit<i32> = RcUninit::new();
+    assert_eq!(Weak::strong_count(x.weak()), 1);
+    assert_eq!(Weak::weak_count(x.weak()), 1);
+    let weak = x.weak().clone();
+
+    let rc = x.init(123);
+    assert_eq!(Rc::strong_count(&rc), 1);
+    assert_eq!(Rc::weak_count(&rc), 2);
+
+    assert_eq!(*rc, 123);
+    assert_eq!(weak.upgrade().map(|x| *x), Some(123));
+    assert!(Rc::ptr_eq(&weak.upgrade().unwrap(), &rc));
 }
