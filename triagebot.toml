@@ -611,9 +611,6 @@ message_on_remove = "Issue #{number}'s prioritization request has been removed."
 message_on_close = "Issue #{number} has been closed while requested for prioritization."
 message_on_reopen = "Issue #{number} has been reopened."
 
-# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
-#        At the moment, the beta-nominated+T-rustdoc action fully occupies the beta-nominated slot
-#        preventing others from adding more beta-nominated actions.
 [notify-zulip."beta-nominated"]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
@@ -635,9 +632,6 @@ message_on_remove = "PR #{number}'s beta-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
-# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
-#        At the moment, the beta-accepted+T-rustdoc action fully occupies the beta-accepted slot
-#        preventing others from adding more beta-accepted actions.
 [notify-zulip."beta-accepted"]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
@@ -648,9 +642,6 @@ message_on_remove = "PR #{number}'s beta-acceptance has been **removed**."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
-# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
-#        At the moment, the stable-nominated+T-rustdoc action fully occupies the stable-nominated slot
-#        preventing others from adding more stable-nominated actions.
 [notify-zulip."stable-nominated"]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
@@ -673,9 +664,6 @@ message_on_remove = "PR #{number}'s stable-nomination has been removed."
 message_on_close = "PR #{number} has been closed. Thanks for participating!"
 message_on_reopen = "PR #{number} has been reopened. Pinging @*T-rustdoc*."
 
-# FIXME: Patch triagebot to support `notify-zulip.<label>` getting mapped to an array of actions.
-#        At the moment, the stable-accepted+T-rustdoc action fully occupies the stable-accepted slot
-#        preventing others from adding more stable-accepted actions.
 [notify-zulip."stable-accepted"]
 required_labels = ["T-rustdoc"]
 zulip_stream = 266220 # #t-rustdoc
@@ -695,6 +683,41 @@ message_on_add = """\
 message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
 message_on_close = "Issue #{number} has been closed. Thanks for participating!"
 message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
+
+[notify-zulip."beta-nominated".compiler]
+required_labels = ["T-compiler"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: beta-nominated"
+message_on_add = [
+    """\
+@**channel** PR #{number} "{title}" has been nominated for beta backport.
+""",
+    """\
+/poll Approve beta backport of #{number}?
+approve
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s beta-nomination has been removed."
+
+[notify-zulip."stable-nominated".compiler]
+required_labels = ["T-compiler"]
+zulip_stream = 474880 # #t-compiler/backports
+topic = "#{number}: stable-nominated"
+message_on_add = [
+    """\
+@**channel** PR #{number} "{title}" has been nominated for stable backport.
+""",
+    """\
+/poll Approve stable backport of #{number}?
+approve
+approve (but does not justify new dot release on its own)
+decline
+don't know
+""",
+]
+message_on_remove = "PR #{number}'s stable-nomination has been removed."
 
 [notify-zulip."A-edition-2021"]
 required_labels = ["C-bug"]
