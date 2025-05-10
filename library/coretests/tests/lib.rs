@@ -24,6 +24,7 @@
 #![feature(dec2flt)]
 #![feature(duration_constants)]
 #![feature(duration_constructors)]
+#![feature(duration_constructors_lite)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]

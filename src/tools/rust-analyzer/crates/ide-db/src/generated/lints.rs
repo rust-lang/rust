@@ -5789,7 +5789,7 @@ The tracking issue for this feature is: [#120301]
 
 ------------------------
 
-Add the methods `from_mins`, `from_hours` and `from_days` to `Duration`.
+Add the methods `from_days` and `from_weeks` to `Duration`.
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
