@@ -1,7 +1,7 @@
 # `TypeFoldable` and `TypeFolder`
 
-In [a previous chapter], we discussed instantiating binders. This must involves looking at everything inside of a `Early/Binder`
-to find any usages of the bound vars in order to replace them. Binders can wrap an arbitrary rust type `T` not just a `Ty` so
+In [a previous chapter], we discussed instantiating binders. This involves looking at everything inside of a `Early/Binder`
+to find any usages of the bound vars in order to replace them. Binders can wrap an arbitrary Rust type `T` not just a `Ty` so
 how do we implement the `instantiate` methods on the `Early/Binder` types.
 
 The answer is a couple of traits:
@@ -20,7 +20,7 @@ that takes a type as input and returns a new type as a result. `TypeFoldable` in
 `TypeFolder` `fold_foo` methods on itself, giving the `TypeFolder` access to its contents (the
 types, regions, etc that are contained within).
 
-You can think of it with this analogy to the iterator combinators we have come to love in rust:
+You can think of it with this analogy to the iterator combinators we have come to love in Rust:
 
 ```rust,ignore
 vec.iter().map(|e1| foo(e2)).collect()
