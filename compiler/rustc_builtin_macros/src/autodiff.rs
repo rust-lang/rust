@@ -86,6 +86,7 @@ mod llvm_enzyme {
         ecx: &mut ExtCtxt<'_>,
         meta_item: &ThinVec<MetaItemInner>,
         has_ret: bool,
+        mode: DiffMode,
     ) -> AutoDiffAttrs {
         let dcx = ecx.sess.dcx();
 
@@ -145,7 +146,7 @@ mod llvm_enzyme {
         };
 
         AutoDiffAttrs {
-            mode: DiffMode::Error,
+            mode,
             width,
             ret_activity: *ret_activity,
             input_activity: input_activity.to_vec(),
@@ -315,8 +316,7 @@ mod llvm_enzyme {
         ts.pop();
         let ts: TokenStream = TokenStream::from_iter(ts);
 
-        let mut x: AutoDiffAttrs = from_ast(ecx, &meta_item_vec, has_ret);
-        x.mode = mode;
+        let x: AutoDiffAttrs = from_ast(ecx, &meta_item_vec, has_ret, mode);
         if !x.is_active() {
             // We encountered an error, so we return the original item.
             // This allows us to potentially parse other attributes.
