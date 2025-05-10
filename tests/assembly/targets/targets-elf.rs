@@ -25,6 +25,9 @@
 //@ revisions: aarch64_unknown_fuchsia
 //@ [aarch64_unknown_fuchsia] compile-flags: --target aarch64-unknown-fuchsia
 //@ [aarch64_unknown_fuchsia] needs-llvm-components: aarch64
+//@ revisions: aarch64_unknown_helenos
+//@ [aarch64_unknown_helenos] compile-flags: --target aarch64-unknown-helenos
+//@ [aarch64_unknown_helenos] needs-llvm-components: aarch64
 //@ revisions: aarch64_unknown_hermit
 //@ [aarch64_unknown_hermit] compile-flags: --target aarch64-unknown-hermit
 //@ [aarch64_unknown_hermit] needs-llvm-components: aarch64
@@ -115,6 +118,9 @@
 //@ revisions: armv5te_none_eabi
 //@ [armv5te_none_eabi] compile-flags: --target armv5te-none-eabi
 //@ [armv5te_none_eabi] needs-llvm-components: arm
+//@ revisions: armv5te_unknown_helenos_eabi
+//@ [armv5te_unknown_helenos_eabi] compile-flags: --target armv5te-unknown-helenos-eabi
+//@ [armv5te_unknown_helenos_eabi] needs-llvm-components: arm
 //@ revisions: armv5te_unknown_linux_gnueabi
 //@ [armv5te_unknown_linux_gnueabi] compile-flags: --target armv5te-unknown-linux-gnueabi
 //@ [armv5te_unknown_linux_gnueabi] needs-llvm-components: arm
@@ -241,6 +247,9 @@
 //@ revisions: i686_unknown_haiku
 //@ [i686_unknown_haiku] compile-flags: --target i686-unknown-haiku
 //@ [i686_unknown_haiku] needs-llvm-components: x86
+//@ revisions: i686_unknown_helenos
+//@ [i686_unknown_helenos] compile-flags: --target i686-unknown-helenos
+//@ [i686_unknown_helenos] needs-llvm-components: x86
 //@ revisions: i686_unknown_hurd_gnu
 //@ [i686_unknown_hurd_gnu] compile-flags: --target i686-unknown-hurd-gnu
 //@ [i686_unknown_hurd_gnu] needs-llvm-components: x86
@@ -601,6 +610,9 @@
 //@ revisions: x86_64_unknown_haiku
 //@ [x86_64_unknown_haiku] compile-flags: --target x86_64-unknown-haiku
 //@ [x86_64_unknown_haiku] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_helenos
+//@ [x86_64_unknown_helenos] compile-flags: --target x86_64-unknown-helenos
+//@ [x86_64_unknown_helenos] needs-llvm-components: x86
 //@ revisions: x86_64_unknown_hurd_gnu
 //@ [x86_64_unknown_hurd_gnu] compile-flags: --target x86_64-unknown-hurd-gnu
 //@ [x86_64_unknown_hurd_gnu] needs-llvm-components: x86
