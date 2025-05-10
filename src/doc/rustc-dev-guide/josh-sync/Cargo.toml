@@ -1,6 +1,6 @@
 [package]
 name = "josh-sync"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 anyhow = "1.0.95"
