@@ -25,6 +25,26 @@ LL | impl Foo for u32 {}
 LL | impl Foo for <u16 as Assoc>::Output {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `u32`
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: hi
+  --> $DIR/specialization-overlap-projection.rs:20:1
+   |
+LL | trait Foo {}
+   | --------- built-in `dyn Foo` implementation for this trait
+LL | impl Foo for u32 {}
+LL | impl Foo for <u8 as Assoc>::Output {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: hi
+  --> $DIR/specialization-overlap-projection.rs:22:1
+   |
+LL | trait Foo {}
+   | --------- built-in `dyn Foo` implementation for this trait
+...
+LL | impl Foo for <u16 as Assoc>::Output {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0119`.

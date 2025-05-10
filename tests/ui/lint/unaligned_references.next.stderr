@@ -1,3 +1,14 @@
+error: hi
+  --> $DIR/unaligned_references.rs:62:5
+   |
+LL |     trait Mirror {
+   |     ------------ built-in `dyn Mirror<Assoc = _>` implementation for this trait
+...
+LL |     impl<T: ?Sized> Mirror for T {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0793]: reference to packed field is unaligned
   --> $DIR/unaligned_references.rs:32:13
    |
@@ -128,6 +139,6 @@ LL |         let _ref = &m2.1.a;
    = note: creating a misaligned reference is undefined behavior (even if that reference is never dereferenced)
    = help: copy the field contents to a local variable, or replace the reference with a raw pointer and use `read_unaligned`/`write_unaligned` (loads and stores via `*p` must be properly aligned even when using raw pointers)
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0793`.

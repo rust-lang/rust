@@ -229,6 +229,7 @@ where
                 defining_opaque_types_and_generators
             }
             TypingMode::Coherence
+            | TypingMode::CheckObjectOverlap
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
             | TypingMode::PostAnalysis => return Default::default(),

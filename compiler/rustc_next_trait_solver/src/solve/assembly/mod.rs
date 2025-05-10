@@ -380,7 +380,7 @@ where
 
         let mut candidates = vec![];
 
-        if let TypingMode::Coherence = self.typing_mode() {
+        if let TypingMode::Coherence | TypingMode::CheckObjectOverlap = self.typing_mode() {
             if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
                 return vec![candidate];
             }
@@ -831,7 +831,7 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) {
         match self.typing_mode() {
-            TypingMode::Coherence => return,
+            TypingMode::Coherence | TypingMode::CheckObjectOverlap => return,
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }

@@ -70,7 +70,7 @@ where
             // In intercrate mode, this is ambiguous. But outside of intercrate,
             // it's not a real impl.
             (ty::ImplPolarity::Reservation, _) => match ecx.typing_mode() {
-                TypingMode::Coherence => Certainty::AMBIGUOUS,
+                TypingMode::Coherence | TypingMode::CheckObjectOverlap => Certainty::AMBIGUOUS,
                 TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
@@ -1257,7 +1257,7 @@ where
         &mut self,
         mut candidates: Vec<Candidate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
-        if let TypingMode::Coherence = self.typing_mode() {
+        if let TypingMode::Coherence | TypingMode::CheckObjectOverlap = self.typing_mode() {
             let all_candidates: Vec<_> = candidates.into_iter().map(|c| c.result).collect();
             return if let Some(response) = self.try_merge_responses(&all_candidates) {
                 Ok((response, Some(TraitGoalProvenVia::Misc)))
@@ -1360,6 +1360,7 @@ where
                     }
                 }
                 TypingMode::Coherence
+                | TypingMode::CheckObjectOverlap
                 | TypingMode::PostAnalysis
                 | TypingMode::Borrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}

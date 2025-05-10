@@ -938,6 +938,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                             // get a result which isn't correct for all monomorphizations.
                             match selcx.infcx.typing_mode() {
                                 TypingMode::Coherence
+                                | TypingMode::CheckObjectOverlap
                                 | TypingMode::Analysis { .. }
                                 | TypingMode::Borrowck { .. }
                                 | TypingMode::PostBorrowckAnalysis { .. } => {

@@ -22,7 +22,18 @@ note: struct defined here, with 0 generic parameters
 LL |     struct Foo {
    |            ^^^
 
-error: aborting due to 2 previous errors
+error: hi
+  --> $DIR/issue-3214.rs:6:5
+   |
+LL |     impl<T> Drop for Foo<T> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+  --> $SRC_DIR/core/src/ops/drop.rs:LL:COL
+   |
+   = note: built-in `dyn Drop` implementation for this trait
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0107, E0401.
 For more information about an error, try `rustc --explain E0107`.

@@ -240,7 +240,7 @@ where
                         // would be relevant if any of the nested goals refer to the `term`.
                         // This is not the case here and we only prefer adding an ambiguous
                         // nested goal for consistency.
-                        ty::TypingMode::Coherence => {
+                        ty::TypingMode::Coherence | ty::TypingMode::CheckObjectOverlap => {
                             ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous));
                             return ecx
                                 .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
@@ -280,7 +280,7 @@ where
                         // would be relevant if any of the nested goals refer to the `term`.
                         // This is not the case here and we only prefer adding an ambiguous
                         // nested goal for consistency.
-                        ty::TypingMode::Coherence => {
+                        ty::TypingMode::Coherence | ty::TypingMode::CheckObjectOverlap => {
                             ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous));
                             return ecx
                                 .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);

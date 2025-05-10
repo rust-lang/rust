@@ -21,5 +21,15 @@ LL | fn take(
    = note: `Project` would have to be implemented for the type `for<'a> fn(&'a str) -> &'a str`
    = note: ...but `Project` is actually implemented for the type `fn(&'0 str) -> &'0 str`, for some specific lifetime `'0`
 
-error: aborting due to 3 previous errors
+error: hi
+  --> $DIR/assoc-const-eq-bound-var-in-ty-not-wf.rs:23:1
+   |
+LL | trait Discard { type Out; }
+   | ------------- built-in `dyn Discard<Out = _>` implementation for this trait
+LL | impl<T: ?Sized> Discard for T { type Out = (); }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: aborting due to 4 previous errors
 

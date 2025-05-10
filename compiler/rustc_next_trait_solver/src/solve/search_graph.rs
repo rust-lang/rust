@@ -58,7 +58,7 @@ where
             // example where this would matter. We likely should change these cycles to `NoSolution`
             // even in coherence once this is a bit more settled.
             PathKind::Inductive => match input.typing_mode {
-                TypingMode::Coherence => {
+                TypingMode::Coherence | TypingMode::CheckObjectOverlap => {
                     response_no_constraints(cx, input, Certainty::overflow(false))
                 }
                 TypingMode::Analysis { .. }

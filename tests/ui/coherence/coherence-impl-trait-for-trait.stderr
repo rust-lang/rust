@@ -10,12 +10,23 @@ error[E0371]: the object type `(dyn Baz + 'static)` automatically implements the
 LL | impl Bar for dyn Baz { }
    | ^^^^^^^^^^^^^^^^^^^^ `(dyn Baz + 'static)` automatically implements trait `Bar`
 
+error: hi
+  --> $DIR/coherence-impl-trait-for-trait.rs:13:1
+   |
+LL | trait Baz: Bar { }
+   | -------------- built-in `dyn Baz` implementation for this trait
+...
+LL | impl Baz for dyn Baz { }
+   | ^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
 error[E0371]: the object type `(dyn Baz + 'static)` automatically implements the trait `Baz`
   --> $DIR/coherence-impl-trait-for-trait.rs:13:1
    |
 LL | impl Baz for dyn Baz { }
    | ^^^^^^^^^^^^^^^^^^^^ `(dyn Baz + 'static)` automatically implements trait `Baz`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0371`.

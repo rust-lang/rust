@@ -127,7 +127,17 @@ note: struct defined here, with 1 generic parameter: `T`
 LL | struct Struct<T: Trait<u32, String>> {
    |        ^^^^^^ -
 
-error: aborting due to 9 previous errors
+error: hi
+  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:40:1
+   |
+LL | trait YetAnotherTrait {}
+   | --------------------- built-in `dyn YetAnotherTrait` implementation for this trait
+LL | impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, U> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0107, E0207.
 For more information about an error, try `rustc --explain E0107`.

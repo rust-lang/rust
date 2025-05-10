@@ -10,6 +10,17 @@ LL | impl Trait for <LocalTy as Overflow>::Assoc {}
    = note: overflow evaluating the requirement `_ == <LocalTy as Overflow>::Assoc`
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`trait_ref_is_knowable_norm_overflow`)
 
-error: aborting due to 1 previous error
+error: hi
+  --> $DIR/trait_ref_is_knowable-norm-overflow.rs:20:1
+   |
+LL | trait Trait {}
+   | ----------- built-in `dyn Trait` implementation for this trait
+...
+LL | impl Trait for <LocalTy as Overflow>::Assoc {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ overlaps with this blanket impl
+   |
+   = note: `#[forbid(dyn_overlap)]` on by default
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0119`.
