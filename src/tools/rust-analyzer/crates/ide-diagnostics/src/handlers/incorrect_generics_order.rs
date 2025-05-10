@@ -28,6 +28,7 @@ pub(crate) fn incorrect_generics_order(
         message,
         d.provided_arg.map(Into::into),
     )
+    .stable()
 }
 
 #[cfg(test)]
