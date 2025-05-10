@@ -11,11 +11,11 @@
 
 #![feature(autodiff)]
 
-use std::autodiff::autodiff;
+use std::autodiff::autodiff_forward;
 
-#[autodiff(d_square3, Forward, Dual, DualOnly)]
-#[autodiff(d_square2, Forward, 4, Dual, DualOnly)]
-#[autodiff(d_square1, Forward, 4, Dual, Dual)]
+#[autodiff_forward(d_square3, Dual, DualOnly)]
+#[autodiff_forward(d_square2, 4, Dual, DualOnly)]
+#[autodiff_forward(d_square1, 4, Dual, Dual)]
 #[no_mangle]
 fn square(x: &f32) -> f32 {
     x * x
