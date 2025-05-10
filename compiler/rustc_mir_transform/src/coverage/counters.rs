@@ -81,8 +81,9 @@ pub(crate) fn transcribe_counters(
     old: &NodeCounters<BasicCoverageBlock>,
     bcb_needs_counter: &DenseBitSet<BasicCoverageBlock>,
     bcbs_seen: &DenseBitSet<BasicCoverageBlock>,
+    num_bcbs: usize,
 ) -> CoverageCounters {
-    let mut new = CoverageCounters::with_num_bcbs(bcb_needs_counter.domain_size());
+    let mut new = CoverageCounters::with_num_bcbs(num_bcbs);
 
     for bcb in bcb_needs_counter.iter() {
         if !bcbs_seen.contains(bcb) {
