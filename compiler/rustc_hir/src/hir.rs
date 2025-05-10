@@ -2061,11 +2061,18 @@ impl CoroutineKind {
             CoroutineKind::Coroutine(mov) => mov,
         }
     }
-}
 
-impl CoroutineKind {
     pub fn is_fn_like(self) -> bool {
         matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
+    }
+
+    pub fn to_plural_string(&self) -> String {
+        match self {
+            CoroutineKind::Desugared(d, CoroutineSource::Fn) => format!("{d:#}fn bodies"),
+            CoroutineKind::Desugared(d, CoroutineSource::Block) => format!("{d:#}blocks"),
+            CoroutineKind::Desugared(d, CoroutineSource::Closure) => format!("{d:#}closure bodies"),
+            CoroutineKind::Coroutine(_) => "coroutines".to_string(),
+        }
     }
 }
 
