@@ -928,6 +928,15 @@ pub use macros::Debug;
 /// [tostring]: ../../std/string/trait.ToString.html
 /// [tostring_function]: ../../std/string/trait.ToString.html#tymethod.to_string
 ///
+/// # Completeness and parseability
+///
+/// `Display` for a type might not necessarily be a lossless or complete representation of the type.
+/// It may omit internal state, precision, or other information the type does not consider important
+/// for user-facing output, as determined by the type. As such, the output of `Display` might not be
+/// possible to parse, and even if it is, the result of parsing might not exactly match the original
+/// value. Calling `.parse()` on the output from `Display` is usually a mistake, unless the type has
+/// provided and documented additional guarantees about its `Display` and `FromStr` implementations.
+///
 /// # Internationalization
 ///
 /// Because a type can only have one `Display` implementation, it is often preferable
