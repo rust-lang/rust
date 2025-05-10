@@ -1924,6 +1924,9 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        if args[0].has_placeholders() || args[0].has_non_region_param() {
+            return None;
+        }
         let instance = InstanceKind::AsyncDropGlue(def_id, Ty::new_coroutine(self, def_id, args));
         self.mir_shims(instance).coroutine_layout_raw()
     }
