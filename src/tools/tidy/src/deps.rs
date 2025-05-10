@@ -28,6 +28,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0",
     "Apache-2.0/MIT",
     "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
+    "CC0-1.0",                                             // notify
     "ISC",
     "MIT / Apache-2.0",
     "MIT AND (MIT OR Apache-2.0)",
@@ -38,6 +39,7 @@ const LICENSES: &[&str] = &[
     "MIT OR Zlib OR Apache-2.0",                           // miniz_oxide
     "MIT",
     "MIT/Apache-2.0",
+    "MPL-2.0",                                             // mdbook
     "Unicode-3.0",                                         // icu4x
     "Unicode-DFS-2016",                                    // tinystr
     "Unlicense OR MIT",

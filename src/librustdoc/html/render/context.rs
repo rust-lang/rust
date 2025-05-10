@@ -146,6 +146,7 @@ pub(crate) struct SharedContext<'tcx> {
     /// Controls whether we read / write to cci files in the doc root. Defaults read=true,
     /// write=true
     should_merge: ShouldMerge,
+    pub(crate) book_target: Option<crate::config::PathOrUrl>,
 }
 
 impl SharedContext<'_> {
@@ -489,6 +490,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             call_locations,
             no_emit_shared,
             html_no_source,
+            book_target,
             ..
         } = options;
 
@@ -575,6 +577,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache,
             call_locations,
             should_merge: options.should_merge,
+            book_target,
         };
 
         let dst = output;
@@ -646,6 +649,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             parent_is_crate: false,
             blocks: vec![blocks],
             path: String::new(),
+            book_location: shared.book_target.as_ref(),
         };
 
         bar.render_into(&mut sidebar).unwrap();

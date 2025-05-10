@@ -1,5 +1,19 @@
 <div class="sidebar-elems">
     {% if is_crate %}
+        {% if let Some(book_location) = book_location %}
+            <ul class="block"> {# #}
+                <li> {# #}
+                    <h3> {# #}
+                        <a id="book-loc" class="book" href="
+                            {% match book_location %}
+                                {% when crate::config::PathOrUrl::Path(s) %}{{s.display()}}
+                                {% when crate::config::PathOrUrl::Url(s) %}{{s}}
+                            {% endmatch %}
+                        ">Book</a> {# #}
+                    </h3> {# #}
+                </li> {# #}
+            </ul>
+        {% endif %}
         <ul class="block"> {# #}
             <li><a id="all-types" href="all.html">All Items</a></li> {# #}
         </ul>

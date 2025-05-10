@@ -13,6 +13,7 @@ askama = { version = "0.13", default-features = false, features = ["alloc", "con
 base64 = "0.21.7"
 itertools = "0.12"
 indexmap = "2"
+mdbook = "0.4.48"
 minifier = { version = "0.3.5", default-features = false }
 pulldown-cmark-escape = { version = "0.11.0", features = ["simd"] }
 regex = "1"

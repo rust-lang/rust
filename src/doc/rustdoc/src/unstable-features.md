@@ -776,3 +776,9 @@ will be split as follows:
     "you today?",
 ]
 ```
+
+## Bundling or linking to a guide
+
+You can generate a link to a guide or bundle an `mdbook` guide using the `--book-location`
+command line argument. It accepts either a URL or a path. If a path is provided, the book will
+be built with `mdbook`.
