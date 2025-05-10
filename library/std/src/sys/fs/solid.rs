@@ -459,6 +459,10 @@ impl File {
         self.tell()
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        None
+    }
+
     pub fn tell(&self) -> io::Result<u64> {
         unsafe {
             let mut out_offset = MaybeUninit::uninit();
