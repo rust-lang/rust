@@ -1009,10 +1009,20 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.minnum.f64", fn(t_f64, t_f64) -> t_f64);
         ifn!("llvm.minnum.f128", fn(t_f128, t_f128) -> t_f128);
 
+        ifn!("llvm.minimum.f16", fn(t_f16, t_f16) -> t_f16);
+        ifn!("llvm.minimum.f32", fn(t_f32, t_f32) -> t_f32);
+        ifn!("llvm.minimum.f64", fn(t_f64, t_f64) -> t_f64);
+        ifn!("llvm.minimum.f128", fn(t_f128, t_f128) -> t_f128);
+
         ifn!("llvm.maxnum.f16", fn(t_f16, t_f16) -> t_f16);
         ifn!("llvm.maxnum.f32", fn(t_f32, t_f32) -> t_f32);
         ifn!("llvm.maxnum.f64", fn(t_f64, t_f64) -> t_f64);
         ifn!("llvm.maxnum.f128", fn(t_f128, t_f128) -> t_f128);
+
+        ifn!("llvm.maximum.f16", fn(t_f16, t_f16) -> t_f16);
+        ifn!("llvm.maximum.f32", fn(t_f32, t_f32) -> t_f32);
+        ifn!("llvm.maximum.f64", fn(t_f64, t_f64) -> t_f64);
+        ifn!("llvm.maximum.f128", fn(t_f128, t_f128) -> t_f128);
 
         ifn!("llvm.floor.f16", fn(t_f16) -> t_f16);
         ifn!("llvm.floor.f32", fn(t_f32) -> t_f32);
