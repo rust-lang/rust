@@ -471,7 +471,7 @@ pub(crate) enum MetadataType {
     MD_kcfi_type = 36,
 }
 
-/// LLVMRustAsmDialect
+/// Must match the layout of `LLVMInlineAsmDialect`.
 #[derive(Copy, Clone, PartialEq)]
 #[repr(C)]
 pub(crate) enum AsmDialect {
@@ -1016,6 +1016,19 @@ unsafe extern "C" {
 
     /// See Module::setModuleInlineAsm.
     pub(crate) fn LLVMAppendModuleInlineAsm(M: &Module, Asm: *const c_char, Len: size_t);
+
+    /// Create the specified uniqued inline asm string. See `InlineAsm::get()`.
+    pub(crate) fn LLVMGetInlineAsm<'ll>(
+        Ty: &'ll Type,
+        AsmString: *const c_uchar, // See "PTR_LEN_STR".
+        AsmStringSize: size_t,
+        Constraints: *const c_uchar, // See "PTR_LEN_STR".
+        ConstraintsSize: size_t,
+        HasSideEffects: llvm::Bool,
+        IsAlignStack: llvm::Bool,
+        Dialect: AsmDialect,
+        CanThrow: llvm::Bool,
+    ) -> &'ll Value;
 
     // Operations on integer types
     pub(crate) fn LLVMInt1TypeInContext(C: &Context) -> &Type;
@@ -1994,18 +2007,6 @@ unsafe extern "C" {
     /// Prints the statistics collected by `-Zprint-codegen-stats`.
     pub(crate) fn LLVMRustPrintStatistics(OutStr: &RustString);
 
-    /// Prepares inline assembly.
-    pub(crate) fn LLVMRustInlineAsm(
-        Ty: &Type,
-        AsmString: *const c_char,
-        AsmStringLen: size_t,
-        Constraints: *const c_char,
-        ConstraintsLen: size_t,
-        SideEffects: Bool,
-        AlignStack: Bool,
-        Dialect: AsmDialect,
-        CanThrow: Bool,
-    ) -> &Value;
     pub(crate) fn LLVMRustInlineAsmVerify(
         Ty: &Type,
         Constraints: *const c_char,

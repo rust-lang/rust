@@ -488,11 +488,11 @@ pub(crate) fn inline_asm_call<'ll>(
     debug!("constraint verification result: {:?}", constraints_ok);
     if constraints_ok {
         let v = unsafe {
-            llvm::LLVMRustInlineAsm(
+            llvm::LLVMGetInlineAsm(
                 fty,
-                asm.as_c_char_ptr(),
+                asm.as_ptr(),
                 asm.len(),
-                cons.as_c_char_ptr(),
+                cons.as_ptr(),
                 cons.len(),
                 volatile,
                 alignstack,
