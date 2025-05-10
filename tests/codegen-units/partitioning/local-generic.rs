@@ -1,5 +1,5 @@
 //@ incremental
-//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0
+//@ compile-flags: -Copt-level=0
 
 #![crate_type = "lib"]
 

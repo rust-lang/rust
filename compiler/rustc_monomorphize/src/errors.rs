@@ -65,12 +65,6 @@ pub(crate) struct EncounteredErrorWhileInstantiating {
 pub(crate) struct StartNotFound;
 
 #[derive(Diagnostic)]
-#[diag(monomorphize_unknown_cgu_collection_mode)]
-pub(crate) struct UnknownCguCollectionMode<'a> {
-    pub mode: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(monomorphize_abi_error_disabled_vector_type)]
 #[help]
 pub(crate) struct AbiErrorDisabledVectorType<'a> {

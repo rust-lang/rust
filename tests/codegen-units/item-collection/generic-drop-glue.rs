@@ -1,4 +1,4 @@
-//@ compile-flags:-Zprint-mono-items=eager
+//@ compile-flags:-Clink-dead-code
 //@ compile-flags: -O
 
 #![deny(dead_code)]

@@ -1583,7 +1583,10 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | RustdocJs => {
+            CodegenUnits => {
+                rustc.arg("-Zprint-mono-items");
+            }
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | RustdocJs => {
                 // do not use JSON output
             }
         }
