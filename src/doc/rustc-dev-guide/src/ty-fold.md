@@ -7,9 +7,9 @@ Binders can wrap an arbitrary Rust type `T`, not just a `Ty`.
 So, how do we implement the `instantiate` methods on the `Early/Binder` types?
 
 The answer is a couple of traits:
-[`TypeFoldable`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFoldable.html)
+[`TypeFoldable`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFoldable.html)
 and
-[`TypeFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFolder.html).
+[`TypeFolder`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html).
 
 - `TypeFoldable` is implemented by types that embed type information. It allows you to recursively
   process the contents of the `TypeFoldable` and do stuff to them.
@@ -17,7 +17,7 @@ and
   `TypeFoldable`.
 
 For example, the `TypeFolder` trait has a method
-[`fold_ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/fold/trait.TypeFolder.html#method.fold_ty)
+[`fold_ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/trait.TypeFolder.html#method.fold_ty)
 that takes a type as input and returns a new type as a result. `TypeFoldable` invokes the
 `TypeFolder` `fold_foo` methods on itself, giving the `TypeFolder` access to its contents (the
 types, regions, etc that are contained within).
