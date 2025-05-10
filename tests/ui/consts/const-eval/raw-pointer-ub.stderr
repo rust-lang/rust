@@ -18,8 +18,8 @@ LL |     y.copy_to_nonoverlapping(&mut z, 1);
    |
 note: inside `std::ptr::const_ptr::<impl *const u32>::copy_to_nonoverlapping`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `copy_nonoverlapping::<u32>`
-  --> $SRC_DIR/core/src/intrinsics/mod.rs:LL:COL
+note: inside `std::ptr::copy_nonoverlapping::<u32>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/raw-pointer-ub.rs:34:16
