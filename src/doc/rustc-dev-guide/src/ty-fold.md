@@ -16,11 +16,10 @@ and
 - `TypeFolder` defines what you want to do with the types you encounter while processing the
   `TypeFoldable`.
 
-For example, the `TypeFolder` trait has a method
-[`fold_ty`]
-that takes a type as input and returns a new type as a result. `TypeFoldable` invokes the
-`TypeFolder` `fold_foo` methods on itself, giving the `TypeFolder` access to its contents (the
-types, regions, etc that are contained within).
+For example, the `TypeFolder` trait has a method [`fold_ty`]
+that takes a type as input and returns a new type as a result.
+`TypeFoldable` invokes the `TypeFolder` `fold_foo` methods on itself,
+giving the `TypeFolder` access to its contents (the types, regions, etc that are contained within).
 
 You can think of it with this analogy to the iterator combinators we have come to love in Rust:
 
@@ -35,8 +34,7 @@ So to reiterate:
 - `TypeFolder`  is a trait that defines a “map” operation.
 - `TypeFoldable`  is a trait that is implemented by things that embed types.
 
-In the case of `subst`, we can see that it is implemented as a `TypeFolder`:
-[`ArgFolder`].
+In the case of `subst`, we can see that it is implemented as a `TypeFolder`: [`ArgFolder`].
 Looking at its implementation, we see where the actual substitutions are happening.
 
 However, you might also notice that the implementation calls this `super_fold_with` method. What is
@@ -90,18 +88,14 @@ things. We only want to do something when we reach a type. That means there may 
 `TypeFoldable` types whose implementations basically just forward to their fields’ `TypeFoldable`
 implementations. Such implementations of `TypeFoldable` tend to be pretty tedious to write by hand.
 For this reason, there is a `derive` macro that allows you to `#![derive(TypeFoldable)]`. It is
-defined
-[here].
+defined [here].
 
-**`subst`** In the case of substitutions the [actual
-folder]
-is going to be doing the indexing we’ve already mentioned. There we define a `Folder` and call
-`fold_with` on the `TypeFoldable` to process yourself.  Then
-[fold_ty]
-the method that process each type it looks for a `ty::Param` and for those it replaces it for
-something from the list of substitutions, otherwise recursively process the type.  To replace it,
-calls
-[ty_for_param]
+**`subst`** In the case of substitutions the [actual folder]
+is going to be doing the indexing we’ve already mentioned.
+There we define a `Folder` and call `fold_with` on the `TypeFoldable` to process yourself.
+Then [fold_ty] the method that process each type it looks for a `ty::Param` and for those
+it replaces it for something from the list of substitutions, otherwise recursively process the type.
+To replace it, calls [ty_for_param]
 and all that does is index into the list of substitutions with the index of the `Param`.
 
 [a previous chapter]: ty_module/instantiating_binders.md
