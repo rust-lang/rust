@@ -160,6 +160,10 @@ impl<'a> State<'a> {
 
     /// Pretty-prints an item.
     pub(crate) fn print_item(&mut self, item: &ast::Item) {
+        if self.is_sdylib_interface && item.span.is_dummy() {
+            // Do not print prelude for interface files.
+            return;
+        }
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
@@ -682,6 +686,13 @@ impl<'a> State<'a> {
             self.print_contract(contract);
         }
         if let Some((body, (cb, ib))) = body_cb_ib {
+            if self.is_sdylib_interface {
+                self.word(";");
+                self.end(ib); // end inner head-block
+                self.end(cb); // end outer head-block
+                return;
+            }
+
             self.nbsp();
             self.print_block_with_attrs(body, attrs, cb, ib);
         } else {

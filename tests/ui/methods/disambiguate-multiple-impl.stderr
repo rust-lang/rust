@@ -1,18 +1,3 @@
-error[E0223]: ambiguous associated type
-  --> $DIR/disambiguate-multiple-impl.rs:32:12
-   |
-LL |     let _: S::Type = ();
-   |            ^^^^^^^
-   |
-help: use fully-qualified syntax
-   |
-LL -     let _: S::Type = ();
-LL +     let _: <S as A>::Type = ();
-   |
-LL -     let _: S::Type = ();
-LL +     let _: <S as B>::Type = ();
-   |
-
 error[E0034]: multiple applicable items in scope
   --> $DIR/disambiguate-multiple-impl.rs:29:8
    |
@@ -36,6 +21,21 @@ LL +     A::foo(&s);
    |
 LL -     S::foo(&s);
 LL +     B::foo(&s);
+   |
+
+error[E0223]: ambiguous associated type
+  --> $DIR/disambiguate-multiple-impl.rs:32:12
+   |
+LL |     let _: S::Type = ();
+   |            ^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL -     let _: S::Type = ();
+LL +     let _: <S as A>::Type = ();
+   |
+LL -     let _: S::Type = ();
+LL +     let _: <S as B>::Type = ();
    |
 
 error[E0034]: multiple applicable items in scope

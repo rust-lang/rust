@@ -32,6 +32,7 @@ mod gather_locals;
 mod intrinsicck;
 mod method;
 mod op;
+mod opaque_types;
 mod pat;
 mod place_op;
 mod rvalue_scopes;
@@ -46,7 +47,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::check_abi;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
@@ -191,9 +191,6 @@ fn typeck_with_inspect<'tcx>(
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
 
-        // Gather locals in statics (because of block expressions).
-        GatherLocalsVisitor::new(&fcx).visit_body(body);
-
         fcx.check_expr_coercible_to_type(body.value, expected_type, None);
 
         fcx.write_ty(id, expected_type);
@@ -249,9 +246,7 @@ fn typeck_with_inspect<'tcx>(
 
     let typeck_results = fcx.resolve_type_vars_in_body(body);
 
-    // We clone the defined opaque types during writeback in the new solver
-    // because we have to use them during normalization.
-    let _ = fcx.infcx.take_opaque_types();
+    fcx.detect_opaque_types_added_during_writeback();
 
     // Consistency check our TypeckResults instance can hold all ItemLocalIds
     // it will need to hold.

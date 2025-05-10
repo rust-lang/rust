@@ -8,7 +8,28 @@
 // Note: the HIR revision includes a `.stderr` file because there are some
 // errors that only occur once we get past the AST.
 
-#![feature(auto_traits)]#![feature(box_patterns)]#![feature(builtin_syntax)]#![feature(concat_idents)]#![feature(const_trait_impl)]#![feature(decl_macro)]#![feature(deref_patterns)]#![feature(dyn_star)]#![feature(explicit_tail_calls)]#![feature(gen_blocks)]#![feature(more_qualified_paths)]#![feature(never_patterns)]#![feature(never_type)]#![feature(pattern_types)]#![feature(pattern_type_macro)]#![feature(prelude_import)]#![feature(specialization)]#![feature(trace_macros)]#![feature(trait_alias)]#![feature(try_blocks)]#![feature(yeet_expr)]#![allow(incomplete_features)]
+#![feature(auto_traits)]
+#![feature(box_patterns)]
+#![feature(builtin_syntax)]
+#![feature(concat_idents)]
+#![feature(const_trait_impl)]
+#![feature(decl_macro)]
+#![feature(deref_patterns)]
+#![feature(dyn_star)]
+#![feature(explicit_tail_calls)]
+#![feature(gen_blocks)]
+#![feature(more_qualified_paths)]
+#![feature(never_patterns)]
+#![feature(never_type)]
+#![feature(pattern_types)]
+#![feature(pattern_type_macro)]
+#![feature(prelude_import)]
+#![feature(specialization)]
+#![feature(trace_macros)]
+#![feature(trait_alias)]
+#![feature(try_blocks)]
+#![feature(yeet_expr)]
+#![allow(incomplete_features)]
 #[prelude_import]
 use std::prelude::rust_2024::*;
 #[macro_use]
@@ -33,20 +54,25 @@ mod prelude {
 /*!
      * inner multi-line doc comment
      */
-#[doc = "inner doc attribute"]#[allow(dead_code, unused_variables)]#[no_std]
+#[doc = "inner doc attribute"]
+#[allow(dead_code, unused_variables)]
+#[no_std]
 mod attributes {//! inner single-line doc comment
     /*!
      * inner multi-line doc comment
      */
-    #![doc =
-    "inner doc attribute"]#![allow(dead_code, unused_variables)]#![no_std]
+    #![doc = "inner doc attribute"]
+    #![allow(dead_code, unused_variables)]
+    #![no_std]
 
     /// outer single-line doc comment
     /**
      * outer multi-line doc comment
      */
-    #[doc =
-    "outer doc attribute"]#[doc = "macro"]#[allow()]#[attr = Repr([ReprC])]
+    #[doc = "outer doc attribute"]
+    #[doc = "macro"]
+    #[allow()]
+    #[attr = Repr([ReprC])]
     struct Struct;
 }
 
@@ -147,32 +173,31 @@ mod expressions {
     fn expr_for_loop() {
         let x;
         {
-                let _t =
-                    match #[lang = "into_iter"](x) {
-                            mut iter =>
-                                loop {
-                                        match #[lang = "next"](&mut iter) {
-                                                #[lang = "None"] {} => break,
-                                                #[lang = "Some"] {  0: _ } => { }
-                                            }
-                                    },
-                        };
-                _t
-            };
+            let _t =
+                match #[lang = "into_iter"](x) {
+                    mut iter =>
+                        loop {
+                            match #[lang = "next"](&mut iter) {
+                                #[lang = "None"] {} => break,
+                                #[lang = "Some"] {  0: _ } => { }
+                            }
+                        },
+                };
+            _t
+        };
         {
-                let _t =
-                    match #[lang = "into_iter"](x) {
-                            mut iter =>
-                                'a:
-                                    loop {
-                                        match #[lang = "next"](&mut iter) {
-                                                #[lang = "None"] {} => break,
-                                                #[lang = "Some"] {  0: _ } => { }
-                                            }
-                                    },
-                        };
-                _t
-            }
+            let _t =
+                match #[lang = "into_iter"](x) {
+                    mut iter =>
+                        'a: loop {
+                            match #[lang = "next"](&mut iter) {
+                                #[lang = "None"] {} => break,
+                                #[lang = "Some"] {  0: _ } => { }
+                            }
+                        },
+                };
+            _t
+        }
     }
 
     /// ExprKind::Loop
@@ -357,12 +382,11 @@ mod expressions {
     fn expr_try() {
         let expr;
         match #[lang = "branch"](expr) {
-                #[lang = "Break"] {  0: residual } =>
-                    #[allow(unreachable_code)]
-                    return #[lang = "from_residual"](residual),
-                #[lang = "Continue"] {  0: val } => #[allow(unreachable_code)]
-                    val,
-            };
+            #[lang = "Break"] {  0: residual } => #[allow(unreachable_code)]
+                return #[lang = "from_residual"](residual),
+            #[lang = "Continue"] {  0: val } => #[allow(unreachable_code)]
+                val,
+        };
     }
     /// ExprKind::Yield
     fn expr_yield() { yield (); yield true; }

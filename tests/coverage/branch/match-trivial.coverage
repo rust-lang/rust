@@ -32,8 +32,8 @@
    LL|       |
    LL|      1|    match x {
    LL|      1|        Trivial::Value => consume("trivial"),
-   LL|      1|    }
-   LL|      1|
+   LL|       |    }
+   LL|       |
    LL|      1|    consume("done");
    LL|      1|}
    LL|       |

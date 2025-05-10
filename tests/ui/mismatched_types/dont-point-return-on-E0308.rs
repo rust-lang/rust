@@ -2,7 +2,6 @@
 
 async fn f(_: &()) {}
 //~^ NOTE function defined here
-//~| NOTE
 // Second note is the span of the underlined argument, I think...
 
 fn main() {

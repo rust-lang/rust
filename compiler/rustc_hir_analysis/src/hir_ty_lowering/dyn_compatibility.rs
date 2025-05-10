@@ -172,7 +172,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         let principal_trait = regular_traits.into_iter().next();
 
-        let mut needed_associated_types = vec![];
+        // A stable ordering of associated types from the principal trait and all its
+        // supertraits. We use this to ensure that different substitutions of a trait
+        // don't result in `dyn Trait` types with different projections lists, which
+        // can be unsound: <https://github.com/rust-lang/rust/pull/136458>.
+        // We achieve a stable ordering by walking over the unsubstituted principal
+        // trait ref.
+        let mut ordered_associated_types = vec![];
+
         if let Some((principal_trait, ref spans)) = principal_trait {
             let principal_trait = principal_trait.map_bound(|trait_pred| {
                 assert_eq!(trait_pred.polarity, ty::PredicatePolarity::Positive);
@@ -197,16 +204,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // FIXME(negative_bounds): Handle this correctly...
                         let trait_ref =
                             tcx.anonymize_bound_vars(bound_predicate.rebind(pred.trait_ref));
-                        needed_associated_types.extend(
+                        ordered_associated_types.extend(
                             tcx.associated_items(pred.trait_ref.def_id)
                                 .in_definition_order()
                                 // We only care about associated types.
                                 .filter(|item| item.is_type())
                                 // No RPITITs -- they're not dyn-compatible for now.
                                 .filter(|item| !item.is_impl_trait_in_trait())
-                                // If the associated type has a `where Self: Sized` bound,
-                                // we do not need to constrain the associated type.
-                                .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                                 .map(|item| (item.def_id, trait_ref)),
                         );
                     }
@@ -278,14 +282,26 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
+        // We compute the list of projection bounds taking the ordered associated types,
+        // and check if there was an entry in the collected `projection_bounds`. Those
+        // are computed by first taking the user-written associated types, then elaborating
+        // the principal trait ref, and only using those if there was no user-written.
+        // See note below about how we handle missing associated types with `Self: Sized`,
+        // which are not required to be provided, but are still used if they are provided.
         let mut missing_assoc_types = FxIndexSet::default();
-        let projection_bounds: Vec<_> = needed_associated_types
+        let projection_bounds: Vec<_> = ordered_associated_types
             .into_iter()
             .filter_map(|key| {
                 if let Some(assoc) = projection_bounds.get(&key) {
                     Some(*assoc)
                 } else {
-                    missing_assoc_types.insert(key);
+                    // If the associated type has a `where Self: Sized` bound, then
+                    // we do not need to provide the associated type. This results in
+                    // a `dyn Trait` type that has a different number of projection
+                    // bounds, which may lead to type mismatches.
+                    if !tcx.generics_require_sized_self(key.0) {
+                        missing_assoc_types.insert(key);
+                    }
                     None
                 }
             })

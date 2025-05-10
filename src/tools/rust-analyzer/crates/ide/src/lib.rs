@@ -123,9 +123,9 @@ pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
     CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet, SnippetScope,
 };
-pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
     FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
+    assists::ExprFillDefaultMode,
     base_db::{Crate, CrateGraphBuilder, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
     label::Label,
@@ -134,8 +134,9 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
+    text_edit::{Indel, TextEdit},
 };
-pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
+pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig};
 pub use ide_ssr::SsrError;
 pub use span::Edition;
 pub use syntax::{TextRange, TextSize};
@@ -181,7 +182,7 @@ impl AnalysisHost {
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
-        Analysis { db: self.db.snapshot() }
+        Analysis { db: self.db.clone() }
     }
 
     /// Applies changes to the current state of the world. If there are
@@ -863,7 +864,7 @@ impl Analysis {
     where
         F: FnOnce(&RootDatabase) -> T + std::panic::UnwindSafe,
     {
-        let snap = self.db.snapshot();
+        let snap = self.db.clone();
         Cancelled::catch(|| f(&snap))
     }
 }

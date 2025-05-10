@@ -1737,7 +1737,7 @@ fn foo() {
     bar("", baz());
 }
 
-fn bar(arg: &str, baz: Baz) ${0:-> _} {
+fn bar(arg: &'static str, baz: Baz) ${0:-> _} {
     todo!()
 }
 
@@ -3340,6 +3340,20 @@ sth!{ }
 }
 
 #[test]
+fn doctest_unmerge_imports() {
+    check_doc_test(
+        "unmerge_imports",
+        r#####"
+use std::fmt::{Debug, Display$0};
+"#####,
+        r#####"
+use std::fmt::{Debug};
+use std::fmt::Display;
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unmerge_match_arm() {
     check_doc_test(
         "unmerge_match_arm",
@@ -3361,20 +3375,6 @@ fn handle(action: Action) {
         Action::Stop => foo(),
     }
 }
-"#####,
-    )
-}
-
-#[test]
-fn doctest_unmerge_use() {
-    check_doc_test(
-        "unmerge_use",
-        r#####"
-use std::fmt::{Debug, Display$0};
-"#####,
-        r#####"
-use std::fmt::{Debug};
-use std::fmt::Display;
 "#####,
     )
 }

@@ -15,7 +15,11 @@ use tracing::debug;
 
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
-use crate::errors::{self, PathSingleColon, PathTripleColon};
+use crate::ast::{PatKind, TyKind};
+use crate::errors::{
+    self, FnPathFoundNamedParams, PathFoundAttributeInParams, PathFoundCVariadicParams,
+    PathSingleColon, PathTripleColon,
+};
 use crate::exp;
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
 
@@ -396,7 +400,28 @@ impl<'a> Parser<'a> {
                         snapshot = Some(self.create_snapshot_for_diagnostic());
                     }
 
-                    let (inputs, _) = match self.parse_paren_comma_seq(|p| p.parse_ty()) {
+                    let dcx = self.dcx();
+                    let parse_params_result = self.parse_paren_comma_seq(|p| {
+                        let param = p.parse_param_general(|_| false, false, false);
+                        param.map(move |param| {
+                            if !matches!(param.pat.kind, PatKind::Missing) {
+                                dcx.emit_err(FnPathFoundNamedParams {
+                                    named_param_span: param.pat.span,
+                                });
+                            }
+                            if matches!(param.ty.kind, TyKind::CVarArgs) {
+                                dcx.emit_err(PathFoundCVariadicParams { span: param.pat.span });
+                            }
+                            if !param.attrs.is_empty() {
+                                dcx.emit_err(PathFoundAttributeInParams {
+                                    span: param.attrs[0].span,
+                                });
+                            }
+                            param.ty
+                        })
+                    });
+
+                    let (inputs, _) = match parse_params_result {
                         Ok(output) => output,
                         Err(mut error) if prev_token_before_parsing == token::PathSep => {
                             error.span_label(

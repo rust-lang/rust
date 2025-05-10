@@ -9,7 +9,7 @@ use std::sync::mpsc::SyncSender;
 use build_helper::git::get_git_modified_files;
 use ignore::WalkBuilder;
 
-use crate::core::builder::Builder;
+use crate::core::builder::{Builder, Kind};
 use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -122,6 +122,12 @@ fn print_paths(verb: &str, adjective: Option<&str>, paths: &[String]) {
 }
 
 pub fn format(build: &Builder<'_>, check: bool, all: bool, paths: &[PathBuf]) {
+    if build.kind == Kind::Format && build.top_stage != 0 {
+        eprintln!("ERROR: `x fmt` only supports stage 0.");
+        eprintln!("HELP: Use `x run rustfmt` to run in-tree rustfmt.");
+        crate::exit!(1);
+    }
+
     if !paths.is_empty() {
         eprintln!(
             "fmt error: path arguments are no longer accepted; use `--all` to format everything"

@@ -11,3 +11,8 @@ mod json_bom_plus_crlf_multifile_aux;
 fn main() {
     json_bom_plus_crlf_multifile_aux::test();
 }
+
+//~? ERROR mismatched types
+//~? ERROR mismatched types
+//~? ERROR mismatched types
+//~? ERROR mismatched types

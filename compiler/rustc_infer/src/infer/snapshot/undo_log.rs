@@ -17,6 +17,7 @@ pub struct Snapshot<'tcx> {
 /// Records the "undo" data for a single operation that affects some form of inference variable.
 #[derive(Clone)]
 pub(crate) enum UndoLog<'tcx> {
+    DuplicateOpaqueType,
     OpaqueTypes(OpaqueTypeKey<'tcx>, Option<OpaqueHiddenType<'tcx>>),
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
@@ -58,6 +59,7 @@ impl_from! {
 impl<'tcx> Rollback<UndoLog<'tcx>> for InferCtxtInner<'tcx> {
     fn reverse(&mut self, undo: UndoLog<'tcx>) {
         match undo {
+            UndoLog::DuplicateOpaqueType => self.opaque_type_storage.pop_duplicate_entry(),
             UndoLog::OpaqueTypes(key, idx) => self.opaque_type_storage.remove(key, idx),
             UndoLog::TypeVariables(undo) => self.type_variable_storage.reverse(undo),
             UndoLog::ConstUnificationTable(undo) => self.const_unification_storage.reverse(undo),

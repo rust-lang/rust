@@ -147,9 +147,8 @@ pub enum CandidateSource<I: Interner> {
     /// For a list of all traits with builtin impls, check out the
     /// `EvalCtxt::assemble_builtin_impl_candidates` method.
     BuiltinImpl(BuiltinImplSource),
-    /// An assumption from the environment.
-    ///
-    /// More precisely we've used the `n-th` assumption in the `param_env`.
+    /// An assumption from the environment. Stores a [`ParamEnvSource`], since we
+    /// prefer non-global param-env candidates in candidate assembly.
     ///
     /// ## Examples
     ///
@@ -160,7 +159,7 @@ pub enum CandidateSource<I: Interner> {
     ///     (x.clone(), x)
     /// }
     /// ```
-    ParamEnv(usize),
+    ParamEnv(ParamEnvSource),
     /// If the self type is an alias type, e.g. an opaque type or a projection,
     /// we know the bounds on that alias to hold even without knowing its concrete
     /// underlying type.
@@ -187,6 +186,14 @@ pub enum CandidateSource<I: Interner> {
     /// rules.
     // FIXME: Merge this with the forced ambiguity candidates, so those don't use `Misc`.
     CoherenceUnknowable,
+}
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+pub enum ParamEnvSource {
+    /// Preferred eagerly.
+    NonGlobal,
+    // Not considered unless there are non-global param-env candidates too.
+    Global,
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
@@ -266,17 +273,17 @@ impl Certainty {
     /// however matter for diagnostics. If `T: Foo` resulted in overflow and `T: Bar`
     /// in ambiguity without changing the inference state, we still want to tell the
     /// user that `T: Baz` results in overflow.
-    pub fn unify_with(self, other: Certainty) -> Certainty {
+    pub fn and(self, other: Certainty) -> Certainty {
         match (self, other) {
             (Certainty::Yes, Certainty::Yes) => Certainty::Yes,
             (Certainty::Yes, Certainty::Maybe(_)) => other,
             (Certainty::Maybe(_), Certainty::Yes) => self,
-            (Certainty::Maybe(a), Certainty::Maybe(b)) => Certainty::Maybe(a.unify_with(b)),
+            (Certainty::Maybe(a), Certainty::Maybe(b)) => Certainty::Maybe(a.and(b)),
         }
     }
 
     pub const fn overflow(suggest_increasing_limit: bool) -> Certainty {
-        Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit })
+        Certainty::Maybe(MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: false })
     }
 }
 
@@ -289,19 +296,58 @@ pub enum MaybeCause {
     /// or we hit a case where we just don't bother, e.g. `?x: Trait` goals.
     Ambiguity,
     /// We gave up due to an overflow, most often by hitting the recursion limit.
-    Overflow { suggest_increasing_limit: bool },
+    Overflow { suggest_increasing_limit: bool, keep_constraints: bool },
 }
 
 impl MaybeCause {
-    fn unify_with(self, other: MaybeCause) -> MaybeCause {
+    fn and(self, other: MaybeCause) -> MaybeCause {
         match (self, other) {
             (MaybeCause::Ambiguity, MaybeCause::Ambiguity) => MaybeCause::Ambiguity,
             (MaybeCause::Ambiguity, MaybeCause::Overflow { .. }) => other,
             (MaybeCause::Overflow { .. }, MaybeCause::Ambiguity) => self,
             (
-                MaybeCause::Overflow { suggest_increasing_limit: a },
-                MaybeCause::Overflow { suggest_increasing_limit: b },
-            ) => MaybeCause::Overflow { suggest_increasing_limit: a || b },
+                MaybeCause::Overflow {
+                    suggest_increasing_limit: limit_a,
+                    keep_constraints: keep_a,
+                },
+                MaybeCause::Overflow {
+                    suggest_increasing_limit: limit_b,
+                    keep_constraints: keep_b,
+                },
+            ) => MaybeCause::Overflow {
+                suggest_increasing_limit: limit_a && limit_b,
+                keep_constraints: keep_a && keep_b,
+            },
+        }
+    }
+
+    pub fn or(self, other: MaybeCause) -> MaybeCause {
+        match (self, other) {
+            (MaybeCause::Ambiguity, MaybeCause::Ambiguity) => MaybeCause::Ambiguity,
+
+            // When combining ambiguity + overflow, we can keep constraints.
+            (
+                MaybeCause::Ambiguity,
+                MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: _ },
+            ) => MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: true },
+            (
+                MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: _ },
+                MaybeCause::Ambiguity,
+            ) => MaybeCause::Overflow { suggest_increasing_limit, keep_constraints: true },
+
+            (
+                MaybeCause::Overflow {
+                    suggest_increasing_limit: limit_a,
+                    keep_constraints: keep_a,
+                },
+                MaybeCause::Overflow {
+                    suggest_increasing_limit: limit_b,
+                    keep_constraints: keep_b,
+                },
+            ) => MaybeCause::Overflow {
+                suggest_increasing_limit: limit_a || limit_b,
+                keep_constraints: keep_a || keep_b,
+            },
         }
     }
 }

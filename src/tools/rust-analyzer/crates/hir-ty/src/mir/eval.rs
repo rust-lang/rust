@@ -47,7 +47,7 @@ use crate::{
 
 use super::{
     AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError, MirSpan,
-    Operand, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
+    Operand, OperandKind, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
     TerminatorKind, UnOp, return_slot,
 };
 
@@ -655,22 +655,15 @@ impl Evaluator<'_> {
             mir_or_dyn_index_cache: RefCell::new(Default::default()),
             unused_locals_store: RefCell::new(Default::default()),
             cached_ptr_size,
-            cached_fn_trait_func: db
-                .lang_item(crate_id, LangItem::Fn)
-                .and_then(|x| x.as_trait())
+            cached_fn_trait_func: LangItem::Fn
+                .resolve_trait(db, crate_id)
                 .and_then(|x| db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call))),
-            cached_fn_mut_trait_func: db
-                .lang_item(crate_id, LangItem::FnMut)
-                .and_then(|x| x.as_trait())
-                .and_then(|x| {
-                    db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_mut))
-                }),
-            cached_fn_once_trait_func: db
-                .lang_item(crate_id, LangItem::FnOnce)
-                .and_then(|x| x.as_trait())
-                .and_then(|x| {
-                    db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_once))
-                }),
+            cached_fn_mut_trait_func: LangItem::FnMut.resolve_trait(db, crate_id).and_then(|x| {
+                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_mut))
+            }),
+            cached_fn_once_trait_func: LangItem::FnOnce.resolve_trait(db, crate_id).and_then(|x| {
+                db.trait_items(x).method_by_name(&Name::new_symbol_root(sym::call_once))
+            }),
         })
     }
 
@@ -863,10 +856,10 @@ impl Evaluator<'_> {
     }
 
     fn operand_ty(&self, o: &Operand, locals: &Locals) -> Result<Ty> {
-        Ok(match o {
-            Operand::Copy(p) | Operand::Move(p) => self.place_ty(p, locals)?,
-            Operand::Constant(c) => c.data(Interner).ty.clone(),
-            &Operand::Static(s) => {
+        Ok(match &o.kind {
+            OperandKind::Copy(p) | OperandKind::Move(p) => self.place_ty(p, locals)?,
+            OperandKind::Constant(c) => c.data(Interner).ty.clone(),
+            &OperandKind::Static(s) => {
                 let ty = self.db.infer(s.into())[self.db.body(s.into()).body_expr].clone();
                 TyKind::Ref(Mutability::Not, static_lifetime(), ty).intern(Interner)
             }
@@ -1880,16 +1873,16 @@ impl Evaluator<'_> {
     }
 
     fn eval_operand(&mut self, it: &Operand, locals: &mut Locals) -> Result<Interval> {
-        Ok(match it {
-            Operand::Copy(p) | Operand::Move(p) => {
+        Ok(match &it.kind {
+            OperandKind::Copy(p) | OperandKind::Move(p) => {
                 locals.drop_flags.remove_place(p, &locals.body.projection_store);
                 self.eval_place(p, locals)?
             }
-            Operand::Static(st) => {
+            OperandKind::Static(st) => {
                 let addr = self.eval_static(*st, locals)?;
                 Interval::new(addr, self.ptr_size())
             }
-            Operand::Constant(konst) => self.allocate_const_in_heap(locals, konst)?,
+            OperandKind::Constant(konst) => self.allocate_const_in_heap(locals, konst)?,
         })
     }
 
@@ -2811,7 +2804,7 @@ impl Evaluator<'_> {
         span: MirSpan,
     ) -> Result<()> {
         let Some(drop_fn) = (|| {
-            let drop_trait = self.db.lang_item(self.crate_id, LangItem::Drop)?.as_trait()?;
+            let drop_trait = LangItem::Drop.resolve_trait(self.db, self.crate_id)?;
             self.db.trait_items(drop_trait).method_by_name(&Name::new_symbol_root(sym::drop))
         })() else {
             // in some tests we don't have drop trait in minicore, and

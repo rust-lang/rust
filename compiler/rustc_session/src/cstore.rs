@@ -27,6 +27,7 @@ pub struct CrateSource {
     pub dylib: Option<(PathBuf, PathKind)>,
     pub rlib: Option<(PathBuf, PathKind)>,
     pub rmeta: Option<(PathBuf, PathKind)>,
+    pub sdylib_interface: Option<(PathBuf, PathKind)>,
 }
 
 impl CrateSource {

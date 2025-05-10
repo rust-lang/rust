@@ -1,2 +1,3 @@
 //@ compile-flags: --emit
-//@ error-pattern: Argument to option 'emit' missing
+
+//~? RAW Argument to option 'emit' missing

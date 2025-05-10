@@ -55,18 +55,45 @@ impl<'a, 'tcx> UnnecessaryTransmuteChecker<'a, 'tcx> {
             },
             // char → u32
             (Char, Uint(UintTy::U32)) => err(format!("u32::from({arg})")),
+            // char (→ u32) → i32
+            (Char, Int(IntTy::I32)) => err(format!("u32::from({arg}).cast_signed()")),
             // u32 → char
             (Uint(UintTy::U32), Char) => Error {
                 sugg: format!("char::from_u32_unchecked({arg})"),
                 help: Some("consider `char::from_u32(…).unwrap()`"),
                 span,
             },
+            // i32 → char
+            (Int(IntTy::I32), Char) => Error {
+                sugg: format!("char::from_u32_unchecked(i32::cast_unsigned({arg}))"),
+                help: Some("consider `char::from_u32(i32::cast_unsigned(…)).unwrap()`"),
+                span,
+            },
             // uNN → iNN
             (Uint(ty), Int(_)) => err(format!("{}::cast_signed({arg})", ty.name_str())),
             // iNN → uNN
             (Int(ty), Uint(_)) => err(format!("{}::cast_unsigned({arg})", ty.name_str())),
+            // fNN → xsize
+            (Float(ty), Uint(UintTy::Usize)) => {
+                err(format!("{}::to_bits({arg}) as usize", ty.name_str()))
+            }
+            (Float(ty), Int(IntTy::Isize)) => {
+                err(format!("{}::to_bits({arg}) as isize", ty.name_str()))
+            }
+            // fNN (→ uNN) → iNN
+            (Float(ty), Int(..)) => err(format!("{}::to_bits({arg}).cast_signed()", ty.name_str())),
             // fNN → uNN
             (Float(ty), Uint(..)) => err(format!("{}::to_bits({arg})", ty.name_str())),
+            // xsize → fNN
+            (Uint(UintTy::Usize) | Int(IntTy::Isize), Float(ty)) => {
+                err(format!("{}::from_bits({arg} as _)", ty.name_str(),))
+            }
+            // iNN (→ uNN) → fNN
+            (Int(int_ty), Float(ty)) => err(format!(
+                "{}::from_bits({}::cast_unsigned({arg}))",
+                ty.name_str(),
+                int_ty.name_str()
+            )),
             // uNN → fNN
             (Uint(_), Float(ty)) => err(format!("{}::from_bits({arg})", ty.name_str())),
             // bool → { x8 }

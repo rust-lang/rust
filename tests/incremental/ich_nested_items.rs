@@ -7,6 +7,7 @@
 
 #![crate_type = "rlib"]
 #![feature(rustc_attrs)]
+#![allow(dead_code)]
 
 #[rustc_clean(except = "opt_hir_owner_nodes", cfg = "cfail2")]
 pub fn foo() {

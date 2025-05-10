@@ -392,3 +392,84 @@ impl Step for CyclicStep {
         builder.ensure(CyclicStep { n: self.n.saturating_sub(1) })
     }
 }
+
+/// Step to manually run the coverage-dump tool (`./x run coverage-dump`).
+///
+/// The coverage-dump tool is an internal detail of coverage tests, so this run
+/// step is only needed when testing coverage-dump manually.
+#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
+pub struct CoverageDump;
+
+impl Step for CoverageDump {
+    type Output = ();
+
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/coverage-dump")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Self {});
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let mut cmd = builder.tool_cmd(Tool::CoverageDump);
+        cmd.args(&builder.config.free_args);
+        cmd.run(builder);
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Rustfmt;
+
+impl Step for Rustfmt {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rustfmt")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Rustfmt);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let host = builder.build.build;
+
+        // `x run` uses stage 0 by default but rustfmt does not work well with stage 0.
+        // Change the stage to 1 if it's not set explicitly.
+        let stage = if builder.config.is_explicit_stage() || builder.top_stage >= 1 {
+            builder.top_stage
+        } else {
+            1
+        };
+
+        if stage == 0 {
+            eprintln!("rustfmt cannot be run at stage 0");
+            eprintln!("HELP: Use `x fmt` to use stage 0 rustfmt.");
+            std::process::exit(1);
+        }
+
+        let compiler = builder.compiler(stage, host);
+        let rustfmt_build = builder.ensure(tool::Rustfmt { compiler, target: host });
+
+        let mut rustfmt = tool::prepare_tool_cargo(
+            builder,
+            rustfmt_build.build_compiler,
+            Mode::ToolRustc,
+            host,
+            Kind::Run,
+            "src/tools/rustfmt",
+            SourceType::InTree,
+            &[],
+        );
+
+        rustfmt.args(["--bin", "rustfmt", "--"]);
+        rustfmt.args(builder.config.args());
+
+        rustfmt.into_cmd().run(builder);
+    }
+}

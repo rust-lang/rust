@@ -1,9 +1,20 @@
-use crate::spec::{Target, TargetMetadata, base};
+use crate::spec::{FramePointer, LinkerFlavor, Lld, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.max_atomic_width = Some(128);
     base.features = "+v8a,+neon,+fp-armv8".into();
+
+    // Microsoft recommends enabling frame pointers on Arm64 Windows.
+    // From https://learn.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions?view=msvc-170#integer-registers
+    // "The frame pointer (x29) is required for compatibility with fast stack walking used by ETW
+    // and other services. It must point to the previous {x29, x30} pair on the stack."
+    base.frame_pointer = FramePointer::NonLeaf;
+
+    // MSVC emits a warning about code that may trip "Cortex-A53 MPCore processor bug #843419" (see
+    // https://developer.arm.com/documentation/epm048406/latest) which is sometimes emitted by LLVM.
+    // Since Arm64 Windows 10+ isn't supported on that processor, it's safe to disable the warning.
+    base.add_pre_link_args(LinkerFlavor::Msvc(Lld::No), &["/arm64hazardfree"]);
 
     Target {
         llvm_target: "aarch64-pc-windows-msvc".into(),

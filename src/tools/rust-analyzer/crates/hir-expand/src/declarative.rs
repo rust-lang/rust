@@ -82,7 +82,7 @@ impl DeclarativeMacroExpander {
 
         let transparency = |node| {
             // ... would be nice to have the item tree here
-            let attrs = RawAttrs::new(db, node, map.as_ref()).filter(db, def_crate);
+            let attrs = RawAttrs::new_expanded(db, node, map.as_ref(), def_crate.cfg_options(db));
             match attrs
                 .iter()
                 .find(|it| {

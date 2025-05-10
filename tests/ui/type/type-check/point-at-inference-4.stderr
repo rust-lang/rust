@@ -1,5 +1,5 @@
 error[E0061]: this method takes 2 arguments but 1 argument was supplied
-  --> $DIR/point-at-inference-4.rs:11:7
+  --> $DIR/point-at-inference-4.rs:10:7
    |
 LL |     s.infer(0i32);
    |       ^^^^^------ argument #2 is missing
@@ -15,7 +15,7 @@ LL |     s.infer(0i32, /* b */);
    |                 +++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/point-at-inference-4.rs:18:24
+  --> $DIR/point-at-inference-4.rs:17:24
    |
 LL |     s.infer(0i32);
    |     -       ---- this argument has type `i32`...

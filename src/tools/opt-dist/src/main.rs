@@ -95,7 +95,7 @@ enum EnvironmentCmd {
         #[arg(long)]
         benchmark_cargo_config: Vec<String>,
 
-        /// Perform tests after final build if it's not a try build
+        /// Perform tests after final build if it's not a fast try build
         #[arg(long)]
         run_tests: bool,
     },
@@ -111,11 +111,14 @@ enum EnvironmentCmd {
     },
 }
 
-fn is_try_build() -> bool {
+/// For a fast try build, we want to only build the bare minimum of components to get a
+/// working toolchain, and not run any tests.
+fn is_fast_try_build() -> bool {
     std::env::var("DIST_TRY_BUILD").unwrap_or_else(|_| "0".to_string()) != "0"
 }
 
 fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> {
+    let is_fast_try_build = is_fast_try_build();
     let (env, args) = match args.env {
         EnvironmentCmd::Local {
             target_triple,
@@ -144,6 +147,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .skipped_tests(skipped_tests)
                 .benchmark_cargo_config(benchmark_cargo_config)
                 .run_tests(run_tests)
+                .fast_try_build(is_fast_try_build)
                 .build()?;
 
             (env, shared.build_args)
@@ -167,6 +171,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .use_bolt(!is_aarch64)
                 .skipped_tests(vec![])
                 .run_tests(true)
+                .fast_try_build(is_fast_try_build)
                 .build()?;
 
             (env, shared.build_args)
@@ -187,6 +192,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .use_bolt(false)
                 .skipped_tests(vec![])
                 .run_tests(true)
+                .fast_try_build(is_fast_try_build)
                 .build()?;
 
             (env, shared.build_args)
@@ -350,9 +356,8 @@ fn execute_pipeline(
 
     // After dist has finished, run a subset of the test suite on the optimized artifacts to discover
     // possible regressions.
-    // The tests are not executed for try builds, which can be in various broken states, so we don't
-    // want to gatekeep them with tests.
-    if !is_try_build() && env.run_tests() {
+    // The tests are not executed for fast try builds, which can be broken and might not pass them.
+    if !is_fast_try_build() && env.run_tests() {
         timer.section("Run tests", |_| run_tests(env))?;
     }
 
@@ -361,7 +366,10 @@ fn execute_pipeline(
 
 fn main() -> anyhow::Result<()> {
     // Make sure that we get backtraces for easier debugging in CI
-    std::env::set_var("RUST_BACKTRACE", "1");
+    unsafe {
+        // SAFETY: we are the only thread running at this point
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
 
     env_logger::builder()
         .filter_level(LevelFilter::Info)
@@ -393,9 +401,9 @@ fn main() -> anyhow::Result<()> {
 
     let (env, mut build_args) = create_environment(args).context("Cannot create environment")?;
 
-    // Skip components that are not needed for try builds to speed them up
-    if is_try_build() {
-        log::info!("Skipping building of unimportant components for a try build");
+    // Skip components that are not needed for fast try builds to speed them up
+    if is_fast_try_build() {
+        log::info!("Skipping building of unimportant components for a fast try build");
         for target in [
             "rust-docs",
             "rustc-docs",

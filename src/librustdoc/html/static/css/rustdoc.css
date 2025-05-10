@@ -55,6 +55,9 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--collapse-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
 	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
 	d="M3,8l4,4l4,-4m-4,4M3,4l4,4l4,-4" stroke="black" stroke-width="2"/></svg>');
+	--hamburger-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+		viewBox="0 0 22 22" fill="none" stroke="black">\
+		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
 }
 
 :root.sans-serif {
@@ -2001,9 +2004,11 @@ a.tooltip:hover::after {
 	display: flex;
 	margin-right: 4px;
 	position: fixed;
-	left: 6px;
 	height: 34px;
 	width: 34px;
+}
+.hide-sidebar #sidebar-button {
+	left: 6px;
 	background-color: var(--main-background-color);
 	z-index: 1;
 }
@@ -2019,6 +2024,8 @@ a.tooltip:hover::after {
 	align-items: center;
 	justify-content: center;
 	flex-direction: column;
+}
+#settings-menu > a, #help-button > a, button#toggle-all-docs {
 	border: 1px solid transparent;
 	border-radius: var(--button-border-radius);
 	color: var(--main-color);
@@ -2031,14 +2038,15 @@ a.tooltip:hover::after {
 	min-width: 0;
 }
 #sidebar-button > a {
-	background-color: var(--button-background-color);
-	border-color: var(--border-color);
+	background-color: var(--sidebar-background-color);
 	width: 33px;
+}
+#sidebar-button > a:hover, #sidebar-button > a:focus-visible {
+	background-color: var(--main-background-color);
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus-visible,
 #help-button > a:hover, #help-button > a:focus-visible,
-#sidebar-button > a:hover, #sidebar-button > a:focus-visible,
 button#toggle-all-docs:hover, button#toggle-all-docs:focus-visible {
 	border-color: var(--settings-button-border-focus);
 	text-decoration: none;
@@ -2405,26 +2413,14 @@ However, it's not needed with smaller screen width because the doc/code block is
 	use hamburger button */
 .src #sidebar-button > a::before, .sidebar-menu-toggle::before {
 	/* hamburger button image */
-	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
-		viewBox="0 0 22 22" fill="none" stroke="black">\
-		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
+	content: var(--hamburger-image);
 	opacity: 0.75;
+	filter: var(--mobile-sidebar-menu-filter);
 }
 .sidebar-menu-toggle:hover::before,
 .sidebar-menu-toggle:active::before,
 .sidebar-menu-toggle:focus::before {
 	opacity: 1;
-}
-
-/* src sidebar button opens a folder view */
-.src #sidebar-button > a::before {
-	/* folder image */
-	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
-		viewBox="0 0 22 22" fill="none" stroke="black">\
-		<path d="M16,9v-4h-6v-1l-2,-2h-4l-2,2v16h13L21,9h-15L2,19" stroke-width="1.25"/>\
-		<path d="M15,7h-11v3" stroke-width="0.75"/>\
-		<path d="M3.75,10v1.25" stroke-width="0.375"/></svg>');
-	opacity: 0.75;
 }
 
 /* Media Queries */
@@ -2611,9 +2607,6 @@ in src-script.js and main.js
 		width: 22px;
 		height: 22px;
 	}
-	.sidebar-menu-toggle::before {
-		filter: var(--mobile-sidebar-menu-filter);
-	}
 	.sidebar-menu-toggle:hover {
 		background: var(--main-background-color);
 	}
@@ -2670,6 +2663,14 @@ in src-script.js and main.js
 	.src nav.sub {
 		margin: 0 0 -25px 0;
 		padding: var(--nav-sub-mobile-padding);
+	}
+
+	html:not(.src-sidebar-expanded) .src #sidebar-button > a {
+		background-color: var(--main-background-color);
+	}
+	html:not(.src-sidebar-expanded) .src #sidebar-button > a:hover,
+	html:not(.src-sidebar-expanded) .src #sidebar-button > a:focus-visible {
+		background-color: var(--sidebar-background-color);
 	}
 }
 

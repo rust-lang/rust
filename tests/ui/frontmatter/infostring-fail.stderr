@@ -1,0 +1,10 @@
+error: invalid infostring for frontmatter
+  --> $DIR/infostring-fail.rs:1:4
+   |
+LL | ---cargo,clippy
+   |    ^^^^^^^^^^^^
+   |
+   = note: frontmatter infostrings must be a single identifier immediately following the opening
+
+error: aborting due to 1 previous error
+

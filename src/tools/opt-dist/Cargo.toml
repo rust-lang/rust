@@ -1,7 +1,7 @@
 [package]
 name = "opt-dist"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 build_helper = { path = "../../build_helper" }
@@ -10,12 +10,11 @@ log = "0.4"
 anyhow = "1"
 humantime = "2"
 humansize = "2"
-sysinfo = { version = "0.31.2", default-features = false, features = ["disk"] }
+sysinfo = { version = "0.35.0", default-features = false, features = ["disk"] }
 fs_extra = "1"
 camino = "1"
 tar = "0.4"
 xz = { version = "0.1", package = "xz2" }
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 glob = "0.3"
 tempfile = "3.5"

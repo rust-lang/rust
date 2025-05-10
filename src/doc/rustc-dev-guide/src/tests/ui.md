@@ -344,8 +344,7 @@ For checking runtime output, `//@ check-run-results` may be preferable.
 
 Only use `error-pattern` if none of the above works.
 
-Line annotations `//~` are still checked in tests using `error-pattern`.
-In exceptional cases, use `//@ compile-flags: --error-format=human` to opt out of these checks.
+Line annotations `//~` and `error-pattern` are compatible and can be used in the same test.
 
 ### Diagnostic kinds (error levels)
 
@@ -356,9 +355,12 @@ The diagnostic kinds that you can have are:
 - `NOTE`
 - `HELP`
 - `SUGGESTION`
+- `RAW`
 
 The `SUGGESTION` kind is used for specifying what the expected replacement text
 should be for a diagnostic suggestion.
+The `RAW` kind can be used for matching on lines from non-structured output sometimes emitted
+by the compiler instead of or in addition to structured json.
 
 `ERROR` and `WARN` kinds are required to be exhaustively covered by line annotations
 `//~` by default.
