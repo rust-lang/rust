@@ -121,6 +121,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_async_iterator_candidates(obligation, &mut candidates);
                 } else if tcx.is_lang_item(def_id, LangItem::AsyncFnKindHelper) {
                     self.assemble_async_fn_kind_helper_candidates(obligation, &mut candidates);
+                } else if tcx.is_lang_item(def_id, LangItem::PointerLike) {
+                    self.assemble_pointer_like_candidates(obligation, &mut candidates);
                 }
 
                 // FIXME: Put these into `else if` blocks above, since they're built-in.
@@ -465,6 +467,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.vec.push(AsyncClosureCandidate);
                 }
             }
+            _ => {}
+        }
+    }
+
+    fn assemble_pointer_like_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        match obligation.self_ty().skip_binder().kind() {
+            ty::Pat(..) => candidates.vec.push(PointerLikeCandidate),
             _ => {}
         }
     }

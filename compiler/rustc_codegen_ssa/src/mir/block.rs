@@ -1064,6 +1064,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the
                         // `Pin`.
+
+                        loop {
+                            match *op.layout.ty.kind() {
+                                ty::Ref(..) | ty::RawPtr(..) => break,
+                                ty::Pat(inner, _) => op.layout = bx.layout_of(inner),
+                                _ => {
+                                    let (idx, _) = op.layout.non_1zst_field(bx).expect(
+                                        "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
+                                    );
+                                    op = op.extract_field(self, bx, idx);
+                                }
+                            }
+                        }
                         while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",

@@ -340,6 +340,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_const(current, start, variance);
                 self.add_constraints_from_const(current, end, variance);
             }
+            ty::PatternKind::NotNull => {}
             ty::PatternKind::Or(patterns) => {
                 for pat in patterns {
                     self.add_constraints_from_pat(current, variance, pat)

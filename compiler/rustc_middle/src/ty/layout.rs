@@ -822,10 +822,19 @@ where
                 | ty::FnDef(..)
                 | ty::CoroutineWitness(..)
                 | ty::Foreign(..)
-                | ty::Pat(_, _)
                 | ty::Dynamic(_, _, ty::Dyn) => {
                     bug!("TyAndLayout::field({:?}): not applicable", this)
                 }
+
+                // May contain wide pointers
+                ty::Pat(base, pat) => match *pat {
+                    ty::PatternKind::NotNull => {
+                        field_ty_or_layout(TyAndLayout { ty: base, ..this }, cx, i)
+                    }
+                    ty::PatternKind::Range { .. } | ty::PatternKind::Or(_) => {
+                        bug!("TyAndLayout::field({this:?}): only applicable to !null patterns")
+                    }
+                },
 
                 ty::UnsafeBinder(bound_ty) => {
                     let ty = tcx.instantiate_bound_regions_with_erased(bound_ty.into());
@@ -1000,12 +1009,16 @@ where
     /// Compute the information for the pointer stored at the given offset inside this type.
     /// This will recurse into fields of ADTs to find the inner pointer.
     fn ty_and_layout_pointee_info_at(
-        this: TyAndLayout<'tcx>,
+        mut this: TyAndLayout<'tcx>,
         cx: &C,
         offset: Size,
     ) -> Option<PointeeInfo> {
         let tcx = cx.tcx();
         let typing_env = cx.typing_env();
+
+        if let ty::Pat(base, _) = *this.ty.kind() {
+            this.ty = base;
+        }
 
         let pointee_info = match *this.ty.kind() {
             ty::RawPtr(p_ty, _) if offset.bytes() == 0 => {
