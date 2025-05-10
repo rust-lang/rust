@@ -476,66 +476,67 @@ pub(crate) fn inline_asm_call<'ll>(
 
     debug!("Asm Output Type: {:?}", output);
     let fty = bx.cx.type_func(&argtys, output);
+
     // Ask LLVM to verify that the constraints are well-formed.
     let constraints_ok = unsafe { llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr(), cons.len()) };
     debug!("constraint verification result: {:?}", constraints_ok);
-    if constraints_ok {
-        let v = unsafe {
-            llvm::LLVMGetInlineAsm(
-                fty,
-                asm.as_ptr(),
-                asm.len(),
-                cons.as_ptr(),
-                cons.len(),
-                volatile,
-                alignstack,
-                dia,
-                can_throw,
-            )
-        };
-
-        let call = if !labels.is_empty() {
-            assert!(catch_funclet.is_none());
-            bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
-        } else if let Some((catch, funclet)) = catch_funclet {
-            bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
-        } else {
-            bx.call(fty, None, None, v, inputs, None, None)
-        };
-
-        // Store mark in a metadata node so we can map LLVM errors
-        // back to source locations. See #17552.
-        let key = "srcloc";
-        let kind = bx.get_md_kind_id(key);
-
-        // `srcloc` contains one 64-bit integer for each line of assembly code,
-        // where the lower 32 bits hold the lo byte position and the upper 32 bits
-        // hold the hi byte position.
-        let mut srcloc = vec![];
-        if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
-            // LLVM inserts an extra line to add the ".intel_syntax", so add
-            // a dummy srcloc entry for it.
-            //
-            // Don't do this if we only have 1 line span since that may be
-            // due to the asm template string coming from a macro. LLVM will
-            // default to the first srcloc for lines that don't have an
-            // associated srcloc.
-            srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
-        }
-        srcloc.extend(line_spans.iter().map(|span| {
-            llvm::LLVMValueAsMetadata(
-                bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
-            )
-        }));
-        let md = unsafe { llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len()) };
-        let md = bx.get_metadata_value(md);
-        llvm::LLVMSetMetadata(call, kind, md);
-
-        Some(call)
-    } else {
-        // LLVM has detected an issue with our constraints, bail out
-        None
+    if !constraints_ok {
+        // LLVM has detected an issue with our constraints, so bail out.
+        return None;
     }
+
+    let v = unsafe {
+        llvm::LLVMGetInlineAsm(
+            fty,
+            asm.as_ptr(),
+            asm.len(),
+            cons.as_ptr(),
+            cons.len(),
+            volatile,
+            alignstack,
+            dia,
+            can_throw,
+        )
+    };
+
+    let call = if !labels.is_empty() {
+        assert!(catch_funclet.is_none());
+        bx.callbr(fty, None, None, v, inputs, dest.unwrap(), labels, None, None)
+    } else if let Some((catch, funclet)) = catch_funclet {
+        bx.invoke(fty, None, None, v, inputs, dest.unwrap(), catch, funclet, None)
+    } else {
+        bx.call(fty, None, None, v, inputs, None, None)
+    };
+
+    // Store mark in a metadata node so we can map LLVM errors
+    // back to source locations. See #17552.
+    let key = "srcloc";
+    let kind = bx.get_md_kind_id(key);
+
+    // `srcloc` contains one 64-bit integer for each line of assembly code,
+    // where the lower 32 bits hold the lo byte position and the upper 32 bits
+    // hold the hi byte position.
+    let mut srcloc = vec![];
+    if dia == llvm::AsmDialect::Intel && line_spans.len() > 1 {
+        // LLVM inserts an extra line to add the ".intel_syntax", so add
+        // a dummy srcloc entry for it.
+        //
+        // Don't do this if we only have 1 line span since that may be
+        // due to the asm template string coming from a macro. LLVM will
+        // default to the first srcloc for lines that don't have an
+        // associated srcloc.
+        srcloc.push(llvm::LLVMValueAsMetadata(bx.const_u64(0)));
+    }
+    srcloc.extend(line_spans.iter().map(|span| {
+        llvm::LLVMValueAsMetadata(
+            bx.const_u64(u64::from(span.lo().to_u32()) | (u64::from(span.hi().to_u32()) << 32)),
+        )
+    }));
+    let md = unsafe { llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len()) };
+    let md = bx.get_metadata_value(md);
+    llvm::LLVMSetMetadata(call, kind, md);
+
+    Some(call)
 }
 
 /// If the register is an xmm/ymm/zmm register then return its index.
