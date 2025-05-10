@@ -885,8 +885,7 @@ marker_impls! {
 ///
 /// This is part of [RFC 3467](https://rust-lang.github.io/rfcs/3467-unsafe-pinned.html), and is
 /// tracked by [#125735](https://github.com/rust-lang/rust/issues/125735).
-#[cfg_attr(not(bootstrap), lang = "unsafe_unpin")]
-#[cfg_attr(bootstrap, allow(dead_code))]
+#[lang = "unsafe_unpin"]
 pub(crate) unsafe auto trait UnsafeUnpin {}
 
 impl<T: ?Sized> !UnsafeUnpin for UnsafePinned<T> {}
