@@ -96,4 +96,10 @@ unsafe fn test_string(ptr: *mut String) {
     //~^ WARN implicit autoref
 }
 
+unsafe fn slice_ptr_len_because_of_msrv<T>(slice: *const [T]) {
+    let _ = (&(&(*slice))[..]).len();
+    //~^ WARN implicit autoref
+    //~^^ WARN implicit autoref
+}
+
 fn main() {}
