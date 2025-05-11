@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::builder::Builder;
-use crate::common::{AsCCharPtr, Funclet};
+use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
@@ -477,8 +477,7 @@ pub(crate) fn inline_asm_call<'ll>(
     debug!("Asm Output Type: {:?}", output);
     let fty = bx.cx.type_func(&argtys, output);
     // Ask LLVM to verify that the constraints are well-formed.
-    let constraints_ok =
-        unsafe { llvm::LLVMRustInlineAsmVerify(fty, cons.as_c_char_ptr(), cons.len()) };
+    let constraints_ok = unsafe { llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr(), cons.len()) };
     debug!("constraint verification result: {:?}", constraints_ok);
     if constraints_ok {
         let v = unsafe {

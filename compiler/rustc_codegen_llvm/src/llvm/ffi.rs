@@ -2013,7 +2013,7 @@ unsafe extern "C" {
 
     pub(crate) fn LLVMRustInlineAsmVerify(
         Ty: &Type,
-        Constraints: *const c_char,
+        Constraints: *const c_uchar, // See "PTR_LEN_STR".
         ConstraintsLen: size_t,
     ) -> bool;
 
