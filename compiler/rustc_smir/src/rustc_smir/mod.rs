@@ -9,18 +9,17 @@
 
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::ops::Index;
 
 use bridge::*;
 use context::SmirCtxt;
-use rustc_hir::def::DefKind;
+use rustc_data_structures::fx::{self, FxIndexMap};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
-
-use crate::rustc_internal::IndexMap;
 
 pub mod alloc;
 pub mod bridge;
@@ -232,6 +231,38 @@ pub trait IndexedVal {
     fn to_val(index: usize) -> Self;
 
     fn to_index(&self) -> usize;
+}
+
+/// Similar to rustc's `FxIndexMap`, `IndexMap` with extra
+/// safety features added.
+pub struct IndexMap<K, V> {
+    index_map: fx::FxIndexMap<K, V>,
+}
+
+impl<K, V> Default for IndexMap<K, V> {
+    fn default() -> Self {
+        Self { index_map: FxIndexMap::default() }
+    }
+}
+
+impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {
+    pub fn create_or_fetch(&mut self, key: K) -> V {
+        let len = self.index_map.len();
+        let v = self.index_map.entry(key).or_insert(V::to_val(len));
+        *v
+    }
+}
+
+impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V>
+    for IndexMap<K, V>
+{
+    type Output = K;
+
+    fn index(&self, index: V) -> &Self::Output {
+        let (k, v) = self.index_map.get_index(index.to_index()).unwrap();
+        assert_eq!(*v, index, "Provided value doesn't match with indexed value");
+        k
+    }
 }
 
 /// Iterate over the definitions of the given crate.

@@ -4,12 +4,7 @@
 //! until stable MIR is complete.
 
 use std::cell::{Cell, RefCell};
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::ops::Index;
 
-use rustc_data_structures::fx;
-use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::CrateNum;
 use scoped_tls::scoped_thread_local;
@@ -17,7 +12,7 @@ use stable_mir::Error;
 use stable_mir::convert::{RustcInternal, Stable};
 
 use crate::rustc_smir::context::SmirCtxt;
-use crate::rustc_smir::{Bridge, IndexedVal, SmirContainer, Tables};
+use crate::rustc_smir::{Bridge, SmirContainer, Tables};
 use crate::stable_mir;
 
 pub mod pretty;
@@ -272,36 +267,4 @@ macro_rules! run_driver {
 
         StableMir::new($callback).run($args)
     }};
-}
-
-/// Similar to rustc's `FxIndexMap`, `IndexMap` with extra
-/// safety features added.
-pub struct IndexMap<K, V> {
-    index_map: fx::FxIndexMap<K, V>,
-}
-
-impl<K, V> Default for IndexMap<K, V> {
-    fn default() -> Self {
-        Self { index_map: FxIndexMap::default() }
-    }
-}
-
-impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {
-    pub fn create_or_fetch(&mut self, key: K) -> V {
-        let len = self.index_map.len();
-        let v = self.index_map.entry(key).or_insert(V::to_val(len));
-        *v
-    }
-}
-
-impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V>
-    for IndexMap<K, V>
-{
-    type Output = K;
-
-    fn index(&self, index: V) -> &Self::Output {
-        let (k, v) = self.index_map.get_index(index.to_index()).unwrap();
-        assert_eq!(*v, index, "Provided value doesn't match with indexed value");
-        k
-    }
 }
