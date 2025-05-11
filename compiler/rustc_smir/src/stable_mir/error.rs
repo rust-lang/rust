@@ -7,7 +7,7 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::{fmt, io};
 
-use rustc_smir::SmirError;
+use rustc_smir::bridge::SmirError;
 
 use crate::rustc_smir;
 
