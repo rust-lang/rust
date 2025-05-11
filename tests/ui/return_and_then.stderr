@@ -101,5 +101,50 @@ LL +         })?;
 LL +         if x.len() > 2 { Some(3) } else { None }
    |
 
-error: aborting due to 7 previous errors
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:69:13
+   |
+LL |             Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None })
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             let x = Some("")?;
+LL +             if x.len() > 2 { Some(3) } else { None }
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:77:20
+   |
+LL |             return Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None });
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL ~             return {
+LL +                 let x = Some("")?;
+LL +                 if x.len() > 2 { Some(3) } else { None }
+LL ~             };
+   |
+
+error: use the `?` operator instead of an `and_then` call
+  --> tests/ui/return_and_then.rs:85:20
+   |
+LL |               return Some("").and_then(|mut x| {
+   |  ____________________^
+LL | |                 let x = format!("{x}.");
+LL | |                 if x.len() > 2 { Some(3) } else { None }
+LL | |             });
+   | |______________^
+   |
+help: try
+   |
+LL ~             return {
+LL +                 let mut x = Some("")?;
+LL +                 let x = format!("{x}.");
+LL +                 if x.len() > 2 { Some(3) } else { None }
+LL ~             };
+   |
+
+error: aborting due to 10 previous errors
 
