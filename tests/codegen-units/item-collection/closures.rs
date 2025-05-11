@@ -1,5 +1,5 @@
 //@ edition: 2021
-//@ compile-flags: -Zprint-mono-items=eager --crate-type=lib
+//@ compile-flags: -Clink-dead-code --crate-type=lib
 
 //~ MONO_ITEM fn async_fn @@
 //~ MONO_ITEM fn async_fn::{closure#0} @@
