@@ -159,6 +159,58 @@ pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId,
     }
 }
 
+/// Parse the value of `-Ctarget-feature`, also expanding implied features,
+/// and call the closure for each (expanded) Rust feature. If the list contains
+/// a syntactically invalid item (not starting with `+`/`-`), the error callback is invoked.
+fn parse_rust_feature_flag<'a>(
+    sess: &Session,
+    target_feature_flag: &'a str,
+    err_callback: impl Fn(&'a str),
+    mut callback: impl FnMut(
+        /* base_feature */ &'a str,
+        /* with_implied */ FxHashSet<&'a str>,
+        /* enable */ bool,
+    ),
+) {
+    // A cache for the backwards implication map.
+    let mut inverse_implied_features: Option<FxHashMap<&str, FxHashSet<&str>>> = None;
+
+    for feature in target_feature_flag.split(',') {
+        if let Some(base_feature) = feature.strip_prefix('+') {
+            callback(base_feature, sess.target.implied_target_features(base_feature), true)
+        } else if let Some(base_feature) = feature.strip_prefix('-') {
+            // If `f1` implies `f2`, then `!f2` implies `!f1` -- this is standard logical contraposition.
+            // So we have to find all the reverse implications of `base_feature` and disable them, too.
+
+            let inverse_implied_features = inverse_implied_features.get_or_insert_with(|| {
+                let mut set: FxHashMap<&str, FxHashSet<&str>> = FxHashMap::default();
+                for (f, _, is) in sess.target.rust_target_features() {
+                    for i in is.iter() {
+                        set.entry(i).or_default().insert(f);
+                    }
+                }
+                set
+            });
+
+            // Inverse mplied target features have their own inverse implied target features, so we
+            // traverse the map until there are no more features to add.
+            let mut features = FxHashSet::default();
+            let mut new_features = vec![base_feature];
+            while let Some(new_feature) = new_features.pop() {
+                if features.insert(new_feature) {
+                    if let Some(implied_features) = inverse_implied_features.get(&new_feature) {
+                        new_features.extend(implied_features)
+                    }
+                }
+            }
+
+            callback(base_feature, features, false)
+        } else if !feature.is_empty() {
+            err_callback(feature)
+        }
+    }
+}
+
 /// Utility function for a codegen backend to compute `cfg(target_feature)`, or more specifically,
 /// to populate `sess.unstable_target_features` and `sess.target_features` (these are the first and
 /// 2nd component of the return value, respectively).
@@ -175,7 +227,7 @@ pub fn cfg_target_feature(
 ) -> (Vec<Symbol>, Vec<Symbol>) {
     // Compute which of the known target features are enabled in the 'base' target machine. We only
     // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
-    let mut features: FxHashSet<Symbol> = sess
+    let mut features: UnordSet<Symbol> = sess
         .target
         .rust_target_features()
         .iter()
@@ -190,43 +242,23 @@ pub fn cfg_target_feature(
         .collect();
 
     // Add enabled and remove disabled features.
-    for (enabled, feature) in
-        target_feature_flag.split(',').filter_map(|s| match s.chars().next() {
-            Some('+') => Some((true, Symbol::intern(&s[1..]))),
-            Some('-') => Some((false, Symbol::intern(&s[1..]))),
-            _ => None,
-        })
-    {
-        if enabled {
-            // Also add all transitively implied features.
-
-            // We don't care about the order in `features` since the only thing we use it for is the
-            // `features.contains` below.
+    parse_rust_feature_flag(
+        sess,
+        target_feature_flag,
+        /* err_callback */ |_| {},
+        |_base_feature, new_features, enabled| {
+            // Iteration order is irrelevant since this only influences an `UnordSet`.
             #[allow(rustc::potential_query_instability)]
-            features.extend(
-                sess.target
-                    .implied_target_features(feature.as_str())
-                    .iter()
-                    .map(|s| Symbol::intern(s)),
-            );
-        } else {
-            // Remove transitively reverse-implied features.
-
-            // We don't care about the order in `features` since the only thing we use it for is the
-            // `features.contains` below.
-            #[allow(rustc::potential_query_instability)]
-            features.retain(|f| {
-                if sess.target.implied_target_features(f.as_str()).contains(&feature.as_str()) {
-                    // If `f` if implies `feature`, then `!feature` implies `!f`, so we have to
-                    // remove `f`. (This is the standard logical contraposition principle.)
-                    false
-                } else {
-                    // We can keep `f`.
-                    true
+            if enabled {
+                features.extend(new_features.into_iter().map(|f| Symbol::intern(f)));
+            } else {
+                // Remove `new_features` from `features`.
+                for new in new_features {
+                    features.remove(&Symbol::intern(new));
                 }
-            });
-        }
-    }
+            }
+        },
+    );
 
     // Filter enabled features based on feature gates.
     let f = |allow_unstable| {
@@ -289,85 +321,82 @@ pub fn flag_to_backend_features<'a, const N: usize>(
 
     // Compute implied features
     let mut rust_features = vec![];
-    for feature in sess.opts.cg.target_feature.split(',') {
-        if let Some(feature) = feature.strip_prefix('+') {
-            rust_features.extend(
-                UnordSet::from(sess.target.implied_target_features(feature))
-                    .to_sorted_stable_ord()
-                    .iter()
-                    .map(|&&s| (true, s)),
-            )
-        } else if let Some(feature) = feature.strip_prefix('-') {
-            // FIXME: Why do we not remove implied features on "-" here?
-            // We do the equivalent above in `target_config`.
-            // See <https://github.com/rust-lang/rust/issues/134792>.
-            rust_features.push((false, feature));
-        } else if !feature.is_empty() {
+    parse_rust_feature_flag(
+        sess,
+        &sess.opts.cg.target_feature,
+        /* err_callback */
+        |feature| {
             if diagnostics {
                 sess.dcx().emit_warn(errors::UnknownCTargetFeaturePrefix { feature });
             }
-        }
-    }
-    // Remove features that are meant for rustc, not the backend.
-    rust_features.retain(|(_, feature)| {
-        // Retain if it is not a rustc feature
-        !RUSTC_SPECIFIC_FEATURES.contains(feature)
-    });
+        },
+        |base_feature, new_features, enable| {
+            // Skip features that are meant for rustc, not the backend.
+            if RUSTC_SPECIFIC_FEATURES.contains(&base_feature) {
+                return;
+            }
 
-    // Check feature validity.
-    if diagnostics {
-        let mut featsmap = FxHashMap::default();
-
-        for &(enable, feature) in &rust_features {
-            let feature_state = known_features.iter().find(|&&(v, _, _)| v == feature);
-            match feature_state {
-                None => {
-                    // This is definitely not a valid Rust feature name. Maybe it is a backend feature name?
-                    // If so, give a better error message.
-                    let rust_feature = known_features.iter().find_map(|&(rust_feature, _, _)| {
-                        let backend_features = to_backend_features(rust_feature);
-                        if backend_features.contains(&feature)
-                            && !backend_features.contains(&rust_feature)
-                        {
-                            Some(rust_feature)
+            rust_features.extend(
+                UnordSet::from(new_features).to_sorted_stable_ord().iter().map(|&&s| (enable, s)),
+            );
+            // Check feature validity.
+            if diagnostics {
+                let feature_state = known_features.iter().find(|&&(v, _, _)| v == base_feature);
+                match feature_state {
+                    None => {
+                        // This is definitely not a valid Rust feature name. Maybe it is a backend feature name?
+                        // If so, give a better error message.
+                        let rust_feature =
+                            known_features.iter().find_map(|&(rust_feature, _, _)| {
+                                let backend_features = to_backend_features(rust_feature);
+                                if backend_features.contains(&base_feature)
+                                    && !backend_features.contains(&rust_feature)
+                                {
+                                    Some(rust_feature)
+                                } else {
+                                    None
+                                }
+                            });
+                        let unknown_feature = if let Some(rust_feature) = rust_feature {
+                            errors::UnknownCTargetFeature {
+                                feature: base_feature,
+                                rust_feature: errors::PossibleFeature::Some { rust_feature },
+                            }
                         } else {
-                            None
+                            errors::UnknownCTargetFeature {
+                                feature: base_feature,
+                                rust_feature: errors::PossibleFeature::None,
+                            }
+                        };
+                        sess.dcx().emit_warn(unknown_feature);
+                    }
+                    Some((_, stability, _)) => {
+                        if let Err(reason) = stability.toggle_allowed() {
+                            sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
+                                feature: base_feature,
+                                enabled: if enable { "enabled" } else { "disabled" },
+                                reason,
+                            });
+                        } else if stability.requires_nightly().is_some() {
+                            // An unstable feature. Warn about using it. It makes little sense
+                            // to hard-error here since we just warn about fully unknown
+                            // features above.
+                            sess.dcx().emit_warn(errors::UnstableCTargetFeature {
+                                feature: base_feature,
+                            });
                         }
-                    });
-                    let unknown_feature = if let Some(rust_feature) = rust_feature {
-                        errors::UnknownCTargetFeature {
-                            feature,
-                            rust_feature: errors::PossibleFeature::Some { rust_feature },
-                        }
-                    } else {
-                        errors::UnknownCTargetFeature {
-                            feature,
-                            rust_feature: errors::PossibleFeature::None,
-                        }
-                    };
-                    sess.dcx().emit_warn(unknown_feature);
-                }
-                Some((_, stability, _)) => {
-                    if let Err(reason) = stability.toggle_allowed() {
-                        sess.dcx().emit_warn(errors::ForbiddenCTargetFeature {
-                            feature,
-                            enabled: if enable { "enabled" } else { "disabled" },
-                            reason,
-                        });
-                    } else if stability.requires_nightly().is_some() {
-                        // An unstable feature. Warn about using it. It makes little sense
-                        // to hard-error here since we just warn about fully unknown
-                        // features above.
-                        sess.dcx().emit_warn(errors::UnstableCTargetFeature { feature });
                     }
                 }
             }
+        },
+    );
 
-            // FIXME(nagisa): figure out how to not allocate a full hashset here.
-            featsmap.insert(feature, enable);
-        }
-
-        if let Some(f) = check_tied_features(sess, &featsmap) {
+    if diagnostics {
+        // FIXME(nagisa): figure out how to not allocate a full hashmap here.
+        if let Some(f) = check_tied_features(
+            sess,
+            &FxHashMap::from_iter(rust_features.iter().map(|&(enable, feature)| (feature, enable))),
+        ) {
             sess.dcx().emit_err(errors::TargetFeatureDisableOrEnable {
                 features: f,
                 span: None,
