@@ -46,7 +46,7 @@ The rules for the latter implementation are slightly complicated, since they
 may allow more than one parameter to be changed (not necessarily unsized) and
 are best stated in terms of the tail field of the struct.
 
-[`unsized_tuple_coercion`]: https://doc.rust-lang.org/beta/unstable-book/language-features/unsized-tuple-coercion.html
+[`unsized_tuple_coercion`]: https://doc.rust-lang.org/stable/unstable-book/language-features/unsized-tuple-coercion.html
 
 ## Upcasting implementations
 
