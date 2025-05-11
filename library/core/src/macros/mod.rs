@@ -1529,17 +1529,6 @@ pub(crate) mod builtin {
     /// - `INPUT_ACTIVITIES`: Specifies one valid activity for each input parameter.
     /// - `OUTPUT_ACTIVITY`: Must not be set if the function implicitly returns nothing
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::autodiff::autodiff_forward;
-    ///
-    /// #[autodiff_forward(df, Dual, Dual, Dual)]
-    /// fn f(x: f64, y: f64) -> f64 {
-    ///     x * y
-    /// }
-    /// ```
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
@@ -1559,17 +1548,6 @@ pub(crate) mod builtin {
     /// - `INPUT_ACTIVITIES`: Specifies one valid activity for each input parameter.
     /// - `OUTPUT_ACTIVITY`: Must not be set if the function implicitly returns nothing
     ///   (or explicitly returns `-> ()`). Otherwise, it must be set to one of the allowed activities.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::autodiff::autodiff_reverse;
-    ///
-    /// #[autodiff_reverse(df, Active, Active, Active)]
-    /// fn f(x: f64, y: f64) -> f64 {
-    ///     x * y
-    /// }
-    /// ```
     #[unstable(feature = "autodiff", issue = "124509")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
