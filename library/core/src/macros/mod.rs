@@ -1533,6 +1533,8 @@ pub(crate) mod builtin {
     /// # Example
     ///
     /// ```rust
+    /// use std::autodiff::autodiff_forward;
+    ///
     /// #[autodiff_forward(df, Dual, Dual, Dual)]
     /// fn f(x: f64, y: f64) -> f64 {
     ///     x * y
@@ -1561,6 +1563,8 @@ pub(crate) mod builtin {
     /// # Example
     ///
     /// ```rust
+    /// use std::autodiff::autodiff_reverse;
+    ///
     /// #[autodiff_reverse(df, Active, Active, Active)]
     /// fn f(x: f64, y: f64) -> f64 {
     ///     x * y
