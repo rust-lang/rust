@@ -7,6 +7,7 @@ pub mod on_unimplemented_format;
 mod overflow;
 pub mod suggestions;
 
+use std::cmp::Reverse;
 use std::{fmt, iter};
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -136,6 +137,15 @@ pub enum DefIdOrName {
     Name(&'static str),
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum ErrorSortKey {
+    SubtypeFormat(Reverse<usize>),
+    OtherKind,
+    ClauseTraitSized,
+    Coerce,
+    ClauseWellFormed,
+}
+
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,
@@ -162,15 +172,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
         // with more relevant type information and hide redundant E0282 errors.
-        errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
-                if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
-            {
-                1
+        errors.sort_by_key(|e| {
+            let span = e.obligation.cause.span;
+            let outer_expn_data = span.ctxt().outer_expn_data();
+
+            match e.obligation.predicate.kind().skip_binder() {
+                ty::PredicateKind::Subtype(_)
+                    if matches! (
+                        outer_expn_data.kind,
+                        ExpnKind::Macro(_, name) if matches!(
+                            name.as_str().rsplit("::").next(),
+                            Some("format_args" | "format_args_nl")
+                        )
+                    ) =>
+                {
+                    let sm = self.tcx.sess.source_map();
+                    let lc = sm.span_to_location_info(span);
+
+                    if sm.span_to_embeddable_string(span)
+                        == sm.span_to_embeddable_string(outer_expn_data.call_site)
+                    {
+                        ErrorSortKey::OtherKind
+                    } else {
+                        ErrorSortKey::SubtypeFormat(Reverse(lc.2))
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
+                    if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
+                {
+                    ErrorSortKey::ClauseTraitSized
+                }
+                ty::PredicateKind::Coerce(_) => ErrorSortKey::Coerce,
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {
+                    ErrorSortKey::ClauseWellFormed
+                }
+                _ => ErrorSortKey::OtherKind,
             }
-            ty::PredicateKind::Coerce(_) => 2,
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            _ => 0,
         });
 
         for (index, error) in errors.iter().enumerate() {
