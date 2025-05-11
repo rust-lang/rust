@@ -163,8 +163,7 @@ pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId,
 /// and call the closure for each (expanded) Rust feature. If the list contains
 /// a syntactically invalid item (not starting with `+`/`-`), the error callback is invoked.
 fn parse_rust_feature_flag<'a>(
-    sess: &Session,
-    target_feature_flag: &'a str,
+    sess: &'a Session,
     err_callback: impl Fn(&'a str),
     mut callback: impl FnMut(
         /* base_feature */ &'a str,
@@ -175,7 +174,7 @@ fn parse_rust_feature_flag<'a>(
     // A cache for the backwards implication map.
     let mut inverse_implied_features: Option<FxHashMap<&str, FxHashSet<&str>>> = None;
 
-    for feature in target_feature_flag.split(',') {
+    for feature in sess.opts.cg.target_feature.split(',') {
         if let Some(base_feature) = feature.strip_prefix('+') {
             callback(base_feature, sess.target.implied_target_features(base_feature), true)
         } else if let Some(base_feature) = feature.strip_prefix('-') {
@@ -215,15 +214,13 @@ fn parse_rust_feature_flag<'a>(
 /// to populate `sess.unstable_target_features` and `sess.target_features` (these are the first and
 /// 2nd component of the return value, respectively).
 ///
-/// `target_feature_flag` is the value of `-Ctarget-feature` (giving the caller a chance to override it).
 /// `target_base_has_feature` should check whether the given feature (a Rust feature name!) is enabled
 /// in the "base" target machine, i.e., without applying `-Ctarget-feature`.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled elsewhere.
 pub fn cfg_target_feature(
     sess: &Session,
-    target_feature_flag: &str,
-    mut is_feature_enabled: impl FnMut(&str) -> bool,
+    mut target_base_has_feature: impl FnMut(&str) -> bool,
 ) -> (Vec<Symbol>, Vec<Symbol>) {
     // Compute which of the known target features are enabled in the 'base' target machine. We only
     // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
@@ -236,7 +233,7 @@ pub fn cfg_target_feature(
             if RUSTC_SPECIAL_FEATURES.contains(feature) {
                 return true;
             }
-            is_feature_enabled(feature)
+            target_base_has_feature(feature)
         })
         .map(|(feature, _, _)| Symbol::intern(feature))
         .collect();
@@ -244,7 +241,6 @@ pub fn cfg_target_feature(
     // Add enabled and remove disabled features.
     parse_rust_feature_flag(
         sess,
-        target_feature_flag,
         /* err_callback */ |_| {},
         |_base_feature, new_features, enabled| {
             // Iteration order is irrelevant since this only influences an `UnordSet`.
@@ -323,7 +319,6 @@ pub fn flag_to_backend_features<'a, const N: usize>(
     let mut rust_features = vec![];
     parse_rust_feature_flag(
         sess,
-        &sess.opts.cg.target_feature,
         /* err_callback */
         |feature| {
             if diagnostics {
