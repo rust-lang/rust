@@ -13,34 +13,6 @@ use crate::{
     Ty, Variant, Visibility, WherePredicate,
 };
 
-/// A utility trait to reduce boilerplate.
-/// Standard `Deref(Mut)` cannot be reused due to coherence.
-pub trait AstDeref {
-    type Target;
-    fn ast_deref(&self) -> &Self::Target;
-    fn ast_deref_mut(&mut self) -> &mut Self::Target;
-}
-
-macro_rules! impl_not_ast_deref {
-    ($($T:ty),+ $(,)?) => {
-        $(
-            impl !AstDeref for $T {}
-        )+
-    };
-}
-
-impl_not_ast_deref!(AssocItem, Expr, ForeignItem, Item, Stmt);
-
-impl<T> AstDeref for P<T> {
-    type Target = T;
-    fn ast_deref(&self) -> &Self::Target {
-        self
-    }
-    fn ast_deref_mut(&mut self) -> &mut Self::Target {
-        self
-    }
-}
-
 /// A trait for AST nodes having an ID.
 pub trait HasNodeId {
     fn node_id(&self) -> NodeId;
@@ -81,12 +53,12 @@ impl_has_node_id!(
     WherePredicate,
 );
 
-impl<T: AstDeref<Target: HasNodeId>> HasNodeId for T {
+impl<T: HasNodeId> HasNodeId for P<T> {
     fn node_id(&self) -> NodeId {
-        self.ast_deref().node_id()
+        (**self).node_id()
     }
     fn node_id_mut(&mut self) -> &mut NodeId {
-        self.ast_deref_mut().node_id_mut()
+        (**self).node_id_mut()
     }
 }
 
@@ -138,21 +110,21 @@ impl_has_tokens_none!(
     WherePredicate
 );
 
-impl<T: AstDeref<Target: HasTokens>> HasTokens for T {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
-        self.ast_deref().tokens()
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
-        self.ast_deref_mut().tokens_mut()
-    }
-}
-
 impl<T: HasTokens> HasTokens for Option<T> {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
         self.as_ref().and_then(|inner| inner.tokens())
     }
     fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
         self.as_mut().and_then(|inner| inner.tokens_mut())
+    }
+}
+
+impl<T: HasTokens> HasTokens for P<T> {
+    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
+        (**self).tokens()
+    }
+    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
+        (**self).tokens_mut()
     }
 }
 
@@ -273,13 +245,13 @@ impl_has_attrs!(
 );
 impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
 
-impl<T: AstDeref<Target: HasAttrs>> HasAttrs for T {
-    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::Target::SUPPORTS_CUSTOM_INNER_ATTRS;
+impl<T: HasAttrs> HasAttrs for P<T> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;
     fn attrs(&self) -> &[Attribute] {
-        self.ast_deref().attrs()
+        (**self).attrs()
     }
     fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
-        self.ast_deref_mut().visit_attrs(f)
+        (**self).visit_attrs(f);
     }
 }
 
@@ -343,13 +315,22 @@ impl<Wrapped, Tag> AstNodeWrapper<Wrapped, Tag> {
     }
 }
 
-impl<Wrapped, Tag> AstDeref for AstNodeWrapper<Wrapped, Tag> {
-    type Target = Wrapped;
-    fn ast_deref(&self) -> &Self::Target {
-        &self.wrapped
+impl<Wrapped: HasNodeId, Tag> HasNodeId for AstNodeWrapper<Wrapped, Tag> {
+    fn node_id(&self) -> NodeId {
+        self.wrapped.node_id()
     }
-    fn ast_deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.wrapped
+    fn node_id_mut(&mut self) -> &mut NodeId {
+        self.wrapped.node_id_mut()
+    }
+}
+
+impl<Wrapped: HasAttrs, Tag> HasAttrs for AstNodeWrapper<Wrapped, Tag> {
+    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = Wrapped::SUPPORTS_CUSTOM_INNER_ATTRS;
+    fn attrs(&self) -> &[Attribute] {
+        self.wrapped.attrs()
+    }
+    fn visit_attrs(&mut self, f: impl FnOnce(&mut AttrVec)) {
+        self.wrapped.visit_attrs(f);
     }
 }
 
