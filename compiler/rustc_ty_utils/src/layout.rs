@@ -492,9 +492,7 @@ fn layout_of_uncached<'tcx>(
         ty::Coroutine(def_id, args) => {
             use rustc_middle::ty::layout::PrimitiveExt as _;
 
-            let Some(info) = tcx.coroutine_layout(def_id, args) else {
-                return Err(error(cx, LayoutError::Unknown(ty)));
-            };
+            let info = tcx.coroutine_layout(def_id, args)?;
 
             let local_layouts = info
                 .field_tys
