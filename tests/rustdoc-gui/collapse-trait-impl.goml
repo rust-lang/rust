@@ -1,5 +1,4 @@
 // Checks that individual trait impls can only be collapsed via clicking directly on the summary element
-include: "utils.goml"
 
 go-to: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 assert-attribute: ("details:has(#trait-impl-link-in-summary)", {"open": ""})
