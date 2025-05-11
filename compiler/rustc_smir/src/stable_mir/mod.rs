@@ -278,3 +278,40 @@ impl std::fmt::Debug for Opaque {
 pub fn opaque<T: Debug>(value: &T) -> Opaque {
     Opaque(format!("{value:?}"))
 }
+
+macro_rules! bridge_impl {
+    ($name: ident, $ty: ty) => {
+        impl rustc_smir::bridge::$name<compiler_interface::BridgeTys> for $ty {
+            fn new(def: stable_mir::DefId) -> Self {
+                Self(def)
+            }
+        }
+    };
+}
+
+bridge_impl!(CrateItem, stable_mir::CrateItem);
+bridge_impl!(AdtDef, stable_mir::ty::AdtDef);
+bridge_impl!(ForeignModuleDef, stable_mir::ty::ForeignModuleDef);
+bridge_impl!(ForeignDef, stable_mir::ty::ForeignDef);
+bridge_impl!(FnDef, stable_mir::ty::FnDef);
+bridge_impl!(ClosureDef, stable_mir::ty::ClosureDef);
+bridge_impl!(CoroutineDef, stable_mir::ty::CoroutineDef);
+bridge_impl!(CoroutineClosureDef, stable_mir::ty::CoroutineClosureDef);
+bridge_impl!(AliasDef, stable_mir::ty::AliasDef);
+bridge_impl!(ParamDef, stable_mir::ty::ParamDef);
+bridge_impl!(BrNamedDef, stable_mir::ty::BrNamedDef);
+bridge_impl!(TraitDef, stable_mir::ty::TraitDef);
+bridge_impl!(GenericDef, stable_mir::ty::GenericDef);
+bridge_impl!(ConstDef, stable_mir::ty::ConstDef);
+bridge_impl!(ImplDef, stable_mir::ty::ImplDef);
+bridge_impl!(RegionDef, stable_mir::ty::RegionDef);
+bridge_impl!(CoroutineWitnessDef, stable_mir::ty::CoroutineWitnessDef);
+bridge_impl!(AssocDef, stable_mir::ty::AssocDef);
+bridge_impl!(OpaqueDef, stable_mir::ty::OpaqueDef);
+bridge_impl!(StaticDef, stable_mir::mir::mono::StaticDef);
+
+impl rustc_smir::bridge::Prov<compiler_interface::BridgeTys> for stable_mir::ty::Prov {
+    fn new(aid: stable_mir::mir::alloc::AllocId) -> Self {
+        Self(aid)
+    }
+}

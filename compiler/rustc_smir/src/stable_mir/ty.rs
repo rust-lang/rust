@@ -1,19 +1,18 @@
 use std::fmt::{self, Debug, Display, Formatter};
 use std::ops::Range;
 
-use rustc_smir::IndexedVal;
 use serde::Serialize;
 use stable_mir::abi::{FnAbi, Layout};
 use stable_mir::crate_def::{CrateDef, CrateDefItems, CrateDefType};
 use stable_mir::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use stable_mir::mir::mono::StaticDef;
 use stable_mir::target::MachineInfo;
-use stable_mir::{Filename, Opaque};
+use stable_mir::{Filename, IndexedVal, Opaque};
 
 use super::abi::ReprOptions;
 use super::mir::{Body, Mutability, Safety};
 use super::{DefId, Error, Symbol, with};
-use crate::{rustc_smir, stable_mir};
+use crate::stable_mir;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Ty(usize);
@@ -1566,7 +1565,7 @@ pub enum PredicatePolarity {
 
 macro_rules! index_impl {
     ($name:ident) => {
-        impl crate::rustc_smir::IndexedVal for $name {
+        impl stable_mir::IndexedVal for $name {
             fn to_val(index: usize) -> Self {
                 $name(index)
             }

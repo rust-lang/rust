@@ -9,17 +9,21 @@
 
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::ops::Index;
 
+use bridge::*;
 use context::SmirCtxt;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_span::Span;
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 
 use crate::rustc_internal::IndexMap;
 
 pub mod alloc;
+pub mod bridge;
 mod builder;
 pub mod context;
 
@@ -30,14 +34,14 @@ pub struct SmirContainer<'tcx, B: Bridge> {
 }
 
 pub struct Tables<'tcx, B: Bridge> {
-    pub(crate) def_ids: IndexMap<DefId, B::DefId>,
-    pub(crate) alloc_ids: IndexMap<AllocId, B::AllocId>,
-    pub(crate) spans: IndexMap<rustc_span::Span, B::Span>,
-    pub(crate) types: IndexMap<Ty<'tcx>, B::Ty>,
-    pub(crate) instances: IndexMap<ty::Instance<'tcx>, B::InstanceDef>,
-    pub(crate) ty_consts: IndexMap<ty::Const<'tcx>, B::TyConstId>,
-    pub(crate) mir_consts: IndexMap<mir::Const<'tcx>, B::MirConstId>,
-    pub(crate) layouts: IndexMap<rustc_abi::Layout<'tcx>, B::Layout>,
+    pub def_ids: IndexMap<DefId, B::DefId>,
+    pub alloc_ids: IndexMap<AllocId, B::AllocId>,
+    pub spans: IndexMap<rustc_span::Span, B::Span>,
+    pub types: IndexMap<Ty<'tcx>, B::Ty>,
+    pub instances: IndexMap<ty::Instance<'tcx>, B::InstanceDef>,
+    pub ty_consts: IndexMap<ty::Const<'tcx>, B::TyConstId>,
+    pub mir_consts: IndexMap<mir::Const<'tcx>, B::MirConstId>,
+    pub layouts: IndexMap<rustc_abi::Layout<'tcx>, B::Layout>,
 }
 
 impl<'tcx, B: Bridge> Default for Tables<'tcx, B> {
@@ -55,23 +59,142 @@ impl<'tcx, B: Bridge> Default for Tables<'tcx, B> {
     }
 }
 
+impl<'tcx, B: Bridge> Index<B::DefId> for Tables<'tcx, B> {
+    type Output = DefId;
+
+    #[inline(always)]
+    fn index(&self, index: B::DefId) -> &Self::Output {
+        &self.def_ids[index]
+    }
+}
+
 impl<'tcx, B: Bridge> Tables<'tcx, B> {
-    pub(crate) fn intern_ty(&mut self, ty: Ty<'tcx>) -> B::Ty {
+    pub fn intern_ty(&mut self, ty: Ty<'tcx>) -> B::Ty {
         self.types.create_or_fetch(ty)
     }
 
-    pub(crate) fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> B::TyConstId {
+    pub fn intern_ty_const(&mut self, ct: ty::Const<'tcx>) -> B::TyConstId {
         self.ty_consts.create_or_fetch(ct)
     }
 
-    pub(crate) fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> B::MirConstId {
+    pub fn intern_mir_const(&mut self, constant: mir::Const<'tcx>) -> B::MirConstId {
         self.mir_consts.create_or_fetch(constant)
+    }
+
+    pub fn create_def_id(&mut self, did: DefId) -> B::DefId {
+        self.def_ids.create_or_fetch(did)
+    }
+
+    pub fn create_alloc_id(&mut self, aid: AllocId) -> B::AllocId {
+        self.alloc_ids.create_or_fetch(aid)
+    }
+
+    pub fn create_span(&mut self, span: Span) -> B::Span {
+        self.spans.create_or_fetch(span)
+    }
+
+    pub fn instance_def(&mut self, instance: ty::Instance<'tcx>) -> B::InstanceDef {
+        self.instances.create_or_fetch(instance)
+    }
+
+    pub fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> B::Layout {
+        self.layouts.create_or_fetch(layout)
+    }
+
+    pub fn crate_item(&mut self, did: rustc_span::def_id::DefId) -> B::CrateItem {
+        B::CrateItem::new(self.create_def_id(did))
+    }
+
+    pub fn adt_def(&mut self, did: rustc_span::def_id::DefId) -> B::AdtDef {
+        B::AdtDef::new(self.create_def_id(did))
+    }
+
+    pub fn foreign_module_def(&mut self, did: rustc_span::def_id::DefId) -> B::ForeignModuleDef {
+        B::ForeignModuleDef::new(self.create_def_id(did))
+    }
+
+    pub fn foreign_def(&mut self, did: rustc_span::def_id::DefId) -> B::ForeignDef {
+        B::ForeignDef::new(self.create_def_id(did))
+    }
+
+    pub fn fn_def(&mut self, did: rustc_span::def_id::DefId) -> B::FnDef {
+        B::FnDef::new(self.create_def_id(did))
+    }
+
+    pub fn closure_def(&mut self, did: rustc_span::def_id::DefId) -> B::ClosureDef {
+        B::ClosureDef::new(self.create_def_id(did))
+    }
+
+    pub fn coroutine_def(&mut self, did: rustc_span::def_id::DefId) -> B::CoroutineDef {
+        B::CoroutineDef::new(self.create_def_id(did))
+    }
+
+    pub fn coroutine_closure_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> B::CoroutineClosureDef {
+        B::CoroutineClosureDef::new(self.create_def_id(did))
+    }
+
+    pub fn alias_def(&mut self, did: rustc_span::def_id::DefId) -> B::AliasDef {
+        B::AliasDef::new(self.create_def_id(did))
+    }
+
+    pub fn param_def(&mut self, did: rustc_span::def_id::DefId) -> B::ParamDef {
+        B::ParamDef::new(self.create_def_id(did))
+    }
+
+    pub fn br_named_def(&mut self, did: rustc_span::def_id::DefId) -> B::BrNamedDef {
+        B::BrNamedDef::new(self.create_def_id(did))
+    }
+
+    pub fn trait_def(&mut self, did: rustc_span::def_id::DefId) -> B::TraitDef {
+        B::TraitDef::new(self.create_def_id(did))
+    }
+
+    pub fn generic_def(&mut self, did: rustc_span::def_id::DefId) -> B::GenericDef {
+        B::GenericDef::new(self.create_def_id(did))
+    }
+
+    pub fn const_def(&mut self, did: rustc_span::def_id::DefId) -> B::ConstDef {
+        B::ConstDef::new(self.create_def_id(did))
+    }
+
+    pub fn impl_def(&mut self, did: rustc_span::def_id::DefId) -> B::ImplDef {
+        B::ImplDef::new(self.create_def_id(did))
+    }
+
+    pub fn region_def(&mut self, did: rustc_span::def_id::DefId) -> B::RegionDef {
+        B::RegionDef::new(self.create_def_id(did))
+    }
+
+    pub fn coroutine_witness_def(
+        &mut self,
+        did: rustc_span::def_id::DefId,
+    ) -> B::CoroutineWitnessDef {
+        B::CoroutineWitnessDef::new(self.create_def_id(did))
+    }
+
+    pub fn assoc_def(&mut self, did: rustc_span::def_id::DefId) -> B::AssocDef {
+        B::AssocDef::new(self.create_def_id(did))
+    }
+
+    pub fn opaque_def(&mut self, did: rustc_span::def_id::DefId) -> B::OpaqueDef {
+        B::OpaqueDef::new(self.create_def_id(did))
+    }
+
+    pub fn prov(&mut self, aid: rustc_middle::mir::interpret::AllocId) -> B::Prov {
+        B::Prov::new(self.create_alloc_id(aid))
+    }
+
+    pub fn static_def(&mut self, did: rustc_span::def_id::DefId) -> B::StaticDef {
+        B::StaticDef::new(self.create_def_id(did))
     }
 }
 
 /// A trait defining types that are used to emulate StableMIR components, which is really
 /// useful when programming in stable_mir-agnostic settings.
-pub trait Bridge {
+pub trait Bridge: Sized {
     type DefId: Copy + Debug + PartialEq + IndexedVal;
     type AllocId: Copy + Debug + PartialEq + IndexedVal;
     type Span: Copy + Debug + PartialEq + IndexedVal;
@@ -80,12 +203,29 @@ pub trait Bridge {
     type TyConstId: Copy + Debug + PartialEq + IndexedVal;
     type MirConstId: Copy + Debug + PartialEq + IndexedVal;
     type Layout: Copy + Debug + PartialEq + IndexedVal;
-    type Error: SmirError;
-}
 
-pub trait SmirError {
-    fn new(msg: String) -> Self;
-    fn from_internal<T: Debug>(err: T) -> Self;
+    type Error: SmirError;
+    type CrateItem: CrateItem<Self>;
+    type AdtDef: AdtDef<Self>;
+    type ForeignModuleDef: ForeignModuleDef<Self>;
+    type ForeignDef: ForeignDef<Self>;
+    type FnDef: FnDef<Self>;
+    type ClosureDef: ClosureDef<Self>;
+    type CoroutineDef: CoroutineDef<Self>;
+    type CoroutineClosureDef: CoroutineClosureDef<Self>;
+    type AliasDef: AliasDef<Self>;
+    type ParamDef: ParamDef<Self>;
+    type BrNamedDef: BrNamedDef<Self>;
+    type TraitDef: TraitDef<Self>;
+    type GenericDef: GenericDef<Self>;
+    type ConstDef: ConstDef<Self>;
+    type ImplDef: ImplDef<Self>;
+    type RegionDef: RegionDef<Self>;
+    type CoroutineWitnessDef: CoroutineWitnessDef<Self>;
+    type AssocDef: AssocDef<Self>;
+    type OpaqueDef: OpaqueDef<Self>;
+    type Prov: Prov<Self>;
+    type StaticDef: StaticDef<Self>;
 }
 
 pub trait IndexedVal {

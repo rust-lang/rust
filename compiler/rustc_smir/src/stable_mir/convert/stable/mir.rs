@@ -2,8 +2,9 @@
 
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::{bug, mir};
+use rustc_smir::Tables;
+use rustc_smir::bridge::SmirError;
 use rustc_smir::context::SmirCtxt;
-use rustc_smir::{SmirError, Tables};
 use stable_mir::compiler_interface::BridgeTys;
 use stable_mir::convert::Stable;
 use stable_mir::mir::alloc::GlobalAlloc;

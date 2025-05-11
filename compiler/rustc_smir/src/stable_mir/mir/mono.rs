@@ -1,13 +1,13 @@
 use std::fmt::{Debug, Formatter};
 use std::io;
 
-use rustc_smir::{IndexedVal, SmirError};
+use rustc_smir::bridge::SmirError;
 use serde::Serialize;
 use stable_mir::abi::FnAbi;
 use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::Body;
 use stable_mir::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, Ty};
-use stable_mir::{CrateItem, DefId, Error, ItemKind, Opaque, Symbol, with};
+use stable_mir::{CrateItem, DefId, Error, IndexedVal, ItemKind, Opaque, Symbol, with};
 
 use crate::{rustc_smir, stable_mir};
 

@@ -6,7 +6,7 @@
 use std::cell::Cell;
 
 use rustc_hir::def::DefKind;
-use rustc_smir::{Bridge, SmirContainer, Tables};
+use rustc_smir::{Bridge, SmirContainer};
 use stable_mir::abi::{FnAbi, Layout, LayoutShape, ReprOptions};
 use stable_mir::convert::{RustcInternal, Stable};
 use stable_mir::crate_def::Attribute;
@@ -39,131 +39,29 @@ impl Bridge for BridgeTys {
     type TyConstId = stable_mir::ty::TyConstId;
     type MirConstId = stable_mir::ty::MirConstId;
     type Layout = stable_mir::abi::Layout;
+
     type Error = stable_mir::Error;
-}
-
-impl<'tcx> Tables<'tcx, BridgeTys> {
-    pub(crate) fn crate_item(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::CrateItem {
-        stable_mir::CrateItem(self.create_def_id(did))
-    }
-
-    pub(crate) fn adt_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::AdtDef {
-        stable_mir::ty::AdtDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn foreign_module_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::ForeignModuleDef {
-        stable_mir::ty::ForeignModuleDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn foreign_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::ForeignDef {
-        stable_mir::ty::ForeignDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn fn_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::FnDef {
-        stable_mir::ty::FnDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn closure_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::ClosureDef {
-        stable_mir::ty::ClosureDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn coroutine_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::CoroutineDef {
-        stable_mir::ty::CoroutineDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn coroutine_closure_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::CoroutineClosureDef {
-        stable_mir::ty::CoroutineClosureDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn alias_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::AliasDef {
-        stable_mir::ty::AliasDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn param_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::ParamDef {
-        stable_mir::ty::ParamDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn br_named_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::BrNamedDef {
-        stable_mir::ty::BrNamedDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn trait_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::TraitDef {
-        stable_mir::ty::TraitDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn generic_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::GenericDef {
-        stable_mir::ty::GenericDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn const_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::ConstDef {
-        stable_mir::ty::ConstDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn impl_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::ImplDef {
-        stable_mir::ty::ImplDef(self.create_def_id(did))
-    }
-
-    /*
-        pub(crate) fn region_def(
-            &mut self,
-            did: rustc_span::def_id::DefId,
-        ) -> stable_mir::ty::RegionDef {
-            stable_mir::ty::RegionDef(self.create_def_id(did))
-        }
-    */
-
-    pub(crate) fn coroutine_witness_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::CoroutineWitnessDef {
-        stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn assoc_def(&mut self, did: rustc_span::def_id::DefId) -> stable_mir::ty::AssocDef {
-        stable_mir::ty::AssocDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn opaque_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::ty::OpaqueDef {
-        stable_mir::ty::OpaqueDef(self.create_def_id(did))
-    }
-
-    pub(crate) fn prov(
-        &mut self,
-        aid: rustc_middle::mir::interpret::AllocId,
-    ) -> stable_mir::ty::Prov {
-        stable_mir::ty::Prov(self.create_alloc_id(aid))
-    }
-
-    pub(crate) fn static_def(
-        &mut self,
-        did: rustc_span::def_id::DefId,
-    ) -> stable_mir::mir::mono::StaticDef {
-        stable_mir::mir::mono::StaticDef(self.create_def_id(did))
-    }
+    type CrateItem = stable_mir::CrateItem;
+    type AdtDef = stable_mir::ty::AdtDef;
+    type ForeignModuleDef = stable_mir::ty::ForeignModuleDef;
+    type ForeignDef = stable_mir::ty::ForeignDef;
+    type FnDef = stable_mir::ty::FnDef;
+    type ClosureDef = stable_mir::ty::ClosureDef;
+    type CoroutineDef = stable_mir::ty::CoroutineDef;
+    type CoroutineClosureDef = stable_mir::ty::CoroutineClosureDef;
+    type AliasDef = stable_mir::ty::AliasDef;
+    type ParamDef = stable_mir::ty::ParamDef;
+    type BrNamedDef = stable_mir::ty::BrNamedDef;
+    type TraitDef = stable_mir::ty::TraitDef;
+    type GenericDef = stable_mir::ty::GenericDef;
+    type ConstDef = stable_mir::ty::ConstDef;
+    type ImplDef = stable_mir::ty::ImplDef;
+    type RegionDef = stable_mir::ty::RegionDef;
+    type CoroutineWitnessDef = stable_mir::ty::CoroutineWitnessDef;
+    type AssocDef = stable_mir::ty::AssocDef;
+    type OpaqueDef = stable_mir::ty::OpaqueDef;
+    type Prov = stable_mir::ty::Prov;
+    type StaticDef = stable_mir::mir::mono::StaticDef;
 }
 
 /// Stable public API for querying compiler information.
@@ -1138,7 +1036,7 @@ impl<'tcx> SmirInterface for SmirContainer<'tcx, BridgeTys> {
     }
 }
 
-impl<'tcx> SmirContainer<'tcx, BridgeTys> {
+impl<'tcx> Helper for SmirContainer<'tcx, BridgeTys> {
     fn smir_crate(&self, crate_num: rustc_span::def_id::CrateNum) -> Crate {
         let cx = &*self.cx.borrow();
         let name = cx.crate_name(crate_num);
@@ -1147,6 +1045,10 @@ impl<'tcx> SmirContainer<'tcx, BridgeTys> {
         debug!(?name, ?crate_num, "smir_crate");
         Crate { id, name, is_local }
     }
+}
+
+trait Helper {
+    fn smir_crate(&self, crate_num: rustc_span::def_id::CrateNum) -> Crate;
 }
 
 // A thread local variable that stores a pointer to [`SmirInterface`].

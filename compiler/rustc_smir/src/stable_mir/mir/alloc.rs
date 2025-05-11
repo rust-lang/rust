@@ -2,14 +2,13 @@
 
 use std::io::Read;
 
-use rustc_smir::IndexedVal;
 use serde::Serialize;
 use stable_mir::mir::mono::{Instance, StaticDef};
 use stable_mir::target::{Endian, MachineInfo};
 use stable_mir::ty::{Allocation, Binder, ExistentialTraitRef, Ty};
-use stable_mir::{Error, with};
+use stable_mir::{Error, IndexedVal, with};
 
-use crate::{rustc_smir, stable_mir};
+use crate::stable_mir;
 
 /// An allocation in the SMIR global memory can be either a function pointer,
 /// a static, or a "real" allocation with some data in it.
