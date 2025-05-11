@@ -1,7 +1,8 @@
 use std::fmt::{Debug, Formatter};
 use std::io;
 
-use rustc_smir::{IndexedVal, SmirError};
+use rustc_smir::IndexedVal;
+use rustc_smir::bridge::SmirError;
 use serde::Serialize;
 use stable_mir::abi::FnAbi;
 use stable_mir::crate_def::CrateDef;

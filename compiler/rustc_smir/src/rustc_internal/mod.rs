@@ -10,11 +10,8 @@ use std::ops::Index;
 
 use rustc_data_structures::fx;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
-use rustc_span::def_id::{CrateNum, DefId};
+use rustc_span::def_id::CrateNum;
 use scoped_tls::scoped_thread_local;
 use stable_mir::Error;
 use stable_mir::convert::{RustcInternal, Stable};
@@ -56,37 +53,6 @@ where
     S: RustcInternal,
 {
     with_container(|tables, cx| item.internal(tables, cx))
-}
-
-impl<'tcx, B: Bridge> Index<B::DefId> for Tables<'tcx, B> {
-    type Output = DefId;
-
-    #[inline(always)]
-    fn index(&self, index: B::DefId) -> &Self::Output {
-        &self.def_ids[index]
-    }
-}
-
-impl<'tcx, B: Bridge> Tables<'tcx, B> {
-    pub fn create_def_id(&mut self, did: DefId) -> B::DefId {
-        self.def_ids.create_or_fetch(did)
-    }
-
-    pub fn create_alloc_id(&mut self, aid: AllocId) -> B::AllocId {
-        self.alloc_ids.create_or_fetch(aid)
-    }
-
-    pub fn create_span(&mut self, span: Span) -> B::Span {
-        self.spans.create_or_fetch(span)
-    }
-
-    pub fn instance_def(&mut self, instance: ty::Instance<'tcx>) -> B::InstanceDef {
-        self.instances.create_or_fetch(instance)
-    }
-
-    pub fn layout_id(&mut self, layout: rustc_abi::Layout<'tcx>) -> B::Layout {
-        self.layouts.create_or_fetch(layout)
-    }
 }
 
 pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
