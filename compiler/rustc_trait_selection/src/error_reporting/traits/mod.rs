@@ -163,14 +163,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // Ensure `T: Sized` and `T: WF` obligations come last. This lets us display diagnostics
         // with more relevant type information and hide redundant E0282 errors.
         errors.sort_by_key(|e| match e.obligation.predicate.kind().skip_binder() {
+            ty::PredicateKind::Subtype(_) => {
+                (-1, e.obligation.cause.span.len(), -(e.obligation.cause.span.index() as i32))
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred))
                 if self.tcx.is_lang_item(pred.def_id(), LangItem::Sized) =>
             {
-                1
+                (1, 0, 0)
             }
-            ty::PredicateKind::Coerce(_) => 2,
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
-            _ => 0,
+            ty::PredicateKind::Coerce(_) => (2, 0, 0),
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => (3, 0, 0),
+            _ => (0, 0, 0),
         });
 
         for (index, error) in errors.iter().enumerate() {
