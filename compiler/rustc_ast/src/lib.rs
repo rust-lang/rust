@@ -46,7 +46,7 @@ pub mod tokenstream;
 pub mod visit;
 
 pub use self::ast::*;
-pub use self::ast_traits::{AstDeref, AstNodeWrapper, HasAttrs, HasNodeId, HasTokens};
+pub use self::ast_traits::{AstNodeWrapper, HasAttrs, HasNodeId, HasTokens};
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
