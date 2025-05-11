@@ -323,24 +323,23 @@ pub(crate) fn target_config(sess: &Session) -> TargetConfig {
     // by LLVM.
     let target_machine = create_informational_target_machine(sess, true);
 
-    let (unstable_target_features, target_features) =
-        target_features::cfg(sess, &sess.opts.cg.target_feature, |feature| {
-            if let Some(feat) = to_llvm_features(sess, feature) {
-                // All the LLVM features this expands to must be enabled.
-                for llvm_feature in feat {
-                    let cstr = SmallCStr::new(llvm_feature);
-                    // `LLVMRustHasFeature` is moderately expensive. On targets with many
-                    // features (e.g. x86) these calls take a non-trivial fraction of runtime
-                    // when compiling very small programs.
-                    if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) } {
-                        return false;
-                    }
+    let (unstable_target_features, target_features) = target_features::cfg(sess, |feature| {
+        if let Some(feat) = to_llvm_features(sess, feature) {
+            // All the LLVM features this expands to must be enabled.
+            for llvm_feature in feat {
+                let cstr = SmallCStr::new(llvm_feature);
+                // `LLVMRustHasFeature` is moderately expensive. On targets with many
+                // features (e.g. x86) these calls take a non-trivial fraction of runtime
+                // when compiling very small programs.
+                if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) } {
+                    return false;
                 }
-                true
-            } else {
-                false
             }
-        });
+            true
+        } else {
+            false
+        }
+    });
 
     let mut cfg = TargetConfig {
         target_features,
